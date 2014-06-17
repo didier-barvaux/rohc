@@ -91,6 +91,7 @@ LT_INIT([disable-static win32-dll])
 # CFLAGS/LDFLAGS default values, more will be added on purpose
 configure_cflags="-g -Wall -Wstrict-prototypes -Wextra -Wunreachable-code"
 configure_cflags="${configure_cflags} -Wunused-function -Wunused-variable"
+configure_cflags="${configure_cflags} -Wshadow"
 configure_ldflags=""
 
 # Checks for programs.

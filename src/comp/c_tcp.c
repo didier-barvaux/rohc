@@ -2367,9 +2367,9 @@ static uint8_t * tcp_code_irregular_ipv6_option_part(struct rohc_comp_ctxt *cons
 			// checksum_and_res =:= optional_checksum(c_flag.UVALUE)
 			if(base_header.ip_gre_opt->c_flag != 0)
 			{
-				uint8_t *ptr = (uint8_t*) base_header.ip_gre_opt->datas;
-				*(mptr.uint8++) = *ptr++;
-				*(mptr.uint8++) = *ptr;
+				uint8_t *ptr2 = (uint8_t*) base_header.ip_gre_opt->datas;
+				*(mptr.uint8++) = *ptr2++;
+				*(mptr.uint8++) = *ptr2;
 			}
 			// sequence_number =:= optional_lsb_7_or_31(s_flag.UVALUE)
 			if(base_header.ip_gre_opt->s_flag != 0)

@@ -5810,7 +5810,7 @@ static bool attempt_repair(const struct rohc_decomp *const decomp,
 	                                           ROHC_LSB_REF_0);
 	const uint32_t sn_ref_minus_1 = rohc_lsb_get_ref(g_context->sn_lsb_ctxt,
 	                                                 ROHC_LSB_REF_MINUS_1);
-	bool attempt_repair = false;
+	bool verdict = false;
 
 	/* do not try to repair packet/context if feature is disabled */
 	if((decomp->features & ROHC_DECOMP_FEATURE_CRC_REPAIR) == 0)
@@ -5890,10 +5890,10 @@ static bool attempt_repair(const struct rohc_decomp *const decomp,
 	/* packet/context correction is going to be attempted, 3 packets with
 	 * correct CRC are required to accept the correction */
 	g_context->correction_counter = 3;
-	attempt_repair = true;
+	verdict = true;
 
 skip:
-	return attempt_repair;
+	return verdict;
 }
 
 

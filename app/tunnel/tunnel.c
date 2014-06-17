@@ -364,11 +364,11 @@ void version(void)
 
 
 /// The file descriptor where to write the compression statistics
-FILE *stats_comp;
+static FILE *stats_comp;
 /// The file descriptor where to write the decompression statistics
-FILE *stats_decomp;
+static FILE *stats_decomp;
 /// The sequence number for the UDP tunnel (used to discover lost packets)
-unsigned int seq;
+static unsigned int tunnel_seq;
 
 
 /**
@@ -830,7 +830,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* init the tunnel sequence number */
-	seq = 0;
+	tunnel_seq = 0;
 
 	/* catch signals to properly shutdown the bridge */
 	alive = 1;
@@ -1195,8 +1195,8 @@ int write_to_udp(int sock,
 
 	/* write the tunnel sequence number at the beginning of packet */
 	rohc_buf_pull(&packet, 2);
-	rohc_buf_byte_at(packet, 0) = (htons(seq) >> 8) & 0xff;
-	rohc_buf_byte_at(packet, 1) = htons(seq) & 0xff;
+	rohc_buf_byte_at(packet, 0) = (htons(tunnel_seq) >> 8) & 0xff;
+	rohc_buf_byte_at(packet, 1) = htons(tunnel_seq) & 0xff;
 
 	/* send the data on the UDP socket */
 	ret = sendto(sock, rohc_buf_data(packet), packet.len, 0,
@@ -1354,8 +1354,8 @@ static int write_to_raw(const int sock,
 		fprintf(stderr, "write_to_raw: bad length %zu\n", packet.len);
 		goto error;
 	}
-	rohc_buf_byte_at(packet, 0) = (htons(seq) >> 8) & 0xff;
-	rohc_buf_byte_at(packet, 1) = htons(seq) & 0xff;
+	rohc_buf_byte_at(packet, 0) = (htons(tunnel_seq) >> 8) & 0xff;
+	rohc_buf_byte_at(packet, 1) = htons(tunnel_seq) & 0xff;
 
 	/* Current ROHC packet length. Since for Ethernet min payload is 46 and
 	 * any excess bytes after payload are padded. It is very much possible
@@ -1487,11 +1487,11 @@ int tun2wan(struct rohc_comp *comp,
 	rohc_buf_pull(&rohc_packet, 3);
 
 	/* increment the tunnel sequence number */
-	seq++;
+	tunnel_seq++;
 
 	/* compress the IP packet */
 #if DEBUG
-	fprintf(stderr, "compress packet #%u (%zd bytes)\n", seq, packet_len);
+	fprintf(stderr, "compress packet #%u (%zd bytes)\n", tunnel_seq, packet_len);
 #endif
 	status = rohc_compress4(comp, uncomp_packet, &rohc_packet);
 	if(status == ROHC_STATUS_SEGMENT)
@@ -1500,7 +1500,7 @@ int tun2wan(struct rohc_comp *comp,
 	}
 	else if(status != ROHC_STATUS_OK)
 	{
-		fprintf(stderr, "compression of packet #%u failed\n", seq);
+		fprintf(stderr, "compression of packet #%u failed\n", tunnel_seq);
 		dump_packet("IP packet", uncomp_packet);
 		goto error;
 	}
@@ -1512,7 +1512,7 @@ int tun2wan(struct rohc_comp *comp,
 		{
 			to_drop = 1;
 			dropped++;
-			fprintf(stderr, "error inserted, ROHC packet #%u dropped\n", seq);
+			fprintf(stderr, "error inserted, ROHC packet #%u dropped\n", tunnel_seq);
 			nb_bytes = rohc_packet.len - (bytes_without_error - nb_bytes);
 		}
 
@@ -1525,7 +1525,7 @@ int tun2wan(struct rohc_comp *comp,
 		if(is_state_drop && is_timeout(last, now, 2))
 		{
 			fprintf(stderr, "go back to normal state (too much time between "
-			        "packets #%u and #%u)\n", seq - 1, seq);
+			        "packets #%u and #%u)\n", tunnel_seq - 1, tunnel_seq);
 			is_state_drop = 0;
 		}
 		last = now;
@@ -1541,7 +1541,7 @@ int tun2wan(struct rohc_comp *comp,
 		{
 			to_drop = 1;
 			dropped++;
-			fprintf(stderr, "error inserted, ROHC packet #%u dropped\n", seq);
+			fprintf(stderr, "error inserted, ROHC packet #%u dropped\n", tunnel_seq);
 		}
 	}
 
@@ -1603,7 +1603,7 @@ int tun2wan(struct rohc_comp *comp,
 		goto error;
 	}
 	fprintf(stats_comp, "%d\t%s\t%s\t%lu\t%lu\t%lu\t%lu\t%u\n",
-	        seq,
+	        tunnel_seq,
 	        rohc_get_mode_descr(last_packet_info.context_mode),
 	        rohc_comp_get_state_descr(last_packet_info.context_state),
 	        last_packet_info.total_last_uncomp_size,
@@ -1854,7 +1854,7 @@ int flush_feedback(const int to,
 	if(tunnel->feedback_send.len > 0)
 	{
 		/* increment the tunnel sequence number */
-		seq++;
+		tunnel_seq++;
 
 		/* write the ROHC packet in the tunnel */
 		if(tunnel->type == ROHC_TUNNEL_UDP)
@@ -1989,23 +1989,23 @@ int is_timeout(struct timeval first,
                unsigned int max)
 {
 	unsigned int delta_sec;
-	int is_timeout;
+	int verdict;
 
 	delta_sec = second.tv_sec - first.tv_sec;
 
 	if(delta_sec > max)
-		is_timeout = 1;
+		verdict = 1;
 	else if(delta_sec == max)
 	{
 		if(second.tv_usec > first.tv_usec)
-			is_timeout = 1;
+			verdict = 1;
 		else
-			is_timeout = 0;
+			verdict = 0;
 	}
 	else
-		is_timeout = 0;
+		verdict = 0;
 
-	return is_timeout;
+	return verdict;
 }
 
 

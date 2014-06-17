@@ -104,7 +104,7 @@ for ./configure ? If yes, check configure output and config.log"
 
 
 /** Some statistics collected by the sniffer */
-struct sniffer_stats
+struct sniffer_stats_t
 {
 	/** The size of one unit */
 	unsigned long comp_unit_size;
@@ -171,7 +171,7 @@ static int compress_decompress(struct rohc_comp *comp,
                                pcap_dumper_t *dumpers[],
                                struct rohc_buf *const feedback_send,
                                unsigned int *const cid,
-                               struct sniffer_stats *stats);
+                               struct sniffer_stats_t *stats);
 
 static int compare_packets(const struct rohc_buf pkt1,
                            const struct rohc_buf pkt2)
@@ -201,7 +201,7 @@ static bool rtp_detect_cb(const unsigned char *const ip,
 static bool stop_program;
 
 /** Some statistics collected by the sniffer */
-static struct sniffer_stats stats;
+static struct sniffer_stats_t sniffer_stats;
 
 /** Whether the application runs in daemon mode or not */
 static bool is_daemon;
@@ -210,7 +210,7 @@ static bool is_daemon;
 static bool is_verbose;
 
 /** The PCAP dumpers */
-static pcap_dumper_t *dumpers[ROHC_LARGE_CID_MAX + 1] = { 0 };
+static pcap_dumper_t *sniffer_dumpers[ROHC_LARGE_CID_MAX + 1] = { 0 };
 
 /** The maximum number of traces to keep */
 #define MAX_LAST_TRACES  5000
@@ -267,8 +267,8 @@ int main(int argc, char *argv[])
 	stop_program = false;
 
 	/* reset stats */
-	memset(&stats, 0, sizeof(struct sniffer_stats));
-	stats.comp_unit_size = 1;
+	memset(&sniffer_stats, 0, sizeof(struct sniffer_stats_t));
+	sniffer_stats.comp_unit_size = 1;
 
 	/* set to quiet mode by default */
 	is_verbose = false;
@@ -598,21 +598,21 @@ static void sniffer_interrupt(int signal)
 		if(signal == SIGSEGV)
 		{
 			SNIFFER_LOG(LOG_WARNING, "a segfault occurred at packet #%lu",
-			            stats.total_packets);
+			            sniffer_stats.total_packets);
 		}
 		else
 		{
 			SNIFFER_LOG(LOG_WARNING, "an assertion failed at packet #%lu",
-			            stats.total_packets);
+			            sniffer_stats.total_packets);
 		}
 
 		/* close PCAP dumpers */
 		for(i = 0; i <= ROHC_LARGE_CID_MAX; i++)
 		{
-			if(dumpers[i] != NULL)
+			if(sniffer_dumpers[i] != NULL)
 			{
 				SNIFFER_LOG(LOG_INFO, "close dump file for context with ID %u", i);
-				pcap_dump_close(dumpers[i]);
+				pcap_dump_close(sniffer_dumpers[i]);
 			}
 		}
 
@@ -665,8 +665,8 @@ static void sniffer_interrupt(int signal)
  * @param total  The total to compute percentage from
  * @return       The percentage
  */
-static unsigned long long percent(const unsigned long value,
-                                  const unsigned long total)
+static unsigned long long compute_percent(const unsigned long value,
+                                          const unsigned long total)
 {
 	unsigned long long percent;
 
@@ -700,134 +700,134 @@ static void sniffer_print_stats(int signal __attribute__((unused)))
 	/* general */
 	SNIFFER_LOG(LOG_INFO, "general:");
 	SNIFFER_LOG(LOG_INFO, "  total packets: %lu packets",
-	            stats.total_packets);
+	            sniffer_stats.total_packets);
 	SNIFFER_LOG(LOG_INFO, "  bad packets: %lu packets (%llu%%)",
-	            stats.bad_packets,
-	            percent(stats.bad_packets, stats.total_packets));
+	            sniffer_stats.bad_packets,
+	            compute_percent(sniffer_stats.bad_packets, sniffer_stats.total_packets));
 	SNIFFER_LOG(LOG_INFO, "  loss (estim.):");
 	SNIFFER_LOG(LOG_INFO, "    %lu packets among %lu bursts (%llu%%)",
-	            stats.nr_lost_packets, stats.nr_loss_bursts,
-	            percent(stats.nr_lost_packets, stats.total_packets));
+	            sniffer_stats.nr_lost_packets, sniffer_stats.nr_loss_bursts,
+	            compute_percent(sniffer_stats.nr_lost_packets, sniffer_stats.total_packets));
 	SNIFFER_LOG(LOG_INFO, "    packets per burst: max %lu, avg %lu, min %lu",
-	            stats.max_loss_burst_len, (stats.nr_loss_bursts != 0 ?
-	            stats.nr_lost_packets / stats.nr_loss_bursts : 0),
-	            stats.min_loss_burst_len);
+	            sniffer_stats.max_loss_burst_len, (sniffer_stats.nr_loss_bursts != 0 ?
+	            sniffer_stats.nr_lost_packets / sniffer_stats.nr_loss_bursts : 0),
+	            sniffer_stats.min_loss_burst_len);
 	SNIFFER_LOG(LOG_INFO, "  mis-ordered packets (estim.): %lu packets "
-	            "(%llu%%)", stats.nr_misordered_packets,
-	            percent(stats.nr_misordered_packets, stats.total_packets));
+	            "(%llu%%)", sniffer_stats.nr_misordered_packets,
+	            compute_percent(sniffer_stats.nr_misordered_packets, sniffer_stats.total_packets));
 	SNIFFER_LOG(LOG_INFO, "  duplicated packets (estim.): %lu packets "
-	            "(%llu%%)", stats.nr_duplicated_packets,
-	            percent(stats.nr_duplicated_packets, stats.total_packets));
+	            "(%llu%%)", sniffer_stats.nr_duplicated_packets,
+	            compute_percent(sniffer_stats.nr_duplicated_packets, sniffer_stats.total_packets));
 
 	/* compression gain */
 	SNIFFER_LOG(LOG_INFO, "compression gain:");
-	if(stats.comp_unit_size == 1)
+	if(sniffer_stats.comp_unit_size == 1)
 	{
 		SNIFFER_LOG(LOG_INFO, "  pre-compress: %lu bytes",
-		            stats.comp_pre_nr_bytes);
+		            sniffer_stats.comp_pre_nr_bytes);
 	}
 	else
 	{
 		SNIFFER_LOG(LOG_INFO, "  pre-compress: %lu %s",
-		            stats.comp_pre_nr_units,
-		            stats.comp_unit_size == 1000 ? "KB" :
-		            (stats.comp_unit_size == 1000*1000 ? "MB" :
-		             (stats.comp_unit_size == 1000*1000*1000 ? "GB" : "?")));
+		            sniffer_stats.comp_pre_nr_units,
+		            sniffer_stats.comp_unit_size == 1000 ? "KB" :
+		            (sniffer_stats.comp_unit_size == 1000*1000 ? "MB" :
+		             (sniffer_stats.comp_unit_size == 1000*1000*1000 ? "GB" : "?")));
 	}
-	if(stats.comp_unit_size == 1)
+	if(sniffer_stats.comp_unit_size == 1)
 	{
 		SNIFFER_LOG(LOG_INFO, "  post-compress: %lu bytes",
-		            stats.comp_post_nr_bytes);
+		            sniffer_stats.comp_post_nr_bytes);
 	}
 	else
 	{
 		SNIFFER_LOG(LOG_INFO, "  post-compress: %lu %s",
-		            stats.comp_post_nr_units,
-		            stats.comp_unit_size == 1000 ? "KB" :
-		            (stats.comp_unit_size == 1000*1000 ? "MB" :
-		             (stats.comp_unit_size == 1000*1000*1000 ? "GB" : "?")));
+		            sniffer_stats.comp_post_nr_units,
+		            sniffer_stats.comp_unit_size == 1000 ? "KB" :
+		            (sniffer_stats.comp_unit_size == 1000*1000 ? "MB" :
+		             (sniffer_stats.comp_unit_size == 1000*1000*1000 ? "GB" : "?")));
 	}
-	if(stats.comp_unit_size == 1)
+	if(sniffer_stats.comp_unit_size == 1)
 	{
 		SNIFFER_LOG(LOG_INFO, "  compress ratio: %llu%% of total, ie. %llu%% "
 		            "of gain",
-		            percent(stats.comp_post_nr_bytes, stats.comp_pre_nr_bytes),
-		            100 - percent(stats.comp_post_nr_bytes, stats.comp_pre_nr_bytes));
+		            compute_percent(sniffer_stats.comp_post_nr_bytes, sniffer_stats.comp_pre_nr_bytes),
+		            100 - compute_percent(sniffer_stats.comp_post_nr_bytes, sniffer_stats.comp_pre_nr_bytes));
 	}
 	else
 	{
 		SNIFFER_LOG(LOG_INFO, "  compress ratio: %llu%% of total, ie. %llu%% "
 		            "of gain",
-		            percent(stats.comp_post_nr_units, stats.comp_pre_nr_units),
-		            100 - percent(stats.comp_post_nr_units, stats.comp_pre_nr_units));
+		            compute_percent(sniffer_stats.comp_post_nr_units, sniffer_stats.comp_pre_nr_units),
+		            100 - compute_percent(sniffer_stats.comp_post_nr_units, sniffer_stats.comp_pre_nr_units));
 	}
 	SNIFFER_LOG(LOG_INFO, "  used and re-used contexts: %lu",
-	            stats.comp_nr_reused_cid);
+	            sniffer_stats.comp_nr_reused_cid);
 
 	/* packets per profile */
-	total = stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UNCOMPRESSED] +
-	        stats.comp_nr_pkts_per_profile[ROHC_PROFILE_RTP] +
-	        stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDP] +
-	        stats.comp_nr_pkts_per_profile[ROHC_PROFILE_IP] +
-	        stats.comp_nr_pkts_per_profile[ROHC_PROFILE_TCP] +
-	        stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE];
+	total = sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UNCOMPRESSED] +
+	        sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_RTP] +
+	        sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDP] +
+	        sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_IP] +
+	        sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_TCP] +
+	        sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE];
 	SNIFFER_LOG(LOG_INFO, "packets per profile:");
 	SNIFFER_LOG(LOG_INFO, "  Uncompressed profile: %lu packets (%llu%%)",
-	            stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UNCOMPRESSED],
-	            percent(stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UNCOMPRESSED],
+	            sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UNCOMPRESSED],
+	            compute_percent(sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UNCOMPRESSED],
 	                    total));
 	SNIFFER_LOG(LOG_INFO, "  IP/UDP/RTP profile: %lu packets (%llu%%)",
-	            stats.comp_nr_pkts_per_profile[ROHC_PROFILE_RTP],
-	            percent(stats.comp_nr_pkts_per_profile[ROHC_PROFILE_RTP], total));
+	            sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_RTP],
+	            compute_percent(sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_RTP], total));
 	SNIFFER_LOG(LOG_INFO, "  IP/UDP profile: %lu packets (%llu%%)",
-	            stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDP],
-	            percent(stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDP], total));
+	            sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDP],
+	            compute_percent(sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDP], total));
 	SNIFFER_LOG(LOG_INFO, "  IP-only profile: %lu packets (%llu%%)",
-	            stats.comp_nr_pkts_per_profile[ROHC_PROFILE_IP],
-	            percent(stats.comp_nr_pkts_per_profile[ROHC_PROFILE_IP], total));
+	            sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_IP],
+	            compute_percent(sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_IP], total));
 	SNIFFER_LOG(LOG_INFO, "  IP/TCP profile: %lu packets (%llu%%)",
-	            stats.comp_nr_pkts_per_profile[ROHC_PROFILE_TCP],
-	            percent(stats.comp_nr_pkts_per_profile[ROHC_PROFILE_TCP], total));
+	            sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_TCP],
+	            compute_percent(sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_TCP], total));
 	SNIFFER_LOG(LOG_INFO, "  IP/UDP-Lite profile: %lu packets (%llu%%)",
-	            stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE],
-	            percent(stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE], total));
+	            sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE],
+	            compute_percent(sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE], total));
 
 	/* packets per mode */
-	total = stats.comp_nr_pkts_per_mode[ROHC_U_MODE] +
-	        stats.comp_nr_pkts_per_mode[ROHC_O_MODE] +
-	        stats.comp_nr_pkts_per_mode[ROHC_R_MODE];
+	total = sniffer_stats.comp_nr_pkts_per_mode[ROHC_U_MODE] +
+	        sniffer_stats.comp_nr_pkts_per_mode[ROHC_O_MODE] +
+	        sniffer_stats.comp_nr_pkts_per_mode[ROHC_R_MODE];
 	SNIFFER_LOG(LOG_INFO, "packets per mode:");
 	SNIFFER_LOG(LOG_INFO, "  U-mode: %lu packets (%llu%%)",
-	            stats.comp_nr_pkts_per_mode[ROHC_U_MODE],
-	            percent(stats.comp_nr_pkts_per_mode[ROHC_U_MODE], total));
+	            sniffer_stats.comp_nr_pkts_per_mode[ROHC_U_MODE],
+	            compute_percent(sniffer_stats.comp_nr_pkts_per_mode[ROHC_U_MODE], total));
 	SNIFFER_LOG(LOG_INFO, "  O-mode: %lu packets (%llu%%)",
-	            stats.comp_nr_pkts_per_mode[ROHC_O_MODE],
-	            percent(stats.comp_nr_pkts_per_mode[ROHC_O_MODE], total));
+	            sniffer_stats.comp_nr_pkts_per_mode[ROHC_O_MODE],
+	            compute_percent(sniffer_stats.comp_nr_pkts_per_mode[ROHC_O_MODE], total));
 	SNIFFER_LOG(LOG_INFO, "  R-mode: %lu packets (%llu%%)",
-	            stats.comp_nr_pkts_per_mode[ROHC_R_MODE],
-	            percent(stats.comp_nr_pkts_per_mode[ROHC_R_MODE], total));
+	            sniffer_stats.comp_nr_pkts_per_mode[ROHC_R_MODE],
+	            compute_percent(sniffer_stats.comp_nr_pkts_per_mode[ROHC_R_MODE], total));
 
 	/* packets per state */
-	total = stats.comp_nr_pkts_per_state[ROHC_COMP_STATE_IR] +
-	        stats.comp_nr_pkts_per_state[ROHC_COMP_STATE_FO] +
-	        stats.comp_nr_pkts_per_state[ROHC_COMP_STATE_SO];
+	total = sniffer_stats.comp_nr_pkts_per_state[ROHC_COMP_STATE_IR] +
+	        sniffer_stats.comp_nr_pkts_per_state[ROHC_COMP_STATE_FO] +
+	        sniffer_stats.comp_nr_pkts_per_state[ROHC_COMP_STATE_SO];
 	SNIFFER_LOG(LOG_INFO, "packets per state:");
 	SNIFFER_LOG(LOG_INFO, "  IR state: %lu packets (%llu%%)",
-	            stats.comp_nr_pkts_per_state[ROHC_COMP_STATE_IR],
-	            percent(stats.comp_nr_pkts_per_state[ROHC_COMP_STATE_IR], total));
+	            sniffer_stats.comp_nr_pkts_per_state[ROHC_COMP_STATE_IR],
+	            compute_percent(sniffer_stats.comp_nr_pkts_per_state[ROHC_COMP_STATE_IR], total));
 	SNIFFER_LOG(LOG_INFO, "  FO state: %lu packets (%llu%%)",
-	            stats.comp_nr_pkts_per_state[ROHC_COMP_STATE_FO],
-	            percent(stats.comp_nr_pkts_per_state[ROHC_COMP_STATE_FO], total));
+	            sniffer_stats.comp_nr_pkts_per_state[ROHC_COMP_STATE_FO],
+	            compute_percent(sniffer_stats.comp_nr_pkts_per_state[ROHC_COMP_STATE_FO], total));
 	SNIFFER_LOG(LOG_INFO, "  SO state: %lu packets (%llu%%)",
-	            stats.comp_nr_pkts_per_state[ROHC_COMP_STATE_SO],
-	            percent(stats.comp_nr_pkts_per_state[ROHC_COMP_STATE_SO], total));
+	            sniffer_stats.comp_nr_pkts_per_state[ROHC_COMP_STATE_SO],
+	            compute_percent(sniffer_stats.comp_nr_pkts_per_state[ROHC_COMP_STATE_SO], total));
 
 	/* packets per packet type */
 	SNIFFER_LOG(LOG_INFO, "packets per packet type:");
 	total = 0;
 	for(i = ROHC_PACKET_IR; i <= ROHC_PACKET_TCP_SEQ_8; i++)
 	{
-		total += stats.comp_nr_pkts_per_pkt_type[i];
+		total += sniffer_stats.comp_nr_pkts_per_pkt_type[i];
 	}
 	for(i = ROHC_PACKET_IR; i <= ROHC_PACKET_TCP_SEQ_8; i++)
 	{
@@ -836,8 +836,8 @@ static void sniffer_print_stats(int signal __attribute__((unused)))
 		{
 			SNIFFER_LOG(LOG_INFO, "  packet type %s: %lu packets (%llu%%)",
 			            rohc_get_packet_descr(i),
-			            stats.comp_nr_pkts_per_pkt_type[i],
-			            percent(stats.comp_nr_pkts_per_pkt_type[i], total));
+			            sniffer_stats.comp_nr_pkts_per_pkt_type[i],
+			            compute_percent(sniffer_stats.comp_nr_pkts_per_pkt_type[i], total));
 		}
 	}
 
@@ -1001,13 +1001,13 @@ static bool sniff(const rohc_cid_type_t cid_type,
 
 	/* reset the PCAP dumpers (used to save sniffed packets in several PCAP
 	 * files, one per Context ID) */
-	bzero(dumpers, sizeof(pcap_dumper_t *) * max_contexts);
+	bzero(sniffer_dumpers, sizeof(pcap_dumper_t *) * max_contexts);
 
 	SNIFFER_LOG(LOG_INFO, "ROHC sniffer successfully started");
 	SNIFFER_LOG(LOG_INFO, "start processing captured packets");
 
 	/* for each sniffed packet */
-	stats.total_packets = 0;
+	sniffer_stats.total_packets = 0;
 	while(!stop_program)
 	{
 		unsigned int cid = 0;
@@ -1020,23 +1020,23 @@ static bool sniff(const rohc_cid_type_t cid_type,
 			continue;
 		}
 
-		stats.total_packets++;
+		sniffer_stats.total_packets++;
 
 		if(!is_daemon &&
-		   (stats.total_packets == 1 || (stats.total_packets % 100) == 0))
+		   (sniffer_stats.total_packets == 1 || (sniffer_stats.total_packets % 100) == 0))
 		{
-			if(stats.total_packets > 1)
+			if(sniffer_stats.total_packets > 1)
 			{
 				printf("\r");
 			}
-			printf("packet #%lu", stats.total_packets);
+			printf("packet #%lu", sniffer_stats.total_packets);
 			fflush(stdout);
 		}
 
 		/* compress & decompress from compressor to decompressor */
 		ret = compress_decompress(comp, decomp, header, packet,
-		                          link_len_src, handle, dumpers,
-		                          &feedback_send, &cid, &stats);
+		                          link_len_src, handle, sniffer_dumpers,
+		                          &feedback_send, &cid, &sniffer_stats);
 		if(ret == -1)
 		{
 			err_comp++;
@@ -1056,7 +1056,7 @@ static bool sniff(const rohc_cid_type_t cid_type,
 		else if(ret == -3)
 		{
 			nb_bad++;
-			stats.bad_packets++;
+			sniffer_stats.bad_packets++;
 		}
 		else
 		{
@@ -1068,8 +1068,8 @@ static bool sniff(const rohc_cid_type_t cid_type,
 		{
 			SNIFFER_LOG(LOG_WARNING, "packet #%lu, CID %u: stats OK, ERR(COMP), "
 			            "ERR(DECOMP), ERR(REF), ERR(BAD), ERR(INTERNAL)  =  "
-			            "%u  %u  %u  %u  %u  %u", stats.total_packets, cid,
-			            nb_ok, err_comp, err_decomp, nb_ref, nb_bad,
+			            "%u  %u  %u  %u  %u  %u", sniffer_stats.total_packets,
+			            cid, nb_ok, err_comp, err_decomp, nb_ref, nb_bad,
 			            nb_internal_err);
 
 			/* last debug traces are recorded in SIGABRT handler */
@@ -1087,10 +1087,10 @@ static bool sniff(const rohc_cid_type_t cid_type,
 	/* close PCAP dumpers */
 	for(i = 0; i < max_contexts; i++)
 	{
-		if(dumpers[i] != NULL)
+		if(sniffer_dumpers[i] != NULL)
 		{
 			SNIFFER_LOG(LOG_INFO, "close dump file for context with ID %u", i);
-			pcap_dump_close(dumpers[i]);
+			pcap_dump_close(sniffer_dumpers[i]);
 		}
 	}
 
@@ -1135,7 +1135,7 @@ static int compress_decompress(struct rohc_comp *comp,
                                pcap_dumper_t *dumpers[],
                                struct rohc_buf *const feedback_send,
                                unsigned int *const cid,
-                               struct sniffer_stats *stats)
+                               struct sniffer_stats_t *stats)
 {
 	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
 	struct rohc_buf ip_packet =

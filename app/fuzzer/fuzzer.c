@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
 	struct rohc_decomp *decomp;
 	const unsigned long max_iter = 2000000000;
 	unsigned long cur_iter;
-	int i;
+	size_t i;
 
 	/* no traces at the moment */
 	for(i = 0; i < MAX_LAST_TRACES; i++)
@@ -171,7 +171,6 @@ int main(int argc, char *argv[])
 		struct rohc_buf ip_packet =
 			rohc_buf_init_empty(ip_buffer, PACKET_MAX_SIZE);
 		int ret __attribute__((unused));
-		size_t i;
 
 		/* print progress from time to time */
 		if(cur_iter == 1 || (cur_iter % 10000) == 0)
