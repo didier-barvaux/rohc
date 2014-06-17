@@ -170,7 +170,7 @@ typedef enum
 	ROHC_STATUS_NO_CONTEXT  = 3,
 	/** The action failed due to a CRC failure */
 	ROHC_STATUS_BAD_CRC     = 4,
-	/** The action encountered another problem */
+	/** The action encountered an undefined problem */
 	ROHC_STATUS_ERROR       = 5,
 
 } rohc_status_t;
@@ -389,6 +389,9 @@ extern unsigned char ROHC_EXPORT crc_table_8[256]
  */
 
 char * ROHC_EXPORT rohc_version(void);
+
+const char * ROHC_EXPORT rohc_strerror(const rohc_status_t status)
+	__attribute__((warn_unused_result));
 
 const char * ROHC_EXPORT rohc_get_mode_descr(const rohc_mode_t mode);
 

@@ -162,7 +162,7 @@ static int test_decomp(const char *const filename,
 	unsigned char *packet;
 	struct rohc_decomp *decomp;
 	unsigned int counter;
-	int status = 1;
+	int is_failure = 1;
 
 	/* open the source dump file */
 	handle = pcap_open_offline(filename, errbuf);
@@ -244,6 +244,7 @@ static int test_decomp(const char *const filename,
 
 		/* decompress the ROHC packet */
 		status = rohc_decompress3(decomp, rohc_packet, &ip_packet, NULL, NULL);
+		fprintf(stderr, "\tdecompression status: %s\n", rohc_strerror(status));
 		if(status == ROHC_STATUS_OK)
 		{
 			if(counter >= failure_start)
@@ -270,13 +271,13 @@ static int test_decomp(const char *const filename,
 		}
 	}
 
-	status = 0;
+	is_failure = 0;
 
 destroy_decomp:
 	rohc_decomp_free(decomp);
 close_input:
 	pcap_close(handle);
 error:
-	return status;
+	return is_failure;
 }
 

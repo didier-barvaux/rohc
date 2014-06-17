@@ -48,6 +48,7 @@ rohc_dump_packet
 rohc_dump_buf
 rohc_f_16bits
 rohc_f_32bits
+rohc_strerror
 rohc_get_ext_descr
 rohc_get_mode_descr
 rohc_get_packet_descr

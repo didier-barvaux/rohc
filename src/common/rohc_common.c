@@ -58,6 +58,46 @@ char * rohc_version(void)
 
 
 /**
+ * @brief Give a description for the given ROHC status code
+ *
+ * Give a description for the given ROHC status code.
+ *
+ * The descriptions are not part of the API. They may change between
+ * releases without any warning. Do NOT use them for other means that
+ * providing to users a textual description of status codes returned by the
+ * library. If unsure, ask on the mailing list.
+ *
+ * @param status   The ROHC status code to get a description for
+ * @return         A string that describes the given ROHC status code
+ *
+ * @ingroup rohc
+ */
+const char * rohc_strerror(const rohc_status_t status)
+{
+	switch(status)
+	{
+		case ROHC_STATUS_OK:
+			return "resulting packet available";
+		case ROHC_STATUS_SEGMENT:
+			return "resulting packet needs to be segmented";
+		case ROHC_STATUS_MALFORMED:
+			return "malformed packet";
+		case ROHC_STATUS_NO_CONTEXT:
+			return "no matching context";
+		case ROHC_STATUS_BAD_CRC:
+			return "CRC failure";
+		case ROHC_STATUS_ERROR:
+			return "undefined problem";
+		default:
+			assert(0);
+#ifdef __KERNEL__
+			return "no description";
+#endif
+	}
+}
+
+
+/**
  * @brief Give a description for the given ROHC mode
  *
  * Give a description for the given ROHC mode.
