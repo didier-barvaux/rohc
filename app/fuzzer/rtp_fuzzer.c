@@ -218,7 +218,7 @@ int main(int argc, char *argv[])
 		struct rohc_buf ip_packet2 =
 			rohc_buf_init_empty(ip_buffer2, PACKET_MAX_SIZE);
 
-		int ret;
+		rohc_status_t status;
 
 		/* print progress from time to time */
 		if(cur_iter == 1 || (cur_iter % 10000) == 0)
@@ -273,8 +273,8 @@ int main(int argc, char *argv[])
 		rtp->ssrc = htonl(0x42424242 + add_sometimes(100, 0x2894729));
 
 		/* compress the IP/UDP/RTP packet */
-		ret = rohc_compress4(comp, ip_packet, &rohc_packet);
-		if(ret != ROHC_OK)
+		status = rohc_compress4(comp, ip_packet, &rohc_packet);
+		if(status != ROHC_STATUS_OK)
 		{
 			fprintf(stderr, "\nfailed to compress packet\n");
 			assert(0);
@@ -282,8 +282,8 @@ int main(int argc, char *argv[])
 		}
 
 		/* decompress the ROHC packet */
-		ret = rohc_decompress3(decomp, rohc_packet, &ip_packet2, NULL, NULL);
-		if(ret != ROHC_OK)
+		status = rohc_decompress3(decomp, rohc_packet, &ip_packet2, NULL, NULL);
+		if(status != ROHC_STATUS_OK)
 		{
 			fprintf(stderr, "\nfailed to decompress packet\n");
 			assert(0);

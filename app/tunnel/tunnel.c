@@ -1425,6 +1425,7 @@ int tun2wan(struct rohc_comp *comp,
 		rohc_buf_init_empty(rohc_buffer, 3 + MAX_ROHC_SIZE);
 
 	bool is_segment = false;
+	rohc_status_t status;
 	int ret;
 
 	/* error emulation */
@@ -1492,12 +1493,12 @@ int tun2wan(struct rohc_comp *comp,
 #if DEBUG
 	fprintf(stderr, "compress packet #%u (%zd bytes)\n", seq, packet_len);
 #endif
-	ret = rohc_compress4(comp, uncomp_packet, &rohc_packet);
-	if(ret == ROHC_NEED_SEGMENT)
+	status = rohc_compress4(comp, uncomp_packet, &rohc_packet);
+	if(status == ROHC_STATUS_SEGMENT)
 	{
 		is_segment = true;
 	}
-	else if(ret != ROHC_OK)
+	else if(status != ROHC_STATUS_OK)
 	{
 		fprintf(stderr, "compression of packet #%u failed\n", seq);
 		dump_packet("IP packet", uncomp_packet);
@@ -1550,7 +1551,7 @@ int tun2wan(struct rohc_comp *comp,
 		if(is_segment)
 		{
 			/* retrieve and transmit all remaining ROHC segments */
-			while((ret = rohc_comp_get_segment2(comp, &rohc_packet)) != ROHC_NEED_SEGMENT)
+			while((status = rohc_comp_get_segment2(comp, &rohc_packet)) != ROHC_STATUS_SEGMENT)
 			{
 				/* write the ROHC segment in the tunnel */
 				if(tunnel->type == ROHC_TUNNEL_UDP)
@@ -1668,7 +1669,9 @@ int wan2tun(struct rohc_tunnel *const tunnel,
 	struct rohc_buf feedback_rcvd =
 		rohc_buf_init_empty(feedback_rcvd_buf, feedback_rcvd_max_len);
 
+	rohc_status_t status;
 	int ret;
+
 	static unsigned int max_seq = 0;
 	unsigned int new_seq;
 	static unsigned long lost_packets = 0;
@@ -1760,9 +1763,9 @@ int wan2tun(struct rohc_tunnel *const tunnel,
 	fprintf(stderr, "decompress ROHC packet #%u (%u bytes)\n",
 	        new_seq, packet.len);
 #endif
-	ret = rohc_decompress3(decomp, packet, &decomp_packet,
-	                       &feedback_rcvd, &(tunnel->feedback_send));
-	if(ret != ROHC_OK)
+	status = rohc_decompress3(decomp, packet, &decomp_packet,
+	                          &feedback_rcvd, &(tunnel->feedback_send));
+	if(status != ROHC_STATUS_OK)
 	{
 		fprintf(stderr, "decompression of packet #%u failed\n", new_seq);
 		dump_packet("ROHC packet", packet);

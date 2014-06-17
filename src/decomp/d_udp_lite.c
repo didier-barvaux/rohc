@@ -358,18 +358,18 @@ error:
  * @param[out] uncomp_packet  The uncompressed packet
  * @param packet_type         IN:  The type of the ROHC packet to parse
  *                            OUT: The type of the parsed ROHC packet
- * @return                    ROHC_OK if packet is successfully decoded,
- *                            ROHC_ERROR_PACKET_FAILED if packet is malformed,
- *                            ROHC_ERROR_CRC if a CRC error occurs,
- *                            ROHC_ERROR if an error occurs
+ * @return                    ROHC_STATUS_OK if packet is successfully decoded,
+ *                            ROHC_STATUS_MALFORMED if packet is malformed,
+ *                            ROHC_STATUS_BAD_CRC if a CRC error occurs,
+ *                            ROHC_STATUS_ERROR if an error occurs
  */
-static int d_udp_lite_decode(struct rohc_decomp *const decomp,
-                             struct rohc_decomp_ctxt *const context,
-                             const struct rohc_buf rohc_packet,
-                             const size_t add_cid_len,
-                             const size_t large_cid_len,
-                             struct rohc_buf *const uncomp_packet,
-                             rohc_packet_t *const packet_type)
+static rohc_status_t d_udp_lite_decode(struct rohc_decomp *const decomp,
+                                       struct rohc_decomp_ctxt *const context,
+                                       const struct rohc_buf rohc_packet,
+                                       const size_t add_cid_len,
+                                       const size_t large_cid_len,
+                                       struct rohc_buf *const uncomp_packet,
+                                       rohc_packet_t *const packet_type)
 {
 	struct d_generic_context *g_context = context->specific;
 	struct d_udp_lite_context *udp_lite_context = g_context->specific;
@@ -404,7 +404,7 @@ static int d_udp_lite_decode(struct rohc_decomp *const decomp,
 	                        new_large_cid_len, uncomp_packet, packet_type);
 
 error_malformed:
-	return ROHC_ERROR_PACKET_FAILED;
+	return ROHC_STATUS_MALFORMED;
 }
 
 

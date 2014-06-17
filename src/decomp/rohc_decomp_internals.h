@@ -268,13 +268,13 @@ struct rohc_decomp_profile
 	void (*free_context)(void *const context);
 
 	/* The handler used to decode a ROHC packet */
-	int (*decode)(struct rohc_decomp *const decomp,
-	              struct rohc_decomp_ctxt *const context,
-	              const struct rohc_buf rohc_packet,
-	              const size_t add_cid_len,
-	              const size_t large_cid_len,
-	              struct rohc_buf *const uncomp_packet,
-	              rohc_packet_t *const packet_type)
+	rohc_status_t (*decode)(struct rohc_decomp *const decomp,
+	                        struct rohc_decomp_ctxt *const context,
+	                        const struct rohc_buf rohc_packet,
+	                        const size_t add_cid_len,
+	                        const size_t large_cid_len,
+	                        struct rohc_buf *const uncomp_packet,
+	                        rohc_packet_t *const packet_type)
 		__attribute__((warn_unused_result, nonnull(1, 2, 6, 7)));
 
 	/** The handler used to detect the type of the ROHC packet */

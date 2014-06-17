@@ -124,7 +124,7 @@ static int test_decomp(const struct rohc_buf rohc_feedback)
 		rohc_buf_init_empty(feedback_buffer, MAX_ROHC_SIZE);
 
 	int is_failure = 1;
-	int ret;
+	rohc_status_t status;
 
 	/* create the ROHC decompressor in bi-directional mode */
 	decomp = rohc_decomp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX, ROHC_O_MODE);
@@ -142,9 +142,9 @@ static int test_decomp(const struct rohc_buf rohc_feedback)
 	}
 
 	/* decompress the ROHC feedback with the ROHC decompressor */
-	ret = rohc_decompress3(decomp, rohc_feedback, &ip_packet,
-	                       &feedback_packet, NULL);
-	if(ret != ROHC_OK)
+	status = rohc_decompress3(decomp, rohc_feedback, &ip_packet,
+	                          &feedback_packet, NULL);
+	if(status != ROHC_STATUS_OK)
 	{
 		fprintf(stderr, "failed to decompress ROHC feedback\n");
 		goto destroy_decomp;

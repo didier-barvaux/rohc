@@ -319,8 +319,8 @@ static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
 static bool is_ip_id_increasing(const uint16_t old_id, const uint16_t new_id)
 	__attribute__((warn_unused_result));
 
-static int encode_uncomp_fields(struct rohc_comp_ctxt *const context,
-                                const struct net_pkt *const uncomp_pkt)
+static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
+                                 const struct net_pkt *const uncomp_pkt)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static void rohc_get_innermost_ipv4_non_rnd(const struct rohc_comp_ctxt *const context,
@@ -852,7 +852,6 @@ int c_generic_encode(struct rohc_comp_ctxt *const context,
 {
 	struct c_generic_context *g_context;
 	int size;
-	int ret;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
@@ -873,8 +872,7 @@ int c_generic_encode(struct rohc_comp_ctxt *const context,
 	g_context->decide_state(context);
 
 	/* compute how many bits are needed to send header fields */
-	ret = encode_uncomp_fields(context, uncomp_pkt);
-	if(ret != ROHC_OK)
+	if(!encode_uncomp_fields(context, uncomp_pkt))
 	{
 		rohc_comp_warn(context, "failed to compute how many bits are needed "
 		               "to send header fields");
@@ -6412,11 +6410,10 @@ static bool is_ip_id_increasing(const uint16_t old_id, const uint16_t new_id)
  *
  * @param context      The compression context
  * @param uncomp_pkt   The uncompressed packet to encode
- * @return             ROHC_OK in case of success,
- *                     ROHC_ERROR otherwise
+ * @return             true in case of success, false otherwise
  */
-static int encode_uncomp_fields(struct rohc_comp_ctxt *const context,
-                                const struct net_pkt *const uncomp_pkt)
+static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
+                                 const struct net_pkt *const uncomp_pkt)
 {
 	struct c_generic_context *g_context;
 	bool wlsb_k_ok;
@@ -6577,23 +6574,18 @@ static int encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	}
 
 	/* update info related to transport header */
-	if(g_context->encode_uncomp_fields != NULL)
+	if(g_context->encode_uncomp_fields != NULL &&
+	   !g_context->encode_uncomp_fields(context, uncomp_pkt))
 	{
-		int ret;
-
-		ret = g_context->encode_uncomp_fields(context, uncomp_pkt);
-		if(ret != ROHC_OK)
-		{
-			rohc_comp_warn(context, "failed to encode uncompressed next header "
-			               "fields");
-			goto error;
-		}
+		rohc_comp_warn(context, "failed to encode uncompressed next header "
+		               "fields");
+		goto error;
 	}
 
-	return ROHC_OK;
+	return true;
 
 error:
-	return ROHC_ERROR;
+	return false;
 }
 
 

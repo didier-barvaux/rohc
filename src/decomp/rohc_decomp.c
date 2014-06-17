@@ -120,12 +120,12 @@ static bool rohc_decomp_create_contexts(struct rohc_decomp *const decomp,
                                         const rohc_cid_t max_cid)
 	__attribute__((nonnull(1), warn_unused_result));
 
-static int d_decode_header(struct rohc_decomp *decomp,
-                           const struct rohc_buf rohc_packet,
-                           struct rohc_buf *const uncomp_packet,
-                           struct rohc_buf *const rcvd_feedback,
-                           struct d_decode_data *ddata,
-                           rohc_packet_t *const packet_type)
+static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
+                                     const struct rohc_buf rohc_packet,
+                                     struct rohc_buf *const uncomp_packet,
+                                     struct rohc_buf *const rcvd_feedback,
+                                     struct d_decode_data *ddata,
+                                     rohc_packet_t *const packet_type)
 	__attribute__((nonnull(1, 3, 5, 6), warn_unused_result));
 
 static const struct rohc_decomp_profile *
@@ -142,10 +142,11 @@ static struct rohc_decomp_ctxt *
 	__attribute__((nonnull(1), warn_unused_result));
 static void context_free(struct rohc_decomp_ctxt *const context);
 
-static int rohc_decomp_decode_cid(struct rohc_decomp *decomp,
-                                  const unsigned char *packet,
-                                  unsigned int len,
-                                  struct d_decode_data *ddata);
+static bool rohc_decomp_decode_cid(struct rohc_decomp *decomp,
+                                   const unsigned char *packet,
+                                   unsigned int len,
+                                   struct d_decode_data *ddata)
+	__attribute__((warn_unused_result));
 
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 
@@ -179,14 +180,14 @@ static bool rohc_decomp_parse_feedback(struct rohc_decomp *const decomp,
                                        struct rohc_buf *const feedback)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 static void d_operation_mode_feedback(struct rohc_decomp *decomp,
-                                      int rohc_status,
+                                      const rohc_status_t rohc_status,
                                       const uint16_t cid,
                                       const rohc_cid_type_t cid_type,
                                       int mode,
                                       struct rohc_decomp_ctxt *context,
                                       struct rohc_buf *const feedback_send);
 static void d_optimistic_feedback(struct rohc_decomp *decomp,
-                                  int rohc_status,
+                                  const rohc_status_t rohc_status,
                                   const rohc_cid_t cid,
                                   const rohc_cid_type_t cid_type,
                                   struct rohc_decomp_ctxt *context,
@@ -950,7 +951,8 @@ int rohc_decompress(struct rohc_decomp *decomp,
 	struct rohc_buf feedback_send =
 		rohc_buf_init_empty(feedback_send_data, feedback_send_max_len);
 
-	int code;
+	rohc_status_t code;
+	int code_int = ROHC_ERROR;
 
 	if(decomp == NULL)
 	{
@@ -959,7 +961,7 @@ int rohc_decompress(struct rohc_decomp *decomp,
 
 	code = rohc_decompress3(decomp, __rohc_packet, &__uncomp_packet,
 	                        &rcvd_feedback, &feedback_send);
-	if(code == ROHC_OK)
+	if(code == ROHC_STATUS_OK)
 	{
 		/* decompression succeeded */
 		if(__uncomp_packet.len == 0 && decomp->rru_len > 0)
@@ -967,18 +969,18 @@ int rohc_decompress(struct rohc_decomp *decomp,
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			           "ROHC_OK + empty packet + non-empty RRU buffer "
 			           "=> ROHC_NON_FINAL_SEGMENT");
-			code = ROHC_NON_FINAL_SEGMENT;
+			code_int = ROHC_NON_FINAL_SEGMENT;
 		}
 		else if(__uncomp_packet.len == 0 && rcvd_feedback.len > 0)
 		{
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			           "ROHC_OK + empty packet + non-empty received feedback "
 			           "=> ROHC_FEEDBACK_ONLY");
-			code = ROHC_FEEDBACK_ONLY;
+			code_int = ROHC_FEEDBACK_ONLY;
 		}
 		else
 		{
-			code = __uncomp_packet.len;
+			code_int = __uncomp_packet.len;
 		}
 	}
 
@@ -992,7 +994,29 @@ int rohc_decompress(struct rohc_decomp *decomp,
 		             "failed to piggyback the feedback");
 	}
 
-	return code;
+	/* convert from rohc_status_t to int */
+	switch(code)
+	{
+		case ROHC_STATUS_OK:
+			/* already set */
+			break;
+		case ROHC_STATUS_MALFORMED:
+			code_int = ROHC_ERROR_PACKET_FAILED;
+			break;
+		case ROHC_STATUS_NO_CONTEXT:
+			code_int = ROHC_ERROR_NO_CONTEXT;
+			break;
+		case ROHC_STATUS_BAD_CRC:
+			code_int = ROHC_ERROR_CRC;
+			break;
+		case ROHC_STATUS_SEGMENT:
+		case ROHC_STATUS_ERROR:
+		default:
+			code_int = ROHC_ERROR;
+			break;
+	}
+
+	return code_int;
 }
 
 
@@ -1111,7 +1135,8 @@ int rohc_decompress2(struct rohc_decomp *const decomp,
 	struct rohc_buf feedback_send =
 		rohc_buf_init_empty(feedback_send_data, feedback_send_max_len);
 
-	int code;
+	rohc_status_t code;
+	int code_int = ROHC_ERROR;
 
 	if(decomp == NULL || uncomp_packet_len == NULL)
 	{
@@ -1120,7 +1145,7 @@ int rohc_decompress2(struct rohc_decomp *const decomp,
 
 	code = rohc_decompress3(decomp, __rohc_packet, &__uncomp_packet,
 	                        &rcvd_feedback, &feedback_send);
-	if(code == ROHC_OK)
+	if(code == ROHC_STATUS_OK)
 	{
 		*uncomp_packet_len = __uncomp_packet.len;
 
@@ -1129,14 +1154,18 @@ int rohc_decompress2(struct rohc_decomp *const decomp,
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			           "ROHC_OK + empty packet + non-empty RRU buffer "
 			           "=> ROHC_NON_FINAL_SEGMENT");
-			code = ROHC_NON_FINAL_SEGMENT;
+			code_int = ROHC_NON_FINAL_SEGMENT;
 		}
 		else if(__uncomp_packet.len == 0 && rcvd_feedback.len > 0)
 		{
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			           "ROHC_OK + empty packet + non-empty received feedback "
 			           "=> ROHC_FEEDBACK_ONLY");
-			code = ROHC_FEEDBACK_ONLY;
+			code_int = ROHC_FEEDBACK_ONLY;
+		}
+		else
+		{
+			code_int = ROHC_OK;
 		}
 	}
 
@@ -1150,7 +1179,29 @@ int rohc_decompress2(struct rohc_decomp *const decomp,
 		             "failed to piggyback the feedback");
 	}
 
-	return code;
+	/* convert from rohc_status_t to int */
+	switch(code)
+	{
+		case ROHC_STATUS_OK:
+			/* already set */
+			break;
+		case ROHC_STATUS_MALFORMED:
+			code_int = ROHC_ERROR_PACKET_FAILED;
+			break;
+		case ROHC_STATUS_NO_CONTEXT:
+			code_int = ROHC_ERROR_NO_CONTEXT;
+			break;
+		case ROHC_STATUS_BAD_CRC:
+			code_int = ROHC_ERROR_CRC;
+			break;
+		case ROHC_STATUS_SEGMENT:
+		case ROHC_STATUS_ERROR:
+		default:
+			code_int = ROHC_ERROR;
+			break;
+	}
+
+	return code_int;
 }
 
 #endif /* !ROHC_ENABLE_DEPRECATED_API */
@@ -1193,18 +1244,19 @@ int rohc_decompress2(struct rohc_decomp *const decomp,
  *                            \li If not NULL, may store the generated
  *                                feedback at the given address
  * @return                    Possible return values:
- *                            \li \ref ROHC_OK if a decompressed packet is
- *                                returned
- *                            \li \ref ROHC_ERROR_NO_CONTEXT if no
+ *                            \li \ref ROHC_STATUS_OK if a decompressed packet
+ *                                is returned
+ *                            \li \ref ROHC_STATUS_NO_CONTEXT if no
  *                                 decompression context matches the CID
  *                                 stored in the given ROHC packet and the
  *                                 ROHC packet is not an IR packet
- *                            \li \ref ROHC_ERROR_PACKET_FAILED if the
+ *                            \li \ref ROHC_STATUS_MALFORMED if the
  *                                decompression failed because the ROHC packet
- *                                is unexpected and/or malformed
- *                            \li \ref ROHC_ERROR_CRC if the CRC detected
+ *                                is malformed
+ *                            \li \ref ROHC_STATUS_BAD_CRC if the CRC detected
  *                                a transmission or decompression problem
- *                            \li \ref ROHC_ERROR if another problem occurred
+ *                            \li \ref ROHC_STATUS_ERROR if another problem
+ *                                occurred
  *
  * @ingroup rohc_decomp
  *
@@ -1220,15 +1272,15 @@ int rohc_decompress2(struct rohc_decomp *const decomp,
  *
  * @see rohc_decomp_set_mrru
  */
-int rohc_decompress3(struct rohc_decomp *const decomp,
-                     const struct rohc_buf rohc_packet,
-                     struct rohc_buf *const uncomp_packet,
-                     struct rohc_buf *const rcvd_feedback,
-                     struct rohc_buf *const feedback_send)
+rohc_status_t rohc_decompress3(struct rohc_decomp *const decomp,
+                               const struct rohc_buf rohc_packet,
+                               struct rohc_buf *const uncomp_packet,
+                               struct rohc_buf *const rcvd_feedback,
+                               struct rohc_buf *const feedback_send)
 {
 	struct d_decode_data ddata = { 0, 0, 0, NULL };
 	rohc_packet_t packet_type;
-	int status = ROHC_ERROR; /* error status by default */
+	rohc_status_t status = ROHC_STATUS_ERROR; /* error status by default */
 
 	/* check inputs validity */
 	if(decomp == NULL)
@@ -1319,7 +1371,7 @@ int rohc_decompress3(struct rohc_decomp *const decomp,
 	           "d_decode_header returned code %d", status);
 
 	/* in case of failure, users shall get an empty decompressed packet */
-	if(status != ROHC_OK)
+	if(status != ROHC_STATUS_OK)
 	{
 		uncomp_packet->len = 0;
 	}
@@ -1327,8 +1379,8 @@ int rohc_decompress3(struct rohc_decomp *const decomp,
 	/* update statistics and send feedback if needed */
 	switch(status)
 	{
-		case ROHC_ERROR_PACKET_FAILED:
-		case ROHC_ERROR:
+		case ROHC_STATUS_MALFORMED:
+		case ROHC_STATUS_ERROR:
 		{
 			if(ddata.active != NULL)
 			{
@@ -1358,7 +1410,7 @@ int rohc_decompress3(struct rohc_decomp *const decomp,
 				if(((unsigned int) ddata.active->curval) >= decomp->maxval)
 				{
 					ddata.active->curval = 0;
-					d_operation_mode_feedback(decomp, ROHC_ERROR_PACKET_FAILED,
+					d_operation_mode_feedback(decomp, ROHC_STATUS_MALFORMED,
 					                          ddata.cid, decomp->medium.cid_type,
 					                          ddata.active->mode, ddata.active,
 					                          feedback_send);
@@ -1367,7 +1419,7 @@ int rohc_decompress3(struct rohc_decomp *const decomp,
 			break;
 		}
 
-		case ROHC_ERROR_NO_CONTEXT:
+		case ROHC_STATUS_NO_CONTEXT:
 		{
 			/* the context may not be NULL if a UO* packet packet is received in
 			 * No Context state for example, force it to NULL */
@@ -1383,14 +1435,14 @@ int rohc_decompress3(struct rohc_decomp *const decomp,
 			if(((unsigned int) decomp->curval) >= decomp->maxval)
 			{
 				decomp->curval = 0;
-				d_operation_mode_feedback(decomp, ROHC_ERROR_NO_CONTEXT,
+				d_operation_mode_feedback(decomp, ROHC_STATUS_NO_CONTEXT,
 				                          ddata.cid, decomp->medium.cid_type,
 				                          ROHC_O_MODE, NULL, feedback_send);
 			}
 			break;
 		}
 
-		case ROHC_ERROR_CRC:
+		case ROHC_STATUS_BAD_CRC:
 		{
 			/* active context may be NULL if IR packet created a new context then
 			 * failed CRC check (the context is destroyed) */
@@ -1417,8 +1469,8 @@ int rohc_decompress3(struct rohc_decomp *const decomp,
 				if(((unsigned int) ddata.active->curval) >= decomp->maxval)
 				{
 					ddata.active->curval = 0;
-					d_operation_mode_feedback(decomp, ROHC_ERROR_CRC, ddata.cid,
-					                          decomp->medium.cid_type,
+					d_operation_mode_feedback(decomp, ROHC_STATUS_BAD_CRC,
+					                          ddata.cid, decomp->medium.cid_type,
 					                          ddata.active->mode, ddata.active,
 					                          feedback_send);
 				}
@@ -1426,7 +1478,7 @@ int rohc_decompress3(struct rohc_decomp *const decomp,
 			break;
 		}
 
-		case ROHC_OK:
+		case ROHC_STATUS_OK:
 		{
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			           "packet decompression succeeded");
@@ -1469,7 +1521,7 @@ int rohc_decompress3(struct rohc_decomp *const decomp,
 						/* switch active context to O-mode */
 						ddata.active->mode = ROHC_O_MODE;
 					}
-					d_operation_mode_feedback(decomp, ROHC_OK, ddata.cid,
+					d_operation_mode_feedback(decomp, ROHC_STATUS_OK, ddata.cid,
 					                          decomp->medium.cid_type,
 					                          ddata.active->mode, ddata.active,
 					                          feedback_send);
@@ -1529,7 +1581,8 @@ int rohc_decompress_both(struct rohc_decomp *decomp,
 		rohc_buf_init_empty(feedback_send_data, feedback_send_max_len);
 
 	bool is_ok;
-	int code;
+	rohc_status_t code;
+	int code_int = ROHC_ERROR;
 
 	if(decomp == NULL)
 	{
@@ -1547,7 +1600,7 @@ int rohc_decompress_both(struct rohc_decomp *decomp,
 	/* decompress the packet with the new CID type */
 	code = rohc_decompress3(decomp,  __rohc_packet, &__uncomp_packet,
 	                        &rcvd_feedback, &feedback_send);
-	if(code == ROHC_OK)
+	if(code == ROHC_STATUS_OK)
 	{
 		/* decompression succeeded */
 		if(__uncomp_packet.len == 0 && decomp->rru_len > 0)
@@ -1555,14 +1608,14 @@ int rohc_decompress_both(struct rohc_decomp *decomp,
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			           "ROHC_OK + empty packet + non-empty RRU buffer "
 			           "=> ROHC_NON_FINAL_SEGMENT");
-			code = ROHC_NON_FINAL_SEGMENT;
+			code_int = ROHC_NON_FINAL_SEGMENT;
 		}
 		else if(__uncomp_packet.len == 0 && rcvd_feedback.len > 0)
 		{
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			           "ROHC_OK + empty packet + non-empty received feedback "
 			           "=> ROHC_FEEDBACK_ONLY");
-			code = ROHC_FEEDBACK_ONLY;
+			code_int = ROHC_FEEDBACK_ONLY;
 		}
 		else
 		{
@@ -1581,7 +1634,29 @@ int rohc_decompress_both(struct rohc_decomp *decomp,
 		}
 	}
 
-	return code;
+	/* convert from rohc_status_t to int */
+	switch(code)
+	{
+		case ROHC_STATUS_OK:
+			/* already set */
+			break;
+		case ROHC_STATUS_MALFORMED:
+			code_int = ROHC_ERROR_PACKET_FAILED;
+			break;
+		case ROHC_STATUS_NO_CONTEXT:
+			code_int = ROHC_ERROR_NO_CONTEXT;
+			break;
+		case ROHC_STATUS_BAD_CRC:
+			code_int = ROHC_ERROR_CRC;
+			break;
+		case ROHC_STATUS_SEGMENT:
+		case ROHC_STATUS_ERROR:
+		default:
+			code_int = ROHC_ERROR;
+			break;
+	}
+
+	return code_int;
 }
 
 #endif /* !ROHC_ENABLE_DEPRECATED_API */
@@ -1601,30 +1676,30 @@ int rohc_decompress_both(struct rohc_decomp *decomp,
  *                                at the given address
  * @param[out] ddata          Decompression-related data (e.g. the context)
  * @param[out] packet_type    The type of the decompressed ROHC packet
- * @return                    ROHC_OK if packet is successfully decoded,
- *                            ROHC_FEEDBACK_ONLY if ROHC packet contains only
- *                               feedback data,
- *                            ROHC_NON_FINAL_SEGMENT if ROHC packet is not a
- *                               final segment,
- *                            ROHC_ERROR_NO_CONTEXT if no matching context was
- *                               found and packet cannot create a new context,
- *                            ROHC_ERROR_PACKET_FAILED if packet is malformed,
- *                            ROHC_ERROR_CRC if a CRC error occurs,
- *                            ROHC_ERROR if an error occurs
+ * @return                    Possible return values:
+ *                            \li ROHC_STATUS_OK if packet is successfully
+ *                                decoded,
+ *                            \li ROHC_STATUS_NO_CONTEXT if no matching
+ *                                context was found and packet cannot create
+ *                                a new context,
+ *                            \li ROHC_STATUS_MALFORMED if packet is
+ *                                malformed,
+ *                            \li ROHC_STATUS_BAD_CRC if a CRC error occurs,
+ *                            \li ROHC_STATUS_ERROR if another error occurs
  */
-static int d_decode_header(struct rohc_decomp *decomp,
-                           const struct rohc_buf rohc_packet,
-                           struct rohc_buf *const uncomp_packet,
-                           struct rohc_buf *const rcvd_feedback,
-                           struct d_decode_data *ddata,
-                           rohc_packet_t *const packet_type)
+static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
+                                     const struct rohc_buf rohc_packet,
+                                     struct rohc_buf *const uncomp_packet,
+                                     struct rohc_buf *const rcvd_feedback,
+                                     struct d_decode_data *ddata,
+                                     rohc_packet_t *const packet_type)
 {
 	bool is_new_context = false;
 	const struct rohc_decomp_profile *profile;
 	struct rohc_buf remain_rohc_data = rohc_packet;
 	const uint8_t *walk;
 	size_t remain_len;
-	int status;
+	rohc_status_t status;
 
 	assert(decomp != NULL);
 	assert(ddata != NULL);
@@ -1763,12 +1838,11 @@ static int d_decode_header(struct rohc_decomp *decomp,
 	}
 
 	/* decode small or large CID */
-	status = rohc_decomp_decode_cid(decomp, walk, remain_len, ddata);
-	if(status != ROHC_OK)
+	if(!rohc_decomp_decode_cid(decomp, walk, remain_len, ddata))
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		             "failed to decode small or large CID in packet");
-		goto error;
+		goto error_malformed;
 	}
 
 	/* check whether the decoded CID is allowed by the decompressor */
@@ -1967,7 +2041,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 	status = profile->decode(decomp, ddata->active, remain_rohc_data,
 	                         ddata->addcidUsed, ddata->large_cid_size,
 	                         uncomp_packet, packet_type);
-	if(status != ROHC_OK)
+	if(status != ROHC_STATUS_OK)
 	{
 		/* decompression failed, free ressources if necessary */
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, profile->id,
@@ -1993,7 +2067,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 	}
 
 skip:
-	return ROHC_OK;
+	return ROHC_STATUS_OK;
 
 error:
 	decomp->last_context = NULL;
@@ -2001,15 +2075,15 @@ error:
 
 error_crc:
 	decomp->last_context = NULL;
-	return ROHC_ERROR_CRC;
+	return ROHC_STATUS_BAD_CRC;
 
 error_malformed:
 	decomp->last_context = NULL;
-	return ROHC_ERROR_PACKET_FAILED;
+	return ROHC_STATUS_MALFORMED;
 
 error_no_context:
 	decomp->last_context = NULL;
-	return ROHC_ERROR_NO_CONTEXT;
+	return ROHC_STATUS_NO_CONTEXT;
 }
 
 
@@ -2017,8 +2091,10 @@ error_no_context:
  * @brief Send feedback in Optimistic Mode.
  *
  * @param decomp       The ROHC decompressor
- * @param rohc_status  The type of feedback to send: 0 = OK (ack),
- *                     -1 = ContextInvalid (S-nack), -2 = PackageFailed (Nack)
+ * @param rohc_status  The type of feedback to send:
+ *                      \li ROHC_STATUS_OK = OK (ack),
+ *                      \li ROHC_STATUS_NO_CONTEXT = ContextInvalid (S-nack),
+ *                      \li ROHC_STATUS_MALFORMED = PackageFailed (Nack)
  * @param cid          The Context ID (CID) to which the feedback is related
  * @param cid_type     The type of CID used for the feedback
  * @param context      The context to which the feedback is related
@@ -2030,7 +2106,7 @@ error_no_context:
  *                                feedback at the given address
  */
 static void d_optimistic_feedback(struct rohc_decomp *decomp,
-                                  int rohc_status,
+                                  const rohc_status_t rohc_status,
                                   const rohc_cid_t cid,
                                   const rohc_cid_type_t cid_type,
                                   struct rohc_decomp_ctxt *context,
@@ -2039,11 +2115,10 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 	struct d_feedback sfeedback;
 	uint8_t *feedback;
 	size_t feedbacksize;
-	int ret;
 
 	if(context == NULL)
 	{
-		rohc_status = ROHC_ERROR_NO_CONTEXT;
+		assert(rohc_status == ROHC_STATUS_NO_CONTEXT);
 	}
 
 	/* check associated compressor availability */
@@ -2053,8 +2128,8 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 		           "no associated compressor, do not sent feedback");
 
 		/* only change state if needed */
-		if(rohc_status == ROHC_ERROR_PACKET_FAILED ||
-		   rohc_status == ROHC_ERROR_CRC)
+		if(rohc_status == ROHC_STATUS_MALFORMED ||
+		   rohc_status == ROHC_STATUS_BAD_CRC)
 		{
 			if(context->state == ROHC_DECOMP_STATE_SC)
 			{
@@ -2102,13 +2177,12 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 
 	switch(rohc_status)
 	{
-		case ROHC_OK:
+		case ROHC_STATUS_OK:
 			/* create an ACK feedback */
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 			           "send an ACK feedback");
-			ret = f_feedback2(ROHC_ACK_TYPE_ACK, context->mode,
-			                  context->profile->get_sn(context), &sfeedback);
-			if(ret != ROHC_OK)
+			if(!f_feedback2(ROHC_ACK_TYPE_ACK, context->mode,
+			                context->profile->get_sn(context), &sfeedback))
 			{
 				rohc_decomp_warn(context, "failed to build the ACK feedback");
 				return;
@@ -2165,21 +2239,18 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 			zfree(feedback);
 			break;
 
-		case ROHC_ERROR_NO_CONTEXT:
+		case ROHC_STATUS_NO_CONTEXT:
 			/* create a STATIC NACK feedback */
 			rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			          "send a STATIC-NACK feedback for CID %zu", cid);
-			ret = f_feedback2(ROHC_ACK_TYPE_STATIC_NACK, ROHC_O_MODE,
-			                  0 /* unknown SN */, &sfeedback);
-			if(ret != ROHC_OK)
+			if(!f_feedback2(ROHC_ACK_TYPE_STATIC_NACK, ROHC_O_MODE,
+			                0 /* unknown SN */, &sfeedback))
 			{
 				rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 				             "failed to build the STATIC-NACK feedback");
 				return;
 			}
-			ret = f_add_option(&sfeedback, ROHC_FEEDBACK_OPT_SN_NOT_VALID,
-			                   NULL, 0);
-			if(ret != ROHC_OK)
+			if(!f_add_option(&sfeedback, ROHC_FEEDBACK_OPT_SN_NOT_VALID, NULL, 0))
 			{
 				rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 				             "failed to add the SN-NOT-VALID option to the "
@@ -2238,8 +2309,8 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 			zfree(feedback);
 			break;
 
-		case ROHC_ERROR_PACKET_FAILED:
-		case ROHC_ERROR_CRC:
+		case ROHC_STATUS_MALFORMED:
+		case ROHC_STATUS_BAD_CRC:
 			context->num_sent_feedbacks++;
 			switch(context->state)
 			{
@@ -2247,9 +2318,8 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 					/* create a STATIC-NACK feedback */
 					rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 					          "send a STATIC-NACK feedback for CID %zu", cid);
-					ret = f_feedback2(ROHC_ACK_TYPE_STATIC_NACK, context->mode,
-					                  context->profile->get_sn(context), &sfeedback);
-					if(ret != ROHC_OK)
+					if(!f_feedback2(ROHC_ACK_TYPE_STATIC_NACK, context->mode,
+					                context->profile->get_sn(context), &sfeedback))
 					{
 						rohc_decomp_warn(context, "failed to build the STATIC-NACK "
 						                 "feedback");
@@ -2312,10 +2382,8 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 					/* create a NACK feedback */
 					rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 					          "send a NACK feedback for CID %zu", cid);
-					ret = f_feedback2(ROHC_ACK_TYPE_NACK, context->mode,
-					                  context->profile->get_sn(context),
-					                  &sfeedback);
-					if(ret != ROHC_OK)
+					if(!f_feedback2(ROHC_ACK_TYPE_NACK, context->mode,
+					                context->profile->get_sn(context), &sfeedback))
 					{
 						rohc_decomp_warn(context, "failed to build the NACK feedback");
 						return;
@@ -2396,6 +2464,14 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 					break;
 			}
 			break;
+
+		case ROHC_STATUS_SEGMENT:
+			assert(0); /* should never happen */
+			break;
+
+		case ROHC_STATUS_ERROR:
+			/* TODO: handle this case */
+			break;
 	}
 
 skip:
@@ -2407,8 +2483,10 @@ skip:
  * @brief Send feedback depending on the mode: Unidirectional, Optimistic or Reliable.
  *
  * @param decomp       The ROHC decompressor
- * @param rohc_status  The type of feedback to send: 0 = OK (ack),
- *                     -1 = ContextInvalid (S-nack), -2 = PackageFailed (Nack)
+ * @param rohc_status  The type of feedback to send:
+ *                      \li ROHC_STATUS_OK = OK (ack),
+ *                      \li ROHC_STATUS_NO_CONTEXT = ContextInvalid (S-nack),
+ *                      \li ROHC_STATUS_MALFORMED = PackageFailed (Nack)
  * @param cid          The Context ID (CID) to which the feedback is related
  * @param cid_type     The type of CID used for the feedback
  * @param mode         The mode in which the ROHC decompressor operates:
@@ -2422,7 +2500,7 @@ skip:
  *                                feedback at the given address
  */
 static void d_operation_mode_feedback(struct rohc_decomp *decomp,
-                                      int rohc_status,
+                                      const rohc_status_t rohc_status,
                                       const uint16_t cid,
                                       const rohc_cid_type_t cid_type,
                                       int mode,
@@ -3695,12 +3773,12 @@ static const struct rohc_decomp_profile *
  * @param packet  The ROHC packet to extract CID from
  * @param len     The size of the ROHC packet
  * @param ddata   IN/OUT: decompression-related data (e.g. the context)
- * @return        ROHC_OK in case of success, ROHC_ERROR in case of failure
+ * @return        true in case of success, false in case of failure
  */
-static int rohc_decomp_decode_cid(struct rohc_decomp *decomp,
-                                  const unsigned char *packet,
-                                  unsigned int len,
-                                  struct d_decode_data *ddata)
+static bool rohc_decomp_decode_cid(struct rohc_decomp *decomp,
+                                   const unsigned char *packet,
+                                   unsigned int len,
+                                   struct d_decode_data *ddata)
 {
 	/* is feedback data is large enough to read add-CID or first byte
 	   of large CID ? */
@@ -3769,10 +3847,10 @@ static int rohc_decomp_decode_cid(struct rohc_decomp *decomp,
 		goto error;
 	}
 
-	return ROHC_OK;
+	return true;
 
 error:
-	return ROHC_ERROR;
+	return false;
 }
 
 

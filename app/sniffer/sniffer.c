@@ -1158,6 +1158,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	rohc_comp_last_packet_info2_t comp_last_packet_info;
 	rohc_decomp_last_packet_info_t decomp_last_packet_info;
 	unsigned long possible_unit;
+	rohc_status_t status;
 	int ret;
 
 	/* check Ethernet frame length */
@@ -1225,8 +1226,8 @@ static int compress_decompress(struct rohc_comp *comp,
 	rohc_buf_pull(&rohc_packet, feedback_send->len);
 
 	/* compress the IP packet */
-	ret = rohc_compress4(comp, ip_packet, &rohc_packet);
-	if(ret != ROHC_OK)
+	status = rohc_compress4(comp, ip_packet, &rohc_packet);
+	if(status != ROHC_STATUS_OK)
 	{
 		pcap_dumper_t *dumper;
 
@@ -1377,9 +1378,9 @@ static int compress_decompress(struct rohc_comp *comp,
 	feedback_send->len = 0;
 
 	/* decompress the ROHC packet */
-	ret = rohc_decompress3(decomp, rohc_packet, &decomp_packet,
-	                       &rcvd_feedback, feedback_send);
-	if(ret != ROHC_OK)
+	status = rohc_decompress3(decomp, rohc_packet, &decomp_packet,
+	                          &rcvd_feedback, feedback_send);
+	if(status != ROHC_STATUS_OK)
 	{
 		SNIFFER_LOG(LOG_WARNING, "decompression failed");
 		ret = -2;

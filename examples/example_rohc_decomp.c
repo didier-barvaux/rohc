@@ -75,8 +75,8 @@ int main(int argc, char **argv)
 	struct rohc_buf *feedback_send = NULL;
 //! [define IP and ROHC packets]
 
+	rohc_status_t status;
 	size_t i;
-	int ret;
 
 //! [create ROHC decompressor #1]
 	/* Create a ROHC decompressor to operate:
@@ -169,12 +169,12 @@ int main(int argc, char **argv)
 	/* Now, decompress this fake ROHC packet */
 	printf("\ndecompress the fake ROHC packet\n");
 //! [decompress ROHC packet #1]
-	ret = rohc_decompress3(decompressor, rohc_packet, &ip_packet,
-	                       rcvd_feedback, feedback_send);
+	status = rohc_decompress3(decompressor, rohc_packet, &ip_packet,
+	                          rcvd_feedback, feedback_send);
 //! [decompress ROHC packet #1]
 	printf("\n");
 //! [decompress ROHC packet #2]
-	if(ret == ROHC_OK)
+	if(status == ROHC_STATUS_OK)
 	{
 		/* decompression is successful */
 		if(!rohc_buf_is_empty(ip_packet))

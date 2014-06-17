@@ -268,7 +268,7 @@ static bool compress_with_callback(struct rohc_comp *const compressor,
 {
 	uint8_t rohc_buffer[BUFFER_SIZE];
 	struct rohc_buf rohc_packet = rohc_buf_init_empty(rohc_buffer, BUFFER_SIZE);
-	int ret;
+	rohc_status_t status;
 
 	/* define the user-defined function that the ROHC compressor shall
 	 * call for every UDP packet in order to detect RTP packets */
@@ -283,13 +283,13 @@ static bool compress_with_callback(struct rohc_comp *const compressor,
 
 	/* then, compress the fake IP/UDP/RTP packet with the RTP profile */
 	printf("\ncompress the fake IP/UDP/RTP packet\n");
-	ret = rohc_compress4(compressor, uncomp_packet, &rohc_packet);
-	if(ret == ROHC_NEED_SEGMENT)
+	status = rohc_compress4(compressor, uncomp_packet, &rohc_packet);
+	if(status == ROHC_STATUS_SEGMENT)
 	{
 		fprintf(stderr, "unexpected ROHC segment\n");
 		goto error;
 	}
-	else if(ret == ROHC_OK)
+	else if(status == ROHC_STATUS_OK)
 	{
 		printf("\nIP/UDP/RTP packet successfully compressed\n");
 	}

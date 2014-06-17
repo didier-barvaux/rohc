@@ -333,7 +333,7 @@ static bool build_stream(const char *const filename,
 	const rohc_cid_type_t cid_type =
 		(use_large_cid ? ROHC_LARGE_CID : ROHC_SMALL_CID);
 	bool is_success = false;
-	int ret;
+	rohc_status_t status;
 
 	pcap_t *pcap;
 	pcap_dumper_t *dumper;
@@ -485,8 +485,8 @@ static bool build_stream(const char *const filename,
 		if(strcmp(stream_type, "comp") == 0)
 		{
 			/* compress packet */
-			ret = rohc_compress4(comp, packet, &rohc_packet);
-			if(ret != ROHC_OK)
+			status = rohc_compress4(comp, packet, &rohc_packet);
+			if(status != ROHC_STATUS_OK)
 			{
 				fprintf(stderr, "failed to compress packet #%lu\n", counter);
 				goto destroy_comp;

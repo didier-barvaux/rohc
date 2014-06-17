@@ -926,7 +926,7 @@ int rohc_compress(struct rohc_comp *comp,
 	int feedback_size;
 	size_t feedbacks_size;
 
-	int code;
+	rohc_status_t code;
 
 	if(comp == NULL ||
 	   ibuf == NULL || isize <= 0 ||
@@ -954,7 +954,7 @@ int rohc_compress(struct rohc_comp *comp,
 
 	/* call the new API */
 	code = rohc_compress4(comp, uncomp_packet, &rohc_packet);
-	if(code != ROHC_OK)
+	if(code != ROHC_STATUS_OK)
 	{
 		/* compression error or segments: unlock feedbacks */
 		if(!__rohc_feedback_unlock(comp))
@@ -1025,7 +1025,8 @@ int rohc_compress2(struct rohc_comp *const comp,
 	int feedback_size;
 	size_t feedbacks_size;
 
-	int code;
+	rohc_status_t code;
+	int code_int;
 
 	if(comp == NULL || rohc_packet == NULL || rohc_packet_len == NULL)
 	{
@@ -1050,7 +1051,7 @@ int rohc_compress2(struct rohc_comp *const comp,
 
 	/* call the new API */
 	code = rohc_compress4(comp, __uncomp_packet, &__rohc_packet);
-	if(code == ROHC_OK)
+	if(code == ROHC_STATUS_OK)
 	{
 		/* remove locked feedbacks since compression is successful */
 		if(!__rohc_feedback_remove_locked(comp))
@@ -1074,7 +1075,31 @@ int rohc_compress2(struct rohc_comp *const comp,
 		}
 	}
 
-	return code;
+	/* convert from rohc_status_t to int */
+	switch(code)
+	{
+		case ROHC_STATUS_OK:
+			code_int = ROHC_OK;
+			break;
+		case ROHC_STATUS_SEGMENT:
+			code_int = ROHC_NEED_SEGMENT;
+			break;
+		case ROHC_STATUS_MALFORMED:
+			code_int = ROHC_ERROR_PACKET_FAILED;
+			break;
+		case ROHC_STATUS_NO_CONTEXT:
+			code_int = ROHC_ERROR_NO_CONTEXT;
+			break;
+		case ROHC_STATUS_BAD_CRC:
+			code_int = ROHC_ERROR_CRC;
+			break;
+		case ROHC_STATUS_ERROR:
+		default:
+			code_int = ROHC_ERROR;
+			break;
+	}
+
+	return code_int;
 }
 
 
@@ -1173,7 +1198,8 @@ int rohc_compress3(struct rohc_comp *const comp,
 	int feedback_size;
 	size_t feedbacks_size;
 
-	int code;
+	rohc_status_t code;
+	int code_int;
 
 	if(comp == NULL || rohc_packet == NULL || rohc_packet_len == NULL)
 	{
@@ -1198,7 +1224,7 @@ int rohc_compress3(struct rohc_comp *const comp,
 
 	/* call the new API */
 	code = rohc_compress4(comp, __uncomp_packet, &__rohc_packet);
-	if(code == ROHC_OK)
+	if(code == ROHC_STATUS_OK)
 	{
 		/* remove locked feedbacks since compression is successful */
 		if(!__rohc_feedback_remove_locked(comp))
@@ -1222,7 +1248,31 @@ int rohc_compress3(struct rohc_comp *const comp,
 		}
 	}
 
-	return code;
+	/* convert from rohc_status_t to int */
+	switch(code)
+	{
+		case ROHC_STATUS_OK:
+			code_int = ROHC_OK;
+			break;
+		case ROHC_STATUS_SEGMENT:
+			code_int = ROHC_NEED_SEGMENT;
+			break;
+		case ROHC_STATUS_MALFORMED:
+			code_int = ROHC_ERROR_PACKET_FAILED;
+			break;
+		case ROHC_STATUS_NO_CONTEXT:
+			code_int = ROHC_ERROR_NO_CONTEXT;
+			break;
+		case ROHC_STATUS_BAD_CRC:
+			code_int = ROHC_ERROR_CRC;
+			break;
+		case ROHC_STATUS_ERROR:
+		default:
+			code_int = ROHC_ERROR;
+			break;
+	}
+
+	return code_int;
 }
 
 #endif /* !ROHC_ENABLE_DEPRECATED_API */
@@ -1254,12 +1304,13 @@ int rohc_compress3(struct rohc_comp *const comp,
  * @param uncomp_packet     The uncompressed packet to compress
  * @param[out] rohc_packet  The resulting compressed ROHC packet
  * @return                  Possible return values:
- *                          \li \ref ROHC_OK if a ROHC packet is returned
- *                          \li \ref ROHC_NEED_SEGMENT if no ROHC data is
+ *                          \li \ref ROHC_STATUS_OK if a ROHC packet is
+ *                              returned
+ *                          \li \ref ROHC_STATUS_SEGMENT if no ROHC data is
  *                              returned and ROHC segments can be retrieved
  *                              with successive calls to
  *                              \ref rohc_comp_get_segment
- *                          \li \ref ROHC_ERROR if an error occurred
+ *                          \li \ref ROHC_STATUS_ERROR if an error occurred
  *
  * @ingroup rohc_comp
  *
@@ -1290,9 +1341,9 @@ int rohc_compress3(struct rohc_comp *const comp,
  * @see rohc_comp_set_mrru
  * @see rohc_comp_get_segment
  */
-int rohc_compress4(struct rohc_comp *const comp,
-                   const struct rohc_buf uncomp_packet,
-                   struct rohc_buf *const rohc_packet)
+rohc_status_t rohc_compress4(struct rohc_comp *const comp,
+                             const struct rohc_buf uncomp_packet,
+                             struct rohc_buf *const rohc_packet)
 {
 	struct net_pkt ip_pkt;
 	struct rohc_comp_ctxt *c;
@@ -1301,7 +1352,7 @@ int rohc_compress4(struct rohc_comp *const comp,
 	size_t payload_size;
 	size_t payload_offset;
 
-	int status = ROHC_ERROR; /* error status by default */
+	rohc_status_t status = ROHC_STATUS_ERROR; /* error status by default */
 
 	/* check inputs validity */
 	if(comp == NULL)
@@ -1500,7 +1551,7 @@ int rohc_compress4(struct rohc_comp *const comp,
 		rohc_packet->len = 0;
 
 		/* report to users that segmentation is possible */
-		status = ROHC_NEED_SEGMENT;
+		status = ROHC_STATUS_SEGMENT;
 	}
 	else
 	{
@@ -1519,7 +1570,7 @@ int rohc_compress4(struct rohc_comp *const comp,
 		           payload_size, rohc_buf_avail_len(*rohc_packet));
 
 		/* report to user that compression was successful */
-		status = ROHC_OK;
+		status = ROHC_STATUS_OK;
 	}
 
 	/* update some statistics:
@@ -1563,7 +1614,7 @@ error_free_new_context:
 		comp->num_contexts_used--;
 	}
 error:
-	return ROHC_ERROR;
+	return ROHC_STATUS_ERROR;
 }
 
 
@@ -1669,11 +1720,11 @@ error:
  * @param comp          The ROHC compressor
  * @param[out] segment  The buffer where to store the ROHC segment
  * @return              Possible return values:
- *                       \li \ref ROHC_NEED_SEGMENT if a ROHC segment is
+ *                       \li \ref ROHC_STATUS_SEGMENT if a ROHC segment is
  *                           returned and more segments are available,
- *                       \li \ref ROHC_OK if a ROHC segment is returned
+ *                       \li \ref ROHC_STATUS_OK if a ROHC segment is returned
  *                           and no more ROHC segment is available
- *                       \li \ref ROHC_ERROR if an error occurred
+ *                       \li \ref ROHC_STATUS_ERROR if an error occurred
  *
  * @ingroup rohc_comp
  *
@@ -1688,14 +1739,14 @@ error:
  * \code
                         ...
                         // decompress the ROHC segment here, the function
-                        // rohc_decompress4 shall return
-                        // ROHC_NON_FINAL_SEGMENT
+                        // rohc_decompress3 shall return ROHC_STATUS_OK
+                        // and no decompressed packet
                         ...
 \endcode
  * \snippet test_segment.c segment ROHC packet #3
  * \code
                 // decompress the final ROHC segment here, the function
-                // rohc_decompress4 shall return ROHC_OK
+                // rohc_decompress4 shall return ROHC_STATUS_OK
 \endcode
  * \snippet test_segment.c segment ROHC packet #4
  * \code
@@ -1707,13 +1758,13 @@ error:
  * @see rohc_comp_set_mrru
  * @see rohc_compress4
  */
-int rohc_comp_get_segment2(struct rohc_comp *const comp,
-                           struct rohc_buf *const segment)
+rohc_status_t rohc_comp_get_segment2(struct rohc_comp *const comp,
+                                     struct rohc_buf *const segment)
 
 {
 	const size_t segment_type_len = 1; /* segment type byte */
 	size_t max_data_len;
-	int status;
+	rohc_status_t status;
 
 	/* check input parameters */
 	if(comp == NULL)
@@ -1782,14 +1833,14 @@ int rohc_comp_get_segment2(struct rohc_comp *const comp,
 	if(comp->rru_len == 0)
 	{
 		/* final segment, no more segment available */
-		status = ROHC_OK;
+		status = ROHC_STATUS_OK;
 		/* reset context for next RRU */
 		comp->rru_off = 0;
 	}
 	else
 	{
 		/* non-final segment, more segments to available */
-		status = ROHC_NEED_SEGMENT;
+		status = ROHC_STATUS_SEGMENT;
 	}
 
 	/* shift backward the RRU data, header and the feedback data */
@@ -1798,7 +1849,7 @@ int rohc_comp_get_segment2(struct rohc_comp *const comp,
 	return status;
 
 error:
-	return ROHC_ERROR;
+	return ROHC_STATUS_ERROR;
 }
 
 

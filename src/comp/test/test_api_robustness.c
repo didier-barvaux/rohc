@@ -169,20 +169,20 @@ int main(int argc, char *argv[])
 	{
 		unsigned char buf1[1];
 		struct rohc_buf pkt1 = rohc_buf_init_empty(buf1, 1);
-		CHECK(rohc_comp_get_segment2(NULL, &pkt1) == ROHC_ERROR);
-		CHECK(rohc_comp_get_segment2(comp, NULL) == ROHC_ERROR);
+		CHECK(rohc_comp_get_segment2(NULL, &pkt1) == ROHC_STATUS_ERROR);
+		CHECK(rohc_comp_get_segment2(comp, NULL) == ROHC_STATUS_ERROR);
 		pkt1.max_len = 0;
 		pkt1.offset = 0;
 		pkt1.len = 0;
-		CHECK(rohc_comp_get_segment2(comp, &pkt1) == ROHC_ERROR);
+		CHECK(rohc_comp_get_segment2(comp, &pkt1) == ROHC_STATUS_ERROR);
 		pkt1.max_len = 1;
 		pkt1.offset = 0;
 		pkt1.len = 0;
-		CHECK(rohc_comp_get_segment2(comp, &pkt1) == ROHC_ERROR);
+		CHECK(rohc_comp_get_segment2(comp, &pkt1) == ROHC_STATUS_ERROR);
 		pkt1.max_len = 2;
 		pkt1.offset = 0;
 		pkt1.len = 0;
-		CHECK(rohc_comp_get_segment2(comp, &pkt1) == ROHC_ERROR);
+		CHECK(rohc_comp_get_segment2(comp, &pkt1) == ROHC_STATUS_ERROR);
 	}
 
 	/* rohc_comp_force_contexts_reinit() */
@@ -273,26 +273,26 @@ int main(int argc, char *argv[])
 			0x34, 0x35, 0x36, 0x37
 		};
 		struct rohc_buf pkt = rohc_buf_init_full(buf, sizeof(buf), ts);
-		CHECK(rohc_compress4(NULL, pkt1, &pkt2) == ROHC_ERROR);
+		CHECK(rohc_compress4(NULL, pkt1, &pkt2) == ROHC_STATUS_ERROR);
 		pkt1.len = 0;
-		CHECK(rohc_compress4(comp, pkt1, &pkt2) == ROHC_ERROR);
+		CHECK(rohc_compress4(comp, pkt1, &pkt2) == ROHC_STATUS_ERROR);
 		pkt1.len = 1;
-		CHECK(rohc_compress4(comp, pkt1, NULL) == ROHC_ERROR);
+		CHECK(rohc_compress4(comp, pkt1, NULL) == ROHC_STATUS_ERROR);
 		pkt2.max_len = 0;
 		pkt2.offset = 0;
 		pkt2.len = 0;
-		CHECK(rohc_compress4(comp, pkt1, &pkt2) == ROHC_ERROR);
+		CHECK(rohc_compress4(comp, pkt1, &pkt2) == ROHC_STATUS_ERROR);
 		for(size_t i = 0; i <= pkt.len; i++)
 		{
 			pkt2.max_len = i;
 			pkt2.offset = 0;
 			pkt2.len = 0;
-			CHECK(rohc_compress4(comp, pkt, &pkt2) == ROHC_ERROR);
+			CHECK(rohc_compress4(comp, pkt, &pkt2) == ROHC_STATUS_ERROR);
 		}
 		pkt2.max_len = pkt.len + 1;
 		pkt2.offset = 0;
 		pkt2.len = 0;
-		CHECK(rohc_compress4(comp, pkt, &pkt2) == ROHC_OK);
+		CHECK(rohc_compress4(comp, pkt, &pkt2) == ROHC_STATUS_OK);
 	}
 
 	/* rohc_comp_get_last_packet_info2() */

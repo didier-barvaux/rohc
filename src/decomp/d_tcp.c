@@ -748,18 +748,18 @@ error:
  * @param[out] uncomp_packet  The uncompressed packet
  * @param packet_type         IN:  The type of the ROHC packet to parse
  *                            OUT: The type of the parsed ROHC packet
- * @return                    ROHC_OK if packet is successfully decoded,
- *                            ROHC_ERROR_PACKET_FAILED if packet is malformed,
- *                            ROHC_ERROR_CRC if a CRC error occurs,
- *                            ROHC_ERROR if an error occurs
+ * @return                    ROHC_STATUS_OK if packet is successfully decoded,
+ *                            ROHC_STATUS_MALFORMED if packet is malformed,
+ *                            ROHC_STATUS_BAD_CRC if a CRC error occurs,
+ *                            ROHC_STATUS_ERROR if an error occurs
  */
-static int d_tcp_decode(struct rohc_decomp *const decomp,
-                        struct rohc_decomp_ctxt *const context,
-                        const struct rohc_buf rohc_packet,
-                        const size_t add_cid_len,
-                        const size_t large_cid_len,
-                        struct rohc_buf *const uncomp_packet,
-                        rohc_packet_t *const packet_type)
+static rohc_status_t d_tcp_decode(struct rohc_decomp *const decomp,
+                                  struct rohc_decomp_ctxt *const context,
+                                  const struct rohc_buf rohc_packet,
+                                  const size_t add_cid_len,
+                                  const size_t large_cid_len,
+                                  struct rohc_buf *const uncomp_packet,
+                                  rohc_packet_t *const packet_type)
 {
 	struct d_generic_context *g_context = context->specific;
 	struct d_tcp_context *tcp_context = g_context->specific;
@@ -811,7 +811,7 @@ static int d_tcp_decode(struct rohc_decomp *const decomp,
 	if(ret >= 0)
 	{
 		uncomp_packet->len += ret;
-		ret = ROHC_OK;
+		ret = ROHC_STATUS_OK;
 	}
 	rohc_decomp_debug(context, "return %d", ret);
 	return ret;
@@ -1170,7 +1170,7 @@ static int d_tcp_decode_ir(struct rohc_decomp_ctxt *context,
 	return size;
 
 error:
-	return ROHC_ERROR;
+	return ROHC_STATUS_ERROR;
 }
 
 
@@ -1406,7 +1406,7 @@ static int d_tcp_decode_irdyn(struct rohc_decomp_ctxt *context,
 	return size;
 
 error:
-	return ROHC_ERROR;
+	return ROHC_STATUS_ERROR;
 }
 
 
@@ -6112,10 +6112,10 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 
 error:
 	free(packed_rohc_packet);
-	return ROHC_ERROR;
+	return ROHC_STATUS_ERROR;
 error_crc:
 	free(packed_rohc_packet);
-	return ROHC_ERROR_CRC;
+	return ROHC_STATUS_BAD_CRC;
 }
 
 

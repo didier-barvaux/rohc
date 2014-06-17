@@ -225,7 +225,7 @@ static int test_decomp(const char *const filename,
 		uint8_t ip_buffer[MAX_ROHC_SIZE];
 		struct rohc_buf ip_packet =
 			rohc_buf_init_empty(ip_buffer, MAX_ROHC_SIZE);
-		int ret;
+		rohc_status_t status;
 
 		counter++;
 
@@ -243,8 +243,8 @@ static int test_decomp(const char *const filename,
 		fprintf(stderr, "decompress malformed packet #%u:\n", counter);
 
 		/* decompress the ROHC packet */
-		ret = rohc_decompress3(decomp, rohc_packet, &ip_packet, NULL, NULL);
-		if(ret == ROHC_OK)
+		status = rohc_decompress3(decomp, rohc_packet, &ip_packet, NULL, NULL);
+		if(status == ROHC_STATUS_OK)
 		{
 			if(counter >= failure_start)
 			{

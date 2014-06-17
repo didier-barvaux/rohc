@@ -433,7 +433,7 @@ static int generate_comp_stats_one(struct rohc_comp *comp,
 	struct rohc_buf rohc_packet =
 		rohc_buf_init_empty(rohc_buffer, MAX_ROHC_SIZE);
 	rohc_comp_last_packet_info2_t last_packet_info;
-	int ret;
+	rohc_status_t status;
 
 	/* check frame length */
 	if(header.len <= link_len || header.len != header.caplen)
@@ -474,8 +474,8 @@ static int generate_comp_stats_one(struct rohc_comp *comp,
 	}
 
 	/* compress the IP packet */
-	ret = rohc_compress4(comp, ip_packet, &rohc_packet);
-	if(ret != ROHC_OK)
+	status = rohc_compress4(comp, ip_packet, &rohc_packet);
+	if(status != ROHC_STATUS_OK)
 	{
 		fprintf(stderr, "packet #%lu: compression failed\n", num_packet);
 		goto error;

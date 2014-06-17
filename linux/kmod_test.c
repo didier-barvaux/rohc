@@ -507,7 +507,7 @@ ssize_t rohc_proc_comp_write(struct file *file,
 {
 	struct rohc_couple *couple = file->private_data;
 	size_t ip_chunk_size;
-	int ret;
+	rohc_status_t status;
 	int err = -ENOMEM;
 
 	/* do we receive data of a new packet or
@@ -572,8 +572,8 @@ ssize_t rohc_proc_comp_write(struct file *file,
 		pr_info("[%s] IP packet is complete, compress it now\n",
 		        THIS_MODULE->name);
 
-		ret = rohc_compress4(couple->comp, ip_packet, &rohc_packet);
-		if(ret != ROHC_OK)
+		status = rohc_compress4(couple->comp, ip_packet, &rohc_packet);
+		if(status != ROHC_STATUS_OK)
 		{
 			pr_err("[%s] failed to compress the IP packet\n", THIS_MODULE->name);
 			goto error;
@@ -628,7 +628,7 @@ ssize_t rohc_proc_decomp_write(struct file *file,
 {
 	struct rohc_couple *couple = file->private_data;
 	size_t rohc_chunk_size;
-	int ret;
+	int status;
 	int err = -ENOMEM;
 
 	/* do we receive data of a new packet or
@@ -693,9 +693,9 @@ ssize_t rohc_proc_decomp_write(struct file *file,
 
 		pr_info("[%s] ROHC packet is complete, decompress it now\n", THIS_MODULE->name);
 
-		ret = rohc_decompress3(couple->decomp, rohc_packet, &ip_packet,
-		                       NULL, NULL);
-		if(ret != ROHC_OK)
+		status = rohc_decompress3(couple->decomp, rohc_packet, &ip_packet,
+		                          NULL, NULL);
+		if(status != ROHC_STATUS_OK)
 		{
 			pr_err("[%s] failed to decompress the ROHC packet\n", THIS_MODULE->name);
 			goto error;

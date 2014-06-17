@@ -534,7 +534,7 @@ static int time_compress_packet(struct rohc_comp *comp,
 		rohc_buf_init_empty(rohc_buffer, MAX_ROHC_SIZE);
 
 	int is_failure = 1;
-	int ret;
+	rohc_status_t status;
 
 	/* check Ethernet frame length */
 	if(header.len <= link_len || header.len != header.caplen)
@@ -588,8 +588,8 @@ static int time_compress_packet(struct rohc_comp *comp,
 	}
 
 	/* compress the packet */
-	ret = rohc_compress4(comp, ip_packet, &rohc_packet);
-	if(ret != ROHC_OK)
+	status = rohc_compress4(comp, ip_packet, &rohc_packet);
+	if(status != ROHC_STATUS_OK)
 	{
 		fprintf(stderr, "packet %lu: compression failed\n", num_packet);
 		goto error;
@@ -756,7 +756,7 @@ static int time_decompress_packet(struct rohc_decomp *decomp,
 	struct rohc_buf ip_packet = rohc_buf_init_empty(ip_buffer, MAX_ROHC_SIZE);
 
 	int is_failure = 1;
-	int ret;
+	rohc_status_t status;
 
 	/* check Ethernet frame length */
 	if(header.len <= link_len || header.len != header.caplen)
@@ -771,8 +771,8 @@ static int time_decompress_packet(struct rohc_decomp *decomp,
 	rohc_buf_pull(&rohc_packet, link_len);
 
 	/* decompress the packet */
-	ret = rohc_decompress3(decomp, rohc_packet, &ip_packet, NULL, NULL);
-	if(ret != ROHC_OK)
+	status = rohc_decompress3(decomp, rohc_packet, &ip_packet, NULL, NULL);
+	if(status != ROHC_STATUS_OK)
 	{
 		fprintf(stderr, "packet %lu: decompression failed\n", num_packet);
 		goto error;

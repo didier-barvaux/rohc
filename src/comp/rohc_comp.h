@@ -433,9 +433,9 @@ int ROHC_EXPORT rohc_compress3(struct rohc_comp *const comp,
 
 #endif /* !ROHC_ENABLE_DEPRECATED_API */
 
-int ROHC_EXPORT rohc_compress4(struct rohc_comp *const comp,
-                               const struct rohc_buf uncomp_packet,
-                               struct rohc_buf *const rohc_packet)
+rohc_status_t ROHC_EXPORT rohc_compress4(struct rohc_comp *const comp,
+                                         const struct rohc_buf uncomp_packet,
+                                         struct rohc_buf *const rohc_packet)
 	__attribute__((warn_unused_result));
 
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
@@ -448,8 +448,8 @@ int ROHC_EXPORT rohc_comp_get_segment(struct rohc_comp *const comp,
 	                "use rohc_comp_get_segment2() instead");
 #endif /* !ROHC_ENABLE_DEPRECATED_API */
 
-int ROHC_EXPORT rohc_comp_get_segment2(struct rohc_comp *const comp,
-                                       struct rohc_buf *const segment)
+rohc_status_t ROHC_EXPORT rohc_comp_get_segment2(struct rohc_comp *const comp,
+                                                 struct rohc_buf *const segment)
 	__attribute__((warn_unused_result));
 
 bool ROHC_EXPORT rohc_comp_force_contexts_reinit(struct rohc_comp *const comp)

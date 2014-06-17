@@ -809,7 +809,7 @@ static int compress_decompress(struct rohc_comp *comp,
 		rohc_buf_init_empty(rcvd_feedback_buffer, MAX_ROHC_SIZE);
 
 	int status = 1;
-	int ret;
+	rohc_status_t ret;
 
 	printf("=== compressor/decompressor #%d, packet #%d:\n", num_comp, num_packet);
 
@@ -887,7 +887,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	/* compress the IP packet into a ROHC packet */
 	printf("=== ROHC compression: start\n");
 	ret = rohc_compress4(comp, ip_packet, &rohc_packet);
-	if(ret != ROHC_OK)
+	if(ret != ROHC_STATUS_OK)
 	{
 		printf("=== ROHC compression: failure\n");
 		status = -1;
@@ -973,7 +973,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	printf("=== ROHC decompression: start\n");
 	ret = rohc_decompress3(decomp, rohc_packet, &decomp_packet,
 	                       &rcvd_feedback, feedback_send_by_other);
-	if(ret != ROHC_OK)
+	if(ret != ROHC_STATUS_OK)
 	{
 		size_t i;
 
@@ -1025,24 +1025,6 @@ static int compress_decompress(struct rohc_comp *comp,
 	{
 		printf("=== deliver received feedback to compressor: success\n");
 	}
-
-#if 0
-	/* piggyback the feedback to be sent */
-	printf("=== piggyback feedback with compressor: start\n");
-	if(feedback_send.len > 0 &&
-	   !rohc_comp_piggyback_feedback(comp_associated,
-	                                 rohc_buf_data(feedback_send),
-	                                 feedback_send.len))
-	{
-		printf("=== piggyback feedback with compressor: failure\n");
-		status = -2;
-		goto exit;
-	}
-	else
-	{
-		printf("=== piggyback feedback with compressor: success\n");
-	}
-#endif
 
 exit:
 	printf("\n");

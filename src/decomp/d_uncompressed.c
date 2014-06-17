@@ -46,27 +46,27 @@ static rohc_packet_t uncomp_detect_pkt_type(const struct rohc_decomp_ctxt *const
                                             const size_t large_cid_len)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static int uncomp_decode(struct rohc_decomp *const decomp,
-                         struct rohc_decomp_ctxt *const context,
-                         const struct rohc_buf rohc_packet,
-                         const size_t add_cid_len,
-                         const size_t large_cid_len,
-                         struct rohc_buf *const uncomp_packet,
-                         rohc_packet_t *const packet_type)
+static rohc_status_t uncomp_decode(struct rohc_decomp *const decomp,
+                                   struct rohc_decomp_ctxt *const context,
+                                   const struct rohc_buf rohc_packet,
+                                   const size_t add_cid_len,
+                                   const size_t large_cid_len,
+                                   struct rohc_buf *const uncomp_packet,
+                                   rohc_packet_t *const packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 6, 7)));
 
-static int uncomp_decode_ir(struct rohc_decomp *const decomp,
-                            struct rohc_decomp_ctxt *context,
-                            const struct rohc_buf rohc_packet,
-                            const size_t add_cid_len,
-                            const size_t large_cid_len,
-                            struct rohc_buf *const uncomp_packet)
+static rohc_status_t uncomp_decode_ir(struct rohc_decomp *const decomp,
+                                      struct rohc_decomp_ctxt *context,
+                                      const struct rohc_buf rohc_packet,
+                                      const size_t add_cid_len,
+                                      const size_t large_cid_len,
+                                      struct rohc_buf *const uncomp_packet)
 	__attribute__((warn_unused_result, nonnull(1, 2, 6)));
 
-static int uncomp_decode_normal(struct rohc_decomp_ctxt *context,
-                                const struct rohc_buf rohc_packet,
-                                const size_t large_cid_len,
-                                struct rohc_buf *const uncomp_packet)
+static rohc_status_t uncomp_decode_normal(struct rohc_decomp_ctxt *context,
+                                          const struct rohc_buf rohc_packet,
+                                          const size_t large_cid_len,
+                                          struct rohc_buf *const uncomp_packet)
 	__attribute__((warn_unused_result, nonnull(1, 4)));
 
 static uint32_t uncomp_get_sn(const struct rohc_decomp_ctxt *const context)
@@ -149,20 +149,20 @@ static rohc_packet_t uncomp_detect_pkt_type(const struct rohc_decomp_ctxt *const
  * @param[out] uncomp_packet  The uncompressed packet
  * @param packet_type         IN:  The type of the ROHC packet to parse
  *                            OUT: The type of the parsed ROHC packet
- * @return                    ROHC_OK if packet is successfully decoded,
- *                            ROHC_ERROR_PACKET_FAILED if packet is malformed,
- *                            ROHC_ERROR_CRC if a CRC error occurs
- *                            ROHC_ERROR if an error occurs
+ * @return                    ROHC_STATUS_OK if packet is successfully decoded,
+ *                            ROHC_STATUS_MALFORMED if packet is malformed,
+ *                            ROHC_STATUS_BAD_CRC if a CRC error occurs
+ *                            ROHC_STATUS_ERROR if an error occurs
  */
-static int uncomp_decode(struct rohc_decomp *const decomp,
-                         struct rohc_decomp_ctxt *const context,
-                         const struct rohc_buf rohc_packet,
-                         const size_t add_cid_len,
-                         const size_t large_cid_len,
-                         struct rohc_buf *const uncomp_packet,
-                         rohc_packet_t *const packet_type)
+static rohc_status_t uncomp_decode(struct rohc_decomp *const decomp,
+                                   struct rohc_decomp_ctxt *const context,
+                                   const struct rohc_buf rohc_packet,
+                                   const size_t add_cid_len,
+                                   const size_t large_cid_len,
+                                   struct rohc_buf *const uncomp_packet,
+                                   rohc_packet_t *const packet_type)
 {
-	int status;
+	rohc_status_t status;
 
 	if((*packet_type) == ROHC_PACKET_IR)
 	{
@@ -179,7 +179,7 @@ static int uncomp_decode(struct rohc_decomp *const decomp,
 	else
 	{
 		rohc_decomp_warn(context, "unsupported ROHC packet type %u", *packet_type);
-		status = ROHC_ERROR;
+		status = ROHC_STATUS_ERROR;
 	}
 
 	return status;
@@ -195,16 +195,16 @@ static int uncomp_decode(struct rohc_decomp *const decomp,
  * @param add_cid_len         The length of the optional Add-CID field
  * @param large_cid_len       The length of the large CID field
  * @param[out] uncomp_packet  The uncompressed packet
- * @return                    ROHC_OK if packet is successfully decoded,
- *                            ROHC_ERROR_PACKET_FAILED if packet is malformed,
- *                            ROHC_ERROR_CRC if CRC in IR header is wrong
+ * @return                    ROHC_STATUS_OK if packet is successfully decoded,
+ *                            ROHC_STATUS_MALFORMED if packet is malformed,
+ *                            ROHC_STATUS_BAD_CRC if CRC in IR header is wrong
  */
-static int uncomp_decode_ir(struct rohc_decomp *const decomp,
-                            struct rohc_decomp_ctxt *context,
-                            const struct rohc_buf rohc_packet,
-                            const size_t add_cid_len,
-                            const size_t large_cid_len,
-                            struct rohc_buf *const uncomp_packet)
+static rohc_status_t uncomp_decode_ir(struct rohc_decomp *const decomp,
+                                      struct rohc_decomp_ctxt *context,
+                                      const struct rohc_buf rohc_packet,
+                                      const size_t add_cid_len,
+                                      const size_t large_cid_len,
+                                      struct rohc_buf *const uncomp_packet)
 {
 	/* remaining ROHC data not parsed yet */
 	struct rohc_buf rohc_remain_data = rohc_packet;
@@ -267,12 +267,12 @@ static int uncomp_decode_ir(struct rohc_decomp *const decomp,
 		uncomp_packet->len += payload_len;
 	}
 
-	return ROHC_OK;
+	return ROHC_STATUS_OK;
 
 error_crc:
-	return ROHC_ERROR_CRC;
+	return ROHC_STATUS_BAD_CRC;
 error_malformed:
-	return ROHC_ERROR_PACKET_FAILED;
+	return ROHC_STATUS_MALFORMED;
 }
 
 
@@ -283,14 +283,14 @@ error_malformed:
  * @param rohc_packet         The ROHC packet to decode
  * @param large_cid_len       The length of the optional large CID field
  * @param[out] uncomp_packet  The uncompressed packet
- * @return                    ROHC_OK if packet is successfully decoded,
- *                            ROHC_ERROR_PACKET_FAILED if packet is malformed,
- *                            ROHC_ERROR if another error occurs
+ * @return                    ROHC_STATUS_OK if packet is successfully decoded,
+ *                            ROHC_STATUS_MALFORMED if packet is malformed,
+ *                            ROHC_STATUS_ERROR if another error occurs
  */
-static int uncomp_decode_normal(struct rohc_decomp_ctxt *context,
-                                const struct rohc_buf rohc_packet,
-                                const size_t large_cid_len,
-                                struct rohc_buf *const uncomp_packet)
+static rohc_status_t uncomp_decode_normal(struct rohc_decomp_ctxt *context,
+                                          const struct rohc_buf rohc_packet,
+                                          const size_t large_cid_len,
+                                          struct rohc_buf *const uncomp_packet)
 {
 	/* remaining ROHC data not parsed yet */
 	struct rohc_buf rohc_remain_data = rohc_packet;
@@ -337,13 +337,12 @@ static int uncomp_decode_normal(struct rohc_decomp_ctxt *context,
 
 	rohc_buf_push(uncomp_packet, 1 + rohc_remain_data.len);
 
-	return ROHC_OK;
+	return ROHC_STATUS_OK;
 
 error:
-	return ROHC_ERROR;
-
+	return ROHC_STATUS_ERROR;
 error_malformed:
-	return ROHC_ERROR_PACKET_FAILED;
+	return ROHC_STATUS_MALFORMED;
 }
 
 

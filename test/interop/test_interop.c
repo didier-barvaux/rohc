@@ -443,7 +443,7 @@ static int test_decomp_one(struct rohc_decomp *const decomp,
 	uint8_t uncomp_buffer[MAX_ROHC_SIZE];
 	struct rohc_buf uncomp_packet =
 		rohc_buf_init_empty(uncomp_buffer, MAX_ROHC_SIZE);
-	int ret;
+	rohc_status_t status;
 
 	printf("=== decompressor packet #%zu:\n", num_packet);
 
@@ -465,8 +465,8 @@ static int test_decomp_one(struct rohc_decomp *const decomp,
 
 	/* decompress the ROHC packet */
 	printf("=== ROHC decompression: start\n");
-	ret = rohc_decompress3(decomp, rohc_packet, &uncomp_packet, NULL, NULL);
-	if(ret != ROHC_OK)
+	status = rohc_decompress3(decomp, rohc_packet, &uncomp_packet, NULL, NULL);
+	if(status != ROHC_STATUS_OK)
 	{
 		size_t i;
 

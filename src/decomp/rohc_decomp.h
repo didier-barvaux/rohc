@@ -304,11 +304,11 @@ int ROHC_EXPORT rohc_decompress2(struct rohc_decomp *const decomp,
 	                "rohc_decompress3() instead");
 #endif /* !ROHC_ENABLE_DEPRECATED_API */
 
-int ROHC_EXPORT rohc_decompress3(struct rohc_decomp *const decomp,
-                                 const struct rohc_buf rohc_packet,
-                                 struct rohc_buf *const uncomp_packet,
-                                 struct rohc_buf *const rcvd_feedback,
-                                 struct rohc_buf *const feedback_send)
+rohc_status_t ROHC_EXPORT rohc_decompress3(struct rohc_decomp *const decomp,
+                                           const struct rohc_buf rohc_packet,
+                                           struct rohc_buf *const uncomp_packet,
+                                           struct rohc_buf *const rcvd_feedback,
+                                           struct rohc_buf *const feedback_send)
 	__attribute__((warn_unused_result));
 
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1

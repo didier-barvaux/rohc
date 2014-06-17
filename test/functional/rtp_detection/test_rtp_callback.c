@@ -98,8 +98,8 @@ static int compress_and_check(struct rohc_comp *comp,
                               int packet_counter,
                               int success_expected,
                               int profile_expected);
-static int check_profile(struct rohc_comp *comp,
-                         unsigned int profile);
+static bool check_profile(struct rohc_comp *comp,
+                          const unsigned int profile);
 
 
 /** Whether the application runs in verbose mode or not */
@@ -369,7 +369,7 @@ static int compress_and_check(struct rohc_comp *comp,
 	struct rohc_buf rohc_packet =
 		rohc_buf_init_empty(rohc_buffer, MAX_ROHC_SIZE);
 	int is_failure = 1;
-	int ret;
+	rohc_status_t status;
 
 	/* check packet */
 	if(packet == NULL)
@@ -421,25 +421,24 @@ static int compress_and_check(struct rohc_comp *comp,
 		}
 	}
 
-	ret = rohc_compress4(comp, ip_packet, &rohc_packet);
+	status = rohc_compress4(comp, ip_packet, &rohc_packet);
 
 	/* check the compression result against expected one */
-	if(success_expected && ret != ROHC_OK)
+	if(success_expected && status != ROHC_STATUS_OK)
 	{
 		fprintf(stderr, "packet #%d: failed to compress one %zd-byte IP packet\n",
 		        packet_counter, ip_packet.len);
 		goto error;
 	}
-	else if(!success_expected && ret != ROHC_ERROR)
+	else if(!success_expected && status != ROHC_STATUS_ERROR)
 	{
 		fprintf(stderr, "packet #%d: compress successfully one %zd-byte IP packet "
 		        "while it should have failed\n", packet_counter, ip_packet.len);
 		goto error;
 	}
 
-	/** Check the profile */
-	ret = check_profile(comp, profile_expected);
-	if(ret != 0)
+	/* check the profile */
+	if(!check_profile(comp, profile_expected))
 	{
 		fprintf(stderr, "packet #%d: the profile is not as expected\n",
 				packet_counter);
@@ -529,10 +528,10 @@ static bool callback_ignore(const unsigned char *const ip,
  *
  * @param comp    The ROHC compressor
  * @param profile The expected profile
- * @return        1 in case of failure, 0 otherwise
+ * @return        false in case of failure, true otherwise
  */
-static int check_profile(struct rohc_comp *comp,
-                         unsigned int profile)
+static bool check_profile(struct rohc_comp *comp,
+                          const unsigned int profile)
 {
 	rohc_comp_last_packet_info2_t info;
 
@@ -542,7 +541,7 @@ static int check_profile(struct rohc_comp *comp,
 	if(!rohc_comp_get_last_packet_info2(comp, &info))
 	{
 		fprintf(stderr, "failed to get last packet information\n");
-		return 1;
+		return false;
 	}
 
 	/* check if the profiles match */
@@ -550,10 +549,10 @@ static int check_profile(struct rohc_comp *comp,
 	{
 		fprintf(stderr, "profile %d was used instead of %d\n",
 		        info.profile_id, profile);
-		return 1;
+		return false;
 	}
 
-	return 0;
+	return true;
 }
 
 

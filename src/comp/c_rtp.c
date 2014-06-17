@@ -89,8 +89,8 @@ static uint32_t c_rtp_get_next_sn(const struct rohc_comp_ctxt *const context,
                                   const struct net_pkt *const uncomp_pkt)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static int rtp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
-                                    const struct net_pkt *const uncomp_pkt)
+static bool rtp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
+                                     const struct net_pkt *const uncomp_pkt)
 		__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static size_t rtp_code_static_rtp_part(const struct rohc_comp_ctxt *const context,
@@ -1058,11 +1058,10 @@ static uint32_t c_rtp_get_next_sn(const struct rohc_comp_ctxt *const context __a
  *
  * @param context     The compression context
  * @param uncomp_pkt  The uncompressed packet to encode
- * @return            ROHC_OK in case of success,
- *                    ROHC_ERROR otherwise
+ * @return            true in case of success, false otherwise
  */
-static int rtp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
-                                    const struct net_pkt *const uncomp_pkt)
+static bool rtp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
+                                     const struct net_pkt *const uncomp_pkt)
 {
 	struct c_generic_context *g_context;
 	struct sc_rtp_context *rtp_context;
@@ -1168,10 +1167,10 @@ static int rtp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	                 "0 (TS is deducible from SN bits) or " : ""),
 	                rtp_context->tmp.nr_ts_bits);
 
-	return ROHC_OK;
+	return true;
 
 error:
-	return ROHC_ERROR;
+	return false;
 }
 
 

@@ -217,8 +217,8 @@ struct c_generic_context
 	unsigned int next_header_len;
 
 	/** The handler for encoding profile-specific uncompressed header fields */
-	int (*encode_uncomp_fields)(struct rohc_comp_ctxt *const context,
-	                            const struct net_pkt *const uncomp_pkt)
+	bool (*encode_uncomp_fields)(struct rohc_comp_ctxt *const context,
+	                             const struct net_pkt *const uncomp_pkt)
 		__attribute__((warn_unused_result, nonnull(1, 2)));
 
 	/// @brief The handler used to decide the state that should be used for the

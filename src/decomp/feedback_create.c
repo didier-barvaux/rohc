@@ -260,8 +260,7 @@ error:
  * @param opt_type The type of option to add
  * @param data     The option data
  * @param data_len The length of option data (in bytes)
- * @return         ROHC_OK if the option is successfully added,
- *                 ROHC_ERROR otherwise
+ * @return         true if the option is successfully added, false otherwise
  */
 bool f_add_option(struct d_feedback *const feedback,
                   const rohc_feedback_opt_t opt_type,
@@ -431,7 +430,6 @@ uint8_t * f_wrap_feedback(struct d_feedback *const feedback,
 {
 	uint8_t *feedback_packet;
 	uint8_t crc;
-	int ret;
 
 	/* append the CID to the feedback packet */
 	if(!f_append_cid(feedback, cid, cid_type))
@@ -446,8 +444,7 @@ uint8_t * f_wrap_feedback(struct d_feedback *const feedback,
 #ifdef ROHC_FEEDBACK_DEBUG
 		printf("add CRC option to feedback\n");
 #endif
-		ret = f_add_option(feedback, ROHC_FEEDBACK_OPT_CRC, NULL, 0);
-		if(ret != ROHC_OK)
+		if(!f_add_option(feedback, ROHC_FEEDBACK_OPT_CRC, NULL, 0))
 		{
 #ifdef ROHC_FEEDBACK_DEBUG
 			printf("failed to add CRC option to the feedback packet\n");

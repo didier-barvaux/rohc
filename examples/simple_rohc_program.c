@@ -89,7 +89,7 @@ int main(int argc, char **argv)
 //! [define IP and ROHC packets]
 	unsigned int seed;
 	size_t i;
-	int ret;
+	rohc_status_t status;
 
 	/* initialize the random generator */
 	seed = time(NULL);
@@ -180,10 +180,10 @@ int main(int argc, char **argv)
 	/* Now, compress this fake IP packet */
 	printf("\ncompress the fake IP packet\n");
 //! [compress IP packet #1]
-	ret = rohc_compress4(compressor, ip_packet, &rohc_packet);
+	status = rohc_compress4(compressor, ip_packet, &rohc_packet);
 //! [compress IP packet #1]
 //! [compress IP packet #2]
-	if(ret == ROHC_NEED_SEGMENT)
+	if(status == ROHC_STATUS_SEGMENT)
 	{
 		/* success: compression succeeded, but resulting ROHC packet was too
 		 * large for the Maximum Reconstructed Reception Unit (MRRU) configured
@@ -193,7 +193,7 @@ int main(int argc, char **argv)
 //! [compress IP packet #2]
 //! [compress IP packet #3]
 	}
-	else if(ret == ROHC_OK)
+	else if(status == ROHC_STATUS_OK)
 	{
 		/* success: compression succeeded, and resulting ROHC packet fits the
 		 * Maximum Reconstructed Reception Unit (MRRU) configured with

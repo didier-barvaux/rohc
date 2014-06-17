@@ -203,8 +203,8 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 	size_t segments_nr;
 
 	int is_failure = 1;
+	rohc_status_t status;
 	size_t i;
-	int ret;
 
 	fprintf(stderr, "test ROHC segments with %zd-byte IP packet and "
 	        "MMRU = %zd bytes\n", ip_packet_len, mrru);
@@ -329,8 +329,8 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 	/* compress the IP packet */
 	segments_nr = 0;
 //! [segment ROHC packet #1]
-	ret = rohc_compress4(comp, ip_packet, &rohc_packet);
-	if(ret == ROHC_NEED_SEGMENT)
+	status = rohc_compress4(comp, ip_packet, &rohc_packet);
+	if(status == ROHC_STATUS_SEGMENT)
 	{
 		/* ROHC segmentation is required to compress the IP packet */
 //! [segment ROHC packet #1]
@@ -340,7 +340,7 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 
 //! [segment ROHC packet #2]
 		/* get the segments */
-		while((ret = rohc_comp_get_segment2(comp, &rohc_packet)) == ROHC_NEED_SEGMENT)
+		while((status = rohc_comp_get_segment2(comp, &rohc_packet)) == ROHC_STATUS_SEGMENT)
 		{
 			/* new ROHC segment retrieved */
 //! [segment ROHC packet #2]
@@ -349,9 +349,9 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 			segments_nr++;
 
 			/* decompress segment */
-			ret = rohc_decompress3(decomp, rohc_packet, &uncomp_packet,
-			                       NULL, NULL);
-			if(ret != ROHC_OK)
+			status = rohc_decompress3(decomp, rohc_packet, &uncomp_packet,
+			                          NULL, NULL);
+			if(status != ROHC_STATUS_OK)
 			{
 				fprintf(stderr, "\tfailed to decompress ROHC segment packet\n");
 				goto destroy_decomp;
@@ -365,9 +365,10 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 			}
 			rohc_packet.len = 0;
 		}
-		if(ret != ROHC_OK)
+		if(status != ROHC_STATUS_OK)
 		{
-			fprintf(stderr, "failed to generate ROHC segment (ret = %d)\n", ret);
+			fprintf(stderr, "failed to generate ROHC segment (status = %d)\n",
+			        status);
 			goto destroy_decomp;
 		}
 		/* final ROHC segment retrieved */
@@ -377,8 +378,9 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 		segments_nr++;
 
 		/* decompress last segment */
-		ret = rohc_decompress3(decomp, rohc_packet, &uncomp_packet, NULL, NULL);
-		if(ret != ROHC_OK)
+		status = rohc_decompress3(decomp, rohc_packet, &uncomp_packet,
+		                          NULL, NULL);
+		if(status != ROHC_STATUS_OK)
 		{
 			fprintf(stderr, "\tfailed to decompress ROHC segments\n");
 			goto destroy_decomp;
@@ -391,7 +393,7 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 			goto destroy_decomp;
 		}
 	}
-	else if(ret != ROHC_OK)
+	else if(status != ROHC_STATUS_OK)
 	{
 //! [segment ROHC packet #4]
 		if(is_comp_expected_ok)
@@ -411,8 +413,9 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 		fprintf(stderr, "\t%zu-byte ROHC packet generated\n", rohc_packet.len);
 
 		/* decompress ROHC packet */
-		ret = rohc_decompress3(decomp, rohc_packet, &uncomp_packet, NULL, NULL);
-		if(ret != ROHC_OK)
+		status = rohc_decompress3(decomp, rohc_packet, &uncomp_packet,
+		                          NULL, NULL);
+		if(status != ROHC_STATUS_OK)
 		{
 			fprintf(stderr, "\tfailed to decompress ROHC packet\n");
 			goto destroy_decomp;

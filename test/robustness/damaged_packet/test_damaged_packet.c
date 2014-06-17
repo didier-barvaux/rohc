@@ -393,7 +393,7 @@ static int test_comp_and_decomp(const char *const filename,
 		struct rohc_buf decomp_packet =
 			rohc_buf_init_empty(decomp_buffer, MAX_ROHC_SIZE);
 		rohc_comp_last_packet_info2_t packet_info;
-		int ret;
+		rohc_status_t status;
 
 		counter++;
 		arrival_time.nsec += 20 * 1e6; /* 20ms between consecutive packets */
@@ -452,8 +452,8 @@ static int test_comp_and_decomp(const char *const filename,
 		fprintf(stderr, "\tpacket is valid\n");
 
 		/* compress the IP packet with the ROHC compressor */
-		ret = rohc_compress4(comp, ip_packet, &rohc_packet);
-		if(ret != ROHC_OK)
+		status = rohc_compress4(comp, ip_packet, &rohc_packet);
+		if(status != ROHC_STATUS_OK)
 		{
 			fprintf(stderr, "\tfailed to compress IP packet\n");
 			goto destroy_decomp;
@@ -525,8 +525,9 @@ static int test_comp_and_decomp(const char *const filename,
 		}
 
 		/* decompress the generated ROHC packet with the ROHC decompressor */
-		ret = rohc_decompress3(decomp, rohc_packet, &decomp_packet, NULL, NULL);
-		if(ret == ROHC_ERROR_CRC)
+		status = rohc_decompress3(decomp, rohc_packet, &decomp_packet,
+		                          NULL, NULL);
+		if(status == ROHC_STATUS_BAD_CRC)
 		{
 			if((!do_repair && counter != packet_to_damage) ||
 			   (do_repair && counter != (packet_to_damage + 1) &&
@@ -544,7 +545,7 @@ static int test_comp_and_decomp(const char *const filename,
 				        "packet\n");
 			}
 		}
-		else if(ret != ROHC_OK)
+		else if(status != ROHC_STATUS_OK)
 		{
 			/* non-CRC failure is NOT expected except for damaged IR/IR-DYN packet */
 			if((!do_repair && counter != packet_to_damage) ||

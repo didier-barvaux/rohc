@@ -181,7 +181,7 @@ static int test_comp_and_decomp(void)
 	rohc_comp_last_packet_info2_t last_packet_info;
 
 	int is_failure = 1;
-	int ret;
+	rohc_status_t status;
 
 /** The payload for the fake IP packet */
 #define FAKE_PAYLOAD "hello, ROHC world!"
@@ -328,8 +328,8 @@ static int test_comp_and_decomp(void)
 	fprintf(stderr, "IP packet successfully built\n");
 
 	/* compress the IP packet with the ROHC compressor A */
-	ret = rohc_compress4(compA, ip_packet, &rohc_packet);
-	if(ret != ROHC_OK)
+	status = rohc_compress4(compA, ip_packet, &rohc_packet);
+	if(status != ROHC_STATUS_OK)
 	{
 		fprintf(stderr, "failed to compress IP packet with compressor A\n");
 		goto destroy_decompB;
@@ -338,9 +338,9 @@ static int test_comp_and_decomp(void)
 
 	/* decompress the generated ROHC packet with the ROHC decompressor A:
 	 * feedback data shall be delivered to compressor B */
-	ret = rohc_decompress3(decompA, rohc_packet, &decomp_packet,
-	                       &rcvd_feedback, &feedback_send);
-	if(ret != ROHC_OK)
+	status = rohc_decompress3(decompA, rohc_packet, &decomp_packet,
+	                          &rcvd_feedback, &feedback_send);
+	if(status != ROHC_STATUS_OK)
 	{
 		fprintf(stderr, "failed to decompress ROHC packet with decompressor A\n");
 		goto destroy_decompB;
@@ -363,8 +363,8 @@ static int test_comp_and_decomp(void)
 	/* fail to compress the IP packet with the ROHC compressor B: compressor B
 	 * shall not change the piggybacked feedback data */
 	rohc_packet.max_len = feedback_send.len + 1; /* cause compression error */
-	ret = rohc_compress4(compB, ip_packet, &rohc_packet);
-	if(ret == ROHC_OK)
+	status = rohc_compress4(compB, ip_packet, &rohc_packet);
+	if(status == ROHC_STATUS_OK)
 	{
 		fprintf(stderr, "succeeded to compress IP packet with compressor B\n");
 		feedback_send.len = 0; /* feedback was correctly piggybacked */
@@ -375,8 +375,8 @@ static int test_comp_and_decomp(void)
 
 	/* compress the IP packet with the ROHC compressor B: feedback data
 	 * shall be piggybacked */
-	ret = rohc_compress4(compB, ip_packet, &rohc_packet);
-	if(ret != ROHC_OK)
+	status = rohc_compress4(compB, ip_packet, &rohc_packet);
+	if(status != ROHC_STATUS_OK)
 	{
 		fprintf(stderr, "failed to compress IP packet with compressor B\n");
 		goto destroy_decompB;
@@ -389,9 +389,9 @@ static int test_comp_and_decomp(void)
 
 	/* decompress the generated ROHC packet with the ROHC decompressor B:
 	 * feedback data shall be received for compressor A */
-	ret = rohc_decompress3(decompB, rohc_packet, &decomp_packet,
-	                       &rcvd_feedback, &feedback_send);
-	if(ret != ROHC_OK)
+	status = rohc_decompress3(decompB, rohc_packet, &decomp_packet,
+	                          &rcvd_feedback, &feedback_send);
+	if(status != ROHC_STATUS_OK)
 	{
 		fprintf(stderr, "failed to decompress ROHC packet with decompressor B\n");
 		goto destroy_decompB;

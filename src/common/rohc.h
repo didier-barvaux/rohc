@@ -72,6 +72,8 @@ extern "C"
 #define ROHC_ETHERTYPE  0x22f1
 
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+
 /*
  * Below are some return codes:
  */
@@ -79,22 +81,27 @@ extern "C"
 /**
  * @brief Return code: the action was performed without problem
  * @ingroup rohc
+ * @deprecated please do not use this constant anymore,
+ *             use rohc_compress4() instead
  */
 #define ROHC_OK                     1
 
 /**
  * @brief Return code: the action failed because no context is defined
  * @ingroup rohc
+ * @deprecated please do not use this constant anymore,
+ *             use rohc_compress4() instead
  */
 #define ROHC_ERROR_NO_CONTEXT      -1
 
 /**
  * @brief Return code: the action failed due to an unattended or malformed packet
  * @ingroup rohc
+ * @deprecated please do not use this constant anymore,
+ *             use rohc_compress4() instead
  */
 #define ROHC_ERROR_PACKET_FAILED   -2
 
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 /**
  * @brief Return code: the action failed because the packet only contains feedback info
  * @ingroup rohc
@@ -102,32 +109,39 @@ extern "C"
  *             use rohc_compress4() instead
  */
 #define ROHC_FEEDBACK_ONLY         -3
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 /**
  * @brief Return code: the action failed due to a CRC failure
  * @ingroup rohc
+ * @deprecated please do not use this constant anymore,
+ *             use rohc_compress4() instead
  */
 #define ROHC_ERROR_CRC             -4
 
 /**
  * @brief Return code: the action encountered a problem
  * @ingroup rohc
+ * @deprecated please do not use this constant anymore,
+ *             use rohc_compress4() instead
  */
 #define ROHC_ERROR                 -5
 
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-/// Return code: the packet needs to be parsed again
+/**
+ * @brief Return code: the packet needs to be parsed again
+ * @ingroup rohc
+ * @deprecated please do not use this constant anymore,
+ *             use rohc_compress4() instead
+ */
 #define ROHC_NEED_REPARSE          -6
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 /**
  * @brief Return code: the action succeeded but packet needs to be segmented
  * @ingroup rohc
+ * @deprecated please do not use this constant anymore,
+ *             use rohc_compress4() instead
  */
 #define ROHC_NEED_SEGMENT          -7
 
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 /**
  * @brief Return code: the action succeeded but packet is a non-final segment
  * @ingroup rohc
@@ -135,7 +149,31 @@ extern "C"
  *             use rohc_compress4() instead
  */
 #define ROHC_NON_FINAL_SEGMENT     -8
+
 #endif /* !ROHC_ENABLE_DEPRECATED_API */
+
+
+/**
+ * @brief The status code of several functions in the library API
+ *
+ * @ingroup rohc
+ */
+typedef enum
+{
+	/** The action was successful */
+	ROHC_STATUS_OK          = 0,
+	/** The action was successful but packet needs to be segmented */
+	ROHC_STATUS_SEGMENT     = 1,
+	/** The action failed due to a malformed packet */
+	ROHC_STATUS_MALFORMED   = 2,
+	/** The action failed because no matching context exists */
+	ROHC_STATUS_NO_CONTEXT  = 3,
+	/** The action failed due to a CRC failure */
+	ROHC_STATUS_BAD_CRC     = 4,
+	/** The action encountered another problem */
+	ROHC_STATUS_ERROR       = 5,
+
+} rohc_status_t;
 
 
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1

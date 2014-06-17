@@ -370,7 +370,7 @@ static int test_comp_and_decomp(const char *filename,
 		unsigned int i;
 		unsigned int opt_len;
 		unsigned int expected_opt_pos;
-		int ret;
+		rohc_status_t status;
 
 		counter++;
 
@@ -388,9 +388,9 @@ static int test_comp_and_decomp(const char *filename,
 		rohc_buf_pull(&rohc_packet, link_len);
 
 		/* decompress the ROHC packet with the ROHC decompressor */
-		ret = rohc_decompress3(decomp, rohc_packet, &ip_packet,
-		                       NULL, &feedback_send);
-		if(ret != ROHC_OK)
+		status = rohc_decompress3(decomp, rohc_packet, &ip_packet,
+		                          NULL, &feedback_send);
+		if(status != ROHC_STATUS_OK)
 		{
 			fprintf(stderr, "\tfailed to decompress ROHC packet\n");
 			goto destroy_decomp;

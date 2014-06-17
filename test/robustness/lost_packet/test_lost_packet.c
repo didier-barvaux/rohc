@@ -395,7 +395,7 @@ static int test_comp_and_decomp(const char *const filename,
 		uint8_t decomp_buffer[MAX_ROHC_SIZE];
 		struct rohc_buf decomp_packet =
 			rohc_buf_init_empty(decomp_buffer, MAX_ROHC_SIZE);
-		int ret;
+		rohc_status_t status;
 
 		counter++;
 		arrival_time.nsec += 20 * 1e6; /* 20ms between consecutive packets */
@@ -454,8 +454,8 @@ static int test_comp_and_decomp(const char *const filename,
 		fprintf(stderr, "\tpacket is valid\n");
 
 		/* compress the IP packet with the ROHC compressor */
-		ret = rohc_compress4(comp, ip_packet, &rohc_packet);
-		if(ret != ROHC_OK)
+		status = rohc_compress4(comp, ip_packet, &rohc_packet);
+		if(status != ROHC_STATUS_OK)
 		{
 			fprintf(stderr, "\tfailed to compress IP packet\n");
 			goto destroy_decomp;
@@ -473,8 +473,9 @@ static int test_comp_and_decomp(const char *const filename,
 		rohc_packet.time.nsec = arrival_time.nsec;
 
 		/* decompress the generated ROHC packet with the ROHC decompressor */
-		ret = rohc_decompress3(decomp, rohc_packet, &decomp_packet, NULL, NULL);
-		if(ret != ROHC_OK)
+		status = rohc_decompress3(decomp, rohc_packet, &decomp_packet,
+		                          NULL, NULL);
+		if(status != ROHC_STATUS_OK)
 		{
 			if(counter > last_packet_to_lose && counter <= last_packet_in_error)
 			{

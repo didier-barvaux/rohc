@@ -190,16 +190,17 @@ static bool parse_uor2rtp(const struct rohc_decomp_ctxt *const context,
                           struct rohc_extr_bits *const bits,
                           size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6, 7)));
-static int parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
-                              const unsigned char *const rohc_packet,
-                              const size_t rohc_length,
-                              const size_t large_cid_len,
-                              const rohc_packet_t packet_type,
-                              uint8_t outer_rnd,
-                              uint8_t inner_rnd,
-                              struct rohc_extr_bits *const bits,
-                              size_t *const rohc_hdr_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 8, 9)));
+static bool parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
+                               const unsigned char *const rohc_packet,
+                               const size_t rohc_length,
+                               const size_t large_cid_len,
+                               const rohc_packet_t packet_type,
+                               uint8_t outer_rnd,
+                               uint8_t inner_rnd,
+                               struct rohc_extr_bits *const bits,
+                               size_t *const rohc_hdr_len,
+                               bool *const need_reparse)
+	__attribute__((warn_unused_result, nonnull(1, 2, 8, 9, 10)));
 static bool parse_uor2id(const struct rohc_decomp_ctxt *const context,
                          const unsigned char *const rohc_packet,
                          const size_t rohc_length,
@@ -208,16 +209,17 @@ static bool parse_uor2id(const struct rohc_decomp_ctxt *const context,
                          struct rohc_extr_bits *const bits,
                          size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6, 7)));
-static int parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
-                             const unsigned char *const rohc_packet,
-                             const size_t rohc_length,
-                             const size_t large_cid_len,
-                             const rohc_packet_t packet_type,
-                             uint8_t outer_rnd,
-                             uint8_t inner_rnd,
-                             struct rohc_extr_bits *const bits,
-                             size_t *const rohc_hdr_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 8, 9)));
+static bool parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
+                              const unsigned char *const rohc_packet,
+                              const size_t rohc_length,
+                              const size_t large_cid_len,
+                              const rohc_packet_t packet_type,
+                              uint8_t outer_rnd,
+                              uint8_t inner_rnd,
+                              struct rohc_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const need_reparse)
+	__attribute__((warn_unused_result, nonnull(1, 2, 8, 9, 10)));
 static bool parse_uor2ts(const struct rohc_decomp_ctxt *const context,
                          const unsigned char *const rohc_packet,
                          const size_t rohc_length,
@@ -226,16 +228,17 @@ static bool parse_uor2ts(const struct rohc_decomp_ctxt *const context,
                          struct rohc_extr_bits *const bits,
                          size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6, 7)));
-static int parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
-                             const unsigned char *const rohc_packet,
-                             const size_t rohc_length,
-                             const size_t large_cid_len,
-                             const rohc_packet_t packet_type,
-                             uint8_t outer_rnd,
-                             uint8_t inner_rnd,
-                             struct rohc_extr_bits *const bits,
-                             size_t *const rohc_hdr_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 8, 9)));
+static bool parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
+                              const unsigned char *const rohc_packet,
+                              const size_t rohc_length,
+                              const size_t large_cid_len,
+                              const rohc_packet_t packet_type,
+                              uint8_t outer_rnd,
+                              uint8_t inner_rnd,
+                              struct rohc_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const need_reparse)
+	__attribute__((warn_unused_result, nonnull(1, 2, 8, 9, 10)));
 
 static bool parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
                                const unsigned char *const rohc_packet,
@@ -278,16 +281,16 @@ static int parse_extension2(const struct rohc_decomp_ctxt *const context,
  * Private function prototypes for building the uncompressed headers
  */
 
-static int build_uncomp_hdrs(const struct rohc_decomp *const decomp,
-                             const struct rohc_decomp_ctxt *const context,
-                             const rohc_packet_t packet_type,
-                             const struct rohc_decoded_values decoded,
-                             const size_t payload_len,
-                             const rohc_crc_type_t crc_type,
-                             const uint8_t crc_packet,
-                             unsigned char *uncomp_hdrs,
-                             const size_t uncomp_hdrs_max_len,
-                             size_t *const uncomp_hdrs_len)
+static rohc_status_t build_uncomp_hdrs(const struct rohc_decomp *const decomp,
+                                       const struct rohc_decomp_ctxt *const context,
+                                       const rohc_packet_t packet_type,
+                                       const struct rohc_decoded_values decoded,
+                                       const size_t payload_len,
+                                       const rohc_crc_type_t crc_type,
+                                       const uint8_t crc_packet,
+                                       unsigned char *uncomp_hdrs,
+                                       const size_t uncomp_hdrs_max_len,
+                                       size_t *const uncomp_hdrs_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 8, 10)));
 static bool build_uncomp_ip(const struct rohc_decomp_ctxt *const context,
                             const struct rohc_decoded_ip_values decoded,
@@ -1378,18 +1381,18 @@ error:
  * @param[out] uncomp_packet  The uncompressed packet
  * @param packet_type         IN:  The type of the ROHC packet to parse
  *                            OUT: The type of the parsed ROHC packet
- * @return                    ROHC_OK if packet is successfully decoded,
- *                            ROHC_ERROR_PACKET_FAILED if packet is malformed,
- *                            ROHC_ERROR_CRC if a CRC error occurs,
- *                            ROHC_ERROR if an error occurs
+ * @return                    ROHC_STATUS_OK if packet is successfully decoded,
+ *                            ROHC_STATUS_MALFORMED if packet is malformed,
+ *                            ROHC_STATUS_BAD_CRC if a CRC error occurs,
+ *                            ROHC_STATUS_ERROR if an error occurs
  */
-int d_generic_decode(struct rohc_decomp *const decomp,
-                     struct rohc_decomp_ctxt *const context,
-                     const struct rohc_buf rohc_packet,
-                     const size_t add_cid_len,
-                     const size_t large_cid_len,
-                     struct rohc_buf *const uncomp_packet,
-                     rohc_packet_t *const packet_type)
+rohc_status_t d_generic_decode(struct rohc_decomp *const decomp,
+                               struct rohc_decomp_ctxt *const context,
+                               const struct rohc_buf rohc_packet,
+                               const size_t add_cid_len,
+                               const size_t large_cid_len,
+                               struct rohc_buf *const uncomp_packet,
+                               rohc_packet_t *const packet_type)
 {
 	struct d_generic_context *const g_context = context->specific;
 
@@ -1412,7 +1415,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 	/* helper variables for values returned by functions */
 	bool parsing_ok;
 	bool decode_ok;
-	int build_ret;
+	rohc_status_t build_ret;
 
 	assert((*packet_type) != ROHC_PACKET_UNKNOWN);
 
@@ -1515,7 +1518,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 		                              rohc_buf_data(*uncomp_packet),
 		                              rohc_buf_avail_len(*uncomp_packet),
 		                              &uncomp_header_len);
-		if(build_ret == ROHC_OK)
+		if(build_ret == ROHC_STATUS_OK)
 		{
 			/* uncompressed headers successfully built and CRC is correct,
 			 * no need to try decoding with different values */
@@ -1533,7 +1536,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 				try_decoding_again = false;
 			}
 		}
-		else if(build_ret != ROHC_ERROR_CRC)
+		else if(build_ret != ROHC_STATUS_BAD_CRC)
 		{
 			/* uncompressed headers cannot be built, stop decoding */
 			rohc_decomp_warn(context, "CID %zu: failed to build uncompressed "
@@ -1700,14 +1703,14 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 	stats_add_decomp_success(context, rohc_header_len, uncomp_header_len);
 
 	/* decompression is successful */
-	return ROHC_OK;
+	return ROHC_STATUS_OK;
 
 error:
-	return ROHC_ERROR;
+	return ROHC_STATUS_ERROR;
 error_crc:
-	return ROHC_ERROR_CRC;
+	return ROHC_STATUS_BAD_CRC;
 error_malformed:
-	return ROHC_ERROR_PACKET_FAILED;
+	return ROHC_STATUS_MALFORMED;
 }
 
 
@@ -3208,7 +3211,8 @@ static bool parse_uor2rtp(const struct rohc_decomp_ctxt *const context,
 	uint8_t outer_rnd;
 	uint8_t inner_rnd;
 
-	int parsing;
+	bool need_reparse;
+	bool parsing;
 
 	assert(packet_type != NULL);
 	assert((*packet_type) == ROHC_PACKET_UOR_2_RTP);
@@ -3221,11 +3225,11 @@ static bool parse_uor2rtp(const struct rohc_decomp_ctxt *const context,
 
 	/* try parsing UOR-2-RTP packet with information from context */
 	parsing = parse_uor2rtp_once(context, rohc_packet, rohc_length,
-	                             large_cid_len, *packet_type,
-	                             outer_rnd, inner_rnd, bits, rohc_hdr_len);
-	if(parsing != ROHC_OK)
+	                             large_cid_len, *packet_type, outer_rnd,
+	                             inner_rnd, bits, rohc_hdr_len, &need_reparse);
+	if(!parsing)
 	{
-		if(parsing != ROHC_NEED_REPARSE)
+		if(!need_reparse)
 		{
 			rohc_decomp_warn(context, "failed to parse the UOR-2-RTP header");
 			goto error;
@@ -3263,8 +3267,9 @@ static bool parse_uor2rtp(const struct rohc_decomp_ctxt *const context,
 			          "change for packet UOR-2-TS (T = 1)");
 			*packet_type = ROHC_PACKET_UOR_2_TS;
 			parsing = parse_uor2ts_once(context, rohc_packet, rohc_length,
-			                            large_cid_len, *packet_type,
-			                            outer_rnd, inner_rnd, bits, rohc_hdr_len);
+			                            large_cid_len, *packet_type, outer_rnd,
+			                            inner_rnd, bits, rohc_hdr_len,
+			                            &need_reparse);
 		}
 		else
 		{
@@ -3272,19 +3277,20 @@ static bool parse_uor2rtp(const struct rohc_decomp_ctxt *const context,
 			          "change for packet UOR-2-ID (T = 0)");
 			*packet_type = ROHC_PACKET_UOR_2_ID;
 			parsing = parse_uor2id_once(context, rohc_packet, rohc_length,
-			                            large_cid_len, *packet_type,
-			                            outer_rnd, inner_rnd, bits, rohc_hdr_len);
+			                            large_cid_len, *packet_type, outer_rnd,
+			                            inner_rnd, bits, rohc_hdr_len,
+			                            &need_reparse);
 		}
-		if(parsing == ROHC_NEED_REPARSE)
+		if(!parsing)
 		{
+			if(!need_reparse)
+			{
+				rohc_decomp_warn(context, "failed to parse the UOR-2 header");
+				goto error;
+			}
 			rohc_decomp_warn(context, "reparse required by the reparse, there "
 			                 "is an internal problem");
 			assert(0);
-			goto error;
-		}
-		else if(parsing != ROHC_OK)
-		{
-			rohc_decomp_warn(context, "failed to reparse the UOR-2 header");
 			goto error;
 		}
 	}
@@ -3380,19 +3386,20 @@ error:
  * @param inner_rnd      The forced value for inner RND (used for reparsing)
  * @param bits           OUT: The bits extracted from the UOR-2-RTP header
  * @param rohc_hdr_len   OUT: The size of the UOR-2-RTP header
- * @return               ROHC_OK if UOR-2-RTP is successfully parsed,
- *                       ROHC_NEED_REPARSE if packet needs to be parsed again,
- *                       ROHC_ERROR otherwise
+ * @param[out] need_reparse  true if packet needs to be parsed again
+ * @return               true if UOR-2-RTP is successfully parsed,
+ *                       false otherwise
  */
-static int parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
-                              const unsigned char *const rohc_packet,
-                              const size_t rohc_length,
-                              const size_t large_cid_len,
-                              const rohc_packet_t packet_type,
-                              uint8_t outer_rnd,
-                              uint8_t inner_rnd,
-                              struct rohc_extr_bits *const bits,
-                              size_t *const rohc_hdr_len)
+static bool parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
+                               const unsigned char *const rohc_packet,
+                               const size_t rohc_length,
+                               const size_t large_cid_len,
+                               const rohc_packet_t packet_type,
+                               uint8_t outer_rnd,
+                               uint8_t inner_rnd,
+                               struct rohc_extr_bits *const bits,
+                               size_t *const rohc_hdr_len,
+                               bool *const need_reparse)
 {
 	struct d_generic_context *g_context;
 	size_t rohc_remainder_len;
@@ -3614,12 +3621,15 @@ static int parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
 	assert((*rohc_hdr_len) <= rohc_length);
 
 	/* UOR-2-RTP packet was successfully parsed */
-	return ROHC_OK;
+	*need_reparse = false;
+	return true;
 
 reparse:
-	return ROHC_NEED_REPARSE;
+	*need_reparse = true;
+	return false;
 error:
-	return ROHC_ERROR;
+	*need_reparse = false;
+	return false;
 }
 
 
@@ -3653,7 +3663,8 @@ static bool parse_uor2id(const struct rohc_decomp_ctxt *const context,
 	uint8_t outer_rnd;
 	uint8_t inner_rnd;
 
-	int parsing;
+	bool need_reparse;
+	bool parsing;
 
 	assert(packet_type != NULL);
 	assert((*packet_type) == ROHC_PACKET_UOR_2_ID);
@@ -3667,10 +3678,11 @@ static bool parse_uor2id(const struct rohc_decomp_ctxt *const context,
 	/* try parsing UOR-2-ID packet with information from context */
 	parsing = parse_uor2id_once(context, rohc_packet, rohc_length,
 	                            large_cid_len, *packet_type,
-	                            outer_rnd, inner_rnd, bits, rohc_hdr_len);
-	if(parsing != ROHC_OK)
+	                            outer_rnd, inner_rnd, bits,
+	                            rohc_hdr_len, &need_reparse);
+	if(!parsing)
 	{
-		if(parsing != ROHC_NEED_REPARSE)
+		if(!need_reparse)
 		{
 			rohc_decomp_warn(context, "failed to parse the UOR-2-ID header");
 			goto error;
@@ -3706,17 +3718,18 @@ static bool parse_uor2id(const struct rohc_decomp_ctxt *const context,
 		*packet_type = ROHC_PACKET_UOR_2_RTP;
 		parsing = parse_uor2rtp_once(context, rohc_packet, rohc_length,
 		                             large_cid_len, *packet_type,
-		                             outer_rnd, inner_rnd, bits, rohc_hdr_len);
-		if(parsing == ROHC_NEED_REPARSE)
+		                             outer_rnd, inner_rnd, bits,
+		                             rohc_hdr_len, &need_reparse);
+		if(!parsing)
 		{
-			rohc_decomp_warn(context, "reparse required by the reparse, there "
-			                 "is an internal problem");
+			if(!need_reparse)
+			{
+				rohc_decomp_warn(context, "failed to reparse the UOR-2 header");
+				goto error;
+			}
+			rohc_decomp_warn(context, "reparse required by the reparse, "
+			                 "there is an internal problem");
 			assert(0);
-			goto error;
-		}
-		else if(parsing != ROHC_OK)
-		{
-			rohc_decomp_warn(context, "failed to reparse the UOR-2 header");
 			goto error;
 		}
 	}
@@ -3815,21 +3828,22 @@ error:
  * @param inner_rnd      The forced value for inner RND (used for reparsing)
  * @param bits           OUT: The bits extracted from the UOR-2-ID header
  * @param rohc_hdr_len   OUT: The size of the UOR-2-ID header
- * @return               ROHC_OK if UOR-2-ID is successfully parsed,
- *                       ROHC_NEED_REPARSE if packet needs to be parsed again,
- *                       ROHC_ERROR otherwise
+ * @param[out] need_reparse  true if packet needs to be parsed again
+ * @return               true if UOR-2-ID is successfully parsed,
+ *                       false otherwise
  *
  * @see parse_uor2id
  */
-static int parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
-                             const unsigned char *const rohc_packet,
-                             const size_t rohc_length,
-                             const size_t large_cid_len,
-                             const rohc_packet_t packet_type,
-                             uint8_t outer_rnd,
-                             uint8_t inner_rnd,
-                             struct rohc_extr_bits *const bits,
-                             size_t *const rohc_hdr_len)
+static bool parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
+                              const unsigned char *const rohc_packet,
+                              const size_t rohc_length,
+                              const size_t large_cid_len,
+                              const rohc_packet_t packet_type,
+                              uint8_t outer_rnd,
+                              uint8_t inner_rnd,
+                              struct rohc_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const need_reparse)
 {
 	struct d_generic_context *g_context;
 	size_t rohc_remainder_len;
@@ -4063,12 +4077,15 @@ static int parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
 	assert((*rohc_hdr_len) <= rohc_length);
 
 	/* UOR-2-ID packet was successfully parsed */
-	return ROHC_OK;
+	*need_reparse = false;
+	return true;
 
 reparse:
-	return ROHC_NEED_REPARSE;
+	*need_reparse = true;
+	return false;
 error:
-	return ROHC_ERROR;
+	*need_reparse = false;
+	return false;
 }
 
 
@@ -4102,7 +4119,8 @@ static bool parse_uor2ts(const struct rohc_decomp_ctxt *const context,
 	uint8_t outer_rnd;
 	uint8_t inner_rnd;
 
-	int parsing;
+	bool need_reparse;
+	bool parsing;
 
 	assert(packet_type != NULL);
 	assert((*packet_type) == ROHC_PACKET_UOR_2_TS);
@@ -4115,11 +4133,11 @@ static bool parse_uor2ts(const struct rohc_decomp_ctxt *const context,
 
 	/* try parsing UOR-2-TS packet with information from context */
 	parsing = parse_uor2ts_once(context, rohc_packet, rohc_length,
-	                            large_cid_len, *packet_type,
-	                            outer_rnd, inner_rnd, bits, rohc_hdr_len);
-	if(parsing != ROHC_OK)
+	                            large_cid_len, *packet_type, outer_rnd,
+	                            inner_rnd, bits, rohc_hdr_len, &need_reparse);
+	if(!parsing)
 	{
-		if(parsing != ROHC_NEED_REPARSE)
+		if(!need_reparse)
 		{
 			rohc_decomp_warn(context, "failed to parse the UOR-2-TS header");
 			goto error;
@@ -4155,17 +4173,18 @@ static bool parse_uor2ts(const struct rohc_decomp_ctxt *const context,
 		*packet_type = ROHC_PACKET_UOR_2_RTP;
 		parsing = parse_uor2rtp_once(context, rohc_packet, rohc_length,
 		                             large_cid_len, *packet_type,
-		                             outer_rnd, inner_rnd, bits, rohc_hdr_len);
-		if(parsing == ROHC_NEED_REPARSE)
+		                             outer_rnd, inner_rnd, bits, rohc_hdr_len,
+		                             &need_reparse);
+		if(!parsing)
 		{
+			if(!need_reparse)
+			{
+				rohc_decomp_warn(context, "failed to reparse the UOR-2 header");
+				goto error;
+			}
 			rohc_decomp_warn(context, "reparse required by the reparse, there "
 			                 "is an internal problem");
 			assert(0);
-			goto error;
-		}
-		else if(parsing != ROHC_OK)
-		{
-			rohc_decomp_warn(context, "failed to reparse the UOR-2 header");
 			goto error;
 		}
 	}
@@ -4264,21 +4283,22 @@ error:
  * @param inner_rnd      The forced value for inner RND (used for reparsing)
  * @param bits           OUT: The bits extracted from the UOR-2-TS header
  * @param rohc_hdr_len   OUT: The size of the UOR-2-TS header
- * @return               ROHC_OK if UOR-2-TS is successfully parsed,
- *                       ROHC_NEED_REPARSE if packet needs to be parsed again,
- *                       ROHC_ERROR otherwise
+ * @param[out] need_reparse  true if packet needs to be parsed again
+ * @return               true if UOR-2-TS is successfully parsed,
+ *                       false otherwise
  *
  * @see parse_uor2ts
  */
-static int parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
-                             const unsigned char *const rohc_packet,
-                             const size_t rohc_length,
-                             const size_t large_cid_len,
-                             const rohc_packet_t packet_type,
-                             uint8_t outer_rnd,
-                             uint8_t inner_rnd,
-                             struct rohc_extr_bits *const bits,
-                             size_t *const rohc_hdr_len)
+static bool parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
+                              const unsigned char *const rohc_packet,
+                              const size_t rohc_length,
+                              const size_t large_cid_len,
+                              const rohc_packet_t packet_type,
+                              uint8_t outer_rnd,
+                              uint8_t inner_rnd,
+                              struct rohc_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const need_reparse)
 {
 	struct d_generic_context *g_context;
 	size_t rohc_remainder_len;
@@ -4513,12 +4533,15 @@ static int parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
 	assert((*rohc_hdr_len) <= rohc_length);
 
 	/* UOR-2-TS packet was successfully parsed */
-	return ROHC_OK;
+	*need_reparse = false;
+	return true;
 
 reparse:
-	return ROHC_NEED_REPARSE;
+	*need_reparse = true;
+	return false;
 error:
-	return ROHC_ERROR;
+	*need_reparse = false;
+	return false;
 }
 
 
@@ -5264,20 +5287,23 @@ static uint8_t parse_extension_type(const unsigned char *const rohc_ext)
  * @param uncomp_hdrs_max_len   The max length of the uncompressed headers
  * @param[out] uncomp_hdrs_len  The length of the uncompressed headers written
  *                              into the buffer
- * @return                      ROHC_OK if headers are built successfully,
- *                              ROHC_ERROR_CRC if headers do not match CRC,
- *                              ROHC_ERROR for other errors
+ * @return                      Possible values:
+ *                               \li ROHC_STATUS_OK if headers are built
+ *                                   successfully,
+ *                               \li ROHC_STATUS_BAD_CRC if headers do not
+ *                                   match CRC,
+ *                               \li ROHC_STATUS_ERROR for other errors
  */
-static int build_uncomp_hdrs(const struct rohc_decomp *const decomp,
-                             const struct rohc_decomp_ctxt *const context,
-                             const rohc_packet_t packet_type,
-                             const struct rohc_decoded_values decoded,
-                             const size_t payload_len,
-                             const rohc_crc_type_t crc_type,
-                             const uint8_t crc_packet,
-                             unsigned char *uncomp_hdrs,
-                             const size_t uncomp_hdrs_max_len,
-                             size_t *const uncomp_hdrs_len)
+static rohc_status_t build_uncomp_hdrs(const struct rohc_decomp *const decomp,
+                                       const struct rohc_decomp_ctxt *const context,
+                                       const rohc_packet_t packet_type,
+                                       const struct rohc_decoded_values decoded,
+                                       const size_t payload_len,
+                                       const rohc_crc_type_t crc_type,
+                                       const uint8_t crc_packet,
+                                       unsigned char *uncomp_hdrs,
+                                       const size_t uncomp_hdrs_max_len,
+                                       size_t *const uncomp_hdrs_len)
 {
 	struct d_generic_context *g_context;
 	unsigned char *outer_ip_hdr;
@@ -5425,12 +5451,12 @@ static int build_uncomp_hdrs(const struct rohc_decomp *const decomp,
 		}
 	}
 
-	return ROHC_OK;
+	return ROHC_STATUS_OK;
 
 error_crc:
-	return ROHC_ERROR_CRC;
+	return ROHC_STATUS_BAD_CRC;
 error:
-	return ROHC_ERROR;
+	return ROHC_STATUS_ERROR;
 }
 
 
