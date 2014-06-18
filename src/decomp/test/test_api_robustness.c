@@ -238,12 +238,17 @@ int main(int argc, char *argv[])
 		pkt1.len = 1;
 		CHECK(rohc_decompress3(decomp, pkt1, NULL, NULL, NULL) == ROHC_STATUS_ERROR);
 		CHECK(pkt2.len == 0);
-		for(size_t i = 0; i < (pkt.len - 2); i++)
+		pkt2.max_len = 0;
+		pkt2.offset = 0;
+		pkt2.len = 0;
+		CHECK(rohc_decompress3(decomp, pkt, &pkt2, NULL, NULL) == ROHC_STATUS_ERROR);
+		CHECK(pkt2.len == 0);
+		for(size_t i = 1; i < (pkt.len - 2); i++)
 		{
 			pkt2.max_len = i;
 			pkt2.offset = 0;
 			pkt2.len = 0;
-			CHECK(rohc_decompress3(decomp, pkt, &pkt2, NULL, NULL) == ROHC_STATUS_ERROR);
+			CHECK(rohc_decompress3(decomp, pkt, &pkt2, NULL, NULL) == ROHC_STATUS_OUTPUT_TOO_SMALL);
 			CHECK(pkt2.len == 0);
 		}
 		pkt2.max_len = pkt.len - 2;

@@ -161,17 +161,19 @@ extern "C"
 typedef enum
 {
 	/** The action was successful */
-	ROHC_STATUS_OK          = 0,
+	ROHC_STATUS_OK                = 0,
 	/** The action was successful but packet needs to be segmented */
-	ROHC_STATUS_SEGMENT     = 1,
+	ROHC_STATUS_SEGMENT           = 1,
 	/** The action failed due to a malformed packet */
-	ROHC_STATUS_MALFORMED   = 2,
+	ROHC_STATUS_MALFORMED         = 2,
 	/** The action failed because no matching context exists */
-	ROHC_STATUS_NO_CONTEXT  = 3,
+	ROHC_STATUS_NO_CONTEXT        = 3,
 	/** The action failed due to a CRC failure */
-	ROHC_STATUS_BAD_CRC     = 4,
+	ROHC_STATUS_BAD_CRC           = 4,
+	/** The action failed because output buffer is too small */
+	ROHC_STATUS_OUTPUT_TOO_SMALL  = 5,
 	/** The action encountered an undefined problem */
-	ROHC_STATUS_ERROR       = 5,
+	ROHC_STATUS_ERROR             = 6,
 
 } rohc_status_t;
 

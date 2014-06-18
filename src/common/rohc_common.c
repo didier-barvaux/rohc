@@ -86,6 +86,8 @@ const char * rohc_strerror(const rohc_status_t status)
 			return "no matching context";
 		case ROHC_STATUS_BAD_CRC:
 			return "CRC failure";
+		case ROHC_STATUS_OUTPUT_TOO_SMALL:
+			return "output buffer too small";
 		case ROHC_STATUS_ERROR:
 			return "undefined problem";
 		default:

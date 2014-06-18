@@ -1310,6 +1310,9 @@ int rohc_compress3(struct rohc_comp *const comp,
  *                              returned and ROHC segments can be retrieved
  *                              with successive calls to
  *                              \ref rohc_comp_get_segment
+ *                          \li \ref ROHC_STATUS_OUTPUT_TOO_SMALL if the
+ *                              output buffer is too small for the compressed
+ *                              packet
  *                          \li \ref ROHC_STATUS_ERROR if an error occurred
  *
  * @ingroup rohc_comp

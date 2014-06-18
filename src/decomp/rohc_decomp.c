@@ -1250,6 +1250,9 @@ int rohc_decompress2(struct rohc_decomp *const decomp,
  *                                 decompression context matches the CID
  *                                 stored in the given ROHC packet and the
  *                                 ROHC packet is not an IR packet
+ *                            \li \ref ROHC_STATUS_OUTPUT_TOO_SMALL if the
+ *                                output buffer is too small for the
+ *                                compressed packet
  *                            \li \ref ROHC_STATUS_MALFORMED if the
  *                                decompression failed because the ROHC packet
  *                                is malformed
@@ -1380,19 +1383,20 @@ rohc_status_t rohc_decompress3(struct rohc_decomp *const decomp,
 	switch(status)
 	{
 		case ROHC_STATUS_MALFORMED:
+		case ROHC_STATUS_OUTPUT_TOO_SMALL:
 		case ROHC_STATUS_ERROR:
 		{
 			if(ddata.active != NULL)
 			{
 				rohc_warning(decomp, ROHC_TRACE_DECOMP, ddata.active->profile->id,
-				             "packet decompression failed with code "
-				             "ROHC_ERROR_PACKET_FAILED or ROHC_ERROR");
+				             "packet decompression failed: %s (%d)",
+				             rohc_strerror(status), status);
 			}
 			else
 			{
 				rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-				             "packet decompression failed with code "
-				             "ROHC_ERROR_PACKET_FAILED or ROHC_ERROR");
+				             "packet decompression failed: %s (%d)",
+				             rohc_strerror(status), status);
 			}
 
 			/* update statistics */
@@ -2311,6 +2315,7 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 
 		case ROHC_STATUS_MALFORMED:
 		case ROHC_STATUS_BAD_CRC:
+		case ROHC_STATUS_OUTPUT_TOO_SMALL:
 			context->num_sent_feedbacks++;
 			switch(context->state)
 			{

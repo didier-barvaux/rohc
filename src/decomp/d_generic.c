@@ -1384,6 +1384,8 @@ error:
  * @return                    ROHC_STATUS_OK if packet is successfully decoded,
  *                            ROHC_STATUS_MALFORMED if packet is malformed,
  *                            ROHC_STATUS_BAD_CRC if a CRC error occurs,
+ *                            ROHC_STATUS_OUTPUT_TOO_SMALL if the output
+ *                            buffer is too small
  *                            ROHC_STATUS_ERROR if an error occurs
  */
 rohc_status_t d_generic_decode(struct rohc_decomp *const decomp,
@@ -1536,6 +1538,12 @@ rohc_status_t d_generic_decode(struct rohc_decomp *const decomp,
 				try_decoding_again = false;
 			}
 		}
+		else if(build_ret == ROHC_STATUS_OUTPUT_TOO_SMALL)
+		{
+			rohc_decomp_warn(context, "CID %zu: failed to build uncompressed "
+			                 "headers: output buffer too small", context->cid);
+			goto error_output_too_small;
+		}
 		else if(build_ret != ROHC_STATUS_BAD_CRC)
 		{
 			/* uncompressed headers cannot be built, stop decoding */
@@ -1650,7 +1658,7 @@ rohc_status_t d_generic_decode(struct rohc_decomp *const decomp,
 		rohc_decomp_warn(context, "uncompressed packet too small (%zu bytes "
 		                 "max) for the %zu-byte payload",
 		                 rohc_buf_avail_len(*uncomp_packet), payload_len);
-		goto error;
+		goto error_output_too_small;
 	}
 	if(payload_len != 0)
 	{
@@ -1707,6 +1715,8 @@ rohc_status_t d_generic_decode(struct rohc_decomp *const decomp,
 
 error:
 	return ROHC_STATUS_ERROR;
+error_output_too_small:
+	return ROHC_STATUS_OUTPUT_TOO_SMALL;
 error_crc:
 	return ROHC_STATUS_BAD_CRC;
 error_malformed:
@@ -5292,7 +5302,8 @@ static uint8_t parse_extension_type(const unsigned char *const rohc_ext)
  *                                   successfully,
  *                               \li ROHC_STATUS_BAD_CRC if headers do not
  *                                   match CRC,
- *                               \li ROHC_STATUS_ERROR for other errors
+ *                               \li ROHC_STATUS_OUTPUT_TOO_SMALL if the
+ *                                   output buffer is too small
  */
 static rohc_status_t build_uncomp_hdrs(const struct rohc_decomp *const decomp,
                                        const struct rohc_decomp_ctxt *const context,
@@ -5367,7 +5378,7 @@ static rohc_status_t build_uncomp_hdrs(const struct rohc_decomp *const decomp,
 		                    ip_payload_len, &g_context->list_decomp1))
 		{
 			rohc_decomp_warn(context, "failed to build the outer IP header");
-			goto error;
+			goto error_output_too_small;
 		}
 		outer_ip_hdr = uncomp_hdrs;
 		uncomp_hdrs += outer_ip_hdr_len;
@@ -5380,7 +5391,7 @@ static rohc_status_t build_uncomp_hdrs(const struct rohc_decomp *const decomp,
 		                    ip_payload_len, &g_context->list_decomp2))
 		{
 			rohc_decomp_warn(context, "failed to build the inner IP header");
-			goto error;
+			goto error_output_too_small;
 		}
 		inner_ip_hdr = uncomp_hdrs;
 		uncomp_hdrs += inner_ip_hdr_len;
@@ -5401,7 +5412,7 @@ static rohc_status_t build_uncomp_hdrs(const struct rohc_decomp *const decomp,
 		                    &g_context->list_decomp1))
 		{
 			rohc_decomp_warn(context, "failed to build the IP header");
-			goto error;
+			goto error_output_too_small;
 		}
 		outer_ip_hdr = uncomp_hdrs;
 		inner_ip_hdr = NULL;
@@ -5455,8 +5466,8 @@ static rohc_status_t build_uncomp_hdrs(const struct rohc_decomp *const decomp,
 
 error_crc:
 	return ROHC_STATUS_BAD_CRC;
-error:
-	return ROHC_STATUS_ERROR;
+error_output_too_small:
+	return ROHC_STATUS_OUTPUT_TOO_SMALL;
 }
 
 
