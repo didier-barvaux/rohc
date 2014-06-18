@@ -277,10 +277,12 @@ static struct rohc_decomp_ctxt * context_create(struct rohc_decomp *decomp,
 	context->total_compressed_size = 0;
 	context->header_uncompressed_size = 0;
 	context->header_compressed_size = 0;
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	context->num_recv_ir = 0;
 	context->num_recv_ir_dyn = 0;
 	context->num_sent_feedbacks = 0;
 	context->num_decomp_failures = 0;
+#endif
 	context->corrected_crc_failures = 0;
 	context->corrected_sn_wraparounds = 0;
 	context->corrected_wrong_sn_updates = 0;
@@ -1403,7 +1405,9 @@ rohc_status_t rohc_decompress3(struct rohc_decomp *const decomp,
 			if(ddata.active != NULL)
 			{
 				ddata.active->num_recv_packets++;
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 				ddata.active->num_decomp_failures++;
+#endif
 			}
 			decomp->stats.failed_decomp++;
 
@@ -1458,7 +1462,9 @@ rohc_status_t rohc_decompress3(struct rohc_decomp *const decomp,
 			if(ddata.active != NULL)
 			{
 				ddata.active->num_recv_packets++;
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 				ddata.active->num_decomp_failures++;
+#endif
 			}
 			decomp->stats.failed_crc++;
 
@@ -1935,7 +1941,9 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 			is_new_context = true;
 		}
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 		ddata->active->num_recv_ir++;
+#endif
 	}
 	else /* the ROHC packet is not an IR packet */
 	{
@@ -1995,7 +2003,9 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 				goto error_no_context;
 			}
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 			ddata->active->num_recv_ir_dyn++;
+#endif
 		}
 
 		profile = ddata->active->profile;
@@ -2200,7 +2210,9 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 				return;
 			}
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 			context->num_sent_feedbacks++;
+#endif
 			if(feedback_send != NULL)
 			{
 				size_t hdr_len;
@@ -2316,7 +2328,9 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 		case ROHC_STATUS_MALFORMED:
 		case ROHC_STATUS_BAD_CRC:
 		case ROHC_STATUS_OUTPUT_TOO_SMALL:
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 			context->num_sent_feedbacks++;
+#endif
 			switch(context->state)
 			{
 				case ROHC_DECOMP_STATE_NC:

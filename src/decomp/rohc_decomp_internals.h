@@ -211,6 +211,7 @@ struct rohc_decomp_ctxt
 
 	/* The number of received packets */
 	int num_recv_packets;
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	/* The number of received IR packets */
 	int num_recv_ir;
 	/* The number of received IR-DYN packets */
@@ -220,6 +221,7 @@ struct rohc_decomp_ctxt
 
 	/* The number of decompression failures */
 	int num_decomp_failures;
+#endif
 	/** The number of successful corrections upon CRC failure */
 	unsigned long corrected_crc_failures;
 	/** The number of successful corrections of SN wraparound upon CRC failure */
