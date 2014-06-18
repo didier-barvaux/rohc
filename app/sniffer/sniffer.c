@@ -154,8 +154,8 @@ struct sniffer_stats_t
 /* prototypes of private functions */
 
 static void usage(void);
-static void sniffer_interrupt(int signal);
-static void sniffer_print_stats(int signal);
+static void sniffer_interrupt(int signum);
+static void sniffer_print_stats(int signum);
 
 static bool sniff(const rohc_cid_type_t cid_type,
                   const size_t max_contexts,
@@ -581,21 +581,21 @@ static void usage(void)
 /**
  * @brief Handle UNIX signals that interrupt the program
  *
- * @param signal  The received signal
+ * @param signum  The received signal
  */
-static void sniffer_interrupt(int signal)
+static void sniffer_interrupt(int signum)
 {
 	/* end the program with next captured packet */
-	SNIFFER_LOG(LOG_NOTICE, "signal %d catched", signal);
+	SNIFFER_LOG(LOG_NOTICE, "signal %d catched", signum);
 	stop_program = true;
 
 	/* for SIGSEGV/SIGABRT, close the PCAP dumps, print the last debug traces,
 	 * then kill the program */
-	if(signal == SIGSEGV || signal == SIGABRT)
+	if(signum == SIGSEGV || signum == SIGABRT)
 	{
 		int i;
 
-		if(signal == SIGSEGV)
+		if(signum == SIGSEGV)
 		{
 			SNIFFER_LOG(LOG_WARNING, "a segfault occurred at packet #%lu",
 			            sniffer_stats.total_packets);
@@ -646,13 +646,13 @@ static void sniffer_interrupt(int signal)
 		SNIFFER_LOG(LOG_NOTICE, "all last traces printed, you can analyze "
 		            "the problem, have a nice day!");
 
-		if(signal == SIGSEGV)
+		if(signum == SIGSEGV)
 		{
 			struct sigaction action;
 			memset(&action, 0, sizeof(struct sigaction));
 			action.sa_handler = SIG_DFL;
 			sigaction(SIGSEGV, &action, NULL);
-			raise(signal);
+			raise(signum);
 		}
 	}
 }
@@ -688,9 +688,9 @@ static unsigned long long compute_percent(const unsigned long value,
 /**
  * @brief Handle UNIX signals that print statistics
  *
- * @param signal  The received signal
+ * @param signum  The received signal
  */
-static void sniffer_print_stats(int signal __attribute__((unused)))
+static void sniffer_print_stats(int signum __attribute__((unused)))
 {
 	unsigned long total;
 	int i;
