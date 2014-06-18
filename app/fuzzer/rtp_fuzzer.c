@@ -72,7 +72,7 @@ static bool rtp_detect_cb(const unsigned char *const ip,
 	__attribute__((nonnull(1, 2, 3), warn_unused_result));
 static unsigned int add_sometimes(const size_t period, const unsigned int max)
 	__attribute__((warn_unused_result));
-static void fuzzer_interrupt(int signal);
+static void fuzzer_interrupt(int signum);
 
 
 /** The maximum number of traces to keep */
@@ -518,17 +518,17 @@ static unsigned int add_sometimes(const size_t period, const unsigned int max)
 /**
  * @brief Handle UNIX signals that interrupt the program
  *
- * @param signal  The received signal
+ * @param signum  The received signal
  */
-static void fuzzer_interrupt(int signal)
+static void fuzzer_interrupt(int signum)
 {
 	/* end the program with next captured packet */
-	fprintf(stderr, "signal %d catched\n", signal);
+	fprintf(stderr, "signal %d catched\n", signum);
 	fflush(stderr);
 
 	/* for SIGSEGV/SIGABRT, print the last debug traces,
 	 * then kill the program */
-	if(signal == SIGSEGV || signal == SIGABRT)
+	if(signum == SIGSEGV || signum == SIGABRT)
 	{
 		const char *logfilename = "./rtp_fuzzer.log";
 		FILE *logfile;
@@ -582,13 +582,13 @@ static void fuzzer_interrupt(int signal)
 		}
 
 		fflush(stderr);
-		if(signal == SIGSEGV)
+		if(signum == SIGSEGV)
 		{
 			struct sigaction action;
 			memset(&action, 0, sizeof(struct sigaction));
 			action.sa_handler = SIG_DFL;
 			sigaction(SIGSEGV, &action, NULL);
-			raise(signal);
+			raise(signum);
 		}
 	}
 }
