@@ -592,11 +592,11 @@ static int uncompressed_code_packet(const struct rohc_comp_ctxt *context,
                                     rohc_packet_t *const packet_type,
                                     size_t *const payload_offset)
 {
-	int (*code_packet)(const struct rohc_comp_ctxt *const context,
-	                   const struct net_pkt *const uncomp_pkt,
-	                   unsigned char *const rohc_pkt,
-	                   const size_t rohc_pkt_max_len,
-	                   size_t *const payload_offset)
+	int (*code_packet)(const struct rohc_comp_ctxt *const _context,
+	                   const struct net_pkt *const _uncomp_pkt,
+	                   unsigned char *const _rohc_pkt,
+	                   const size_t _rohc_pkt_max_len,
+	                   size_t *const _payload_offset)
 		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 	struct sc_uncompressed_context *uncomp_context =
 		(struct sc_uncompressed_context *) context->specific;
