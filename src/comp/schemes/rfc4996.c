@@ -508,7 +508,7 @@ uint16_t c_ip_id_lsb(const struct rohc_comp_ctxt *const context,
 			break;
 		default:
 			/* should not happen */
-#if defined(NDEBUG) || defined(__KERNEL__)
+#if defined(NDEBUG) || defined(__KERNEL__) || defined(ENABLE_DEAD_CODE)
 			ip_id_offset = 0;
 #endif
 			assert(0);

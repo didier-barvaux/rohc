@@ -6571,7 +6571,7 @@ static rohc_packet_t tcp_decide_packet(const struct rohc_comp_ctxt *const contex
 			packet_type = tcp_decide_SO_packet(context, ip_inner_context, tcp);
 			break;
 		default:
-#if defined(NDEBUG) || defined(__KERNEL__)
+#if defined(NDEBUG) || defined(__KERNEL__) || defined(ENABLE_DEAD_CODE)
 			packet_type = ROHC_PACKET_UNKNOWN;
 #endif
 			assert(0); /* should not happen */
@@ -7065,7 +7065,7 @@ static char * tcp_ip_id_behavior_get_descr(const tcp_ip_id_behavior_t behavior)
 			return "constant zero";
 		default:
 			assert(0);
-#if defined(NDEBUG) || defined(__KERNEL__)
+#if defined(NDEBUG) || defined(__KERNEL__) || defined(ENABLE_DEAD_CODE)
 			return "unknown";
 #endif
 	}

@@ -2822,7 +2822,7 @@ const char * rohc_decomp_get_state_descr(const rohc_decomp_state_t state)
 			return "Full Context";
 		default:
 			assert(0);
-#ifdef __KERNEL__
+#if defined(__KERNEL__) || defined(ENABLE_DEAD_CODE)
 			return "no description";
 #endif
 	}

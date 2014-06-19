@@ -4379,7 +4379,7 @@ const char * rohc_comp_get_state_descr(const rohc_comp_state_t state)
 			return "SO";
 		default:
 			assert(0);
-#ifdef __KERNEL__
+#if defined(__KERNEL__) || defined(ENABLE_DEAD_CODE)
 			return "no description";
 #endif
 	}

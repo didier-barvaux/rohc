@@ -118,7 +118,7 @@ const char * rohc_get_packet_descr(const rohc_packet_t packet_type)
 
 		default:
 			assert(0);
-#ifdef __KERNEL__
+#if defined(__KERNEL__) || defined(ENABLE_DEAD_CODE)
 			return "no description";
 #endif
 	}
@@ -156,7 +156,7 @@ const char * rohc_get_ext_descr(const rohc_ext_t ext_type)
 			return "none";
 		default:
 			assert(0);
-#ifdef __KERNEL__
+#if defined(__KERNEL__) || defined(ENABLE_DEAD_CODE)
 			return "no description";
 #endif
 	}

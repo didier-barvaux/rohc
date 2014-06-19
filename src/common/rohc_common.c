@@ -92,7 +92,7 @@ const char * rohc_strerror(const rohc_status_t status)
 			return "undefined problem";
 		default:
 			assert(0);
-#ifdef __KERNEL__
+#if defined(__KERNEL__) || defined(ENABLE_DEAD_CODE)
 			return "no description";
 #endif
 	}
@@ -126,7 +126,7 @@ const char * rohc_get_mode_descr(const rohc_mode_t mode)
 			return "R-mode";
 		default:
 			assert(0);
-#ifdef __KERNEL__
+#if defined(__KERNEL__) || defined(ENABLE_DEAD_CODE)
 			return "no description";
 #endif
 	}
@@ -168,7 +168,7 @@ const char * rohc_get_profile_descr(const rohc_profile_t profile)
 			return "IP/UDP-Lite";
 		default:
 			assert(0);
-#ifdef __KERNEL__
+#if defined(__KERNEL__) || defined(ENABLE_DEAD_CODE)
 			return "no description";
 #endif
 	}
