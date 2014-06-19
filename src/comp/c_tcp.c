@@ -2859,15 +2859,6 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 	tcp_dynamic->msn = rohc_hton16(g_context->sn);
 	tcp_dynamic->seq_num = tcp->seq_num;
 
-	rohc_dump_buf(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	              context->compressor->trace_callback,
-#endif
-	              context->compressor->trace_callback2,
-	              context->compressor->trace_callback_priv,
-	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG, "TCP dynamic part",
-	              (unsigned char *) tcp_dynamic, sizeof(tcp_dynamic_t));
-
 	tcp_context->tcp_last_seq_num = rohc_ntoh32(tcp->seq_num);
 	tcp_context->tcp_seq_num_change_count++;
 
@@ -4262,9 +4253,6 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	uint8_t save_first_byte;
 	size_t payload_size;
 	int ip_inner_ecn;
-#if ROHC_EXTRA_DEBUG == 1
-	uint8_t *puchar;
-#endif
 	uint8_t protocol;
 	uint8_t crc_computed;
 	int i;
@@ -4410,17 +4398,6 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 
 	/* part 4: dynamic part of outer and inner IP header and dynamic part
 	 * of next header */
-#if ROHC_EXTRA_DEBUG == 1
-	puchar = &rohc_pkt[counter];
-	rohc_dump_buf(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	              context->compressor->trace_callback,
-#endif
-	              context->compressor->trace_callback2,
-	              context->compressor->trace_callback_priv,
-	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG, "puchar", puchar,
-	              counter + (puchar - rohc_pkt));
-#endif
 
 	// If SMALL_CID
 	// If CID = 0         counter = 1   first_position = 0  no ADD-CID

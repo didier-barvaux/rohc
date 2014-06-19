@@ -907,11 +907,14 @@ static int d_tcp_decode_ir(struct rohc_decomp_ctxt *context,
 		ip_context.uint8 += ip_context.vx->context_length;
 		if(base_header.ipvx->version == IPV4)
 		{
+			base_header.ipv4->length = 0; /* force init to 0 */
+			base_header.ipv4->checksum = 0; /* force init to 0 */
 			++base_header.ipv4;
 			size += sizeof(base_header_ip_v4_t);
 		}
 		else
 		{
+			base_header.ipv6->payload_length = 0; /* force init to 0 */
 			++base_header.ipv6;
 			size += sizeof(base_header_ip_v6_t);
 			while(rohc_is_ipv6_opt(protocol))
@@ -944,14 +947,6 @@ static int d_tcp_decode_ir(struct rohc_decomp_ctxt *context,
 			                 "IP headers as ROHC packet contains");
 			goto error;
 		}
-		rohc_dump_buf(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-		              context->decompressor->trace_callback,
-#endif
-		              context->decompressor->trace_callback2,
-		              context->decompressor->trace_callback_priv,
-		              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
-		              "current IP packet", dest, size);
 	}
 	while(rohc_is_tunneling(protocol));
 
@@ -969,15 +964,6 @@ static int d_tcp_decode_ir(struct rohc_decomp_ctxt *context,
 	assert(remain_len >= ((size_t) read));
 	remain_data += read;
 	remain_len -= read;
-
-	rohc_dump_buf(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	              context->decompressor->trace_callback,
-#endif
-	              context->decompressor->trace_callback2,
-	              context->decompressor->trace_callback_priv,
-	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
-	              "current IP packet", dest, size);
 
 	/* dynamic chain (IPv4/IPv6 headers and extension headers) */
 	base_header.uint8 = dest;
@@ -1259,10 +1245,13 @@ static int d_tcp_decode_irdyn(struct rohc_decomp_ctxt *context,
 		ip_context.uint8 += ip_context.vx->context_length;
 		if(base_header.ipvx->version == IPV4)
 		{
+			base_header.ipv4->length = 0; /* force init to 0 */
+			base_header.ipv4->checksum = 0; /* force init to 0 */
 			++base_header.ipv4;
 		}
 		else
 		{
+			base_header.ipv6->payload_length = 0; /* force init to 0 */
 			++base_header.ipv6;
 			while(rohc_is_ipv6_opt(protocol))
 			{
@@ -5100,6 +5089,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 			base_header.ipv4->dscp = ip_context.v4->dscp;
 			ip_inner_ecn =
 			   base_header.ipv4->ip_ecn_flags = ip_context.v4->ip_ecn_flags;
+			base_header.ipv4->df = 0;
 			base_header.ipv4->mf = 0;
 			base_header.ipv4->rf = 0;
 #if WORDS_BIGENDIAN != 1
@@ -5123,16 +5113,6 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 			++base_header.ipv6;
 			++ip_context.v6;
 		}
-
-		rohc_dump_buf(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-		              context->decompressor->trace_callback,
-#endif
-		              context->decompressor->trace_callback2,
-		              context->decompressor->trace_callback_priv,
-		              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
-		              "current IP packet", dest, uncomp_header_len);
-
 		assert(ip_context.uint8 < &tcp_context->ip_context[MAX_IP_CONTEXT_SIZE]);
 	}
 	while(protocol != ROHC_IPPROTO_TCP);
@@ -5142,16 +5122,6 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 
 	/* static TCP part */
 	tcp_copy_static_tcp(context, tcp);
-
-	rohc_dump_buf(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	              context->decompressor->trace_callback,
-#endif
-	              context->decompressor->trace_callback2,
-	              context->decompressor->trace_callback_priv,
-	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
-	              "current IP + TCP packet", dest,
-	              uncomp_header_len + sizeof(tcphdr_t));
 
 	/* dynamic part */
 	assert(packet_type != ROHC_PACKET_UNKNOWN);
@@ -5798,16 +5768,6 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	{
 		tcp->data_offset = sizeof(tcphdr_t) >> 2;
 	}
-
-	rohc_dump_buf(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	              context->decompressor->trace_callback,
-#endif
-	              context->decompressor->trace_callback2,
-	              context->decompressor->trace_callback_priv,
-	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
-	              "current IP + TCP packet", dest,
-	              uncomp_header_len + sizeof(tcphdr_t));
 
 	tcp_context->msn = msn;
 
