@@ -35,8 +35,6 @@ rohc_test_performance_LDADD = \
 	-lrohc_comp \
 	-lrohc_decomp \
 	-lrohc_common \
-	$(sched_lib) \
-	-lrt \
 	$(additional_platform_libs)
 
 
