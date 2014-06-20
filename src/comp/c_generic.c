@@ -1590,10 +1590,10 @@ int code_packet(struct rohc_comp_ctxt *const context,
                 const size_t rohc_pkt_max_len)
 {
 	struct c_generic_context *g_context;
-	int (*code_packet_type)(struct rohc_comp_ctxt *const context,
-	                        const struct net_pkt *const uncomp_pkt,
-	                        unsigned char *const rohc_pkt,
-	                        const size_t rohc_pkt_max_len)
+	int (*code_packet_type)(struct rohc_comp_ctxt *const _context,
+	                        const struct net_pkt *const _uncomp_pkt,
+	                        unsigned char *const _rohc_pkt,
+	                        const size_t _rohc_pkt_max_len)
 		__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 	g_context = (struct c_generic_context *) context->specific;
@@ -3277,11 +3277,11 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 	struct c_generic_context *g_context;
 	rohc_packet_t packet_type;
 	int is_rtp;
-	int (*code_bytes)(const struct rohc_comp_ctxt *context,
-	                  const rohc_ext_t extension,
-	                  unsigned char *const f_byte,
-	                  unsigned char *const s_byte,
-	                  unsigned char *const t_byte);
+	int (*code_bytes)(const struct rohc_comp_ctxt *_context,
+	                  const rohc_ext_t _extension,
+	                  unsigned char *const _f_byte,
+	                  unsigned char *const _s_byte,
+	                  unsigned char *const _t_byte);
 	int ret;
 
 	g_context = (struct c_generic_context *) context->specific;

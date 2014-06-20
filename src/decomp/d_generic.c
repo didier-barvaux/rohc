@@ -582,13 +582,13 @@ static bool parse_packet(const struct rohc_decomp *const decomp,
                          struct rohc_extr_bits *const bits,
                          size_t *const rohc_hdr_len)
 {
-	bool (*parse) (const struct rohc_decomp_ctxt *const context,
-	               const unsigned char *const rohc_packet,
-	               const size_t rohc_length,
-	               const size_t large_cid_len,
-	               rohc_packet_t *const packet_type,
-	               struct rohc_extr_bits *const bits,
-	               size_t *const rohc_hdr_len)
+	bool (*parse) (const struct rohc_decomp_ctxt *const _context,
+	               const unsigned char *const _rohc_packet,
+	               const size_t _rohc_length,
+	               const size_t _large_cid_len,
+	               rohc_packet_t *const _packet_type,
+	               struct rohc_extr_bits *const _bits,
+	               size_t *const _rohc_hdr_len)
 		__attribute__((warn_unused_result, nonnull(1, 2, 5, 6, 7)));
 
 	assert(decomp != NULL);
