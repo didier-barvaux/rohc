@@ -1,7 +1,7 @@
 Name:     @PACKAGE_TARNAME@
 Summary:  The RObust Header Compression (ROHC) library
 Group:    System Environment/Libraries
-License:  GPL
+License:  LGPLv2+
 URL:      @PACKAGE_URL@
 
 Epoch:    0

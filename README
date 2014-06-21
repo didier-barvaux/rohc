@@ -14,8 +14,11 @@ Bugtracker:            http://bugs.launchpad.net/rohc
 License
 -------
 
-The project is licensed under GPL2+, see the COPYING and AUTHORS files for more
-details.
+The project is licensed under the GNU LGPL version 2.1 or later, see the COPYING
+and AUTHORS files for more details.
+
+Some network captures or small scripts used for testing are under the GNU GPL
+version 2 or later.
 
 
 Libraries

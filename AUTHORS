@@ -2,7 +2,7 @@ The ROHC compression/decompression library is currently developped and
 maintained by Didier Barvaux <didier@barvaux.org>.
 
 
-The ROHC library is released under the GPL2+ license. See COPYING file.
+The ROHC library is released under the LGPL2.1+ license. See COPYING file.
 
 
 The following companies are/were involved in the project:

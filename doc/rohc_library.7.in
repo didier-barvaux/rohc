@@ -23,7 +23,7 @@ algorithms\fP.
 .PP
 The \fBROHC library\fP is intended for developers who want to reduce the
 bandwidth requirements of their applications. The library is published under
-the \fBGPL license\fP (version 2 or later).
+the \fBLGPL license\fP (version 2.1 or later).
 .PP
 The API of the \fBROHC library\fP is divided into three parts: the common API,
 the compression API, and the decompression API.
@@ -290,9 +290,9 @@ The ROHC library is the combined work of several hackers. See the AUTHORS file
 for the list of contributors.
 .PP
 All parts of the @PACKAGE_NAME@ package are protected by GNU copyleft
-licenses. All files are distributed under the terms of the GNU General Public
-License (GPL) version 2 or later, including the documentation files. See the
-COPYING file for the full text of the license.
+licenses. All files are distributed under the terms of the GNU Lesser General
+Public License (LGPL) version 2.1 or later, including the documentation files.
+See the COPYING file for the full text of the license.
 
 .SH SEE ALSO
 .BR rohc (7),
