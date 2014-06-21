@@ -1,8 +1,9 @@
 XX Xxx 2013 - release 1.7.0
   Compatibility:
-    - Version 1.7.0 is not compatible with versions < 1.7.0 wrt packet format
-      because of several fixes related to IETF RFCs that change the format of
-      ROHC packets.
+    - Version 1.7.0 is not compatible with versions < 1.7.0 with respect to
+      packet format because of several fixes related to IETF RFCs that change
+      the format of ROHC packets. Compatibility may however be required with
+      the library feature ROHC_COMP_FEATURE_COMPAT_1_6_x.
     - The library API is fully compatible with earlier versions.
 
   License/Authors:
@@ -20,32 +21,54 @@ XX Xxx 2013 - release 1.7.0
     - ROHC protocol:
        - Add support for packet/context repair upon CRC failure.
        - Add support for extensions on UO-1-ID packets.
-       - Add support for the ROHCv1 TCP profile.
+       - Add support for the ROHCv1 TCP profile (beta quality).
     - Library API/usage:
        - New API rohc_feedback_avail_bytes().
 
-  API changes:
-    - Add rohc_compress3() for specifying arrival time.
-    - Add rohc_decompress2() for specifying arrival time.
-    - rohc_compress2() is deprecated by rohc_compress3().
-    - rohc_decompress() is deprecated by rohc_decompress2().
+  API changes: Major rework, see
+    https://rohc-lib.org/wiki/doku.php?id=library-migration#api_changes_between_16x_and_17x
 
   Build system:
     TODO
 
   Q&A:
-    TODO
+    - Add test_lsb_decode unit test
+    - Improve library documentation.
+    - Reduce graph of header dependencies.
+    - Many, many small cleanup everywhere.
 
   Performances:
-    TODO
+    - Greatly improve the performances of the W-LSB decoding algorithm for
+      large windows and lossy streams.
+    - Avoid memory allocation when prepending CID to feedback.
 
   Applications:
-    TODO
+    General:
+      - Enable all decompression profiles in fuzzer, sniffer and performance
+        test.
+    ROHC-over-UDP tunnel:
+    ROHC sniffer:
+      - Add --disable option to disable one or more ROHC profiles.
+      - Do not set MAX_CID > ROHC_SMALL_CID_MAX before changing CID type.
+    ROHC fuzzer:
     Performances test:
-      - More reliable way to compute (de)compression time.
+      - Use perf to compute elapsed time, no need to be root anymore
+      - Fix build on x86_64
+    ROHC stream generator:
+      - Add a new tool named 'rohc_gen_stream' that generates large
+        (un)compressed stream for performance testing.
+    Stats:
+      - The statistics tests are now an app in app/stats/
 
   Bug fixes:
-    TODO
+    Bug # 896842: Add extension support for UO-1-ID packet
+    Bug #1208900: RTP profile: unscaled TS shall always be encoded with W-LSB
+                  in UO* packets
+    Bug #1209260: Wrong W-LSB decoding if interpretation interval straddles
+                  the field boundaries
+    Bug #1210498: IP-ID shall be transmitted verbatim in IR and IR-DYN packets
+    Bug #1212769: Fail to unlock/remove feedbacks if ring is full of locked
+                  feedbacks
 
 
 09 Jun 2013 - release 1.6.0
@@ -509,4 +532,3534 @@ XX Xxx 2013 - release 1.7.0
   UDP-Lite profile
   RTP profile
   some non-standard improvements (use of jamming, new RTP bit type)
+
+------------------------------------------------------------
+revno: 1176
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-06-21 13:19:29 +0200
+message:
+  Update the INSTALL file with the current configure options.
+------------------------------------------------------------
+revno: 1175
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-06-21 12:59:41 +0200
+message:
+  Relicensing of the ROHC library to LGPLv2.1 or later
+  
+  All authors gave their agreements:
+   * Viveris Technologies, for all the people that worked on the library on
+     behalf of Viveris Technologies)
+   * CNES, for IPv6 support
+   * Thales Alenia Space (TAS), for IPv6, RTP, and Linux kernel support
+   * Didier Barvaux, for all the parts done on his personal time (in addition to
+     his work on behalf of Viveris Technologies)
+   * FWX and his employer, for his work on the ESP and TCP profiles
+   * Mikhail Gruzdev, for the Linux kernel support
+   * Raman Gupta, for the Ethernet part of tunnel app
+  
+  The agreements were given by emails. See Didier Barvaux for details.
+------------------------------------------------------------
+revno: 1174
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Fri 2014-06-20 08:49:38 +0200
+message:
+  Shutdown more false positive -Wshadow warnings on GCC 4.0
+------------------------------------------------------------
+revno: 1173
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Fri 2014-06-20 01:02:19 +0200
+message:
+  The performance app doesn't require the rt nor sched libs
+------------------------------------------------------------
+revno: 1172
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Fri 2014-06-20 01:01:53 +0200
+message:
+  Fix build with mingw64
+------------------------------------------------------------
+revno: 1171
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Thu 2014-06-19 23:29:05 +0200
+message:
+  Avoid printing headers before they are completely built
+  
+  Otherwise we print some uninitialized bytes. Detected by Valgrind.
+------------------------------------------------------------
+revno: 1170
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Thu 2014-06-19 00:06:13 +0200
+message:
+  Shutdown false positive -Wshadow warnings on GCC 4.0
+------------------------------------------------------------
+revno: 1169
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2014-06-18 21:05:54 +0200
+message:
+  Deprecate several internal counters at decompressor.
+  
+  context->num_recv_ir
+  context->num_recv_ir_dyn
+  context->num_sent_feedbacks
+  context->num_decomp_failures
+------------------------------------------------------------
+revno: 1168
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2014-06-18 21:05:26 +0200
+message:
+  More fixes related to -Wshadow and GCC 4.5/4.6
+------------------------------------------------------------
+revno: 1167
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2014-06-18 20:40:37 +0200
+message:
+  Introduce the status code ROHC_STATUS_OUTPUT_TOO_SMALL for too small output buffers
+  
+  The status code ROHC_STATUS_OUTPUT_TOO_SMALL is partially used by the
+  rohc_decompress3() function. Extended support will be added later.
+------------------------------------------------------------
+revno: 1166
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2014-06-18 09:07:20 +0200
+message:
+  More fixes related to -Wshadow and GCC 4.5/4.6
+------------------------------------------------------------
+revno: 1165
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Tue 2014-06-17 23:59:33 +0200
+message:
+  Add -Wshadow to default CFLAGS and fix related warnings
+------------------------------------------------------------
+revno: 1164
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Tue 2014-06-17 23:42:41 +0200
+message:
+  Introduce rohc_strerror() to get a description of a ROHC status code.
+------------------------------------------------------------
+revno: 1163
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Tue 2014-06-17 23:28:07 +0200
+message:
+  Make the rohc_compress4() and rohc_decompress3() functions returns enum
+  
+  An enum is better for checks in switch() or for debugging in gdb.
+------------------------------------------------------------
+revno: 1162
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Tue 2014-06-17 20:55:00 +0200
+message:
+  Add an anonymous private context to the comp/decomp callbacks for traces.
+------------------------------------------------------------
+revno: 1161
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Tue 2014-06-17 01:29:45 +0200
+message:
+  Split rohc_buf_shift() into rohc_buf_pull() and rohc_buf_push()
+  
+  The rohc_buf_shift() took a positive or negative offset as parameter. When
+  used with a -(size_t variable), the compiler may cause an overflow. By using
+  2 different functions (rohc_buf_pull() for positive offsets and rohc_buf_push()
+  for negative offsets), the problem is gone.
+------------------------------------------------------------
+revno: 1160
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Tue 2014-06-17 00:46:57 +0200
+message:
+  Install the rohc_test_performance and rohc_gen_stream apps in $PREFIX/bin
+------------------------------------------------------------
+revno: 1159
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2014-06-16 21:32:01 +0200
+message:
+  rohc_test_performance: do not compute elapsed time internally, use perf instead
+  
+  Call the app/performance/rohc_test_performance.sh shell script instead of the
+  app/performance/rohc_test_performance program. It will run the test program
+  within perf and display the result.
+  
+  Advantages:
+  * do not use clock_gettime() anymore
+  * do not set high scheduler priority
+  * do not lock program into memory
+  * do not require root priviledges
+  * remove several checks from configure
+------------------------------------------------------------
+revno: 1158
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2014-06-16 21:06:44 +0200
+message:
+  Make the kernel module use rohc_comp_new2() instead of rohc_comp_new()
+------------------------------------------------------------
+revno: 1157
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2014-06-16 21:05:36 +0200
+message:
+  Disable code related to RTP ports when built with --disable-deprecated-api
+------------------------------------------------------------
+revno: 1156
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-06-14 18:19:19 +0200
+message:
+  Deprecate rohc_comp_new() and rohc_comp_set_random_cb() in favor of rohc_comp_new2()
+  
+  The new rohc_comp_new2() function merges the old rohc_comp_new() and
+  rohc_comp_set_random_cb() functions into one single function. This is better
+  with only one function because the callback for random numbers if mandatory.
+------------------------------------------------------------
+revno: 1155
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-06-14 17:31:19 +0200
+message:
+  Deprecate the API functions related to UDP ports reserved for RTP.
+  
+  All the functions used to add/remove/reset UDP ports for RTP streams may
+  be emulated with the RTP detection callback. And the callback is dynamic
+  while the list of UDP ports is static (ie. not really useful in the real
+  world).
+------------------------------------------------------------
+revno: 1154
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-06-14 16:23:19 +0200
+message:
+  Extend the ROHC network buffer API to simplify the library code.
+  
+  Introduce the following new functions:
+   * rohc_buf_prepend()     add data at the beginning of the buffer
+   * rohc_buf_append()      add data at the end of the buffer
+   * rohc_buf_append_buf()  add a buffer at the end of the buffer
+   * rohc_buf_reset()       empty the buffer
+  
+  Also update some library code to use the new functions. Later, more code could
+  use those new functions.
+------------------------------------------------------------
+revno: 1153
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-06-14 15:40:23 +0200
+message:
+  Deprecate the old API that didn't handle feedback well
+------------------------------------------------------------
+revno: 1152
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-06-08 19:46:20 +0200
+message:
+  Fix warnings from Clang static analyzer.
+------------------------------------------------------------
+revno: 1151
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-06-08 15:15:20 +0200
+message:
+  performance tool: change unit from 'ns' to 'unit of time'
+  
+  Since the rohc_test_performance tool uses clock_gettime(), the measures are
+  not performed in seconds or nanoseconds anymore. The unit of time is arbitrary.
+------------------------------------------------------------
+revno: 1150
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Thu 2014-06-05 20:54:23 +0200
+message:
+  Enhance the ROHC API to better handle feedback piggybacking
+  
+  Here is a short explanation of feedback management in the ROHC framework
+  (see RFC 3095 for more details). Let's try to transmit compressed information
+  from node n1 to node n2.
+  
+  Each node got a compressor and a decompressor. Compressor A compresses data,
+  sends it to decompressor A (1) that then decompresses it. Compressor A and
+  decompressor A make a pair. If decompressor A wants to send some feedback
+  information to compressor A, it asks the same-side associated compressor B
+  to transmit it (2). Compressor B transmits the feedback information to
+  decompressor B (3). When decompressor B receives the feedback, it gives that
+  information to the same-side associated compressor A (4).
+  
+            node n1                                 node n2
+   +---------------------+                 +---------------------+
+   |                     |                 |                     |
+   | +----------------+  |                 | +----------------+  |
+   | |  compressor A  |--------(1)---------->| decompressor A |  |
+   | +----------------+  |                 | +----------------+  |
+   |         ^           |                 |         | (2)       |
+   |         | (4)       |                 |        \/           |
+   | +----------------+  |                 | +----------------+  |
+   | | decompressor B |<-------(3)-----------|  compressor B  |  |
+   | +----------------+  |                 | +----------------+  |
+   |                     |                 |                     |
+   +---------------------+                 +---------------------+
+  
+  The change in source code is related to steps (2) and (3). When decompressor A
+  decompresses the ROHC packet emitted by compressor A, decompressor A might want
+  to transmit some feedback information to compressor A. The decompressor A used
+  to automatically gives the feedback information to compressor B in a transparent
+  way (ie. no user interaction). Indeed, the decompressor A used to call the function
+  rohc_comp_piggyback_feedback(compressor A, feedback_data, feedback_size) directly.
+  
+  This used to have a major drawback: the decompression (decompressor A) and
+  compression (compressor B) actions on one single node (node B) couldn't be run
+  in separate threads. The decompression action could modify the compression context
+  with no synchronisation mechanism at all, so thread cannot be used efficiently.
+  
+  Now, at step (2), the feedback information generated by decompressor A for its
+  remote peer compressor A can now be retrieved thanks to an additional parameter
+  added to the rohc_decompress3() function:
+  
+  	int rohc_decompress3(struct rohc_decomp *const decomp,
+  	                     const struct rohc_buf rohc_packet,
+  	                     struct rohc_buf *const uncomp_packet,
+  	                     struct rohc_buf *const rcvd_feedback,
+  	                     struct rohc_buf *const feedback_send);
+  
+  By removing the direct call, the user gets in charge of retrieving the feedback
+  to be sent during decompression and sending it on the remote peer for the
+  compressor A. The user may perform this action in two different ways: he/she
+  sends the data on his/her own (it entirely depends on the user application) or
+  he/she uses piggybacking by prepending the content of `feedback_send` before any
+  ROHC packet generated by the compressor B. The decompressor B will retrieve the
+  feedback data and gives it to the user through the `rcvd_feedback` parameter of
+  the rohc_decompress3() function. The user gains control on the feedback
+  transmission and can use locks if needed.
+  
+  Note that the old API still works the way it always worked. The rohc_decompress(),
+  rohc_decompress2() and rohc_decompress_both() functions automatically sends
+  feedback information to the same-side associated compressor. And, the rohc_compress(),
+  rohc_compress2() and rohc_compress3() functions still piggyback that feedback
+  information automatically.
+------------------------------------------------------------
+revno: 1149
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Fri 2014-05-30 19:21:48 +0200
+message:
+  Avoid a warning emitted by Clang static analyzer
+------------------------------------------------------------
+revno: 1148
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-05-24 20:46:27 +0200
+message:
+  Enhance the ROHC API to better handle received feedback information
+  
+  Here is a short explanation of feedback management in the ROHC framework
+  (see RFC 3095 for more details). Let's try to transmit compressed information
+  from node n1 to node n2.
+  
+  Each node got a compressor and a decompressor. Compressor A compresses data,
+  sends it to decompressor A (1) that then decompresses it. Compressor A and
+  decompressor A make a pair. If decompressor A wants to send some feedback
+  information to compressor A, it asks the same-side associated compressor B
+  to transmit it (2). Compressor B transmits the feedback information to
+  decompressor B (3). When decompressor B receives the feedback, it gives that
+  information to the same-side associated compressor A (4).
+  
+            node n1                                 node n2
+   +---------------------+                 +---------------------+
+   |                     |                 |                     |
+   | +----------------+  |                 | +----------------+  |
+   | |  compressor A  |--------(1)---------->| decompressor A |  |
+   | +----------------+  |                 | +----------------+  |
+   |         ^           |                 |         | (2)       |
+   |         | (4)       |                 |        \/           |
+   | +----------------+  |                 | +----------------+  |
+   | | decompressor B |<-------(3)---------->|  compressor B  |  |
+   | +----------------+  |                 | +----------------+  |
+   |                     |                 |                     |
+   +---------------------+                 +---------------------+
+  
+  The change in source code is related to steps (3) and (4). When decompressor B
+  decompresses the feedback information emitted by compressor B on behalf of
+  decompressor A, decompressor B used to automatically gives the feedback information
+  to compressor A in a transparent way (ie. no user interaction). Decompressor B
+  used to call rohc_comp_deliver_feedback(compressor A, feedback) directly.
+  
+  This used to have a major drawback: the compression (compressor A) and
+  decompression (decompressor B) actions on one single node couldn't be run in
+  separate threads. The decompression action could modify the compression context
+  with no synchronisation mechanism at all, so thread cannot be used efficiently.
+  
+  Now, at step (4), the feedback information transmitted by decompressor A to its
+  remote peer compressor A can now be retrieved thanks to an additional parameter
+  added to the rohc_decompress3() function:
+  
+  	int rohc_decompress3(struct rohc_decomp *const decomp,
+  	                     const struct rohc_buf rohc_packet,
+  	                     struct rohc_buf *const uncomp_packet,
+  	                     struct rohc_buf *const rcvd_feedback);
+  
+  By removing the direct call, the user gets in charge of retrieving the received
+  feedback during decompression and delivering it to the related compressor. The
+  user gains control on the feedback transmission and can use locks if needed.
+  
+  To achieve this, feedback-related code was reworked:
+   * rohc_comp_deliver_feedback2() is introduced to accept a struct rohc_buf as
+     parameter and accept several feedback items at once.
+   * code for parsing feedback is now shared between compression and decompression
+     libraries (it is located in common, files feedback_parse.c/h).
+   * code for creating feedback was moved from src/decomp/feedback.c/h to
+     src/decomp/feedback_create.c/h
+   * ROHC_FEEDBACK_ONLY return code is not returned any more by rohc_decompress3()
+  	because checking whether rcvd_feedback is empty gives the same information.
+   * ROHC_NON_FINAL_SEGMENT return code is not returned any more by rohc_decompress3()
+  	because we can now check if uncomp_packet is empty or not, this gives the same
+  	information.
+------------------------------------------------------------
+revno: 1147
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-05-24 14:06:50 +0200
+message:
+  decompression: correctly handle padding bytes
+  
+  Padding bytes are located at the very beginning of the ROHC packet if there
+  is any of them. They must be followed by feedback data and/or a ROHC header.
+  One padding-only ROHC packet is not valid.
+  
+  Add a new test for padded ROHC packets:
+   * 1-byte padding + IR
+   * 1-byte padding + feedback
+   * 2-byte padding + feedback
+   * 1-byte padding + feedback + IR
+   * 5-byte padding
+  The first 4 use cases shall succeed, the last one shall fail.
+------------------------------------------------------------
+revno: 1146
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-05-24 14:05:02 +0200
+message:
+  test coverage: do not include files from outside of the projects in HTML report
+  
+  With the --root option, zcov puts /usr/include/*.h files in the HTML report.
+------------------------------------------------------------
+revno: 1145
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-05-24 14:04:31 +0200
+message:
+  [minor] fix the description of the decompress_feedback_only test
+------------------------------------------------------------
+revno: 1144
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-05-24 12:46:43 +0200
+message:
+  decompressor: remove the counter of feedback-only packets received
+  
+  The statistic doesn't mean much after all. And, the new API will make users
+  able to gather such a counter themselves if they really need to.
+------------------------------------------------------------
+revno: 1143
+author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Thu 2014-05-22 08:35:52 +0200
+message:
+  Do not build and run tests in src/ subdirs if --disable-rohc-tests is specified
+------------------------------------------------------------
+revno: 1142
+author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Thu 2014-05-22 08:33:00 +0200
+message:
+  Fix build on x86_64 with GCC 4.6.
+------------------------------------------------------------
+revno: 1141
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Tue 2014-05-20 20:06:55 +0200
+message:
+  Fix bug #1321398: "please define a callback for random numbers" printed even if callback is set
+  https://bugs.launchpad.net/rohc/+bug/1321398
+  
+  Move the definition of the default callback (print on stdout) at the very end
+  of the rohc_comp_new() function to avoid printing the warning because of the
+  traces emitted by the last initialisation actions.
+------------------------------------------------------------
+revno: 1140
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-05-18 20:18:06 +0200
+message:
+  Remove some remaining \n at the very end of traces.
+------------------------------------------------------------
+revno: 1139
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-05-18 20:10:06 +0200
+message:
+  Make d_decode_header() and all the decode() callbacks use struct rohc_buf
+------------------------------------------------------------
+revno: 1138
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-05-18 20:08:21 +0200
+message:
+  rohc_buf: introduce new macro rohc_buf_byte() for getting next byte in the buffer
+------------------------------------------------------------
+revno: 1137
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-05-18 20:07:32 +0200
+message:
+  rohc_buf: rename offset_s into offset_abs for better understanding in assertions
+------------------------------------------------------------
+revno: 1136
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-05-18 18:25:30 +0200
+message:
+  Remove some remaining \n at the very end of traces.
+------------------------------------------------------------
+revno: 1135
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-05-18 14:28:16 +0200
+message:
+  TCP profile: always transmit ACK number even if ACK flag = 0
+  
+  This change almost completely reverts change at revision 1086 entitled:
+    TCP profile: do not transmit ACK number if ACK flag = 0 and ACK number = 0
+  
+  The revert is required because this optimisation cannot handle correctly the
+  case where N subsequent TCP packets are sent with ACK flag = 0 and the very
+  same non-zero ACK number. If N is large enough, the variable_length_32_enc()
+  encoding method will need 0 bit to be transmitted (static behavior), but the
+  decompressor will mistaken it as ACK number = 0. Optimisation is not possible
+  in all cases, so remove it.
+------------------------------------------------------------
+revno: 1134
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-05-18 14:27:21 +0200
+message:
+  Remove some remaining \n at the very end of traces.
+------------------------------------------------------------
+revno: 1133
+author: Simon Paillard <spaillard@debian.org>
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Fri 2014-05-16 18:44:46 +0200
+message:
+  Update FSF address
+  
+  FSF changed of address:
+   * old: 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+   * new: 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+------------------------------------------------------------
+revno: 1132
+author: Jim McKim <james.h.mckim@nasa.gov>
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Fri 2014-05-16 18:13:25 +0200
+message:
+  Fix bug #1319889: missing 'extern "C"' closure in header
+  https://bugs.launchpad.net/rohc/+bug/1319889
+  
+  The file src/common/rohc_time.h has an opening
+  
+  #ifdef __cplusplus
+  extern "C"
+  {
+  #endif
+  
+  but no corresponding closing brace. When this header is included in a C++
+  application, it causes the compilation to always fail.
+  
+  Thanks to James McKim for the bug report and fix!
+------------------------------------------------------------
+revno: 1131
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-05-11 21:36:27 +0200
+message:
+  Fix build on Windows: replace ssize_t by int
+  
+  The type ssize_t is not available on Windows.
+------------------------------------------------------------
+revno: 1130
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-05-11 14:09:15 +0200
+message:
+  fix format strings to build without warnings on x86_64
+------------------------------------------------------------
+revno: 1129
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-05-11 14:05:35 +0200
+message:
+  Use the new network buffer for decompression API: introduce rohc_decompress3()
+  
+  The rohc_decompress3() function provides the same features as rohc_decompress2()
+  but it is based on the new network buffer (struct rohc_buf). The network buffer
+  gathers the packet buffer, the packet length and the packet timestamp. Both for
+  compressed and uncompressed packets.
+  
+  So rohc_decompress2() signature with 7 parameters:
+  
+  	int rohc_decompress2(struct rohc_decomp *const decomp,
+  	                     const struct rohc_ts arrival_time,
+  	                     const unsigned char *const rohc_packet,
+  	                     const size_t rohc_packet_len,
+  	                     unsigned char *const uncomp_packet,
+  	                     const size_t uncomp_packet_max_len,
+  	                     size_t *const uncomp_packet_len);
+  
+  is reduced to rohc_decompress3() signature with only 3 parameters:
+  
+  	int rohc_decompress3(struct rohc_decomp *const decomp,
+  	                     const struct rohc_buf rohc_packet,
+  	                     struct rohc_buf *const uncomp_packet);
+  
+  The rohc_decompress3() signature is much more simpler and clearer than the one
+  of rohc_decompress2(). That's a great improvement!
+------------------------------------------------------------
+revno: 1128
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-05-11 13:56:51 +0200
+message:
+  decompression: check the length of the uncompressed buffer before writing in it
+  
+  Not all decompression/decoding functions check for the length of the uncompressed
+  buffer before writing uncompressed bytes in it. Add some more checks. Some cases
+  without check still exist, especially in the Uncompressed and TCP profiles.
+------------------------------------------------------------
+revno: 1127
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-05-11 13:52:14 +0200
+message:
+  Improve documentation of rohc_compress3() and rohc_compress4()
+------------------------------------------------------------
+revno: 1126
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-05-11 13:51:38 +0200
+message:
+  check for rohc_packet_len != NULL in rohc_decompress2() and rohc_decompress3()
+------------------------------------------------------------
+revno: 1125
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-05-11 11:31:37 +0200
+message:
+  Use the new network buffer for the segment part of the compression API
+  
+  The rohc_comp_get_segment2() function provides the same features as the
+  rohc_comp_get_segment() function but it is based on the new network buffer
+  (struct rohc_buf). The network buffer gathers the packet buffer, the packet
+  length and the packet timestamp.
+  
+  So rohc_comp_get_segment() signature with 4 parameters:
+  
+  	int rohc_comp_get_segment(struct rohc_comp *const comp,
+  	                          unsigned char *const segment,
+  	                          const size_t max_len,
+  	                          size_t *const len);
+  
+  is reduced to rohc_comp_get_segment2() signature with only 2 parameters:
+  
+  	int rohc_comp_get_segment2(struct rohc_comp *const comp,
+  	                           struct rohc_buf *const segment);
+  
+  The rohc_comp_get_segment2() signature is much more simpler and clearer than
+  the one of rohc_comp_get_segment().
+  
+  More to come on other API functions with too many parameters.
+------------------------------------------------------------
+revno: 1124
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-05-10 21:23:27 +0200
+message:
+  Make rohc_dump_packet() use the new network buffer rohc_buf
+  
+  Rename the old rohc_dump_packet() into rohc_dump_buf().
+------------------------------------------------------------
+revno: 1123
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-05-10 21:13:47 +0200
+message:
+  Use the new network buffer for compression API: introduce rohc_compress4()
+  
+  the rohc_compress4() function provides the same features as rohc_compress3()
+  but it is based on the new network buffer (struct rohc_buf). The network
+  buffer gathers the packet buffer, the packet length and the packet timestamp.
+  Both for uncompressed and compressed packets.
+  
+  So rohc_compress3() signature with 7 parameters:
+  
+  	int rohc_compress3(struct rohc_comp *const comp,
+  	                   const struct rohc_ts arrival_time,
+  	                   const unsigned char *const uncomp_packet,
+  	                   const size_t uncomp_packet_len,
+  	                   unsigned char *const rohc_packet,
+  	                   const size_t rohc_packet_max_len,
+  	                   size_t *const rohc_packet_len);
+  
+  is reduced to rohc_compress4() signature with only 3 parameters:
+  
+  	int rohc_compress4(struct rohc_comp *const comp,
+  	                   const struct rohc_buf uncomp_packet,
+  	                   struct rohc_buf *const rohc_packet);
+  
+  The rohc_compress4() signature is much more simpler and clearer than the one
+  of rohc_compress3(). That's a great improvement!
+  
+  More to come on other API functions with too many parameters.
+------------------------------------------------------------
+revno: 1122
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-05-10 20:57:26 +0200
+message:
+  Add a network buffer implementation
+  
+  A network buffer may represent one uncompressed packet, one ROHC packet, or one
+  ROHC feedback.
+  
+  The network buffer does not contain the packet data itself. It only has a
+  pointer on it. This is designed this way for performance reasons: no copy
+  required to initialize a network buffer, the struct is small and may be passed
+  as copy to function.
+  
+  The network buffer is able to keep some free space at its beginning. The
+  unused space at the beginning of the buffer may be used to prepend a network
+  header at the very end of the packet handling.
+  
+  The beginning of the network buffer may also be shifted forward and backward
+  with the rohc_buf_shift function. This is useful when parsing a network packet
+  (once bytes are read, shift them forward) for example.
+  
+  The network buffer may be initialized manually by filling all the fields of the
+  struct or with the helper functions rohc_buf_init_empty or rohc_buf_init_full.
+------------------------------------------------------------
+revno: 1121
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-05-10 20:50:41 +0200
+message:
+  The rohc_get_seconds function is needed only for deprecated parts of the API
+------------------------------------------------------------
+revno: 1120
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-05-10 20:35:12 +0200
+message:
+  Q&A: move struct rohc_ts from rohc.h to rohc_time.h
+  
+  rohc_time.sh already existed and was an internal-only header, so move it
+  to rohc_time_internal.h
+------------------------------------------------------------
+revno: 1119
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-05-10 19:24:48 +0200
+message:
+  compression: check the length of the ROHC buffer before writing in it
+  
+  Not all compression/encoding functions check for the length of the ROHC buffer
+  before writing ROHC bytes in it. Add some more checks. Some cases without check
+  probably still exist, especially in the TCP profile.
+------------------------------------------------------------
+revno: 1118
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-05-10 19:07:46 +0200
+message:
+  fix test test_piggybacking_feedback after change at revision 1102
+  
+  Revision 1102 make the ROHC compressor use the Uncompressed profile if IPv4
+  checksum is incorrect. The test_piggybacking_feedback test sets an incorrect
+  IPv4 checksum so the compression was not performed with the expected IP-only
+  profile anymore. This change fixes the IPv4 checksum in the test.
+------------------------------------------------------------
+revno: 1117
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-05-10 14:57:04 +0200
+message:
+  fix simple_rohc_program example after change at revision 1102
+  
+  Revision 1102 make the ROHC compressor use the Uncompressed profile if IPv4
+  checksum is incorrect. The simple_rohc_program sets an incorrect IPv4 checksum
+  so the compression was not performed with the expected IP-only profile anymore.
+  This change fixes the IPv4 checksum in the simple_rohc_program.
+------------------------------------------------------------
+revno: 1116
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-05-10 12:02:40 +0200
+message:
+  doc: add several feedback-related functions to the compression API
+  
+  The following functions were not documented as part of the compression API:
+  	c_piggyback_feedback
+  	rohc_comp_piggyback_feedback
+  	c_deliver_feedback
+  	rohc_comp_deliver_feedback
+------------------------------------------------------------
+revno: 1115
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Fri 2014-05-09 20:14:23 +0200
+message:
+  external non-regression tests: do not report malformed packets as failures.
+------------------------------------------------------------
+revno: 1114
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Fri 2014-05-09 20:07:44 +0200
+message:
+  TCP profile: remove useless pointer addresses in traces
+------------------------------------------------------------
+revno: 1113
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Fri 2014-05-09 19:45:20 +0200
+message:
+  traces: do not specify the \n at the end of every trace, add it automatically
+  
+  This makes traces shorter by 2 characters, so they often fit better on the
+  80-column lines. This saves characters and lines.
+------------------------------------------------------------
+revno: 1112
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Fri 2014-05-09 18:03:46 +0200
+message:
+  TCP profile: avoid calling rohc_ntoh32() too many times in the same function
+  
+  It makes code clearer, and saves some lines.
+------------------------------------------------------------
+revno: 1111
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Fri 2014-05-09 17:32:44 +0200
+message:
+  TCP profile: shorten ack_number* variables into ack_num* variables
+------------------------------------------------------------
+revno: 1110
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Fri 2014-05-09 17:13:16 +0200
+message:
+  TCP profile: shorten seq_number* variables into seq_num* variables
+------------------------------------------------------------
+revno: 1109
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Fri 2014-05-09 16:04:06 +0200
+message:
+  Q&A: shorten the parse_extension3() generic callback into parse_ext3()
+------------------------------------------------------------
+revno: 1108
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Fri 2014-05-09 15:57:54 +0200
+message:
+  pkg-config: re-add -lrohc_decomp -lrohc_comp -lrohc_common in addition to -lrohc
+------------------------------------------------------------
+revno: 1107
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Fri 2014-05-09 15:56:37 +0200
+message:
+  add shortcuts rohc_decomp_warn() and rd_list_warn() for rohc_warning()
+  
+  The macro rohc_decomp_warn() may be used with a decompression context as first
+  parameter to log a warning trace with the context profile.
+  
+  The macro rd_list_warn() may be used with a list decompression context as first
+  parameter to log a warning trace with the profile associated to the list
+  decompression context.
+------------------------------------------------------------
+revno: 1106
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Fri 2014-05-09 15:53:12 +0200
+message:
+  sniffer: remove useless ip_fast_csum() after change at revision 1102
+------------------------------------------------------------
+revno: 1105
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Thu 2014-05-08 23:44:57 +0200
+message:
+  make feedback parsing at compressor more robust
+  
+  * put FEEDBACK-2 parsing in a dedicated function
+  * check the length of FEEDBACK-2 options
+  * better report feedback errors
+  * warn about malformed FEEDBACK-1 option for Uncompressed profile
+------------------------------------------------------------
+revno: 1104
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Thu 2014-05-08 22:07:26 +0200
+message:
+  add shortcuts rohc_comp_warn() and rohc_comp_list_warn() for rohc_warning()
+  
+  The macro rohc_comp_warn() may be used with a compression context as first
+  parameter to log a warning trace with the context profile.
+  
+  The macro rohc_comp_list_warn() may be used with a list compression context
+  as first parameter to log a warning trace with the profile associated to the
+  list compression context.
+------------------------------------------------------------
+revno: 1103
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Thu 2014-05-08 21:07:18 +0200
+message:
+  cleanup: merge rohc_comp_find_context_from_packet() and c_find_context()
+  
+  Merge the rohc_comp_find_context_from_packet() and c_find_context() functions
+  into a single rohc_comp_find_ctxt() function. This avoid having 2 functions
+  with similar names doing 2 different parts of the same job.
+------------------------------------------------------------
+revno: 1102
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Thu 2014-05-08 20:40:04 +0200
+message:
+  use the Uncompressed profile if IPv4 checksum is incorrect
+  
+  If the IPv4 checksum is incorrect (both for outer or inner IP header), the ROHC
+  compression/decompression won't be able to transmit the packet unchanged byte
+  per byte. The IPv4 checksum will be computed correctly at decompressor and it
+  won't match the original one.
+  
+  To avoid this, verify the IPv4 checksums at compressor and avoid to use the
+  IP-based profiles if at least one of them is incorrect. Use the Uncompressed
+  profile instead.
+  
+  This behaviour is the safest way to go. However, verifying the checksums might
+  be time consuming and might degrade the CPU performances, so add a compressor
+  feature to disable that verification. The feature is named:
+  	ROHC_COMP_FEATURE_NO_IP_CHECKSUMS
+  It may be set with API function rohc_comp_set_features().
+------------------------------------------------------------
+revno: 1101
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Thu 2014-05-08 20:33:19 +0200
+message:
+  increase packet size for all tests except the tests for segmentation
+  
+  The non-regression test fails with > (5 * 1024) packets because the buffer
+  is too small. Increase it to the largest possible value for IP: 65535
+------------------------------------------------------------
+revno: 1100
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Thu 2014-05-08 19:08:15 +0200
+message:
+  Q&A: rename 'struct c_context' into 'struct rohc_comp_ctxt'
+------------------------------------------------------------
+revno: 1099
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Thu 2014-05-08 18:46:06 +0200
+message:
+  Q&A: rename 'struct d_context' into 'struct rohc_decomp_ctxt'
+------------------------------------------------------------
+revno: 1098
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Thu 2014-05-08 18:35:25 +0200
+message:
+  Q&A: rename 'struct c_profile' into 'struct rohc_comp_profile'
+------------------------------------------------------------
+revno: 1097
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Thu 2014-05-08 18:22:58 +0200
+message:
+  Q&A: rename 'struct d_profile' into 'struct rohc_decomp_profile'
+------------------------------------------------------------
+revno: 1096
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Thu 2014-05-08 18:09:20 +0200
+message:
+  Q&A: use C99 style for the definitions of decompression profiles
+  
+  Also reorder and rename some of the profile methods:
+   * allocate_decode_data -> new_context
+   * free_decode_data     -> free_context
+------------------------------------------------------------
+revno: 1095
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Thu 2014-05-08 17:49:18 +0200
+message:
+  Q&A: use C99 style for the definitions of profiles
+------------------------------------------------------------
+revno: 1094
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Thu 2014-05-08 17:28:06 +0200
+message:
+  Q&A: add -Wunused-function -Wunused-variable compiler flags by default
+------------------------------------------------------------
+revno: 1093
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Thu 2014-05-08 17:09:46 +0200
+message:
+  add copyright information to all source files
+  
+  Copyright information retrieved automatically from VCS history and then from
+  my memory for copyright holders that are not committors.
+------------------------------------------------------------
+revno: 1092
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2014-05-07 20:41:49 +0200
+message:
+  TCP profile: do not use seq_8 packet if > 15 bits of ACK are required
+------------------------------------------------------------
+revno: 1091
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2014-05-05 20:32:08 +0200
+message:
+  TCP profile shall use co_common if window changed and ACK number requires > 18 bits
+------------------------------------------------------------
+revno: 1090
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2014-05-05 20:08:44 +0200
+message:
+  TCP profile: add in TODO list that IR and IR-DYN CRC should be checked
+------------------------------------------------------------
+revno: 1089
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2014-05-05 20:07:17 +0200
+message:
+  TCP profile: report ROHC_ERROR_CRC in case of CRC mismatch
+------------------------------------------------------------
+revno: 1088
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2014-05-05 20:06:40 +0200
+message:
+  TCP profile: always transmit 32 bits of ACK number in IR state
+------------------------------------------------------------
+revno: 1087
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2014-05-05 20:05:54 +0200
+message:
+  TCP profile: do not add sequence/ACK numbers twice in W-LSB window.
+------------------------------------------------------------
+revno: 1086
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2014-05-05 20:04:42 +0200
+message:
+  TCP profile: do not transmit ACK number if ACK flag = 0 and ACK number = 0
+------------------------------------------------------------
+revno: 1085
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-04-27 19:15:21 +0200
+message:
+  TCP profile: do not compute the scaled TCP sequence number if the TCP payload is empty
+------------------------------------------------------------
+revno: 1084
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-04-27 18:33:31 +0200
+message:
+  TCP profile: transmit the compressed list several times after a change.
+------------------------------------------------------------
+revno: 1083
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-04-27 18:07:05 +0200
+message:
+  TCP profile: always print choice of packet type with TRACE_GOTO_CHOICE
+  
+  The TRACE_GOTO_CHOICE macro was compiled in only if extra debug was enabled.
+  This macro doesn't take time and is very useful for debugging, so always
+  compile it.
+------------------------------------------------------------
+revno: 1082
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-04-27 17:23:05 +0200
+message:
+  TCP profile: fix build without warnings on x86_64.
+------------------------------------------------------------
+revno: 1081
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-04-27 17:19:00 +0200
+message:
+  TCP profile: fix a regression wrt W-LSB ACK number introduced at rev 1075
+------------------------------------------------------------
+revno: 1080
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-04-27 16:53:54 +0200
+message:
+  TCP profile: better handle TCP options.
+  
+  Fixes several problems related to TCP options:
+   * The TCP profile handles unknown TCP option in a different manner than other
+     options. The code that handles those unknown options was wrong. It didn't
+     choose correctly a free index for the option.
+   * The TCP profile didn't dynamically detect whether it should use 4-bit or
+     8-bit XI indexes when compressing TCP options, so compressing a TCP packet
+     with 8 or more different TCP options failed. Now, the indexes are chosen
+     during the first packet analysis and the largest index causes the 4-bit or
+     8-bit indexes to be chosen.
+   * One TCP packet may handle up to 40 bytes of TCP options. In worst case, it
+     may thus handle 40 1-byte TCP options. However, the ROHC TCP format doesn't
+     allow for more than 15 options. So, packets with 16 or more options shall
+     fallback to the IP-only profile.
+------------------------------------------------------------
+revno: 1079
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-04-27 13:03:31 +0200
+message:
+  TCP profile: compute required bits for W-LSB of seq/ack numbers before packet decision
+------------------------------------------------------------
+revno: 1078
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-04-27 12:31:12 +0200
+message:
+  TCP profile: fix endianess problem detected on PowerPC.
+------------------------------------------------------------
+revno: 1077
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-04-26 22:07:39 +0200
+message:
+  TCP profile: fix access to uninitialized memory reported by Valgrind
+------------------------------------------------------------
+revno: 1076
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-04-26 21:35:33 +0200
+message:
+  non-regression: report test failure if any warning is emitted
+  
+  This change is required to avoid missing some problems. In case of compression
+  failure with one profile (TCP profile for example), the ROHC compressor will
+  fallback on the Uncompressed profile, that will always succeed. So, the problem
+  with the first profile will remain undetected and unfixed.
+------------------------------------------------------------
+revno: 1075
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-04-26 21:34:54 +0200
+message:
+  TCP profile: the TCP ACK number shall be transmitted encoded with W-LSB
+------------------------------------------------------------
+revno: 1074
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-04-26 21:20:50 +0200
+message:
+  sniffer: correctly close the PCAP dumps upon segfault
+------------------------------------------------------------
+revno: 1073
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-04-26 21:20:22 +0200
+message:
+  Q&A: make rohc_list_item_update() static
+------------------------------------------------------------
+revno: 1072
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-04-26 21:11:51 +0200
+message:
+  List compression: size the context for the longest IPv6 extension header.
+  
+  The longest IPv6 extension header may reach (0xff + 1) * 8 = 2048 bytes. However
+  the list compression didn't handle items with more than 100 bytes. This caused
+  the ROHC compressor to fallback to the Uncompressed profile. Too bad.
+------------------------------------------------------------
+revno: 1071
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Thu 2014-04-24 22:29:31 +0200
+message:
+  Fix build on PowerPC.
+------------------------------------------------------------
+revno: 1070
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Thu 2014-04-24 20:47:16 +0200
+message:
+  Q&A: use size_t instead of int for payload_offset
+------------------------------------------------------------
+revno: 1069
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2014-04-21 19:56:44 +0200
+message:
+  non-regression: do not record logs since it hides the exit code of the test
+------------------------------------------------------------
+revno: 1068
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2014-04-21 19:49:38 +0200
+message:
+  TCP profile: fix the compressor behavior about the scaled sequence number.
+  
+  The ROHC compressor shall not transmit the scaled sequence number to the ROHC
+  decompressor if the compressor didn't transmit the unscaled sequence number to
+  the decompressor enough times after a change:
+   - the scaling factor (ie. the TCP payload length)
+   - the scaling residue (ie. the sequence number increases in an irregular way).
+------------------------------------------------------------
+revno: 1067
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2014-04-21 19:45:19 +0200
+message:
+  TCP profile: print the CRC computed on uncompressed data for CO packets.
+------------------------------------------------------------
+revno: 1066
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2014-04-21 19:36:34 +0200
+message:
+  TCP profile: do not compute payload size in co_baseheader()
+  
+  It can be done earlier, with the computation of the payload offset. It also
+  saves a function parameter.
+------------------------------------------------------------
+revno: 1065
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2014-04-21 18:05:12 +0200
+message:
+  Fix runtime failures on ARM due to alignment problems.
+------------------------------------------------------------
+revno: 1064
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2014-04-21 17:55:21 +0200
+message:
+  Fix build inter-dependencies between libraries.
+  
+  If a source file in src/decomp/schemes/ was modified, the librohc_decomp_schemes
+  library was rebuilt but the librohc_decomp and librohc libraries weren't.
+------------------------------------------------------------
+revno: 1063
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2014-04-21 15:09:41 +0200
+message:
+  Install rohc_fuzzer and rohc_rtp_fuzzer in bin/ instead of sbin/
+  
+  Thanks to symoon for the advice.
+------------------------------------------------------------
+revno: 1062
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2014-04-21 14:36:21 +0200
+message:
+  non-regression: add scripts to download and test external/personal captures.
+  
+  Sometimes we have a network capture that causes a trouble to the ROHC library.
+  We fix the problem and we would like the problem not to come back later. The
+  best way to achieve this is to put the network capture in the non-regression
+  tests.
+  
+  However, it might happen that the capture contains sensitive and personal data,
+  so uploading it in a public location is not an option. There is now an
+  alternative:
+   1/ put the capture in:
+       test/non_regression/other_inputs/personal_inputs/
+   2/ then run:
+       $ make -C test/non_regression/other_inputs/ check_personal
+  
+  However, it might happen that the capture is under copyright and cannot be
+  published with ROHC. The capture might also be huge (> 1 GB). There is now an
+  alternative:
+   1/ download the captures:
+       $ make -C test/non_regression/other_inputs/ download
+   2/ then run:
+       $ make -C test/non_regression/other_inputs/ check_external
+------------------------------------------------------------
+revno: 1061
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2014-04-21 14:20:29 +0200
+message:
+  non-regression: add option --no-tcp
+  
+  Sometimes it is handy to be able to easily disable the beta-quality TCP profile
+  during a non-regression test.
+------------------------------------------------------------
+revno: 1060
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2014-04-21 12:37:22 +0200
+message:
+  non-regression: add option --ignore-malformed
+  
+  Sometimes it is handy to be able to easily ignore malformed packets in
+  a capture during a non-regression test.
+------------------------------------------------------------
+revno: 1059
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-04-20 17:42:44 +0200
+message:
+  TCP profile: packet decision: fix silly mistake with wrong counter
+  
+  Use fo_count in FO state, not ir_count.
+------------------------------------------------------------
+revno: 1058
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-04-20 17:41:47 +0200
+message:
+  TCP profile: add debug traces in the state decision process to help debug
+------------------------------------------------------------
+revno: 1057
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-04-20 17:32:33 +0200
+message:
+  TCP profile: all rnd_X packets may be used even if TCP options are present
+  
+  The rnd_X packets are not able to transmit full TCP options, so they cannot
+  be used if the structure of the option list changes. However, a TCP packet
+  with some regular TCP options may use the rnd_X packets. The irregular chain
+  will contain the changing information.
+------------------------------------------------------------
+revno: 1056
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-04-20 17:28:34 +0200
+message:
+  TCP profile: improve traces in tcp_decide_SO_packet()
+  
+  * a debug trace should have been a warning trace.
+  * add a debug trace printing the selected packet type at the very end of the
+    function.
+------------------------------------------------------------
+revno: 1055
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-04-20 17:23:52 +0200
+message:
+  TCP profile: add debug traces about changed fields.
+  
+  It will help debugging the problems related to wrong/strange packet decisions.
+------------------------------------------------------------
+revno: 1054
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-04-20 17:21:21 +0200
+message:
+  TCP profile: simplify the way IP-ID behavior is detected
+------------------------------------------------------------
+revno: 1053
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-04-20 12:24:36 +0200
+message:
+  Fix a few license headers.
+  
+  Thanks to symoon that reported the problem.
+------------------------------------------------------------
+revno: 1052
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-04-19 17:26:19 +0200
+message:
+  Fix test build for PowerPC architecture.
+------------------------------------------------------------
+revno: 1051
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-04-19 15:43:11 +0200
+message:
+  TCP profile: print some more debug information about options encoding.
+------------------------------------------------------------
+revno: 1050
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-04-19 15:39:15 +0200
+message:
+  TCP profile: dynamic chain decoding: do not write a length field for EOL option
+  
+  If padding bytes are present at the very end of list of TCP options after the
+  EOL option, the dynamic chain contains a list item of type EOL with a 1-byte
+  field that represents the number of padding bytes. So, the EOL option (and the
+  following padding) is not always 1-byte long, it could be larger.
+  
+  If it is larger, we should not write the length in the 2nd byte: EOL is a short
+  option not a long one.
+------------------------------------------------------------
+revno: 1049
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-04-19 14:48:22 +0200
+message:
+  Describe the PACKET_* and EXT_* constants as deprecated.
+------------------------------------------------------------
+revno: 1048
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-04-19 14:44:49 +0200
+message:
+  Do not define PACKET_TCP_* constants equal to ROHC_PACKET_TCP_*
+  
+  The PACKET_* types are present for compatibility reasons only. Don't define
+  those constants for new packet types.
+------------------------------------------------------------
+revno: 1047
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-04-19 14:42:22 +0200
+message:
+  sniffer: avoid assertion when printing statistics about compressed packets.
+------------------------------------------------------------
+revno: 1046
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-04-19 14:42:01 +0200
+message:
+  Use consecutive numbers for TCP packet types.
+------------------------------------------------------------
+revno: 1045
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-04-19 14:18:13 +0200
+message:
+  autogen.sh: avoid printing a warning about missing doxy2man if it is not present
+------------------------------------------------------------
+revno: 1044
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-04-19 14:09:54 +0200
+message:
+  Fix warnings emitted by Valgrind during tests.
+------------------------------------------------------------
+revno: 1043
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-04-19 14:09:01 +0200
+message:
+  Fix the build warnings on x86_64 and the ones with clang.
+------------------------------------------------------------
+revno: 1042
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-04-19 12:56:40 +0200
+message:
+  configure: improve error messages about deprecated options.
+------------------------------------------------------------
+revno: 1041
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2014-04-16 20:13:20 +0200
+message:
+  Fix documentation because of change at revision 1038.
+------------------------------------------------------------
+revno: 1040
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2014-04-16 20:07:31 +0200
+message:
+  Fix bug #1301518: Interoperability problems with Aeroflex TM500(LTE)
+  https://bugs.launchpad.net/rohc/+bug/1301518
+  
+  For encoding variable_length_32_enc(flag), the compressed value should be
+  WLSB-encoded if indicator is 1 or 2.
+------------------------------------------------------------
+revno: 1039
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2014-04-16 20:05:57 +0200
+message:
+  Fix the dist archive: missing files.
+------------------------------------------------------------
+revno: 1038
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Tue 2014-04-15 20:56:34 +0200
+message:
+  Fix bug #1301518: Interoperability problems with Aeroflex TM500(LTE)
+  https://bugs.launchpad.net/rohc/+bug/1301518
+  
+  According to RFC 6846, the CRC of co_common, seq_X and rnd_X packets must
+  be performed on the uncompressed headers, not on the compressed headers.
+------------------------------------------------------------
+revno: 1037
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-04-13 16:30:22 +0200
+message:
+  TCP profile: greatly improve readability of compression code
+  
+  Split in separate functions:
+   - the decision to change operational state
+   - the detection of fields that changed since previous packets
+   - the compression of fields (and the number of required bits)
+   - the decision of the ROHC packet to encode
+  
+  With those changes, the main functions is much more clean :)
+  
+  Also, change the way state transitions are performed: stay during several
+  packets in IR and FO states before performing the transition to higher states.
+------------------------------------------------------------
+revno: 1036
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-04-13 13:42:42 +0200
+message:
+  TCP profile: avoid dumping the IP/TCP headers several times in a row.
+------------------------------------------------------------
+revno: 1035
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-04-13 13:39:13 +0200
+message:
+  TCP profile: do not save the decompressed TCP header in context twice
+------------------------------------------------------------
+revno: 1034
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-04-13 13:38:44 +0200
+message:
+  TCP profile: minor trace cleanup
+------------------------------------------------------------
+revno: 1033
+author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-04-13 13:08:52 +0200
+message:
+  Fix bug #1301518: Interoperability problems with Aeroflex TM500(LTE)
+  https://bugs.launchpad.net/rohc/+bug/1301518
+  
+  Tests with the TM500(LTE) equipment by Aeroflex reported a problem with
+  TCP IR packets. The IR packet is decompressed unsuccessfully with the
+  ROHC library.
+  
+  After analysis the problem was caused by the compression of TCP options.
+  The ROHC library sends the full TCP options as items (type, length, data)
+  while it should be sent compressed (see *_list_item starting at page 65
+  of RFC 6846):
+  	nop_list_item
+  	mss_list_item
+  	wscale_list_item
+  	tsopt_list_item
+  	sack_list_item
+  	sack_permitted_list_item
+  	generic_list_item
+  
+  Add the TCP stream compressed by the Aeroflex TM500(LTE) equipment as
+  interoperability and non-regression tests.
+------------------------------------------------------------
+revno: 1032
+author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-04-13 12:31:04 +0200
+message:
+  Introduce interoperability tests of the ROHC library with other implementations.
+  
+  Add a new small test tool named 'test_interop' to ease the analysis of
+  interoperability problems: it tests the interoperability of the ROHC
+  library with other implementation.
+  
+  The tool takes one ROHC flow and one related uncompressed flow (the
+  ROHC being generated by another ROHC implementation from the
+  uncompressed flow) as input and checks whether the ROHC library is
+  able to decompress the ROHC flow the same way the other equipment.
+  
+  Also add 2 couples of network captures from the Aeroflex TM500 equipment.
+  The ROHC library currently fails to decompress them correctly.
+------------------------------------------------------------
+revno: 1031
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-04-13 12:11:28 +0200
+message:
+  Constants that define lengths shall use unsigned integers.
+------------------------------------------------------------
+revno: 1030
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-04-13 12:10:46 +0200
+message:
+  Do not include test.h in applications located under apps/.
+------------------------------------------------------------
+revno: 1029
+author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Tue 2014-04-08 20:32:28 +0200
+message:
+  TCP profile: consider IP-ID as sequential at the beginning
+  
+  Be optimistic at the beginning of a TCP stream: consider the IP-ID behavior as
+  sequential instead of random.
+------------------------------------------------------------
+revno: 1028
+author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-04-06 13:25:05 +0200
+message:
+  Add a new example for port-based and callback-based detection of RTP packets.
+------------------------------------------------------------
+revno: 1027
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-03-23 20:03:24 +0100
+message:
+  rohc_stats: minor factorization
+------------------------------------------------------------
+revno: 1026
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-03-23 19:45:39 +0100
+message:
+  Create a ROHC stats application from the ./statistics/* tests.
+  
+  The tests located in the ./statistics/ subdir were n,ot very useful. The
+  compression statistics generated from the testing captures were not
+  representative of any real-world traffic.
+  
+  In addition, it was difficult to generate the statistics for a network
+  capture that was not a test capture:
+   - the ./statistics/generate_statistics binary was not enough to generate
+      interesting graphs,
+   - the ./statistics/generate_statistics.sh script was able to generate
+     interesting graphs but it was designed to get network captures from a
+     fixed location (non-regression tests).
+  
+  The new ROHC stats application is not run as a autotools test anymore. It
+  may be run against any network capture easily. It doesn't generate graphs
+  but the ./app/stats/rohc_stats.sh shell script is able to do so for one
+  single capture.
+------------------------------------------------------------
+revno: 1025
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-03-23 19:44:35 +0100
+message:
+  minor: avoid whitespace in the descriptions of packet types.
+------------------------------------------------------------
+revno: 1024
+author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-03-23 17:44:30 +0100
+message:
+  Q&A: export only public symbols for libraries.
+------------------------------------------------------------
+revno: 1023
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-03-23 17:34:36 +0100
+message:
+  Deprecate API function user_interactions()
+  
+  The function is used to define the maxval value for the feedback rate-limit
+  mechanism. The rate-limit mechanism is not conform to RFC, it will be
+  reworked soon. So, deprecate the function now to avoid changing the API
+  again after 1.7.0.
+------------------------------------------------------------
+revno: 1022
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-03-23 17:13:05 +0100
+message:
+  Q&A: do not export symbol lsb_masks, make it private to rfc4996.[ch]
+------------------------------------------------------------
+revno: 1021
+author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-03-23 17:09:43 +0100
+message:
+  non-regression: add the --no-comparison option
+  
+  If the --no-comparison option is specified, the test doesn't exit with non-zero
+  code if the comparison of the generated ROHC packets with a reference is not
+  possible (eg. option -c not specified).
+------------------------------------------------------------
+revno: 1020
+author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-03-23 17:06:56 +0100
+message:
+  W-LSB: compute the minimum number of required bits for all values in window
+  
+  The ROHC decompressor shall be able to decode the W-LSB-compressed value with
+  any reference value in the compressor window. The compressor computed the
+  minimum number of required bits based on the minimum and maximum values of the
+  window, but it is wrong: the compressor shall compute the minimum number of
+  required bits based on all the values in the window.
+  
+  Example with window values: { 4294961711, 4294961715, 2623, 2632 }
+  The minimum number of required bits was computed based on the minimum
+  value (2623) and the maximum value (4294961715). This is wrong because a
+  wraparound happened: minimum is 4294961715 and maximum is 2632.
+  
+  Because it is difficult to reliabily detect a wraparound (think about
+  reordering), better compute the minimum number of required bits based on all
+  values in the window, and keep only the greatest.
+------------------------------------------------------------
+revno: 1019
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-03-23 17:03:37 +0100
+message:
+  Enhance test_wlsb_wraparound with a new failure case.
+  
+  After a wraparound, a duplicate value is encoded/decoded with W-LSB and shirt
+  parameter -1.
+------------------------------------------------------------
+revno: 1018
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-03-23 16:40:04 +0100
+message:
+  Q&A: factorize code in test_wlsb_wraparound
+------------------------------------------------------------
+revno: 1017
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-03-23 15:29:49 +0100
+message:
+  Deprecate the ROHC over UDP tunnel.
+  
+  From https://answers.launchpad.net/rohc/+question/245813:
+    I have just decided to deprecate the ROHC over UDP tunnel. I don't use it for
+    testing for a long time. I now use the sniffer and fuzzer tools for that. They
+    are much better. For the tunnel features, the IP/ROHC tunnel now supersedes
+    the ROHC over UDP tunnel: the IP/ROHC tunnel is designed for efficiency and
+    may be used in production.
+    So, next 1.7.0 version of the ROHC library will still contain the ROHC over
+    UDP tunnel but a deprecation warning will be present in the wiki, in the
+    sources, in the configure script, in the program usage, and in program man
+    page. The version after will completely remove the ROHC over UDP tunnel from
+    the sources.
+------------------------------------------------------------
+revno: 1016
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2014-03-19 20:46:52 +0100
+message:
+  Q&A: fix warnings of the clang static analyzer about idempotent operations.
+------------------------------------------------------------
+revno: 1015
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-03-09 11:39:50 +0100
+message:
+  Q&A: improve fixes for Clang static analyzer to handle Linux kernel without any warning.
+------------------------------------------------------------
+revno: 1014
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2014-03-09 11:30:51 +0100
+message:
+  Fix build warnings with GCC versions 4.0.x, 4.3.x and 4.4.x
+------------------------------------------------------------
+revno: 1013
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-03-08 20:04:45 +0100
+message:
+  Q&A: fix or silent many warnings reported by the clang static analyzer
+------------------------------------------------------------
+revno: 1012
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-03-08 19:01:17 +0100
+message:
+  cleanup: remove some debug traces that were left behind...
+------------------------------------------------------------
+revno: 1011
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-03-08 16:56:17 +0100
+message:
+  man pages: handle parallel make when using help2man AND out-of-source builds
+  
+  Revision 1009 broke out-of-source builds.
+------------------------------------------------------------
+revno: 1010
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-03-08 16:50:35 +0100
+message:
+  autogen.sh: use configure option --enable-doc-man if doxy2man is found on system
+------------------------------------------------------------
+revno: 1009
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-03-08 16:47:10 +0100
+message:
+  man pages: handle parallel make when using help2man
+  
+  The man pages of the apps are built with a tool named help2man. help2man runs
+  the app binary with --help as argument and generates a man page from the output.
+  For this process to work fine the app binary shall be built before help2man is
+  called. With parallel make (-j5 for example) this was not properly ensured. This
+  patch adds a make dependency on the app binaries.
+------------------------------------------------------------
+revno: 1008
+author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Fri 2014-03-07 18:40:22 +0100
+message:
+  Fix bashisms in non-regression shell script.
+------------------------------------------------------------
+revno: 1007
+author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Fri 2014-03-07 17:16:55 +0100
+message:
+  Add compatibility mode with ROHC library 1.6.x.
+  
+  * add new rohc_comp_set_features() API
+  * add compressor feature ROHC_COMP_FEATURE_COMPAT_1_6_x
+  * add decompressor feature ROHC_DECOMP_FEATURE_COMPAT_1_6_x
+  * if ROHC_COMP_FEATURE_COMPAT_1_6_x feature is on, do not use W-LSB to
+    encode the unscaled RTP TS field.
+  * if ROHC_DECOMP_FEATURE_COMPAT_1_6_x feature is on, do not use W-LSB to
+    decode the unscaled RTP TS field.
+------------------------------------------------------------
+revno: 1006
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2014-03-05 23:00:48 +0100
+message:
+  Q&A: build library with -Wunreachable-code
+  
+  GCC doesn't provide the option any more, but Clang does.
+------------------------------------------------------------
+revno: 1005
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2014-03-05 22:17:44 +0100
+message:
+  Fix build warnings emitted by GCC/Clang on x86_64, PowerPC or ARM because of -Wextra
+------------------------------------------------------------
+revno: 1004
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2014-03-05 22:11:06 +0100
+message:
+  Q&A: avoid a dubious construct in the TCP decompression profile
+------------------------------------------------------------
+revno: 1003
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2014-03-05 21:23:16 +0100
+message:
+  Q&A: build library with -Wextra
+------------------------------------------------------------
+revno: 1002
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Tue 2014-03-04 22:47:27 +0100
+message:
+  cleanup: rename c_get_profile_from_id() into rohc_get_profile_from_id()
+  
+  Also change the type of parameter profile_id_hint from int to rohc_profile_t
+------------------------------------------------------------
+revno: 1001
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Tue 2014-03-04 22:14:14 +0100
+message:
+  repaire on CRC failure: replace hardcoded value 10 by ROHC_MAX_ARRIVAL_TIMES
+------------------------------------------------------------
+revno: 1000
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Tue 2014-03-04 22:08:52 +0100
+message:
+  non-regression: factorize the creation of compressors and decompressors
+------------------------------------------------------------
+revno: 999
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Tue 2014-03-04 21:48:48 +0100
+message:
+  non-regression test: get rid of XML output
+  
+  The non-regression used to output its logs and results in XML. It was used by
+  several shell scripts and a XSLT processor in first library versions (1.0.x,
+  1.1.x, and 1.2.x). XML output is now useless.
+------------------------------------------------------------
+revno: 998
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Tue 2014-01-07 21:53:06 +0100
+message:
+  Q&A: constify some pointers of the public API
+------------------------------------------------------------
+revno: 997
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Tue 2014-01-07 20:24:14 +0100
+message:
+  API: shorten struct rohc_timestamp into struct rohc_ts
+  
+  We may safely change it without breaking the API since it wasn't published
+  in any official release yet.
+------------------------------------------------------------
+revno: 996
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-01-04 23:53:08 +0100
+message:
+  cleanup: define and update some packet counters only if deprecated API is enabled.
+------------------------------------------------------------
+revno: 995
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-01-04 20:19:45 +0100
+message:
+  cleanup: remove the unused 2-bit and 6-bit CRC.
+------------------------------------------------------------
+revno: 994
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-01-04 19:56:05 +0100
+message:
+  cleanup: factorize code with c_generic_detect_changes()
+------------------------------------------------------------
+revno: 993
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-01-04 19:31:24 +0100
+message:
+  cleanup: factorize code with rohc_comp_find_context_from_packet()
+------------------------------------------------------------
+revno: 992
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-01-04 18:53:59 +0100
+message:
+  Fix build with mingw32/64.
+------------------------------------------------------------
+revno: 991
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-01-04 17:52:54 +0100
+message:
+  cleanup: merge rohc_is_ipv6_opt() and rohc_ip_is_ext(), disable AH and GRE
+  
+  Disable the AH, GRE, MINE and ESP support for the moment. They are not
+  supported, so don't recognize them as IP extention headers.
+------------------------------------------------------------
+revno: 990
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-01-04 16:51:50 +0100
+message:
+  cleanup: rename c_init_header_info() into ip_header_info_new(), add ip_header_info_free()
+------------------------------------------------------------
+revno: 989
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-01-04 16:50:02 +0100
+message:
+  cleanup: factorize code for static/dynamic parts for IR and IR-DYN packets
+------------------------------------------------------------
+revno: 988
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-01-04 16:31:17 +0100
+message:
+  cleanup: remove the unused struct ip6_ahhdr
+------------------------------------------------------------
+revno: 987 [merge]
+author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-01-04 16:09:42 +0100
+message:
+  Fix bug #1265304: RTP decompression failure with repeated constant TS
+  https://bugs.launchpad.net/rohc/+bug/1265304
+  
+  If RTP TS is constant, it must be transmitted uncompressed. It is however sent
+  encoded with W-LSB. So, given enough RTP packets with the same constant RTP TS
+  value, 0 bit are needed by the decompressor to decode the value. As it is
+  forbidden to not sent at least 1 bit of TS when it is constant, the compressor
+  forces the transmission of 1 bit.
+  In the meanwhile, the TS bits to send were reset, so the compressor sends
+  bits(TS) = 0. That's wrong. The TS bit shall be extracted again from the
+  uncompressed TS in such a case.
+  
+  In addition to the bug fox, improve a little bit the robustness by sending
+  7 bits of TS instead of 1. The field is sent encoded in SDVL, so 1 or 7 bits
+  take 1 byte. Better send 7 bits!
+    ------------------------------------------------------------
+    revno: 984.1.3
+    committer: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+    branch nick: rohc-main
+    timestamp: Fri 2014-01-03 19:50:11 +0100
+    message:
+      Fix bug #1265304: RTP decompression failure with repeated constant TS
+      https://bugs.launchpad.net/rohc/+bug/1265304
+      
+      If RTP TS is constant, it must be transmitted uncompressed. It is however sent
+      encoded with W-LSB. So, given enough RTP packets with the same constant RTP TS
+      value, 0 bit are needed by the decompressor to decode the value. As it is
+      forbidden to not sent at least 1 bit of TS when it is constant, so the compressor
+      forces the transmission of 1 bit. In the meanwhile, the TS bits were reset, so
+      the compressor sends bits(TS) = 0. That's wrong. The TS bit shall be extracted
+      again from the uncompressed TS in such a case.
+      
+      Improve a little bit the robustness by sending 7 bits of TS instead of 1. The
+      field is sent encoded in SDVL, so 1 or 7 bits take 1 byte. Better send 7 bits!
+------------------------------------------------------------
+revno: 986 [merge]
+author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-01-04 16:07:49 +0100
+message:
+  huge cleanup: parse IP headers/extensions once, factorize many related code
+  
+  * do our best to parse the IP headers and their extension headers only once
+  * this helps to avoid access to initialized memory in case of malformed
+    uncompressed headers
+  * factorize code from the create/check_profile/check_context/encode functions
+    of the IP-only, IP/UDP, UIP-UDP-Lite, ESP and IP/UDP/RTP profiles in the
+    generic module
+  * introduce the net_pkt structure to gather the outer IP header, the inner IP
+    header, the transport layer, and the packet hash key together: it decreases
+    the number of arguments passed to many functions, thus making the code clearer
+    ------------------------------------------------------------
+    revno: 984.1.2
+    committer: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+    branch nick: rohc-main
+    timestamp: Fri 2014-01-03 19:41:02 +0100
+    message:
+      huge cleanup: parse IP headers/extensions once, factorize many related code
+      
+      * do our best to parse the IP headers and their extension headers only once
+      * this helps to avoid access to initialized memory in case of malformed
+        uncompressed headers
+      * factorize code from the create/check_profile/check_context/encode functions
+        of the IP-only, IP/UDP, UIP-UDP-Lite, ESP and IP/UDP/RTP profiles in the
+        generic module
+      * introduce the net_pkt structure to gather the outer IP header, the inner IP
+        header, the transport layer, and the packet hash key together: it decreases
+        the number of arguments passed to many functions, thus making the code clearer
+------------------------------------------------------------
+revno: 985 [merge]
+author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2014-01-04 15:00:48 +0100
+message:
+  Fix dist archives that were broken after list compression rework.
+    ------------------------------------------------------------
+    revno: 984.1.1
+    committer: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+    branch nick: rohc-main
+    timestamp: Fri 2014-01-03 19:38:42 +0100
+    message:
+      Fix dist archives that were broken after list compression rework.
+------------------------------------------------------------
+revno: 984
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Tue 2013-12-31 18:36:16 +0100
+message:
+  fix build on x86_64 after last fixes related to list compression
+------------------------------------------------------------
+revno: 983
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Tue 2013-12-31 02:16:13 +0100
+message:
+  list compression: robustify!
+  
+  * add a torture test for list compression in non-regression tests
+  * detect whether 4-bit or 8-bit indexes (ie. PS = 0 or 1) shall be used
+  * support 7+ items in compressed lists
+  * handle gracefully malformed IPv6 extension headers
+  * support additional IPv6 extensions headers defined by IANA
+------------------------------------------------------------
+revno: 982
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2013-12-30 19:07:48 +0100
+message:
+  list compression: cannot use encoding types 1, 2, and 3 with an empty reference list
+  
+  RFC 4815, §5.7 reads that encoding types 1, 2, and 3 must not be used with an
+  empty reference list.
+------------------------------------------------------------
+revno: 981
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2013-12-30 19:04:59 +0100
+message:
+  add new non-regression test for list compression and context re-use.
+  
+  The added network capture contains 2 IPv6/ICMPv6 packets. Both packets contain
+  a Hop-By-Hop IPv6 extension header, but those extensions have different content.
+  Before the list compression rework, the compression/decompression failed, with
+  the 2nd packet having the same Hop-By-Hop IPv6 extension header as the 1st one.
+------------------------------------------------------------
+revno: 980
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2013-12-30 18:50:45 +0100
+message:
+  performance: dump the content of packets only if --enable-rohc-debug was specified
+  
+  This was already done for nominal cases, let's do it for abnormal cases such
+  as CRC failures.
+------------------------------------------------------------
+revno: 979
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2013-12-30 18:25:39 +0100
+message:
+  Fix build for PowerPC and MinGW 32 after list compression rework.
+------------------------------------------------------------
+revno: 978
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2013-12-30 18:12:08 +0100
+message:
+  cleanup: make many private compression function static and constify many pointers
+------------------------------------------------------------
+revno: 977
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2013-12-30 17:31:42 +0100
+message:
+  Fix build on x86_64 after the list compression rework.
+------------------------------------------------------------
+revno: 976
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2013-12-30 17:28:55 +0100
+message:
+  list compression: never send 0x00 if list is empty
+  
+  Previous revision sent 0x00 as compressed list when no IPv6 extension headers
+  were present since the beginning of the stream. However, noone can be sure
+  of the beginning of one stream if context re-use was in action.
+  
+  The problem was discovered by adding new non-regression tests that compress
+  then decompress all existing network captures with only one single context.
+  
+  The rtp_uo_disambiguation test was updated to reduce the number of uncompressed
+  transmissions required for list compression. This was performed to avoid
+  changing all input captures to generate the expected packets.
+------------------------------------------------------------
+revno: 975
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2013-12-30 16:49:42 +0100
+message:
+  make the number of uncompressed transmissions for list compression configurable
+  
+  Introduce the new rohc_comp_set_list_trans_nr() function in the compression API
+  so that users may configure the number of uncompressed transmissions for list
+  compression, ie. the L parameter described in RFC 3095 and 4815.
+------------------------------------------------------------
+revno: 974
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-12-29 21:21:16 +0100
+message:
+  Rework list compression, especially list compression of IPv6 extension headers.
+  
+  In short:
+  * more conform to RFC 3095 that previous code
+  * simpler, more factorized code
+  * save some bits in ROHC headers
+  
+  In long:
+  * replace single-linked list by fixed-size lists
+  * allocate all contexts/lists/items at the beginning
+  * split generic list compression from IPv6 specific compression
+  * avoid reading the lists many times
+  * better handle context re-use
+  * more conform to RFC 3095 that previous code
+  * split list code in separate files
+  * simpler, more factorized code
+  * save some bits in ROHC headers
+------------------------------------------------------------
+revno: 973
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-12-08 13:15:20 +0100
+message:
+  Remove the Lulea University of Technology from the authors.
+  
+  The library started as a fork of the ROHC Project 2003 at the Lulea University
+  of Technology, Sweden (http://rohc.sourceforge.net/). The code changed so much
+  since then, that they are not mentioned as author anymore.
+------------------------------------------------------------
+revno: 972
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-12-08 12:58:08 +0100
+message:
+  Introduce a new application: a ROHC fuzzer for RTP traffic
+  
+  The ROHC RTP fuzzer is a fuzzing tool that compresses, then decompresses some
+  RTP traffic. The RTP traffic is generated with some fields changing randomly.
+  
+  The ROHC RTP fuzzer application may be used the same way as the existing ROHC
+  fuzzer: command 'play' to run the tool, command 'replay SEED' to replay the
+  same run to reproduce a bug.
+------------------------------------------------------------
+revno: 971
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-12-08 12:39:02 +0100
+message:
+  performance app: use 'comp' and 'decomp' as action parameters.
+  
+  Program usage was different from the accepted arguments.
+------------------------------------------------------------
+revno: 970
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Tue 2013-11-12 21:12:56 +0100
+message:
+  Fuzzer's co-author gave ownership and copyright to Didier Barvaux <didier@barvaux.org>.
+  
+  Ownership and copyright given by the co-author himself by private email.
+------------------------------------------------------------
+revno: 969
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-11-10 20:42:37 +0100
+message:
+  Update the RPM spec file for new headers and new librohc.so file.
+------------------------------------------------------------
+revno: 968
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-11-10 20:39:28 +0100
+message:
+  minor: replace ROHC_TRACE_(DE)COMPRESSOR by ROHC_TRACE_(DE)COMP in comments.
+  
+  The ROHC_TRACE_(DE)COMPRESSOR trace entities are deprecated, the new
+  ROHC_TRACE_(DE)COMP shall be used instead.
+------------------------------------------------------------
+revno: 967
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-11-10 16:20:46 +0100
+message:
+  configure: don't check for libcmocka if tests are disabled.
+------------------------------------------------------------
+revno: 966
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-11-10 13:04:16 +0100
+message:
+  Don't create documentation for generated source files.
+------------------------------------------------------------
+revno: 965
+author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-11-09 17:26:57 +0100
+message:
+  TCP profile: handle context re-use with similar TCP connection
+  
+  Handle correctly the compression/decompression of TCP options if a TCP
+  connection re-uses the context of a previous TCP connection with the
+  very same (src addr, src port, dst addr, dst port) tuple.
+  
+  The compression/decompression of TCP options in the co_common packet
+  was not robust enough to handle such a case.
+------------------------------------------------------------
+revno: 964
+author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-11-09 16:44:06 +0100
+message:
+  Fix an ambiguous comparison found by Smatch.
+------------------------------------------------------------
+revno: 963
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-10-26 17:27:42 +0200
+message:
+  Fix bug #1244990: gen_id optional for lists of IPv6 extension headers
+  https://bugs.launchpad.net/rohc/+bug/1244990
+  
+  According to RFC 3095, sections 5.8.6.1-5.8.6.4, the gen_id field is optional
+  for list encoding types 0-3. The ROHC compressor always uses it and that's OK,
+  but the ROHC decompressor shall checks whether the field is present or not
+  (GP bit in first byte of the compressed list).
+------------------------------------------------------------
+revno: 962
+author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2013-10-23 19:30:41 +0200
+message:
+  TCP profile: long TCP options shall be >= 2 bytes.
+------------------------------------------------------------
+revno: 961
+author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2013-10-23 19:27:32 +0200
+message:
+  TCP profile: use other packet types than IR, IR-DYN, seq_8, and rnd_8.
+  
+  * all packet types may be used when some TCP options are present if the
+    structure of the TCP option list is unchanged
+  * determine whether the structure of the TCP option list is unchanged
+    or not
+  * rework the decision of packet type in consequence
+  * use W-LSB decoding for scaled TCP sequence number
+------------------------------------------------------------
+revno: 960
+author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2013-10-23 19:16:08 +0200
+message:
+  minor: add const keyword in definition of rohc_lsb_get_ref()
+------------------------------------------------------------
+revno: 959
+author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2013-10-23 19:14:42 +0200
+message:
+  TCP profile: the IP-ID behavior shall never be unknown
+  
+  If IP-ID is the same as the previous packet, then IP-ID behaviour is
+  random, not unknown.
+------------------------------------------------------------
+revno: 958
+author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2013-10-23 19:12:27 +0200
+message:
+  TCP profile: minor: enhance some debug traces.
+------------------------------------------------------------
+revno: 957
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2013-10-23 19:06:57 +0200
+message:
+  TCP profile: do not use W-LSB encoding for TCP option TS on first occurrence.
+------------------------------------------------------------
+revno: 956
+author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2013-10-21 19:28:31 +0200
+message:
+  sniffer: improve Gentoo init script
+------------------------------------------------------------
+revno: 955
+author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2013-10-21 19:28:13 +0200
+message:
+  sniffer: do not compare TCP packets with extra padding after TCP options.
+------------------------------------------------------------
+revno: 954
+author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2013-10-21 19:27:34 +0200
+message:
+  rohc_gen_stream: don't build RTP packets with random bytes in payload.
+------------------------------------------------------------
+revno: 953
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-10-12 22:10:24 +0200
+message:
+  TCP profile: fix parsing of the sequence number bits of the rnd_5 packet.
+------------------------------------------------------------
+revno: 952
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Tue 2013-10-08 20:44:54 +0200
+message:
+  Remove zcov result files and directories on distclean.
+------------------------------------------------------------
+revno: 951
+author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Tue 2013-10-08 19:47:33 +0200
+message:
+  Try fixing bug #1075922 entitled 'Aligment problem with Timestamp TCP option on ARM'.
+  https://bugs.launchpad.net/rohc/+bug/1075922
+  
+  Merge an adapted version of the patch proposed by FWX.
+------------------------------------------------------------
+revno: 950
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Tue 2013-10-08 19:45:53 +0200
+message:
+  Fix build for Windows with MinGW.
+------------------------------------------------------------
+revno: 949
+author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2013-10-07 22:54:03 +0200
+message:
+  TCP profile: cleanup: remove unused unaligned_uint16_t and unaligned_uint32_t
+------------------------------------------------------------
+revno: 948
+author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2013-10-07 22:52:50 +0200
+message:
+  sniffer: do not enable/disable inexistant profile 0x0007
+------------------------------------------------------------
+revno: 947
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2013-10-07 22:50:49 +0200
+message:
+  Fix build on x86_64.
+------------------------------------------------------------
+revno: 946
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2013-10-07 22:45:56 +0200
+message:
+  TCP profile: fix use of uninitialized memory found by valgrind.
+------------------------------------------------------------
+revno: 945
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-10-06 17:50:04 +0200
+message:
+  Fix several format string problems.
+------------------------------------------------------------
+revno: 944
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-10-06 16:25:07 +0200
+message:
+  TCP profile: rework variable_length_32_enc encoding method.
+------------------------------------------------------------
+revno: 943
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-10-06 16:13:00 +0200
+message:
+  TCP profile: get rid of WRITE(16|32)_TO_(P|)MPTR macros.
+------------------------------------------------------------
+revno: 942
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-10-06 15:52:57 +0200
+message:
+  TCP profile: rework optional_ip_id_lsb encoding method.
+------------------------------------------------------------
+revno: 941
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-10-06 15:24:56 +0200
+message:
+  TCP profile: rework the lsb_7_or_31 encoding method.
+------------------------------------------------------------
+revno: 940
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-10-06 14:22:45 +0200
+message:
+  TCP profile: rework optional32 encoding method.
+------------------------------------------------------------
+revno: 939
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-10-06 13:58:03 +0200
+message:
+  TCP profile: rework zero_or_irreg encoding method for 8, 16 or 32 bits values.
+------------------------------------------------------------
+revno: 938
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-10-06 13:56:06 +0200
+message:
+  TCP profile: encode ack_stride with static_or_irreg instead of zero_or_irreg.
+------------------------------------------------------------
+revno: 937
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-10-06 12:13:24 +0200
+message:
+  TCP profile: rework c_static_or_irreg16() and c_static_or_irreg8().
+------------------------------------------------------------
+revno: 936
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-10-06 11:20:02 +0200
+message:
+  TCP profile: cleanup: get rid of the WB_t type.
+------------------------------------------------------------
+revno: 935
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-10-06 11:19:50 +0200
+message:
+  Fix build for PowerPC.
+------------------------------------------------------------
+revno: 934
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-10-05 21:07:44 +0200
+message:
+  TCP profile: move multi_ptr_t from protocols/tcp.h to comp/schemes/rfc4996.h
+  
+  * the decompressor does not use multi_ptr_t anymore,
+  * remove some unused related macros,
+  * also remove unused LWB_t.
+------------------------------------------------------------
+revno: 933
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-10-05 21:00:41 +0200
+message:
+  TCP profile: remove unused d_lsb_7_31() function.
+------------------------------------------------------------
+revno: 932
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-10-05 20:57:27 +0200
+message:
+  TCP profile: enhance and use d_optional32().
+------------------------------------------------------------
+revno: 931
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-10-05 20:22:12 +0200
+message:
+  TCP profile: remove many usage of multi_ptr_t to better track parsed lengths.
+------------------------------------------------------------
+revno: 930
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-10-05 20:20:34 +0200
+message:
+  cleanup: remove duplicated length check while parsing UO-0 packet.
+------------------------------------------------------------
+revno: 929
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-10-05 13:34:26 +0200
+message:
+  TCP profile: move code for decoding IR-DYN packet in a separate function.
+------------------------------------------------------------
+revno: 928
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Thu 2013-10-03 21:16:59 +0200
+message:
+  Fix build of src/test/ tests after last code reorganisation.
+------------------------------------------------------------
+revno: 927
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2013-10-02 20:08:07 +0200
+message:
+  cleanup: move struct d_rtp_context from header to source file, remove header.
+------------------------------------------------------------
+revno: 926
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2013-10-02 20:03:02 +0200
+message:
+  cleanup: move struct d_udp_context from header to source file.
+------------------------------------------------------------
+revno: 925
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2013-10-02 19:58:11 +0200
+message:
+  cleanup: remove empty c_*.h and d_*.h headers for profiles.
+------------------------------------------------------------
+revno: 924
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2013-10-02 19:50:01 +0200
+message:
+  Fix warnings found by the Clang static analyzer.
+------------------------------------------------------------
+revno: 923
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2013-10-02 19:38:41 +0200
+message:
+  cleanup: remove macros related to the USE_ROHC_TCP_MACROS conditional.
+  
+  Remove the [cd]_field_scaling macros. Keep and improve the [cd]_field_scaling
+  functions.
+------------------------------------------------------------
+revno: 922
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2013-10-02 19:27:34 +0200
+message:
+  cleanup: get rid of the C_WINDOW_WIDTH constant.
+------------------------------------------------------------
+revno: 921
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2013-10-02 19:23:06 +0200
+message:
+  Add missing license and doxygen headers to rohc_stats.[ch].
+------------------------------------------------------------
+revno: 920
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2013-10-02 19:19:34 +0200
+message:
+  Avoid updating deprecated stats if deprecated API is excluded.
+------------------------------------------------------------
+revno: 919
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2013-10-02 18:30:59 +0200
+message:
+  cleanup: move plenty of common/ code to comp/ or decomp/
+------------------------------------------------------------
+revno: 918
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Tue 2013-10-01 20:23:40 +0200
+message:
+  cleanup: use ROHC_ prefix for all #ifndef/#define/#endif of headers.
+------------------------------------------------------------
+revno: 917
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2013-09-30 20:26:05 +0200
+message:
+  Fix build on x86_64.
+------------------------------------------------------------
+revno: 916
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-29 19:54:17 +0200
+message:
+  Avoid memory and reference leak with new decompression contexts.
+  
+  If a ROHC packet causes the ROHC decompressor to create a new context, but
+  the packet is malformed, the context shall be destroyed to avoid:
+   - memory leak,
+   - reference leak (the counter of contexts is not decremented and it will
+     stop the decompressor to create new contexts some time after...).
+------------------------------------------------------------
+revno: 915
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-29 19:52:44 +0200
+message:
+  Add new enum rohc_feedback_crc_t for the CRC protection of feedback.
+  
+  The new enum rohc_feedback_crc_t replaces several separate #defines.
+------------------------------------------------------------
+revno: 914
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-29 19:42:55 +0200
+message:
+  Add new enum rohc_ack_type_t for the different feedback ACK types.
+  
+  The new enum rohc_ack_type_t replaces several separate #defines.
+------------------------------------------------------------
+revno: 913
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-29 19:29:13 +0200
+message:
+  Add new enum rohc_feedback_opt_t for the different feedback options.
+  
+  The new enum rohc_feedback_opt_t replaces several separate #defines.
+------------------------------------------------------------
+revno: 912
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-29 19:16:06 +0200
+message:
+  cleanup: move common/decode.[ch] in decomp/rohc_decomp_detect_packet.[ch].
+------------------------------------------------------------
+revno: 911
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-29 18:57:44 +0200
+message:
+  cleanup: split function related to add-CID from decode.[ch] to rohc_add_cid.[ch].
+------------------------------------------------------------
+revno: 910
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-29 15:53:07 +0200
+message:
+  Remove the non-standard feature "RTP bit type".
+  
+  The RTP bit type uses an additionnal bit to distinguish UOR-2-TS and UOR-2-ID
+  packets. The bit is taken from the CRC-7 that becomes CRC-6.
+  
+  The feature is removed because it is not part of any IETF RFC, and it is a
+  maintenance burden. And there is no known users.
+------------------------------------------------------------
+revno: 909
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-29 13:44:32 +0200
+message:
+  sniffer: ignore signal SIGHUP to allow keepalive from init script with SIGHUP.
+------------------------------------------------------------
+revno: 908
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-29 13:44:02 +0200
+message:
+  TCP profile: fix build with extra debug disabled.
+------------------------------------------------------------
+revno: 907
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-28 20:02:18 +0200
+message:
+  sniffer: add Gentoo init script.
+------------------------------------------------------------
+revno: 906
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-28 20:01:57 +0200
+message:
+  sniffer: remove pidfile at application shutdown
+------------------------------------------------------------
+revno: 905
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-28 19:25:02 +0200
+message:
+  sniffer: add option --pidfile/-p to write the child PID in a file.
+------------------------------------------------------------
+revno: 904
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-28 19:07:41 +0200
+message:
+  sniffer: add --daemon/-d option to make daemon mode optional.
+------------------------------------------------------------
+revno: 903
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-28 18:48:46 +0200
+message:
+  Sniffer: run in brackground mode and use syslog.
+------------------------------------------------------------
+revno: 902
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-28 17:48:09 +0200
+message:
+  TCP profile: fix segfault on ARM due to misaligned pointer dereferences.
+------------------------------------------------------------
+revno: 901
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-28 17:35:00 +0200
+message:
+  TCP profile: ack_zero and urp_zero shall not depend on ACK and URG flags.
+  
+  Always check for the ACK number (resp. URG pointer) value even if the ACK flag
+  (resp. URG flag) is not set in the uncompressed TCP header, this is important
+  to transmit all packets without any change, even if those bits will be ignored
+  at reception.
+  
+  Found with the ROHC sniffer on miscellaneous web traffic.
+------------------------------------------------------------
+revno: 900
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-28 16:59:51 +0200
+message:
+  TCP profile: check for available bytes before parsing a ROHC packet.
+  
+  The ROHC fuzzer found several locations in the TCP profile decompressor
+  that didn't check for available bytes before parsing them, causing a
+  segfault.
+------------------------------------------------------------
+revno: 899
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2013-09-25 20:17:19 +0200
+message:
+  TCP profile: correctly decode variable_length_32_enc()
+------------------------------------------------------------
+revno: 898
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2013-09-25 20:16:30 +0200
+message:
+  [minor] fix mistake in comment.
+------------------------------------------------------------
+revno: 897
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2013-09-23 19:55:56 +0200
+message:
+  TCP profile: do not compare TCP option Timestamp with context for first packet.
+------------------------------------------------------------
+revno: 896
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-22 20:49:55 +0200
+message:
+  TCP profile: packet rnd_8 transmits only 16 bits of sequence number with p = 65535.
+  
+  The co_common packet shall be used if more bits shall be transmitted.
+------------------------------------------------------------
+revno: 895
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-22 16:28:06 +0200
+message:
+  Fix Linux kernel build.
+------------------------------------------------------------
+revno: 894
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-22 16:19:47 +0200
+message:
+  Fix build on Windows through Mingw.
+------------------------------------------------------------
+revno: 893
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-22 14:55:26 +0200
+message:
+  doc: rebuild man pages if an example changed.
+------------------------------------------------------------
+revno: 892
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-22 14:53:54 +0200
+message:
+  doc: do not include src/{common,comp,decomp}/rohc/ in doxygen documentation.
+  
+  The src/{common,comp,decomp}/rohc/ directory emulates the rohc/ subdir for
+  public headers. There is nothing interesting in it.
+------------------------------------------------------------
+revno: 891
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-22 14:25:08 +0200
+message:
+  TCP profile: TCP option Timestamp echo request/reply shall be encoded with W-LSB.
+------------------------------------------------------------
+revno: 890
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-22 14:24:13 +0200
+message:
+  Fix wrong assertion added at revision 882.
+  
+  Revision 882 was "API: deprecate rohc_d_statistics()".
+------------------------------------------------------------
+revno: 889
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-22 14:22:47 +0200
+message:
+  sniffer: update statistics output for the TCP profile.
+------------------------------------------------------------
+revno: 888
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-22 14:15:04 +0200
+message:
+  Fix distcheck after change at rev 870.
+  
+  Change at rev 870 was "API: add rohc/ prefix for includes in public headers."
+------------------------------------------------------------
+revno: 887
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-22 10:54:06 +0200
+message:
+  Fix build on x86_64.
+------------------------------------------------------------
+revno: 886
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-21 20:04:38 +0200
+message:
+  TCP profile: report compression error if we fail to build CO packet.
+  
+  This way another compression profile could be used, eg. IP-only or
+  Uncompressed.
+------------------------------------------------------------
+revno: 885
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-21 19:47:20 +0200
+message:
+  API: avoid including stdio.h if deprecated API is not included in build.
+------------------------------------------------------------
+revno: 884
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-21 19:37:03 +0200
+message:
+  TCP profile: record IP DSCP in context upon update by co_common packet.
+  
+  Otherwise, next packet with dscp_present = 0 get the previous DSCP value.
+------------------------------------------------------------
+revno: 883
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-21 18:06:19 +0200
+message:
+  TCP profile: TCP sequence number shall be decoded with W-LSB on decompressor.
+  
+  W-LSB decoding is not (ref & mask) | bits, the interpretation interval is
+  important. So, use rohc_lsb_decode() instead of d_lsb().
+------------------------------------------------------------
+revno: 882
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-21 15:47:56 +0200
+message:
+  API: deprecate rohc_d_statistics().
+  
+  In order to deprecate rohc_d_statistics(), introduce the following functions:
+   - rohc_decomp_profile_enabled()
+   - rohc_decomp_get_general_info()
+  
+  Also introduce a similar function on compressor side:
+   - rohc_comp_profile_enabled()
+------------------------------------------------------------
+revno: 881
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-21 13:40:33 +0200
+message:
+  API: introduce rohc_profile_t for the different IDs of ROHC profiles.
+------------------------------------------------------------
+revno: 880
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Fri 2013-09-20 22:45:29 +0200
+message:
+  Avoid using variables or functions named 'index'.
+  
+  The variables or functions named 'index' may conflict with function index(3)
+  from the libc.
+------------------------------------------------------------
+revno: 879
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Fri 2013-09-20 21:23:31 +0200
+message:
+  Be compatible with C++ applications.
+  
+  Add extern "C" { ... } blocks around public header files to make applications
+  written in C++ link correctly.
+------------------------------------------------------------
+revno: 878
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Fri 2013-09-20 21:10:54 +0200
+message:
+  doc: build HTML even if man is not enabled, reduce time needed for man generation.
+------------------------------------------------------------
+revno: 877
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Fri 2013-09-20 21:06:56 +0200
+message:
+  API: deprecate function clear_statistics().
+  
+  The function is not replaced in public API. It could be later if needed.
+------------------------------------------------------------
+revno: 876
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Fri 2013-09-20 20:24:46 +0200
+message:
+  API: replace enum rohc_d_state by enum rohc_decomp_state_t
+  
+  * do not remove rohc_d_state, deprecate it.
+  * add the ROHC_DECOMP_STATE_ prefix to enum values.
+  * shorten enum values, eg. STATIC_CONTEXT becomes SC.
+------------------------------------------------------------
+revno: 875
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Fri 2013-09-20 20:05:38 +0200
+message:
+  API: replace enum rohc_c_state by enum rohc_comp_state_t
+  
+  * do not remove rohc_c_state, deprecate it.
+  * add the ROHC_COMP_STATE_ prefix to enum values.
+------------------------------------------------------------
+revno: 874
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Fri 2013-09-20 19:38:13 +0200
+message:
+  API: use ROHC_ prefix for names of packets and extensions.
+  
+  Keep also the old ones for compatibility reasons.
+------------------------------------------------------------
+revno: 873
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Fri 2013-09-20 18:59:14 +0200
+message:
+  doc: refresh HTML and man documentation only if source code changed.
+------------------------------------------------------------
+revno: 872
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2013-09-16 09:18:54 +0200
+message:
+  Fix build: src/* subdirs shall be built before src/ itself
+------------------------------------------------------------
+revno: 871
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-15 20:07:46 +0200
+message:
+  API: build an additional librohc.so to aggregate librohc_*.so
+  
+  From ever the ROHC library was split into 3 .so files: librohc_common.so,
+  librohc_comp.so, and librohc_decomp.so. This was done so that a program
+  could load compression code without loading decompression code. In fact,
+  such programs should be quite rare, and the 3 .so files are quite small
+  (~650KB all once striped). So, give up and provide a librohc.so.
+  
+  The new librohc.so currently contains no code, it only depends on the 3
+  others .so files. The other .so files will be made convenient libraries
+  in the 2.0.0 releases, and not installed anymore.
+  
+  Update the pkg-config file rohc.pc right now. That way, developers using
+  pkg-config will automatically use the new library instead of the old ones.
+------------------------------------------------------------
+revno: 870
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-15 20:06:53 +0200
+message:
+  API: add rohc/ prefix for includes in public headers.
+------------------------------------------------------------
+revno: 869
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-15 19:46:16 +0200
+message:
+  API: install public headers in the rohc/ subdirectory
+  
+  Installing public headers in the rohc/ subdirectory is cleaner than installing
+  several headers in the include directory directly.
+  
+  To ensure compatibility, stub headers are installed at the previous location.
+  Those headers issue a warning during compilation so that developers know that
+  they should update their application.
+  
+  Man pages, apps/tools, and examples were updated in consequence. Three symbolic
+  links src/common/rohc, src/comp/rohc, and src/decomp/rohc were added so that
+  inclusion with the rohc/ prefix works from within the library sources.
+------------------------------------------------------------
+revno: 868
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-15 18:02:16 +0200
+message:
+  Update library versioning because some new API functions were added.
+------------------------------------------------------------
+revno: 867
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-15 17:54:51 +0200
+message:
+  Fix bug #809028: Write man pages for public API
+  https://bugs.launchpad.net/rohc/+bug/809028
+  
+  Add new kind of man pages: pages for tools of the app/ subdir. They are
+  generated from the output of their --version and --help options by the
+  application help2man.
+------------------------------------------------------------
+revno: 866
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-15 15:19:50 +0200
+message:
+  Fix bug #809028: Write man pages for public API
+  https://bugs.launchpad.net/rohc/+bug/809028
+  
+  Add 2 kinds of man pages:
+   - static general man pages: rohc(7), rohc_protocol(7), and rohc_library(7)
+   - generated man pages for public headers and functions.
+  
+  The generated man pages are created from doxygen's XML output by the doxy2man
+  tool from https://github.com/gsauthof/doxy2man . The tool was modified to
+  handle groups, typedef, enums, function prototypes, warnings, examples...
+------------------------------------------------------------
+revno: 865
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-15 11:26:15 +0200
+message:
+  doc: improve doxygen syntax for examples.
+------------------------------------------------------------
+revno: 864
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-14 21:33:25 +0200
+message:
+  API: deprecate rohc_c_set_enable() and rohc_c_is_enabled()
+  
+  The rohc_c_set_enable() and rohc_c_is_enabled() never were really used, or
+  broken since ever: a disabled ROHC compressor behaves the same way than
+  an enabled ROHC decompressor.
+  
+  Enable/disable of ROHC compressor can be implemented in the applications if
+  needed.
+------------------------------------------------------------
+revno: 863
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-14 20:33:53 +0200
+message:
+  API: fix build with --disable-deprecated-api
+  
+  Ensure also not to pollute public header: use ROHC_ENABLE_DEPRECATED_API
+  instead of ENABLE_DEPRECATED_API.
+------------------------------------------------------------
+revno: 862
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-14 20:11:04 +0200
+message:
+  API: deprecate rohc_c_set_header()
+  
+  The rohc_c_set_header() does nothing at the moment. The maximum header length
+  was never used. It won't be used before long. So, deprecate the function.
+------------------------------------------------------------
+revno: 861
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-14 20:08:55 +0200
+message:
+  API: deprecate rohc_c_using_small_cid()
+  
+  Since the introduction of rohc_comp_get_cid_type(), the rohc_c_using_small_cid()
+  functions is useless.
+------------------------------------------------------------
+revno: 860
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-14 19:07:22 +0200
+message:
+  API: add new rohc_decomp_get_mrru() function.
+  
+  The function was present on compressor side, but missing on decompressor side.
+  Getting the current MRRU is useful for debug, statistics, traces...
+------------------------------------------------------------
+revno: 859
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-14 18:52:47 +0200
+message:
+  API: deprecate rohc_c_set_large_cid() and rohc_c_set_max_cid()
+  
+  Since the introduction of rohc_comp_new() that allows specifying the CID
+  type and the MAX_CID, the rohc_c_set_large_cid() and rohc_c_set_max_cid()
+  functions are useless.
+------------------------------------------------------------
+revno: 858
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-14 18:34:39 +0200
+message:
+  API: deprecate rohc_decomp_set_cid_type() and rohc_decomp_set_max_cid()
+  
+  Since the introduction of rohc_decomp_new() that allows specifying the CI
+  type and the MAX_CID, the rohc_decomp_set_cid_type() and
+  rohc_decomp_set_max_cid() functions are useless.
+------------------------------------------------------------
+revno: 857
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-14 18:12:44 +0200
+message:
+  API: add new rohc_decomp_get_cid_type() function.
+  
+  The function was present on compressor side, but missing on decompressor side.
+  Getting the current CID type is useful for debug, statistics, traces...
+------------------------------------------------------------
+revno: 856
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-14 18:01:07 +0200
+message:
+  API: add new rohc_decomp_get_max_cid() function.
+  
+  The function was present on compressor side, but missing on decompressor side.
+  Getting the current MAX_CID is useful for debug, statistics, traces...
+------------------------------------------------------------
+revno: 855
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-14 17:53:04 +0200
+message:
+  doc: greatly improve API documentation
+  
+  * improve detailed descriptions
+  * document variadic parameters
+  * document output parameters with @param[out] instead of OUT: in decsription
+  * add many more cross-references between functions
+------------------------------------------------------------
+revno: 854
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-08 20:35:42 +0200
+message:
+  doc: enhance doxygen comment of rohc_comp_new().
+------------------------------------------------------------
+revno: 853
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-08 20:35:10 +0200
+message:
+  doc: put the public error codes in the rohc_common group.
+------------------------------------------------------------
+revno: 852
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-08 16:10:50 +0200
+message:
+  doc: improve API documentation with examples and cross-references.
+------------------------------------------------------------
+revno: 851
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-08 14:03:01 +0200
+message:
+  examples: add an example for ROHC decompression (unidirectional mode)
+------------------------------------------------------------
+revno: 850
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-08 13:53:46 +0200
+message:
+  examples: remove broken references to doxygen API documentation.
+------------------------------------------------------------
+revno: 849
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-08 12:51:09 +0200
+message:
+  API: add rohc_decomp_new() and rohc_decomp_free().
+  
+  Those new functions replace rohc_alloc_decompressor() and rohc_free_decompressor().
+  Those functions are still available, but deprecated. A warning may be emitted
+  by the compiler if old functions are still used.
+  
+  Advantages:
+  * specify CID type and MAX_CID upon creation of decompressor
+  * specify the operational mode (U-, O- or R-mode), no deduction from the
+    presence of an associated compressor
+  * same prefix as other functions in the decompressor API rohc_decomp_*()
+  * shorter names
+------------------------------------------------------------
+revno: 848
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-08 11:27:16 +0200
+message:
+  Replace rohc_mode type by rohc_mode_t.
+  
+  rohc_mode is still available but deprecated.
+------------------------------------------------------------
+revno: 847
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-08 09:49:50 +0200
+message:
+  Fix build on x86_64 after introduction of rohc_cid_t.
+------------------------------------------------------------
+revno: 846
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-07 16:10:32 +0200
+message:
+  API: add rohc_comp_new() and rohc_comp_free().
+  
+  Those new functions replace rohc_alloc_compressor() and rohc_free_compressor().
+------------------------------------------------------------
+revno: 845
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-07 12:43:15 +0200
+message:
+  Define new type rohc_cid_t for CID and MAX_CID.
+------------------------------------------------------------
+revno: 844
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-07 12:08:50 +0200
+message:
+  Rename 'struct medium' into 'struct rohc_medium'.
+------------------------------------------------------------
+revno: 843
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-07 12:03:52 +0200
+message:
+  Split rohc.h into public rohc.h and private rohc_internal.h.
+------------------------------------------------------------
+revno: 842
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-07 11:52:08 +0200
+message:
+  doc: improve doc of rohc_alloc_compressor() and rohc_free_compressor() with examples.
+------------------------------------------------------------
+revno: 841
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-07 11:10:25 +0200
+message:
+  doc: tell doxygen not to include references to callers and callees
+  
+  Including references to callers and callees makes the documentation really too
+  verbose.
+------------------------------------------------------------
+revno: 840
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-07 10:43:23 +0200
+message:
+  doc: exclude tests from doxygen documentation.
+------------------------------------------------------------
+revno: 839
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-07 10:35:26 +0200
+message:
+  doc: tell doxygen to ignore ROHC_DEPRECATED() macros.
+------------------------------------------------------------
+revno: 838
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-09-07 10:31:03 +0200
+message:
+  doc: add example print_rohc_version.c and enhance rohc_version() description with it.
+------------------------------------------------------------
+revno: 837
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Thu 2013-09-05 20:39:53 +0200
+message:
+  non-regression tool: robustify the parsing of CLI arguments.
+------------------------------------------------------------
+revno: 836
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-01 13:24:27 +0200
+message:
+  TCP profile: d_tcp.c:2149: tcp_decode_dynamic_tcp: Assertion `tcp_context->tcp_options_list[index] == *mptr.uint8' failed
+  
+  Do not assert() if received TCP option does not match the previously received one.
+  
+  To reproduce: ./app/fuzzer/rohc_fuzzer replay 1378031898
+------------------------------------------------------------
+revno: 835
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-01 13:17:31 +0200
+message:
+  TCP profile: d_tcp.c:2132: tcp_decode_dynamic_tcp: Assertion `tcp_context->tcp_options_free_offset < 64' failed.
+  
+  Avoid assertion if more TCP options than expected are received.
+  
+  To reproduce: ./app/fuzzer/rohc_fuzzer replay 1378031898
+------------------------------------------------------------
+revno: 834
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-01 13:10:02 +0200
+message:
+  TCP profile: d_tcp.c:3668: d_tcp_decode_CO: Assertion `ip_context.uint8 < &tcp_context->ip_context[MAX_IP_CONTEXT_SIZE]' failed.
+  
+  A malformed ROHC packet can cause the decompressor to build more IP headers
+  than expected, waiting for TCP protocol magic number. Correction: always
+  check that is room remaining for the next IP header context before using it.
+  
+  To reproduce: ./app/fuzzer/rohc_fuzzer replay 1378031898
+------------------------------------------------------------
+revno: 833
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-01 12:49:25 +0200
+message:
+  TCP profile: d_tcp.c:2046: tcp_decode_dynamic_tcp: Assertion `present != 0' failed
+  
+  The compressed list of TCP options in the dynamic part shall always contain items.
+  If one item is not present, packet is malformed. Do not assert() but cleanly abort
+  packet parsing and report a decompression failure.
+  
+  To reproduce:
+    $ ./app/fuzzer/rohc_fuzzer replay 1378031898
+    rohc_fuzzer: d_tcp.c:2046: tcp_decode_dynamic_tcp: Assertion `present != 0' failed.
+------------------------------------------------------------
+revno: 832
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sun 2013-09-01 12:36:51 +0200
+message:
+  fuzzer: use correct length for array traces, mention truncated traces
+------------------------------------------------------------
+revno: 831
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-08-31 17:23:07 +0200
+message:
+  RTP profile: avoid the Tsc = 0 and no TS bit situation
+  
+  According to the RFC, a packet with Tsc = 0 and no TS bit is invalid and
+  shall be discarded. To avoid generating such packets, force sending some
+  TS bits in extension 3 if TS is not scaled (Tsc = 0) and the base header
+  contains zero TS bit.
+------------------------------------------------------------
+revno: 830
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-08-31 17:21:02 +0200
+message:
+  cleanup: remove deprecated TODO
+------------------------------------------------------------
+revno: 829
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-08-31 17:17:24 +0200
+message:
+  SDVL encoding: assert if maximum was not checked before using sdvl_get_min_len().
+------------------------------------------------------------
+revno: 828
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-08-31 12:17:55 +0200
+message:
+  Fix an endianness problem on PowerPC with fix for bug #1210498.
+  
+  Bug #1210498 is entitled "IP-ID shall be transmitted verbatim in IR and IR-DYN
+  packets".
+  
+  On PowerPC, the IP-ID bits of the IR and IR-DYN packets shall be swapped when
+  decoded if the IP-ID behavior is 'increase in Little Endian'. Otherwise, they
+  will be swapped when written in the decompressed IP packet.
+------------------------------------------------------------
+revno: 827
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2013-08-28 19:46:59 +0200
+message:
+  Fix IPv4 packets with the non-standard 0xffff checksum in sniffer app and non-regression test.
+------------------------------------------------------------
+revno: 826
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2013-08-28 19:34:55 +0200
+message:
+  Fix memory leak introduced with revision 780.
+------------------------------------------------------------
+revno: 825
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Wed 2013-08-28 18:48:27 +0200
+message:
+  Remove more const keywords on return types because GCC 4.0 and 4.1 do not support them.
+------------------------------------------------------------
+revno: 824
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2013-08-26 22:12:30 +0200
+message:
+  Check for clock_gettime() and CLOCK_MONOTONIC_RAW in configure script.
+------------------------------------------------------------
+revno: 823
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Mon 2013-08-26 21:58:40 +0200
+message:
+  Remove const keywords on return types because GCC 4.0 and 4.1 do not support them.
+------------------------------------------------------------
+revno: 822
+committer: Didier Barvaux <didier@barvaux.org>
+branch nick: rohc-main
+timestamp: Sat 2013-08-24 17:51:18 +0200
+message:
+  TCP profile: use W-LSB encoding for the TCP sequence number.
+  
+  The sequence number of the TCP profile shall be encoded with the lsb() encoding
+  scheme described in RFC 4997. This encoding scheme is the W-LSB encoding scheme
+  defined in RFC 3995, but with a variable shift parameter p.
 
