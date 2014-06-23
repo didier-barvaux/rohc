@@ -116,7 +116,6 @@ rohc_all_sources = \
 	$(top_srcdir)/app/fuzzer/*.c \
 	$(top_srcdir)/app/performance/*.c \
 	$(top_srcdir)/app/sniffer/*.c \
-	$(top_srcdir)/app/tunnel/*.c \
 	$(top_srcdir)/app/stats/*.c \
 	$(top_srcdir)/linux/include/*.h \
 	$(top_srcdir)/linux/*.c \

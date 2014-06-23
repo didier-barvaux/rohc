@@ -105,7 +105,6 @@ AC_CHECK_HEADERS([time.h sys/time.h])
 AC_CHECK_HEADERS([arpa/inet.h]) # ntohl, htonl, ntohs, htons on Linux
 AC_CHECK_HEADERS([winsock2.h])  # ntohl, htonl, ntohs, htons on Windows
 AC_CHECK_HEADERS([sys/types.h]) # ntohl, htonl, ntohs, htons on OpenBSD
-AC_CHECK_HEADERS([linux/if_tun.h]) # TUN/TAP support on Linux
 
 # Handle library flags according to the platform
 if test "x$ac_cv_header_winsock2_h" = "xyes" ; then
@@ -325,7 +324,6 @@ if test "x$enable_rohc_apps" != "xundefined" ; then
 	echo "  --enable-app-fuzzer / --disable-app-fuzzer"
 	echo "  --enable-app-performance / --disable-app-performance"
 	echo "  --enable-app-sniffer / --disable-app-sniffer"
-	echo "  --enable-app-tunnel / --disable-app-tunnel"
 	echo "  --enable-app-stats / --disable-app-stats"
 	echo
 	exit 1
@@ -359,42 +357,6 @@ AC_ARG_ENABLE(app_sniffer,
               enable_app_sniffer=$enableval,
               enable_app_sniffer=no)
 AM_CONDITIONAL([APP_SNIFFER], [test x$enable_app_sniffer = xyes])
-
-
-# check if ROHC over UDP tunnel (located in the app/tunnel/ subdir) is enabled
-AC_ARG_ENABLE(app_tunnel,
-              AS_HELP_STRING([--enable-app-tunnel],
-                             [enable ROHC over UDP tunnel [default=no]]),
-              enable_app_tunnel=$enableval,
-              enable_app_tunnel=no)
-AM_CONDITIONAL([APP_TUNNEL], [test x$enable_app_tunnel = xyes])
-
-# ROHC over UDP tunnel is now deprecated
-if test "x$enable_app_tunnel" = "xyes" ; then
-	echo
-	echo "WARNING: --enable-app-tunnel is now deprecated"
-	echo
-	echo "The ROHC over UDP tunnel is deprecated. This program was created"
-	echo "for testing purposes. The sniffer and fuzzer tools replace it for"
-	echo "testing. The IP/ROHC tunnel replaces it as tunneling solution"
-	echo "(better efficiency, designed for production)."
-	echo
-	echo "The ROHC over UDP tunnel will be removed in version 2.0.0."
-	echo
-fi
-
-# TUN interfaces are not supported on non-Linux platforms yet, so the ROHC
-# over UDP tunnel application cannot be enabled there
-if test "x$enable_app_tunnel" = "xyes" && \
-   test "x$ac_cv_header_linux_if_tun_h" != "xyes" ; then
-	echo
-	echo "ERROR: --enable-app-tunnel cannot be enabled on non Linux "
-	echo "       platforms yet"
-	echo
-	echo "Please use --disable-app-tunnel and try again."
-	echo
-	exit 1
-fi
 
 
 # check if ROHC stats tool (located in the app/stats/ subdir)
@@ -966,7 +928,6 @@ AC_CONFIG_FILES([ \
 	linux/Makefile \
 	app/Makefile \
 	app/performance/Makefile \
-	app/tunnel/Makefile \
 	app/sniffer/Makefile \
 	app/fuzzer/Makefile \
 	app/stats/Makefile \

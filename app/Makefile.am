@@ -10,12 +10,6 @@ else
 APP_PERF_DIR =
 endif
 
-if APP_TUNNEL
-APP_TUNNEL_DIR = tunnel
-else
-APP_TUNNEL_DIR =
-endif
-
 if APP_SNIFFER
 APP_SNIFFER_DIR = sniffer
 else
@@ -36,7 +30,6 @@ endif
 
 SUBDIRS = \
 	$(APP_PERF_DIR) \
-	$(APP_TUNNEL_DIR) \
 	$(APP_SNIFFER_DIR) \
 	$(APP_FUZZER_DIR) \
 	$(APP_STATS_DIR)
