@@ -33,7 +33,6 @@
 #include "rohc_comp.h"
 #include "schemes/wlsb.h"
 #include "net_pkt.h"
-#include "rohc_stats.h"
 
 #ifdef __KERNEL__
 #	include <linux/types.h>
@@ -108,36 +107,11 @@ struct rohc_comp_ctxt;
  */
 
 
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-/**
- * @brief Information on ROHC feedback data
- */
-struct rohc_feedback
-{
-	/** The feedback data */
-	unsigned char *data;
-	/** The length (in bytes) of the feedback data */
-	size_t length;
-	/** Whether the feedback data was locked during packet build? */
-	bool is_locked;
-};
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
-
-
 /**
  * @brief The ROHC compressor
  */
 struct rohc_comp
 {
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	/**
-	 * @brief Whether the compressor is enabled or not
-	 *
-	 * The compressor is enabled by default and may be disabled by user.
-	 */
-	int enabled;
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
-
 	/** The medium associated with the decompressor */
 	struct rohc_medium medium;
 
@@ -163,20 +137,6 @@ struct rohc_comp
 	unsigned char crc_table_8[256];
 
 
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	/* feedback-related variables: */
-
-	/** The ring of outgoing feedbacks */
-	struct rohc_feedback feedbacks[FEEDBACK_RING_SIZE];
-	/** The index of the oldest feedback in the feedback ring */
-	size_t feedbacks_first;
-	/** The index of the oldest unlocked feedback in the feedback ring */
-	size_t feedbacks_first_unlocked;
-	/** @brief The index of the next empty location in the feedback ring */
-	size_t feedbacks_next;
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
-
-
 	/* segment-related variables */
 
 /** The maximal value for MRRU */
@@ -191,13 +151,6 @@ struct rohc_comp
 
 
 	/* variables related to RTP detection */
-
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-/** The maximal number of RTP ports (shall be > 2) */
-#define MAX_RTP_PORTS 15U
-	/** The RTP ports table */
-	unsigned int rtp_ports[MAX_RTP_PORTS];
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 	/** The callback function used to detect RTP packet */
 	rohc_rtp_detection_callback_t rtp_callback;
@@ -243,12 +196,8 @@ struct rohc_comp
 	/** The number of uncompressed transmissions for list compression (L) */
 	size_t list_trans_nr;
 
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	/** The old callback function used to manage traces */
-	rohc_trace_callback_t trace_callback;
-#endif
-	/** The new callback function used to manage traces */
-	rohc_trace_callback2_t trace_callback2;
+	/** The callback function used to manage traces */
+	rohc_trace_callback2_t trace_callback;
 	/** The private context of the callback function used to manage traces */
 	void *trace_callback_priv;
 };
@@ -402,25 +351,6 @@ struct rohc_comp_ctxt
 
 	/** The number of sent packets */
 	int num_sent_packets;
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	/** The number of sent IR packets */
-	int num_sent_ir;
-	/** The number of sent IR-DYN packets */
-	int num_sent_ir_dyn;
-	/** The number of received feedbacks */
-	int num_recv_feedbacks;
-#endif
-
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	/** The size of the last 16 uncompressed packets */
-	struct rohc_stats total_16_uncompressed;
-	/** The size of the last 16 compressed packets */
-	struct rohc_stats total_16_compressed;
-	/** The size of the last 16 uncompressed headers */
-	struct rohc_stats header_16_uncompressed;
-	/** The size of the last 16 compressed headers */
-	struct rohc_stats header_16_compressed;
-#endif
 };
 
 

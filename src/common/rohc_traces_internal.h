@@ -33,30 +33,12 @@
 #include "rohc_traces.h"
 #include "rohc_buf.h"
 
-#include "config.h" /* for ROHC_ENABLE_DEPRECATED_API */
-
 #include <stdlib.h>
 #include <assert.h>
 
 #include "dllexport.h"
 
 
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-/** Print information depending on the debug level (internal usage) */
-#define __rohc_print(trace_cb, trace_cb2, trace_cb_priv, \
-                     level, entity, profile, format, ...) \
-	do { \
-		if(trace_cb2 != NULL) { \
-			trace_cb2(trace_cb_priv, level, entity, profile, \
-			         "[%s:%d %s()] " format "\n", \
-			         __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__); \
-		} else if(trace_cb != NULL) { \
-			trace_cb(level, entity, profile, \
-			         "[%s:%d %s()] " format "\n", \
-			         __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__); \
-		} \
-	} while(0)
-#else
 /** Print information depending on the debug level (internal usage) */
 #define __rohc_print(trace_cb, trace_cb_priv, \
                      level, entity, profile, format, ...) \
@@ -67,30 +49,16 @@
 			         __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__); \
 		} \
 	} while(0)
-#endif
 
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 /** Print information depending on the debug level */
 #define rohc_print(entity_struct, level, entity, profile, format, ...) \
 	do { \
 		assert((entity_struct) != NULL); \
 		__rohc_print((entity_struct)->trace_callback, \
-		             (entity_struct)->trace_callback2, \
 		             (entity_struct)->trace_callback_priv, \
 		             level, entity, profile, \
 		             format, ##__VA_ARGS__); \
 	} while(0)
-#else
-/** Print information depending on the debug level */
-#define rohc_print(entity_struct, level, entity, profile, format, ...) \
-	do { \
-		assert((entity_struct) != NULL); \
-		__rohc_print((entity_struct)->trace_callback2, \
-		             (entity_struct)->trace_callback_priv, \
-		             level, entity, profile, \
-		             format, ##__VA_ARGS__); \
-	} while(0)
-#endif
 
 /** Print debug messages prefixed with the function name */
 #define rohc_debug(entity_struct, entity, profile, format, ...) \
@@ -133,22 +101,14 @@
 	} while(0)
 
 
-void ROHC_EXPORT rohc_dump_packet(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-                                  const rohc_trace_callback_t trace_cb,
-#endif
-                                  const rohc_trace_callback2_t trace_cb2,
+void ROHC_EXPORT rohc_dump_packet(const rohc_trace_callback2_t trace_cb,
                                   void *const trace_cb_priv,
                                   const rohc_trace_entity_t trace_entity,
                                   const rohc_trace_level_t trace_level,
                                   const char *const descr,
                                   const struct rohc_buf packet);
 
-void ROHC_EXPORT rohc_dump_buf(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-                               const rohc_trace_callback_t trace_cb,
-#endif
-                               const rohc_trace_callback2_t trace_cb2,
+void ROHC_EXPORT rohc_dump_buf(const rohc_trace_callback2_t trace_cb,
                                void *const trace_cb_priv,
                                const rohc_trace_entity_t trace_entity,
                                const rohc_trace_level_t trace_level,

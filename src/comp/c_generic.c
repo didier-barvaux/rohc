@@ -76,10 +76,7 @@ static bool ip_header_info_new(struct ip_header_info *const header_info,
                                const struct ip_packet *const ip,
                                const size_t list_trans_nr,
                                const size_t wlsb_window_width,
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-                               rohc_trace_callback_t trace_cb,
-#endif
-                               rohc_trace_callback2_t trace_cb2,
+                               rohc_trace_callback2_t trace_cb,
                                void *const trace_cb_priv,
                                const int profile_id)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
@@ -366,8 +363,7 @@ static bool is_field_changed(const unsigned short changed_fields,
  *                           list compression (L)
  * @param wlsb_window_width  The width of the W-LSB sliding window for IPv4
  *                           IP-ID (must be > 0)
- * @param trace_cb           The old function to call for printing traces
- * @param trace_cb2          The new function to call for printing traces
+ * @param trace_cb           The function to call for printing traces
  * @param trace_cb_priv      An optional private context, may be NULL
  * @param profile_id         The ID of the associated compression profile
  * @return                   true if successful, false otherwise
@@ -376,10 +372,7 @@ static bool ip_header_info_new(struct ip_header_info *const header_info,
                                const struct ip_packet *const ip,
                                const size_t list_trans_nr,
                                const size_t wlsb_window_width,
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-                               rohc_trace_callback_t trace_cb,
-#endif
-                               rohc_trace_callback2_t trace_cb2,
+                               rohc_trace_callback2_t trace_cb,
                                void *const trace_cb_priv,
                                const int profile_id)
 {
@@ -402,12 +395,8 @@ static bool ip_header_info_new(struct ip_header_info *const header_info,
 			c_create_wlsb(16, wlsb_window_width, ROHC_LSB_SHIFT_IP_ID);
 		if(header_info->info.v4.ip_id_window == NULL)
 		{
-			__rohc_print(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-			             trace_cb,
-#endif
-			             trace_cb2, trace_cb_priv,
-			             ROHC_TRACE_ERROR, ROHC_TRACE_COMP, profile_id,
+			__rohc_print(trace_cb, trace_cb_priv, ROHC_TRACE_ERROR,
+			             ROHC_TRACE_COMP, profile_id,
 			             "no memory to allocate W-LSB encoding for IP-ID");
 			goto error;
 		}
@@ -426,10 +415,7 @@ static bool ip_header_info_new(struct ip_header_info *const header_info,
 	{
 		/* init the compression context for IPv6 extension header list */
 		rohc_comp_list_ipv6_new(&header_info->info.v6.ext_comp, list_trans_nr,
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-		                        trace_cb,
-#endif
-		                        trace_cb2, trace_cb_priv, profile_id);
+		                        trace_cb, trace_cb_priv, profile_id);
 	}
 
 	return true;
@@ -549,10 +535,7 @@ bool c_generic_create(struct rohc_comp_ctxt *const context,
 	                       &packet->outer_ip,
 	                       context->compressor->list_trans_nr,
 	                       context->compressor->wlsb_window_width,
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	                       context->compressor->trace_callback,
-#endif
-	                       context->compressor->trace_callback2,
 	                       context->compressor->trace_callback_priv,
 	                       context->profile->id))
 	{
@@ -564,10 +547,7 @@ bool c_generic_create(struct rohc_comp_ctxt *const context,
 		                       &packet->inner_ip,
 		                       context->compressor->list_trans_nr,
 		                       context->compressor->wlsb_window_width,
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 		                       context->compressor->trace_callback,
-#endif
-		                       context->compressor->trace_callback2,
 		                       context->compressor->trace_callback_priv,
 		                       context->profile->id))
 		{
@@ -1227,10 +1207,7 @@ static bool c_generic_detect_changes(struct rohc_comp_ctxt *const context,
 			                       &uncomp_pkt->inner_ip,
 			                       context->compressor->list_trans_nr,
 			                       context->compressor->wlsb_window_width,
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 			                       context->compressor->trace_callback,
-#endif
-			                       context->compressor->trace_callback2,
 			                       context->compressor->trace_callback_priv,
 			                       context->profile->id))
 			{

@@ -40,13 +40,6 @@
 #include <assert.h>
 
 
-/* TODO API: remove these variables once compatibility is not needed anymore */
-unsigned char crc_table_8[256];
-unsigned char crc_table_7[256];
-unsigned char crc_table_6[256];
-unsigned char crc_table_3[256];
-unsigned char crc_table_2[256];
-
 /**
  * @brief The pre-computed table for 32-bit Frame Check Sequence (FCS)
  *
@@ -170,48 +163,6 @@ static inline uint8_t crc_calc_3(const uint8_t *const buf,
 /**
  * Public functions
  */
-
-
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-
-/**
- * @brief Get the polynom for the given CRC type.
- *
- * @deprecated please do not use crc_get_polynom anymore,
- *             simply remove it from your code
- *
- * @param type The CRC type
- * @return     The polynom for the requested CRC type
- *
- * @ingroup rohc
- */
-int crc_get_polynom(int type __attribute__((unused)))
-{
-	/* nothing to do here: CRC tables are initialized in compressors and
-	 * decompressors */
-	return 0;
-}
-
-
-/**
- * @brief Initialize a CRC table given a 256-byte table and the polynom to use
- *
- * @deprecated please do not use crc_init_table anymore,
- *             simply remove it from your code
- *
- * @param table The 256-byte table
- * @param poly  The polynom
- *
- * @ingroup rohc
- */
-void crc_init_table(unsigned char *table __attribute__((unused)),
-                    unsigned char poly __attribute__((unused)))
-{
-	/* nothing to do here: CRC tables are initialized in compressors and
-	 * decompressors */
-}
-
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /**

@@ -25,7 +25,6 @@ rohc_common_sources = \
 	../../src/common/ip.c \
 	../../src/common/net_pkt.c \
 	../../src/common/comp_list.c \
-	../../src/common/rohc_stats.c \
 	../../src/common/feedback_parse.c
 
 rohc_comp_sources = \

@@ -420,7 +420,7 @@ bool rohc_comp_set_traces_cb2(struct rohc_comp *const comp,
 	}
 
 	/* replace current trace callback by the new one */
-	comp->trace_callback2 = callback;
+	comp->trace_callback = callback;
 	comp->trace_callback_priv = priv_ctxt;
 
 	return true;
@@ -505,8 +505,8 @@ error:
  *
  * Compress the given uncompressed packet into a ROHC packet. The compression
  * may succeed into two different ways:
- *   \li return \ref ROHC_OK and a full ROHC packet,
- *   \li return \ref ROHC_NEED_SEGMENT and no ROHC data if ROHC segmentation
+ *   \li return \ref ROHC_STATUS_OK and a full ROHC packet,
+ *   \li return \ref ROHC_STATUS_SEGMENT and no ROHC data if ROHC segmentation
  *       is required.
  *
  * \par ROHC segmentation:
@@ -617,22 +617,14 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 
 #if ROHC_EXTRA_DEBUG == 1
 	/* print uncompressed bytes */
-	rohc_dump_packet(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	                 comp->trace_callback,
-#endif
-	                 comp->trace_callback2, comp->trace_callback_priv,
+	rohc_dump_packet(comp->trace_callback, comp->trace_callback_priv,
 	                 ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
 	                 "uncompressed data, max 100 bytes", uncomp_packet);
 #endif
 
 	/* parse the uncompressed packet */
-	if(!net_pkt_parse(&ip_pkt, uncomp_packet,
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	                  comp->trace_callback,
-#endif
-	                  comp->trace_callback2, comp->trace_callback_priv,
-	                  ROHC_TRACE_COMP))
+	if(!net_pkt_parse(&ip_pkt, uncomp_packet, comp->trace_callback,
+	                  comp->trace_callback_priv, ROHC_TRACE_COMP))
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		             "failed to parse uncompressed packet");
@@ -842,7 +834,7 @@ error:
  * Get the next ROHC segment if any.
  *
  * To get all the segments of one ROHC packet, call this function until
- * \ref ROHC_OK or \ref ROHC_ERROR is returned.
+ * \ref ROHC_STATUS_OK or \ref ROHC_STATUS_ERROR is returned.
  *
  * @param comp          The ROHC compressor
  * @param[out] segment  The buffer where to store the ROHC segment

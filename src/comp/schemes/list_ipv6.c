@@ -45,17 +45,13 @@ static bool cmp_ipv6_ext(const struct rohc_list_item *const item,
  *
  * @param comp            The context to create
  * @param list_trans_nr   The number of uncompressed transmissions (L)
- * @param trace_cb        The old function to call for printing traces
- * @param trace_cb2       The new function to call for printing traces
+ * @param trace_cb        The function to call for printing traces
  * @param trace_cb_priv   An optional private context, may be NULL
  * @param profile_id      The ID of the associated decompression profile
  */
 void rohc_comp_list_ipv6_new(struct list_comp *const comp,
                              const size_t list_trans_nr,
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-                             rohc_trace_callback_t trace_cb,
-#endif
-                             rohc_trace_callback2_t trace_cb2,
+                             rohc_trace_callback2_t trace_cb,
                              void *const trace_cb_priv,
                              const int profile_id)
 {
@@ -87,10 +83,7 @@ void rohc_comp_list_ipv6_new(struct list_comp *const comp,
 	comp->cmp_item = cmp_ipv6_ext;
 
 	/* traces */
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	comp->trace_callback = trace_cb;
-#endif
-	comp->trace_callback2 = trace_cb2;
 	comp->trace_callback_priv = trace_cb_priv;
 	comp->profile_id = profile_id;
 }

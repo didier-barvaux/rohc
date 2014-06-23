@@ -61,7 +61,6 @@ extern "C"
 #endif
 
 
-
 /**
  * @brief The Ethertype assigned to the ROHC protocol by the IEEE
  *
@@ -70,87 +69,6 @@ extern "C"
  * @ingroup rohc
  */
 #define ROHC_ETHERTYPE  0x22f1
-
-
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-
-/*
- * Below are some return codes:
- */
-
-/**
- * @brief Return code: the action was performed without problem
- * @ingroup rohc
- * @deprecated please do not use this constant anymore,
- *             use rohc_compress4() instead
- */
-#define ROHC_OK                     1
-
-/**
- * @brief Return code: the action failed because no context is defined
- * @ingroup rohc
- * @deprecated please do not use this constant anymore,
- *             use rohc_compress4() instead
- */
-#define ROHC_ERROR_NO_CONTEXT      -1
-
-/**
- * @brief Return code: the action failed due to an unattended or malformed packet
- * @ingroup rohc
- * @deprecated please do not use this constant anymore,
- *             use rohc_compress4() instead
- */
-#define ROHC_ERROR_PACKET_FAILED   -2
-
-/**
- * @brief Return code: the action failed because the packet only contains feedback info
- * @ingroup rohc
- * @deprecated please do not use this constant anymore,
- *             use rohc_compress4() instead
- */
-#define ROHC_FEEDBACK_ONLY         -3
-
-/**
- * @brief Return code: the action failed due to a CRC failure
- * @ingroup rohc
- * @deprecated please do not use this constant anymore,
- *             use rohc_compress4() instead
- */
-#define ROHC_ERROR_CRC             -4
-
-/**
- * @brief Return code: the action encountered a problem
- * @ingroup rohc
- * @deprecated please do not use this constant anymore,
- *             use rohc_compress4() instead
- */
-#define ROHC_ERROR                 -5
-
-/**
- * @brief Return code: the packet needs to be parsed again
- * @ingroup rohc
- * @deprecated please do not use this constant anymore,
- *             use rohc_compress4() instead
- */
-#define ROHC_NEED_REPARSE          -6
-
-/**
- * @brief Return code: the action succeeded but packet needs to be segmented
- * @ingroup rohc
- * @deprecated please do not use this constant anymore,
- *             use rohc_compress4() instead
- */
-#define ROHC_NEED_SEGMENT          -7
-
-/**
- * @brief Return code: the action succeeded but packet is a non-final segment
- * @ingroup rohc
- * @deprecated please do not use this constant anymore,
- *             use rohc_compress4() instead
- */
-#define ROHC_NON_FINAL_SEGMENT     -8
-
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /**
@@ -177,34 +95,6 @@ typedef enum
 
 } rohc_status_t;
 
-
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-
-/**
- * @brief ROHC operation modes (see 4.4 in the RFC 3095)
- *
- * If you add a new operation mode, please also add the corresponding textual
- * description in \ref rohc_get_mode_descr.
- *
- * @deprecated do not use this type anymore, use \ref rohc_mode_t instead
- *
- * @ingroup rohc
- *
- * @see rohc_mode_t
- */
-typedef enum
-{
-	/// The Unidirectional mode (U-mode)
-	U_MODE = 1,
-	/// The Bidirectional Optimistic mode (O-mode)
-	O_MODE = 2,
-	/// The Bidirectional Reliable mode (R-mode)
-	R_MODE = 3,
-} rohc_mode
-	ROHC_DEPRECATED("please do not use this type anymore, "
-	                "use rohc_mode_t instead");
-
-#endif /* !ROHC_ENABLE_DEPRECATED_API) */
 
 /**
  * @brief ROHC operation modes
@@ -240,6 +130,7 @@ typedef enum
  * @see rohc_decomp_set_max_cid
  */
 #define ROHC_LARGE_CID_MAX  ((1 << 14) - 1) /* 2^14 - 1 = 16383 */
+
 
 /**
  * @brief The maximum value for small CIDs
@@ -336,58 +227,9 @@ typedef enum
 } rohc_profile_t;
 
 
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 
 /*
- * The different CRC types and tables for ROHC compression/decompression
- *
- * TODO API: remove these public constants since a private enum was created
- */
-
-/** The CRC-2 type (deprecated) */
-#define CRC_TYPE_2 1
-/** The CRC-3 type (deprecated) */
-#define CRC_TYPE_3 2
-/** The CRC-6 type (deprecated) */
-#define CRC_TYPE_6 3
-/** The CRC-7 type (deprecated) */
-#define CRC_TYPE_7 4
-/** The CRC-8 type (deprecated) */
-#define CRC_TYPE_8 5
-
-
-/* TODO API: remove these variables once compatibility is not needed anymore */
-
-/** The table to enable fast CRC-2 computation
- * @deprecated please do not use this variable anymore */
-extern unsigned char ROHC_EXPORT crc_table_2[256]
-	ROHC_DEPRECATED("please do not use this variable anymore, simply drop it");
-
-/** The table to enable fast CRC-3 computation
- * @deprecated please do not use this variable anymore */
-extern unsigned char ROHC_EXPORT crc_table_3[256]
-	ROHC_DEPRECATED("please do not use this variable anymore, simply drop it");
-
-/** The table to enable fast CRC-6 computation
- * @deprecated please do not use this variable anymore */
-extern unsigned char ROHC_EXPORT crc_table_6[256]
-	ROHC_DEPRECATED("please do not use this variable anymore, simply drop it");
-
-/** The table to enable fast CRC-7 computation
- * @deprecated please do not use this variable anymore */
-extern unsigned char ROHC_EXPORT crc_table_7[256]
-	ROHC_DEPRECATED("please do not use this variable anymore, simply drop it");
-
-/** The table to enable fast CRC-8 computation
- * @deprecated please do not use this variable anymore */
-extern unsigned char ROHC_EXPORT crc_table_8[256]
-	ROHC_DEPRECATED("please do not use this variable anymore, simply drop it");
-
-#endif /* !ROHC_ENABLE_DEPRECATED_API) */
-
-
-/*
- * Prototypes of public up-to-date functions
+ * Prototypes of public functions
  */
 
 char * ROHC_EXPORT rohc_version(void);
@@ -400,22 +242,6 @@ const char * ROHC_EXPORT rohc_get_mode_descr(const rohc_mode_t mode);
 const char * ROHC_EXPORT rohc_get_profile_descr(const rohc_profile_t profile)
 	__attribute__((warn_unused_result));
 
-
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-
-/*
- * Prototypes of public deprecated functions
- *
- * TODO API: remove this function once compatibility is not needed anymore
- */
-
-int ROHC_EXPORT crc_get_polynom(int type)
-	ROHC_DEPRECATED("please do not use this function anymore, simply drop it");
-
-void ROHC_EXPORT crc_init_table(unsigned char *table, unsigned char polynum)
-	ROHC_DEPRECATED("please do not use this function anymore, simply drop it");
-
-#endif /* !ROHC_ENABLE_DEPRECATED_API) */
 
 
 #undef ROHC_EXPORT /* do not pollute outside this header */

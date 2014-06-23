@@ -64,9 +64,6 @@ rohc_list_item_reset
 rohc_list_item_update_if_changed
 rohc_list_reset
 rohc_list_supersede
-rohc_stats_add
-rohc_stats_mean
-rohc_stats_sum
 rohc_version
 sdvl_can_length_be_encoded
 sdvl_can_value_be_encoded
@@ -87,12 +84,5 @@ tcp_compute_crc_dynamic
 tcp_compute_crc_static
 esp_compute_crc_dynamic
 esp_compute_crc_static
-crc_table_2
-crc_table_3
-crc_table_6
-crc_table_7
-crc_table_8
-crc_get_polynom
-crc_init_table
 rohc_packet_is_feedback
 rohc_feedback_get_size

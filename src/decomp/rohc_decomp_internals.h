@@ -29,8 +29,6 @@
 
 #include "rohc_internal.h"
 #include "rohc_decomp.h"
-#include "rohc_stats.h"
-
 
 
 /*
@@ -86,14 +84,6 @@ struct d_statistics
  */
 struct rohc_decomp
 {
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	/** The compressor associated with the decompressor */
-	struct rohc_comp *compressor;
-	/** Whether to handle feedback delivery internally for compatibility with
-	 *  pre-1.7.0 versions */
-	bool do_auto_feedback_delivery;
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
-
 	/** The medium associated with the decompressor */
 	struct rohc_medium medium;
 
@@ -152,12 +142,8 @@ struct rohc_decomp
 	/** Some statistics about the decompression processes */
 	struct d_statistics stats;
 
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	/** The old callback function used to manage traces */
-	rohc_trace_callback_t trace_callback;
-#endif
-	/** The new callback function used to manage traces */
-	rohc_trace_callback2_t trace_callback2;
+	/** The callback function used to manage traces */
+	rohc_trace_callback2_t trace_callback;
 	/** The private context of the callback function used to manage traces */
 	void *trace_callback_priv;
 };
@@ -211,17 +197,6 @@ struct rohc_decomp_ctxt
 
 	/* The number of received packets */
 	int num_recv_packets;
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	/* The number of received IR packets */
-	int num_recv_ir;
-	/* The number of received IR-DYN packets */
-	int num_recv_ir_dyn;
-	/* The number of sent feedbacks */
-	int num_sent_feedbacks;
-
-	/* The number of decompression failures */
-	int num_decomp_failures;
-#endif
 	/** The number of successful corrections upon CRC failure */
 	unsigned long corrected_crc_failures;
 	/** The number of successful corrections of SN wraparound upon CRC failure */
@@ -229,17 +204,6 @@ struct rohc_decomp_ctxt
 	/** The number of successful corrections of incorrect SN updates upon CRC
 	 *  failure */
 	unsigned long corrected_wrong_sn_updates;
-
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	/* The size of the last 16 uncompressed packets */
-	struct rohc_stats total_16_uncompressed;
-	/* The size of the last 16 compressed packets */
-	struct rohc_stats total_16_compressed;
-	/* The size of the last 16 uncompressed headers */
-	struct rohc_stats header_16_uncompressed;
-	/* The size of the last 16 compressed headers */
-	struct rohc_stats header_16_compressed;
-#endif
 
 	/** The number of (possible) lost packet(s) before last packet */
 	unsigned long nr_lost_packets;

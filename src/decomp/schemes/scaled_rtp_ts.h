@@ -41,8 +41,6 @@
 
 #include "dllexport.h"
 
-#include "config.h" /* for ROHC_ENABLE_DEPRECATED_API */
-
 
 /* The definition of the scaled RTP Timestamp decoding context is private */
 struct ts_sc_decomp;
@@ -52,11 +50,7 @@ struct ts_sc_decomp;
  * Function prototypes
  */
 
-struct ts_sc_decomp * ROHC_EXPORT d_create_sc(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-                                              rohc_trace_callback_t trace_cb,
-#endif
-                                              rohc_trace_callback2_t trace_cb2,
+struct ts_sc_decomp * ROHC_EXPORT d_create_sc(rohc_trace_callback2_t trace_cb,
                                               void *const trace_cb_priv)
 	__attribute__((warn_unused_result));
 void ROHC_EXPORT rohc_ts_scaled_free(struct ts_sc_decomp *const ts_scaled);

@@ -229,29 +229,6 @@ fi
 AM_CONDITIONAL([CODE_COVERAGE], [test x$code_coverage = xyes])
 
 
-# check if deprecated code shall be enabled
-AC_ARG_ENABLE(deprecated_api,
-              AS_HELP_STRING([--disable-deprecated-api],
-                             [build deprecated API if enabled [[default=yes]]]),
-              enable_deprecated_api=$enableval,
-              enable_deprecated_api=yes)
-if test "x$enable_deprecated_api" != "xyes"; then
-	echo
-	echo "WARNING: you disabled the deprecated API, it means that the API/ABI"
-	echo "         compatibility of the ROHC library is broken; are you sure "
-	echo "         to do so?"
-	echo
-	sleep 5
-	deprecated_api=0
-	configure_cflags="${configure_cflags} -DROHC_ENABLE_DEPRECATED_API=0"
-else
-	configure_cflags="${configure_cflags} -DROHC_ENABLE_DEPRECATED_API=1"
-	deprecated_api=1
-fi
-AC_DEFINE_UNQUOTED([ROHC_ENABLE_DEPRECATED_API], [$deprecated_api],
-                   [Whether deprecated API is enabled or not.])
-
-
 # allow users to specify a special location for libpcap includes
 AC_ARG_WITH(libpcap_includes,
             AS_HELP_STRING([--with-libpcap-includes=DIR],

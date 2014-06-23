@@ -106,10 +106,7 @@ void * d_udp_create(const struct rohc_decomp_ctxt *const context)
 
 	/* create the generic context */
 	g_context = d_generic_create(context,
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	                             context->decompressor->trace_callback,
-#endif
-	                             context->decompressor->trace_callback2,
 	                             context->decompressor->trace_callback_priv,
 	                             context->profile->id);
 	if(g_context == NULL)

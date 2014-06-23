@@ -408,10 +408,7 @@ static void * d_tcp_create(const struct rohc_decomp_ctxt *const context)
 
 	/* create the generic context */
 	g_context = d_generic_create(context,
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	                             context->decompressor->trace_callback,
-#endif
-	                             context->decompressor->trace_callback2,
 	                             context->decompressor->trace_callback_priv,
 	                             context->profile->id);
 	if(g_context == NULL)
@@ -1023,11 +1020,7 @@ static int d_tcp_decode_ir(struct rohc_decomp_ctxt *context,
 			                 "headers as ROHC packet contains");
 			goto error;
 		}
-		rohc_dump_buf(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-		              context->decompressor->trace_callback,
-#endif
-		              context->decompressor->trace_callback2,
+		rohc_dump_buf(context->decompressor->trace_callback,
 		              context->decompressor->trace_callback_priv,
 		              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
 		              "current IP packet", dest, size);
@@ -1050,11 +1043,7 @@ static int d_tcp_decode_ir(struct rohc_decomp_ctxt *context,
 	/* add TCP header and TCP options */
 	size += (tcp->data_offset << 2);
 
-	rohc_dump_buf(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	              context->decompressor->trace_callback,
-#endif
-	              context->decompressor->trace_callback2,
+	rohc_dump_buf(context->decompressor->trace_callback,
 	              context->decompressor->trace_callback_priv,
 	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
 	              "current IP+TCP packet", dest, size);
@@ -1291,11 +1280,7 @@ static int d_tcp_decode_irdyn(struct rohc_decomp_ctxt *context,
 	/* add TCP header and TCP options */
 	size += (tcp->data_offset << 2);
 
-	rohc_dump_buf(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	              context->decompressor->trace_callback,
-#endif
-	              context->decompressor->trace_callback2,
+	rohc_dump_buf(context->decompressor->trace_callback,
 	              context->decompressor->trace_callback_priv,
 	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
 	              "current IP+TCP packet", dest, size);
@@ -1608,11 +1593,7 @@ static int tcp_decode_static_ipv6_option(struct rohc_decomp_ctxt *const context,
 	}
 
 #if ROHC_EXTRA_DEBUG == 1
-	rohc_dump_buf(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	              context->decompressor->trace_callback,
-#endif
-	              context->decompressor->trace_callback2,
+	rohc_dump_buf(context->decompressor->trace_callback,
 	              context->decompressor->trace_callback_priv,
 	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
 	              "IPv6 option static part", rohc_packet, size);
@@ -1831,11 +1812,7 @@ static int tcp_decode_dynamic_ipv6_option(struct rohc_decomp_ctxt *const context
 	}
 
 #if ROHC_EXTRA_DEBUG == 1
-	rohc_dump_buf(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	              context->decompressor->trace_callback,
-#endif
-	              context->decompressor->trace_callback2,
+	rohc_dump_buf(context->decompressor->trace_callback,
 	              context->decompressor->trace_callback_priv,
 	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
 	              "IPv6 option dynamic part", rohc_packet, size);
@@ -1967,11 +1944,7 @@ static int tcp_decode_static_ip(struct rohc_decomp_ctxt *const context,
 			size = sizeof(ipv6_static2_t);
 		}
 	}
-	rohc_dump_buf(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	              context->decompressor->trace_callback,
-#endif
-	              context->decompressor->trace_callback2,
+	rohc_dump_buf(context->decompressor->trace_callback,
 	              context->decompressor->trace_callback_priv,
 	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
 	              "IP static part", rohc_packet, size);
@@ -2144,11 +2117,7 @@ static int tcp_decode_dynamic_ip(struct rohc_decomp_ctxt *const context,
 		size = sizeof(ipv6_dynamic_t);
 	}
 
-	rohc_dump_buf(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	              context->decompressor->trace_callback,
-#endif
-	              context->decompressor->trace_callback2,
+	rohc_dump_buf(context->decompressor->trace_callback,
 	              context->decompressor->trace_callback_priv,
 	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
 	              "IP dynamic part", rohc_packet, size);
@@ -2275,11 +2244,7 @@ static int tcp_decode_irregular_ip(struct rohc_decomp_ctxt *const context,
 	}
 
 #if ROHC_EXTRA_DEBUG == 1
-	rohc_dump_buf(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	              context->decompressor->trace_callback,
-#endif
-	              context->decompressor->trace_callback2,
+	rohc_dump_buf(context->decompressor->trace_callback,
 	              context->decompressor->trace_callback_priv,
 	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
 	              "IP irregular part", rohc_data, remain_data - rohc_data);
@@ -2325,11 +2290,7 @@ static int tcp_decode_static_tcp(struct rohc_decomp_ctxt *const context,
 		                 rohc_length);
 		goto error;
 	}
-	rohc_dump_buf(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	              context->decompressor->trace_callback,
-#endif
-	              context->decompressor->trace_callback2,
+	rohc_dump_buf(context->decompressor->trace_callback,
 	              context->decompressor->trace_callback_priv,
 	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
 	              "TCP static part", rohc_packet, sizeof(tcp_static_t));
@@ -2975,11 +2936,7 @@ static int tcp_decode_dynamic_tcp(struct rohc_decomp_ctxt *const context,
 		assert((opts_full_len % sizeof(uint32_t)) == 0);
 
 		/* print TCP options */
-		rohc_dump_buf(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-		              context->decompressor->trace_callback,
-#endif
-		              context->decompressor->trace_callback2,
+		rohc_dump_buf(context->decompressor->trace_callback,
 		              context->decompressor->trace_callback_priv,
 		              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
 		              "decompressed TCP options", tcp_options, opts_full_len);
@@ -2987,11 +2944,7 @@ static int tcp_decode_dynamic_tcp(struct rohc_decomp_ctxt *const context,
 		/* update data offset */
 		tcp->data_offset = (sizeof(tcphdr_t) + opts_full_len) >> 2;
 
-		rohc_dump_buf(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-		              context->decompressor->trace_callback,
-#endif
-		              context->decompressor->trace_callback2,
+		rohc_dump_buf(context->decompressor->trace_callback,
 		              context->decompressor->trace_callback_priv,
 		              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
 		              "TCP header + options",
@@ -3005,11 +2958,7 @@ static int tcp_decode_dynamic_tcp(struct rohc_decomp_ctxt *const context,
 		remain_data++;
 		remain_len--;
 
-		rohc_dump_buf(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-		              context->decompressor->trace_callback,
-#endif
-		              context->decompressor->trace_callback2,
+		rohc_dump_buf(context->decompressor->trace_callback,
 		              context->decompressor->trace_callback_priv,
 		              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
 		              "TCP header, no options",
@@ -3019,11 +2968,7 @@ static int tcp_decode_dynamic_tcp(struct rohc_decomp_ctxt *const context,
 	}
 
 	assert(remain_len <= rohc_length);
-	rohc_dump_buf(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	              context->decompressor->trace_callback,
-#endif
-	              context->decompressor->trace_callback2,
+	rohc_dump_buf(context->decompressor->trace_callback,
 	              context->decompressor->trace_callback_priv,
 	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG, "TCP dynamic part",
 	              (unsigned char *) tcp_dynamic, rohc_length - remain_len);
@@ -3241,11 +3186,7 @@ static int tcp_decode_irregular_tcp(struct rohc_decomp_ctxt *const context,
 	/* update TCP data offset */
 	tcp->data_offset = ((sizeof(tcphdr_t) + tcp_opts_len) >> 2);
 
-	rohc_dump_buf(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	              context->decompressor->trace_callback,
-#endif
-	              context->decompressor->trace_callback2,
+	rohc_dump_buf(context->decompressor->trace_callback,
 	              context->decompressor->trace_callback_priv,
 	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
 	              "TCP irregular part", rohc_data, remain_data - rohc_data);
@@ -3584,11 +3525,7 @@ static const uint8_t * d_tcp_opt_sack(const struct rohc_decomp_ctxt *const conte
 		                  rohc_ntoh32(sack_block->block_end));
 		sack_block++;
 	}
-	rohc_dump_buf(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	              context->decompressor->trace_callback,
-#endif
-	              context->decompressor->trace_callback2,
+	rohc_dump_buf(context->decompressor->trace_callback,
 	              context->decompressor->trace_callback_priv,
 	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
 	              "TCP option SACK", options - 2, *(options - 1));
@@ -4184,11 +4121,7 @@ static const uint8_t * tcp_decompress_tcp_options(struct rohc_decomp_ctxt *const
 	                  tcp->data_offset, tcp->data_offset);
 	if(tcp->data_offset > ( sizeof(tcphdr_t) >> 2 ) )
 	{
-		rohc_dump_buf(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-		              context->decompressor->trace_callback,
-#endif
-		              context->decompressor->trace_callback2,
+		rohc_dump_buf(context->decompressor->trace_callback,
 		              context->decompressor->trace_callback_priv,
 		              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG, "TCP options",
 		              (unsigned char *) (tcp + 1),
@@ -4271,11 +4204,7 @@ static int tcp_size_decompress_tcp_options(struct rohc_decomp_ctxt *const contex
 		                 "options: at least %zu bytes required", 1 + xi_len);
 		goto error;
 	}
-	rohc_dump_buf(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	              context->decompressor->trace_callback,
-#endif
-	              context->decompressor->trace_callback2,
+	rohc_dump_buf(context->decompressor->trace_callback,
 	              context->decompressor->trace_callback_priv,
 	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
 	              "XI bytes of compressed list of TCP options", data, xi_len);
@@ -4985,11 +4914,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 			goto error;
 		}
 	}
-	rohc_dump_buf(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	              context->decompressor->trace_callback,
-#endif
-	              context->decompressor->trace_callback2,
+	rohc_dump_buf(context->decompressor->trace_callback,
 	              context->decompressor->trace_callback_priv,
 	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
 	              "ROHC base header", rohc_remain_data, rohc_header_len);
@@ -5981,11 +5906,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	}
 	while(protocol != ROHC_IPPROTO_TCP);
 
-	rohc_dump_buf(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	              context->decompressor->trace_callback,
-#endif
-	              context->decompressor->trace_callback2,
+	rohc_dump_buf(context->decompressor->trace_callback,
 	              context->decompressor->trace_callback_priv,
 	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
 	              "current IP + TCP packet", dest, uncomp_header_len);

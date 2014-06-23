@@ -26,8 +26,6 @@
 #include "comp/schemes/scaled_rtp_ts.h"
 #include "decomp/schemes/scaled_rtp_ts.h"
 
-#include "config.h"
-
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
@@ -145,11 +143,7 @@ bool run_test(bool be_verbose, const unsigned int incr)
 	uint64_t i;
 
 	/* create the RTP TS encoding context */
-	ret = c_create_sc(&ts_sc_comp, ROHC_WLSB_WINDOW_WIDTH,
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	                  NULL,
-#endif
-	                  NULL, NULL);
+	ret = c_create_sc(&ts_sc_comp, ROHC_WLSB_WINDOW_WIDTH, NULL, NULL);
 	if(ret != 1)
 	{
 		fprintf(stderr, "failed to initialize the RTP TS encoding context\n");
@@ -157,11 +151,7 @@ bool run_test(bool be_verbose, const unsigned int incr)
 	}
 
 	/* create the RTP TS decoding context */
-	ts_sc_decomp = d_create_sc(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	                           NULL,
-#endif
-	                           NULL, NULL);
+	ts_sc_decomp = d_create_sc(NULL, NULL);
 	if(ts_sc_decomp == NULL)
 	{
 		fprintf(stderr, "failed to initialize the RTP TS decoding context\n");

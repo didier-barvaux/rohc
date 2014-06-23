@@ -41,45 +41,6 @@ static inline uint64_t rohc_time_interval(const struct rohc_ts begin,
 	__attribute__((warn_unused_result, const));
 
 
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-
-#ifndef __KERNEL__
-
-/**
- * @brief Get the current time in seconds
- *
- * @return The current time in seconds
- */
-static inline uint64_t rohc_get_seconds(void)
-{
-	struct timeval tv;
-
-	gettimeofday(&tv, NULL);
-
-	return tv.tv_sec;
-}
-
-#else /* __KERNEL__ */
-
-/**
- * @brief Get the current time in seconds
- *
- * @return The current time in seconds
- */
-static inline uint64_t rohc_get_seconds(void)
-{
-	struct timespec ts;
-
-	ktime_get_ts(&ts);
-
-	return ts.tv_sec;
-}
-
-#endif /* __KERNEL__ */
-
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
-
-
 /**
  * @brief Compute the interval of time between 2 timestamps
  *

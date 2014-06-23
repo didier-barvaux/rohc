@@ -418,7 +418,7 @@ struct rohc_decomp * rohc_decomp_new2(const rohc_cid_type_t cid_type,
 	}
 
 	/* no trace callback during decompressor creation */
-	decomp->trace_callback2 = NULL;
+	decomp->trace_callback = NULL;
 	decomp->trace_callback_priv = NULL;
 
 	/* default feature set (empty for the moment) */
@@ -693,11 +693,7 @@ rohc_status_t rohc_decompress3(struct rohc_decomp *const decomp,
 
 #if ROHC_EXTRA_DEBUG == 1
 	/* print compressed bytes */
-	rohc_dump_packet(
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	                 decomp->trace_callback,
-#endif
-	                 decomp->trace_callback2, decomp->trace_callback_priv,
+	rohc_dump_packet(decomp->trace_callback, decomp->trace_callback_priv,
 	                 ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
 	                 "compressed data, max 100 bytes", rohc_packet);
 #endif
@@ -2463,7 +2459,7 @@ bool rohc_decomp_set_traces_cb2(struct rohc_decomp *decomp,
 	}
 
 	/* replace current trace callback by the new one */
-	decomp->trace_callback2 = callback;
+	decomp->trace_callback = callback;
 	decomp->trace_callback_priv = priv_ctxt;
 
 	return true;

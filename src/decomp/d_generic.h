@@ -466,10 +466,7 @@ struct d_generic_context
  */
 
 void * d_generic_create(const struct rohc_decomp_ctxt *const context,
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-                        rohc_trace_callback_t trace_cb,
-#endif
-                        rohc_trace_callback2_t trace_cb2,
+                        rohc_trace_callback2_t trace_cb,
                         void *const trace_cb_priv,
                         const int profile_id)
 	__attribute__((nonnull(1), warn_unused_result));

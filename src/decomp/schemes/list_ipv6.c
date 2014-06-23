@@ -63,16 +63,12 @@ static size_t rohc_build_ip6_extension(const struct list_decomp *const decomp,
  * @brief Create one context for decompressing lists of IPv6 extension headers
  *
  * @param decomp         The context to create
- * @param trace_cb       The old function to call for printing traces
- * @param trace_cb2      The new function to call for printing traces
+ * @param trace_cb       The function to call for printing traces
  * @param trace_cb_priv  An optional private context, may be NULL
  * @param profile_id     The ID of the associated decompression profile
  */
 void rohc_decomp_list_ipv6_new(struct list_decomp *const decomp,
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-                               rohc_trace_callback_t trace_cb,
-#endif
-                               rohc_trace_callback2_t trace_cb2,
+                               rohc_trace_callback2_t trace_cb,
                                void *const trace_cb_priv,
                                const int profile_id)
 {
@@ -86,10 +82,7 @@ void rohc_decomp_list_ipv6_new(struct list_decomp *const decomp,
 	decomp->build_uncomp_item = rohc_build_ip6_extension;
 
 	/* traces */
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	decomp->trace_callback = trace_cb;
-#endif
-	decomp->trace_callback2 = trace_cb2;
 	decomp->trace_callback_priv = trace_cb_priv;
 	decomp->profile_id = profile_id;
 }
