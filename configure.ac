@@ -293,27 +293,6 @@ AC_ARG_ENABLE(rohc_tests_valgrind,
 AM_CONDITIONAL([ROHC_TESTS_VALGRIND], [test x$enable_rohc_tests_valgrind = xyes])
 
 
-# abort is --enable-rohc-apps is used as it is deprecated
-AC_ARG_ENABLE(rohc_apps,
-              AS_HELP_STRING([--enable-rohc-apps],
-                             [enable ROHC applications found in the app/ subdir [[default=no]]]),
-                             enable_rohc_apps=$enableval,
-                             enable_rohc_apps="undefined")
-if test "x$enable_rohc_apps" != "xundefined" ; then
-	echo
-	echo "ERROR: --enable-rohc-apps and --disable-rohc-apps are "
-	echo "       deprecated, do not use them any more."
-	echo
-	echo "Please use a combination of the following options instead:"
-	echo "  --enable-app-fuzzer / --disable-app-fuzzer"
-	echo "  --enable-app-performance / --disable-app-performance"
-	echo "  --enable-app-sniffer / --disable-app-sniffer"
-	echo "  --enable-app-stats / --disable-app-stats"
-	echo
-	exit 1
-fi
-
-
 # check if ROHC fuzzer (located in the app/fuzzer/ subdir) is enabled
 AC_ARG_ENABLE(app_fuzzer,
               AS_HELP_STRING([--enable-app-fuzzer],
