@@ -51,16 +51,6 @@
 
 
 /*
- * Definitions of private constants and macros
- */
-
-#if defined(ROHC_ENABLE_DEPRECATED_API) && ROHC_ENABLE_DEPRECATED_API == 0
-/** The packet needs to be parsed again */
-#  define ROHC_NEED_REPARSE          -6
-#endif /* ROHC_ENABLE_DEPRECATED_API */
-
-
-/*
  * Private function prototypes for parsing the static and dynamic parts
  * of the IR and IR-DYN headers
  */
@@ -6553,10 +6543,6 @@ static void stats_add_decomp_success(struct rohc_decomp_ctxt *const context,
 	assert(context != NULL);
 	context->header_compressed_size += comp_hdr_len;
 	context->header_uncompressed_size += uncomp_hdr_len;
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	rohc_stats_add(&context->header_16_compressed, comp_hdr_len);
-	rohc_stats_add(&context->header_16_uncompressed, uncomp_hdr_len);
-#endif
 }
 
 

@@ -114,15 +114,6 @@ int main(int argc, char *argv[])
 	/* rohc_decomp_profile_enabled() */
 	CHECK(rohc_decomp_profile_enabled(NULL, ROHC_PROFILE_IP) == false);
 	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_GENERAL) == false);
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_UNCOMPRESSED) == true);
-	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_RTP) == true);
-	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_UDP) == true);
-	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_ESP) == true);
-	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_IP) == true);
-	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_TCP) == false);
-	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_UDPLITE) == true);
-#else
 	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_UNCOMPRESSED) == false);
 	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_RTP) == false);
 	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_UDP) == false);
@@ -130,7 +121,6 @@ int main(int argc, char *argv[])
 	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_IP) == false);
 	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_TCP) == false);
 	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_UDPLITE) == false);
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 	/* rohc_decomp_enable_profile() */
 	CHECK(rohc_decomp_enable_profile(NULL, ROHC_PROFILE_IP) == false);
@@ -157,15 +147,6 @@ int main(int argc, char *argv[])
 	                                   ROHC_PROFILE_RTP, -1) == true);
 
 	/* rohc_decomp_profile_enabled() */
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_UNCOMPRESSED) == true);
-	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_RTP) == false);
-	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_UDP) == false);
-	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_ESP) == true);
-	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_IP) == true);
-	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_TCP) == false);
-	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_UDPLITE) == true);
-#else
 	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_UNCOMPRESSED) == false);
 	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_RTP) == false);
 	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_UDP) == false);
@@ -173,7 +154,6 @@ int main(int argc, char *argv[])
 	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_IP) == true);
 	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_TCP) == false);
 	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_UDPLITE) == false);
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 	/* rohc_decomp_set_mrru() */
 	CHECK(rohc_decomp_set_mrru(NULL, 10) == false);

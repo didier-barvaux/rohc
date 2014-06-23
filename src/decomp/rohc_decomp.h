@@ -37,9 +37,6 @@ extern "C"
 #include <rohc/rohc_packets.h>
 #include <rohc/rohc_traces.h>
 #include <rohc/rohc_buf.h>
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-#  include <rohc/rohc_comp.h>
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /** Macro that handles DLL export declarations gracefully */
@@ -63,35 +60,6 @@ struct rohc_decomp;
  * Public structures and types
  */
 
-
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-
-/**
- * @brief The ROHC decompressor states
- *
- * The different ROHC operation states at decompressor as defined in section
- * 4.3.2 of RFC 3095.
- *
- * @deprecated do not use this type anymore, use \ref rohc_decomp_state_t
- *             instead
- *
- * @ingroup rohc_decomp
- *
- * @see rohc_decomp_get_state_descr
- */
-typedef enum
-{
-	/// The No Context state
-	NO_CONTEXT = 1,
-	/// The Static Context state
-	STATIC_CONTEXT = 2,
-	/// The Full Context state
-	FULL_CONTEXT = 3,
-} rohc_d_state
-	ROHC_DEPRECATED("please do not use this type anymore, "
-	                "use rohc_decomp_state_t instead");
-
-#endif /* !ROHC_ENABLE_DEPRECATED_API) */
 
 /**
  * @brief The ROHC decompressor states
@@ -261,48 +229,12 @@ typedef enum
  * Functions related to decompressor:
  */
 
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-struct rohc_decomp * ROHC_EXPORT rohc_alloc_decompressor(struct rohc_comp *compressor)
-	ROHC_DEPRECATED("please do not use this function anymore, "
-	                "use rohc_decomp_new() instead");
-void ROHC_EXPORT rohc_free_decompressor(struct rohc_decomp *decomp)
-	ROHC_DEPRECATED("please do not use this function anymore, "
-	                "use rohc_decomp_free() instead");
-
-struct rohc_decomp * ROHC_EXPORT rohc_decomp_new(const rohc_cid_type_t cid_type,
-                                                 const rohc_cid_t max_cid,
-                                                 const rohc_mode_t mode,
-                                                 struct rohc_comp *const comp)
-	__attribute__((warn_unused_result))
-	ROHC_DEPRECATED("please do not use this function anymore, "
-	                "use rohc_decomp_new2() instead");
-#endif
 struct rohc_decomp * ROHC_EXPORT rohc_decomp_new2(const rohc_cid_type_t cid_type,
                                                   const rohc_cid_t max_cid,
                                                   const rohc_mode_t mode)
 	__attribute__((warn_unused_result));
+
 void ROHC_EXPORT rohc_decomp_free(struct rohc_decomp *const decomp);
-
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-int ROHC_EXPORT rohc_decompress(struct rohc_decomp *decomp,
-                                unsigned char *ibuf,
-                                int isize,
-                                unsigned char *obuf,
-                                int osize)
-	ROHC_DEPRECATED("please do not use this function anymore, use "
-	                "rohc_decompress3() instead");
-
-int ROHC_EXPORT rohc_decompress2(struct rohc_decomp *const decomp,
-                                 const struct rohc_ts arrival_time,
-                                 const unsigned char *const rohc_packet,
-                                 const size_t rohc_packet_len,
-                                 unsigned char *const uncomp_packet,
-                                 const size_t uncom_packet_max_len,
-                                 size_t *const uncomp_packet_len)
-	__attribute__((warn_unused_result))
-	ROHC_DEPRECATED("please do not use this function anymore, use "
-	                "rohc_decompress3() instead");
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 rohc_status_t ROHC_EXPORT rohc_decompress3(struct rohc_decomp *const decomp,
                                            const struct rohc_buf rohc_packet,
@@ -311,33 +243,11 @@ rohc_status_t ROHC_EXPORT rohc_decompress3(struct rohc_decomp *const decomp,
                                            struct rohc_buf *const feedback_send)
 	__attribute__((warn_unused_result));
 
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-int ROHC_EXPORT rohc_decompress_both(struct rohc_decomp *decomp,
-                                     unsigned char *ibuf,
-                                     int isize,
-                                     unsigned char *obuf,
-                                     int osize,
-                                     int large)
-	ROHC_DEPRECATED("please do not use this function anymore, use "
-	                "rohc_decomp_new() and rohc_decompress3() instead");
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /*
  * Functions related to statistics:
  */
-
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-int ROHC_EXPORT rohc_d_statistics(struct rohc_decomp *decomp,
-                                  unsigned int indent,
-                                  char *buffer)
-	ROHC_DEPRECATED("please do not use this function anymore, use "
-	                "rohc_decomp_get_general_info() and "
-	                "rohc_decomp_get_last_packet_info() instead");
-
-void ROHC_EXPORT clear_statistics(struct rohc_decomp *decomp)
-	ROHC_DEPRECATED("please do not use this function anymore");
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 const char * ROHC_EXPORT rohc_decomp_get_state_descr(const rohc_decomp_state_t state);
 
@@ -354,30 +264,10 @@ bool ROHC_EXPORT rohc_decomp_get_last_packet_info(const struct rohc_decomp *cons
  * Functions related to user parameters
  */
 
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-void ROHC_EXPORT user_interactions(struct rohc_decomp *decomp,
-                                   int feedback_maxval)
-	ROHC_DEPRECATED("please do not use this function anymore");
-#endif
-
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-bool ROHC_EXPORT rohc_decomp_set_cid_type(struct rohc_decomp *const decomp,
-                                          const rohc_cid_type_t cid_type)
-	__attribute__((warn_unused_result))
-	ROHC_DEPRECATED("please do not use this function anymore, use the "
-	                "parameter cid_type of rohc_decomp_new() instead");
-#endif
 bool ROHC_EXPORT rohc_decomp_get_cid_type(const struct rohc_decomp *const decomp,
                                           rohc_cid_type_t *const cid_type)
 	__attribute__((warn_unused_result));
 
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-bool ROHC_EXPORT rohc_decomp_set_max_cid(struct rohc_decomp *const decomp,
-                                         const size_t max_cid)
-	__attribute__((warn_unused_result))
-	ROHC_DEPRECATED("please do not use this function anymore, use the "
-	                "parameter max_cid of rohc_decomp_new() instead");
-#endif
 bool ROHC_EXPORT rohc_decomp_get_max_cid(const struct rohc_decomp *const decomp,
                                          size_t *const max_cid)
 	__attribute__((warn_unused_result));
@@ -385,6 +275,7 @@ bool ROHC_EXPORT rohc_decomp_get_max_cid(const struct rohc_decomp *const decomp,
 bool ROHC_EXPORT rohc_decomp_set_mrru(struct rohc_decomp *const decomp,
                                       const size_t mrru)
 	__attribute__((warn_unused_result));
+
 bool ROHC_EXPORT rohc_decomp_get_mrru(const struct rohc_decomp *const decomp,
                                       size_t *const mrru)
 	__attribute__((warn_unused_result));
@@ -422,16 +313,6 @@ bool ROHC_EXPORT rohc_decomp_disable_profiles(struct rohc_decomp *const decomp,
 /*
  * Functions related to traces
  */
-
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-
-bool ROHC_EXPORT rohc_decomp_set_traces_cb(struct rohc_decomp *const decomp,
-                                           rohc_trace_callback_t callback)
-	__attribute__((warn_unused_result))
-	ROHC_DEPRECATED("do not use this function anymore, "
-	                "use rohc_decomp_set_traces_cb2() instead");
-
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 bool ROHC_EXPORT rohc_decomp_set_traces_cb2(struct rohc_decomp *const decomp,
                                             rohc_trace_callback2_t callback,

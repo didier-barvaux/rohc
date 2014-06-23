@@ -51,13 +51,8 @@
 #include "rohc_decomp_detect_packet.h"
 #include "crc.h"
 
-#include "config.h" /* for ROHC_ENABLE_DEPRECATED_API */
-
 #ifndef __KERNEL__
 #  include <string.h>
-#endif
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-#  include <stdio.h> /* for printf(3) and sprintf(3) */
 #endif
 #include <stdarg.h>
 #include <assert.h>
@@ -148,24 +143,6 @@ static bool rohc_decomp_decode_cid(struct rohc_decomp *decomp,
                                    struct d_decode_data *ddata)
 	__attribute__((warn_unused_result));
 
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-
-static void rohc_decomp_print_trace_default(const rohc_trace_level_t level,
-                                            const rohc_trace_entity_t entity,
-                                            const int profile,
-                                            const char *const format,
-                                            ...)
-	__attribute__((format(printf, 4, 5), nonnull(4)));
-
-static bool __rohc_decomp_set_cid_type(struct rohc_decomp *const decomp,
-                                       const rohc_cid_type_t cid_type)
-	__attribute__((warn_unused_result));
-static bool __rohc_decomp_set_max_cid(struct rohc_decomp *const decomp,
-                                      const size_t max_cid)
-	__attribute__((warn_unused_result));
-
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
-
 static void rohc_decomp_parse_padding(const struct rohc_decomp *const decomp,
                                       struct rohc_buf *const packet)
 	__attribute__((nonnull(1, 2)));
@@ -196,12 +173,6 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 /* statistics-related functions */
 static void rohc_decomp_reset_stats(struct rohc_decomp *const decomp)
 	__attribute__((nonnull(1)));
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-static int rohc_d_context(struct rohc_decomp *decomp,
-                          const size_t pos,
-                          unsigned int indent,
-                          char *buffer);
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 
@@ -277,12 +248,6 @@ static struct rohc_decomp_ctxt * context_create(struct rohc_decomp *decomp,
 	context->total_compressed_size = 0;
 	context->header_uncompressed_size = 0;
 	context->header_compressed_size = 0;
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	context->num_recv_ir = 0;
-	context->num_recv_ir_dyn = 0;
-	context->num_sent_feedbacks = 0;
-	context->num_decomp_failures = 0;
-#endif
 	context->corrected_crc_failures = 0;
 	context->corrected_sn_wraparounds = 0;
 	context->corrected_wrong_sn_updates = 0;
@@ -292,14 +257,6 @@ static struct rohc_decomp_ctxt * context_create(struct rohc_decomp *decomp,
 
 	context->first_used = arrival_time.sec;
 	context->latest_used = arrival_time.sec;
-
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	/* be sure to start with statistics set to zero */
-	memset(&(context->total_16_uncompressed), 0, sizeof(struct rohc_stats));
-	memset(&(context->total_16_compressed), 0, sizeof(struct rohc_stats));
-	memset(&(context->header_16_uncompressed), 0, sizeof(struct rohc_stats));
-	memset(&(context->header_16_compressed), 0, sizeof(struct rohc_stats));
-#endif
 
 	/* profile-specific data (created at the every end so that everything
 	   is initialized in context first) */
@@ -353,286 +310,6 @@ static void context_free(struct rohc_decomp_ctxt *const context)
 }
 
 
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-
-/**
- * @brief Create one ROHC decompressor.
- *
- * @deprecated do not use this function anymore, use rohc_decomp_new2()
- *             instead
- *
- * @param compressor  Two possible cases:
- *                      \li You want to run the ROHC decompressor in bidirectional
- *                          mode. Decompressor will transmit feedback to the
- *                          compressor at the other end of the channel through the
- *                          given compressor.
- *                      \li NULL to disable feedback and force undirectional mode
- * @return            The newly-created decompressor if successful,
- *                    NULL otherwise
- *
- * @ingroup rohc_decomp
- */
-struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor)
-{
-	struct rohc_decomp *decomp;
-	bool is_fine;
-	size_t i;
-
-	/* allocate memory for the decompressor */
-	decomp = (struct rohc_decomp *) malloc(sizeof(struct rohc_decomp));
-	if(decomp == NULL)
-	{
-		goto error;
-	}
-
-	/* no trace callback during decompressor creation */
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	decomp->trace_callback = NULL;
-#endif
-	decomp->trace_callback2 = NULL;
-	decomp->trace_callback_priv = NULL;
-
-	/* default feature set (empty for the moment) */
-	decomp->features = ROHC_DECOMP_FEATURE_NONE;
-
-	/* init decompressor medium */
-	decomp->medium.cid_type = ROHC_SMALL_CID;
-	decomp->medium.max_cid = ROHC_SMALL_CID_MAX;
-
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	/* all decompression profiles are enabled by default for compatibility
-	 * with earlier releases (except TCP since it came after and it is not
-	 * stable enough) */
-	for(i = 0; i < D_NUM_PROFILES; i++)
-	{
-		decomp->enabled_profiles[i] = true;
-	}
-	is_fine = rohc_decomp_disable_profile(decomp, ROHC_PROFILE_TCP);
-	if(!is_fine)
-	{
-		goto destroy_decomp;
-	}
-#else
-	/* all decompression profiles are disabled by default */
-	for(i = 0; i < D_NUM_PROFILES; i++)
-	{
-		decomp->enabled_profiles[i] = false;
-	}
-#endif
-
-	/* associate the compressor and the decompressor */
-	decomp->compressor = compressor;
-
-	/* initialize the array of decompression contexts to its minimal value */
-	decomp->contexts = NULL;
-	decomp->num_contexts_used = 0;
-	is_fine = rohc_decomp_create_contexts(decomp, decomp->medium.max_cid);
-	if(!is_fine)
-	{
-		goto destroy_decomp;
-	}
-	decomp->last_context = NULL;
-
-	decomp->maxval = 300;
-	decomp->errval = 100;
-	decomp->okval = 12;
-	decomp->curval = 0;
-
-	/* no Reconstructed Reception Unit (RRU) at the moment */
-	decomp->rru_len = 0;
-	/* no segmentation by default */
-	decomp->mrru = 0;
-
-	/* init the tables for fast CRC computation */
-	is_fine = rohc_crc_init_table(decomp->crc_table_3, ROHC_CRC_TYPE_3);
-	if(is_fine != true)
-	{
-		goto destroy_contexts;
-	}
-	is_fine = rohc_crc_init_table(decomp->crc_table_7, ROHC_CRC_TYPE_7);
-	if(is_fine != true)
-	{
-		goto destroy_contexts;
-	}
-	is_fine = rohc_crc_init_table(decomp->crc_table_8, ROHC_CRC_TYPE_8);
-	if(is_fine != true)
-	{
-		goto destroy_contexts;
-	}
-
-	/* reset the decompressor statistics */
-	rohc_decomp_reset_stats(decomp);
-
-	/* set the default trace callback */
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	/* keep same behaviour as previous 1.x.y versions: traces on by default */
-	decomp->trace_callback = rohc_decomp_print_trace_default;
-#endif
-
-	return decomp;
-
-destroy_contexts:
-	free(decomp->contexts);
-destroy_decomp:
-	free(decomp);
-error:
-	return NULL;
-}
-
-
-/**
- * @brief Destroy one ROHC decompressor.
- *
- * @deprecated do not use this function anymore, use rohc_decomp_free()
- *             instead
- *
- * @param decomp  The decompressor to destroy
- *
- * @ingroup rohc_decomp
- */
-void rohc_free_decompressor(struct rohc_decomp *decomp)
-{
-	rohc_cid_t i;
-
-	/* sanity check */
-	if(decomp == NULL)
-	{
-		goto error;
-	}
-	assert(decomp->contexts != NULL);
-
-	rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-	           "free decompressor");
-
-	/* destroy all the contexts owned by the decompressor */
-	for(i = 0; i <= decomp->medium.max_cid; i++)
-	{
-		if(decomp->contexts[i] != NULL)
-		{
-			context_free(decomp->contexts[i]);
-		}
-	}
-	zfree(decomp->contexts);
-	assert(decomp->num_contexts_used == 0);
-
-	/* destroy the decompressor itself */
-	free(decomp);
-
-error:
-	return;
-}
-
-
-/**
- * @brief Create a new ROHC decompressor
- *
- * Create a new ROHC decompressor with the given type of CIDs, MAX_CID,
- * operational mode, and (optionally) related compressor for the feedback
- * channel.
- *
- * @deprecated please do not use this function anymore
- *             use rohc_decomp_new2() and rohc_decompress3() instead
- *
- * @param cid_type  The type of Context IDs (CID) that the ROHC decompressor
- *                  shall operate with.\n
- *                  Accepted values are:
- *                    \li \ref ROHC_SMALL_CID for small CIDs
- *                    \li \ref ROHC_LARGE_CID for large CIDs
- * @param max_cid   The maximum value that the ROHC decompressor should use
- *                  for context IDs (CID). As CIDs starts with value 0, the
- *                  number of contexts is \e max_cid + 1.\n
- *                  Accepted values are:
- *                    \li [0, \ref ROHC_SMALL_CID_MAX] if \e cid_type is
- *                        \ref ROHC_SMALL_CID
- *                    \li [0, \ref ROHC_LARGE_CID_MAX] if \e cid_type is
- *                        \ref ROHC_LARGE_CID
- * @param mode      The operational mode that the ROHC decompressor shall
- *                  transit to.\n
- *                  Accepted values are:
- *                    \li \ref ROHC_U_MODE for the Unidirectional mode,
- *                    \li \ref ROHC_O_MODE for the Bidirectional Optimistic
- *                        mode,
- *                    \li \ref ROHC_R_MODE for the Bidirectional Reliable mode
- *                        is not supported yet: specifying \ref ROHC_R_MODE is
- *                        an error.
- * @param comp      The associated ROHC compressor for the feedback channel.\n
- *                  Accepted values:
- *                    \li a valid ROHC compressor created with
- *                        \ref rohc_comp_new to enable the feedback channel,
- *                    \li NULL to disable the feedback channel.
- *
- *                  The feedback channel is optional in Unidirectional mode:
- *                    \li if NULL, no feedback is emitted at all,
- *                    \li if not NULL, positive acknowlegments may be
- *                        transmitted on feedback channel to increase timeouts
- *                        of IR and FO refreshes.
- *
- *                  The feedback channel is mandatory in both Bidirectional
- *                  modes: specifying NULL is an error.
- * @return          The created decompressor if successful,
- *                  NULL if creation failed
- *
- * @warning Don't forget to free decompressor memory with
- *          \ref rohc_decomp_free if rohc_decomp_new succeeded
- *
- * @ingroup rohc_decomp
- *
- * \par Example:
- * \snippet example_rohc_decomp.c define ROHC decompressor
- * \code
-        ...
-\endcode
- * \snippet example_rohc_decomp.c create ROHC decompressor #1
- * \code
-	decompressor = rohc_decomp_new(ROHC_LARGE_CID, 4, ROHC_U_MODE, NULL);
-	if(decompressor == NULL)
-	{
-		fprintf(stderr, "failed create the ROHC decompressor\n");
-		goto error;
-	}
-	...
-\endcode
- * \snippet example_rohc_decomp.c destroy ROHC decompressor
- *
- * @see rohc_decomp_free
- * @see rohc_decompress3
- * @see rohc_decomp_set_traces_cb
- * @see rohc_decomp_enable_profiles
- * @see rohc_decomp_enable_profile
- * @see rohc_decomp_disable_profiles
- * @see rohc_decomp_disable_profile
- * @see rohc_decomp_set_mrru
- * @see rohc_decomp_set_features
- */
-struct rohc_decomp * rohc_decomp_new(const rohc_cid_type_t cid_type,
-                                     const rohc_cid_t max_cid,
-                                     const rohc_mode_t mode,
-                                     struct rohc_comp *const comp)
-{
-	struct rohc_decomp *const decomp =
-		rohc_decomp_new2(cid_type, max_cid, mode);
-
-	if(decomp != NULL)
-	{
-		/* O-mode: compressor is mandatory */
-		if(mode == ROHC_O_MODE && comp == NULL)
-		{
-			rohc_decomp_free(decomp);
-			return NULL;
-		}
-
-		/* no associated ROHC compressor by default, ie. no feedback channel by
-		 * default */
-		decomp->compressor = comp;
-		decomp->do_auto_feedback_delivery = true;
-	}
-
-	return decomp;
-}
-
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
-
-
 /**
  * @brief Create a new ROHC decompressor
  *
@@ -683,7 +360,7 @@ struct rohc_decomp * rohc_decomp_new(const rohc_cid_type_t cid_type,
  *
  * @see rohc_decomp_free
  * @see rohc_decompress3
- * @see rohc_decomp_set_traces_cb
+ * @see rohc_decomp_set_traces_cb2
  * @see rohc_decomp_enable_profiles
  * @see rohc_decomp_enable_profile
  * @see rohc_decomp_disable_profiles
@@ -741,9 +418,6 @@ struct rohc_decomp * rohc_decomp_new2(const rohc_cid_type_t cid_type,
 	}
 
 	/* no trace callback during decompressor creation */
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	decomp->trace_callback = NULL;
-#endif
 	decomp->trace_callback2 = NULL;
 	decomp->trace_callback_priv = NULL;
 
@@ -754,30 +428,11 @@ struct rohc_decomp * rohc_decomp_new2(const rohc_cid_type_t cid_type,
 	decomp->medium.cid_type = cid_type;
 	decomp->medium.max_cid = max_cid;
 
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	/* all decompression profiles are enabled by default for compatibility
-	 * with earlier releases (except TCP since it came after and it is not
-	 * stable enough) */
-	for(i = 0; i < D_NUM_PROFILES; i++)
-	{
-		decomp->enabled_profiles[i] = true;
-	}
-	is_fine = rohc_decomp_disable_profile(decomp, ROHC_PROFILE_TCP);
-	if(!is_fine)
-	{
-		goto destroy_decomp;
-	}
-#else
 	/* all decompression profiles are disabled by default */
 	for(i = 0; i < D_NUM_PROFILES; i++)
 	{
 		decomp->enabled_profiles[i] = false;
 	}
-#endif
-
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	decomp->do_auto_feedback_delivery = false;
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 	/* initialize the array of decompression contexts to its minimal value */
 	decomp->contexts = NULL;
@@ -818,12 +473,6 @@ struct rohc_decomp * rohc_decomp_new2(const rohc_cid_type_t cid_type,
 
 	/* reset the decompressor statistics */
 	rohc_decomp_reset_stats(decomp);
-
-	/* set the default trace callback */
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	/* keep same behaviour as previous 1.x.y versions: traces on by default */
-	decomp->trace_callback = rohc_decomp_print_trace_default;
-#endif
 
 	return decomp;
 
@@ -891,322 +540,6 @@ void rohc_decomp_free(struct rohc_decomp *const decomp)
 error:
 	return;
 }
-
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-
-/**
- * @brief Decompress the given ROHC packet into one uncompressed packet
- *
- * @deprecated do not use this function anymore,
- *             use rohc_decompress4() instead
- *
- * @param decomp The ROHC decompressor
- * @param ibuf   The ROHC packet to decompress
- * @param isize  The size of the ROHC packet
- * @param obuf   OUT: The buffer where to store the decompressed packet
- *                    Only valid if functions returns a positive or zero value
- * @param osize  The size of the buffer for the decompressed packet
- * @return       <ul>
- *                 <li>A positive or zero value representing the length (in
- *                     bytes) of the decompressed packet in case packet was
- *                     successfully decompressed</li>
- *                 <li>A strictly negative value if no decompressed packet
- *                     is returned:
- *                   <ul>
- *                     <li>\e ROHC_FEEDBACK_ONLY if the ROHC packet contains
- *                         only feedback data</li>
- *                     <li>\e ROHC_NON_FINAL_SEGMENT if the given ROHC packet
- *                         is a partial segment of a larger ROHC packet</li>
- *                     <li>\e ROHC_ERROR_NO_CONTEXT if no decompression
- *                         context matches the CID stored in the given ROHC
- *                         packet and the ROHC packet is not an IR packet</li>
- *                     <li> \e ROHC_ERROR_PACKET_FAILED if the decompression
- *                         failed because the ROHC packet is unexpected and/or
- *                         malformed</li>
- *                     <li>\e ROHC_ERROR_CRC if the CRC detected a
- *                         transmission or decompression problem</li>
- *                     <li>\e ROHC_ERROR if another problem occurred</li>
- *                   </ul>
- *                 </li>
- *               </ul>
- *
- * @ingroup rohc_decomp
- */
-int rohc_decompress(struct rohc_decomp *decomp,
-                    unsigned char *ibuf,
-                    int isize,
-                    unsigned char *obuf,
-                    int osize)
-{
-	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
-	const struct rohc_buf __rohc_packet =
-		rohc_buf_init_full(ibuf, isize, arrival_time);
-	struct rohc_buf __uncomp_packet = rohc_buf_init_empty(obuf, osize);
-
-	const size_t rcvd_feedback_max_len = 100;
-	uint8_t rcvd_feedback_data[rcvd_feedback_max_len];
-	struct rohc_buf rcvd_feedback =
-		rohc_buf_init_empty(rcvd_feedback_data, rcvd_feedback_max_len);
-
-	const size_t feedback_send_max_len = 100;
-	uint8_t feedback_send_data[feedback_send_max_len];
-	struct rohc_buf feedback_send =
-		rohc_buf_init_empty(feedback_send_data, feedback_send_max_len);
-
-	rohc_status_t code;
-	int code_int = ROHC_ERROR;
-
-	if(decomp == NULL)
-	{
-		return ROHC_ERROR;
-	}
-
-	code = rohc_decompress3(decomp, __rohc_packet, &__uncomp_packet,
-	                        &rcvd_feedback, &feedback_send);
-	if(code == ROHC_STATUS_OK)
-	{
-		/* decompression succeeded */
-		if(__uncomp_packet.len == 0 && decomp->rru_len > 0)
-		{
-			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			           "ROHC_OK + empty packet + non-empty RRU buffer "
-			           "=> ROHC_NON_FINAL_SEGMENT");
-			code_int = ROHC_NON_FINAL_SEGMENT;
-		}
-		else if(__uncomp_packet.len == 0 && rcvd_feedback.len > 0)
-		{
-			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			           "ROHC_OK + empty packet + non-empty received feedback "
-			           "=> ROHC_FEEDBACK_ONLY");
-			code_int = ROHC_FEEDBACK_ONLY;
-		}
-		else
-		{
-			code_int = __uncomp_packet.len;
-		}
-	}
-
-	/* send the feedback via the compressor associated with the decompressor */
-	if(feedback_send.len > 0 &&
-	   !__rohc_comp_piggyback_feedback(decomp->compressor,
-	                                   rohc_buf_data(feedback_send),
-	                                   feedback_send.len))
-	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		             "failed to piggyback the feedback");
-	}
-
-	/* convert from rohc_status_t to int */
-	switch(code)
-	{
-		case ROHC_STATUS_OK:
-			/* already set */
-			break;
-		case ROHC_STATUS_MALFORMED:
-			code_int = ROHC_ERROR_PACKET_FAILED;
-			break;
-		case ROHC_STATUS_NO_CONTEXT:
-			code_int = ROHC_ERROR_NO_CONTEXT;
-			break;
-		case ROHC_STATUS_BAD_CRC:
-			code_int = ROHC_ERROR_CRC;
-			break;
-		case ROHC_STATUS_SEGMENT:
-		case ROHC_STATUS_ERROR:
-		default:
-			code_int = ROHC_ERROR;
-			break;
-	}
-
-	return code_int;
-}
-
-
-/**
- * @brief Decompress the given ROHC packet into one uncompressed packet
- *
- * The function may succeed in three different ways:
- *  \li return \ref ROHC_OK and a decompressed IP packet,
- *  \li return \ref ROHC_FEEDBACK_ONLY and no decompressed IP packet if the
- *      ROHC packet contains only feedback information,
- *  \li return \ref ROHC_NON_FINAL_SEGMENT and no decompressed IP packet if
- *      the ROHC packet is a non-final ROHC segment, ie. the ROHC packet is
- *      not the last segment of a larger, segmented ROHC packet.
- *
- * @deprecated do not use this function anymore,
- *             use rohc_decompress3() instead
- *
- * @param decomp                  The ROHC decompressor
- * @param arrival_time            The time at which packet was received
- *                                (0 if unknown, or to disable time-related
- *                                 features in the ROHC protocol)
- * @param rohc_packet             The compressed packet to decompress
- * @param rohc_packet_len         The size of the compressed packet (in bytes)
- * @param uncomp_packet           The buffer where to store the decompressed
- *                                packet
- * @param uncomp_packet_max_len   The maximum length (in bytes) of the buffer
- *                                for the decompressed packet
- * @param[out] uncomp_packet_len  The length (in bytes) of the
- *                                decompressed packet
- * @return                        Possible return values:
- *                                \li \ref ROHC_OK if a decompressed packet is
- *                                    returned
- *                                \li \ref ROHC_FEEDBACK_ONLY if the ROHC
- *                                    packet contains only feedback data
- *                                \li \ref ROHC_NON_FINAL_SEGMENT if the given
- *                                    ROHC packet is a partial segment of a
- *                                    larger ROHC packet
- *                                \li \ref ROHC_ERROR_NO_CONTEXT if no
- *                                    decompression context matches the CID
- *                                    stored in the given ROHC packet and the
- *                                    ROHC packet is not an IR packet
- *                                \li \ref ROHC_ERROR_PACKET_FAILED if the
- *                                    decompression failed because the ROHC
- *                                    packet is unexpected and/or malformed
- *                                \li \ref ROHC_ERROR_CRC if the CRC detected
- *                                    a transmission or decompression problem
- *                                \li \ref ROHC_ERROR if another problem
- *                                    occurred
- *
- * @ingroup rohc_decomp
- *
- * \par Example #1:
- * \snippet example_rohc_decomp.c define ROHC decompressor
- * \code
-	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
-	unsigned char rohc_packet[BUFFER_SIZE]; // the buffer that will contain
-	                                        // the ROHC packet to decompress
-	size_t rohc_packet_len;                 // the length (in bytes) of the
-	                                        // ROHC packet
-	unsigned char ip_packet[BUFFER_SIZE];   // the buffer that will contain
-	                                        // the decompressed IPv4 packet
-	size_t ip_packet_len;                   // the length (in bytes) of the
-	                                        // decompressed IPv4 packet
-	...
-\endcode
- * \code
-	ret = rohc_decompress2(decompressor, arrival_time,
-	                       rohc_packet, rohc_packet_len,
-	                       ip_packet, BUFFER_SIZE, &ip_packet_len);
-	if(ret == ROHC_FEEDBACK_ONLY)
-	{
-		// success: no decompressed IP data available in ip_packet because
-		// the ROHC packet contained only feedback data
-	}
-	else if(ret == ROHC_NON_FINAL_SEGMENT)
-	{
-		// success: no decompressed IP data available in ip_packet because the
-		// ROHC packet was a non-final segment (at least another segment is
-		// required to be able to decompress the full ROHC packet)
-	}
-	else if(ret == ROHC_OK)
-	{
-		// success: ip_packet_len bytes of decompressed IP data available in
-		// ip_packet
-	}
-	else
-	{
-		// failure: decompressor failed to decompress the ROHC packet
-		fprintf(stderr, "decompression of fake ROHC packet failed\n");
-	}
-\endcode
- *
- * @see rohc_decomp_set_mrru
- */
-int rohc_decompress2(struct rohc_decomp *const decomp,
-                     const struct rohc_ts arrival_time,
-                     const unsigned char *const rohc_packet,
-                     const size_t rohc_packet_len,
-                     unsigned char *const uncomp_packet,
-                     const size_t uncomp_packet_max_len,
-                     size_t *const uncomp_packet_len)
-{
-	const struct rohc_buf __rohc_packet =
-		rohc_buf_init_full((uint8_t *) rohc_packet, rohc_packet_len,
-		                   arrival_time);
-	struct rohc_buf __uncomp_packet =
-		rohc_buf_init_empty(uncomp_packet, uncomp_packet_max_len);
-
-	const size_t feedback_max_len = 100;
-	uint8_t feedback_data[feedback_max_len];
-	struct rohc_buf rcvd_feedback =
-		rohc_buf_init_empty(feedback_data, feedback_max_len);
-
-	const size_t feedback_send_max_len = 100;
-	uint8_t feedback_send_data[feedback_send_max_len];
-	struct rohc_buf feedback_send =
-		rohc_buf_init_empty(feedback_send_data, feedback_send_max_len);
-
-	rohc_status_t code;
-	int code_int = ROHC_ERROR;
-
-	if(decomp == NULL || uncomp_packet_len == NULL)
-	{
-		return ROHC_ERROR;
-	}
-
-	code = rohc_decompress3(decomp, __rohc_packet, &__uncomp_packet,
-	                        &rcvd_feedback, &feedback_send);
-	if(code == ROHC_STATUS_OK)
-	{
-		*uncomp_packet_len = __uncomp_packet.len;
-
-		if(__uncomp_packet.len == 0 && decomp->rru_len > 0)
-		{
-			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			           "ROHC_OK + empty packet + non-empty RRU buffer "
-			           "=> ROHC_NON_FINAL_SEGMENT");
-			code_int = ROHC_NON_FINAL_SEGMENT;
-		}
-		else if(__uncomp_packet.len == 0 && rcvd_feedback.len > 0)
-		{
-			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			           "ROHC_OK + empty packet + non-empty received feedback "
-			           "=> ROHC_FEEDBACK_ONLY");
-			code_int = ROHC_FEEDBACK_ONLY;
-		}
-		else
-		{
-			code_int = ROHC_OK;
-		}
-	}
-
-	/* send the feedback via the compressor associated with the decompressor */
-	if(feedback_send.len > 0 &&
-	   !__rohc_comp_piggyback_feedback(decomp->compressor,
-	                                   rohc_buf_data(feedback_send),
-	                                   feedback_send.len))
-	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		             "failed to piggyback the feedback");
-	}
-
-	/* convert from rohc_status_t to int */
-	switch(code)
-	{
-		case ROHC_STATUS_OK:
-			/* already set */
-			break;
-		case ROHC_STATUS_MALFORMED:
-			code_int = ROHC_ERROR_PACKET_FAILED;
-			break;
-		case ROHC_STATUS_NO_CONTEXT:
-			code_int = ROHC_ERROR_NO_CONTEXT;
-			break;
-		case ROHC_STATUS_BAD_CRC:
-			code_int = ROHC_ERROR_CRC;
-			break;
-		case ROHC_STATUS_SEGMENT:
-		case ROHC_STATUS_ERROR:
-		default:
-			code_int = ROHC_ERROR;
-			break;
-	}
-
-	return code_int;
-}
-
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /**
@@ -1405,9 +738,6 @@ rohc_status_t rohc_decompress3(struct rohc_decomp *const decomp,
 			if(ddata.active != NULL)
 			{
 				ddata.active->num_recv_packets++;
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-				ddata.active->num_decomp_failures++;
-#endif
 			}
 			decomp->stats.failed_decomp++;
 
@@ -1462,9 +792,6 @@ rohc_status_t rohc_decompress3(struct rohc_decomp *const decomp,
 			if(ddata.active != NULL)
 			{
 				ddata.active->num_recv_packets++;
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-				ddata.active->num_decomp_failures++;
-#endif
 			}
 			decomp->stats.failed_crc++;
 
@@ -1503,10 +830,6 @@ rohc_status_t rohc_decompress3(struct rohc_decomp *const decomp,
 				ddata.active->total_compressed_size += rohc_packet.len;
 				decomp->stats.total_uncompressed_size += uncomp_packet->len;
 				decomp->stats.total_compressed_size += rohc_packet.len;
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-				rohc_stats_add(&ddata.active->total_16_uncompressed, uncomp_packet->len);
-				rohc_stats_add(&ddata.active->total_16_compressed, rohc_packet.len);
-#endif
 
 				/* feedback rate-limiting */
 				decomp->curval -= decomp->okval; /* framework (S-NACK) */
@@ -1550,126 +873,6 @@ rohc_status_t rohc_decompress3(struct rohc_decomp *const decomp,
 error:
 	return status;
 }
-
-
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-
-/**
- * @brief Decompress both large and small CID packets.
- *
- * @deprecated do not use this function anymore, use rohc_decomp_new2() and
- *             rohc_decompress3() instead
- *
- * @param decomp The ROHC decompressor
- * @param ibuf   The ROHC packet to decompress
- * @param isize  The size of the ROHC packet
- * @param obuf   The buffer where to store the decompressed packet
- * @param osize  The size of the buffer for the decompressed packet
- * @param large  Whether the packet use large CID or not
- * @return       The size of the decompressed packet
- *
- * @ingroup rohc_decomp
- */
-int rohc_decompress_both(struct rohc_decomp *decomp,
-                         unsigned char *ibuf, int isize,
-                         unsigned char *obuf, int osize,
-                         int large)
-{
-	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
-	const struct rohc_buf __rohc_packet =
-		rohc_buf_init_full(ibuf, isize, arrival_time);
-	struct rohc_buf __uncomp_packet = rohc_buf_init_empty(obuf, osize);
-
-	const size_t feedback_max_len = 100;
-	uint8_t feedback_data[feedback_max_len];
-	struct rohc_buf rcvd_feedback =
-		rohc_buf_init_empty(feedback_data, feedback_max_len);
-
-	const size_t feedback_send_max_len = 100;
-	uint8_t feedback_send_data[feedback_send_max_len];
-	struct rohc_buf feedback_send =
-		rohc_buf_init_empty(feedback_send_data, feedback_send_max_len);
-
-	bool is_ok;
-	rohc_status_t code;
-	int code_int = ROHC_ERROR;
-
-	if(decomp == NULL)
-	{
-		return ROHC_ERROR;
-	}
-
-	/* change CID type on the fly */
-	is_ok = __rohc_decomp_set_cid_type(decomp, large ? ROHC_LARGE_CID :
-	                                   ROHC_SMALL_CID);
-	if(!is_ok)
-	{
-		return ROHC_ERROR;
-	}
-
-	/* decompress the packet with the new CID type */
-	code = rohc_decompress3(decomp,  __rohc_packet, &__uncomp_packet,
-	                        &rcvd_feedback, &feedback_send);
-	if(code == ROHC_STATUS_OK)
-	{
-		/* decompression succeeded */
-		if(__uncomp_packet.len == 0 && decomp->rru_len > 0)
-		{
-			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			           "ROHC_OK + empty packet + non-empty RRU buffer "
-			           "=> ROHC_NON_FINAL_SEGMENT");
-			code_int = ROHC_NON_FINAL_SEGMENT;
-		}
-		else if(__uncomp_packet.len == 0 && rcvd_feedback.len > 0)
-		{
-			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			           "ROHC_OK + empty packet + non-empty received feedback "
-			           "=> ROHC_FEEDBACK_ONLY");
-			code_int = ROHC_FEEDBACK_ONLY;
-		}
-		else
-		{
-			code = __uncomp_packet.len;
-
-			/* send the feedback via the compressor associated with the
-			 * decompressor */
-			if(feedback_send.len > 0 &&
-			   !__rohc_comp_piggyback_feedback(decomp->compressor,
-			                                 rohc_buf_data(feedback_send),
-			                                 feedback_send.len))
-			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-				             "failed to piggyback the STATIC-NACK feedback");
-			}
-		}
-	}
-
-	/* convert from rohc_status_t to int */
-	switch(code)
-	{
-		case ROHC_STATUS_OK:
-			/* already set */
-			break;
-		case ROHC_STATUS_MALFORMED:
-			code_int = ROHC_ERROR_PACKET_FAILED;
-			break;
-		case ROHC_STATUS_NO_CONTEXT:
-			code_int = ROHC_ERROR_NO_CONTEXT;
-			break;
-		case ROHC_STATUS_BAD_CRC:
-			code_int = ROHC_ERROR_CRC;
-			break;
-		case ROHC_STATUS_SEGMENT:
-		case ROHC_STATUS_ERROR:
-		default:
-			code_int = ROHC_ERROR;
-			break;
-	}
-
-	return code_int;
-}
-
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /**
@@ -1940,10 +1143,6 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 			}
 			is_new_context = true;
 		}
-
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-		ddata->active->num_recv_ir++;
-#endif
 	}
 	else /* the ROHC packet is not an IR packet */
 	{
@@ -2002,10 +1201,6 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 				           "IR-DYN changed profile, sending S-NACK");
 				goto error_no_context;
 			}
-
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-			ddata->active->num_recv_ir_dyn++;
-#endif
 		}
 
 		profile = ddata->active->profile;
@@ -2210,43 +1405,21 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 				return;
 			}
 
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-			context->num_sent_feedbacks++;
-#endif
 			if(feedback_send != NULL)
 			{
-				size_t hdr_len;
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-				if(!decomp->do_auto_feedback_delivery)
-				{
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
-					hdr_len = 1 + (feedbacksize < 8 ? 0 : 1);
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-				}
-				else
-				{
-					hdr_len = 0;
-				}
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
+				const size_t hdr_len = 1 + (feedbacksize < 8 ? 0 : 1);
 				if((hdr_len + feedbacksize) <= rohc_buf_avail_len(*feedback_send))
 				{
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-					if(!decomp->do_auto_feedback_delivery)
+					if(feedbacksize < 8)
 					{
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
-						if(feedbacksize < 8)
-						{
-							rohc_buf_byte(*feedback_send) = 0xf0 | feedbacksize;
-						}
-						else
-						{
-							rohc_buf_byte(*feedback_send) = 0xf0;
-							rohc_buf_byte_at(*feedback_send, 1) = feedbacksize;
-						}
-						feedback_send->len += hdr_len;
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+						rohc_buf_byte(*feedback_send) = 0xf0 | feedbacksize;
 					}
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
+					else
+					{
+						rohc_buf_byte(*feedback_send) = 0xf0;
+						rohc_buf_byte_at(*feedback_send, 1) = feedbacksize;
+					}
+					feedback_send->len += hdr_len;
 					rohc_buf_append(feedback_send, feedback, feedbacksize);
 				}
 			}
@@ -2285,38 +1458,19 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 
 			if(feedback_send != NULL)
 			{
-				size_t hdr_len;
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-				if(!decomp->do_auto_feedback_delivery)
-				{
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
-					hdr_len = 1 + (feedbacksize < 8 ? 0 : 1);
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-				}
-				else
-				{
-					hdr_len = 0;
-				}
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
+				const size_t hdr_len = 1 + (feedbacksize < 8 ? 0 : 1);
 				if((hdr_len + feedbacksize) <= rohc_buf_avail_len(*feedback_send))
 				{
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-					if(!decomp->do_auto_feedback_delivery)
+					if(feedbacksize < 8)
 					{
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
-						if(feedbacksize < 8)
-						{
-							rohc_buf_byte(*feedback_send) = 0xf0 | feedbacksize;
-						}
-						else
-						{
-							rohc_buf_byte(*feedback_send) = 0xf0;
-							rohc_buf_byte_at(*feedback_send, 1) = feedbacksize;
-						}
-						feedback_send->len += hdr_len;
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+						rohc_buf_byte(*feedback_send) = 0xf0 | feedbacksize;
 					}
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
+					else
+					{
+						rohc_buf_byte(*feedback_send) = 0xf0;
+						rohc_buf_byte_at(*feedback_send, 1) = feedbacksize;
+					}
+					feedback_send->len += hdr_len;
 					rohc_buf_append(feedback_send, feedback, feedbacksize);
 				}
 			}
@@ -2328,9 +1482,6 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 		case ROHC_STATUS_MALFORMED:
 		case ROHC_STATUS_BAD_CRC:
 		case ROHC_STATUS_OUTPUT_TOO_SMALL:
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-			context->num_sent_feedbacks++;
-#endif
 			switch(context->state)
 			{
 				case ROHC_DECOMP_STATE_NC:
@@ -2356,37 +1507,18 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 
 					if(feedback_send != NULL)
 					{
-						size_t hdr_len;
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-						if(!decomp->do_auto_feedback_delivery)
-						{
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
-							hdr_len = 1 + (feedbacksize < 8 ? 0 : 1);
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-						}
-						else
-						{
-							hdr_len = 0;
-						}
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
+						const size_t hdr_len = 1 + (feedbacksize < 8 ? 0 : 1);
 						if((hdr_len + feedbacksize) <= rohc_buf_avail_len(*feedback_send))
 						{
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-							if(!decomp->do_auto_feedback_delivery)
+							if(feedbacksize < 8)
 							{
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
-								if(feedbacksize < 8)
-								{
-									rohc_buf_byte(*feedback_send) = 0xf0 | feedbacksize;
-								}
-								else
-								{
-									rohc_buf_byte(*feedback_send) = 0xf0;
-									rohc_buf_byte_at(*feedback_send, 1) = feedbacksize;
-								}
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+								rohc_buf_byte(*feedback_send) = 0xf0 | feedbacksize;
 							}
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
+							else
+							{
+								rohc_buf_byte(*feedback_send) = 0xf0;
+								rohc_buf_byte_at(*feedback_send, 1) = feedbacksize;
+							}
 							feedback_send->len += hdr_len;
 							rohc_buf_append(feedback_send, feedback, feedbacksize);
 						}
@@ -2418,38 +1550,19 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 
 					if(feedback_send != NULL)
 					{
-						size_t hdr_len;
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-						if(!decomp->do_auto_feedback_delivery)
-						{
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
-							hdr_len = 1 + (feedbacksize < 8 ? 0 : 1);
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-						}
-						else
-						{
-							hdr_len = 0;
-						}
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
+						const size_t hdr_len = 1 + (feedbacksize < 8 ? 0 : 1);
 						if((hdr_len + feedbacksize) <= rohc_buf_avail_len(*feedback_send))
 						{
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-							if(!decomp->do_auto_feedback_delivery)
+							if(feedbacksize < 8)
 							{
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
-								if(feedbacksize < 8)
-								{
-									rohc_buf_byte(*feedback_send) = 0xf0 | feedbacksize;
-								}
-								else
-								{
-									rohc_buf_byte(*feedback_send) = 0xf0;
-									rohc_buf_byte_at(*feedback_send, 1) = feedbacksize;
-								}
-								feedback_send->len += hdr_len;
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+								rohc_buf_byte(*feedback_send) = 0xf0 | feedbacksize;
 							}
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
+							else
+							{
+								rohc_buf_byte(*feedback_send) = 0xf0;
+								rohc_buf_byte_at(*feedback_send, 1) = feedbacksize;
+							}
+							feedback_send->len += hdr_len;
 							rohc_buf_append(feedback_send, feedback, feedbacksize);
 						}
 					}
@@ -2544,28 +1657,6 @@ static void d_operation_mode_feedback(struct rohc_decomp *decomp,
 }
 
 
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-
-/**
- * @brief Clear all the statistics.
- *
- * @param decomp The ROHC decompressor
- *
- * @deprecated please do not use this function anymore
- *
- * @ingroup rohc_decomp
- */
-void clear_statistics(struct rohc_decomp *decomp)
-{
-	if(decomp != NULL)
-	{
-		rohc_decomp_reset_stats(decomp);
-	}
-}
-
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
-
-
 /**
  * @brief Reset all the statistics of the given ROHC decompressor
  *
@@ -2581,218 +1672,6 @@ static void rohc_decomp_reset_stats(struct rohc_decomp *const decomp)
 	decomp->stats.total_compressed_size = 0;
 	decomp->stats.total_uncompressed_size = 0;
 }
-
-
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-
-/**
- * @brief Output the decompression statistics of one decompressor to a buffer.
- * The buffer must be large enough to store all the statistics.
- *
- * @deprecated please do not use this function anymore, use
- *             rohc_decomp_get_general_info() and
- *             rohc_decomp_get_last_packet_info() instead
- *
- * @param decomp The ROHC decompressor
- * @param indent The level of indentation to add during output
- * @param buffer The buffer where to outputs the statistics
- * @return       The length of data written to the buffer
- *
- * @ingroup rohc_decomp
- */
-int rohc_d_statistics(struct rohc_decomp *decomp,
-                      unsigned int indent,
-                      char *buffer)
-{
-	const struct rohc_decomp_profile *p;
-	char *prefix;
-	char *save;
-	size_t i;
-
-	/* compute the indent prefix */
-	prefix = malloc((indent + 1) * sizeof(char));
-	if(prefix == NULL)
-	{
-		return -1;
-	}
-
-	memset(prefix, '\t', indent);
-	prefix[indent] = '\0';
-
-	/* add the instance info */
-	save = buffer;
-	buffer += strlen(buffer);
-
-	buffer += sprintf(buffer, "%s<instance>\n", prefix);
-
-	/* add the profiles part */
-	buffer += sprintf(buffer, "%s\t<profiles>\n", prefix);
-
-	for(i = 0; i < D_NUM_PROFILES; i++)
-	{
-		p = rohc_decomp_profiles[i];
-
-		buffer += sprintf(buffer, "%s\t\t<profile ", prefix);
-		buffer += sprintf(buffer, "id=\"%d\" ", p->id);
-		buffer += sprintf(buffer, "name=\"%s\" ",
-		                  rohc_get_profile_descr(p->id));
-		buffer += sprintf(buffer, "active=\"yes\" />\n");
-	}
-
-	buffer += sprintf(buffer, "%s\t</profiles>\n", prefix);
-
-	/* add the contexts part */
-	i = 0;
-	while(rohc_d_context(decomp, i, indent + 1, buffer) != -2)
-	{
-		i++;
-	}
-	buffer += strlen(buffer);
-
-	buffer += sprintf(buffer, "%s</instance>\n\n", prefix);
-
-	/* clean the indent prefix */
-	zfree(prefix);
-
-	return buffer - save;
-}
-
-
-/**
- * @brief Output the statistics of one decompression context to a buffer.
- *
- * The buffer must be large enough to store the statistics of one context.
- *
- * @param decomp  The ROHC decompressor
- * @param pos     The pos of the decompression context in the contexts array
- * @param indent  The level of indentation to add during output
- * @param buffer  The buffer where to outputs the statistics
- * @return        The length of data written to the buffer
- */
-static int rohc_d_context(struct rohc_decomp *decomp,
-                          const size_t pos,
-                          unsigned int indent,
-                          char *buffer)
-{
-	struct rohc_decomp_ctxt *c;
-	char *prefix;
-	char *save;
-	int v;
-
-	if(pos > decomp->medium.max_cid)
-	{
-		return -2;
-	}
-
-	c = decomp->contexts[pos];
-	if(!c || !c->profile)
-	{
-		return -1;
-	}
-
-	/* compute the line prefix */
-	prefix = malloc((indent + 1) * sizeof(char));
-	if(prefix == NULL)
-	{
-		return -1;
-	}
-
-	memset(prefix, '\t', indent);
-	prefix[indent] = '\0';
-
-	/* compute context info */
-	save = buffer;
-	buffer += strlen(buffer);
-
-	buffer += sprintf(buffer, "\n%s<context type=\"decompressor\" cid=\"%zu\">\n", prefix, pos);
-	buffer += sprintf(buffer, "%s\t<state>%s</state>\n", prefix,
-	                  rohc_decomp_get_state_descr(c->state));
-	buffer += sprintf(buffer, "%s\t<mode>%s</mode>\n", prefix,
-	                  rohc_get_mode_descr(c->mode));
-	buffer += sprintf(buffer, "%s\t<profile>%s</profile>\n", prefix,
-	                  rohc_get_profile_descr(c->profile->id));
-
-	/* compression ratio */
-	buffer += sprintf(buffer, "%s\t<ratio>\n", prefix);
-
-	if(c->total_uncompressed_size != 0)
-	{
-		v = (100 * c->total_compressed_size) / c->total_uncompressed_size;
-	}
-	else
-	{
-		v = 0;
-	}
-	buffer += sprintf(buffer, "%s\t\t<all_packets>%d%%</all_packets>\n", prefix, v);
-
-	if(c->header_uncompressed_size != 0)
-	{
-		v = (100 * c->header_compressed_size) / c->header_uncompressed_size;
-	}
-	else
-	{
-		v = 0;
-	}
-	buffer += sprintf(buffer, "%s\t\t<all_headers>%d%%</all_headers>\n", prefix, v);
-
-	v = rohc_stats_sum(&c->total_16_uncompressed);
-	if(v != 0)
-	{
-		v = (100 * rohc_stats_sum(&c->total_16_compressed)) / v;
-	}
-	buffer += sprintf(buffer, "%s\t\t<last_16_packets>%d%%</last_16_packets>\n", prefix, v);
-
-	v = rohc_stats_sum(&c->header_16_uncompressed);
-	if(v != 0)
-	{
-		v = (100 * rohc_stats_sum(&c->header_16_compressed)) / v;
-	}
-	buffer += sprintf(buffer, "%s\t\t<last_16_headers>%d%%</last_16_headers>\n", prefix, v);
-
-	buffer += sprintf(buffer, "%s\t</ratio>\n", prefix);
-
-	/* compression mean */
-	buffer += sprintf(buffer, "%s\t<mean>\n", prefix);
-
-	v = c->total_compressed_size / c->num_recv_packets;
-	buffer += sprintf(buffer, "%s\t\t<all_packets>%d</all_packets>\n", prefix, v);
-
-	v = c->header_compressed_size / c->num_recv_packets;
-	buffer += sprintf(buffer, "%s\t\t<all_headers>%d</all_headers>\n", prefix, v);
-
-	v = rohc_stats_mean(&c->total_16_compressed);
-	buffer += sprintf(buffer, "%s\t\t<last_16_packets>%d</last_16_packets>\n", prefix, v);
-
-	v = rohc_stats_mean(&c->header_16_compressed);
-	buffer += sprintf(buffer, "%s\t\t<last_16_headers>%d</last_16_headers>\n", prefix, v);
-
-	buffer += sprintf(buffer, "%s\t</mean>\n", prefix);
-
-	/* times */
-	buffer += sprintf(buffer, "%s\t<activation_time>%lu</activation_time>\n",
-	                  prefix, (unsigned long) (rohc_get_seconds() - c->first_used));
-	buffer += sprintf(buffer, "%s\t<idle_time>%lu</idle_time>\n",
-	                  prefix, (unsigned long) (rohc_get_seconds() - c->latest_used));
-
-	/* packets */
-	buffer += sprintf(buffer, "%s\t<packets recv_total=\"%d\" ", prefix, c->num_recv_packets);
-	buffer += sprintf(buffer, "recv_ir=\"%d\" ", c->num_recv_ir);
-	buffer += sprintf(buffer, "recv_irdyn=\"%d\" ", c->num_recv_ir_dyn);
-	buffer += sprintf(buffer, "sent_feedback=\"%d\" />\n", c->num_sent_feedbacks);
-
-	/* failures/repairs */
-	buffer += sprintf(buffer, "%s\t<decomp>\n", prefix);
-	buffer += sprintf(buffer, "%s\t\t<failures>%d</failures>\n", prefix, c->num_decomp_failures);
-	buffer += sprintf(buffer, "%s\t\t<repairs>%ld</repairs>\n", prefix, c->corrected_crc_failures);
-	buffer += sprintf(buffer, "%s\t</decomp>\n", prefix);
-
-	buffer += sprintf(buffer, "%s</context>\n", prefix);
-
-	free(prefix);
-	return buffer - save;
-}
-
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /**
@@ -2992,51 +1871,6 @@ error:
 }
 
 
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-
-/**
- * @brief Update feedback interval by the user.
- *
- * @deprecated please do not use this function anymore
- *
- * @param decomp          The ROHC decompressor
- * @param feedback_maxval The feedback interval given by user
- *
- * @ingroup rohc_decomp
- */
-void user_interactions(struct rohc_decomp *decomp, int feedback_maxval)
-{
-	decomp->maxval = feedback_maxval * 100;
-}
-
-
-/**
- * @brief Set the type of CID to use for the given decompressor
- *
- * Set the type of CID to use for the given decompressor.
- *
- * @warning Changing the CID type while library is used may lead to
- *          destruction of decompression contexts
- *
- * @deprecated please do not use this function anymore, use the parameter
- *             cid_type of rohc_decomp_new2() instead
- *
- * @param decomp   The decompressor for which to set CID type
- * @param cid_type The new CID type among \ref ROHC_SMALL_CID or
- *                                 \ref ROHC_LARGE_CID
- * @return         true if the CID type was successfully set, false otherwise
- *
- * @ingroup rohc_decomp
- */
-bool rohc_decomp_set_cid_type(struct rohc_decomp *const decomp,
-                              const rohc_cid_type_t cid_type)
-{
-	return __rohc_decomp_set_cid_type(decomp, cid_type);
-}
-
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
-
-
 /**
  * @brief Get the CID type that the decompressor uses
  *
@@ -3064,38 +1898,6 @@ bool rohc_decomp_get_cid_type(const struct rohc_decomp *const decomp,
 error:
 	return false;
 }
-
-
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-
-/**
- * @brief Set the MAX_CID allowed for the given decompressor
- *
- * Set the MAX_CID allowed for the given decompressor.
- *
- * @warning Changing the MAX_CID value while library is used may lead to
- *          destruction of decompression contexts
- *
- * @deprecated please do not use this function anymore, use the parameter
- *             max_cid of rohc_decomp_new2() instead
- *
- * @param decomp   The decompressor for which to set MAX_CID
- * @param max_cid  The new MAX_CID value:
- *                  - in range [0, \ref ROHC_SMALL_CID_MAX] if CID type is
- *                    \ref ROHC_SMALL_CID
- *                  - in range [0, \ref ROHC_LARGE_CID_MAX] if CID type is
- *                    \ref ROHC_LARGE_CID
- * @return         true if the MAX_CID was successfully set, false otherwise
- *
- * @ingroup rohc_decomp
- */
-bool rohc_decomp_set_max_cid(struct rohc_decomp *const decomp,
-                             const size_t max_cid)
-{
-	return __rohc_decomp_set_max_cid(decomp, max_cid);
-}
-
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /**
@@ -3618,8 +2420,6 @@ error:
 }
 
 
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-
 /**
  * @brief Set the callback function used to manage traces in decompressor
  *
@@ -3633,67 +2433,6 @@ error:
  * storage in file, syslog...).
  *
  * @warning The callback can not be modified after library initialization
- *
- * @warning The callback set by this function is ignored if another callback
- *          is set with \ref rohc_decomp_set_traces_cb2
- *
- * @deprecated do not use this function anymore,
- *             use rohc_decomp_set_traces_cb2() instead
- *
- * @param decomp   The ROHC decompressor
- * @param callback Two possible cases:
- *                   \li The callback function used to manage traces
- *                   \li NULL to remove the previous callback
- * @return         true on success, false otherwise
- *
- * @ingroup rohc_decomp
- */
-bool rohc_decomp_set_traces_cb(struct rohc_decomp *decomp,
-                               rohc_trace_callback_t callback)
-{
-	/* check decompressor validity */
-	if(decomp == NULL)
-	{
-		/* cannot print a trace without a valid decompressor */
-		goto error;
-	}
-
-	/* refuse to set a new trace callback if decompressor is in use */
-	if(decomp->stats.received > 0)
-	{
-		rohc_error(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL, "unable to "
-		           "modify the trace callback after initialization");
-		goto error;
-	}
-
-	/* replace current trace callback by the new one */
-	decomp->trace_callback = callback;
-
-	return true;
-
-error:
-	return false;
-}
-
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
-
-
-/**
- * @brief Set the callback function used to manage traces in decompressor
- *
- * Set the user-defined callback function used to manage traces in the
- * decompressor.
- *
- * The function will be called by the ROHC library every time it wants to
- * print something related to decompression, from errors to debug. User may
- * thus decide what traces are interesting (filter on \e level, source
- * \e entity, or \e profile) and what to do with them (print on console,
- * storage in file, syslog...).
- *
- * @warning The callback can not be modified after library initialization
- *
- * @warning The callback set by this function will remove any callback set
- *          set with \ref rohc_decomp_set_traces_cb
  *
  * @param decomp     The ROHC decompressor
  * @param callback   Two possible cases:
@@ -3724,9 +2463,6 @@ bool rohc_decomp_set_traces_cb2(struct rohc_decomp *decomp,
 	}
 
 	/* replace current trace callback by the new one */
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	decomp->trace_callback = NULL;
-#endif
 	decomp->trace_callback2 = callback;
 	decomp->trace_callback_priv = priv_ctxt;
 
@@ -3998,23 +2734,6 @@ static bool rohc_decomp_parse_feedback(struct rohc_decomp *const decomp,
 		goto error;
 	}
 
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	if(decomp->do_auto_feedback_delivery)
-	{
-		/* automatically deliver the feedback data to the associated compressor
-		 * to keep the same behavior as before 1.7.0 version */
-		is_ok = __rohc_comp_deliver_feedback(decomp->compressor,
-		                                     rohc_buf_data_at(*rohc_data, feedback_hdr_len),
-		                                     feedback_data_len);
-		if(!is_ok)
-		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			             "failed to deliver feedback to associated compressor");
-			/* not a fatal error */
-		}
-	}
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
-
 	/* copy the feedback item in order to return it user if he/she asked for */
 	if(feedback != NULL)
 	{
@@ -4087,188 +2806,4 @@ static bool rohc_decomp_create_contexts(struct rohc_decomp *const decomp,
 
 	return true;
 }
-
-
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-
-/**
- * @brief The default callback for traces
- *
- * The default callback for traces always prints traces on stdout for
- * compatibility with previous releases. That could be changed for the 2.0.0
- * release.
- *
- * @param level    The level of the message
- * @param entity   The entity concerned by the traces
- * @param profile  The number of the profile concerned by the message
- * @param format   The format string for the trace message
- * @param ...      The arguments related to the format string
- */
-static void rohc_decomp_print_trace_default(const rohc_trace_level_t level __attribute__((unused)),
-                                            const rohc_trace_entity_t entity __attribute__((unused)),
-                                            const int profile __attribute__((unused)),
-                                            const char *const format,
-                                            ...)
-{
-#ifndef __KERNEL__ /* TODO */
-	va_list args;
-#ifndef __KERNEL__
-	static bool first_time = true;
-
-	/* display a warning with the first message */
-	if(first_time)
-	{
-		printf("please define a callback for decompressor traces\n");
-		first_time = false;
-	}
-#endif
-
-	va_start(args, format);
-	vfprintf(stdout, format, args);
-	va_end(args);
-#endif
-}
-
-
-/**
- * @brief Set the type of CID to use for the given decompressor
- *
- * Set the type of CID to use for the given decompressor.
- *
- * @warning Changing the CID type while library is used may lead to
- *          destruction of decompression contexts
- *
- * @param decomp   The decompressor for which to set CID type
- * @param cid_type The new CID type among \ref ROHC_SMALL_CID or
- *                                 \ref ROHC_LARGE_CID
- * @return         true if the CID type was successfully set, false otherwise
- */
-static bool __rohc_decomp_set_cid_type(struct rohc_decomp *const decomp,
-                                       const rohc_cid_type_t cid_type)
-{
-	rohc_cid_type_t old_cid_type;
-
-	/* decompressor must be valid */
-	if(decomp == NULL)
-	{
-		/* cannot print a trace without a valid decompressor */
-		goto error;
-	}
-
-	/* new CID type value must be ROHC_SMALL_CID or ROHC_LARGE_CID */
-	if(cid_type != ROHC_SMALL_CID && cid_type != ROHC_LARGE_CID)
-	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		             "unexpected CID type: must be ROHC_SMALL_CID or "
-		             "ROHC_LARGE_CID");
-		goto error;
-	}
-
-	/* set the new CID type (make a backup to be able to revert) */
-	if(cid_type != decomp->medium.cid_type)
-	{
-		old_cid_type = decomp->medium.cid_type;
-		decomp->medium.cid_type = cid_type;
-
-		/* reduce MAX_CID if required */
-		if(!__rohc_decomp_set_max_cid(decomp, decomp->medium.max_cid))
-		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			             "failed to reduce MAX_CID after changing CID type");
-			goto revert_cid_type;
-		}
-
-		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		           "CID type is now set to %d", decomp->medium.cid_type);
-	}
-
-	return true;
-
-revert_cid_type:
-	decomp->medium.cid_type = old_cid_type;
-error:
-	return false;
-}
-
-
-/**
- * @brief Set the MAX_CID allowed for the given decompressor
- *
- * Set the MAX_CID allowed for the given decompressor.
- *
- * @warning Changing the MAX_CID value while library is used may lead to
- *          destruction of decompression contexts
- *
- * @param decomp   The decompressor for which to set MAX_CID
- * @param max_cid  The new MAX_CID value:
- *                  - in range [0, \ref ROHC_SMALL_CID_MAX] if CID type is
- *                    \ref ROHC_SMALL_CID
- *                  - in range [0, \ref ROHC_LARGE_CID_MAX] if CID type is
- *                    \ref ROHC_LARGE_CID
- * @return         true if the MAX_CID was successfully set, false otherwise
- */
-static bool __rohc_decomp_set_max_cid(struct rohc_decomp *const decomp,
-                                      const size_t max_cid)
-{
-	size_t max_possible_cid;
-
-	/* decompressor must be valid */
-	if(decomp == NULL)
-	{
-		/* cannot print a trace without a valid decompressor */
-		goto error;
-	}
-
-	/* what is the maximum possible MAX_CID value wrt CID type? */
-	if(decomp->medium.cid_type == ROHC_SMALL_CID)
-	{
-		max_possible_cid = ROHC_SMALL_CID_MAX;
-	}
-	else
-	{
-		max_possible_cid = ROHC_LARGE_CID_MAX;
-	}
-
-	/* new MAX_CID value must be in range [0, max_possible_cid] */
-	if(max_cid > max_possible_cid)
-	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		             "unexpected MAX_CID value: must be in range [0, %zu]",
-		             max_possible_cid);
-		goto error;
-	}
-
-	/* set the new MAX_CID value (make a backup to be able to revert) */
-	if(max_cid != decomp->medium.max_cid)
-	{
-		/* resize the array of decompression contexts */
-		if(!rohc_decomp_create_contexts(decomp, max_cid))
-		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			             "failed to re-create decompression contexts after "
-			             "changing MAX_CID");
-			goto error;
-		}
-
-		/* warn about destroyed contexts */
-		if(max_cid < decomp->medium.max_cid)
-		{
-			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			           "%zu decompression contexts are about to be destroyed "
-			           "due to MAX_CID change",
-			           (size_t) (decomp->medium.max_cid - max_cid));
-		}
-
-		decomp->medium.max_cid = max_cid;
-		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		           "MAX_CID is now set to %zu", decomp->medium.max_cid);
-	}
-
-	return true;
-
-error:
-	return false;
-}
-
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
 

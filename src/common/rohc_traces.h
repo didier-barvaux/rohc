@@ -103,7 +103,7 @@ typedef enum
  *
  * The user-defined function is set by calling:
  *  \li function \ref rohc_comp_set_traces_cb for a ROHC compressor,
- *  \li function \ref rohc_decomp_set_traces_cb for a ROHC decompressor.
+ *  \li function \ref rohc_decomp_set_traces_cb2 for a ROHC decompressor.
  *
  * Both functions accept the NULL value to fully disable tracing.
  *
@@ -120,7 +120,7 @@ typedef enum
  * @see rohc_trace_level_t
  * @see rohc_trace_entity_t
  * @see rohc_comp_set_traces_cb
- * @see rohc_decomp_set_traces_cb
+ * @see rohc_decomp_set_traces_cb2
  */
 typedef void (*rohc_trace_callback_t) (const rohc_trace_level_t level,
                                        const rohc_trace_entity_t entity,
