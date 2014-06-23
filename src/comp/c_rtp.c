@@ -60,10 +60,6 @@ static void c_rtp_destroy(struct rohc_comp_ctxt *const context)
 static bool c_rtp_check_profile(const struct rohc_comp *const comp,
                                 const struct net_pkt *const packet)
 		__attribute__((warn_unused_result, nonnull(1, 2)));
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-static bool rtp_is_udp_port_for_rtp(const struct rohc_comp *const comp,
-                                    const uint16_t port);
-#endif
 static bool c_rtp_use_udp_port(const struct rohc_comp_ctxt *const context,
                                const unsigned int port);
 
@@ -338,30 +334,6 @@ static bool c_rtp_check_profile(const struct rohc_comp *const comp,
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "RTP packet detected by the RTP callback");
 	}
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	else if(comp->rtp_ports[0] != 0)
-	{
-		/* check if the UDP destination port belongs to the list of RTP
-		   destination ports reserved for RTP traffic */
-
-		const uint16_t dest_port = rohc_ntoh16(udp_header->dest);
-		bool is_rtp_packet;
-
-
-		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "destination port in UDP packet = 0x%04x (%u)",
-		           dest_port, dest_port);
-
-		is_rtp_packet = rtp_is_udp_port_for_rtp(comp, dest_port);
-		if(!is_rtp_packet)
-		{
-			goto bad_profile;
-		}
-
-		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "UDP destination port is in the list of RTP ports");
-	}
-#endif
 	else
 	{
 		/* no callback for advanced RTP stream detection and no UDP
@@ -375,45 +347,6 @@ static bool c_rtp_check_profile(const struct rohc_comp *const comp,
 bad_profile:
 	return false;
 }
-
-
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-
-/**
- * @brief Check whether the given UDP port is reserved for RTP traffic
- *
- * @param comp  The compressor
- * @param port  The UDP port to search for
- * @return      true if the UDP port is reserved for RTP traffic,
- *              false otherwise
- */
-static bool rtp_is_udp_port_for_rtp(const struct rohc_comp *const comp,
-                                    const uint16_t port)
-{
-	bool match = false;
-	size_t i;
-
-	/* explore the list of UDP ports reserved for RTP and stop:
-	 *  - if a port is equal to 0 (current entry and next ones are unused)
-	 *  - if the port is found
-	 *  - if the port in the list is greater than the port in the packet
-	 *    because the list is sorted in ascending order
-	 *  - if the end of the list is reached
-	 */
-	i = 0;
-	while(i < MAX_RTP_PORTS &&
-	      comp->rtp_ports[i] != 0 &&
-	      !match &&
-	      port >= comp->rtp_ports[i])
-	{
-		match = (port == comp->rtp_ports[i]);
-		i++;
-	}
-
-	return match;
-}
-
-#endif
 
 
 /**

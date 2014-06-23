@@ -822,13 +822,13 @@ void change_state(struct rohc_comp_ctxt *const context,
  * @brief Encode an IP packet according to a pattern decided by several
  *        different factors.
  *
- * 1. parse uncompressed packet (done in \ref rohc_compress3)\n
+ * 1. parse uncompressed packet (done in \ref rohc_compress4)\n
  * 2. detect changes between the new uncompressed packet and the context\n
  * 3. decide new compressor state\n
  * 4. determine how many bytes are required for every field\n
  * 5. decide which packet to send\n
  * 6. code the ROHC header\n
- * 7. copy the packet payload (done in \ref rohc_compress3)\n
+ * 7. copy the packet payload (done in \ref rohc_compress4)\n
  * 8. update the context with the new headers\n
  * \n
  * This function is one of the functions that must exist in one profile for the
@@ -5785,18 +5785,6 @@ static void update_context(struct rohc_comp_ctxt *const context,
 		update_context_ip_hdr(&g_context->inner_ip_flags,
 		                      &uncomp_pkt->inner_ip);
 	}
-
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	/* update packet counters */
-	if(g_context->tmp.packet_type == ROHC_PACKET_IR)
-	{
-		context->num_sent_ir++;
-	}
-	else if(g_context->tmp.packet_type == ROHC_PACKET_IR_DYN)
-	{
-		context->num_sent_ir_dyn++;
-	}
-#endif
 }
 
 
