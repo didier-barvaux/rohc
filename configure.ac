@@ -293,22 +293,6 @@ AC_ARG_ENABLE(rohc_tests_valgrind,
 AM_CONDITIONAL([ROHC_TESTS_VALGRIND], [test x$enable_rohc_tests_valgrind = xyes])
 
 
-# abort is --enable-rohc-stats is used as it is deprecated
-AC_ARG_ENABLE(rohc_stats,
-              AS_HELP_STRING([--enable-rohc-stats],
-                             [enable ROHC statistics application [[default=no]]]),
-              enable_rohc_stats=$enableval,
-              enable_rohc_stats="undefined")
-if test "x$enable_rohc_stats" != "xundefined" ; then
-	echo
-	echo "ERROR: --enable-rohc-stats and --disable-rohc-stats are "
-	echo "       deprecated, do not use them any more."
-	echo
-	echo "Please use option --enable-app-stats or --disable-app-stats instead."
-	echo
-	exit 1
-fi
-
 # abort is --enable-rohc-apps is used as it is deprecated
 AC_ARG_ENABLE(rohc_apps,
               AS_HELP_STRING([--enable-rohc-apps],
@@ -423,15 +407,13 @@ if test "x$enable_rohc_tests" = "xyes" ; then
 
 		if test "x$cross_compiling_emulator_cmd" = "x" ; then
 			echo
-			echo "WARNING: --enable-rohc-tests and/or --enable-rohc-stats are enabled "
-			echo "         and you are cross-compiling, binaries will be built but none "
-			echo "         will be run."
+			echo "WARNING: --enable-rohc-tests is enabled and you are cross-compiling, "
+			echo "         binaries will be built but none will be run."
 			echo
 		else
 			echo
-			echo "WARNING: --enable-rohc-tests and/or --enable-rohc-stats are enabled "
-			echo "         and you are cross-compiling, binaries will be built and run "
-			echo "         with the '$cross_compiling_emulator_name' emulator."
+			echo "WARNING: --enable-rohc-tests is enabled and you are cross-compiling, "
+			echo "         binaries will be built and run with the '$cross_compiling_emulator_name' emulator."
 			echo
 		fi
 
