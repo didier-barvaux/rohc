@@ -31,7 +31,7 @@
 #include "rohc_traces_internal.h"
 #include "rohc_packets.h"
 #include "rohc_comp.h"
-#include "schemes/wlsb.h"
+#include "schemes/comp_wlsb.h"
 #include "net_pkt.h"
 
 #ifdef __KERNEL__

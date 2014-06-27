@@ -25,35 +25,29 @@ rohc_test_performance_CPPFLAGS = \
 	-I$(top_srcdir)/src/decomp \
 	$(libpcap_includes)
 rohc_test_performance_LDFLAGS = \
-	$(configure_ldflags) \
-	-L$(top_builddir)/src/common/.libs \
-	-L$(top_builddir)/src/comp/.libs \
-	-L$(top_builddir)/src/decomp/.libs
+	$(configure_ldflags)
 rohc_test_performance_SOURCES = test_performance.c
 rohc_test_performance_LDADD = \
 	-l$(pcap_lib_name) \
-	-lrohc_comp \
-	-lrohc_decomp \
-	-lrohc_common \
+	$(top_builddir)/src/comp/librohc_comp.la \
+	$(top_builddir)/src/decomp/librohc_decomp.la \
+	$(top_builddir)/src/common/librohc_common.la \
 	$(additional_platform_libs)
 
 
 rohc_gen_stream_CFLAGS = \
 	$(configure_cflags)
 rohc_gen_stream_CPPFLAGS = \
-	-I$(top_srcdir)/src/ \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
 	$(libpcap_includes)
 rohc_gen_stream_LDFLAGS = \
-	$(configure_ldflags) \
-	-L$(top_builddir)/src/common/.libs \
-	-L$(top_builddir)/src/comp/.libs
+	$(configure_ldflags)
 rohc_gen_stream_SOURCES = rohc_gen_stream.c
 rohc_gen_stream_LDADD = \
 	-l$(pcap_lib_name) \
-	-lrohc_comp \
-	-lrohc_common \
+	$(top_builddir)/src/comp/librohc_comp.la \
+	$(top_builddir)/src/common/librohc_common.la \
 	$(additional_platform_libs)
 
 

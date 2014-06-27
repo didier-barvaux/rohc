@@ -20,14 +20,14 @@
  */
 
 /**
- * @file   decomp/schemes/scaled_rtp_ts.c
+ * @file   schemes/decomp_scaled_rtp_ts.c
  * @brief  Scaled RTP Timestamp decoding
  * @author David Moreau from TAS
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#include "scaled_rtp_ts.h"
-#include "wlsb.h"
+#include "decomp_scaled_rtp_ts.h"
+#include "decomp_wlsb.h"
 #include "rohc_traces_internal.h"
 
 #include <assert.h>

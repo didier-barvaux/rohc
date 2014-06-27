@@ -18,7 +18,7 @@
  */
 
 /**
- * @file   /comp/schemes/list.h
+ * @file   schemes/comp_list.h
  * @brief  ROHC generic list compression
  * @author Didier Barvaux <didier@barvaux.org>
  */
@@ -27,7 +27,7 @@
 #define ROHC_COMP_LIST_H
 
 #include "ip.h"
-#include "comp_list.h"
+#include "rohc_list.h"
 #include "rohc_traces_internal.h"
 
 /** Print a debug trace for the given compression list */
@@ -82,19 +82,19 @@ struct list_comp
 };
 
 
-bool ROHC_EXPORT detect_ipv6_ext_changes(struct list_comp *const comp,
-                                         const struct ip_packet *const ip,
-                                         bool *const list_struct_changed,
-                                         bool *const list_content_changed)
+bool detect_ipv6_ext_changes(struct list_comp *const comp,
+                             const struct ip_packet *const ip,
+                             bool *const list_struct_changed,
+                             bool *const list_content_changed)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 
-int ROHC_EXPORT rohc_list_encode(struct list_comp *const comp,
-                                 unsigned char *const dest,
-                                 int counter,
-                                 const int size)
+int rohc_list_encode(struct list_comp *const comp,
+                     unsigned char *const dest,
+                     int counter,
+                     const int size)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-void ROHC_EXPORT rohc_list_update_context(struct list_comp *const comp)
+void rohc_list_update_context(struct list_comp *const comp)
 	__attribute__((nonnull(1)));
 
 #endif

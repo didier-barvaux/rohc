@@ -32,7 +32,7 @@
 #include "rohc_utils.h"
 #include "crc.h"
 #include "protocols/esp.h"
-#include "schemes/wlsb.h"
+#include "schemes/decomp_wlsb.h"
 
 #include <stdint.h>
 #ifndef __KERNEL__

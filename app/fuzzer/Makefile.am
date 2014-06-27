@@ -24,18 +24,15 @@ rohc_fuzzer_CPPFLAGS = \
 	-I$(top_srcdir)/src/decomp
 
 rohc_fuzzer_LDFLAGS = \
-	$(configure_ldflags) \
-	-L$(top_builddir)/src/common/.libs \
-	-L$(top_builddir)/src/comp/.libs \
-	-L$(top_builddir)/src/decomp/.libs
+	$(configure_ldflags)
 
 rohc_fuzzer_SOURCES = \
 	fuzzer.c
 
 rohc_fuzzer_LDADD = \
-	-lrohc_comp \
-	-lrohc_decomp \
-	-lrohc_common \
+	$(top_builddir)/src/comp/librohc_comp.la \
+	$(top_builddir)/src/decomp/librohc_decomp.la \
+	$(top_builddir)/src/common/librohc_common.la \
 	$(additional_platform_libs)
 
 rohc_fuzzer.1: $(rohc_fuzzer_SOURCES) $(builddir)/rohc_fuzzer
@@ -55,18 +52,15 @@ rohc_rtp_fuzzer_CPPFLAGS = \
 	-I$(top_srcdir)/src/decomp
 
 rohc_rtp_fuzzer_LDFLAGS = \
-	$(configure_ldflags) \
-	-L$(top_builddir)/src/common/.libs \
-	-L$(top_builddir)/src/comp/.libs \
-	-L$(top_builddir)/src/decomp/.libs
+	$(configure_ldflags)
 
 rohc_rtp_fuzzer_SOURCES = \
 	rtp_fuzzer.c
 
 rohc_rtp_fuzzer_LDADD = \
-	-lrohc_comp \
-	-lrohc_decomp \
-	-lrohc_common \
+	$(top_builddir)/src/comp/librohc_comp.la \
+	$(top_builddir)/src/decomp/librohc_decomp.la \
+	$(top_builddir)/src/common/librohc_common.la \
 	$(additional_platform_libs)
 
 rohc_rtp_fuzzer.1: $(rohc_rtp_fuzzer_SOURCES) $(builddir)/rohc_rtp_fuzzer

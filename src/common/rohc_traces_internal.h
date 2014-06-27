@@ -36,8 +36,6 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "dllexport.h"
-
 
 /** Print information depending on the debug level (internal usage) */
 #define __rohc_print(trace_cb, trace_cb_priv, \
@@ -101,20 +99,20 @@
 	} while(0)
 
 
-void ROHC_EXPORT rohc_dump_packet(const rohc_trace_callback2_t trace_cb,
-                                  void *const trace_cb_priv,
-                                  const rohc_trace_entity_t trace_entity,
-                                  const rohc_trace_level_t trace_level,
-                                  const char *const descr,
-                                  const struct rohc_buf packet);
+void rohc_dump_packet(const rohc_trace_callback2_t trace_cb,
+                      void *const trace_cb_priv,
+                      const rohc_trace_entity_t trace_entity,
+                      const rohc_trace_level_t trace_level,
+                      const char *const descr,
+                      const struct rohc_buf packet);
 
-void ROHC_EXPORT rohc_dump_buf(const rohc_trace_callback2_t trace_cb,
-                               void *const trace_cb_priv,
-                               const rohc_trace_entity_t trace_entity,
-                               const rohc_trace_level_t trace_level,
-                               const char *const descr,
-                               const unsigned char *const packet,
-                               const size_t length);
+void rohc_dump_buf(const rohc_trace_callback2_t trace_cb,
+                   void *const trace_cb_priv,
+                   const rohc_trace_entity_t trace_entity,
+                   const rohc_trace_level_t trace_level,
+                   const char *const descr,
+                   const unsigned char *const packet,
+                   const size_t length);
 
 #endif
 

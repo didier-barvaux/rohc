@@ -22,8 +22,8 @@
  * @author  Didier Barvaux <didier@barvaux.org>
  */
 
-#include "comp/schemes/wlsb.h"
-#include "decomp/schemes/wlsb.h"
+#include "schemes/comp_wlsb.h"
+#include "schemes/decomp_wlsb.h"
 
 #include <stdio.h>
 #include <stdbool.h>

@@ -15,20 +15,14 @@ check_PROGRAMS = \
 
 test_api_robustness_SOURCES = test_api_robustness.c
 test_api_robustness_LDADD = \
-	-lrohc_decomp \
-	-lrohc_comp \
-	-lrohc_common
+	$(top_builddir)/src/decomp/librohc_decomp.la \
+	$(top_builddir)/src/common/librohc_common.la
 test_api_robustness_LDFLAGS = \
-	$(configure_ldflags) \
-	-L$(top_builddir)/src/common/.libs \
-	-L$(top_builddir)/src/comp/.libs \
-	-L$(top_builddir)/src/decomp/.libs
+	$(configure_ldflags)
 test_api_robustness_CFLAGS = \
 	$(configure_cflags)
 test_api_robustness_CPPFLAGS = \
-	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/common \
-	-I$(top_srcdir)/src/comp \
 	-I$(top_srcdir)/src/decomp
 
 

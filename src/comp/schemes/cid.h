@@ -27,7 +27,6 @@
 #define ROHC_COMP_SCHEMES_CID_H
 
 #include "rohc.h"
-#include "dllexport.h"
 
 #include <stdlib.h>
 
@@ -36,11 +35,11 @@
  * Prototypes of functions that may used by other ROHC modules
  */
 
-int ROHC_EXPORT code_cid_values(const rohc_cid_type_t cid_type,
-                                const int cid,
-                                unsigned char *const dest,
-                                const size_t dest_size,
-                                size_t *const first_position)
+int code_cid_values(const rohc_cid_type_t cid_type,
+                    const int cid,
+                    unsigned char *const dest,
+                    const size_t dest_size,
+                    size_t *const first_position)
 	__attribute__((warn_unused_result, nonnull(3, 5)));
 
 

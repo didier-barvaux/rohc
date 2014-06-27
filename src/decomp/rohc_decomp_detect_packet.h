@@ -27,8 +27,6 @@
 #ifndef ROHC_DECOMP_DETECT_PACKET_H
 #define ROHC_DECOMP_DETECT_PACKET_H
 
-#include "dllexport.h"
-
 #include <stddef.h>
 #include <stdint.h>
 #ifdef __KERNEL__
@@ -43,41 +41,35 @@
  */
 
 /* ROHC segment */
-bool ROHC_EXPORT rohc_decomp_packet_is_segment(const uint8_t *const data)
+bool rohc_decomp_packet_is_segment(const uint8_t *const data)
 	__attribute__((warn_unused_result, nonnull(1), pure));
-bool ROHC_EXPORT rohc_decomp_packet_is_padding(const uint8_t *const data)
+bool rohc_decomp_packet_is_padding(const uint8_t *const data)
 	__attribute__((warn_unused_result, nonnull(1), pure));
 
 /* IR packet */
-bool ROHC_EXPORT rohc_decomp_packet_is_ir(const uint8_t *const data,
-                                          const size_t len)
+bool rohc_decomp_packet_is_ir(const uint8_t *const data, const size_t len)
 	__attribute__((warn_unused_result, nonnull(1), pure));
 
 /* IR-DYN packet */
-bool ROHC_EXPORT rohc_decomp_packet_is_irdyn(const uint8_t *const data,
-                                             const size_t len)
+bool rohc_decomp_packet_is_irdyn(const uint8_t *const data, const size_t len)
 	__attribute__((warn_unused_result, nonnull(1), pure));
 
 /* UO-0 packet */
-bool ROHC_EXPORT rohc_decomp_packet_is_uo0(const uint8_t *const data,
-                                           const size_t len)
+bool rohc_decomp_packet_is_uo0(const uint8_t *const data, const size_t len)
 	__attribute__((warn_unused_result, nonnull(1), pure));
 
 /* UO-1* packets */
-bool ROHC_EXPORT rohc_decomp_packet_is_uo1(const uint8_t *const data,
-                                           const size_t len)
+bool rohc_decomp_packet_is_uo1(const uint8_t *const data, const size_t len)
 	__attribute__((warn_unused_result, nonnull(1), pure));
-bool ROHC_EXPORT rohc_decomp_packet_is_uo1_ts(const uint8_t *const data,
-                                              const size_t len)
+bool rohc_decomp_packet_is_uo1_ts(const uint8_t *const data, const size_t len)
 	__attribute__((warn_unused_result, nonnull(1), pure));
 
 /* UOR-2* packets */
-bool ROHC_EXPORT rohc_decomp_packet_is_uor2(const uint8_t *const data,
-                                            const size_t len)
+bool rohc_decomp_packet_is_uor2(const uint8_t *const data, const size_t len)
 	__attribute__((warn_unused_result, nonnull(1), pure));
-bool ROHC_EXPORT rohc_decomp_packet_is_uor2_ts(const uint8_t *const data,
-                                               const size_t data_len,
-                                               const size_t large_cid_len)
+bool rohc_decomp_packet_is_uor2_ts(const uint8_t *const data,
+                                   const size_t data_len,
+                                   const size_t large_cid_len)
 	__attribute__((warn_unused_result, nonnull(1), pure));
 
 #endif

@@ -18,12 +18,12 @@
  */
 
 /**
- * @file   decomp/schemes/list_ipv6.c
+ * @file   schemes/decomp_list_ipv6.c
  * @brief  ROHC list decompression of IPv6 extension headers
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#include "decomp/schemes/list_ipv6.h"
+#include "schemes/decomp_list_ipv6.h"
 
 #include "rohc_traces_internal.h"
 

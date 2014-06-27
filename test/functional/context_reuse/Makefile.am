@@ -89,16 +89,12 @@ test_context_reuse_CPPFLAGS = \
 	$(libpcap_includes)
 
 test_context_reuse_LDFLAGS = \
-	$(configure_ldflags) \
-	-L$(top_builddir)/src/common/.libs \
-	-L$(top_builddir)/src/comp/.libs \
-	-L$(top_builddir)/src/decomp/.libs
+	-L$(top_builddir)/src/.libs \
+	$(configure_ldflags)
 
 test_context_reuse_LDADD = \
 	-l$(pcap_lib_name) \
-	-lrohc_comp \
-	-lrohc_decomp \
-	-lrohc_common \
+	-lrohc \
 	$(additional_platform_libs)
 
 EXTRA_DIST = \

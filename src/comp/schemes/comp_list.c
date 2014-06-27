@@ -18,12 +18,12 @@
  */
 
 /**
- * @file   /comp/schemes/list.c
+ * @file   schemes/comp_list.c
  * @brief  ROHC generic list compression
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#include "schemes/list.h"
+#include "schemes/comp_list.h"
 
 #ifndef __KERNEL__
 #  include <string.h>

@@ -28,16 +28,14 @@
 #define ROHC_COMP_SCHEMES_RFC4996_H
 
 #include "protocols/tcp.h"
-#include "schemes/wlsb.h"
+#include "schemes/comp_wlsb.h"
 
 #include <stdint.h>
-
-#include "dllexport.h"
 
 
 struct rohc_comp_ctxt;
 
-extern unsigned int ROHC_EXPORT lsb_xor_masks[];
+extern unsigned int lsb_xor_masks[];
 
 
 /**
@@ -97,11 +95,11 @@ typedef union
 
 
 // RFC4997 page 27
-uint32_t ROHC_EXPORT c_lsb(const struct rohc_comp_ctxt *const context,
-                           int num_lsbs_param,
-                           unsigned int offset_param,
-                           unsigned int context_value,
-                           unsigned int original_value);
+uint32_t c_lsb(const struct rohc_comp_ctxt *const context,
+               int num_lsbs_param,
+               unsigned int offset_param,
+               unsigned int context_value,
+               unsigned int original_value);
 
 /* static_or_irreg encoding for 8-bit and 16-bit values */
 int c_static_or_irreg8(const uint8_t context_value,
@@ -130,12 +128,12 @@ int c_zero_or_irreg32(const uint32_t packet_value,
 	__attribute__((warn_unused_result, nonnull(2, 3)));
 
 /* variable_length_32_enc encoding method */
-size_t ROHC_EXPORT variable_length_32_enc(const uint32_t old_value,
-                                          const uint32_t new_value,
-                                          const size_t nr_bits_63,
-                                          const size_t nr_bits_16383,
-                                          uint8_t *const rohc_data,
-                                          int *const indicator)
+size_t variable_length_32_enc(const uint32_t old_value,
+                              const uint32_t new_value,
+                              const size_t nr_bits_63,
+                              const size_t nr_bits_16383,
+                              uint8_t *const rohc_data,
+                              int *const indicator)
 	__attribute__((nonnull(5, 6), warn_unused_result));
 
 /* optional32 encoding method */

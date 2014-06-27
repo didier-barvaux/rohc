@@ -35,7 +35,7 @@
 #include "rohc_utils.h"
 #include "sdvl.h"
 #include "crc.h"
-#include "schemes/scaled_rtp_ts.h"
+#include "schemes/decomp_scaled_rtp_ts.h"
 #include "rohc_decomp_detect_packet.h"
 #include "protocols/udp.h"
 #include "protocols/rtp.h"

@@ -36,7 +36,7 @@
 #include "rohc_packets.h"
 #include "rohc_utils.h"
 #include "schemes/cid.h"
-#include "schemes/list_ipv6.h"
+#include "schemes/comp_list_ipv6.h"
 #include "sdvl.h"
 #include "crc.h"
 

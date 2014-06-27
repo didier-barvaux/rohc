@@ -1,6 +1,6 @@
 /*
- * Copyright 2012,2013 Didier Barvaux
- * Copyright 2013 WBX
+ * Copyright 2013 Didier Barvaux
+ * Copyright 2007,2008 Thales Alenia Space
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -18,15 +18,25 @@
  */
 
 /**
- * @file   dllexport.h
- * @brief  Define the ROHC_EXPORT macro if needed by the platform
+ * @file   schemes/decomp_list_ipv6.h
+ * @brief  ROHC list decompression of IPv6 extension headers
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-/** Macro that handles DLL export declarations gracefully */
-#ifdef DLL_EXPORT /* passed by autotools on command line */
-	#define ROHC_EXPORT __declspec(dllexport)
-#else
-	#define ROHC_EXPORT
+#ifndef ROHC_DECOMP_LIST_IPV6_H
+#define ROHC_DECOMP_LIST_IPV6_H
+
+#include "schemes/decomp_list.h"
+
+
+void rohc_decomp_list_ipv6_new(struct list_decomp *const decomp,
+                               rohc_trace_callback2_t trace_cb,
+                               void *const trace_cb_priv,
+                               const int profile_id)
+	__attribute__((nonnull(1)));
+
+void rohc_decomp_list_ipv6_free(struct list_decomp *const decomp)
+	__attribute__((nonnull(1)));
+
 #endif
 

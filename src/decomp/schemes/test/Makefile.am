@@ -12,7 +12,7 @@ check_PROGRAMS = \
 	test_wlsb
 
 
-test_wlsb_SOURCES = ../wlsb.c test_wlsb.c
+test_wlsb_SOURCES = ../decomp_wlsb.c test_wlsb.c
 test_wlsb_LDADD = \
 	$(CMOCKA_LIBS)
 test_wlsb_LDFLAGS = \

@@ -18,13 +18,13 @@
  */
 
 /**
- * @file   decomp/schemes/wlsb.c
+ * @file   schemes/decomp_wlsb.c
  * @brief  Window-based Least Significant Bits (W-LSB) decoding
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#include "wlsb.h"
+#include "decomp_wlsb.h"
 #include "interval.h" /* for the rohc_f_32bits() function */
 
 #ifndef __KERNEL__

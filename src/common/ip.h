@@ -27,7 +27,6 @@
 #ifndef ROHC_COMMON_IP_H
 #define ROHC_COMMON_IP_H
 
-#include "dllexport.h"
 #include "protocols/ipv4.h"
 #include "protocols/ipv6.h"
 
@@ -399,102 +398,94 @@ out:
 
 /* Generic functions */
 
-bool ROHC_EXPORT ip_create(struct ip_packet *const ip,
-                           const uint8_t *const packet,
-                           const size_t size)
+bool ip_create(struct ip_packet *const ip,
+               const uint8_t *const packet,
+               const size_t size)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
-bool ROHC_EXPORT ip_get_inner_packet(const struct ip_packet *const outer,
-                                     struct ip_packet *const inner)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
-
-const uint8_t * ROHC_EXPORT ip_get_raw_data(const struct ip_packet *const ip)
-	__attribute__((warn_unused_result, nonnull(1)));
-uint8_t * ROHC_EXPORT ip_get_next_header(const struct ip_packet *const ip,
-                                               uint8_t *const type)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
-uint8_t * ROHC_EXPORT ip_get_next_layer(const struct ip_packet *const ip)
-	__attribute__((warn_unused_result, nonnull(1)));
-uint8_t * ROHC_EXPORT ip_get_next_ext_from_ip(const struct ip_packet *const ip,
-                                                    uint8_t *const type)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
-uint8_t * ROHC_EXPORT ip_get_next_ext_from_ext(const uint8_t *const ext,
-                                                     uint8_t *const type)
+bool ip_get_inner_packet(const struct ip_packet *const outer,
+                         struct ip_packet *const inner)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-unsigned int ROHC_EXPORT ip_get_totlen(const struct ip_packet *const ip)
+const uint8_t * ip_get_raw_data(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1)));
-unsigned int ROHC_EXPORT ip_get_hdrlen(const struct ip_packet *const ip)
+uint8_t * ip_get_next_header(const struct ip_packet *const ip,
+                             uint8_t *const type)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
+uint8_t * ip_get_next_layer(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1)));
-unsigned int ROHC_EXPORT ip_get_plen(const struct ip_packet *const ip)
+uint8_t * ip_get_next_ext_from_ip(const struct ip_packet *const ip,
+                                  uint8_t *const type)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
+uint8_t * ip_get_next_ext_from_ext(const uint8_t *const ext,
+                                   uint8_t *const type)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
+
+unsigned int ip_get_totlen(const struct ip_packet *const ip)
+	__attribute__((warn_unused_result, nonnull(1)));
+unsigned int ip_get_hdrlen(const struct ip_packet *const ip)
+	__attribute__((warn_unused_result, nonnull(1)));
+unsigned int ip_get_plen(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1)));
 
-bool ROHC_EXPORT ip_is_fragment(const struct ip_packet *const ip)
+bool ip_is_fragment(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));
-ip_version ROHC_EXPORT ip_get_version(const struct ip_packet *const ip)
+ip_version ip_get_version(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));
-uint8_t ROHC_EXPORT ip_get_protocol(const struct ip_packet *const ip)
+uint8_t ip_get_protocol(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));
-unsigned int ROHC_EXPORT ip_get_tos(const struct ip_packet *const ip)
+unsigned int ip_get_tos(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));
-unsigned int ROHC_EXPORT ip_get_ttl(const struct ip_packet *const ip)
+unsigned int ip_get_ttl(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));
 
-void ROHC_EXPORT ip_set_version(struct ip_packet *const ip,
-                                const ip_version value)
+void ip_set_version(struct ip_packet *const ip, const ip_version value)
 	__attribute__((nonnull(1)));
-void ROHC_EXPORT ip_set_protocol(struct ip_packet *const ip,
-                                 const uint8_t value)
+void ip_set_protocol(struct ip_packet *const ip, const uint8_t value)
 	__attribute__((nonnull(1)));
-void ROHC_EXPORT ip_set_tos(struct ip_packet *const ip,
-                            const uint8_t value)
+void ip_set_tos(struct ip_packet *const ip, const uint8_t value)
 	__attribute__((nonnull(1)));
-void ROHC_EXPORT ip_set_ttl(struct ip_packet *const ip,
-                            const uint8_t value)
+void ip_set_ttl(struct ip_packet *const ip, const uint8_t value)
 	__attribute__((nonnull(1)));
-void ROHC_EXPORT ip_set_saddr(struct ip_packet *const ip,
-                              const uint8_t *value)
+void ip_set_saddr(struct ip_packet *const ip, const uint8_t *value)
 	__attribute__((nonnull(1, 2)));
-void ROHC_EXPORT ip_set_daddr(struct ip_packet *const ip,
-                              const uint8_t *value)
+void ip_set_daddr(struct ip_packet *const ip, const uint8_t *value)
 	__attribute__((nonnull(1, 2)));
 
 /* IPv4 specific functions */
 
-const struct ipv4_hdr * ROHC_EXPORT ipv4_get_header(const struct ip_packet *const ip)
+const struct ipv4_hdr * ipv4_get_header(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));
-uint16_t ROHC_EXPORT ipv4_get_id(const struct ip_packet *const ip)
+uint16_t ipv4_get_id(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));
-uint16_t ROHC_EXPORT ipv4_get_id_nbo(const struct ip_packet *const ip,
-                                     const unsigned int nbo)
+uint16_t ipv4_get_id_nbo(const struct ip_packet *const ip, const unsigned int nbo)
 	__attribute__((warn_unused_result, nonnull(1), pure));
-int ROHC_EXPORT ipv4_get_df(const struct ip_packet *const ip)
+int ipv4_get_df(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));
-uint32_t ROHC_EXPORT ipv4_get_saddr(const struct ip_packet *const ip)
+uint32_t ipv4_get_saddr(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));
-uint32_t ROHC_EXPORT ipv4_get_daddr(const struct ip_packet *const ip)
+uint32_t ipv4_get_daddr(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));
 
-void ROHC_EXPORT ipv4_set_id(struct ip_packet *const ip, const int value)
+void ipv4_set_id(struct ip_packet *const ip, const int value)
 	__attribute__((nonnull(1)));
-void ROHC_EXPORT ipv4_set_df(struct ip_packet *const ip, const int value)
+void ipv4_set_df(struct ip_packet *const ip, const int value)
 	__attribute__((nonnull(1)));
 
 /* IPv6 specific functions */
 
-const struct ipv6_hdr * ROHC_EXPORT ipv6_get_header(const struct ip_packet *const ip)
+const struct ipv6_hdr * ipv6_get_header(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));
-uint32_t ROHC_EXPORT ipv6_get_flow_label(const struct ip_packet *const ip)
+uint32_t ipv6_get_flow_label(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));
-const struct ipv6_addr * ROHC_EXPORT ipv6_get_saddr(const struct ip_packet *const ip)
+const struct ipv6_addr * ipv6_get_saddr(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));
-const struct ipv6_addr * ROHC_EXPORT ipv6_get_daddr(const struct ip_packet *const ip)
+const struct ipv6_addr * ipv6_get_daddr(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));
-void ROHC_EXPORT ipv6_set_flow_label(struct ip_packet *const ip,
-                                     const uint32_t value)
+void ipv6_set_flow_label(struct ip_packet *const ip, const uint32_t value)
 	__attribute__((nonnull(1)));
-unsigned short ROHC_EXPORT ip_get_extension_size(const uint8_t *const ext)
+unsigned short ip_get_extension_size(const uint8_t *const ext)
 	__attribute__((warn_unused_result, nonnull(1)));
-unsigned short ROHC_EXPORT ip_get_total_extension_size(const struct ip_packet *const ip)
+unsigned short ip_get_total_extension_size(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1)));
 
 /* Private functions (do not use directly) */

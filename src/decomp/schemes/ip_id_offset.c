@@ -25,7 +25,7 @@
  */
 
 #include "ip_id_offset.h"
-#include "wlsb.h"
+#include "decomp_wlsb.h"
 
 #include <stdlib.h>
 #include <assert.h>

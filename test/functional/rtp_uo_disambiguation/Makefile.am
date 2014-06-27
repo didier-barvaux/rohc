@@ -185,24 +185,19 @@ test_rtp_uo_disambiguation_CFLAGS = \
 
 test_rtp_uo_disambiguation_CPPFLAGS = \
 	-I$(top_srcdir)/test \
-	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
 	-I$(top_srcdir)/src/decomp \
 	$(libpcap_includes)
 
 test_rtp_uo_disambiguation_LDFLAGS = \
-	$(configure_ldflags) \
-	-L$(top_builddir)/src/common/.libs \
-	-L$(top_builddir)/src/comp/.libs \
-	-L$(top_builddir)/src/decomp/.libs
+	-L$(top_builddir)/src/.libs \
+	$(configure_ldflags)
 
 test_rtp_uo_disambiguation_SOURCES = test_rtp_uo_disambiguation.c
 test_rtp_uo_disambiguation_LDADD = \
 	-l$(pcap_lib_name) \
-	-lrohc_comp \
-	-lrohc_decomp \
-	-lrohc_common \
+	-lrohc \
 	$(additional_platform_libs)
 
 EXTRA_DIST = \

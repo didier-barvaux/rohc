@@ -31,7 +31,7 @@
 
 #include "rohc_comp_internals.h"
 #include "rohc_packets.h"
-#include "schemes/list.h"
+#include "schemes/comp_list.h"
 #include "ip.h"
 #include "crc.h"
 

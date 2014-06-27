@@ -24,15 +24,15 @@ rohc_common_sources = \
 	../../src/common/sdvl.c \
 	../../src/common/ip.c \
 	../../src/common/net_pkt.c \
-	../../src/common/comp_list.c \
+	../../src/common/rohc_list.c \
 	../../src/common/feedback_parse.c
 
 rohc_comp_sources = \
 	../../src/comp/schemes/cid.c \
-	../../src/comp/schemes/wlsb.c \
-	../../src/comp/schemes/scaled_rtp_ts.c \
-	../../src/comp/schemes/list.c \
-	../../src/comp/schemes/list_ipv6.c \
+	../../src/comp/schemes/comp_wlsb.c \
+	../../src/comp/schemes/comp_scaled_rtp_ts.c \
+	../../src/comp/schemes/comp_list.c \
+	../../src/comp/schemes/comp_list_ipv6.c \
 	../../src/comp/schemes/rfc4996.c \
 	../../src/comp/rohc_comp.c \
 	../../src/comp/c_uncompressed.c \
@@ -45,11 +45,11 @@ rohc_comp_sources = \
 	../../src/comp/c_tcp.c
 
 rohc_decomp_sources = \
-	../../src/decomp/schemes/wlsb.c \
+	../../src/decomp/schemes/decomp_wlsb.c \
 	../../src/decomp/schemes/ip_id_offset.c \
-	../../src/decomp/schemes/scaled_rtp_ts.c \
-	../../src/decomp/schemes/list.c \
-	../../src/decomp/schemes/list_ipv6.c \
+	../../src/decomp/schemes/decomp_scaled_rtp_ts.c \
+	../../src/decomp/schemes/decomp_list.c \
+	../../src/decomp/schemes/decomp_list_ipv6.c \
 	../../src/decomp/schemes/rfc4996.c \
 	../../src/decomp/rohc_decomp_detect_packet.c \
 	../../src/decomp/rohc_decomp.c \

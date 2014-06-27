@@ -18,12 +18,12 @@
  */
 
 /**
- * @file   decomp/schemes/list.c
+ * @file   schemes/decomp_list.c
  * @brief  ROHC generic list decompression
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#include "decomp/schemes/list.h"
+#include "schemes/decomp_list.h"
 
 #include "rohc_bit_ops.h"
 

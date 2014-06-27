@@ -23,7 +23,7 @@
  * @author  Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  */
 
-#include "wlsb.h"
+#include "decomp_wlsb.h"
 
 #include <setjmp.h>
 #include <stddef.h>

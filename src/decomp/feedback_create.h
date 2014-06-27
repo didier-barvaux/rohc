@@ -34,8 +34,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#include "dllexport.h"
-
 
 /**
  * @brief The different feedback options
@@ -98,9 +96,9 @@ struct d_feedback
  * Prototypes of public functions.
  */
 
-bool ROHC_EXPORT rohc_decomp_feedback_size(const struct rohc_buf rohc_data,
-                                           size_t *const feedback_hdr_len,
-                                           size_t *const feedback_data_len)
+bool rohc_decomp_feedback_size(const struct rohc_buf rohc_data,
+                               size_t *const feedback_hdr_len,
+                               size_t *const feedback_data_len)
 	__attribute__((warn_unused_result, nonnull(2, 3)));
 
 void f_feedback1(const uint32_t sn, struct d_feedback *const feedback)

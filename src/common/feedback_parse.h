@@ -33,14 +33,13 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include "dllexport.h"
 
-bool ROHC_EXPORT rohc_packet_is_feedback(const uint8_t byte)
+bool rohc_packet_is_feedback(const uint8_t byte)
 	__attribute__((warn_unused_result, pure));
 
-bool ROHC_EXPORT rohc_feedback_get_size(const struct rohc_buf rohc_data,
-                                        size_t *const feedback_hdr_len,
-                                        size_t *const feedback_data_len)
+bool rohc_feedback_get_size(const struct rohc_buf rohc_data,
+                            size_t *const feedback_hdr_len,
+                            size_t *const feedback_data_len)
 	__attribute__((warn_unused_result, nonnull(2, 3)));
 
 #endif

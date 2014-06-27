@@ -18,14 +18,14 @@
  */
 
 /**
- * @file   src/comp/schemes/wlsb.c
+ * @file   schemes/comp_wlsb.c
  * @brief  Window-based Least Significant Bits (W-LSB) encoding
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author Didier Barvaux <didier@barvaux.org>
  * @author David Moreau from TAS
  */
 
-#include "wlsb.h"
+#include "comp_wlsb.h"
 #include "interval.h" /* for the rohc_f_*bits() functions */
 
 #ifndef __KERNEL__

@@ -18,7 +18,7 @@
  */
 
 /**
- * @file   src/comp/schemes/wlsb.h
+ * @file   schemes/comp_wlsb.h
  * @brief  Window-based Least Significant Bits (W-LSB) encoding
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author David Moreau from TAS
@@ -28,7 +28,6 @@
 #define ROHC_COMP_SCHEMES_WLSB_H
 
 #include "interval.h" /* for rohc_lsb_shift_t */
-#include "dllexport.h"
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -43,31 +42,31 @@ struct c_wlsb;
  * Public function prototypes:
  */
 
-struct c_wlsb * ROHC_EXPORT c_create_wlsb(const size_t bits,
-                                          const size_t window_width,
-                                          const rohc_lsb_shift_t p)
+struct c_wlsb * c_create_wlsb(const size_t bits,
+                              const size_t window_width,
+                              const rohc_lsb_shift_t p)
 	__attribute__((warn_unused_result));
-void ROHC_EXPORT c_destroy_wlsb(struct c_wlsb *s);
+void c_destroy_wlsb(struct c_wlsb *s);
 
-void ROHC_EXPORT c_add_wlsb(struct c_wlsb *const wlsb,
-                            const uint32_t sn,
-                            const uint32_t value);
+void c_add_wlsb(struct c_wlsb *const wlsb,
+                const uint32_t sn,
+                const uint32_t value);
 
-bool ROHC_EXPORT wlsb_get_k_16bits(const struct c_wlsb *const wlsb,
-                                   const uint16_t value,
-                                   size_t *const bits_nr)
+bool wlsb_get_k_16bits(const struct c_wlsb *const wlsb,
+                       const uint16_t value,
+                       size_t *const bits_nr)
 	__attribute__((warn_unused_result, nonnull(1, 3)));
-bool ROHC_EXPORT wlsb_get_k_32bits(const struct c_wlsb *const wlsb,
-                                   const uint32_t value,
-                                   size_t *const bits_nr)
+bool wlsb_get_k_32bits(const struct c_wlsb *const wlsb,
+                       const uint32_t value,
+                       size_t *const bits_nr)
 	__attribute__((warn_unused_result, nonnull(1, 3)));
-bool ROHC_EXPORT wlsb_get_kp_32bits(const struct c_wlsb *const wlsb,
-                                    const uint32_t value,
-                                    const rohc_lsb_shift_t p,
-                                    size_t *const bits_nr)
+bool wlsb_get_kp_32bits(const struct c_wlsb *const wlsb,
+                        const uint32_t value,
+                        const rohc_lsb_shift_t p,
+                        size_t *const bits_nr)
 	__attribute__((warn_unused_result, nonnull(1, 4)));
 
-void ROHC_EXPORT c_ack_sn_wlsb(struct c_wlsb *const s, const uint32_t sn)
+void c_ack_sn_wlsb(struct c_wlsb *const s, const uint32_t sn)
 	__attribute__((nonnull(1)));
 
 #endif

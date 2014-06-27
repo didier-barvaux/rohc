@@ -18,12 +18,12 @@
  */
 
 /**
- * @file   /comp/schemes/list_ipv6.c
+ * @file   schemes/comp_list_ipv6.c
  * @brief  ROHC list compression of IPv6 extension headers
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#include "schemes/list_ipv6.h"
+#include "schemes/comp_list_ipv6.h"
 
 #ifndef __KERNEL__
 #  include <string.h>

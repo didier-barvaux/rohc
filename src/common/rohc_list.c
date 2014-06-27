@@ -18,12 +18,12 @@
  */
 
 /**
- * @file comp_list.c
- * @brief Define list compression with its function
+ * @file   rohc_list.c
+ * @brief  Define list compression with its function
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#include "comp_list.h"
+#include "rohc_list.h"
 
 #include <stdlib.h>
 #ifndef __KERNEL__

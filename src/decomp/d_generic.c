@@ -35,10 +35,9 @@
 #include "rohc_utils.h"
 #include "rohc_bit_ops.h"
 #include "rohc_decomp_internals.h"
-#include "comp_list.h"
 #include "rohc_decomp_detect_packet.h"
-#include "schemes/wlsb.h"
-#include "schemes/list_ipv6.h"
+#include "schemes/decomp_wlsb.h"
+#include "schemes/decomp_list_ipv6.h"
 #include "sdvl.h"
 #include "crc.h"
 

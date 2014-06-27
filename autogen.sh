@@ -59,7 +59,6 @@ $( dirname $0 )/configure \
 	--enable-app-fuzzer \
 	--enable-app-performance \
 	--enable-app-sniffer \
-	--enable-app-tunnel \
 	--enable-app-stats \
 	--enable-rohc-tests \
 	--enable-doc \

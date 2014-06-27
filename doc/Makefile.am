@@ -94,7 +94,6 @@ endif
 
 
 rohc_all_sources = \
-	$(top_srcdir)/src/*.h \
 	$(top_srcdir)/src/test/*.c \
 	$(top_srcdir)/src/common/*.c \
 	$(top_srcdir)/src/common/*.h \

@@ -17,8 +17,7 @@ check_PROGRAMS = \
 test_rtp_callback_SOURCES = test_rtp_callback.c
 test_rtp_callback_LDADD = \
 	-l$(pcap_lib_name) \
-	-lrohc_comp \
-	-lrohc_common
+	-lrohc \
 	$(additional_platform_libs)
 test_rtp_callback_CFLAGS = \
 	$(configure_cflags) \
@@ -26,14 +25,12 @@ test_rtp_callback_CFLAGS = \
 	-Wno-sign-compare
 test_rtp_callback_CPPFLAGS = \
 	-I$(top_srcdir)/test \
-	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
 	$(libpcap_includes)
 test_rtp_callback_LDFLAGS = \
-	$(configure_ldflags) \
-	-L$(top_builddir)/src/common/.libs \
-	-L$(top_builddir)/src/comp/.libs
+	-L$(top_builddir)/src/.libs \
+	$(configure_ldflags)
 
 
 # extra files for releases

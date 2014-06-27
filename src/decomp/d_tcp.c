@@ -31,7 +31,7 @@
 #include "rohc_utils.h"
 #include "rohc_debug.h"
 #include "schemes/rfc4996.h"
-#include "schemes/wlsb.h"
+#include "schemes/decomp_wlsb.h"
 #include "protocols/tcp.h"
 #include "crc.h"
 #include "d_generic.h"

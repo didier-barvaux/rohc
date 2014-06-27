@@ -33,7 +33,6 @@
 #define ROHC_COMMON_CRC_H
 
 #include "ip.h"
-#include "dllexport.h"
 
 #ifdef __KERNEL__
 #	include <linux/types.h>
@@ -67,95 +66,95 @@ typedef enum
  * Function prototypes.
  */
 
-bool ROHC_EXPORT rohc_crc_init_table(uint8_t *const table,
-                                     const rohc_crc_type_t crc_type)
+bool rohc_crc_init_table(uint8_t *const table,
+                         const rohc_crc_type_t crc_type)
 	__attribute__((nonnull(1), warn_unused_result));
 
-uint8_t ROHC_EXPORT crc_calculate(const rohc_crc_type_t crc_type,
-                                  const uint8_t *const data,
-                                  const size_t length,
-                                  const uint8_t init_val,
-                                  const uint8_t *const crc_table)
+uint8_t crc_calculate(const rohc_crc_type_t crc_type,
+                      const uint8_t *const data,
+                      const size_t length,
+                      const uint8_t init_val,
+                      const uint8_t *const crc_table)
 	__attribute__((nonnull(2, 5), warn_unused_result));
 
-uint32_t ROHC_EXPORT crc_calc_fcs32(const uint8_t *const data,
-                                    const size_t length,
-                                    const uint32_t init_val)
+uint32_t crc_calc_fcs32(const uint8_t *const data,
+                        const size_t length,
+                        const uint32_t init_val)
 	__attribute__((nonnull(1), warn_unused_result));
 
-uint8_t ROHC_EXPORT compute_crc_static(const uint8_t *const ip,
-                                       const uint8_t *const ip2,
-                                       const uint8_t *const next_header,
-                                       const rohc_crc_type_t crc_type,
-                                       const uint8_t init_val,
-                                       const uint8_t *const crc_table)
+uint8_t compute_crc_static(const uint8_t *const ip,
+                           const uint8_t *const ip2,
+                           const uint8_t *const next_header,
+                           const rohc_crc_type_t crc_type,
+                           const uint8_t init_val,
+                           const uint8_t *const crc_table)
 	__attribute__((nonnull(1, 6), warn_unused_result));
-uint8_t ROHC_EXPORT compute_crc_dynamic(const uint8_t *const ip,
-                                        const uint8_t *const ip2,
-                                        const uint8_t *const next_header,
-                                        const rohc_crc_type_t crc_type,
-                                        const uint8_t init_val,
-                                        const uint8_t *const crc_table)
+uint8_t compute_crc_dynamic(const uint8_t *const ip,
+                            const uint8_t *const ip2,
+                            const uint8_t *const next_header,
+                            const rohc_crc_type_t crc_type,
+                            const uint8_t init_val,
+                            const uint8_t *const crc_table)
 	__attribute__((nonnull(1, 6), warn_unused_result));
 
-uint8_t ROHC_EXPORT udp_compute_crc_static(const uint8_t *const ip,
-                                           const uint8_t *const ip2,
-                                           const uint8_t *const next_header,
-                                           const rohc_crc_type_t crc_type,
-                                           const uint8_t init_val,
-                                           const uint8_t *const crc_table)
+uint8_t udp_compute_crc_static(const uint8_t *const ip,
+                               const uint8_t *const ip2,
+                               const uint8_t *const next_header,
+                               const rohc_crc_type_t crc_type,
+                               const uint8_t init_val,
+                               const uint8_t *const crc_table)
 	__attribute__((nonnull(1, 3, 6), warn_unused_result));
-uint8_t ROHC_EXPORT udp_compute_crc_dynamic(const uint8_t *const ip,
-                                            const uint8_t *const ip2,
-                                            const uint8_t *const next_header,
-                                            const rohc_crc_type_t crc_type,
-                                            const uint8_t init_val,
-                                            const uint8_t *const crc_table)
-	__attribute__((nonnull(1, 3, 6), warn_unused_result));
-
-uint8_t ROHC_EXPORT esp_compute_crc_static(const uint8_t *const ip,
-                                           const uint8_t *const ip2,
-                                           const uint8_t *const next_header,
-                                           const rohc_crc_type_t crc_type,
-                                           const uint8_t init_val,
-                                           const uint8_t *const crc_table)
-	__attribute__((nonnull(1, 3, 6), warn_unused_result));
-uint8_t ROHC_EXPORT esp_compute_crc_dynamic(const uint8_t *const ip,
-                                            const uint8_t *const ip2,
-                                            const uint8_t *const next_header,
-                                            const rohc_crc_type_t crc_type,
-                                            const uint8_t init_val,
-                                            const uint8_t *const crc_table)
+uint8_t udp_compute_crc_dynamic(const uint8_t *const ip,
+                                const uint8_t *const ip2,
+                                const uint8_t *const next_header,
+                                const rohc_crc_type_t crc_type,
+                                const uint8_t init_val,
+                                const uint8_t *const crc_table)
 	__attribute__((nonnull(1, 3, 6), warn_unused_result));
 
-uint8_t ROHC_EXPORT rtp_compute_crc_static(const uint8_t *const ip,
-                                           const uint8_t *const ip2,
-                                           const uint8_t *const next_header,
-                                           const rohc_crc_type_t crc_type,
-                                           const uint8_t init_val,
-                                           const uint8_t *const crc_table)
+uint8_t esp_compute_crc_static(const uint8_t *const ip,
+                               const uint8_t *const ip2,
+                               const uint8_t *const next_header,
+                               const rohc_crc_type_t crc_type,
+                               const uint8_t init_val,
+                               const uint8_t *const crc_table)
 	__attribute__((nonnull(1, 3, 6), warn_unused_result));
-uint8_t ROHC_EXPORT rtp_compute_crc_dynamic(const uint8_t *const ip,
-                                            const uint8_t *const ip2,
-                                            const uint8_t *const next_header,
-                                            const rohc_crc_type_t crc_type,
-                                            const uint8_t init_val,
-                                            const uint8_t *const crc_table)
+uint8_t esp_compute_crc_dynamic(const uint8_t *const ip,
+                                const uint8_t *const ip2,
+                                const uint8_t *const next_header,
+                                const rohc_crc_type_t crc_type,
+                                const uint8_t init_val,
+                                const uint8_t *const crc_table)
 	__attribute__((nonnull(1, 3, 6), warn_unused_result));
 
-uint8_t ROHC_EXPORT tcp_compute_crc_static(const uint8_t *const ip,
-                                           const uint8_t *const ip2,
-                                           const uint8_t *const next_header,
-                                           const rohc_crc_type_t crc_type,
-                                           const uint8_t init_val,
-                                           const uint8_t *const crc_table)
+uint8_t rtp_compute_crc_static(const uint8_t *const ip,
+                               const uint8_t *const ip2,
+                               const uint8_t *const next_header,
+                               const rohc_crc_type_t crc_type,
+                               const uint8_t init_val,
+                               const uint8_t *const crc_table)
 	__attribute__((nonnull(1, 3, 6), warn_unused_result));
-uint8_t ROHC_EXPORT tcp_compute_crc_dynamic(const uint8_t *const ip,
-                                            const uint8_t *const ip2,
-                                            const uint8_t *const next_header,
-                                            const rohc_crc_type_t crc_type,
-                                            const uint8_t init_val,
-                                            const uint8_t *const crc_table)
+uint8_t rtp_compute_crc_dynamic(const uint8_t *const ip,
+                                const uint8_t *const ip2,
+                                const uint8_t *const next_header,
+                                const rohc_crc_type_t crc_type,
+                                const uint8_t init_val,
+                                const uint8_t *const crc_table)
+	__attribute__((nonnull(1, 3, 6), warn_unused_result));
+
+uint8_t tcp_compute_crc_static(const uint8_t *const ip,
+                               const uint8_t *const ip2,
+                               const uint8_t *const next_header,
+                               const rohc_crc_type_t crc_type,
+                               const uint8_t init_val,
+                               const uint8_t *const crc_table)
+	__attribute__((nonnull(1, 3, 6), warn_unused_result));
+uint8_t tcp_compute_crc_dynamic(const uint8_t *const ip,
+                                const uint8_t *const ip2,
+                                const uint8_t *const next_header,
+                                const rohc_crc_type_t crc_type,
+                                const uint8_t init_val,
+                                const uint8_t *const crc_table)
 	__attribute__((nonnull(1, 3, 6), warn_unused_result));
 
 #endif

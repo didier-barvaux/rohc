@@ -27,8 +27,6 @@
 #ifndef ROHC_COMMON_SDVL_H
 #define ROHC_COMMON_SDVL_H
 
-#include "dllexport.h"
-
 #include <stdlib.h>
 #include <stdint.h>
 #ifdef __KERNEL__
@@ -61,35 +59,34 @@ typedef enum
  * Function prototypes.
  */
 
-bool ROHC_EXPORT sdvl_can_value_be_encoded(const uint32_t value)
+bool sdvl_can_value_be_encoded(const uint32_t value)
 	__attribute__((warn_unused_result, const));
-bool ROHC_EXPORT sdvl_can_length_be_encoded(const size_t bits_nr)
-	__attribute__((warn_unused_result, const));
-
-size_t ROHC_EXPORT sdvl_get_min_len(const size_t nr_min_required,
-                                    const size_t nr_encoded)
+bool sdvl_can_length_be_encoded(const size_t bits_nr)
 	__attribute__((warn_unused_result, const));
 
-size_t ROHC_EXPORT sdvl_get_encoded_len(const uint32_t value)
+size_t sdvl_get_min_len(const size_t nr_min_required, const size_t nr_encoded)
 	__attribute__((warn_unused_result, const));
 
-bool ROHC_EXPORT sdvl_encode(uint8_t *const packet,
-                             const size_t packet_max_len,
-                             size_t *const packet_len,
-                             const uint32_t value,
-                             const size_t bits_nr)
+size_t sdvl_get_encoded_len(const uint32_t value)
+	__attribute__((warn_unused_result, const));
+
+bool sdvl_encode(uint8_t *const packet,
+                 const size_t packet_max_len,
+                 size_t *const packet_len,
+                 const uint32_t value,
+                 const size_t bits_nr)
 	__attribute__((warn_unused_result, nonnull(1, 3)));
 
-bool ROHC_EXPORT sdvl_encode_full(uint8_t *const packet,
-                                  const size_t packet_max_len,
-                                  size_t *const packet_len,
-                                  const uint32_t value)
+bool sdvl_encode_full(uint8_t *const packet,
+                      const size_t packet_max_len,
+                      size_t *const packet_len,
+                      const uint32_t value)
 	__attribute__((warn_unused_result, nonnull(1, 3)));
 
-size_t ROHC_EXPORT sdvl_decode(const uint8_t *const data,
-                               const size_t length,
-                               uint32_t *const value,
-                               size_t *const bits_nr)
+size_t sdvl_decode(const uint8_t *const data,
+                   const size_t length,
+                   uint32_t *const value,
+                   size_t *const bits_nr)
 	__attribute__((warn_unused_result, nonnull(1, 3, 4)));
 
 #endif

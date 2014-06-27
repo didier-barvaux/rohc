@@ -20,7 +20,7 @@
  */
 
 /**
- * @file   decomp/schemes/scaled_rtp_ts.h
+ * @file   schemes/decomp_scaled_rtp_ts.h
  * @brief  Scaled RTP Timestamp decoding
  * @author David Moreau from TAS
  * @author Didier Barvaux <didier@barvaux.org>
@@ -39,8 +39,6 @@
 #	include <stdbool.h>
 #endif
 
-#include "dllexport.h"
-
 
 /* The definition of the scaled RTP Timestamp decoding context is private */
 struct ts_sc_decomp;
@@ -50,33 +48,33 @@ struct ts_sc_decomp;
  * Function prototypes
  */
 
-struct ts_sc_decomp * ROHC_EXPORT d_create_sc(rohc_trace_callback2_t trace_cb,
-                                              void *const trace_cb_priv)
+struct ts_sc_decomp * d_create_sc(rohc_trace_callback2_t trace_cb,
+                                  void *const trace_cb_priv)
 	__attribute__((warn_unused_result));
-void ROHC_EXPORT rohc_ts_scaled_free(struct ts_sc_decomp *const ts_scaled);
+void rohc_ts_scaled_free(struct ts_sc_decomp *const ts_scaled);
 
-void ROHC_EXPORT ts_update_context(struct ts_sc_decomp *const ts_sc,
-                                   const uint32_t ts,
-                                   const uint16_t sn);
+void ts_update_context(struct ts_sc_decomp *const ts_sc,
+                       const uint32_t ts,
+                       const uint16_t sn);
 
-void ROHC_EXPORT d_record_ts_stride(struct ts_sc_decomp *const ts_sc,
-                                    const uint32_t ts_stride);
+void d_record_ts_stride(struct ts_sc_decomp *const ts_sc,
+                        const uint32_t ts_stride);
 
-bool ROHC_EXPORT ts_decode_unscaled_bits(struct ts_sc_decomp *const ts_sc,
-                                         const uint32_t ts_unscaled_bits,
-                                         const size_t ts_unscaled_bits_nr,
-                                         uint32_t *const decoded_ts,
-                                         const bool compat_1_6_x)
-	__attribute__((warn_unused_result));
-
-bool ROHC_EXPORT ts_decode_scaled_bits(struct ts_sc_decomp *const ts_sc,
-                                       const uint32_t ts_scaled_bits,
-                                       const size_t ts_scaled_bits_nr,
-                                       uint32_t *const decoded_ts)
+bool ts_decode_unscaled_bits(struct ts_sc_decomp *const ts_sc,
+                             const uint32_t ts_unscaled_bits,
+                             const size_t ts_unscaled_bits_nr,
+                             uint32_t *const decoded_ts,
+                             const bool compat_1_6_x)
 	__attribute__((warn_unused_result));
 
-uint32_t ROHC_EXPORT ts_deduce_from_sn(struct ts_sc_decomp *const ts_sc,
-                                       const uint16_t sn)
+bool ts_decode_scaled_bits(struct ts_sc_decomp *const ts_sc,
+                           const uint32_t ts_scaled_bits,
+                           const size_t ts_scaled_bits_nr,
+                           uint32_t *const decoded_ts)
+	__attribute__((warn_unused_result));
+
+uint32_t ts_deduce_from_sn(struct ts_sc_decomp *const ts_sc,
+                           const uint16_t sn)
 	__attribute__((warn_unused_result));
 
 #endif

@@ -25,17 +25,15 @@ rohc_stats_CPPFLAGS = \
 	$(libpcap_includes)
 
 rohc_stats_LDFLAGS = \
-	$(configure_ldflags) \
-	-L$(top_builddir)/src/common/.libs \
-	-L$(top_builddir)/src/comp/.libs
+	$(configure_ldflags)
 
 rohc_stats_SOURCES = \
 	rohc_stats.c
 
 rohc_stats_LDADD = \
 	-l$(pcap_lib_name) \
-	-lrohc_comp \
-	-lrohc_common \
+	$(top_builddir)/src/comp/librohc_comp.la \
+	$(top_builddir)/src/common/librohc_common.la \
 	$(additional_platform_libs)
 
 

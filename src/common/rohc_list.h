@@ -18,20 +18,18 @@
  */
 
 /**
- * @file comp_list.h
- * @brief Define list compression with its function
+ * @file   rohc_list.h
+ * @brief  Define list compression with its function
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#ifndef ROHC_COMMON_COMP_LIST_H
-#define ROHC_COMMON_COMP_LIST_H
+#ifndef ROHC_COMMON_LIST_H
+#define ROHC_COMMON_LIST_H
 
 #include "protocols/ipv6.h"
 #include "protocols/ip_numbers.h"
 
 #include <stdlib.h>
-
-#include "dllexport.h"
 
 
 /** The maximum number of items in compressed lists */
@@ -117,25 +115,25 @@ typedef bool (*rohc_list_item_cmp) (const struct rohc_list_item *const item,
  * Functions prototypes
  */
 
-void ROHC_EXPORT rohc_list_reset(struct rohc_list *const list)
+void rohc_list_reset(struct rohc_list *const list)
 	__attribute__((nonnull(1)));
 
-bool ROHC_EXPORT rohc_list_equal(const struct rohc_list *const list1,
-                                 const struct rohc_list *const list2)
+bool rohc_list_equal(const struct rohc_list *const list1,
+                     const struct rohc_list *const list2)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-bool ROHC_EXPORT rohc_list_supersede(const struct rohc_list *const large,
-                                     const struct rohc_list *const small)
+bool rohc_list_supersede(const struct rohc_list *const large,
+                         const struct rohc_list *const small)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-void ROHC_EXPORT rohc_list_item_reset(struct rohc_list_item *const list_item)
+void rohc_list_item_reset(struct rohc_list_item *const list_item)
 	__attribute__((nonnull(1)));
 
-int ROHC_EXPORT rohc_list_item_update_if_changed(rohc_list_item_cmp cmp_item,
-                                                 struct rohc_list_item *const list_item,
-                                                 const uint8_t item_type,
-                                                 const uint8_t *const item_data,
-                                                 const size_t item_len)
+int rohc_list_item_update_if_changed(rohc_list_item_cmp cmp_item,
+                                     struct rohc_list_item *const list_item,
+                                     const uint8_t item_type,
+                                     const uint8_t *const item_data,
+                                     const size_t item_len)
 	__attribute__((warn_unused_result, nonnull(2, 4)));
 
 #endif

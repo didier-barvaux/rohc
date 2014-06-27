@@ -18,7 +18,7 @@
  */
 
 /**
- * @file   src/comp/schemes/scaled_rtp_ts.h
+ * @file   schemes/comp_scaled_rtp_ts.h
  * @brief  Scaled RTP Timestamp encoding
  * @author David Moreau from TAS
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
@@ -31,7 +31,7 @@
 #ifndef ROHC_COMP_SCHEMES_SCALED_RTP_TS_H
 #define ROHC_COMP_SCHEMES_SCALED_RTP_TS_H
 
-#include "wlsb.h"
+#include "comp_wlsb.h"
 #include "rohc_traces.h"
 
 #ifdef __KERNEL__
@@ -39,8 +39,6 @@
 #else
 #	include <stdbool.h>
 #endif
-
-#include "dllexport.h"
 
 
 /**
@@ -116,37 +114,35 @@ struct ts_sc_comp
  * Function prototypes
  */
 
-bool ROHC_EXPORT c_create_sc(struct ts_sc_comp *const ts_sc,
-                             const size_t wlsb_window_width,
-                             rohc_trace_callback2_t trace_cb,
-                             void *const trace_cb_priv)
+bool c_create_sc(struct ts_sc_comp *const ts_sc,
+                 const size_t wlsb_window_width,
+                 rohc_trace_callback2_t trace_cb,
+                 void *const trace_cb_priv)
 	__attribute__((warn_unused_result));
-void ROHC_EXPORT c_destroy_sc(struct ts_sc_comp *const ts_sc);
+void c_destroy_sc(struct ts_sc_comp *const ts_sc);
 
-void ROHC_EXPORT c_add_ts(struct ts_sc_comp *const ts_sc,
-                          const uint32_t ts,
-                          const uint16_t sn);
+void c_add_ts(struct ts_sc_comp *const ts_sc,
+              const uint32_t ts,
+              const uint16_t sn);
 
-bool ROHC_EXPORT nb_bits_unscaled(const struct ts_sc_comp *const ts_sc,
-                                  size_t *const bits_nr)
+bool nb_bits_unscaled(const struct ts_sc_comp *const ts_sc,
+                      size_t *const bits_nr)
 	__attribute__((nonnull(1), warn_unused_result));
-void ROHC_EXPORT add_unscaled(const struct ts_sc_comp *const ts_sc,
-                              const uint16_t sn);
+void add_unscaled(const struct ts_sc_comp *const ts_sc, const uint16_t sn);
 
-bool ROHC_EXPORT nb_bits_scaled(const struct ts_sc_comp *const ts_sc,
-                                size_t *const bits_nr)
+bool nb_bits_scaled(const struct ts_sc_comp *const ts_sc,
+                    size_t *const bits_nr)
 	__attribute__((nonnull(1), warn_unused_result));
-void ROHC_EXPORT add_scaled(const struct ts_sc_comp *const ts_sc,
-                            const uint16_t sn);
+void add_scaled(const struct ts_sc_comp *const ts_sc, const uint16_t sn);
 
-uint32_t ROHC_EXPORT get_ts_stride(const struct ts_sc_comp *const ts_sc)
+uint32_t get_ts_stride(const struct ts_sc_comp *const ts_sc)
 	__attribute__((nonnull(1), warn_unused_result, pure));
-uint32_t ROHC_EXPORT get_ts_scaled(const struct ts_sc_comp *const ts_sc)
+uint32_t get_ts_scaled(const struct ts_sc_comp *const ts_sc)
 	__attribute__((nonnull(1), warn_unused_result, pure));
-uint32_t ROHC_EXPORT get_ts_unscaled(const struct ts_sc_comp *const ts_sc)
+uint32_t get_ts_unscaled(const struct ts_sc_comp *const ts_sc)
 	__attribute__((nonnull(1), warn_unused_result, pure));
 
-bool ROHC_EXPORT rohc_ts_sc_is_deducible(const struct ts_sc_comp *const ts_sc)
+bool rohc_ts_sc_is_deducible(const struct ts_sc_comp *const ts_sc)
 	__attribute__((nonnull(1), warn_unused_result, pure));
 
 #endif

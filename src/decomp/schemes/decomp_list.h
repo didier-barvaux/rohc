@@ -18,7 +18,7 @@
  */
 
 /**
- * @file   decomp/schemes/list.h
+ * @file   schemes/decomp_list.h
  * @brief  ROHC generic list decompression
  * @author Didier Barvaux <didier@barvaux.org>
  */
@@ -26,7 +26,7 @@
 #ifndef ROHC_DECOMP_LIST_H
 #define ROHC_DECOMP_LIST_H
 
-#include "comp_list.h"
+#include "rohc_list.h"
 #include "rohc_traces_internal.h"
 
 
@@ -100,18 +100,17 @@ struct list_decomp
  * Generic list decompression
  */
 
-int ROHC_EXPORT rohc_list_decode_maybe(struct list_decomp *const decomp,
-                                       const unsigned char *const packet,
-                                       const size_t packet_len)
+int rohc_list_decode_maybe(struct list_decomp *const decomp,
+                           const unsigned char *const packet,
+                           const size_t packet_len)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-bool ROHC_EXPORT rohc_decomp_list_create_item(struct list_decomp *const decomp,
-
-                                              const unsigned int xi_index,
-                                              const unsigned int xi_index_value,
-                                              const uint8_t *const rohc_packet,
-                                              const size_t rohc_max_len,
-                                              size_t *const item_length)
+bool rohc_decomp_list_create_item(struct list_decomp *const decomp,
+                                  const unsigned int xi_index,
+                                  const unsigned int xi_index_value,
+                                  const uint8_t *const rohc_packet,
+                                  const size_t rohc_max_len,
+                                  size_t *const item_length)
 	__attribute__((warn_unused_result, nonnull(1, 4, 6)));
 
 #endif

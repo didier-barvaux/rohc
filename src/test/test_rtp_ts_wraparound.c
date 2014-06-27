@@ -23,8 +23,8 @@
  * @author  Didier Barvaux <didier@barvaux.org>
  */
 
-#include "comp/schemes/scaled_rtp_ts.h"
-#include "decomp/schemes/scaled_rtp_ts.h"
+#include "schemes/comp_scaled_rtp_ts.h"
+#include "schemes/decomp_scaled_rtp_ts.h"
 
 #include <stdio.h>
 #include <stdbool.h>

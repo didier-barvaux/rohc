@@ -25,8 +25,6 @@
 #ifndef ROHC_COMMON_INTERVAL_H
 #define ROHC_COMMON_INTERVAL_H
 
-#include "dllexport.h"
-
 #include <stdlib.h>
 #include <stdint.h>
 
@@ -101,14 +99,14 @@ static inline int32_t rohc_interval_compute_p(const size_t k,
                                               const rohc_lsb_shift_t p)
 	__attribute__((warn_unused_result, const));
 
-struct rohc_interval16 ROHC_EXPORT rohc_f_16bits(const uint16_t v_ref,
-                                                 const size_t k,
-                                                 const rohc_lsb_shift_t p)
+struct rohc_interval16 rohc_f_16bits(const uint16_t v_ref,
+                                     const size_t k,
+                                     const rohc_lsb_shift_t p)
 	__attribute__((warn_unused_result, const));
 
-struct rohc_interval32 ROHC_EXPORT rohc_f_32bits(const uint32_t v_ref,
-                                                 const size_t k,
-                                                 const rohc_lsb_shift_t p)
+struct rohc_interval32 rohc_f_32bits(const uint32_t v_ref,
+                                     const size_t k,
+                                     const rohc_lsb_shift_t p)
 	__attribute__((warn_unused_result, const));
 
 

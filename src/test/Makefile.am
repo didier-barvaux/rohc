@@ -20,45 +20,45 @@ test_wlsb_wraparound_SOURCES = test_wlsb_wraparound.c
 test_wlsb_wraparound_LDADD = \
 	$(top_builddir)/src/comp/schemes/librohc_comp_schemes.la \
 	$(top_builddir)/src/decomp/schemes/librohc_decomp_schemes.la \
-	-lrohc_common
+	$(top_builddir)/src/common/librohc_common.la
 test_wlsb_wraparound_LDFLAGS = \
-	$(configure_ldflags) \
-	-L$(top_builddir)/src/common/.libs
+	$(configure_ldflags)
 test_wlsb_wraparound_CFLAGS = \
 	$(configure_cflags)
 test_wlsb_wraparound_CPPFLAGS = \
-	-I$(top_srcdir)/src \
-	-I$(top_srcdir)/src/common
+	-I$(top_srcdir)/src/common \
+	-I$(top_srcdir)/src/comp \
+	-I$(top_srcdir)/src/decomp
 
 
 test_wlsb_packet_loss_SOURCES = test_wlsb_packet_loss.c
 test_wlsb_packet_loss_LDADD = \
 	$(top_builddir)/src/comp/schemes/librohc_comp_schemes.la \
 	$(top_builddir)/src/decomp/schemes/librohc_decomp_schemes.la \
-	-lrohc_common
+	$(top_builddir)/src/common/librohc_common.la
 test_wlsb_packet_loss_LDFLAGS = \
-	$(configure_ldflags) \
-	-L$(top_builddir)/src/common/.libs
+	$(configure_ldflags)
 test_wlsb_packet_loss_CFLAGS = \
 	$(configure_cflags)
 test_wlsb_packet_loss_CPPFLAGS = \
-	-I$(top_srcdir)/src \
-	-I$(top_srcdir)/src/common
+	-I$(top_srcdir)/src/common \
+	-I$(top_srcdir)/src/comp \
+	-I$(top_srcdir)/src/decomp
 
 
 test_rtp_ts_wraparound_SOURCES = test_rtp_ts_wraparound.c
 test_rtp_ts_wraparound_LDADD = \
 	$(top_builddir)/src/comp/schemes/librohc_comp_schemes.la \
 	$(top_builddir)/src/decomp/schemes/librohc_decomp_schemes.la \
-	-lrohc_common
+	$(top_builddir)/src/common/librohc_common.la
 test_rtp_ts_wraparound_LDFLAGS = \
-	$(configure_ldflags) \
-	-L$(top_builddir)/src/common/.libs
+	$(configure_ldflags)
 test_rtp_ts_wraparound_CFLAGS = \
 	$(configure_cflags)
 test_rtp_ts_wraparound_CPPFLAGS = \
-	-I$(top_srcdir)/src \
-	-I$(top_srcdir)/src/common
+	-I$(top_srcdir)/src/common \
+	-I$(top_srcdir)/src/comp \
+	-I$(top_srcdir)/src/decomp
 
 
 EXTRA_DIST = \

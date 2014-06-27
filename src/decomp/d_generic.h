@@ -33,10 +33,9 @@
 #include "rohc_decomp.h"
 #include "rohc_decomp_internals.h"
 #include "rohc_packets.h"
-#include "comp_list.h"
-#include "schemes/wlsb.h"
+#include "schemes/decomp_wlsb.h"
 #include "schemes/ip_id_offset.h"
-#include "schemes/list.h"
+#include "schemes/decomp_list.h"
 #include "ip.h"
 #include "crc.h"
 

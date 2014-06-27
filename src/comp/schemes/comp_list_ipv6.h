@@ -18,24 +18,25 @@
  */
 
 /**
- * @file   decomp/schemes/list_ipv6.h
- * @brief  ROHC list decompression of IPv6 extension headers
+ * @file   schemes/comp_list_ipv6.h
+ * @brief  ROHC list compression of IPv6 extension headers
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#ifndef ROHC_DECOMP_LIST_IPV6_H
-#define ROHC_DECOMP_LIST_IPV6_H
+#ifndef ROHC_COMP_LIST_IPV6_H
+#define ROHC_COMP_LIST_IPV6_H
 
-#include "decomp/schemes/list.h"
+#include "schemes/comp_list.h"
 
 
-void ROHC_EXPORT rohc_decomp_list_ipv6_new(struct list_decomp *const decomp,
-                                           rohc_trace_callback2_t trace_cb,
-                                           void *const trace_cb_priv,
-                                           const int profile_id)
+void rohc_comp_list_ipv6_new(struct list_comp *const comp,
+                             const size_t list_trans_nr,
+                             rohc_trace_callback2_t trace_cb,
+                             void *const trace_cb_priv,
+                             const int profile_id)
 	__attribute__((nonnull(1)));
 
-void ROHC_EXPORT rohc_decomp_list_ipv6_free(struct list_decomp *const decomp)
+void rohc_comp_list_ipv6_free(struct list_comp *const comp)
 	__attribute__((nonnull(1)));
 
 #endif
