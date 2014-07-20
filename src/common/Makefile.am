@@ -33,13 +33,6 @@ public_headers = \
 	rohc_time.h \
 	rohc_buf.h
 
-# fake public headers installed in $includedir to point
-# to the real public headers in $includedir/$packagename
-public_compat_headers = \
-	compat_headers/rohc.h \
-	compat_headers/rohc_packets.h \
-	compat_headers/rohc_traces.h
-
 private_headers = \
 	rohc_internal.h \
 	rohc_bit_ops.h \
@@ -69,7 +62,6 @@ librohc_common_la_CPPFLAGS = \
 librohc_common_la_DEPENDENCIES = \
 	$(builddir)/protocols/librohc_proto.la
 
-include_HEADERS = $(public_compat_headers)
 pkginclude_HEADERS = $(public_headers)
 noinst_HEADERS = $(private_headers)
 

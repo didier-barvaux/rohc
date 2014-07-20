@@ -44,11 +44,6 @@ librohc_comp_la_DEPENDENCIES = \
 	$(top_builddir)/src/common/librohc_common.la \
 	$(builddir)/schemes/librohc_comp_schemes.la
 
-# fake public headers installed in $includedir to point
-# to the real public headers in $includedir/$packagename
-include_HEADERS = \
-	compat_headers/rohc_comp.h
-
 pkginclude_HEADERS = \
 	rohc_comp.h
 
