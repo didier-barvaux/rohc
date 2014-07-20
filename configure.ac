@@ -60,9 +60,9 @@ AC_DEFINE_UNQUOTED([PACKAGE_REVNO], ["$PACKAGE_REVNO"],
 #  - interfaces added:                             AGE++
 #  - interfaces removed:                           AGE=0
 #
-AC_SUBST([ROHC_API_CURRENT], 2)
+AC_SUBST([ROHC_API_CURRENT], 3)
 AC_SUBST([ROHC_API_REVISION], 0)
-AC_SUBST([ROHC_API_AGE], 2)
+AC_SUBST([ROHC_API_AGE], 0)
 
 # Define a package homepage in a way compatible with autoconf < 2.64
 m4_ifndef([AC_PACKAGE_URL],
