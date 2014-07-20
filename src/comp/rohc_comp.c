@@ -1956,8 +1956,9 @@ ignore:
 /**
  * @brief Deliver a feedback packet to the compressor
  *
- * When feedback is received by the decompressor, this function is called and
- * delivers the feedback to the right profile/context of the compressor.
+ * When feedback data is received by a decompressor, this function may be
+ * called to deliver the feedback data to the corresponding profile/context
+ * on the same-side associated compressor.
  *
  * @param comp      The ROHC compressor
  * @param feedback  The feedback data
