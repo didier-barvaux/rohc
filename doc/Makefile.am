@@ -18,25 +18,43 @@ rohc_common_man = \
 	man/man3/rohc.h.3
 rohc_common_mans = \
 	man/man3/rohc_version.3 \
+	man/man3/rohc_strerror.3 \
 	man/man3/rohc_get_mode_descr.3 \
 	man/man3/rohc_get_profile_descr.3 \
 	man/man3/rohc_get_packet_descr.3 \
-	man/man3/rohc_get_ext_descr.3
+	man/man3/rohc_get_ext_descr.3 \
+	man/man3/rohc_buf_append.3 \
+	man/man3/rohc_buf_append_buf.3 \
+	man/man3/rohc_buf_avail_len.3 \
+	man/man3/rohc_buf_data.3 \
+	man/man3/rohc_buf_data_at.3 \
+	man/man3/rohc_buf_is_empty.3 \
+	man/man3/rohc_buf_is_malformed.3 \
+	man/man3/rohc_buf_prepend.3 \
+	man/man3/rohc_buf_pull.3 \
+	man/man3/rohc_buf_push.3 \
+	man/man3/rohc_buf_reset.3
 
 rohc_comp_man = \
 	man/man3/rohc_comp.h.3
 rohc_comp_mans = \
 	man/man3/rohc_comp_new.3 \
+	man/man3/rohc_comp_new2.3 \
 	man/man3/rohc_comp_free.3 \
 	man/man3/rohc_compress3.3 \
+	man/man3/rohc_compress4.3 \
 	man/man3/rohc_comp_get_segment.3 \
+	man/man3/rohc_comp_get_segment2.3 \
+	man/man3/rohc_comp_deliver_feedback2.3 \
 	man/man3/rohc_comp_profile_enabled.3 \
 	man/man3/rohc_comp_enable_profile.3 \
 	man/man3/rohc_comp_enable_profiles.3 \
 	man/man3/rohc_comp_disable_profile.3 \
 	man/man3/rohc_comp_disable_profiles.3 \
+	man/man3/rohc_comp_set_features.3 \
 	man/man3/rohc_comp_set_random_cb.3 \
 	man/man3/rohc_comp_set_traces_cb.3 \
+	man/man3/rohc_comp_set_traces_cb2.3 \
 	man/man3/rohc_comp_set_rtp_detection_cb.3 \
 	man/man3/rohc_comp_add_rtp_port.3 \
 	man/man3/rohc_comp_remove_rtp_port.3 \
@@ -46,6 +64,7 @@ rohc_comp_mans = \
 	man/man3/rohc_comp_get_max_cid.3 \
 	man/man3/rohc_comp_set_periodic_refreshes.3 \
 	man/man3/rohc_comp_set_wlsb_window_width.3 \
+	man/man3/rohc_comp_set_list_trans_nr.3 \
 	man/man3/rohc_comp_get_mrru.3 \
 	man/man3/rohc_comp_set_mrru.3 \
 	man/man3/rohc_comp_get_state_descr.3 \
@@ -60,8 +79,10 @@ rohc_decomp_man = \
 	man/man3/rohc_decomp.h.3
 rohc_decomp_mans = \
 	man/man3/rohc_decomp_new.3 \
+	man/man3/rohc_decomp_new2.3 \
 	man/man3/rohc_decomp_free.3 \
 	man/man3/rohc_decompress2.3 \
+	man/man3/rohc_decompress3.3 \
 	man/man3/rohc_decomp_profile_enabled.3 \
 	man/man3/rohc_decomp_enable_profile.3 \
 	man/man3/rohc_decomp_enable_profiles.3 \
@@ -69,6 +90,7 @@ rohc_decomp_mans = \
 	man/man3/rohc_decomp_disable_profiles.3 \
 	man/man3/rohc_decomp_set_features.3 \
 	man/man3/rohc_decomp_set_traces_cb.3 \
+	man/man3/rohc_decomp_set_traces_cb2.3 \
 	man/man3/rohc_decomp_get_cid_type.3 \
 	man/man3/rohc_decomp_get_max_cid.3 \
 	man/man3/rohc_decomp_set_mrru.3 \
