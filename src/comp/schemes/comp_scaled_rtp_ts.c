@@ -337,14 +337,12 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
 			ts_debug(ts_sc, "TS can be deducted from SN (old TS_SCALED = %u, "
 			         "new TS_SCALED = %u, old SN = %u, new SN = %u)",
 			         old_scaled, ts_sc->ts_scaled, ts_sc->old_sn, ts_sc->sn);
-			ts_sc->is_deducible = 1;
 		}
 		else
 		{
 			ts_debug(ts_sc, "TS can not be deducted from SN (old TS_SCALED = %u, "
 			         "new TS_SCALED = %u, old SN = %u, new SN = %u)",
 			         old_scaled, ts_sc->ts_scaled, ts_sc->old_sn, ts_sc->sn);
-			ts_sc->is_deducible = 0;
 		}
 
 		/* Wraparound (See RFC 4815 Section 4.4.3) */
