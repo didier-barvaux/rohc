@@ -66,7 +66,7 @@ bool c_create_sc(struct ts_sc_comp *const ts_sc,
 	ts_sc->ts_delta = 0;
 	ts_sc->old_sn = 0;
 	ts_sc->sn = 0;
-	ts_sc->is_deducible = 0;
+	ts_sc->is_deducible = false;
 	ts_sc->state = INIT_TS;
 	ts_sc->are_old_val_init = false;
 	ts_sc->nr_init_stride_packets = 0;
@@ -298,7 +298,7 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
 		/* could TS_SCALED be deduced from SN? */
 		if(ts_sc->state != SEND_SCALED)
 		{
-			ts_sc->is_deducible = 0;
+			ts_sc->is_deducible = false;
 		}
 		else
 		{
@@ -315,7 +315,7 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
 				}
 				else
 				{
-					ts_sc->is_deducible = 0;
+					ts_sc->is_deducible = false;
 				}
 			}
 			else
@@ -328,7 +328,7 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
 				}
 				else
 				{
-					ts_sc->is_deducible = 0;
+					ts_sc->is_deducible = false;
 				}
 			}
 		}
