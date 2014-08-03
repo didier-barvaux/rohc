@@ -19,15 +19,15 @@
  */
 
 /**
- * @file c_generic.h
- * @brief ROHC generic compression context for IP-only, UDP and UDP Lite
- *        profiles.
+ * @file   rohc_comp_rfc3095.h
+ * @brief  Generic framework for RFC3095-based compression profiles such as
+ *         IP-only, UDP, UDP-Lite, ESP, and RTP profiles.
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#ifndef ROHC_COMP_GENERIC_H
-#define ROHC_COMP_GENERIC_H
+#ifndef ROHC_COMP_RFC3095_H
+#define ROHC_COMP_RFC3095_H
 
 #include "rohc_comp_internals.h"
 #include "rohc_packets.h"
@@ -169,13 +169,13 @@ struct generic_tmp_vars
 
 
 /**
- * @brief The generic compression context
+ * @brief The generic decompression context for RFC3095-based profiles
  *
  * The object defines the generic context that manages IP(/nextheader) and
  * IP/IP(/nextheader) packets. nextheader is managed by the profile-specific
  * part of the context.
  */
-struct c_generic_context
+struct rohc_comp_rfc3095_ctxt
 {
 	/// The Sequence Number (SN), may be 16-bit or 32-bit long
 	uint32_t sn;
@@ -308,15 +308,16 @@ struct c_generic_context
  * Function prototypes.
  */
 
-bool c_generic_create(struct rohc_comp_ctxt *const context,
-                      const rohc_lsb_shift_t sn_shift,
-                      const struct net_pkt *const packet)
+bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
+                              const rohc_lsb_shift_t sn_shift,
+                              const struct net_pkt *const packet)
 	__attribute__((warn_unused_result, nonnull(1, 3)));
-void c_generic_destroy(struct rohc_comp_ctxt *const context)
+
+void rohc_comp_rfc3095_destroy(struct rohc_comp_ctxt *const context)
 	__attribute__((nonnull(1)));
 
-bool c_generic_check_profile(const struct rohc_comp *const comp,
-                             const struct net_pkt *const packet)
+bool rohc_comp_rfc3095_check_profile(const struct rohc_comp *const comp,
+                                     const struct net_pkt *const packet)
 		__attribute__((warn_unused_result, nonnull(1, 2)));
 
 void change_state(struct rohc_comp_ctxt *const context,
@@ -326,22 +327,22 @@ void change_state(struct rohc_comp_ctxt *const context,
 rohc_ext_t decide_extension(const struct rohc_comp_ctxt *const context)
 	__attribute__((warn_unused_result, nonnull(1)));
 
-int c_generic_encode(struct rohc_comp_ctxt *const context,
-                     const struct net_pkt *const uncomp_pkt,
-                     unsigned char *const rohc_pkt,
-                     const size_t rohc_pkt_max_len,
-                     rohc_packet_t *const packet_type,
-                     size_t *const payload_offset)
+int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
+                             const struct net_pkt *const uncomp_pkt,
+                             unsigned char *const rohc_pkt,
+                             const size_t rohc_pkt_max_len,
+                             rohc_packet_t *const packet_type,
+                             size_t *const payload_offset)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
 
-bool c_generic_reinit_context(struct rohc_comp_ctxt *const context);
+bool rohc_comp_rfc3095_reinit_context(struct rohc_comp_ctxt *const context);
 
-bool c_generic_feedback(struct rohc_comp_ctxt *const context,
-                        const struct c_feedback *const feedback)
+bool rohc_comp_rfc3095_feedback(struct rohc_comp_ctxt *const context,
+                                const struct c_feedback *const feedback)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-bool c_generic_use_udp_port(const struct rohc_comp_ctxt *const context,
-                            const unsigned int port);
+bool rohc_comp_rfc3095_use_udp_port(const struct rohc_comp_ctxt *const ctxt,
+                                    const unsigned int port);
 
 void decide_state(struct rohc_comp_ctxt *const context);
 

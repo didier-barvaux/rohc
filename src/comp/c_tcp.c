@@ -34,7 +34,7 @@
 #include "schemes/rfc4996.h"
 #include "sdvl.h"
 #include "crc.h"
-#include "c_generic.h"
+#include "rohc_comp_rfc3095.h"
 #include "c_ip.h"
 
 #include <assert.h>
@@ -354,9 +354,9 @@ struct tcp_opt_context
  * @brief Define the TCP part of the profile decompression context.
  *
  * This object must be used with the generic part of the decompression
- * context c_generic_context.
+ * context rohc_comp_rfc3095_ctxt.
  *
- * @see c_generic_context
+ * @see rohc_comp_rfc3095_ctxt
  */
 struct sc_tcp_context
 {
@@ -762,7 +762,7 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
                          const struct net_pkt *const packet)
 {
 	const struct rohc_comp *const comp = context->compressor;
-	struct c_generic_context *g_context;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	struct sc_tcp_context *tcp_context;
 	ip_context_ptr_t ip_context;
 	base_header_ip_t base_header;   // Source
@@ -774,12 +774,12 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 	size_t size;
 
 	/* create and initialize the generic part of the profile context */
-	if(!c_generic_create(context, ROHC_LSB_SHIFT_VAR, packet))
+	if(!rohc_comp_rfc3095_create(context, ROHC_LSB_SHIFT_VAR, packet))
 	{
 		rohc_comp_warn(context, "generic context creation failed");
 		goto error;
 	}
-	g_context = (struct c_generic_context *) context->specific;
+	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
 
 	// Init pointer to the initial packet
 	base_header.ipvx = (base_header_ip_vx_t *) packet->outer_ip.data;
@@ -878,7 +878,7 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 		           "no memory for the TCP part of the profile context");
 		goto free_context;
 	}
-	g_context->specific = tcp_context;
+	rfc3095_ctxt->specific = tcp_context;
 
 	/* initialize the specific context of the profile context */
 	memset(tcp_context->ip_context,0,size_context);
@@ -1027,8 +1027,8 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 #endif
 
 	/* init the Master Sequence Number to a random value */
-	g_context->sn = comp->random_cb(comp, comp->random_cb_ctxt) & 0xffff;
-	rohc_comp_debug(context, "MSN = 0x%04x", g_context->sn);
+	rfc3095_ctxt->sn = comp->random_cb(comp, comp->random_cb_ctxt) & 0xffff;
+	rohc_comp_debug(context, "MSN = 0x%04x", rfc3095_ctxt->sn);
 
 	tcp_context->ack_stride = 0;
 
@@ -1066,22 +1066,22 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 	}
 
 	/* init the TCP-specific variables and functions */
-	g_context->next_header_len = sizeof(tcphdr_t); // + options ???
+	rfc3095_ctxt->next_header_len = sizeof(tcphdr_t); // + options ???
 #ifdef TODO
-	g_context->decide_state = tcp_decide_state;
+	rfc3095_ctxt->decide_state = tcp_decide_state;
 #endif
-	g_context->decide_state = NULL;
-	g_context->init_at_IR = NULL;
-	g_context->get_next_sn = c_ip_get_next_sn;
-	g_context->code_static_part = NULL;
+	rfc3095_ctxt->decide_state = NULL;
+	rfc3095_ctxt->init_at_IR = NULL;
+	rfc3095_ctxt->get_next_sn = c_ip_get_next_sn;
+	rfc3095_ctxt->code_static_part = NULL;
 #ifdef TODO
-	g_context->code_dynamic_part = tcp_code_dynamic_tcp_part;
+	rfc3095_ctxt->code_dynamic_part = tcp_code_dynamic_tcp_part;
 #endif
-	g_context->code_dynamic_part = NULL;
-	g_context->code_UO_packet_head = NULL;
-	g_context->code_uo_remainder = NULL;
-	g_context->compute_crc_static = tcp_compute_crc_static;
-	g_context->compute_crc_dynamic = tcp_compute_crc_dynamic;
+	rfc3095_ctxt->code_dynamic_part = NULL;
+	rfc3095_ctxt->code_UO_packet_head = NULL;
+	rfc3095_ctxt->code_uo_remainder = NULL;
+	rfc3095_ctxt->compute_crc_static = tcp_compute_crc_static;
+	rfc3095_ctxt->compute_crc_dynamic = tcp_compute_crc_dynamic;
 
 	return true;
 
@@ -1096,7 +1096,7 @@ free_wlsb_seq_scaled:
 free_wlsb_seq:
 	c_destroy_wlsb(tcp_context->seq_wlsb);
 free_context:
-	c_generic_destroy(context);
+	rohc_comp_rfc3095_destroy(context);
 error:
 	return false;
 }
@@ -1109,14 +1109,14 @@ error:
  */
 static void c_tcp_destroy(struct rohc_comp_ctxt *const context)
 {
-	struct c_generic_context *g_context;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	struct sc_tcp_context *tcp_context;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = (struct c_generic_context *) context->specific;
-	assert(g_context->specific != NULL);
-	tcp_context = (struct sc_tcp_context *) g_context->specific;
+	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
+	assert(rfc3095_ctxt->specific != NULL);
+	tcp_context = (struct sc_tcp_context *) rfc3095_ctxt->specific;
 
 	c_destroy_wlsb(tcp_context->opt_ts_reply_wlsb);
 	c_destroy_wlsb(tcp_context->opt_ts_req_wlsb);
@@ -1124,7 +1124,7 @@ static void c_tcp_destroy(struct rohc_comp_ctxt *const context)
 	c_destroy_wlsb(tcp_context->ack_wlsb);
 	c_destroy_wlsb(tcp_context->seq_scaled_wlsb);
 	c_destroy_wlsb(tcp_context->seq_wlsb);
-	c_generic_destroy(context);
+	rohc_comp_rfc3095_destroy(context);
 }
 
 
@@ -1140,7 +1140,7 @@ static void c_tcp_destroy(struct rohc_comp_ctxt *const context)
  *  \li if there are at least 2 IP headers, the inner IP header is not an IP
  *      fragment
  *
- * @see c_generic_check_profile
+ * @see rohc_comp_rfc3095_check_profile
  *
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
@@ -1163,7 +1163,7 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 
 	/* check that the the versions of outer and inner IP headers are 4 or 6
 	   and that outer and inner IP headers are not IP fragments */
-	ip_check = c_generic_check_profile(comp, packet);
+	ip_check = rohc_comp_rfc3095_check_profile(comp, packet);
 	if(!ip_check)
 	{
 		goto bad_profile;
@@ -1283,7 +1283,7 @@ bad_profile:
 static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
                                 const struct net_pkt *const packet)
 {
-	struct c_generic_context *g_context;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	struct sc_tcp_context *tcp_context;
 	ip_context_ptr_t ip_context;
 	base_header_ip_t base_header;   // Source
@@ -1292,8 +1292,8 @@ static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
 	bool is_tcp_same;
 	size_t size;
 
-	g_context = (struct c_generic_context *) context->specific;
-	tcp_context = (struct sc_tcp_context *) g_context->specific;
+	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
+	tcp_context = (struct sc_tcp_context *) rfc3095_ctxt->specific;
 
 	// Init pointer to the initial packet
 	base_header.ipvx = (base_header_ip_vx_t *) packet->outer_ip.data;
@@ -1429,7 +1429,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
                         rohc_packet_t *const packet_type,
                         size_t *const payload_offset)
 {
-	struct c_generic_context *g_context;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	struct sc_tcp_context *tcp_context;
 	ip_context_ptr_t ip_inner_context;
 	ip_context_ptr_t ip_context;
@@ -1453,9 +1453,9 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	assert(rohc_pkt != NULL);
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = (struct c_generic_context *) context->specific;
-	assert(g_context->specific != NULL);
-	tcp_context = (struct sc_tcp_context *) g_context->specific;
+	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
+	assert(rfc3095_ctxt->specific != NULL);
+	tcp_context = (struct sc_tcp_context *) rfc3095_ctxt->specific;
 
 	*packet_type = ROHC_PACKET_UNKNOWN;
 
@@ -2746,7 +2746,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
                                             const unsigned char *next_header,
                                             multi_ptr_t mptr)
 {
-	struct c_generic_context *g_context;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	struct sc_tcp_context *tcp_context;
 	const tcphdr_t *tcp;
 	tcp_dynamic_t *tcp_dynamic;
@@ -2756,8 +2756,8 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 	int indicator;
 	int ret;
 
-	g_context = (struct c_generic_context *) context->specific;
-	tcp_context = (struct sc_tcp_context *) g_context->specific;
+	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
+	tcp_context = (struct sc_tcp_context *) rfc3095_ctxt->specific;
 
 	rohc_comp_debug(context, "TCP dynamic part (minimal length = %zd)",
 	                sizeof(tcp_dynamic_t));
@@ -2800,7 +2800,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 	tcp_dynamic->psh_flag = tcp->psh_flag;
 	tcp_dynamic->rsf_flags = tcp->rsf_flags;
 
-	tcp_dynamic->msn = rohc_hton16(g_context->sn);
+	tcp_dynamic->msn = rohc_hton16(rfc3095_ctxt->sn);
 	tcp_dynamic->seq_num = tcp->seq_num;
 
 	tcp_context->tcp_last_seq_num = rohc_ntoh32(tcp->seq_num);
@@ -2979,9 +2979,9 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 					tcp_context->tcp_option_timestamp.ts = opt_ts->ts;
 					tcp_context->tcp_option_timestamp.ts_reply = opt_ts->ts_reply;
 					tcp_context->tcp_option_timestamp_init = true;
-					c_add_wlsb(tcp_context->opt_ts_req_wlsb, g_context->sn,
+					c_add_wlsb(tcp_context->opt_ts_req_wlsb, rfc3095_ctxt->sn,
 					           rohc_ntoh32(opt_ts->ts));
-					c_add_wlsb(tcp_context->opt_ts_reply_wlsb, g_context->sn,
+					c_add_wlsb(tcp_context->opt_ts_reply_wlsb, rfc3095_ctxt->sn,
 					           rohc_ntoh32(opt_ts->ts_reply));
 					break;
 				}
@@ -3276,16 +3276,16 @@ static uint8_t * tcp_code_irregular_tcp_part(struct rohc_comp_ctxt *const contex
                                              uint8_t *const rohc_data,
                                              int ip_inner_ecn)
 {
-	struct c_generic_context *g_context;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	struct sc_tcp_context *tcp_context;
 	uint8_t *remain_data = rohc_data;
 	bool is_ok;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = (struct c_generic_context *) context->specific;
-	assert(g_context->specific != NULL);
-	tcp_context = (struct sc_tcp_context *) g_context->specific;
+	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
+	assert(rfc3095_ctxt->specific != NULL);
+	tcp_context = (struct sc_tcp_context *) rfc3095_ctxt->specific;
 
 	// ip_ecn_flags = := tcp_irreg_ip_ecn(ip_inner_ecn)
 	// tcp_res_flags =:= static_or_irreg(ecn_used.CVALUE,4)
@@ -3387,9 +3387,9 @@ static uint8_t * tcp_code_irregular_tcp_part(struct rohc_comp_ctxt *const contex
 					}
 
 					tcp_context->tcp_option_timestamp_init = true;
-					c_add_wlsb(tcp_context->opt_ts_req_wlsb, g_context->sn,
+					c_add_wlsb(tcp_context->opt_ts_req_wlsb, rfc3095_ctxt->sn,
 					           rohc_ntoh32(opt_ts->ts));
-					c_add_wlsb(tcp_context->opt_ts_reply_wlsb, g_context->sn,
+					c_add_wlsb(tcp_context->opt_ts_reply_wlsb, rfc3095_ctxt->sn,
 					           rohc_ntoh32(opt_ts->ts_reply));
 				}
 				else if(opt_type == TCP_OPT_SACK)
@@ -3690,7 +3690,7 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 												 uint8_t *const comp_opts,
 												 size_t *const comp_opts_len)
 {
-	struct c_generic_context *g_context;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	struct sc_tcp_context *tcp_context;
 	uint8_t compressed_options[40];
 	uint8_t *ptr_compressed_options;
@@ -3702,9 +3702,9 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = (struct c_generic_context *) context->specific;
-	assert(g_context->specific != NULL);
-	tcp_context = (struct sc_tcp_context *) g_context->specific;
+	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
+	assert(rfc3095_ctxt->specific != NULL);
+	tcp_context = (struct sc_tcp_context *) rfc3095_ctxt->specific;
 	assert(tcp != NULL);
 	assert(comp_opts != NULL);
 	assert(comp_opts_len != NULL);
@@ -4030,9 +4030,9 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 					/* save value after compression */
 					tcp_context->tcp_option_timestamp.ts = opt_ts->ts;
 					tcp_context->tcp_option_timestamp.ts_reply = opt_ts->ts_reply;
-					c_add_wlsb(tcp_context->opt_ts_req_wlsb, g_context->sn,
+					c_add_wlsb(tcp_context->opt_ts_req_wlsb, rfc3095_ctxt->sn,
 					           rohc_ntoh32(opt_ts->ts));
-					c_add_wlsb(tcp_context->opt_ts_reply_wlsb, g_context->sn,
+					c_add_wlsb(tcp_context->opt_ts_reply_wlsb, rfc3095_ctxt->sn,
 					           rohc_ntoh32(opt_ts->ts_reply));
 
 					i -= TCP_OLEN_TIMESTAMP;
@@ -4155,7 +4155,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
                           const rohc_packet_t packet_type,
                           size_t *const payload_offset)
 {
-	struct c_generic_context *g_context;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	struct sc_tcp_context *tcp_context;
 	ip_context_ptr_t ip_inner_context;
 	ip_context_ptr_t ip_context;
@@ -4177,8 +4177,8 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	assert(context != NULL);
 	assert(context->specific != NULL);
 
-	g_context = (struct c_generic_context *) context->specific;
-	tcp_context = (struct sc_tcp_context *) g_context->specific;
+	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
+	tcp_context = (struct sc_tcp_context *) rfc3095_ctxt->specific;
 
 	rohc_comp_debug(context, "code CO packet (CID = %zu)", context->cid);
 
@@ -4452,7 +4452,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
                          const tcphdr_t *const tcp,
 								 const uint8_t crc)
 {
-	struct c_generic_context *g_context = context->specific;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt = context->specific;
 	multi_ptr_t c_base_header; // compressed
 	int counter;
 	multi_ptr_t mptr;
@@ -4584,7 +4584,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 	// =:= rsf_index_enc [ 2 ];
 	c_base_header.co_common->rsf_flags = rsf_index_enc(context, tcp->rsf_flags);
 	// =:= lsb(4, 4) [ 4 ];
-	c_base_header.co_common->msn = g_context->sn & 0xf;
+	c_base_header.co_common->msn = rfc3095_ctxt->sn & 0xf;
 	puchar = mptr.uint8;
 
 	/* seq_number */
@@ -4651,7 +4651,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 		ret = c_optional_ip_id_lsb(context, ip_context.v4->ip_id_behavior,
 		                           ip_context.v4->last_ip_id,
 		                           tcp_context->tmp.ip_id,
-		                           g_context->sn, mptr.uint8, &indicator);
+		                           rfc3095_ctxt->sn, mptr.uint8, &indicator);
 		if(ret < 0)
 		{
 			rohc_comp_warn(context, "failed to encode optional_ip_id_lsb(ip_id)");
@@ -4858,12 +4858,12 @@ static size_t c_tcp_build_rnd_1(struct rohc_comp_ctxt *const context,
                                 const uint8_t crc,
                                 rnd_1_t *const rnd1)
 {
-	struct c_generic_context *g_context;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	uint32_t seq_num;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 	assert(tcp_context != NULL);
 	assert(tcp != NULL);
 	assert(rnd1 != NULL);
@@ -4874,7 +4874,7 @@ static size_t c_tcp_build_rnd_1(struct rohc_comp_ctxt *const context,
 	seq_num = rohc_ntoh32(tcp->seq_num) & 0x3ffff;
 	rnd1->seq_num1 = (seq_num >> 16) & 0x3;
 	rnd1->seq_num2 = rohc_hton16(seq_num & 0xffff);
-	rnd1->msn = g_context->sn & 0xf;
+	rnd1->msn = rfc3095_ctxt->sn & 0xf;
 	rnd1->psh_flag = tcp->psh_flag;
 	rnd1->header_crc = crc;
 
@@ -4901,11 +4901,11 @@ static size_t c_tcp_build_rnd_2(struct rohc_comp_ctxt *const context,
                                 const uint8_t crc,
                                 rnd_2_t *const rnd2)
 {
-	struct c_generic_context *g_context;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 	assert(tcp_context != NULL);
 	assert(tcp != NULL);
 	assert(rnd2 != NULL);
@@ -4914,7 +4914,7 @@ static size_t c_tcp_build_rnd_2(struct rohc_comp_ctxt *const context,
 
 	rnd2->discriminator = 0x0c; /* '1100' */
 	rnd2->seq_num_scaled = tcp_context->seq_num_scaled & 0xf;
-	rnd2->msn = g_context->sn & 0xf;
+	rnd2->msn = rfc3095_ctxt->sn & 0xf;
 	rnd2->header_crc = crc;
 
 	return sizeof(rnd_2_t);
@@ -4940,12 +4940,12 @@ static size_t c_tcp_build_rnd_3(struct rohc_comp_ctxt *const context,
                                 const uint8_t crc,
                                 rnd_3_t *const rnd3)
 {
-	struct c_generic_context *g_context;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	uint16_t ack_num;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 	assert(tcp_context != NULL);
 	assert(tcp != NULL);
 	assert(rnd3 != NULL);
@@ -4958,7 +4958,7 @@ static size_t c_tcp_build_rnd_3(struct rohc_comp_ctxt *const context,
 	rnd3->ack_num2 = ack_num & 0xff;
 	rohc_comp_debug(context, "ack_number = 0x%04x (0x%02x 0x%02x)",
 	                ack_num, rnd3->ack_num1, rnd3->ack_num2);
-	rnd3->msn = g_context->sn & 0xf;
+	rnd3->msn = rfc3095_ctxt->sn & 0xf;
 	rnd3->psh_flag = tcp->psh_flag;
 	rnd3->header_crc = crc;
 
@@ -4985,11 +4985,11 @@ static size_t c_tcp_build_rnd_4(struct rohc_comp_ctxt *const context,
                                 const uint8_t crc,
                                 rnd_4_t *const rnd4)
 {
-	struct c_generic_context *g_context;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 	assert(tcp_context != NULL);
 	assert(tcp_context->ack_stride != 0);
 	assert(tcp != NULL);
@@ -4999,7 +4999,7 @@ static size_t c_tcp_build_rnd_4(struct rohc_comp_ctxt *const context,
 
 	rnd4->discriminator = 0x0d; /* '1101' */
 	rnd4->ack_num_scaled = tcp_context->ack_num_scaled & 0xf;
-	rnd4->msn = g_context->sn & 0xf;
+	rnd4->msn = rfc3095_ctxt->sn & 0xf;
 	rnd4->psh_flag = tcp->psh_flag;
 	rnd4->header_crc = crc;
 
@@ -5026,13 +5026,13 @@ static size_t c_tcp_build_rnd_5(struct rohc_comp_ctxt *const context,
                                 const uint8_t crc,
                                 rnd_5_t *const rnd5)
 {
-	struct c_generic_context *g_context;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	uint16_t seq_num;
 	uint16_t ack_num;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 	assert(tcp_context != NULL);
 	assert(tcp != NULL);
 	assert(rnd5 != NULL);
@@ -5041,7 +5041,7 @@ static size_t c_tcp_build_rnd_5(struct rohc_comp_ctxt *const context,
 
 	rnd5->discriminator = 0x04; /* '100' */
 	rnd5->psh_flag = tcp->psh_flag;
-	rnd5->msn = g_context->sn & 0xf;
+	rnd5->msn = rfc3095_ctxt->sn & 0xf;
 
 	/* sequence number */
 	seq_num = rohc_ntoh32(tcp->seq_num) & 0x3fff;
@@ -5082,11 +5082,11 @@ static size_t c_tcp_build_rnd_6(struct rohc_comp_ctxt *const context,
                                 const uint8_t crc,
                                 rnd_6_t *const rnd6)
 {
-	struct c_generic_context *g_context;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 	assert(tcp_context != NULL);
 	assert(tcp != NULL);
 	assert(rnd6 != NULL);
@@ -5097,7 +5097,7 @@ static size_t c_tcp_build_rnd_6(struct rohc_comp_ctxt *const context,
 	rnd6->header_crc = 0; /* for CRC computation */
 	rnd6->psh_flag = tcp->psh_flag;
 	rnd6->ack_num = rohc_hton16(rohc_ntoh32(tcp->ack_num) & 0xffff);
-	rnd6->msn = g_context->sn & 0xf;
+	rnd6->msn = rfc3095_ctxt->sn & 0xf;
 	rnd6->seq_num_scaled = tcp_context->seq_num_scaled & 0xf;
 	rnd6->header_crc = crc;
 
@@ -5124,12 +5124,12 @@ static size_t c_tcp_build_rnd_7(struct rohc_comp_ctxt *const context,
                                 const uint8_t crc,
                                 rnd_7_t *const rnd7)
 {
-	struct c_generic_context *g_context;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	uint32_t ack_num;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 	assert(tcp_context != NULL);
 	assert(tcp != NULL);
 	assert(rnd7 != NULL);
@@ -5141,7 +5141,7 @@ static size_t c_tcp_build_rnd_7(struct rohc_comp_ctxt *const context,
 	rnd7->ack_num1 = (ack_num >> 16) & 0x03;
 	rnd7->ack_num2 = rohc_hton16(ack_num & 0xffff);
 	rnd7->window = tcp->window;
-	rnd7->msn = g_context->sn & 0xf;
+	rnd7->msn = rfc3095_ctxt->sn & 0xf;
 	rnd7->psh_flag = tcp->psh_flag;
 	rnd7->header_crc = 0; /* for CRC computation */
 	rnd7->header_crc = crc;
@@ -5175,7 +5175,7 @@ static bool c_tcp_build_rnd_8(struct rohc_comp_ctxt *const context,
 										rnd_8_t *const rnd8,
 										size_t *const rnd8_len)
 {
-	struct c_generic_context *g_context;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	uint32_t seq_num;
 	size_t comp_opts_len;
 	uint8_t ttl_hl;
@@ -5184,7 +5184,7 @@ static bool c_tcp_build_rnd_8(struct rohc_comp_ctxt *const context,
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 	assert(tcp_context != NULL);
 	assert(tcp != NULL);
 	assert(rnd8 != NULL);
@@ -5198,7 +5198,7 @@ static bool c_tcp_build_rnd_8(struct rohc_comp_ctxt *const context,
 	rnd8->header_crc = 0; /* for CRC computation */
 
 	/* MSN */
-	msn = g_context->sn & 0xf;
+	msn = rfc3095_ctxt->sn & 0xf;
 	rnd8->msn1 = (msn >> 3) & 0x01;
 	rnd8->msn2 = msn & 0x07;
 
@@ -5284,13 +5284,13 @@ static size_t c_tcp_build_seq_1(struct rohc_comp_ctxt *const context,
                                 const uint8_t crc,
                                 seq_1_t *const seq1)
 {
-	struct c_generic_context *g_context;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	uint32_t seq_num;
 	uint16_t ip_id;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 	assert(ip_context.vx->version == IPV4);
 	assert(tcp_context != NULL);
 	assert(ip.ipvx->version == IPV4);
@@ -5302,10 +5302,10 @@ static size_t c_tcp_build_seq_1(struct rohc_comp_ctxt *const context,
 	seq1->discriminator = 0x0a; /* '1010' */
 	ip_id = rohc_ntoh16(ip.ipv4->ip_id);
 	seq1->ip_id = c_ip_id_lsb(context, ip_context.v4->ip_id_behavior, 4, 3,
-	                          ip_context.v4->last_ip_id, ip_id, g_context->sn);
+	                          ip_context.v4->last_ip_id, ip_id, rfc3095_ctxt->sn);
 	seq_num = rohc_ntoh32(tcp->seq_num) & 0xffff;
 	seq1->seq_num = rohc_hton16(seq_num);
-	seq1->msn = g_context->sn & 0xf;
+	seq1->msn = rfc3095_ctxt->sn & 0xf;
 	seq1->psh_flag = tcp->psh_flag;
 	seq1->header_crc = crc;
 
@@ -5336,13 +5336,13 @@ static size_t c_tcp_build_seq_2(struct rohc_comp_ctxt *const context,
                                 const uint8_t crc,
                                 seq_2_t *const seq2)
 {
-	struct c_generic_context *g_context;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	uint16_t ip_id;
 	uint8_t ip_id_lsb;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 	assert(ip_context.vx->version == IPV4);
 	assert(tcp_context != NULL);
 	assert(ip.ipvx->version == IPV4);
@@ -5354,11 +5354,11 @@ static size_t c_tcp_build_seq_2(struct rohc_comp_ctxt *const context,
 	seq2->discriminator = 0x1a; /* '11010' */
 	ip_id = rohc_ntoh16(ip.ipv4->ip_id);
 	ip_id_lsb = c_ip_id_lsb(context, ip_context.v4->ip_id_behavior, 7, 3,
-	                        ip_context.v4->last_ip_id, ip_id, g_context->sn);
+	                        ip_context.v4->last_ip_id, ip_id, rfc3095_ctxt->sn);
 	seq2->ip_id1 = (ip_id_lsb >> 4) & 0x7;
 	seq2->ip_id2 = ip_id_lsb & 0x0f;
 	seq2->seq_num_scaled = tcp_context->seq_num_scaled & 0xf;
-	seq2->msn = g_context->sn & 0xf;
+	seq2->msn = rfc3095_ctxt->sn & 0xf;
 	seq2->psh_flag = tcp->psh_flag;
 	seq2->header_crc = crc;
 
@@ -5389,12 +5389,12 @@ static size_t c_tcp_build_seq_3(struct rohc_comp_ctxt *const context,
                                 const uint8_t crc,
                                 seq_3_t *const seq3)
 {
-	struct c_generic_context *g_context;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	uint16_t ip_id;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 	assert(ip_context.vx->version == IPV4);
 	assert(tcp_context != NULL);
 	assert(ip.ipvx->version == IPV4);
@@ -5406,9 +5406,9 @@ static size_t c_tcp_build_seq_3(struct rohc_comp_ctxt *const context,
 	seq3->discriminator = 0x09; /* '1001' */
 	ip_id = rohc_ntoh16(ip.ipv4->ip_id);
 	seq3->ip_id = c_ip_id_lsb(context, ip_context.v4->ip_id_behavior, 4, 3,
-	                          ip_context.v4->last_ip_id, ip_id, g_context->sn);
+	                          ip_context.v4->last_ip_id, ip_id, rfc3095_ctxt->sn);
 	seq3->ack_num = rohc_hton16(rohc_ntoh32(tcp->ack_num) & 0xffff);
-	seq3->msn = g_context->sn & 0xf;
+	seq3->msn = rfc3095_ctxt->sn & 0xf;
 	seq3->psh_flag = tcp->psh_flag;
 	seq3->header_crc = 0; /* for CRC computation */
 	seq3->header_crc = crc;
@@ -5440,12 +5440,12 @@ static size_t c_tcp_build_seq_4(struct rohc_comp_ctxt *const context,
                                 const uint8_t crc,
                                 seq_4_t *const seq4)
 {
-	struct c_generic_context *g_context;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	uint16_t ip_id;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 	assert(ip_context.vx->version == IPV4);
 	assert(tcp_context != NULL);
 	assert(tcp_context->ack_stride != 0);
@@ -5459,8 +5459,8 @@ static size_t c_tcp_build_seq_4(struct rohc_comp_ctxt *const context,
 	seq4->ack_num_scaled = tcp_context->ack_num_scaled & 0xf;
 	ip_id = rohc_ntoh16(ip.ipv4->ip_id);
 	seq4->ip_id = c_ip_id_lsb(context, ip_context.v4->ip_id_behavior, 3, 1,
-	                          ip_context.v4->last_ip_id, ip_id, g_context->sn);
-	seq4->msn = g_context->sn & 0xf;
+	                          ip_context.v4->last_ip_id, ip_id, rfc3095_ctxt->sn);
+	seq4->msn = rfc3095_ctxt->sn & 0xf;
 	seq4->psh_flag = tcp->psh_flag;
 	seq4->header_crc = 0; /* for CRC computation */
 	seq4->header_crc = crc;
@@ -5492,13 +5492,13 @@ static size_t c_tcp_build_seq_5(struct rohc_comp_ctxt *const context,
                                 const uint8_t crc,
                                 seq_5_t *const seq5)
 {
-	struct c_generic_context *g_context;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	uint32_t seq_num;
 	uint16_t ip_id;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 	assert(ip_context.vx->version == IPV4);
 	assert(tcp_context != NULL);
 	assert(ip.ipvx->version == IPV4);
@@ -5510,11 +5510,11 @@ static size_t c_tcp_build_seq_5(struct rohc_comp_ctxt *const context,
 	seq5->discriminator = 0x08; /* '1000' */
 	ip_id = rohc_ntoh16(ip.ipv4->ip_id);
 	seq5->ip_id = c_ip_id_lsb(context, ip_context.v4->ip_id_behavior, 4, 3,
-	                          ip_context.v4->last_ip_id, ip_id, g_context->sn);
+	                          ip_context.v4->last_ip_id, ip_id, rfc3095_ctxt->sn);
 	seq5->ack_num = rohc_hton16(rohc_ntoh32(tcp->ack_num) & 0xffff);
 	seq_num = rohc_ntoh32(tcp->seq_num) & 0xffff;
 	seq5->seq_num = rohc_hton16(seq_num);
-	seq5->msn = g_context->sn & 0xf;
+	seq5->msn = rfc3095_ctxt->sn & 0xf;
 	seq5->psh_flag = tcp->psh_flag;
 	seq5->header_crc = crc;
 
@@ -5544,13 +5544,13 @@ static size_t c_tcp_build_seq_6(struct rohc_comp_ctxt *const context,
                                 const uint8_t crc,
                                 seq_6_t *const seq6)
 {
-	struct c_generic_context *g_context;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	uint8_t seq_num_scaled;
 	uint16_t ip_id;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 	assert(ip_context.vx->version == IPV4);
 	assert(tcp_context != NULL);
 	assert(ip.ipvx->version == IPV4);
@@ -5569,9 +5569,9 @@ static size_t c_tcp_build_seq_6(struct rohc_comp_ctxt *const context,
 	/* IP-ID */
 	ip_id = rohc_ntoh16(ip.ipv4->ip_id);
 	seq6->ip_id = c_ip_id_lsb(context, ip_context.v4->ip_id_behavior, 7, 3,
-	                          ip_context.v4->last_ip_id, ip_id, g_context->sn);
+	                          ip_context.v4->last_ip_id, ip_id, rfc3095_ctxt->sn);
 	seq6->ack_num = rohc_hton16(rohc_ntoh32(tcp->ack_num) & 0xffff);
-	seq6->msn = g_context->sn & 0xf;
+	seq6->msn = rfc3095_ctxt->sn & 0xf;
 	seq6->psh_flag = tcp->psh_flag;
 	seq6->header_crc = crc;
 
@@ -5602,13 +5602,13 @@ static size_t c_tcp_build_seq_7(struct rohc_comp_ctxt *const context,
                                 const uint8_t crc,
                                 seq_7_t *const seq7)
 {
-	struct c_generic_context *g_context;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	uint16_t window;
 	uint16_t ip_id;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 	assert(ip_context.vx->version == IPV4);
 	assert(tcp_context != NULL);
 	assert(ip.ipvx->version == IPV4);
@@ -5629,9 +5629,9 @@ static size_t c_tcp_build_seq_7(struct rohc_comp_ctxt *const context,
 	/* IP-ID */
 	ip_id = rohc_ntoh16(ip.ipv4->ip_id);
 	seq7->ip_id = c_ip_id_lsb(context, ip_context.v4->ip_id_behavior, 5, 3,
-	                          ip_context.v4->last_ip_id, ip_id, g_context->sn);
+	                          ip_context.v4->last_ip_id, ip_id, rfc3095_ctxt->sn);
 	seq7->ack_num = rohc_hton16(rohc_ntoh32(tcp->ack_num) & 0xffff);
-	seq7->msn = g_context->sn & 0xf;
+	seq7->msn = rfc3095_ctxt->sn & 0xf;
 	seq7->psh_flag = tcp->psh_flag;
 	seq7->header_crc = crc;
 
@@ -5664,7 +5664,7 @@ static bool c_tcp_build_seq_8(struct rohc_comp_ctxt *const context,
                               seq_8_t *const seq8,
                               size_t *const seq8_len)
 {
-	struct c_generic_context *g_context;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	size_t comp_opts_len;
 	uint16_t ack_num;
 	uint16_t seq_num;
@@ -5673,7 +5673,7 @@ static bool c_tcp_build_seq_8(struct rohc_comp_ctxt *const context,
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 	assert(ip_context.vx->version == IPV4);
 	assert(tcp_context != NULL);
 	assert(ip.ipvx->version == IPV4);
@@ -5688,11 +5688,11 @@ static bool c_tcp_build_seq_8(struct rohc_comp_ctxt *const context,
 	/* IP-ID */
 	ip_id = rohc_ntoh16(ip.ipv4->ip_id);
 	seq8->ip_id = c_ip_id_lsb(context, ip_context.v4->ip_id_behavior, 4, 3,
-	                          ip_context.v4->last_ip_id, ip_id, g_context->sn);
+	                          ip_context.v4->last_ip_id, ip_id, rfc3095_ctxt->sn);
 
 	seq8->list_present = 0; /* options are set later */
 	seq8->header_crc = 0; /* for CRC computation */
-	seq8->msn = g_context->sn & 0xf;
+	seq8->msn = rfc3095_ctxt->sn & 0xf;
 	seq8->psh_flag = tcp->psh_flag;
 
 	/* TTL/HL */
@@ -5762,13 +5762,13 @@ error:
 static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
                                const struct net_pkt *const uncomp_pkt)
 {
-	struct c_generic_context *g_context =
-		(struct c_generic_context *) context->specific;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt =
+		(struct rohc_comp_rfc3095_ctxt *) context->specific;
 
 	/* compute or find the new SN */
-	assert(g_context->get_next_sn != NULL);
-	g_context->sn = g_context->get_next_sn(context, uncomp_pkt);
-	rohc_comp_debug(context, "SN = %u", g_context->sn);
+	assert(rfc3095_ctxt->get_next_sn != NULL);
+	rfc3095_ctxt->sn = rfc3095_ctxt->get_next_sn(context, uncomp_pkt);
+	rohc_comp_debug(context, "SN = %u", rfc3095_ctxt->sn);
 
 	return true;
 }
@@ -5786,19 +5786,19 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
  */
 static void tcp_decide_state(struct rohc_comp_ctxt *const context)
 {
-	struct c_generic_context *g_context =
-		(struct c_generic_context *) context->specific;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt =
+		(struct rohc_comp_rfc3095_ctxt *) context->specific;
 
 	/* TODO: be conform with RFC */
 	/* TODO: use generic function? */
 	switch(context->state)
 	{
 		case ROHC_COMP_STATE_IR: /* The Initialization and Refresh (IR) state */
-			if(g_context->ir_count < MAX_IR_COUNT)
+			if(rfc3095_ctxt->ir_count < MAX_IR_COUNT)
 			{
 				rohc_comp_debug(context, "no enough packets transmitted in IR "
 				                "state for the moment (%d/%d), so stay in IR "
-				                "state", g_context->ir_count, MAX_IR_COUNT);
+				                "state", rfc3095_ctxt->ir_count, MAX_IR_COUNT);
 			}
 			else
 			{
@@ -5806,11 +5806,11 @@ static void tcp_decide_state(struct rohc_comp_ctxt *const context)
 			}
 			break;
 		case ROHC_COMP_STATE_FO: /* The First Order (FO) state */
-			if(g_context->fo_count < MAX_FO_COUNT)
+			if(rfc3095_ctxt->fo_count < MAX_FO_COUNT)
 			{
 				rohc_comp_debug(context, "no enough packets transmitted in FO "
 				                "state for the moment (%d/%d), so stay in FO "
-				                "state", g_context->fo_count, MAX_FO_COUNT);
+				                "state", rfc3095_ctxt->fo_count, MAX_FO_COUNT);
 			}
 			else
 			{
@@ -5838,10 +5838,10 @@ static void tcp_decide_state(struct rohc_comp_ctxt *const context)
 static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
                                      const struct net_pkt *const uncomp_pkt)
 {
-	struct c_generic_context *g_context =
-		(struct c_generic_context *) context->specific;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt =
+		(struct rohc_comp_rfc3095_ctxt *) context->specific;
 	struct sc_tcp_context *const tcp_context =
-		(struct sc_tcp_context *) g_context->specific;
+		(struct sc_tcp_context *) rfc3095_ctxt->specific;
 
 	base_header_ip_t base_header;
 	base_header_ip_t inner_ip_hdr;
@@ -5857,15 +5857,15 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	if(context->state == ROHC_COMP_STATE_IR)
 	{
 		/* send all bits in IR state */
-		g_context->tmp.nr_sn_bits = 16;
+		rfc3095_ctxt->tmp.nr_sn_bits = 16;
 		rohc_comp_debug(context, "IR state: force using %zd bits to encode "
-		                "new SN", g_context->tmp.nr_sn_bits);
+		                "new SN", rfc3095_ctxt->tmp.nr_sn_bits);
 	}
 	else
 	{
 		/* send only required bits in FO or SO states */
-		if(!wlsb_get_k_32bits(g_context->sn_window, g_context->sn,
-		                      &g_context->tmp.nr_sn_bits))
+		if(!wlsb_get_k_32bits(rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+		                      &rfc3095_ctxt->tmp.nr_sn_bits))
 		{
 			rohc_comp_warn(context, "failed to find the minimal number of bits "
 			               "required for SN");
@@ -5873,8 +5873,8 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		}
 	}
 	rohc_comp_debug(context, "%zd bits are required to encode new SN",
-	                g_context->tmp.nr_sn_bits);
-	c_add_wlsb(g_context->sn_window, g_context->sn, g_context->sn);
+	                rfc3095_ctxt->tmp.nr_sn_bits);
+	c_add_wlsb(rfc3095_ctxt->sn_window, rfc3095_ctxt->sn, rfc3095_ctxt->sn);
 
 	/* parse IP headers */
 	base_header.ipvx = (base_header_ip_vx_t *) uncomp_pkt->data;
@@ -6230,10 +6230,10 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 			                tcp_context->seq_num_scaled);
 		}
 	}
-	c_add_wlsb(tcp_context->seq_wlsb, g_context->sn, seq_num_hbo);
+	c_add_wlsb(tcp_context->seq_wlsb, rfc3095_ctxt->sn, seq_num_hbo);
 	if(tcp_context->seq_num_factor != 0)
 	{
-		c_add_wlsb(tcp_context->seq_scaled_wlsb, g_context->sn,
+		c_add_wlsb(tcp_context->seq_scaled_wlsb, rfc3095_ctxt->sn,
 		           tcp_context->seq_num_scaled);
 	}
 
@@ -6324,8 +6324,8 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		                tcp_context->tmp.nr_ack_scaled_bits,
 		                tcp_context->ack_num_scaled);
 	}
-	c_add_wlsb(tcp_context->ack_wlsb, g_context->sn, ack_num_hbo);
-	c_add_wlsb(tcp_context->ack_scaled_wlsb, g_context->sn,
+	c_add_wlsb(tcp_context->ack_wlsb, rfc3095_ctxt->sn, ack_num_hbo);
+	c_add_wlsb(tcp_context->ack_scaled_wlsb, rfc3095_ctxt->sn,
 	           tcp_context->ack_num_scaled);
 
 	/* how many bits are required to encode the new timestamp echo request and
@@ -6453,8 +6453,8 @@ static rohc_packet_t tcp_decide_packet(const struct rohc_comp_ctxt *const contex
                                        const ip_context_ptr_t *const ip_inner_context,
                                        const tcphdr_t *const tcp)
 {
-	struct c_generic_context *g_context =
-		(struct c_generic_context *) context->specific;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt =
+		(struct rohc_comp_rfc3095_ctxt *) context->specific;
 
 	rohc_packet_t packet_type;
 
@@ -6463,15 +6463,15 @@ static rohc_packet_t tcp_decide_packet(const struct rohc_comp_ctxt *const contex
 		case ROHC_COMP_STATE_IR: /* The Initialization and Refresh (IR) state */
 			rohc_comp_debug(context, "code IR packet");
 			packet_type = ROHC_PACKET_IR;
-			g_context->ir_count++;
+			rfc3095_ctxt->ir_count++;
 			break;
 		case ROHC_COMP_STATE_FO: /* The First Order (FO) state */
 			rohc_comp_debug(context, "code IR-DYN packet");
 			packet_type = ROHC_PACKET_IR_DYN;
-			g_context->fo_count++;
+			rfc3095_ctxt->fo_count++;
 			break;
 		case ROHC_COMP_STATE_SO: /* The Second Order (SO) state */
-			g_context->so_count++;
+			rfc3095_ctxt->so_count++;
 			packet_type = tcp_decide_SO_packet(context, ip_inner_context, tcp);
 			break;
 		default:
@@ -6502,10 +6502,10 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
                                           const ip_context_ptr_t *const ip_inner_context,
                                           const tcphdr_t *const tcp)
 {
-	struct c_generic_context *const g_context =
-		(struct c_generic_context *) context->specific;
+	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
+		(struct rohc_comp_rfc3095_ctxt *) context->specific;
 	struct sc_tcp_context *const tcp_context =
-		(struct sc_tcp_context *) g_context->specific;
+		(struct sc_tcp_context *) rfc3095_ctxt->specific;
 
 	rohc_packet_t packet_type;
 
@@ -7019,8 +7019,8 @@ const struct rohc_comp_profile c_tcp_profile =
 	.check_profile  = c_tcp_check_profile,
 	.check_context  = c_tcp_check_context,
 	.encode         = c_tcp_encode,
-	.reinit_context = c_generic_reinit_context,
-	.feedback       = c_generic_feedback,
-	.use_udp_port   = c_generic_use_udp_port,
+	.reinit_context = rohc_comp_rfc3095_reinit_context,
+	.feedback       = rohc_comp_rfc3095_feedback,
+	.use_udp_port   = rohc_comp_rfc3095_use_udp_port,
 };
 

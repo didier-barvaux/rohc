@@ -36,7 +36,7 @@ rohc_comp_sources = \
 	../../src/comp/schemes/rfc4996.c \
 	../../src/comp/rohc_comp.c \
 	../../src/comp/c_uncompressed.c \
-	../../src/comp/c_generic.c \
+	../../src/comp/rohc_comp_rfc3095.c \
 	../../src/comp/c_ip.c \
 	../../src/comp/c_udp.c \
 	../../src/comp/c_udp_lite.c \

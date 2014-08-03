@@ -29,7 +29,7 @@
 #ifndef ROHC_COMP_RTP_H
 #define ROHC_COMP_RTP_H
 
-#include "c_generic.h"
+#include "rohc_comp_rfc3095.h"
 #include "schemes/comp_scaled_rtp_ts.h"
 #include "protocols/udp.h"
 #include "protocols/rtp.h"
@@ -76,12 +76,12 @@ struct rtp_tmp_vars
  * @brief Define the RTP part of the profile decompression context.
  *
  * This object must be used with the generic part of the decompression
- * context c_generic_context.
+ * context rohc_comp_rfc3095_ctxt.
  *
  * @warning The 2 first fields MUST stay at the beginning of the structure
  *          to be compatible with \ref sc_udp_context
  *
- * @see c_generic_context
+ * @see rohc_comp_rfc3095_ctxt
  */
 struct sc_rtp_context
 {

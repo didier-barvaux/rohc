@@ -27,7 +27,7 @@
 #ifndef ROHC_COMP_IP_H
 #define ROHC_COMP_IP_H
 
-#include "c_generic.h"
+#include "rohc_comp_rfc3095.h"
 
 /*
  * Public function prototypes.
