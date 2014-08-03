@@ -345,12 +345,14 @@ static int d_tcp_decode_ir(struct rohc_decomp_ctxt *context,
                            const size_t rohc_length,
                            const size_t add_cid_len,
                            const size_t large_cid_len,
-                           unsigned char *dest);
+                           unsigned char *dest,
+                           size_t *const uncomp_len);
 static int d_tcp_decode_irdyn(struct rohc_decomp_ctxt *context,
                               const unsigned char *const rohc_packet,
                               const size_t rohc_length,
                               const size_t large_cid_len,
-                              unsigned char *dest);
+                              unsigned char *dest,
+                              size_t *const uncomp_len);
 static int d_tcp_decode_CO(struct rohc_decomp *decomp,
                            struct rohc_decomp_ctxt *context,
                            const unsigned char *const rohc_packet,
@@ -358,7 +360,8 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
                            const size_t add_cid_len,
                            const size_t large_cid_len,
                            const rohc_packet_t packet_type,
-                           unsigned char *dest);
+                           unsigned char *dest,
+                           size_t *const uncomp_len);
 
 static bool rohc_decomp_tcp_decode_seq(const struct rohc_decomp_ctxt *const context,
                                        const uint32_t seq_bits,
@@ -760,7 +763,8 @@ static rohc_status_t d_tcp_decode(struct rohc_decomp *const decomp,
 {
 	struct d_generic_context *g_context = context->specific;
 	struct d_tcp_context *tcp_context = g_context->specific;
-	int ret;
+	size_t uncomp_len;
+	rohc_status_t parse_ret;
 	size_t i;
 
 	assert(add_cid_len == 0 || add_cid_len == 1);
@@ -783,57 +787,60 @@ static rohc_status_t d_tcp_decode(struct rohc_decomp *const decomp,
 	if((*packet_type) == ROHC_PACKET_IR)
 	{
 		/* decode IR packet */
-		ret = d_tcp_decode_ir(context, rohc_buf_data(rohc_packet),
-		                      rohc_packet.len, add_cid_len, large_cid_len,
-		                      rohc_buf_data(*uncomp_packet));
+		parse_ret = d_tcp_decode_ir(context, rohc_buf_data(rohc_packet),
+		                            rohc_packet.len, add_cid_len, large_cid_len,
+		                            rohc_buf_data(*uncomp_packet), &uncomp_len);
 	}
 	else if((*packet_type) == ROHC_PACKET_IR_DYN)
 	{
 		/* decode IR-DYN packet */
-		ret = d_tcp_decode_irdyn(context, rohc_buf_data(rohc_packet),
-		                         rohc_packet.len, large_cid_len,
-		                         rohc_buf_data(*uncomp_packet));
+		parse_ret = d_tcp_decode_irdyn(context, rohc_buf_data(rohc_packet),
+		                               rohc_packet.len, large_cid_len,
+		                               rohc_buf_data(*uncomp_packet),
+		                               &uncomp_len);
 	}
 	else
 	{
 		/* decode CO packet */
-		ret = d_tcp_decode_CO(decomp, context, rohc_buf_data(rohc_packet),
-		                      rohc_packet.len, add_cid_len, large_cid_len,
-		                      *packet_type, rohc_buf_data(*uncomp_packet));
+		parse_ret = d_tcp_decode_CO(decomp, context, rohc_buf_data(rohc_packet),
+		                            rohc_packet.len, add_cid_len, large_cid_len,
+		                            *packet_type, rohc_buf_data(*uncomp_packet),
+		                            &uncomp_len);
 	}
 
 	/* TODO: the decode callback shall now return ROHC_OK in case of success
 	 * instead of the uncompressed length, one shall refactor the function in
 	 * consequence */
-	if(ret >= 0)
+	if(parse_ret == ROHC_STATUS_OK)
 	{
-		uncomp_packet->len += ret;
-		ret = ROHC_STATUS_OK;
+		uncomp_packet->len += uncomp_len;
 	}
-	rohc_decomp_debug(context, "return %d", ret);
-	return ret;
+	rohc_decomp_debug(context, "return %d", parse_ret);
+	return parse_ret;
 }
 
 
 /**
  * @brief Decode one IR packet for the TCP profile.
  *
- * @param context         The decompression context
- * @param rohc_packet     The ROHC packet to decode
- * @param rohc_length     The length of the ROHC packet to decode
- * @param add_cid_len     The length of the optional Add-CID field
- * @param large_cid_len   The length of the optional large CID field
- * @param dest            The decoded IP packet
- * @return                The length of the uncompressed IP packet
- *                        or ROHC_OK_NO_DATA if packet is feedback only
- *                        or ROHC_ERROR if an error occurs
+ * @param context          The decompression context
+ * @param rohc_packet      The ROHC packet to decode
+ * @param rohc_length      The length of the ROHC packet to decode
+ * @param add_cid_len      The length of the optional Add-CID field
+ * @param large_cid_len    The length of the optional large CID field
+ * @param dest             The decoded IP packet
+ * @param[out] uncomp_len  The length of the uncompressed IP packet
+ * @return                 ROHC_STATUS_OK if decompression was successful,
+ *                         ROHC_ERROR_CRC if a CRC failure occured,
+ *                         ROHC_ERROR if another error occured
  */
 static int d_tcp_decode_ir(struct rohc_decomp_ctxt *context,
                            const unsigned char *const rohc_packet,
                            const size_t rohc_length,
                            const size_t add_cid_len,
                            const size_t large_cid_len,
-                           unsigned char *dest)
+                           unsigned char *dest,
+                           size_t *const uncomp_len)
 {
 	struct d_generic_context *g_context = context->specific;
 	struct d_tcp_context *tcp_context = g_context->specific;
@@ -843,7 +850,6 @@ static int d_tcp_decode_ir(struct rohc_decomp_ctxt *context,
 	unsigned int payload_size;
 	const uint8_t *remain_data;
 	size_t remain_len;
-	size_t uncomp_len;
 	uint8_t protocol;
 	uint16_t size;
 	int read;
@@ -1079,13 +1085,13 @@ static int d_tcp_decode_ir(struct rohc_decomp_ctxt *context,
 	ip_context.uint8 = tcp_context->ip_context;
 
 	/* compute payload lengths and checksums for all headers */
-	uncomp_len = size;
+	*uncomp_len = size;
 	do
 	{
 		if(base_header.ipvx->version == IPV4)
 		{
 			protocol = base_header.ipv4->protocol;
-			base_header.ipv4->length = rohc_hton16(uncomp_len);
+			base_header.ipv4->length = rohc_hton16(*uncomp_len);
 			base_header.ipv4->checksum = 0;
 			base_header.ipv4->checksum =
 				ip_fast_csum(base_header.uint8,
@@ -1095,20 +1101,20 @@ static int d_tcp_decode_ir(struct rohc_decomp_ctxt *context,
 			                  base_header.ipv4->header_length * sizeof(uint32_t));
 			++base_header.ipv4;
 			++ip_context.v4;
-			uncomp_len -= sizeof(base_header_ip_v4_t);
+			*uncomp_len -= sizeof(base_header_ip_v4_t);
 		}
 		else
 		{
 			protocol = base_header.ipv6->next_header;
-			uncomp_len -= sizeof(base_header_ip_v6_t);
-			base_header.ipv6->payload_length = rohc_hton16(uncomp_len);
+			*uncomp_len -= sizeof(base_header_ip_v6_t);
+			base_header.ipv6->payload_length = rohc_hton16(*uncomp_len);
 			rohc_decomp_debug(context, "IPv6 payload length = %d",
 			                  rohc_ntoh16(base_header.ipv6->payload_length));
 			++base_header.ipv6;
 			++ip_context.v6;
 			while(rohc_is_ipv6_opt(protocol))
 			{
-				uncomp_len -= ip_context.v6_option->option_length;
+				*uncomp_len -= ip_context.v6_option->option_length;
 				protocol = base_header.ipv6_opt->next_header;
 				base_header.uint8 += ip_context.v6_option->option_length;
 				ip_context.uint8 += ip_context.v6_option->context_length;
@@ -1142,7 +1148,8 @@ static int d_tcp_decode_ir(struct rohc_decomp_ctxt *context,
 	context->state = ROHC_DECOMP_STATE_FC;
 
 	rohc_decomp_debug(context, "return %d", size);
-	return size;
+	*uncomp_len = size;
+	return ROHC_STATUS_OK;
 
 error:
 	return ROHC_STATUS_ERROR;
@@ -1152,20 +1159,22 @@ error:
 /**
  * @brief Decode one IR-DYN packet for the TCP profile.
  *
- * @param context         The decompression context
- * @param rohc_packet     The ROHC packet to decode
- * @param rohc_length     The length of the ROHC packet to decode
- * @param large_cid_len   The length of the optional large CID field
- * @param dest            The decoded IP packet
- * @return                The length of the uncompressed IP packet
- *                        or ROHC_OK_NO_DATA if packet is feedback only
- *                        or ROHC_ERROR if an error occurs
+ * @param context          The decompression context
+ * @param rohc_packet      The ROHC packet to decode
+ * @param rohc_length      The length of the ROHC packet to decode
+ * @param large_cid_len    The length of the optional large CID field
+ * @param dest             The decoded IP packet
+ * @param[out] uncomp_len  The length of the uncompressed IP packet
+ * @return                 ROHC_STATUS_OK if decompression was successful,
+ *                         ROHC_ERROR_CRC if a CRC failure occured,
+ *                         ROHC_ERROR if another error occured
  */
 static int d_tcp_decode_irdyn(struct rohc_decomp_ctxt *context,
                               const unsigned char *const rohc_packet,
                               const size_t rohc_length,
                               const size_t large_cid_len,
-                              unsigned char *dest)
+                              unsigned char *dest,
+                              size_t *const uncomp_len)
 {
 	struct d_generic_context *g_context = context->specific;
 	struct d_tcp_context *tcp_context = g_context->specific;
@@ -1175,7 +1184,6 @@ static int d_tcp_decode_irdyn(struct rohc_decomp_ctxt *context,
 	unsigned int payload_size;
 	const uint8_t *remain_data;
 	size_t remain_len;
-	size_t uncomp_len;
 	uint8_t protocol;
 	uint16_t size;
 	int read;
@@ -1315,13 +1323,13 @@ static int d_tcp_decode_irdyn(struct rohc_decomp_ctxt *context,
 	ip_context.uint8 = tcp_context->ip_context;
 
 	/* compute payload lengths and checksums for all headers */
-	uncomp_len = size;
+	*uncomp_len = size;
 	do
 	{
 		if(ip_context.vx->version == IPV4)
 		{
 			protocol = ip_context.v4->protocol;
-			base_header.ipv4->length = rohc_hton16(uncomp_len);
+			base_header.ipv4->length = rohc_hton16(*uncomp_len);
 			base_header.ipv4->checksum = 0;
 			base_header.ipv4->checksum =
 				ip_fast_csum(base_header.uint8, base_header.ipv4->header_length);
@@ -1330,20 +1338,20 @@ static int d_tcp_decode_irdyn(struct rohc_decomp_ctxt *context,
 			                  base_header.ipv4->header_length);
 			++base_header.ipv4;
 			++ip_context.v4;
-			uncomp_len -= sizeof(base_header_ip_v4_t);
+			*uncomp_len -= sizeof(base_header_ip_v4_t);
 		}
 		else
 		{
 			protocol = ip_context.v6->next_header;
-			uncomp_len -= sizeof(base_header_ip_v6_t);
-			base_header.ipv6->payload_length = rohc_hton16(uncomp_len);
+			*uncomp_len -= sizeof(base_header_ip_v6_t);
+			base_header.ipv6->payload_length = rohc_hton16(*uncomp_len);
 			rohc_decomp_debug(context, "payload_length = %d",
 			                  rohc_ntoh16(base_header.ipv6->payload_length));
 			++base_header.ipv6;
 			++ip_context.v6;
 			while(rohc_is_ipv6_opt(protocol))
 			{
-				uncomp_len -= ip_context.v6_option->option_length;
+				*uncomp_len -= ip_context.v6_option->option_length;
 				protocol = ip_context.v6_option->next_header;
 				base_header.uint8 += ip_context.v6_option->option_length;
 				ip_context.uint8 += ip_context.v6_option->context_length;
@@ -1377,7 +1385,8 @@ static int d_tcp_decode_irdyn(struct rohc_decomp_ctxt *context,
 	rohc_decomp_debug(context, "ACK number 0x%08x is the new reference",
 	                  rohc_ntoh32(tcp->ack_num));
 
-	return size;
+	*uncomp_len = size;
+	return ROHC_STATUS_OK;
 
 error:
 	return ROHC_STATUS_ERROR;
@@ -4403,17 +4412,18 @@ error:
 
 \endverbatim
  *
- * @param decomp         The ROHC decompressor
- * @param context        The decompression context
- * @param rohc_packet    The ROHC packet to decode
- * @param rohc_length    The length of the ROHC packet
- * @param add_cid_len    The length of the optional Add-CID field
- * @param large_cid_len  The length of the optional large CID field
- * @param packet_type    The type of the ROHC packet to parse
- * @param dest           OUT: The decoded IP packet
- * @return               The length of the uncompressed IP packet
- *                       or ROHC_ERROR if an error occurs
- *                       or ROHC_ERROR_CRC if a CRC error occurs
+ * @param decomp           The ROHC decompressor
+ * @param context          The decompression context
+ * @param rohc_packet      The ROHC packet to decode
+ * @param rohc_length      The length of the ROHC packet
+ * @param add_cid_len      The length of the optional Add-CID field
+ * @param large_cid_len    The length of the optional large CID field
+ * @param packet_type      The type of the ROHC packet to parse
+ * @param dest             OUT: The decoded IP packet
+ * @param[out] uncomp_len  The length of the uncompressed IP packet
+ * @return                 ROHC_STATUS_OK if decompression was successful,
+ *                         ROHC_ERROR_CRC if a CRC failure occured,
+ *                         ROHC_ERROR if another error occured
  */
 static int d_tcp_decode_CO(struct rohc_decomp *decomp,
                            struct rohc_decomp_ctxt *context,
@@ -4422,7 +4432,8 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
                            const size_t add_cid_len,
                            const size_t large_cid_len,
                            const rohc_packet_t packet_type,
-                           unsigned char *dest)
+                           unsigned char *const dest,
+                           size_t *const uncomp_len)
 {
 	unsigned char *packed_rohc_packet = malloc(5000); // TODO: change that
 	struct d_generic_context *g_context;
@@ -5985,7 +5996,8 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	context->header_uncompressed_size += uncomp_header_len;
 
 	free(packed_rohc_packet);
-	return (uncomp_header_len + payload_len);
+	*uncomp_len = (uncomp_header_len + payload_len);
+	return ROHC_STATUS_OK;
 
 error:
 	free(packed_rohc_packet);
