@@ -21,7 +21,7 @@ librohc_decomp_la_SOURCES = \
 	rohc_decomp.c \
 	feedback_create.c \
 	d_uncompressed.c \
-	d_generic.c \
+	rohc_decomp_rfc3095.c \
 	d_ip.c \
 	d_udp.c \
 	d_udp_lite.c \
@@ -52,7 +52,7 @@ noinst_HEADERS = \
 	rohc_decomp_internals.h \
 	rohc_decomp_detect_packet.h \
 	feedback_create.h \
-	d_generic.h \
+	rohc_decomp_rfc3095.h \
 	d_ip.h \
 	d_udp.h
 

@@ -44,9 +44,9 @@
  * @brief Define the UDP part of the decompression profile context.
  *
  * This object must be used with the generic part of the decompression
- * context d_generic_context.
+ * context rohc_decomp_rfc3095_ctxt.
  *
- * @see d_generic_context
+ * @see rohc_decomp_rfc3095_ctxt
  */
 struct d_udp_context
 {
@@ -97,7 +97,7 @@ static int udp_build_uncomp_udp(const struct rohc_decomp_ctxt *const context,
  */
 void * d_udp_create(const struct rohc_decomp_ctxt *const context)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	struct d_udp_context *udp_context;
 
 	assert(context != NULL);
@@ -105,11 +105,12 @@ void * d_udp_create(const struct rohc_decomp_ctxt *const context)
 	assert(context->profile != NULL);
 
 	/* create the generic context */
-	g_context = d_generic_create(context,
-	                             context->decompressor->trace_callback,
-	                             context->decompressor->trace_callback_priv,
-	                             context->profile->id);
-	if(g_context == NULL)
+	rfc3095_ctxt =
+		rohc_decomp_rfc3095_create(context,
+		                           context->decompressor->trace_callback,
+		                           context->decompressor->trace_callback_priv,
+		                           context->profile->id);
+	if(rfc3095_ctxt == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "failed to create the generic decompression context");
@@ -125,11 +126,11 @@ void * d_udp_create(const struct rohc_decomp_ctxt *const context)
 		goto destroy_context;
 	}
 	memset(udp_context, 0, sizeof(struct d_udp_context));
-	g_context->specific = udp_context;
+	rfc3095_ctxt->specific = udp_context;
 
 	/* create the LSB decoding context for SN */
-	g_context->sn_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_SN, 16);
-	if(g_context->sn_lsb_ctxt == NULL)
+	rfc3095_ctxt->sn_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_SN, 16);
+	if(rfc3095_ctxt->sn_lsb_ctxt == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "failed to create the LSB decoding context for SN");
@@ -141,53 +142,53 @@ void * d_udp_create(const struct rohc_decomp_ctxt *const context)
 	udp_context->udp_checksum_present = -1;
 
 	/* some UDP-specific values and functions */
-	g_context->next_header_len = sizeof(struct udphdr);
-	g_context->parse_static_next_hdr = udp_parse_static_udp;
-	g_context->parse_dyn_next_hdr = udp_parse_dynamic_udp;
-	g_context->parse_ext3 = ip_parse_ext3;
-	g_context->parse_uo_remainder = udp_parse_uo_remainder;
-	g_context->decode_values_from_bits = udp_decode_values_from_bits;
-	g_context->build_next_header = udp_build_uncomp_udp;
-	g_context->compute_crc_static = udp_compute_crc_static;
-	g_context->compute_crc_dynamic = udp_compute_crc_dynamic;
-	g_context->update_context = udp_update_context;
+	rfc3095_ctxt->next_header_len = sizeof(struct udphdr);
+	rfc3095_ctxt->parse_static_next_hdr = udp_parse_static_udp;
+	rfc3095_ctxt->parse_dyn_next_hdr = udp_parse_dynamic_udp;
+	rfc3095_ctxt->parse_ext3 = ip_parse_ext3;
+	rfc3095_ctxt->parse_uo_remainder = udp_parse_uo_remainder;
+	rfc3095_ctxt->decode_values_from_bits = udp_decode_values_from_bits;
+	rfc3095_ctxt->build_next_header = udp_build_uncomp_udp;
+	rfc3095_ctxt->compute_crc_static = udp_compute_crc_static;
+	rfc3095_ctxt->compute_crc_dynamic = udp_compute_crc_dynamic;
+	rfc3095_ctxt->update_context = udp_update_context;
 
 	/* create the UDP-specific part of the header changes */
-	g_context->outer_ip_changes->next_header_len = sizeof(struct udphdr);
-	g_context->outer_ip_changes->next_header = malloc(sizeof(struct udphdr));
-	if(g_context->outer_ip_changes->next_header == NULL)
+	rfc3095_ctxt->outer_ip_changes->next_header_len = sizeof(struct udphdr);
+	rfc3095_ctxt->outer_ip_changes->next_header = malloc(sizeof(struct udphdr));
+	if(rfc3095_ctxt->outer_ip_changes->next_header == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "cannot allocate memory for the UDP-specific part of the "
 		           "outer IP header changes");
 		goto free_lsb_sn;
 	}
-	memset(g_context->outer_ip_changes->next_header, 0, sizeof(struct udphdr));
+	memset(rfc3095_ctxt->outer_ip_changes->next_header, 0, sizeof(struct udphdr));
 
-	g_context->inner_ip_changes->next_header_len = sizeof(struct udphdr);
-	g_context->inner_ip_changes->next_header = malloc(sizeof(struct udphdr));
-	if(g_context->inner_ip_changes->next_header == NULL)
+	rfc3095_ctxt->inner_ip_changes->next_header_len = sizeof(struct udphdr);
+	rfc3095_ctxt->inner_ip_changes->next_header = malloc(sizeof(struct udphdr));
+	if(rfc3095_ctxt->inner_ip_changes->next_header == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "cannot allocate memory for the UDP-specific part of the "
 		           "inner IP header changes");
 		goto free_outer_ip_changes_next_header;
 	}
-	memset(g_context->inner_ip_changes->next_header, 0, sizeof(struct udphdr));
+	memset(rfc3095_ctxt->inner_ip_changes->next_header, 0, sizeof(struct udphdr));
 
 	/* set next header to UDP */
-	g_context->next_header_proto = ROHC_IPPROTO_UDP;
+	rfc3095_ctxt->next_header_proto = ROHC_IPPROTO_UDP;
 
-	return g_context;
+	return rfc3095_ctxt;
 
 free_outer_ip_changes_next_header:
-	zfree(g_context->outer_ip_changes->next_header);
+	zfree(rfc3095_ctxt->outer_ip_changes->next_header);
 free_lsb_sn:
-	rohc_lsb_free(g_context->sn_lsb_ctxt);
+	rohc_lsb_free(rfc3095_ctxt->sn_lsb_ctxt);
 free_udp_context:
 	zfree(udp_context);
 destroy_context:
-	d_generic_destroy(g_context);
+	rohc_decomp_rfc3095_destroy(rfc3095_ctxt);
 quit:
 	return NULL;
 }
@@ -203,24 +204,24 @@ quit:
  */
 static void d_udp_destroy(void *const context)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 
 	assert(context != NULL);
-	g_context = (struct d_generic_context *) context;
+	rfc3095_ctxt = (struct rohc_decomp_rfc3095_ctxt *) context;
 
 	/* clean UDP-specific memory */
-	assert(g_context->outer_ip_changes != NULL);
-	assert(g_context->outer_ip_changes->next_header != NULL);
-	zfree(g_context->outer_ip_changes->next_header);
-	assert(g_context->inner_ip_changes != NULL);
-	assert(g_context->inner_ip_changes->next_header != NULL);
-	zfree(g_context->inner_ip_changes->next_header);
+	assert(rfc3095_ctxt->outer_ip_changes != NULL);
+	assert(rfc3095_ctxt->outer_ip_changes->next_header != NULL);
+	zfree(rfc3095_ctxt->outer_ip_changes->next_header);
+	assert(rfc3095_ctxt->inner_ip_changes != NULL);
+	assert(rfc3095_ctxt->inner_ip_changes->next_header != NULL);
+	zfree(rfc3095_ctxt->inner_ip_changes->next_header);
 
 	/* destroy the LSB decoding context for SN */
-	rohc_lsb_free(g_context->sn_lsb_ctxt);
+	rohc_lsb_free(rfc3095_ctxt->sn_lsb_ctxt);
 
 	/* destroy the resources of the generic context */
-	d_generic_destroy(context);
+	rohc_decomp_rfc3095_destroy(context);
 }
 
 
@@ -239,15 +240,15 @@ int udp_parse_static_udp(const struct rohc_decomp_ctxt *const context,
                          size_t length,
                          struct rohc_extr_bits *const bits)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	struct d_udp_context *udp_context;
 	size_t read = 0; /* number of bytes read from the packet */
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
-	assert(g_context->specific != NULL);
-	udp_context = g_context->specific;
+	rfc3095_ctxt = context->specific;
+	assert(rfc3095_ctxt->specific != NULL);
+	udp_context = rfc3095_ctxt->specific;
 	assert(packet != NULL);
 	assert(bits != NULL);
 
@@ -318,16 +319,16 @@ static int udp_parse_dynamic_udp(const struct rohc_decomp_ctxt *const context,
                                  const size_t length,
                                  struct rohc_extr_bits *const bits)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	struct d_udp_context *udp_context;
 	int read = 0; /* number of bytes read from the packet */
 	int ret;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
-	assert(g_context->specific != NULL);
-	udp_context = g_context->specific;
+	rfc3095_ctxt = context->specific;
+	assert(rfc3095_ctxt->specific != NULL);
+	udp_context = rfc3095_ctxt->specific;
 	assert(packet != NULL);
 	assert(bits != NULL);
 
@@ -380,15 +381,15 @@ static int udp_parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
                                   unsigned int length,
                                   struct rohc_extr_bits *const bits)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	struct d_udp_context *udp_context;
 	int read = 0; /* number of bytes read from the packet */
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
-	assert(g_context->specific != NULL);
-	udp_context = g_context->specific;
+	rfc3095_ctxt = context->specific;
+	assert(rfc3095_ctxt->specific != NULL);
+	udp_context = rfc3095_ctxt->specific;
 	assert(packet != NULL);
 	assert(bits != NULL);
 
@@ -452,20 +453,20 @@ static bool udp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
                                         const struct rohc_extr_bits bits,
                                         struct rohc_decoded_values *const decoded)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	struct d_udp_context *udp_context;
 	struct udphdr *udp;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
-	assert(g_context->specific != NULL);
-	udp_context = g_context->specific;
+	rfc3095_ctxt = context->specific;
+	assert(rfc3095_ctxt->specific != NULL);
+	udp_context = rfc3095_ctxt->specific;
 	assert(decoded != NULL);
 
-	assert(g_context->outer_ip_changes != NULL);
-	assert(g_context->outer_ip_changes->next_header != NULL);
-	udp = (struct udphdr *) g_context->outer_ip_changes->next_header;
+	assert(rfc3095_ctxt->outer_ip_changes != NULL);
+	assert(rfc3095_ctxt->outer_ip_changes->next_header != NULL);
+	udp = (struct udphdr *) rfc3095_ctxt->outer_ip_changes->next_header;
 
 	/* decode UDP source port */
 	if(bits.udp_src_nr > 0)
@@ -582,16 +583,16 @@ static int udp_build_uncomp_udp(const struct rohc_decomp_ctxt *const context,
 void udp_update_context(const struct rohc_decomp_ctxt *context,
                         const struct rohc_decoded_values decoded)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	struct udphdr *udp;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 
-	assert(g_context->outer_ip_changes != NULL);
-	assert(g_context->outer_ip_changes->next_header != NULL);
-	udp = (struct udphdr *) g_context->outer_ip_changes->next_header;
+	assert(rfc3095_ctxt->outer_ip_changes != NULL);
+	assert(rfc3095_ctxt->outer_ip_changes->next_header != NULL);
+	udp = (struct udphdr *) rfc3095_ctxt->outer_ip_changes->next_header;
 	udp->source = decoded.udp_src;
 	udp->dest = decoded.udp_dst;
 }
@@ -606,8 +607,8 @@ const struct rohc_decomp_profile d_udp_profile =
 	.id              = ROHC_PROFILE_UDP, /* profile ID (see 8 in RFC3095) */
 	.new_context     = d_udp_create,
 	.free_context    = d_udp_destroy,
-	.decode          = d_generic_decode,
+	.decode          = rohc_decomp_rfc3095_decode,
 	.detect_pkt_type = ip_detect_packet_type,
-	.get_sn          = d_generic_get_sn,
+	.get_sn          = rohc_decomp_rfc3095_get_sn,
 };
 

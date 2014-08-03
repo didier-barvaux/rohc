@@ -19,15 +19,15 @@
  */
 
 /**
- * @file d_generic.c
- * @brief ROHC generic decompression context for IP-only, UDP and UDP Lite
- *        profiles.
+ * @file   rohc_decomp_rfc3095.c
+ * @brief  Generic framework for RFC3095-based decompression profiles such as
+ *         IP-only, UDP, UDP-Lite, ESP, and RTP profiles.
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author Didier Barvaux <didier@barvaux.org>
  * @author David Moreau from TAS
  */
 
-#include "d_generic.h"
+#include "rohc_decomp_rfc3095.h"
 #include "rohc_traces_internal.h"
 #include "rohc_time_internal.h"
 #include "rohc_debug.h"
@@ -315,7 +315,7 @@ static bool decode_values_from_bits(struct rohc_decomp_ctxt *const context,
                                     struct rohc_decoded_values *const decoded)
 	__attribute__((warn_unused_result, nonnull(1, 3)));
 static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const context,
-                                       const struct d_generic_changes *const ctxt,
+                                       const struct rohc_decomp_rfc3095_changes *const ctxt,
                                        const struct ip_id_offset_decode *const ip_id_decode,
                                        const uint32_t decoded_sn,
                                        const struct rohc_extr_ip_bits bits,
@@ -368,7 +368,7 @@ static void stats_add_decomp_success(struct rohc_decomp_ctxt *const context,
                                      const size_t uncomp_hdr_len)
 	__attribute__((nonnull(1)));
 
-static void reset_extr_bits(const struct d_generic_context *const g_context,
+static void reset_extr_bits(const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt,
                             struct rohc_extr_bits *const bits)
 	__attribute__((nonnull(1, 2)));
 
@@ -390,26 +390,26 @@ static void reset_extr_bits(const struct d_generic_context *const g_context,
  * @param profile_id     The ID of the associated decompression profile
  * @return               The newly-created generic decompression context
  */
-void * d_generic_create(const struct rohc_decomp_ctxt *const context,
-                        rohc_trace_callback2_t trace_cb,
-                        void *const trace_cb_priv,
-                        const int profile_id)
+void * rohc_decomp_rfc3095_create(const struct rohc_decomp_ctxt *const context,
+                                  rohc_trace_callback2_t trace_cb,
+                                  void *const trace_cb_priv,
+                                  const int profile_id)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 
 	/* allocate memory for the generic context */
-	g_context = malloc(sizeof(struct d_generic_context));
-	if(g_context == NULL)
+	rfc3095_ctxt = malloc(sizeof(struct rohc_decomp_rfc3095_ctxt));
+	if(rfc3095_ctxt == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "no memory for the generic decompression context");
 		goto quit;
 	}
-	memset(g_context, 0, sizeof(struct d_generic_context));
+	memset(rfc3095_ctxt, 0, sizeof(struct rohc_decomp_rfc3095_ctxt));
 
 	/* create the Offset IP-ID decoding context for outer IP header */
-	g_context->outer_ip_id_offset_ctxt = ip_id_offset_new();
-	if(g_context->outer_ip_id_offset_ctxt == NULL)
+	rfc3095_ctxt->outer_ip_id_offset_ctxt = ip_id_offset_new();
+	if(rfc3095_ctxt->outer_ip_id_offset_ctxt == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "failed to create the Offset IP-ID decoding context for "
@@ -418,8 +418,8 @@ void * d_generic_create(const struct rohc_decomp_ctxt *const context,
 	}
 
 	/* create the Offset IP-ID decoding context for inner IP header */
-	g_context->inner_ip_id_offset_ctxt = ip_id_offset_new();
-	if(g_context->inner_ip_id_offset_ctxt == NULL)
+	rfc3095_ctxt->inner_ip_id_offset_ctxt = ip_id_offset_new();
+	if(rfc3095_ctxt->inner_ip_id_offset_ctxt == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "failed to create the Offset IP-ID decoding context for "
@@ -427,59 +427,59 @@ void * d_generic_create(const struct rohc_decomp_ctxt *const context,
 		goto free_outer_ip_id_offset_ctxt;
 	}
 
-	g_context->outer_ip_changes = malloc(sizeof(struct d_generic_changes));
-	if(g_context->outer_ip_changes == NULL)
+	rfc3095_ctxt->outer_ip_changes = malloc(sizeof(struct rohc_decomp_rfc3095_changes));
+	if(rfc3095_ctxt->outer_ip_changes == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "cannot allocate memory for the outer IP header changes");
 		goto free_inner_ip_id_offset_ctxt;
 	}
-	memset(g_context->outer_ip_changes, 0, sizeof(struct d_generic_changes));
+	memset(rfc3095_ctxt->outer_ip_changes, 0, sizeof(struct rohc_decomp_rfc3095_changes));
 
-	g_context->inner_ip_changes = malloc(sizeof(struct d_generic_changes));
-	if(g_context->inner_ip_changes == NULL)
+	rfc3095_ctxt->inner_ip_changes = malloc(sizeof(struct rohc_decomp_rfc3095_changes));
+	if(rfc3095_ctxt->inner_ip_changes == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "cannot allocate memory for the inner IP header changes");
 		goto free_outer_ip_changes;
 	}
-	memset(g_context->inner_ip_changes, 0, sizeof(struct d_generic_changes));
+	memset(rfc3095_ctxt->inner_ip_changes, 0, sizeof(struct rohc_decomp_rfc3095_changes));
 
 	/* init the context used to compress the list of IPv6 extension headers
 	 * for the outer and inner IP headers */
-	rohc_decomp_list_ipv6_new(&g_context->list_decomp1,
+	rohc_decomp_list_ipv6_new(&rfc3095_ctxt->list_decomp1,
 	                          trace_cb, trace_cb_priv, profile_id);
-	rohc_decomp_list_ipv6_new(&g_context->list_decomp2,
+	rohc_decomp_list_ipv6_new(&rfc3095_ctxt->list_decomp2,
 	                          trace_cb, trace_cb_priv, profile_id);
 
 	/* no default next header */
-	g_context->next_header_proto = 0;
+	rfc3095_ctxt->next_header_proto = 0;
 
 	/* default CRC computation */
-	g_context->compute_crc_static = compute_crc_static;
-	g_context->compute_crc_dynamic = compute_crc_dynamic;
+	rfc3095_ctxt->compute_crc_static = compute_crc_static;
+	rfc3095_ctxt->compute_crc_dynamic = compute_crc_dynamic;
 
 	/* at the beginning, no attempt to correct CRC failure */
-	g_context->crc_corr = ROHC_DECOMP_CRC_CORR_SN_NONE;
-	g_context->correction_counter = 0;
+	rfc3095_ctxt->crc_corr = ROHC_DECOMP_CRC_CORR_SN_NONE;
+	rfc3095_ctxt->correction_counter = 0;
 	/* arrival times for correction upon CRC failure */
-	memset(g_context->arrival_times, 0,
+	memset(rfc3095_ctxt->arrival_times, 0,
 	       sizeof(struct rohc_ts) * ROHC_MAX_ARRIVAL_TIMES);
-	g_context->arrival_times_nr = 0;
-	g_context->arrival_times_index = 0;
-	g_context->cur_arrival_time.sec = 0;
-	g_context->cur_arrival_time.nsec = 0;
+	rfc3095_ctxt->arrival_times_nr = 0;
+	rfc3095_ctxt->arrival_times_index = 0;
+	rfc3095_ctxt->cur_arrival_time.sec = 0;
+	rfc3095_ctxt->cur_arrival_time.nsec = 0;
 
-	return g_context;
+	return rfc3095_ctxt;
 
 free_outer_ip_changes:
-	zfree(g_context->outer_ip_changes);
+	zfree(rfc3095_ctxt->outer_ip_changes);
 free_inner_ip_id_offset_ctxt:
-	ip_id_offset_free(g_context->inner_ip_id_offset_ctxt);
+	ip_id_offset_free(rfc3095_ctxt->inner_ip_id_offset_ctxt);
 free_outer_ip_id_offset_ctxt:
-	ip_id_offset_free(g_context->outer_ip_id_offset_ctxt);
+	ip_id_offset_free(rfc3095_ctxt->outer_ip_id_offset_ctxt);
 free_context:
-	zfree(g_context);
+	zfree(rfc3095_ctxt);
 quit:
 	return NULL;
 }
@@ -493,36 +493,36 @@ quit:
  *
  * @param context The compression context
  */
-void d_generic_destroy(void *const context)
+void rohc_decomp_rfc3095_destroy(void *const context)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 
 	assert(context != NULL);
-	g_context = (struct d_generic_context *) context;
+	rfc3095_ctxt = (struct rohc_decomp_rfc3095_ctxt *) context;
 
 	/* destroy Offset IP-ID decoding contexts */
-	ip_id_offset_free(g_context->outer_ip_id_offset_ctxt);
-	ip_id_offset_free(g_context->inner_ip_id_offset_ctxt);
+	ip_id_offset_free(rfc3095_ctxt->outer_ip_id_offset_ctxt);
+	ip_id_offset_free(rfc3095_ctxt->inner_ip_id_offset_ctxt);
 
 	/* destroy the information about the IP headers */
-	assert(g_context->outer_ip_changes != NULL);
-	zfree(g_context->outer_ip_changes);
-	assert(g_context->inner_ip_changes != NULL);
-	zfree(g_context->inner_ip_changes);
+	assert(rfc3095_ctxt->outer_ip_changes != NULL);
+	zfree(rfc3095_ctxt->outer_ip_changes);
+	assert(rfc3095_ctxt->inner_ip_changes != NULL);
+	zfree(rfc3095_ctxt->inner_ip_changes);
 
 	/* destroy contexts used to decompress the lists of IPv6 extension headers
 	 * for outer and inner IP headers */
-	rohc_decomp_list_ipv6_free(&g_context->list_decomp1);
-	rohc_decomp_list_ipv6_free(&g_context->list_decomp2);
+	rohc_decomp_list_ipv6_free(&rfc3095_ctxt->list_decomp1);
+	rohc_decomp_list_ipv6_free(&rfc3095_ctxt->list_decomp2);
 
 	/* destroy profile-specific part */
-	if(g_context->specific != NULL)
+	if(rfc3095_ctxt->specific != NULL)
 	{
-		zfree(g_context->specific);
+		zfree(rfc3095_ctxt->specific);
 	}
 
 	/* destroy generic context itself */
-	free(g_context);
+	free(rfc3095_ctxt);
 }
 
 
@@ -707,7 +707,7 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
                      struct rohc_extr_bits *const bits,
                      size_t *const rohc_hdr_len)
 {
-	struct d_generic_context *g_context = context->specific;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt = context->specific;
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
 	   (will be computed during parsing) */
@@ -718,7 +718,7 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 	bool dynamic_present;
 	int size;
 
-	assert(g_context != NULL);
+	assert(rfc3095_ctxt != NULL);
 	assert(rohc_packet != NULL);
 	assert(packet_type != NULL);
 	assert((*packet_type) == ROHC_PACKET_IR);
@@ -730,7 +730,7 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 	*rohc_hdr_len = 0;
 
 	/* reset all extracted bits */
-	reset_extr_bits(g_context, bits);
+	reset_extr_bits(rfc3095_ctxt, bits);
 	bits->crc_type = ROHC_CRC_TYPE_NONE;
 
 	/* packet must large enough for:
@@ -773,12 +773,12 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 
 	/* check for IP version switch during context re-use */
 	if(context->num_recv_packets > 1 &&
-	   bits->outer_ip.version != ip_get_version(&g_context->outer_ip_changes->ip))
+	   bits->outer_ip.version != ip_get_version(&rfc3095_ctxt->outer_ip_changes->ip))
 	{
 		rohc_decomp_debug(context, "outer IP version mismatch (packet = %d, "
 		                  "context = %d) -> context is being reused",
 		                  bits->outer_ip.version,
-		                  ip_get_version(&g_context->outer_ip_changes->ip));
+		                  ip_get_version(&rfc3095_ctxt->outer_ip_changes->ip));
 		bits->is_context_reused = true;
 	}
 
@@ -789,7 +789,7 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 		rohc_decomp_debug(context, "second IP header detected");
 
 		/* check for 1 to 2 IP headers switch during context re-use */
-		if(context->num_recv_packets > 1 && !g_context->multiple_ip)
+		if(context->num_recv_packets > 1 && !rfc3095_ctxt->multiple_ip)
 		{
 			rohc_decomp_debug(context, "number of IP headers mismatch (packet "
 			                  "= 2, context = 1) -> context is being reused");
@@ -797,12 +797,12 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 		}
 
 		/* update context */
-		g_context->multiple_ip = 1;
+		rfc3095_ctxt->multiple_ip = 1;
 	}
 	else
 	{
 		/* check for 2 to 1 IP headers switch during context re-use */
-		if(context->num_recv_packets > 1 && g_context->multiple_ip)
+		if(context->num_recv_packets > 1 && rfc3095_ctxt->multiple_ip)
 		{
 			rohc_decomp_debug(context, "number of IP headers mismatch (packet "
 			                  "= 1, context = 2) -> context is being reused");
@@ -810,12 +810,12 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 		}
 
 		/* update context */
-		g_context->multiple_ip = 0;
+		rfc3095_ctxt->multiple_ip = 0;
 	}
 
 	/* decode the static part of the inner IP header
 	 * if multiple IP headers */
-	if(g_context->multiple_ip)
+	if(rfc3095_ctxt->multiple_ip)
 	{
 		size = parse_static_part_ip(context, rohc_remain_data, rohc_remain_len,
 		                            &bits->inner_ip);
@@ -830,20 +830,20 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 
 		/* check for IP version switch during context re-use */
 		if(context->num_recv_packets > 1 &&
-		   bits->inner_ip.version != ip_get_version(&g_context->inner_ip_changes->ip))
+		   bits->inner_ip.version != ip_get_version(&rfc3095_ctxt->inner_ip_changes->ip))
 		{
 			rohc_decomp_debug(context, "inner IP version mismatch (packet = %d, "
 			                  "context = %d) -> context is being reused",
 			                  bits->inner_ip.version,
-			                  ip_get_version(&g_context->inner_ip_changes->ip));
+			                  ip_get_version(&rfc3095_ctxt->inner_ip_changes->ip));
 			bits->is_context_reused = true;
 		}
 	}
 
 	/* parse the static part of the next header header if necessary */
-	if(g_context->parse_static_next_hdr != NULL)
+	if(rfc3095_ctxt->parse_static_next_hdr != NULL)
 	{
-		size = g_context->parse_static_next_hdr(context, rohc_remain_data,
+		size = rfc3095_ctxt->parse_static_next_hdr(context, rohc_remain_data,
 		                                        rohc_remain_len, bits);
 		if(size == -1)
 		{
@@ -860,7 +860,7 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 	{
 		/* decode the dynamic part of the outer IP header */
 		size = parse_dynamic_part_ip(context, rohc_remain_data, rohc_remain_len,
-		                             &bits->outer_ip, &g_context->list_decomp1);
+		                             &bits->outer_ip, &rfc3095_ctxt->list_decomp1);
 		if(size == -1)
 		{
 			rohc_decomp_warn(context, "cannot parse outer IP dynamic part");
@@ -871,10 +871,10 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 		*rohc_hdr_len += size;
 
 		/* decode the dynamic part of the inner IP header */
-		if(g_context->multiple_ip)
+		if(rfc3095_ctxt->multiple_ip)
 		{
 			size = parse_dynamic_part_ip(context, rohc_remain_data, rohc_remain_len,
-			                             &bits->inner_ip, &g_context->list_decomp2);
+			                             &bits->inner_ip, &rfc3095_ctxt->list_decomp2);
 			if(size == -1)
 			{
 				rohc_decomp_warn(context, "cannot parse inner IP dynamic part");
@@ -886,9 +886,9 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 		}
 
 		/* parse the dynamic part of the next header header if necessary */
-		if(g_context->parse_dyn_next_hdr != NULL)
+		if(rfc3095_ctxt->parse_dyn_next_hdr != NULL)
 		{
-			size = g_context->parse_dyn_next_hdr(context, rohc_remain_data,
+			size = rfc3095_ctxt->parse_dyn_next_hdr(context, rohc_remain_data,
 			                                     rohc_remain_len, bits);
 			if(size == -1)
 			{
@@ -1367,15 +1367,15 @@ error:
  *                            buffer is too small
  *                            ROHC_STATUS_ERROR if an error occurs
  */
-rohc_status_t d_generic_decode(struct rohc_decomp *const decomp,
-                               struct rohc_decomp_ctxt *const context,
-                               const struct rohc_buf rohc_packet,
-                               const size_t add_cid_len,
-                               const size_t large_cid_len,
-                               struct rohc_buf *const uncomp_packet,
-                               rohc_packet_t *const packet_type)
+rohc_status_t rohc_decomp_rfc3095_decode(struct rohc_decomp *const decomp,
+                                         struct rohc_decomp_ctxt *const context,
+                                         const struct rohc_buf rohc_packet,
+                                         const size_t add_cid_len,
+                                         const size_t large_cid_len,
+                                         struct rohc_buf *const uncomp_packet,
+                                         rohc_packet_t *const packet_type)
 {
-	struct d_generic_context *const g_context = context->specific;
+	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 
 	/* extracted bits for SN, outer IP-ID, inner IP-ID, TS... */
 	struct rohc_extr_bits bits;
@@ -1402,7 +1402,7 @@ rohc_status_t d_generic_decode(struct rohc_decomp *const decomp,
 
 	/* remember the arrival time of the packet (used for repair upon CRC
 	 * failure for example) */
-	g_context->cur_arrival_time = rohc_packet.time;
+	rfc3095_ctxt->cur_arrival_time = rohc_packet.time;
 
 
 	/* A. Parsing of ROHC base header, extension header and tail of header */
@@ -1453,7 +1453,7 @@ rohc_status_t d_generic_decode(struct rohc_decomp *const decomp,
 		}
 
 		/* reset the correction attempt */
-		g_context->correction_counter = 0;
+		rfc3095_ctxt->correction_counter = 0;
 	}
 
 
@@ -1502,7 +1502,7 @@ rohc_status_t d_generic_decode(struct rohc_decomp *const decomp,
 			uncomp_packet->len += uncomp_header_len;
 			rohc_buf_pull(uncomp_packet, uncomp_header_len);
 
-			if(g_context->crc_corr == ROHC_DECOMP_CRC_CORR_SN_NONE)
+			if(rfc3095_ctxt->crc_corr == ROHC_DECOMP_CRC_CORR_SN_NONE)
 			{
 				rohc_decomp_debug(context, "CRC is correct");
 			}
@@ -1569,26 +1569,26 @@ rohc_status_t d_generic_decode(struct rohc_decomp *const decomp,
 	/* after CRC failure, if the SN value seems to be correctly guessed, we must
 	 * wait for 3 CRC-valid packets before the correction is approved. Two
 	 * packets are therefore thrown away. */
-	if(g_context->crc_corr != ROHC_DECOMP_CRC_CORR_SN_NONE)
+	if(rfc3095_ctxt->crc_corr != ROHC_DECOMP_CRC_CORR_SN_NONE)
 	{
-		if(g_context->correction_counter > 1)
+		if(rfc3095_ctxt->correction_counter > 1)
 		{
 			/* update context with decoded values even if we drop the packet */
 			update_context(context, decoded);
 
-			g_context->correction_counter--;
+			rfc3095_ctxt->correction_counter--;
 			rohc_decomp_warn(context, "CID %zu: CRC repair: throw away packet, "
 			                 "still %zu CRC-valid packets required",
-			                 context->cid, g_context->correction_counter);
+			                 context->cid, rfc3095_ctxt->correction_counter);
 
 			goto error_crc;
 		}
-		else if(g_context->correction_counter == 1)
+		else if(rfc3095_ctxt->correction_counter == 1)
 		{
 			rohc_decomp_warn(context, "CID %zu: CRC repair: correction is "
 			                 "successful, keep packet", context->cid);
 			context->corrected_crc_failures++;
-			switch(g_context->crc_corr)
+			switch(rfc3095_ctxt->crc_corr)
 			{
 				case ROHC_DECOMP_CRC_CORR_SN_WRAP:
 					context->corrected_sn_wraparounds++;
@@ -1600,12 +1600,12 @@ rohc_status_t d_generic_decode(struct rohc_decomp *const decomp,
 				default:
 					rohc_error(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 					           "CID %zu: CRC repair: unsupported repair algorithm "
-					           "%d", context->cid, g_context->crc_corr);
+					           "%d", context->cid, rfc3095_ctxt->crc_corr);
 					assert(0);
 					goto error;
 			}
-			g_context->crc_corr = ROHC_DECOMP_CRC_CORR_SN_NONE;
-			g_context->correction_counter--;
+			rfc3095_ctxt->crc_corr = ROHC_DECOMP_CRC_CORR_SN_NONE;
+			rfc3095_ctxt->correction_counter--;
 		}
 	}
 
@@ -1700,10 +1700,10 @@ error_malformed:
  * @param context The decompression context
  * @return        The reference SN value
  */
-uint32_t d_generic_get_sn(const struct rohc_decomp_ctxt *const context)
+uint32_t rohc_decomp_rfc3095_get_sn(const struct rohc_decomp_ctxt *const context)
 {
-	const struct d_generic_context *const g_context = context->specific;
-	return rohc_lsb_get_ref(g_context->sn_lsb_ctxt, ROHC_LSB_REF_0);
+	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
+	return rohc_lsb_get_ref(rfc3095_ctxt->sn_lsb_ctxt, ROHC_LSB_REF_0);
 }
 
 
@@ -1796,7 +1796,7 @@ static bool parse_uo0(const struct rohc_decomp_ctxt *const context,
                       struct rohc_extr_bits *const bits,
                       size_t *const rohc_hdr_len)
 {
-	struct d_generic_context *const g_context = context->specific;
+	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 	size_t rohc_remainder_len;
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
@@ -1804,7 +1804,7 @@ static bool parse_uo0(const struct rohc_decomp_ctxt *const context,
 	const unsigned char *rohc_remain_data;
 	size_t rohc_remain_len;
 
-	assert(g_context != NULL);
+	assert(rfc3095_ctxt != NULL);
 	assert(rohc_packet != NULL);
 	assert(packet_type != NULL);
 	assert((*packet_type) == ROHC_PACKET_UO_0);
@@ -1816,7 +1816,7 @@ static bool parse_uo0(const struct rohc_decomp_ctxt *const context,
 	*rohc_hdr_len = 0;
 
 	/* reset all extracted bits */
-	reset_extr_bits(g_context, bits);
+	reset_extr_bits(rfc3095_ctxt, bits);
 
 	/* check packet usage */
 	if(context->state == ROHC_DECOMP_STATE_SC)
@@ -1970,7 +1970,7 @@ static bool parse_uo1(const struct rohc_decomp_ctxt *const context,
                       struct rohc_extr_bits *const bits,
                       size_t *const rohc_hdr_len)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	size_t rohc_remainder_len;
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
@@ -1982,7 +1982,7 @@ static bool parse_uo1(const struct rohc_decomp_ctxt *const context,
 	ip_header_pos_t innermost_ipv4_non_rnd;
 
 	assert(context != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 	assert(rohc_packet != NULL);
 	assert(packet_type != NULL);
 	assert((*packet_type) == ROHC_PACKET_UO_1);
@@ -1994,11 +1994,11 @@ static bool parse_uo1(const struct rohc_decomp_ctxt *const context,
 	*rohc_hdr_len = 0;
 
 	/* reset all extracted bits */
-	reset_extr_bits(g_context, bits);
+	reset_extr_bits(rfc3095_ctxt, bits);
 
 	/* determine which IP header is the innermost IPv4 header with
 	 * value(RND) = 0 */
-	if(g_context->multiple_ip && is_ipv4_non_rnd_pkt(bits->inner_ip))
+	if(rfc3095_ctxt->multiple_ip && is_ipv4_non_rnd_pkt(bits->inner_ip))
 	{
 		/* inner IP header is IPv4 with non-random IP-ID */
 		innermost_ipv4_non_rnd = ROHC_IP_HDR_SECOND;
@@ -2206,7 +2206,7 @@ static bool parse_uo1rtp(const struct rohc_decomp_ctxt *const context,
                          struct rohc_extr_bits *const bits,
                          size_t *const rohc_hdr_len)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	size_t rohc_remainder_len;
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
@@ -2215,7 +2215,7 @@ static bool parse_uo1rtp(const struct rohc_decomp_ctxt *const context,
 	size_t rohc_remain_len;
 
 	assert(context != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 	assert(rohc_packet != NULL);
 	assert(packet_type != NULL);
 	assert((*packet_type) == ROHC_PACKET_UO_1_RTP);
@@ -2227,7 +2227,7 @@ static bool parse_uo1rtp(const struct rohc_decomp_ctxt *const context,
 	*rohc_hdr_len = 0;
 
 	/* reset all extracted bits */
-	reset_extr_bits(g_context, bits);
+	reset_extr_bits(rfc3095_ctxt, bits);
 
 	/* check packet usage */
 	if(context->state == ROHC_DECOMP_STATE_SC)
@@ -2407,7 +2407,7 @@ static bool parse_uo1id(const struct rohc_decomp_ctxt *const context,
                         struct rohc_extr_bits *const bits,
                         size_t *const rohc_hdr_len)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	size_t rohc_remainder_len;
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
@@ -2419,7 +2419,7 @@ static bool parse_uo1id(const struct rohc_decomp_ctxt *const context,
 	ip_header_pos_t innermost_ipv4_non_rnd;
 
 	assert(context != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 	assert(rohc_packet != NULL);
 	assert(packet_type != NULL);
 	assert((*packet_type) == ROHC_PACKET_UO_1_ID);
@@ -2431,11 +2431,11 @@ static bool parse_uo1id(const struct rohc_decomp_ctxt *const context,
 	*rohc_hdr_len = 0;
 
 	/* reset all extracted bits */
-	reset_extr_bits(g_context, bits);
+	reset_extr_bits(rfc3095_ctxt, bits);
 
 	/* determine which IP header is the innermost IPv4 header with
 	 * value(RND) = 0 */
-	if(g_context->multiple_ip && is_ipv4_non_rnd_pkt(bits->inner_ip))
+	if(rfc3095_ctxt->multiple_ip && is_ipv4_non_rnd_pkt(bits->inner_ip))
 	{
 		/* inner IP header is IPv4 with non-random IP-ID */
 		innermost_ipv4_non_rnd = ROHC_IP_HDR_SECOND;
@@ -2588,7 +2588,7 @@ static bool parse_uo1id(const struct rohc_decomp_ctxt *const context,
 			case ROHC_EXT_3:
 			{
 				/* decode the extension */
-				ext_size = g_context->parse_ext3(context, rohc_remain_data,
+				ext_size = rfc3095_ctxt->parse_ext3(context, rohc_remain_data,
 				                                 rohc_remain_len, *packet_type,
 				                                 bits);
 
@@ -2733,7 +2733,7 @@ static bool parse_uo1ts(const struct rohc_decomp_ctxt *const context,
                         struct rohc_extr_bits *const bits,
                         size_t *const rohc_hdr_len)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	size_t rohc_remainder_len;
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
@@ -2742,7 +2742,7 @@ static bool parse_uo1ts(const struct rohc_decomp_ctxt *const context,
 	size_t rohc_remain_len;
 
 	assert(context != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 	assert(rohc_packet != NULL);
 	assert(packet_type != NULL);
 	assert((*packet_type) == ROHC_PACKET_UO_1_TS);
@@ -2754,7 +2754,7 @@ static bool parse_uo1ts(const struct rohc_decomp_ctxt *const context,
 	*rohc_hdr_len = 0;
 
 	/* reset all extracted bits */
-	reset_extr_bits(g_context, bits);
+	reset_extr_bits(rfc3095_ctxt, bits);
 
 	/* check packet usage */
 	if(context->state == ROHC_DECOMP_STATE_SC)
@@ -2926,7 +2926,7 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
                        struct rohc_extr_bits *const bits,
                        size_t *const rohc_hdr_len)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	size_t rohc_remainder_len;
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
@@ -2938,7 +2938,7 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
 	ip_header_pos_t innermost_ipv4_non_rnd;
 
 	assert(context != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 	assert(rohc_packet != NULL);
 	assert(packet_type != NULL);
 	assert((*packet_type) == ROHC_PACKET_UOR_2);
@@ -2950,11 +2950,11 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
 	*rohc_hdr_len = 0;
 
 	/* reset all extracted bits */
-	reset_extr_bits(g_context, bits);
+	reset_extr_bits(rfc3095_ctxt, bits);
 
 	/* determine which IP header is the innermost IPv4 header with
 	 * value(RND) = 0 */
-	if(g_context->multiple_ip && is_ipv4_non_rnd_pkt(bits->inner_ip))
+	if(rfc3095_ctxt->multiple_ip && is_ipv4_non_rnd_pkt(bits->inner_ip))
 	{
 		/* inner IP header is IPv4 with non-random IP-ID */
 		innermost_ipv4_non_rnd = ROHC_IP_HDR_SECOND;
@@ -3080,7 +3080,7 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
 			{
 				/* check extension usage */
 				if(!is_ipv4_non_rnd_pkt(bits->outer_ip) ||
-				   !g_context->multiple_ip ||
+				   !rfc3095_ctxt->multiple_ip ||
 				   !is_ipv4_non_rnd_pkt(bits->inner_ip))
 				{
 					rohc_decomp_warn(context, "cannot use extension 2 for UOR-2 "
@@ -3106,7 +3106,7 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
 			case ROHC_EXT_3:
 			{
 				/* decode the extension */
-				ext_size = g_context->parse_ext3(context, rohc_remain_data,
+				ext_size = rfc3095_ctxt->parse_ext3(context, rohc_remain_data,
 				                                 rohc_remain_len, *packet_type,
 				                                 bits);
 				break;
@@ -3182,7 +3182,7 @@ static bool parse_uor2rtp(const struct rohc_decomp_ctxt *const context,
                           struct rohc_extr_bits *const bits,
                           size_t *const rohc_hdr_len)
 {
-	struct d_generic_context *const g_context = context->specific;
+	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 
 	/* forced values for outer and inner RND flags */
 	uint8_t outer_rnd;
@@ -3197,8 +3197,8 @@ static bool parse_uor2rtp(const struct rohc_decomp_ctxt *const context,
 
 	/* for the first parsing, use the context values for the outer/inner RND
 	 * flags, force them for reparse later if required */
-	outer_rnd = g_context->outer_ip_changes->rnd;
-	inner_rnd = g_context->inner_ip_changes->rnd;
+	outer_rnd = rfc3095_ctxt->outer_ip_changes->rnd;
+	inner_rnd = rfc3095_ctxt->inner_ip_changes->rnd;
 
 	/* try parsing UOR-2-RTP packet with information from context */
 	parsing = parse_uor2rtp_once(context, rohc_packet, rohc_length,
@@ -3219,16 +3219,16 @@ static bool parse_uor2rtp(const struct rohc_decomp_ctxt *const context,
 		          "for packet type");
 
 		/* determine the new RND values for outer and inner IP headers */
-		if(g_context->multiple_ip &&
+		if(rfc3095_ctxt->multiple_ip &&
 		   bits->inner_ip.rnd_nr > 0 &&
-		   bits->inner_ip.rnd != g_context->inner_ip_changes->rnd)
+		   bits->inner_ip.rnd != rfc3095_ctxt->inner_ip_changes->rnd)
 		{
 			/* inner RND flag changed */
 			assert(bits->inner_ip.rnd_nr == 1);
 			inner_rnd = bits->inner_ip.rnd;
 		}
 		if(bits->outer_ip.rnd_nr > 0 &&
-		   bits->outer_ip.rnd != g_context->outer_ip_changes->rnd)
+		   bits->outer_ip.rnd != rfc3095_ctxt->outer_ip_changes->rnd)
 		{
 			/* outer RND flag changed */
 			assert(bits->outer_ip.rnd_nr == 1);
@@ -3378,7 +3378,7 @@ static bool parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
                                size_t *const rohc_hdr_len,
                                bool *const need_reparse)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	size_t rohc_remainder_len;
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
@@ -3390,7 +3390,7 @@ static bool parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
 	ip_header_pos_t innermost_ipv4_non_rnd;
 
 	assert(context != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 	assert(rohc_packet != NULL);
 	assert(packet_type == ROHC_PACKET_UOR_2_RTP);
 	assert(context->profile->id == ROHC_PROFILE_RTP);
@@ -3402,7 +3402,7 @@ static bool parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
 	*rohc_hdr_len = 0;
 
 	/* reset all extracted bits */
-	reset_extr_bits(g_context, bits);
+	reset_extr_bits(rfc3095_ctxt, bits);
 
 	/* force extracted RND values (for reparsing) */
 	if(bits->outer_ip.version == IPV4)
@@ -3410,7 +3410,7 @@ static bool parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
 		bits->outer_ip.rnd = outer_rnd & 0x1;
 		bits->outer_ip.rnd_nr = 1;
 	}
-	if(g_context->multiple_ip && bits->inner_ip.version == IPV4)
+	if(rfc3095_ctxt->multiple_ip && bits->inner_ip.version == IPV4)
 	{
 		bits->inner_ip.rnd = inner_rnd & 0x1;
 		bits->inner_ip.rnd_nr = 1;
@@ -3418,7 +3418,7 @@ static bool parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
 
 	/* determine which IP header is the innermost IPv4 header with
 	 * value(RND) = 0 */
-	if(g_context->multiple_ip && is_ipv4_non_rnd_pkt(bits->inner_ip))
+	if(rfc3095_ctxt->multiple_ip && is_ipv4_non_rnd_pkt(bits->inner_ip))
 	{
 		/* inner IP header is IPv4 with non-random IP-ID */
 		innermost_ipv4_non_rnd = ROHC_IP_HDR_SECOND;
@@ -3546,7 +3546,7 @@ static bool parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
 			case ROHC_EXT_3:
 			{
 				/* decode the extension */
-				ext_size = g_context->parse_ext3(context, rohc_remain_data,
+				ext_size = rfc3095_ctxt->parse_ext3(context, rohc_remain_data,
 				                                 rohc_remain_len, packet_type,
 				                                 bits);
 				break;
@@ -3634,7 +3634,7 @@ static bool parse_uor2id(const struct rohc_decomp_ctxt *const context,
                          struct rohc_extr_bits *const bits,
                          size_t *const rohc_hdr_len)
 {
-	struct d_generic_context *const g_context = context->specific;
+	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 
 	/* forced values for outer and inner RND flags */
 	uint8_t outer_rnd;
@@ -3649,8 +3649,8 @@ static bool parse_uor2id(const struct rohc_decomp_ctxt *const context,
 
 	/* for the first parsing, use the context values for the outer/inner RND
 	 * flags, force them for reparse later if required */
-	outer_rnd = g_context->outer_ip_changes->rnd;
-	inner_rnd = g_context->inner_ip_changes->rnd;
+	outer_rnd = rfc3095_ctxt->outer_ip_changes->rnd;
+	inner_rnd = rfc3095_ctxt->inner_ip_changes->rnd;
 
 	/* try parsing UOR-2-ID packet with information from context */
 	parsing = parse_uor2id_once(context, rohc_packet, rohc_length,
@@ -3672,16 +3672,16 @@ static bool parse_uor2id(const struct rohc_decomp_ctxt *const context,
 		          "for packet type");
 
 		/* determine the new RND values for outer and inner IP headers */
-		if(g_context->multiple_ip &&
+		if(rfc3095_ctxt->multiple_ip &&
 		   bits->inner_ip.rnd_nr > 0 &&
-		   bits->inner_ip.rnd != g_context->inner_ip_changes->rnd)
+		   bits->inner_ip.rnd != rfc3095_ctxt->inner_ip_changes->rnd)
 		{
 			/* inner RND flag changed */
 			assert(bits->inner_ip.rnd_nr == 1);
 			inner_rnd = bits->inner_ip.rnd;
 		}
 		if(bits->outer_ip.rnd_nr > 0 &&
-		   bits->outer_ip.rnd != g_context->outer_ip_changes->rnd)
+		   bits->outer_ip.rnd != rfc3095_ctxt->outer_ip_changes->rnd)
 		{
 			/* outer RND flag changed */
 			assert(bits->outer_ip.rnd_nr == 1);
@@ -3822,7 +3822,7 @@ static bool parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
                               size_t *const rohc_hdr_len,
                               bool *const need_reparse)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	size_t rohc_remainder_len;
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
@@ -3834,7 +3834,7 @@ static bool parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
 	ip_header_pos_t innermost_ipv4_non_rnd;
 
 	assert(context != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 	assert(rohc_packet != NULL);
 	assert(packet_type == ROHC_PACKET_UOR_2_ID);
 	assert(context->profile->id == ROHC_PROFILE_RTP);
@@ -3846,7 +3846,7 @@ static bool parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
 	*rohc_hdr_len = 0;
 
 	/* reset all extracted bits */
-	reset_extr_bits(g_context, bits);
+	reset_extr_bits(rfc3095_ctxt, bits);
 
 	/* force extracted RND values (for reparsing) */
 	if(bits->outer_ip.version == IPV4)
@@ -3854,7 +3854,7 @@ static bool parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
 		bits->outer_ip.rnd = outer_rnd & 0x1;
 		bits->outer_ip.rnd_nr = 1;
 	}
-	if(g_context->multiple_ip && bits->inner_ip.version == IPV4)
+	if(rfc3095_ctxt->multiple_ip && bits->inner_ip.version == IPV4)
 	{
 		bits->inner_ip.rnd = inner_rnd & 0x1;
 		bits->inner_ip.rnd_nr = 1;
@@ -3862,7 +3862,7 @@ static bool parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
 
 	/* determine which IP header is the innermost IPv4 header with
 	 * value(RND) = 0 */
-	if(g_context->multiple_ip && is_ipv4_non_rnd_pkt(bits->inner_ip))
+	if(rfc3095_ctxt->multiple_ip && is_ipv4_non_rnd_pkt(bits->inner_ip))
 	{
 		/* inner IP header is IPv4 with non-random IP-ID */
 		innermost_ipv4_non_rnd = ROHC_IP_HDR_SECOND;
@@ -4001,7 +4001,7 @@ static bool parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
 			case ROHC_EXT_3:
 			{
 				/* decode the extension */
-				ext_size = g_context->parse_ext3(context, rohc_remain_data,
+				ext_size = rfc3095_ctxt->parse_ext3(context, rohc_remain_data,
 				                                 rohc_remain_len, packet_type,
 				                                 bits);
 
@@ -4090,7 +4090,7 @@ static bool parse_uor2ts(const struct rohc_decomp_ctxt *const context,
                          struct rohc_extr_bits *const bits,
                          size_t *const rohc_hdr_len)
 {
-	struct d_generic_context *const g_context = context->specific;
+	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 
 	/* forced values for outer and inner RND flags */
 	uint8_t outer_rnd;
@@ -4105,8 +4105,8 @@ static bool parse_uor2ts(const struct rohc_decomp_ctxt *const context,
 
 	/* for the first parsing, use the context values for the outer/inner RND
 	 * flags, force them for reparse later if required */
-	outer_rnd = g_context->outer_ip_changes->rnd;
-	inner_rnd = g_context->inner_ip_changes->rnd;
+	outer_rnd = rfc3095_ctxt->outer_ip_changes->rnd;
+	inner_rnd = rfc3095_ctxt->inner_ip_changes->rnd;
 
 	/* try parsing UOR-2-TS packet with information from context */
 	parsing = parse_uor2ts_once(context, rohc_packet, rohc_length,
@@ -4127,16 +4127,16 @@ static bool parse_uor2ts(const struct rohc_decomp_ctxt *const context,
 		          "for packet type");
 
 		/* determine the new RND values for outer and inner IP headers */
-		if(g_context->multiple_ip &&
+		if(rfc3095_ctxt->multiple_ip &&
 		   bits->inner_ip.rnd_nr > 0 &&
-		   bits->inner_ip.rnd != g_context->inner_ip_changes->rnd)
+		   bits->inner_ip.rnd != rfc3095_ctxt->inner_ip_changes->rnd)
 		{
 			/* inner RND flag changed */
 			assert(bits->inner_ip.rnd_nr == 1);
 			inner_rnd = bits->inner_ip.rnd;
 		}
 		if(bits->outer_ip.rnd_nr > 0 &&
-		   bits->outer_ip.rnd != g_context->outer_ip_changes->rnd)
+		   bits->outer_ip.rnd != rfc3095_ctxt->outer_ip_changes->rnd)
 		{
 			/* outer RND flag changed */
 			assert(bits->outer_ip.rnd_nr == 1);
@@ -4277,7 +4277,7 @@ static bool parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
                               size_t *const rohc_hdr_len,
                               bool *const need_reparse)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	size_t rohc_remainder_len;
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
@@ -4289,7 +4289,7 @@ static bool parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
 	ip_header_pos_t innermost_ipv4_non_rnd;
 
 	assert(context != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 	assert(rohc_packet != NULL);
 	assert(packet_type == ROHC_PACKET_UOR_2_TS);
 	assert(context->profile->id == ROHC_PROFILE_RTP);
@@ -4301,7 +4301,7 @@ static bool parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
 	*rohc_hdr_len = 0;
 
 	/* reset all extracted bits */
-	reset_extr_bits(g_context, bits);
+	reset_extr_bits(rfc3095_ctxt, bits);
 
 	/* force extracted RND values (for reparsing) */
 	if(bits->outer_ip.version == IPV4)
@@ -4309,7 +4309,7 @@ static bool parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
 		bits->outer_ip.rnd = outer_rnd & 0x1;
 		bits->outer_ip.rnd_nr = 1;
 	}
-	if(g_context->multiple_ip && bits->inner_ip.version == IPV4)
+	if(rfc3095_ctxt->multiple_ip && bits->inner_ip.version == IPV4)
 	{
 		bits->inner_ip.rnd = inner_rnd & 0x1;
 		bits->inner_ip.rnd_nr = 1;
@@ -4317,7 +4317,7 @@ static bool parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
 
 	/* determine which IP header is the innermost IPv4 header with
 	 * value(RND) = 0 */
-	if(g_context->multiple_ip && is_ipv4_non_rnd_pkt(bits->inner_ip))
+	if(rfc3095_ctxt->multiple_ip && is_ipv4_non_rnd_pkt(bits->inner_ip))
 	{
 		/* inner IP header is IPv4 with non-random IP-ID */
 		innermost_ipv4_non_rnd = ROHC_IP_HDR_SECOND;
@@ -4458,7 +4458,7 @@ static bool parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
 			case ROHC_EXT_3:
 			{
 				/* decode the extension */
-				ext_size = g_context->parse_ext3(context, rohc_remain_data,
+				ext_size = rfc3095_ctxt->parse_ext3(context, rohc_remain_data,
 				                                 rohc_remain_len, packet_type,
 				                                 bits);
 				break;
@@ -4596,7 +4596,7 @@ static bool parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
                                struct rohc_extr_bits *const bits,
                                size_t *const rohc_hdr_len)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
 	   (will be computed during parsing) */
@@ -4604,7 +4604,7 @@ static bool parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
 	size_t rohc_remain_len;
 
 	assert(context != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 	assert(rohc_packet != NULL);
 	assert(bits != NULL);
 	assert(rohc_hdr_len != NULL);
@@ -4653,7 +4653,7 @@ static bool parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
 	/* parts 7 and 8: not supported */
 
 	/* part 9: extract 16 inner IP-ID bits in case the inner IP-ID is random */
-	if(g_context->multiple_ip && is_ipv4_rnd_pkt(bits->inner_ip))
+	if(rfc3095_ctxt->multiple_ip && is_ipv4_rnd_pkt(bits->inner_ip))
 	{
 		/* inner IP-ID is random, read its full 16-bit value and ignore any
 		   previous bits we may have read (they should be filled with zeroes) */
@@ -4692,11 +4692,11 @@ static bool parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
 	/* parts 10, 11 and 12: not supported */
 
 	/* part 13: decode the tail of UO* packet */
-	if(g_context->parse_uo_remainder != NULL)
+	if(rfc3095_ctxt->parse_uo_remainder != NULL)
 	{
 		int size;
 
-		size = g_context->parse_uo_remainder(context, rohc_remain_data,
+		size = rfc3095_ctxt->parse_uo_remainder(context, rohc_remain_data,
 		                                     rohc_remain_len, bits);
 		if(size < 0)
 		{
@@ -4773,7 +4773,7 @@ static bool parse_irdyn(const struct rohc_decomp_ctxt *const context,
                         struct rohc_extr_bits *const bits,
                         size_t *const rohc_hdr_len)
 {
-	struct d_generic_context *g_context = context->specific;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt = context->specific;
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
 	   (will be computed during parsing) */
@@ -4783,7 +4783,7 @@ static bool parse_irdyn(const struct rohc_decomp_ctxt *const context,
 	/* helper variables for values returned by functions */
 	int size;
 
-	assert(g_context != NULL);
+	assert(rfc3095_ctxt != NULL);
 	assert(rohc_packet != NULL);
 	assert(packet_type != NULL);
 	assert((*packet_type) == ROHC_PACKET_IR_DYN);
@@ -4795,7 +4795,7 @@ static bool parse_irdyn(const struct rohc_decomp_ctxt *const context,
 	*rohc_hdr_len = 0;
 
 	/* reset all extracted bits */
-	reset_extr_bits(g_context, bits);
+	reset_extr_bits(rfc3095_ctxt, bits);
 	bits->crc_type = ROHC_CRC_TYPE_NONE;
 
 	/* packet must large enough for:
@@ -4823,7 +4823,7 @@ static bool parse_irdyn(const struct rohc_decomp_ctxt *const context,
 
 	/* decode the dynamic part of the outer IP header */
 	size = parse_dynamic_part_ip(context, rohc_remain_data, rohc_remain_len,
-	                             &bits->outer_ip, &g_context->list_decomp1);
+	                             &bits->outer_ip, &rfc3095_ctxt->list_decomp1);
 	if(size == -1)
 	{
 		rohc_decomp_warn(context, "cannot decode the outer IP dynamic part");
@@ -4834,10 +4834,10 @@ static bool parse_irdyn(const struct rohc_decomp_ctxt *const context,
 	*rohc_hdr_len += size;
 
 	/* decode the dynamic part of the inner IP header */
-	if(g_context->multiple_ip)
+	if(rfc3095_ctxt->multiple_ip)
 	{
 		size = parse_dynamic_part_ip(context, rohc_remain_data, rohc_remain_len,
-		                             &bits->inner_ip, &g_context->list_decomp2);
+		                             &bits->inner_ip, &rfc3095_ctxt->list_decomp2);
 		if(size == -1)
 		{
 			rohc_decomp_warn(context, "cannot decode the inner IP dynamic part");
@@ -4849,9 +4849,9 @@ static bool parse_irdyn(const struct rohc_decomp_ctxt *const context,
 	}
 
 	/* parse the dynamic part of the next header if necessary */
-	if(g_context->parse_dyn_next_hdr != NULL)
+	if(rfc3095_ctxt->parse_dyn_next_hdr != NULL)
 	{
-		size = g_context->parse_dyn_next_hdr(context, rohc_remain_data,
+		size = rfc3095_ctxt->parse_dyn_next_hdr(context, rohc_remain_data,
 		                                     rohc_remain_len, bits);
 		if(size == -1)
 		{
@@ -5283,7 +5283,7 @@ static rohc_status_t build_uncomp_hdrs(const struct rohc_decomp *const decomp,
                                        const size_t uncomp_hdrs_max_len,
                                        size_t *const uncomp_hdrs_len)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	unsigned char *outer_ip_hdr;
 	unsigned char *inner_ip_hdr;
 	unsigned char *next_header;
@@ -5292,14 +5292,14 @@ static rohc_status_t build_uncomp_hdrs(const struct rohc_decomp *const decomp,
 	assert(decomp != NULL);
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 	assert(uncomp_hdrs != NULL);
 	assert(uncomp_hdrs_len != NULL);
 
 	*uncomp_hdrs_len = 0;
 
 	/* build the IP headers */
-	if(g_context->multiple_ip)
+	if(rfc3095_ctxt->multiple_ip)
 	{
 		size_t inner_ip_hdr_len;
 		size_t inner_ip_ext_hdrs_len;
@@ -5320,14 +5320,14 @@ static rohc_status_t build_uncomp_hdrs(const struct rohc_decomp *const decomp,
 
 		/* determine the length of extension headers of the inner IP header */
 		inner_ip_ext_hdrs_len = 0;
-		if(g_context->list_decomp2.pkt_list.id != ROHC_LIST_GEN_ID_NONE)
+		if(rfc3095_ctxt->list_decomp2.pkt_list.id != ROHC_LIST_GEN_ID_NONE)
 		{
 			size_t i;
 
-			for(i = 0; i < g_context->list_decomp2.pkt_list.items_nr; i++)
+			for(i = 0; i < rfc3095_ctxt->list_decomp2.pkt_list.items_nr; i++)
 			{
 				inner_ip_ext_hdrs_len +=
-					g_context->list_decomp2.pkt_list.items[i]->length;
+					rfc3095_ctxt->list_decomp2.pkt_list.items[i]->length;
 			}
 		}
 		rohc_decomp_debug(context, "length of extension headers for inner IP "
@@ -5335,14 +5335,14 @@ static rohc_status_t build_uncomp_hdrs(const struct rohc_decomp *const decomp,
 		ip_payload_len += inner_ip_ext_hdrs_len;
 
 		rohc_decomp_debug(context, "length of transport header = %u bytes",
-		                  g_context->outer_ip_changes->next_header_len);
-		ip_payload_len += g_context->outer_ip_changes->next_header_len;
+		                  rfc3095_ctxt->outer_ip_changes->next_header_len);
+		ip_payload_len += rfc3095_ctxt->outer_ip_changes->next_header_len;
 		ip_payload_len += payload_len;
 
 		/* build the outer IP header */
 		if(!build_uncomp_ip(context, decoded.outer_ip, uncomp_hdrs,
 		                    uncomp_hdrs_max_len, &outer_ip_hdr_len,
-		                    ip_payload_len, &g_context->list_decomp1))
+		                    ip_payload_len, &rfc3095_ctxt->list_decomp1))
 		{
 			rohc_decomp_warn(context, "failed to build the outer IP header");
 			goto error_output_too_small;
@@ -5355,7 +5355,7 @@ static rohc_status_t build_uncomp_hdrs(const struct rohc_decomp *const decomp,
 		ip_payload_len -= inner_ip_hdr_len + inner_ip_ext_hdrs_len;
 		if(!build_uncomp_ip(context, decoded.inner_ip, uncomp_hdrs,
 		                    uncomp_hdrs_max_len, &inner_ip_hdr_len,
-		                    ip_payload_len, &g_context->list_decomp2))
+		                    ip_payload_len, &rfc3095_ctxt->list_decomp2))
 		{
 			rohc_decomp_warn(context, "failed to build the inner IP header");
 			goto error_output_too_small;
@@ -5369,14 +5369,14 @@ static rohc_status_t build_uncomp_hdrs(const struct rohc_decomp *const decomp,
 		size_t ip_hdr_len;
 
 		rohc_decomp_debug(context, "length of transport header = %u bytes",
-		                  g_context->outer_ip_changes->next_header_len);
-		ip_payload_len += g_context->outer_ip_changes->next_header_len;
+		                  rfc3095_ctxt->outer_ip_changes->next_header_len);
+		ip_payload_len += rfc3095_ctxt->outer_ip_changes->next_header_len;
 		ip_payload_len += payload_len;
 
 		/* build the single IP header */
 		if(!build_uncomp_ip(context, decoded.outer_ip, uncomp_hdrs,
 		                    uncomp_hdrs_max_len, &ip_hdr_len, ip_payload_len,
-		                    &g_context->list_decomp1))
+		                    &rfc3095_ctxt->list_decomp1))
 		{
 			rohc_decomp_warn(context, "failed to build the IP header");
 			goto error_output_too_small;
@@ -5389,10 +5389,10 @@ static rohc_status_t build_uncomp_hdrs(const struct rohc_decomp *const decomp,
 
 	/* build the next header if present */
 	next_header = uncomp_hdrs;
-	if(g_context->build_next_header != NULL)
+	if(rfc3095_ctxt->build_next_header != NULL)
 	{
 		/* TODO: check uncomp_hdrs max size */
-		size_t size = g_context->build_next_header(context, decoded,
+		size_t size = rfc3095_ctxt->build_next_header(context, decoded,
 		                                           uncomp_hdrs, payload_len);
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		uncomp_hdrs += size;
@@ -5707,14 +5707,14 @@ static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
                              const rohc_crc_type_t crc_type,
                              const uint8_t crc_packet)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	const unsigned char *crc_table;
 	unsigned int crc_computed;
 
 	assert(decomp != NULL);
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 	assert(outer_ip_hdr != NULL);
 	assert(next_header != NULL);
 	assert(crc_type != ROHC_CRC_TYPE_NONE);
@@ -5741,10 +5741,10 @@ static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
 	}
 
 	/* compute the CRC from built uncompressed headers */
-	crc_computed = g_context->compute_crc_static(outer_ip_hdr, inner_ip_hdr,
+	crc_computed = rfc3095_ctxt->compute_crc_static(outer_ip_hdr, inner_ip_hdr,
 	                                             next_header, crc_type,
 	                                             crc_computed, crc_table);
-	crc_computed = g_context->compute_crc_dynamic(outer_ip_hdr, inner_ip_hdr,
+	crc_computed = rfc3095_ctxt->compute_crc_dynamic(outer_ip_hdr, inner_ip_hdr,
 	                                              next_header, crc_type,
 	                                              crc_computed, crc_table);
 	rohc_decomp_debug(context, "CRC-%d on uncompressed header = 0x%x",
@@ -5778,10 +5778,10 @@ static bool attempt_repair(const struct rohc_decomp *const decomp,
                            const struct rohc_decomp_ctxt *const context,
                            struct rohc_extr_bits *const bits)
 {
-	struct d_generic_context *const g_context = context->specific;
-	const uint32_t sn_ref_0 = rohc_lsb_get_ref(g_context->sn_lsb_ctxt,
+	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
+	const uint32_t sn_ref_0 = rohc_lsb_get_ref(rfc3095_ctxt->sn_lsb_ctxt,
 	                                           ROHC_LSB_REF_0);
-	const uint32_t sn_ref_minus_1 = rohc_lsb_get_ref(g_context->sn_lsb_ctxt,
+	const uint32_t sn_ref_minus_1 = rohc_lsb_get_ref(rfc3095_ctxt->sn_lsb_ctxt,
 	                                                 ROHC_LSB_REF_MINUS_1);
 	bool verdict = false;
 
@@ -5794,13 +5794,13 @@ static bool attempt_repair(const struct rohc_decomp *const decomp,
 	}
 
 	/* do not try to repair packet/context if repair is already in action */
-	if(g_context->crc_corr != ROHC_DECOMP_CRC_CORR_SN_NONE)
+	if(rfc3095_ctxt->crc_corr != ROHC_DECOMP_CRC_CORR_SN_NONE)
 	{
 		goto skip;
 	}
 
 	/* no correction attempt shall be already running */
-	assert(g_context->correction_counter == 0);
+	assert(rfc3095_ctxt->correction_counter == 0);
 
 	/* try to guess the correct SN value in case of failure */
 	rohc_decomp_warn(context, "CID %zu: CRC repair: attempt to correct SN",
@@ -5815,16 +5815,16 @@ static bool attempt_repair(const struct rohc_decomp *const decomp,
 	 *   If wraparound has occurred, INTERVAL will correspond to at least
 	 *   2^k inter-packet times, where k is the number of SN bits in the
 	 *   current header. */
-	if(is_sn_wraparound(g_context->cur_arrival_time, g_context->arrival_times,
-	                    g_context->arrival_times_nr,
-	                    g_context->arrival_times_index, bits->sn_nr,
-	                    lsb_get_p(g_context->sn_lsb_ctxt)))
+	if(is_sn_wraparound(rfc3095_ctxt->cur_arrival_time, rfc3095_ctxt->arrival_times,
+	                    rfc3095_ctxt->arrival_times_nr,
+	                    rfc3095_ctxt->arrival_times_index, bits->sn_nr,
+	                    lsb_get_p(rfc3095_ctxt->sn_lsb_ctxt)))
 	{
 		rohc_decomp_warn(context, "CID %zu: CRC repair: CRC failure seems to "
 		                 "be caused by a sequence number LSB wraparound",
 		                 context->cid);
 
-		g_context->crc_corr = ROHC_DECOMP_CRC_CORR_SN_WRAP;
+		rfc3095_ctxt->crc_corr = ROHC_DECOMP_CRC_CORR_SN_WRAP;
 
 		/* step d of RFC3095, §5.3.2.2.4. Correction of SN LSB wraparound:
 		 *   add 2^k to the reference SN and attempts to decompress the
@@ -5839,7 +5839,7 @@ static bool attempt_repair(const struct rohc_decomp *const decomp,
 		rohc_decomp_warn(context, "CID %zu: CRC repair: CRC failure seems to "
 		                 "be caused by an incorrect SN update", context->cid);
 
-		g_context->crc_corr = ROHC_DECOMP_CRC_CORR_SN_UPDATES;
+		rfc3095_ctxt->crc_corr = ROHC_DECOMP_CRC_CORR_SN_UPDATES;
 
 		/* step d of RFC3095, §5.3.2.2.5. Repair of incorrect SN updates:
 		 *   If the header generated in b. does not pass the CRC test, and the
@@ -5862,7 +5862,7 @@ static bool attempt_repair(const struct rohc_decomp *const decomp,
 
 	/* packet/context correction is going to be attempted, 3 packets with
 	 * correct CRC are required to accept the correction */
-	g_context->correction_counter = 3;
+	rfc3095_ctxt->correction_counter = 3;
 	verdict = true;
 
 skip:
@@ -5966,13 +5966,13 @@ static bool decode_values_from_bits(struct rohc_decomp_ctxt *const context,
                                     const struct rohc_extr_bits bits,
                                     struct rohc_decoded_values *const decoded)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	bool decode_ok;
 
 	assert(context != NULL);
 	assert(context->profile != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 	assert(decoded != NULL);
 
 	/* decode SN */
@@ -5985,9 +5985,9 @@ static bool decode_values_from_bits(struct rohc_decomp_ctxt *const context,
 	else
 	{
 		/* decode SN from packet bits and context */
-		decode_ok = rohc_lsb_decode(g_context->sn_lsb_ctxt, bits.sn_ref_type,
+		decode_ok = rohc_lsb_decode(rfc3095_ctxt->sn_lsb_ctxt, bits.sn_ref_type,
 		                            bits.sn_ref_offset, bits.sn, bits.sn_nr,
-		                            lsb_get_p(g_context->sn_lsb_ctxt),
+		                            lsb_get_p(rfc3095_ctxt->sn_lsb_ctxt),
 		                            &decoded->sn);
 		if(!decode_ok)
 		{
@@ -6084,8 +6084,8 @@ static bool decode_values_from_bits(struct rohc_decomp_ctxt *const context,
 	}
 
 	/* decode fields related to the outer IP header */
-	decode_ok = decode_ip_values_from_bits(context, g_context->outer_ip_changes,
-	                                       g_context->outer_ip_id_offset_ctxt,
+	decode_ok = decode_ip_values_from_bits(context, rfc3095_ctxt->outer_ip_changes,
+	                                       rfc3095_ctxt->outer_ip_id_offset_ctxt,
 	                                       decoded->sn, bits.outer_ip,
 	                                       "outer", &decoded->outer_ip);
 	if(!decode_ok)
@@ -6096,11 +6096,11 @@ static bool decode_values_from_bits(struct rohc_decomp_ctxt *const context,
 	}
 
 	/* decode fields related to the inner IP header (if it exists) */
-	if(g_context->multiple_ip)
+	if(rfc3095_ctxt->multiple_ip)
 	{
 		decode_ok = decode_ip_values_from_bits(context,
-		                                       g_context->inner_ip_changes,
-		                                       g_context->inner_ip_id_offset_ctxt,
+		                                       rfc3095_ctxt->inner_ip_changes,
+		                                       rfc3095_ctxt->inner_ip_id_offset_ctxt,
 		                                       decoded->sn, bits.inner_ip,
 		                                       "inner", &decoded->inner_ip);
 		if(!decode_ok)
@@ -6112,9 +6112,9 @@ static bool decode_values_from_bits(struct rohc_decomp_ctxt *const context,
 	}
 
 	/* decode fields of next header if required */
-	if(g_context->decode_values_from_bits != NULL)
+	if(rfc3095_ctxt->decode_values_from_bits != NULL)
 	{
-		decode_ok = g_context->decode_values_from_bits(context, bits, decoded);
+		decode_ok = rfc3095_ctxt->decode_values_from_bits(context, bits, decoded);
 		if(!decode_ok)
 		{
 			rohc_decomp_warn(context, "failed to decode fields of the next header");
@@ -6144,7 +6144,7 @@ error:
  * @return              true if decoding is successful, false otherwise
  */
 static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const context,
-                                       const struct d_generic_changes *const ctxt,
+                                       const struct rohc_decomp_rfc3095_changes *const ctxt,
                                        const struct ip_id_offset_decode *const ip_id_decode,
                                        const uint32_t decoded_sn,
                                        const struct rohc_extr_ip_bits bits,
@@ -6415,88 +6415,88 @@ error:
 static void update_context(const struct rohc_decomp_ctxt *const context,
                            const struct rohc_decoded_values decoded)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 
 	/* update SN */
-	if(g_context->crc_corr == ROHC_DECOMP_CRC_CORR_SN_UPDATES &&
-	   g_context->correction_counter == 3)
+	if(rfc3095_ctxt->crc_corr == ROHC_DECOMP_CRC_CORR_SN_UPDATES &&
+	   rfc3095_ctxt->correction_counter == 3)
 	{
 		/* step f of RFC3095, 5.3.2.2.5. Repair of incorrect SN updates:
 		 *   If the decompressed header generated in d. passes the CRC test,
 		 *   ref -1 is not changed while ref 0 is set to SN curr2. */
-		rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn, true);
+		rohc_lsb_set_ref(rfc3095_ctxt->sn_lsb_ctxt, decoded.sn, true);
 	}
 	else
 	{
 		/* nominal case and other repair algorithms replace both ref 0 and
 		 * ref -1 */
-		rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn, false);
+		rohc_lsb_set_ref(rfc3095_ctxt->sn_lsb_ctxt, decoded.sn, false);
 	}
 
 	/* update fields related to the outer IP header */
-	ip_set_version(&g_context->outer_ip_changes->ip, decoded.outer_ip.version);
-	ip_set_protocol(&g_context->outer_ip_changes->ip, decoded.outer_ip.proto);
-	ip_set_tos(&g_context->outer_ip_changes->ip, decoded.outer_ip.tos);
-	ip_set_ttl(&g_context->outer_ip_changes->ip, decoded.outer_ip.ttl);
-	ip_set_saddr(&g_context->outer_ip_changes->ip, decoded.outer_ip.saddr);
-	ip_set_daddr(&g_context->outer_ip_changes->ip, decoded.outer_ip.daddr);
+	ip_set_version(&rfc3095_ctxt->outer_ip_changes->ip, decoded.outer_ip.version);
+	ip_set_protocol(&rfc3095_ctxt->outer_ip_changes->ip, decoded.outer_ip.proto);
+	ip_set_tos(&rfc3095_ctxt->outer_ip_changes->ip, decoded.outer_ip.tos);
+	ip_set_ttl(&rfc3095_ctxt->outer_ip_changes->ip, decoded.outer_ip.ttl);
+	ip_set_saddr(&rfc3095_ctxt->outer_ip_changes->ip, decoded.outer_ip.saddr);
+	ip_set_daddr(&rfc3095_ctxt->outer_ip_changes->ip, decoded.outer_ip.daddr);
 	if(decoded.outer_ip.version == IPV4)
 	{
-		ipv4_set_id(&g_context->outer_ip_changes->ip, decoded.outer_ip.id);
-		ip_id_offset_set_ref(g_context->outer_ip_id_offset_ctxt,
+		ipv4_set_id(&rfc3095_ctxt->outer_ip_changes->ip, decoded.outer_ip.id);
+		ip_id_offset_set_ref(rfc3095_ctxt->outer_ip_id_offset_ctxt,
 		                     decoded.outer_ip.id, decoded.sn);
-		ipv4_set_df(&g_context->outer_ip_changes->ip, decoded.outer_ip.df);
-		g_context->outer_ip_changes->nbo = decoded.outer_ip.nbo;
-		g_context->outer_ip_changes->rnd = decoded.outer_ip.rnd;
-		g_context->outer_ip_changes->sid = decoded.outer_ip.sid;
+		ipv4_set_df(&rfc3095_ctxt->outer_ip_changes->ip, decoded.outer_ip.df);
+		rfc3095_ctxt->outer_ip_changes->nbo = decoded.outer_ip.nbo;
+		rfc3095_ctxt->outer_ip_changes->rnd = decoded.outer_ip.rnd;
+		rfc3095_ctxt->outer_ip_changes->sid = decoded.outer_ip.sid;
 	}
 	else /* IPV6 */
 	{
-		ipv6_set_flow_label(&g_context->outer_ip_changes->ip, decoded.outer_ip.flowid);
+		ipv6_set_flow_label(&rfc3095_ctxt->outer_ip_changes->ip, decoded.outer_ip.flowid);
 	}
 
 	/* update fields related to the inner IP header (if any) */
-	if(g_context->multiple_ip)
+	if(rfc3095_ctxt->multiple_ip)
 	{
-		ip_set_version(&g_context->inner_ip_changes->ip, decoded.inner_ip.version);
-		ip_set_protocol(&g_context->inner_ip_changes->ip, decoded.inner_ip.proto);
-		ip_set_tos(&g_context->inner_ip_changes->ip, decoded.inner_ip.tos);
-		ip_set_ttl(&g_context->inner_ip_changes->ip, decoded.inner_ip.ttl);
-		ip_set_saddr(&g_context->inner_ip_changes->ip, decoded.inner_ip.saddr);
-		ip_set_daddr(&g_context->inner_ip_changes->ip, decoded.inner_ip.daddr);
+		ip_set_version(&rfc3095_ctxt->inner_ip_changes->ip, decoded.inner_ip.version);
+		ip_set_protocol(&rfc3095_ctxt->inner_ip_changes->ip, decoded.inner_ip.proto);
+		ip_set_tos(&rfc3095_ctxt->inner_ip_changes->ip, decoded.inner_ip.tos);
+		ip_set_ttl(&rfc3095_ctxt->inner_ip_changes->ip, decoded.inner_ip.ttl);
+		ip_set_saddr(&rfc3095_ctxt->inner_ip_changes->ip, decoded.inner_ip.saddr);
+		ip_set_daddr(&rfc3095_ctxt->inner_ip_changes->ip, decoded.inner_ip.daddr);
 		if(decoded.inner_ip.version == IPV4)
 		{
-			ipv4_set_id(&g_context->inner_ip_changes->ip, decoded.inner_ip.id);
-			ip_id_offset_set_ref(g_context->inner_ip_id_offset_ctxt,
+			ipv4_set_id(&rfc3095_ctxt->inner_ip_changes->ip, decoded.inner_ip.id);
+			ip_id_offset_set_ref(rfc3095_ctxt->inner_ip_id_offset_ctxt,
 			                     decoded.inner_ip.id, decoded.sn);
-			ipv4_set_df(&g_context->inner_ip_changes->ip, decoded.inner_ip.df);
-			g_context->inner_ip_changes->nbo = decoded.inner_ip.nbo;
-			g_context->inner_ip_changes->rnd = decoded.inner_ip.rnd;
-			g_context->inner_ip_changes->sid = decoded.inner_ip.sid;
+			ipv4_set_df(&rfc3095_ctxt->inner_ip_changes->ip, decoded.inner_ip.df);
+			rfc3095_ctxt->inner_ip_changes->nbo = decoded.inner_ip.nbo;
+			rfc3095_ctxt->inner_ip_changes->rnd = decoded.inner_ip.rnd;
+			rfc3095_ctxt->inner_ip_changes->sid = decoded.inner_ip.sid;
 		}
 		else /* IPV6 */
 		{
-			ipv6_set_flow_label(&g_context->inner_ip_changes->ip, decoded.inner_ip.flowid);
+			ipv6_set_flow_label(&rfc3095_ctxt->inner_ip_changes->ip, decoded.inner_ip.flowid);
 		}
-		g_context->inner_ip_changes->ip.nl.proto = decoded.inner_ip.proto;
+		rfc3095_ctxt->inner_ip_changes->ip.nl.proto = decoded.inner_ip.proto;
 	}
 
 	/* update arrival time */
-	g_context->arrival_times[g_context->arrival_times_index] =
-		g_context->cur_arrival_time;
-	g_context->arrival_times_index =
-		(g_context->arrival_times_index + 1) % ROHC_MAX_ARRIVAL_TIMES;
-	g_context->arrival_times_nr =
-		rohc_min(g_context->arrival_times_nr + 1, ROHC_MAX_ARRIVAL_TIMES);
+	rfc3095_ctxt->arrival_times[rfc3095_ctxt->arrival_times_index] =
+		rfc3095_ctxt->cur_arrival_time;
+	rfc3095_ctxt->arrival_times_index =
+		(rfc3095_ctxt->arrival_times_index + 1) % ROHC_MAX_ARRIVAL_TIMES;
+	rfc3095_ctxt->arrival_times_nr =
+		rohc_min(rfc3095_ctxt->arrival_times_nr + 1, ROHC_MAX_ARRIVAL_TIMES);
 
 	/* update context with decoded fields for next header if required */
-	if(g_context->update_context != NULL)
+	if(rfc3095_ctxt->update_context != NULL)
 	{
-		g_context->update_context(context, decoded);
+		rfc3095_ctxt->update_context(context, decoded);
 	}
 }
 
@@ -6521,13 +6521,13 @@ static void stats_add_decomp_success(struct rohc_decomp_ctxt *const context,
 /**
  * @brief Reset the extracted bits for next parsing
  *
- * @param g_context  The generic decompression context
+ * @param rfc3095_ctxt  The generic decompression context
  * @param bits       OUT: The extracted bits to reset
  */
-static void reset_extr_bits(const struct d_generic_context *const g_context,
+static void reset_extr_bits(const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt,
                             struct rohc_extr_bits *const bits)
 {
-	assert(g_context != NULL);
+	assert(rfc3095_ctxt != NULL);
 	assert(bits != NULL);
 
 	/* set every bits and sizes to 0 */
@@ -6544,17 +6544,17 @@ static void reset_extr_bits(const struct d_generic_context *const g_context,
 	bits->is_context_reused = false;
 
 	/* set IP version and NBO/RND flags for outer IP header */
-	bits->outer_ip.version = ip_get_version(&g_context->outer_ip_changes->ip);
-	bits->outer_ip.nbo = g_context->outer_ip_changes->nbo;
-	bits->outer_ip.rnd = g_context->outer_ip_changes->rnd;
+	bits->outer_ip.version = ip_get_version(&rfc3095_ctxt->outer_ip_changes->ip);
+	bits->outer_ip.nbo = rfc3095_ctxt->outer_ip_changes->nbo;
+	bits->outer_ip.rnd = rfc3095_ctxt->outer_ip_changes->rnd;
 	bits->outer_ip.is_id_enc = true;
 
 	/* set IP version and NBO/RND flags for inner IP header (if any) */
-	if(g_context->multiple_ip)
+	if(rfc3095_ctxt->multiple_ip)
 	{
-		bits->inner_ip.version = ip_get_version(&g_context->inner_ip_changes->ip);
-		bits->inner_ip.nbo = g_context->inner_ip_changes->nbo;
-		bits->inner_ip.rnd = g_context->inner_ip_changes->rnd;
+		bits->inner_ip.version = ip_get_version(&rfc3095_ctxt->inner_ip_changes->ip);
+		bits->inner_ip.nbo = rfc3095_ctxt->inner_ip_changes->nbo;
+		bits->inner_ip.rnd = rfc3095_ctxt->inner_ip_changes->rnd;
 		bits->inner_ip.is_id_enc = true;
 	}
 

@@ -27,7 +27,7 @@
 
 #include "d_ip.h"
 #include "d_udp.h"
-#include "d_generic.h"
+#include "rohc_decomp_rfc3095.h"
 #include "rohc_bit_ops.h"
 #include "rohc_traces_internal.h"
 #include "rohc_debug.h"
@@ -49,9 +49,9 @@
  * @brief Define the UDP-Lite part of the decompression profile context.
  *
  * This object must be used with the generic part of the decompression
- * context d_generic_context.
+ * context rohc_decomp_rfc3095_ctxt.
  *
- * @see d_generic_context
+ * @see rohc_decomp_rfc3095_ctxt
  */
 struct d_udp_lite_context
 {
@@ -136,7 +136,7 @@ static int udp_lite_build_uncomp_udp(const struct rohc_decomp_ctxt *const contex
  */
 void * d_udp_lite_create(const struct rohc_decomp_ctxt *const context)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	struct d_udp_lite_context *udp_lite_context;
 
 	assert(context != NULL);
@@ -144,11 +144,12 @@ void * d_udp_lite_create(const struct rohc_decomp_ctxt *const context)
 	assert(context->profile != NULL);
 
 	/* create the generic context */
-	g_context = d_generic_create(context,
-	                             context->decompressor->trace_callback,
-	                             context->decompressor->trace_callback_priv,
-	                             context->profile->id);
-	if(g_context == NULL)
+	rfc3095_ctxt =
+		rohc_decomp_rfc3095_create(context,
+		                           context->decompressor->trace_callback,
+		                           context->decompressor->trace_callback_priv,
+		                           context->profile->id);
+	if(rfc3095_ctxt == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "failed to create the generic decompression context");
@@ -164,11 +165,11 @@ void * d_udp_lite_create(const struct rohc_decomp_ctxt *const context)
 		goto destroy_context;
 	}
 	memset(udp_lite_context, 0, sizeof(struct d_udp_lite_context));
-	g_context->specific = udp_lite_context;
+	rfc3095_ctxt->specific = udp_lite_context;
 
 	/* create the LSB decoding context for SN */
-	g_context->sn_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_SN, 16);
-	if(g_context->sn_lsb_ctxt == NULL)
+	rfc3095_ctxt->sn_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_SN, 16);
+	if(rfc3095_ctxt->sn_lsb_ctxt == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "failed to create the LSB decoding context for SN");
@@ -181,53 +182,53 @@ void * d_udp_lite_create(const struct rohc_decomp_ctxt *const context)
 	udp_lite_context->cfi = -1;
 
 	/* some UDP-Lite-specific values and functions */
-	g_context->next_header_len = sizeof(struct udphdr);
-	g_context->parse_static_next_hdr = udp_parse_static_udp;
-	g_context->parse_dyn_next_hdr = udp_lite_parse_dynamic_udp;
-	g_context->parse_ext3 = ip_parse_ext3;
-	g_context->parse_uo_remainder = udp_lite_parse_uo_remainder;
-	g_context->decode_values_from_bits = udp_lite_decode_values_from_bits;
-	g_context->build_next_header = udp_lite_build_uncomp_udp;
-	g_context->compute_crc_static = udp_compute_crc_static;
-	g_context->compute_crc_dynamic = udp_compute_crc_dynamic;
-	g_context->update_context = udp_update_context;
+	rfc3095_ctxt->next_header_len = sizeof(struct udphdr);
+	rfc3095_ctxt->parse_static_next_hdr = udp_parse_static_udp;
+	rfc3095_ctxt->parse_dyn_next_hdr = udp_lite_parse_dynamic_udp;
+	rfc3095_ctxt->parse_ext3 = ip_parse_ext3;
+	rfc3095_ctxt->parse_uo_remainder = udp_lite_parse_uo_remainder;
+	rfc3095_ctxt->decode_values_from_bits = udp_lite_decode_values_from_bits;
+	rfc3095_ctxt->build_next_header = udp_lite_build_uncomp_udp;
+	rfc3095_ctxt->compute_crc_static = udp_compute_crc_static;
+	rfc3095_ctxt->compute_crc_dynamic = udp_compute_crc_dynamic;
+	rfc3095_ctxt->update_context = udp_update_context;
 
 	/* create the UDP-Lite-specific part of the header changes */
-	g_context->outer_ip_changes->next_header_len = sizeof(struct udphdr);
-	g_context->outer_ip_changes->next_header = malloc(sizeof(struct udphdr));
-	if(g_context->outer_ip_changes->next_header == NULL)
+	rfc3095_ctxt->outer_ip_changes->next_header_len = sizeof(struct udphdr);
+	rfc3095_ctxt->outer_ip_changes->next_header = malloc(sizeof(struct udphdr));
+	if(rfc3095_ctxt->outer_ip_changes->next_header == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "cannot allocate memory for the UDP-Lite-specific part "
 		           "of the outer IP header changes");
 		goto free_lsb_sn;
 	}
-	memset(g_context->outer_ip_changes->next_header, 0, sizeof(struct udphdr));
+	memset(rfc3095_ctxt->outer_ip_changes->next_header, 0, sizeof(struct udphdr));
 
-	g_context->inner_ip_changes->next_header_len = sizeof(struct udphdr);
-	g_context->inner_ip_changes->next_header = malloc(sizeof(struct udphdr));
-	if(g_context->inner_ip_changes->next_header == NULL)
+	rfc3095_ctxt->inner_ip_changes->next_header_len = sizeof(struct udphdr);
+	rfc3095_ctxt->inner_ip_changes->next_header = malloc(sizeof(struct udphdr));
+	if(rfc3095_ctxt->inner_ip_changes->next_header == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "cannot allocate memory for the UDP-Lite-specific part "
 		           "of the inner IP header changes");
 		goto free_outer_ip_changes_next_header;
 	}
-	memset(g_context->inner_ip_changes->next_header, 0, sizeof(struct udphdr));
+	memset(rfc3095_ctxt->inner_ip_changes->next_header, 0, sizeof(struct udphdr));
 
 	/* set next header to UDP-Lite */
-	g_context->next_header_proto = ROHC_IPPROTO_UDPLITE;
+	rfc3095_ctxt->next_header_proto = ROHC_IPPROTO_UDPLITE;
 
-	return g_context;
+	return rfc3095_ctxt;
 
 free_outer_ip_changes_next_header:
-	zfree(g_context->outer_ip_changes->next_header);
+	zfree(rfc3095_ctxt->outer_ip_changes->next_header);
 free_lsb_sn:
-	rohc_lsb_free(g_context->sn_lsb_ctxt);
+	rohc_lsb_free(rfc3095_ctxt->sn_lsb_ctxt);
 free_udp_context:
 	zfree(udp_lite_context);
 destroy_context:
-	d_generic_destroy(g_context);
+	rohc_decomp_rfc3095_destroy(rfc3095_ctxt);
 quit:
 	return NULL;
 }
@@ -243,24 +244,24 @@ quit:
  */
 static void d_udp_lite_destroy(void *const context)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 
 	assert(context != NULL);
-	g_context = (struct d_generic_context *) context;
+	rfc3095_ctxt = (struct rohc_decomp_rfc3095_ctxt *) context;
 
 	/* clean UDP-specific memory */
-	assert(g_context->outer_ip_changes != NULL);
-	assert(g_context->outer_ip_changes->next_header != NULL);
-	zfree(g_context->outer_ip_changes->next_header);
-	assert(g_context->inner_ip_changes != NULL);
-	assert(g_context->inner_ip_changes->next_header != NULL);
-	zfree(g_context->inner_ip_changes->next_header);
+	assert(rfc3095_ctxt->outer_ip_changes != NULL);
+	assert(rfc3095_ctxt->outer_ip_changes->next_header != NULL);
+	zfree(rfc3095_ctxt->outer_ip_changes->next_header);
+	assert(rfc3095_ctxt->inner_ip_changes != NULL);
+	assert(rfc3095_ctxt->inner_ip_changes->next_header != NULL);
+	zfree(rfc3095_ctxt->inner_ip_changes->next_header);
 
 	/* destroy the LSB decoding context for SN */
-	rohc_lsb_free(g_context->sn_lsb_ctxt);
+	rohc_lsb_free(rfc3095_ctxt->sn_lsb_ctxt);
 
 	/* destroy the resources of the generic context */
-	d_generic_destroy(context);
+	rohc_decomp_rfc3095_destroy(context);
 }
 
 
@@ -280,8 +281,8 @@ static rohc_packet_t udp_lite_detect_packet_type(const struct rohc_decomp_ctxt *
                                                  const size_t rohc_length,
                                                  const size_t large_cid_len)
 {
-	struct d_generic_context *g_context = context->specific;
-	struct d_udp_lite_context *udp_lite_context = g_context->specific;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt = context->specific;
+	struct d_udp_lite_context *udp_lite_context = rfc3095_ctxt->specific;
 	size_t new_large_cid_len;
 
 	/* remaining ROHC data not parsed yet */
@@ -368,8 +369,8 @@ static rohc_status_t d_udp_lite_decode(struct rohc_decomp *const decomp,
                                        struct rohc_buf *const uncomp_packet,
                                        rohc_packet_t *const packet_type)
 {
-	struct d_generic_context *g_context = context->specific;
-	struct d_udp_lite_context *udp_lite_context = g_context->specific;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt = context->specific;
+	struct d_udp_lite_context *udp_lite_context = rfc3095_ctxt->specific;
 	size_t new_large_cid_len;
 
 	/* remaining ROHC data not parsed yet */
@@ -397,7 +398,7 @@ static rohc_status_t d_udp_lite_decode(struct rohc_decomp *const decomp,
 
 	/* decode the remaining part of the part as a normal IP-based packet
 	 * (with a fake length for the large CID field eventually) */
-	return d_generic_decode(decomp, context, rohc_remain_data, add_cid_len,
+	return rohc_decomp_rfc3095_decode(decomp, context, rohc_remain_data, add_cid_len,
 	                        new_large_cid_len, uncomp_packet, packet_type);
 
 error_malformed:
@@ -420,7 +421,7 @@ static int udp_lite_parse_dynamic_udp(const struct rohc_decomp_ctxt *const conte
                                       const size_t length,
                                       struct rohc_extr_bits *const bits)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	struct d_udp_lite_context *udp_lite_context;
 	const size_t udplite_dyn_length = 4; /* checksum coverage + checksum */
 	size_t udp_lite_length;
@@ -429,9 +430,9 @@ static int udp_lite_parse_dynamic_udp(const struct rohc_decomp_ctxt *const conte
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
-	assert(g_context->specific != NULL);
-	udp_lite_context = g_context->specific;
+	rfc3095_ctxt = context->specific;
+	assert(rfc3095_ctxt->specific != NULL);
+	udp_lite_context = rfc3095_ctxt->specific;
 	assert(packet != NULL);
 	assert(bits != NULL);
 
@@ -510,16 +511,16 @@ static int udp_lite_parse_uo_remainder(const struct rohc_decomp_ctxt *const cont
                                        unsigned int length,
                                        struct rohc_extr_bits *const bits)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	struct d_udp_lite_context *udp_lite_context;
 	size_t remainder_length; /* optional checksum coverage + checksum */
 	int read = 0; /* number of bytes read from the packet */
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
-	assert(g_context->specific != NULL);
-	udp_lite_context = g_context->specific;
+	rfc3095_ctxt = context->specific;
+	assert(rfc3095_ctxt->specific != NULL);
+	udp_lite_context = rfc3095_ctxt->specific;
 	assert(packet != NULL);
 	assert(bits != NULL);
 
@@ -597,16 +598,16 @@ static bool udp_lite_decode_values_from_bits(const struct rohc_decomp_ctxt *cont
                                              const struct rohc_extr_bits bits,
                                              struct rohc_decoded_values *const decoded)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	struct udphdr *udp_lite;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
-	assert(g_context->specific != NULL);
+	rfc3095_ctxt = context->specific;
+	assert(rfc3095_ctxt->specific != NULL);
 	assert(decoded != NULL);
 
-	udp_lite = (struct udphdr *) g_context->outer_ip_changes->next_header;
+	udp_lite = (struct udphdr *) rfc3095_ctxt->outer_ip_changes->next_header;
 
 	/* decode UDP-Lite source port */
 	if(bits.udp_src_nr > 0)
@@ -678,15 +679,15 @@ static int udp_lite_build_uncomp_udp(const struct rohc_decomp_ctxt *const contex
                                      unsigned char *dest,
                                      const unsigned int payload_len)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	struct d_udp_lite_context *udp_lite_context;
 	struct udphdr *udp_lite;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
-	assert(g_context->specific != NULL);
-	udp_lite_context = g_context->specific;
+	rfc3095_ctxt = context->specific;
+	assert(rfc3095_ctxt->specific != NULL);
+	udp_lite_context = rfc3095_ctxt->specific;
 	assert(dest != NULL);
 	udp_lite = (struct udphdr *) dest;
 
@@ -728,6 +729,6 @@ const struct rohc_decomp_profile d_udplite_profile =
 	.free_context    = d_udp_lite_destroy,
 	.decode          = d_udp_lite_decode,
 	.detect_pkt_type = udp_lite_detect_packet_type,
-	.get_sn          = d_generic_get_sn,
+	.get_sn          = rohc_decomp_rfc3095_get_sn,
 };
 

@@ -28,7 +28,7 @@
 #ifndef ROHC_DECOMP_UDP_H
 #define ROHC_DECOMP_UDP_H
 
-#include "d_generic.h"
+#include "rohc_decomp_rfc3095.h"
 
 int udp_parse_static_udp(const struct rohc_decomp_ctxt *const context,
                          const unsigned char *packet,

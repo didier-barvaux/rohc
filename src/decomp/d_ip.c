@@ -55,29 +55,30 @@ static void d_ip_destroy(void *const context)
  */
 void * d_ip_create(const struct rohc_decomp_ctxt *const context)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 
 	assert(context != NULL);
 	assert(context->decompressor != NULL);
 	assert(context->profile != NULL);
 
 	/* create the generic context */
-	g_context = d_generic_create(context,
-	                             context->decompressor->trace_callback,
-	                             context->decompressor->trace_callback_priv,
-	                             context->profile->id);
-	if(g_context == NULL)
+	rfc3095_ctxt =
+		rohc_decomp_rfc3095_create(context,
+		                           context->decompressor->trace_callback,
+		                           context->decompressor->trace_callback_priv,
+		                           context->profile->id);
+	if(rfc3095_ctxt == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "failed to create the generic decompression context");
 
 		goto quit;
 	}
-	g_context->specific = NULL;
+	rfc3095_ctxt->specific = NULL;
 
 	/* create the LSB decoding context for SN */
-	g_context->sn_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_SN, 16);
-	if(g_context->sn_lsb_ctxt == NULL)
+	rfc3095_ctxt->sn_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_SN, 16);
+	if(rfc3095_ctxt->sn_lsb_ctxt == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "failed to create the LSB decoding context for SN");
@@ -85,13 +86,13 @@ void * d_ip_create(const struct rohc_decomp_ctxt *const context)
 	}
 
 	/* some IP-specific values and functions */
-	g_context->parse_dyn_next_hdr = ip_parse_dynamic_ip;
-	g_context->parse_ext3 = ip_parse_ext3;
+	rfc3095_ctxt->parse_dyn_next_hdr = ip_parse_dynamic_ip;
+	rfc3095_ctxt->parse_ext3 = ip_parse_ext3;
 
-	return g_context;
+	return rfc3095_ctxt;
 
 free_context:
-	zfree(g_context);
+	zfree(rfc3095_ctxt);
 quit:
 	return NULL;
 }
@@ -107,13 +108,13 @@ quit:
  */
 void d_ip_destroy(void *const context)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 
 	assert(context != NULL);
-	g_context = (struct d_generic_context *) context;
+	rfc3095_ctxt = (struct rohc_decomp_rfc3095_ctxt *) context;
 
-	rohc_lsb_free(g_context->sn_lsb_ctxt);
-	d_generic_destroy(context);
+	rohc_lsb_free(rfc3095_ctxt->sn_lsb_ctxt);
+	rohc_decomp_rfc3095_destroy(context);
 }
 
 
@@ -270,7 +271,7 @@ int ip_parse_ext3(const struct rohc_decomp_ctxt *const context,
                   const rohc_packet_t packet_type,
                   struct rohc_extr_bits *const bits)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	const unsigned char *ip_flags_pos = NULL;
 	const unsigned char *ip2_flags_pos = NULL;
 	uint8_t S, I, ip, ip2;
@@ -288,7 +289,7 @@ int ip_parse_ext3(const struct rohc_decomp_ctxt *const context,
 	assert(packet_type == ROHC_PACKET_UOR_2);
 	assert(bits != NULL);
 
-	g_context = context->specific;
+	rfc3095_ctxt = context->specific;
 
 	rohc_decomp_debug(context, "decode extension 3");
 
@@ -329,7 +330,7 @@ int ip_parse_ext3(const struct rohc_decomp_ctxt *const context,
 	{
 		rohc_decomp_debug(context, "inner IP header flags field is present in "
 		                  "EXT-3 = 0x%02x", GET_BIT_0_7(rohc_remain_data));
-		if(g_context->multiple_ip)
+		if(rfc3095_ctxt->multiple_ip)
 		{
 			ip2_flags_pos = rohc_remain_data;
 		}
@@ -363,7 +364,7 @@ int ip_parse_ext3(const struct rohc_decomp_ctxt *const context,
 	 * inner IP header flags (pointed by ip(2)_flags_pos) if present */
 	if(ip)
 	{
-		if(g_context->multiple_ip)
+		if(rfc3095_ctxt->multiple_ip)
 		{
 			size = parse_inner_header_flags(context, ip2_flags_pos,
 			                                rohc_remain_data, rohc_remain_len,
@@ -432,7 +433,7 @@ int ip_parse_ext3(const struct rohc_decomp_ctxt *const context,
 	{
 		/* determine which IP header is the innermost IPv4 header with
 		 * non-random IP-ID */
-		if(g_context->multiple_ip && is_ipv4_non_rnd_pkt(bits->inner_ip))
+		if(rfc3095_ctxt->multiple_ip && is_ipv4_non_rnd_pkt(bits->inner_ip))
 		{
 			/* inner IP header is IPv4 with non-random IP-ID */
 			if(bits->inner_ip.id_nr > 0 && bits->inner_ip.id != 0)
@@ -769,8 +770,8 @@ const struct rohc_decomp_profile d_ip_profile =
 	.id              = ROHC_PROFILE_IP, /* profile ID (see 5 in RFC 3843) */
 	.new_context     = d_ip_create,
 	.free_context    = d_ip_destroy,
-	.decode          = d_generic_decode,
+	.decode          = rohc_decomp_rfc3095_decode,
 	.detect_pkt_type = ip_detect_packet_type,
-	.get_sn          = d_generic_get_sn,
+	.get_sn          = rohc_decomp_rfc3095_get_sn,
 };
 

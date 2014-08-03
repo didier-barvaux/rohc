@@ -28,7 +28,7 @@
 #ifndef ROHC_DECOMP_IP_H
 #define ROHC_DECOMP_IP_H
 
-#include "d_generic.h"
+#include "rohc_decomp_rfc3095.h"
 
 
 /*

@@ -55,7 +55,7 @@ rohc_decomp_sources = \
 	../../src/decomp/rohc_decomp.c \
 	../../src/decomp/feedback_create.c \
 	../../src/decomp/d_uncompressed.c \
-	../../src/decomp/d_generic.c \
+	../../src/decomp/rohc_decomp_rfc3095.c \
 	../../src/decomp/d_ip.c \
 	../../src/decomp/d_udp.c \
 	../../src/decomp/d_udp_lite.c \

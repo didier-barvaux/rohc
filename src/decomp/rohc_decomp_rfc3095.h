@@ -19,16 +19,16 @@
  */
 
 /**
- * @file d_generic.h
- * @brief ROHC generic decompression context for IP-only, UDP and UDP Lite
- *        profiles.
+ * @file   rohc_decomp_rfc3095.c
+ * @brief  Generic framework for RFC3095-based decompression profiles such as
+ *         IP-only, UDP, UDP-Lite, ESP, and RTP profiles.
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author Didier Barvaux <didier@barvaux.org>
  * @author David Moreau from TAS
  */
 
-#ifndef ROHC_DECOMP_GENERIC_H
-#define ROHC_DECOMP_GENERIC_H
+#ifndef ROHC_DECOMP_RFC3095_H
+#define ROHC_DECOMP_RFC3095_H
 
 #include "rohc_decomp.h"
 #include "rohc_decomp_internals.h"
@@ -295,7 +295,7 @@ struct rohc_decoded_values
  * and that need to be saved between the different decompressions of packets. A
  * decompression context owns objects like this for the two first IP headers.
  */
-struct d_generic_changes
+struct rohc_decomp_rfc3095_changes
 {
 	/// The IP header
 	struct ip_packet ip;
@@ -327,18 +327,18 @@ typedef enum
 
 
 /**
- * @brief The generic decompression context
+ * @brief The generic decompression context for RFC3095-based profiles
  *
  * The object defines the generic context that manages IP(/nextheader) and
  * IP/IP(/nextheader) packets. nextheader is managed by the profile-specific
  * part of the context.
  */
-struct d_generic_context
+struct rohc_decomp_rfc3095_ctxt
 {
 	/// Information about the outer IP header
-	struct d_generic_changes *outer_ip_changes;
+	struct rohc_decomp_rfc3095_changes *outer_ip_changes;
 	/// Information about the inner IP header
-	struct d_generic_changes *inner_ip_changes;
+	struct rohc_decomp_rfc3095_changes *inner_ip_changes;
 
 	/// The LSB decoding context for the Sequence Number (SN)
 	struct rohc_lsb_decode *sn_lsb_ctxt;
@@ -464,25 +464,25 @@ struct d_generic_context
  * Public function prototypes.
  */
 
-void * d_generic_create(const struct rohc_decomp_ctxt *const context,
-                        rohc_trace_callback2_t trace_cb,
-                        void *const trace_cb_priv,
-                        const int profile_id)
+void * rohc_decomp_rfc3095_create(const struct rohc_decomp_ctxt *const context,
+                                  rohc_trace_callback2_t trace_cb,
+                                  void *const trace_cb_priv,
+                                  const int profile_id)
 	__attribute__((nonnull(1), warn_unused_result));
 
-void d_generic_destroy(void *const context)
+void rohc_decomp_rfc3095_destroy(void *const context)
 	__attribute__((nonnull(1)));
 
-rohc_status_t d_generic_decode(struct rohc_decomp *const decomp,
-                               struct rohc_decomp_ctxt *const context,
-                               const struct rohc_buf rohc_packet,
-                               const size_t add_cid_len,
-                               const size_t large_cid_len,
-                               struct rohc_buf *const uncomp_packet,
-                               rohc_packet_t *const packet_type)
+rohc_status_t rohc_decomp_rfc3095_decode(struct rohc_decomp *const decomp,
+                                         struct rohc_decomp_ctxt *const context,
+                                         const struct rohc_buf rohc_packet,
+                                         const size_t add_cid_len,
+                                         const size_t large_cid_len,
+                                         struct rohc_buf *const uncomp_packet,
+                                         rohc_packet_t *const packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 6, 7)));
 
-uint32_t d_generic_get_sn(const struct rohc_decomp_ctxt *const context);
+uint32_t rohc_decomp_rfc3095_get_sn(const struct rohc_decomp_ctxt *const context);
 
 
 

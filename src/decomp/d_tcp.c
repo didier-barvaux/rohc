@@ -34,7 +34,7 @@
 #include "schemes/decomp_wlsb.h"
 #include "protocols/tcp.h"
 #include "crc.h"
-#include "d_generic.h"
+#include "rohc_decomp_rfc3095.h"
 
 #include "config.h" /* for WORDS_BIGENDIAN and ROHC_EXTRA_DEBUG */
 
@@ -222,9 +222,9 @@ typedef union
  * @brief Define the TCP part of the decompression profile context.
  *
  * This object must be used with the generic part of the decompression
- * context d_generic_context.
+ * context rohc_decomp_rfc3095_ctxt.
  *
- * @see d_generic_context
+ * @see rohc_decomp_rfc3095_ctxt
  */
 struct d_tcp_context
 {
@@ -406,15 +406,16 @@ static const uint8_t * d_tcp_opt_sack(const struct rohc_decomp_ctxt *const conte
  */
 static void * d_tcp_create(const struct rohc_decomp_ctxt *const context)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	struct d_tcp_context *tcp_context;
 
 	/* create the generic context */
-	g_context = d_generic_create(context,
-	                             context->decompressor->trace_callback,
-	                             context->decompressor->trace_callback_priv,
-	                             context->profile->id);
-	if(g_context == NULL)
+	rfc3095_ctxt =
+		rohc_decomp_rfc3095_create(context,
+		                           context->decompressor->trace_callback,
+		                           context->decompressor->trace_callback_priv,
+		                           context->profile->id);
+	if(rfc3095_ctxt == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "failed to create the generic decompression context");
@@ -430,7 +431,7 @@ static void * d_tcp_create(const struct rohc_decomp_ctxt *const context)
 		goto destroy_context;
 	}
 	memset(tcp_context, 0, sizeof(struct d_tcp_context));
-	g_context->specific = tcp_context;
+	rfc3095_ctxt->specific = tcp_context;
 
 	/* create the LSB decoding context for the sequence number */
 	tcp_context->seq_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_VAR, 32);
@@ -493,46 +494,46 @@ static void * d_tcp_create(const struct rohc_decomp_ctxt *const context)
 	}
 
 	/* some TCP-specific values and functions */
-	g_context->next_header_len = sizeof(tcphdr_t);
-	g_context->build_next_header = NULL;
+	rfc3095_ctxt->next_header_len = sizeof(tcphdr_t);
+	rfc3095_ctxt->build_next_header = NULL;
 #ifdef TODO
-	g_context->decode_static_next_header = tcp_decode_static_tcp;
-	g_context->decode_dynamic_next_header = tcp_decode_dynamic_tcp;
-	g_context->decode_uo_tail = NULL;
+	rfc3095_ctxt->decode_static_next_header = tcp_decode_static_tcp;
+	rfc3095_ctxt->decode_dynamic_next_header = tcp_decode_dynamic_tcp;
+	rfc3095_ctxt->decode_uo_tail = NULL;
 #endif
-	g_context->compute_crc_static = tcp_compute_crc_static;
-	g_context->compute_crc_dynamic = tcp_compute_crc_dynamic;
+	rfc3095_ctxt->compute_crc_static = tcp_compute_crc_static;
+	rfc3095_ctxt->compute_crc_dynamic = tcp_compute_crc_dynamic;
 
 	/* create the TCP-specific part of the header changes */
-	g_context->outer_ip_changes->next_header_len = sizeof(tcphdr_t);
-	g_context->outer_ip_changes->next_header = malloc(sizeof(tcphdr_t));
-	if(g_context->outer_ip_changes->next_header == NULL)
+	rfc3095_ctxt->outer_ip_changes->next_header_len = sizeof(tcphdr_t);
+	rfc3095_ctxt->outer_ip_changes->next_header = malloc(sizeof(tcphdr_t));
+	if(rfc3095_ctxt->outer_ip_changes->next_header == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "cannot allocate memory for the TCP-specific part of the "
 		           "outer IP header changes");
 		goto free_lsb_ts_opt_reply;
 	}
-	memset(g_context->outer_ip_changes->next_header, 0, sizeof(tcphdr_t));
+	memset(rfc3095_ctxt->outer_ip_changes->next_header, 0, sizeof(tcphdr_t));
 
-	g_context->inner_ip_changes->next_header_len = sizeof(tcphdr_t);
-	g_context->inner_ip_changes->next_header = malloc(sizeof(tcphdr_t));
-	if(g_context->inner_ip_changes->next_header == NULL)
+	rfc3095_ctxt->inner_ip_changes->next_header_len = sizeof(tcphdr_t);
+	rfc3095_ctxt->inner_ip_changes->next_header = malloc(sizeof(tcphdr_t));
+	if(rfc3095_ctxt->inner_ip_changes->next_header == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "cannot allocate memory for the TCP-specific part of the "
 		           "inner IP header changes");
 		goto free_outer_next_header;
 	}
-	memset(g_context->inner_ip_changes->next_header, 0, sizeof(tcphdr_t));
+	memset(rfc3095_ctxt->inner_ip_changes->next_header, 0, sizeof(tcphdr_t));
 
 	/* set next header to TCP */
-	g_context->next_header_proto = ROHC_IPPROTO_TCP;
+	rfc3095_ctxt->next_header_proto = ROHC_IPPROTO_TCP;
 
-	return g_context;
+	return rfc3095_ctxt;
 
 free_outer_next_header:
-	zfree(g_context->outer_ip_changes->next_header);
+	zfree(rfc3095_ctxt->outer_ip_changes->next_header);
 free_lsb_ts_opt_reply:
 	rohc_lsb_free(tcp_context->opt_ts_reply_lsb_ctxt);
 free_lsb_ts_opt_req:
@@ -546,7 +547,7 @@ free_lsb_seq:
 free_tcp_context:
 	zfree(tcp_context);
 destroy_context:
-	d_generic_destroy(g_context);
+	rohc_decomp_rfc3095_destroy(rfc3095_ctxt);
 quit:
 	return NULL;
 }
@@ -562,21 +563,21 @@ quit:
  */
 static void d_tcp_destroy(void *const context)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	struct d_tcp_context *tcp_context;
 
 	assert(context != NULL);
-	g_context = (struct d_generic_context *) context;
-	assert(g_context->specific != NULL);
-	tcp_context = (struct d_tcp_context *) g_context->specific;
+	rfc3095_ctxt = (struct rohc_decomp_rfc3095_ctxt *) context;
+	assert(rfc3095_ctxt->specific != NULL);
+	tcp_context = (struct d_tcp_context *) rfc3095_ctxt->specific;
 
 	/* clean TCP-specific memory */
-	assert(g_context->outer_ip_changes != NULL);
-	assert(g_context->outer_ip_changes->next_header != NULL);
-	zfree(g_context->outer_ip_changes->next_header);
-	assert(g_context->inner_ip_changes != NULL);
-	assert(g_context->inner_ip_changes->next_header != NULL);
-	zfree(g_context->inner_ip_changes->next_header);
+	assert(rfc3095_ctxt->outer_ip_changes != NULL);
+	assert(rfc3095_ctxt->outer_ip_changes->next_header != NULL);
+	zfree(rfc3095_ctxt->outer_ip_changes->next_header);
+	assert(rfc3095_ctxt->inner_ip_changes != NULL);
+	assert(rfc3095_ctxt->inner_ip_changes->next_header != NULL);
+	zfree(rfc3095_ctxt->inner_ip_changes->next_header);
 
 	/* destroy the LSB decoding context for the TCP option Timestamp echo
 	 * request */
@@ -593,12 +594,12 @@ static void d_tcp_destroy(void *const context)
 
 #if 0 /* TODO: sn_lsb_ctxt is not initialized, either remove it or use it fully */
 	/* destroy the LSB decoding context for SN */
-	rohc_lsb_free(g_context->sn_lsb_ctxt);
+	rohc_lsb_free(rfc3095_ctxt->sn_lsb_ctxt);
 #endif
 
-	/* destroy the generic decompression context (g_context->specific is
-	 * destroyed by d_generic_destroy) */
-	d_generic_destroy(g_context);
+	/* destroy the generic decompression context (rfc3095_ctxt->specific is
+	 * destroyed by rohc_decomp_rfc3095_destroy) */
+	rohc_decomp_rfc3095_destroy(rfc3095_ctxt);
 }
 
 
@@ -616,7 +617,7 @@ static rohc_packet_t tcp_detect_packet_type(const struct rohc_decomp_ctxt *const
                                             const size_t rohc_length,
                                             const size_t large_cid_len __attribute__((unused)))
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	struct d_tcp_context *tcp_context;
 	ip_context_ptr_t ip_context;
 	bool is_ip_id_seq;
@@ -624,9 +625,9 @@ static rohc_packet_t tcp_detect_packet_type(const struct rohc_decomp_ctxt *const
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
-	assert(g_context->specific != NULL);
-	tcp_context = g_context->specific;
+	rfc3095_ctxt = context->specific;
+	assert(rfc3095_ctxt->specific != NULL);
+	tcp_context = rfc3095_ctxt->specific;
 	ip_context.uint8 = tcp_context->ip_context;
 	assert(rohc_packet != NULL);
 
@@ -761,8 +762,8 @@ static rohc_status_t d_tcp_decode(struct rohc_decomp *const decomp,
                                   struct rohc_buf *const uncomp_packet,
                                   rohc_packet_t *const packet_type)
 {
-	struct d_generic_context *g_context = context->specific;
-	struct d_tcp_context *tcp_context = g_context->specific;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt = context->specific;
+	struct d_tcp_context *tcp_context = rfc3095_ctxt->specific;
 	size_t uncomp_len;
 	rohc_status_t parse_ret;
 	size_t i;
@@ -842,8 +843,8 @@ static int d_tcp_decode_ir(struct rohc_decomp_ctxt *context,
                            unsigned char *dest,
                            size_t *const uncomp_len)
 {
-	struct d_generic_context *g_context = context->specific;
-	struct d_tcp_context *tcp_context = g_context->specific;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt = context->specific;
+	struct d_tcp_context *tcp_context = rfc3095_ctxt->specific;
 	ip_context_ptr_t ip_context;
 	base_header_ip_t base_header;
 	tcphdr_t *tcp;
@@ -1176,8 +1177,8 @@ static int d_tcp_decode_irdyn(struct rohc_decomp_ctxt *context,
                               unsigned char *dest,
                               size_t *const uncomp_len)
 {
-	struct d_generic_context *g_context = context->specific;
-	struct d_tcp_context *tcp_context = g_context->specific;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt = context->specific;
+	struct d_tcp_context *tcp_context = rfc3095_ctxt->specific;
 	ip_context_ptr_t ip_context;
 	base_header_ip_t base_header;
 	tcphdr_t *tcp;
@@ -2159,15 +2160,15 @@ static int tcp_decode_irregular_ip(struct rohc_decomp_ctxt *const context,
                                    int ttl_irregular_chain_flag,
                                    int ip_inner_ecn)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	struct d_tcp_context *tcp_context;
 	const uint8_t *remain_data;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
-	assert(g_context->specific != NULL);
-	tcp_context = g_context->specific;
+	rfc3095_ctxt = context->specific;
+	assert(rfc3095_ctxt->specific != NULL);
+	tcp_context = rfc3095_ctxt->specific;
 
 	remain_data = rohc_data;
 
@@ -2278,15 +2279,15 @@ static int tcp_decode_static_tcp(struct rohc_decomp_ctxt *const context,
                                  const size_t rohc_length,
                                  tcphdr_t *tcp)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	struct d_tcp_context *tcp_context;
 	const tcp_static_t *tcp_static;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
-	assert(g_context->specific != NULL);
-	tcp_context = g_context->specific;
+	rfc3095_ctxt = context->specific;
+	assert(rfc3095_ctxt->specific != NULL);
+	tcp_context = rfc3095_ctxt->specific;
 	assert(rohc_packet != NULL);
 	assert(tcp != NULL);
 
@@ -2333,14 +2334,14 @@ error:
 static unsigned int tcp_copy_static_tcp(struct rohc_decomp_ctxt *const context,
                                         tcphdr_t *tcp)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	struct d_tcp_context *tcp_context;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
-	assert(g_context->specific != NULL);
-	tcp_context = g_context->specific;
+	rfc3095_ctxt = context->specific;
+	assert(rfc3095_ctxt->specific != NULL);
+	tcp_context = rfc3095_ctxt->specific;
 
 	tcp->src_port = tcp_context->tcp_src_port;
 	rohc_decomp_debug(context, "source port = %d (0x%04x)",
@@ -2369,7 +2370,7 @@ static int tcp_decode_dynamic_tcp(struct rohc_decomp_ctxt *const context,
                                   const size_t rohc_length,
                                   tcphdr_t *tcp)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	struct d_tcp_context *tcp_context;
 	const tcp_dynamic_t *tcp_dynamic;
 	const uint8_t *remain_data;
@@ -2377,9 +2378,9 @@ static int tcp_decode_dynamic_tcp(struct rohc_decomp_ctxt *const context,
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
-	assert(g_context->specific != NULL);
-	tcp_context = g_context->specific;
+	rfc3095_ctxt = context->specific;
+	assert(rfc3095_ctxt->specific != NULL);
+	tcp_context = rfc3095_ctxt->specific;
 	assert(rohc_packet != NULL);
 	assert(tcp != NULL);
 
@@ -3006,7 +3007,7 @@ static int tcp_decode_irregular_tcp(struct rohc_decomp_ctxt *const context,
                                     tcphdr_t *tcp,
                                     const uint8_t *const rohc_data)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	struct d_tcp_context *tcp_context;
 	const uint8_t *remain_data;
 	uint8_t *tcp_options = (uint8_t *) (tcp + 1);
@@ -3015,9 +3016,9 @@ static int tcp_decode_irregular_tcp(struct rohc_decomp_ctxt *const context,
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
-	assert(g_context->specific != NULL);
-	tcp_context = g_context->specific;
+	rfc3095_ctxt = context->specific;
+	assert(rfc3095_ctxt->specific != NULL);
+	tcp_context = rfc3095_ctxt->specific;
 
 	rohc_decomp_debug(context, "decode TCP irregular chain");
 
@@ -3814,7 +3815,7 @@ static const uint8_t * tcp_decompress_tcp_options(struct rohc_decomp_ctxt *const
 																  const size_t data_len,
 																  tcphdr_t *const tcp)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	struct d_tcp_context *tcp_context;
 	const uint8_t *compressed_options;
 	uint8_t *options;
@@ -3828,9 +3829,9 @@ static const uint8_t * tcp_decompress_tcp_options(struct rohc_decomp_ctxt *const
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
-	assert(g_context->specific != NULL);
-	tcp_context = g_context->specific;
+	rfc3095_ctxt = context->specific;
+	assert(rfc3095_ctxt->specific != NULL);
+	tcp_context = rfc3095_ctxt->specific;
 	assert(data != NULL);
 	assert(tcp != NULL);
 
@@ -4161,7 +4162,7 @@ static int tcp_size_decompress_tcp_options(struct rohc_decomp_ctxt *const contex
                                            const size_t data_len,
                                            uint16_t *uncomp_len)
 {
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	struct d_tcp_context *tcp_context;
 	const uint8_t *items;
 	size_t items_max_len;
@@ -4176,9 +4177,9 @@ static int tcp_size_decompress_tcp_options(struct rohc_decomp_ctxt *const contex
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
-	assert(g_context->specific != NULL);
-	tcp_context = g_context->specific;
+	rfc3095_ctxt = context->specific;
+	assert(rfc3095_ctxt->specific != NULL);
+	tcp_context = rfc3095_ctxt->specific;
 
 	comp_size = 0;
 	*uncomp_len = 0;
@@ -4436,7 +4437,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
                            size_t *const uncomp_len)
 {
 	unsigned char *packed_rohc_packet = malloc(5000); // TODO: change that
-	struct d_generic_context *g_context;
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	struct d_tcp_context *tcp_context;
 	ip_context_ptr_t ip_inner_context;
 	ip_context_ptr_t ip_context;
@@ -4477,9 +4478,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	assert(decomp != NULL);
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	g_context = context->specific;
-	assert(g_context->specific != NULL);
-	tcp_context = g_context->specific;
+	rfc3095_ctxt = context->specific;
+	assert(rfc3095_ctxt->specific != NULL);
+	tcp_context = rfc3095_ctxt->specific;
 	assert(rohc_packet != NULL);
 	assert(add_cid_len == 0 || add_cid_len == 1);
 	assert(large_cid_len <= 2);
@@ -4983,7 +4984,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	rohc_decomp_debug(context, "MSN = 0x%04x", msn);
 
 	/* reset the correction counter */
-	g_context->correction_counter = 0;
+	rfc3095_ctxt->correction_counter = 0;
 
 	/* build the IP headers */
 	base_header.uint8 = (uint8_t*) dest;
@@ -6018,8 +6019,8 @@ static bool rohc_decomp_tcp_decode_seq(const struct rohc_decomp_ctxt *const cont
                                        const rohc_lsb_shift_t p,
                                        uint32_t *const seq)
 {
-	const struct d_generic_context *const g_context = context->specific;
-	const struct d_tcp_context *const tcp_context = g_context->specific;
+	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
+	const struct d_tcp_context *const tcp_context = rfc3095_ctxt->specific;
 	bool decode_ok;
 
 	decode_ok = rohc_lsb_decode(tcp_context->seq_lsb_ctxt, ROHC_LSB_REF_0, 0,
@@ -6048,8 +6049,8 @@ static bool rohc_decomp_tcp_decode_ack(const struct rohc_decomp_ctxt *const cont
                                        const rohc_lsb_shift_t p,
                                        uint32_t *const ack)
 {
-	const struct d_generic_context *const g_context = context->specific;
-	const struct d_tcp_context *const tcp_context = g_context->specific;
+	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
+	const struct d_tcp_context *const tcp_context = rfc3095_ctxt->specific;
 	bool decode_ok;
 
 	decode_ok = rohc_lsb_decode(tcp_context->ack_lsb_ctxt, ROHC_LSB_REF_0, 0,
@@ -6087,8 +6088,8 @@ error:
  */
 static uint32_t d_tcp_get_msn(const struct rohc_decomp_ctxt *const context)
 {
-	const struct d_generic_context *const g_context = context->specific;
-	const struct d_tcp_context *const tcp_context = g_context->specific;
+	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
+	const struct d_tcp_context *const tcp_context = rfc3095_ctxt->specific;
 
 	rohc_decomp_debug(context, "MSN = %u (0x%x)", tcp_context->msn,
 	                  tcp_context->msn);
