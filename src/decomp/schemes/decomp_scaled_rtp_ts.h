@@ -51,7 +51,8 @@ struct ts_sc_decomp;
 struct ts_sc_decomp * d_create_sc(rohc_trace_callback2_t trace_cb,
                                   void *const trace_cb_priv)
 	__attribute__((warn_unused_result));
-void rohc_ts_scaled_free(struct ts_sc_decomp *const ts_scaled);
+void rohc_ts_scaled_free(struct ts_sc_decomp *const ts_scaled)
+	__attribute__((nonnull(1)));
 
 void ts_update_context(struct ts_sc_decomp *const ts_sc,
                        const uint32_t ts,

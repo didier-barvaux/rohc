@@ -135,7 +135,8 @@ static struct rohc_decomp_ctxt * context_create(struct rohc_decomp *decomp,
 static struct rohc_decomp_ctxt *
 	find_context(const struct rohc_decomp *const decomp, const size_t cid)
 	__attribute__((nonnull(1), warn_unused_result));
-static void context_free(struct rohc_decomp_ctxt *const context);
+static void context_free(struct rohc_decomp_ctxt *const context)
+	__attribute__((nonnull(1)));
 
 static bool rohc_decomp_decode_cid(struct rohc_decomp *decomp,
                                    const unsigned char *packet,
@@ -290,7 +291,6 @@ error:
  */
 static void context_free(struct rohc_decomp_ctxt *const context)
 {
-	assert(context != NULL);
 	assert(context->decompressor != NULL);
 	assert(context->profile != NULL);
 	assert(context->specific != NULL);

@@ -495,19 +495,15 @@ quit:
  */
 void rohc_decomp_rfc3095_destroy(void *const context)
 {
-	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
-
-	assert(context != NULL);
-	rfc3095_ctxt = (struct rohc_decomp_rfc3095_ctxt *) context;
+	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
+		(struct rohc_decomp_rfc3095_ctxt *) context;
 
 	/* destroy Offset IP-ID decoding contexts */
 	ip_id_offset_free(rfc3095_ctxt->outer_ip_id_offset_ctxt);
 	ip_id_offset_free(rfc3095_ctxt->inner_ip_id_offset_ctxt);
 
 	/* destroy the information about the IP headers */
-	assert(rfc3095_ctxt->outer_ip_changes != NULL);
 	zfree(rfc3095_ctxt->outer_ip_changes);
-	assert(rfc3095_ctxt->inner_ip_changes != NULL);
 	zfree(rfc3095_ctxt->inner_ip_changes);
 
 	/* destroy contexts used to decompress the lists of IPv6 extension headers
@@ -516,10 +512,7 @@ void rohc_decomp_rfc3095_destroy(void *const context)
 	rohc_decomp_list_ipv6_free(&rfc3095_ctxt->list_decomp2);
 
 	/* destroy profile-specific part */
-	if(rfc3095_ctxt->specific != NULL)
-	{
-		zfree(rfc3095_ctxt->specific);
-	}
+	zfree(rfc3095_ctxt->specific);
 
 	/* destroy generic context itself */
 	free(rfc3095_ctxt);

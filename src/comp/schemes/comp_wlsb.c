@@ -150,7 +150,6 @@ error:
  */
 void c_destroy_wlsb(struct c_wlsb *const wlsb)
 {
-	assert(wlsb != NULL);
 	free(wlsb);
 }
 

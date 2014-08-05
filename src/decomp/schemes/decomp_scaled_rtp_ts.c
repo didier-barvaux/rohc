@@ -162,9 +162,6 @@ error:
  */
 void rohc_ts_scaled_free(struct ts_sc_decomp *const ts_sc)
 {
-	assert(ts_sc != NULL);
-	assert(ts_sc->lsb_ts_scaled != NULL);
-	assert(ts_sc->lsb_ts_unscaled != NULL);
 	rohc_lsb_free(ts_sc->lsb_ts_unscaled);
 	rohc_lsb_free(ts_sc->lsb_ts_scaled);
 	free(ts_sc);

@@ -116,8 +116,10 @@ static const struct rohc_comp_profile *
  * Prototypes of private functions related to ROHC compression contexts
  */
 
-static bool c_create_contexts(struct rohc_comp *const comp);
-static void c_destroy_contexts(struct rohc_comp *const comp);
+static bool c_create_contexts(struct rohc_comp *const comp)
+	__attribute__((nonnull(1)));
+static void c_destroy_contexts(struct rohc_comp *const comp)
+	__attribute__((nonnull(1)));
 
 static struct rohc_comp_ctxt *
 	c_create_context(struct rohc_comp *const comp,
@@ -2593,7 +2595,6 @@ not_found:
  */
 static bool c_create_contexts(struct rohc_comp *const comp)
 {
-	assert(comp != NULL);
 	assert(comp->contexts == NULL);
 
 	comp->num_contexts_used = 0;
@@ -2629,7 +2630,6 @@ static void c_destroy_contexts(struct rohc_comp *const comp)
 {
 	rohc_cid_t i;
 
-	assert(comp != NULL);
 	assert(comp->contexts != NULL);
 
 	for(i = 0; i <= comp->medium.max_cid; i++)

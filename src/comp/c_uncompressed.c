@@ -179,10 +179,7 @@ quit:
  */
 static void c_uncompressed_destroy(struct rohc_comp_ctxt *const context)
 {
-	if(context->specific != NULL)
-	{
-		zfree(context->specific);
-	}
+	zfree(context->specific);
 }
 
 

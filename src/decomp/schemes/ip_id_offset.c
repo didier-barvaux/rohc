@@ -93,7 +93,6 @@ error:
  */
 void ip_id_offset_free(struct ip_id_offset_decode *const ipid)
 {
-	assert(ipid != NULL);
 	rohc_lsb_free(ipid->lsb);
 	free(ipid);
 }

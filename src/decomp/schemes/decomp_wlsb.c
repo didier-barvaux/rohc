@@ -118,7 +118,6 @@ struct rohc_lsb_decode * rohc_lsb_new(const rohc_lsb_shift_t p,
  */
 void rohc_lsb_free(struct rohc_lsb_decode *const lsb)
 {
-	assert(lsb != NULL);
 	free(lsb);
 }
 

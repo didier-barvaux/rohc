@@ -216,10 +216,8 @@ static void d_esp_destroy(void *const context)
 
 	/* clean ESP-specific memory */
 	assert(rfc3095_ctxt->outer_ip_changes != NULL);
-	assert(rfc3095_ctxt->outer_ip_changes->next_header != NULL);
 	zfree(rfc3095_ctxt->outer_ip_changes->next_header);
 	assert(rfc3095_ctxt->inner_ip_changes != NULL);
-	assert(rfc3095_ctxt->inner_ip_changes->next_header != NULL);
 	zfree(rfc3095_ctxt->inner_ip_changes->next_header);
 
 	/* destroy the LSB decoding context for SN */

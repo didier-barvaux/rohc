@@ -62,7 +62,8 @@ struct rohc_lsb_decode * rohc_lsb_new(const rohc_lsb_shift_t p,
                                       const size_t max_len)
 	__attribute__((warn_unused_result));
 
-void rohc_lsb_free(struct rohc_lsb_decode *const lsb);
+void rohc_lsb_free(struct rohc_lsb_decode *const lsb)
+	__attribute__((nonnull(1)));
 
 rohc_lsb_shift_t lsb_get_p(const struct rohc_lsb_decode *const lsb)
 	__attribute__((warn_unused_result, nonnull(1), pure));

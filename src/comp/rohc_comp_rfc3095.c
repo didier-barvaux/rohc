@@ -606,8 +606,6 @@ void rohc_comp_rfc3095_destroy(struct rohc_comp_ctxt *const context)
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt =
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
 
-	assert(rfc3095_ctxt != NULL);
-
 	ip_header_info_free(&rfc3095_ctxt->outer_ip_flags);
 	if(rfc3095_ctxt->ip_hdr_nr > 1)
 	{
@@ -615,11 +613,7 @@ void rohc_comp_rfc3095_destroy(struct rohc_comp_ctxt *const context)
 	}
 	c_destroy_wlsb(rfc3095_ctxt->sn_window);
 
-	if(rfc3095_ctxt->specific != NULL)
-	{
-		zfree(rfc3095_ctxt->specific);
-	}
-
+	zfree(rfc3095_ctxt->specific);
 	free(rfc3095_ctxt);
 }
 
