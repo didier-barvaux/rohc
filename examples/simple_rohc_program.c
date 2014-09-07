@@ -188,8 +188,8 @@ int main(int argc, char **argv)
 		/* success: compression succeeded, but resulting ROHC packet was too
 		 * large for the Maximum Reconstructed Reception Unit (MRRU) configured
 		 * with \ref rohc_comp_set_mrru, the rohc_packet buffer contains the
-		 * first ROHC segment of rohc_packet_len bytes and
-		 * \ref rohc_comp_get_segment can be used to retrieve the next ones. */
+		 * first ROHC segment and \ref rohc_comp_get_segment can be used to
+		 * retrieve the next ones. */
 //! [compress IP packet #2]
 //! [compress IP packet #3]
 	}
