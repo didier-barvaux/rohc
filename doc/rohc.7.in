@@ -38,7 +38,7 @@ network packets are compressed with the \fBROHC protocol and algorithms\fP.
 .PP
 The \fBROHC library\fP is intended for developers who want to reduce the
 bandwidth requirements of their applications. The library is published under
-the \fBGPL license\fP (version 2 or later).
+the \fBLGPL license\fP (version 2.1 or later).
 .PP
 See
 .BR rohc_library (7)
