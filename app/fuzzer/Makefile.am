@@ -8,11 +8,9 @@ bin_PROGRAMS = \
 	rohc_fuzzer \
 	rohc_rtp_fuzzer
 
-if BUILD_DOC_MAN
 man_MANS = \
 	rohc_fuzzer.1 \
 	rohc_rtp_fuzzer.1
-endif
 
 
 rohc_fuzzer_CFLAGS = \
@@ -38,11 +36,13 @@ rohc_fuzzer_LDADD = \
 	-lrohc_common \
 	$(additional_platform_libs)
 
+if BUILD_DOC_MAN
 rohc_fuzzer.1: $(rohc_fuzzer_SOURCES) $(builddir)/rohc_fuzzer
 	$(AM_V_GEN)help2man --output=$@ -s 1 --no-info \
 		-m "$(PACKAGE_NAME)'s tools" -S "$(PACKAGE_NAME)" \
 		-n "The ROHC fuzzing tool" \
 		$(builddir)/rohc_fuzzer
+endif
 
 
 rohc_rtp_fuzzer_CFLAGS = \
@@ -69,14 +69,17 @@ rohc_rtp_fuzzer_LDADD = \
 	-lrohc_common \
 	$(additional_platform_libs)
 
+if BUILD_DOC_MAN
 rohc_rtp_fuzzer.1: $(rohc_rtp_fuzzer_SOURCES) $(builddir)/rohc_rtp_fuzzer
 	$(AM_V_GEN)help2man --output=$@ -s 1 --no-info \
 		-m "$(PACKAGE_NAME)'s tools" -S "$(PACKAGE_NAME)" \
 		-n "The ROHC fuzzing tool for RTP traffic" \
 		$(builddir)/rohc_rtp_fuzzer
+endif
 
 
 # extra files for releases
 EXTRA_DIST = \
-   start_fuzzer.sh
+	start_fuzzer.sh \
+	$(man_MANS)
 

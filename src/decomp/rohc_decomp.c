@@ -1225,7 +1225,7 @@ int rohc_decompress2(struct rohc_decomp *const decomp,
  * information on it. In such a case, the caller is responsible to send it to
  * the compressor through any feedback channel.
  *
- * \par Time-related features in the ROHC protocol:
+ * Time-related features in the ROHC protocol:
  * Set the \e rohc_packet.time parameter to 0 if arrival time of the ROHC
  * packet is unknown or to disable the time-related features in the ROHC
  * protocol.

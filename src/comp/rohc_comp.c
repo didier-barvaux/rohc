@@ -1287,7 +1287,7 @@ int rohc_compress3(struct rohc_comp *const comp,
  *   \li return \ref ROHC_NEED_SEGMENT and no ROHC data if ROHC segmentation
  *       is required.
  *
- * \par ROHC segmentation:
+ * ROHC segmentation:
  * The ROHC compressor has to use ROHC segmentation if the output buffer
  * rohc_packet was too small for the compressed ROHC packet and if the
  * Maximum Reconstructed Reception Unit (MRRU) configured with the function
@@ -1295,7 +1295,7 @@ int rohc_compress3(struct rohc_comp *const comp,
  * may use the \ref rohc_comp_get_segment function to retrieve all the ROHC
  * segments one by one.
  *
- * \par Time-related features in the ROHC protocol:
+ * Time-related features in the ROHC protocol:
  * Set the \e uncomp_packet.time parameter to 0 if arrival time of the
  * uncompressed packet is unknown or to disable the time-related features in
  * the ROHC protocol.

@@ -45,7 +45,6 @@ doc/xml
 doc/rohc.7
 doc/rohc_protocol.7
 doc/rohc_library.7
-doc/man
 src/comp/schemes/test/test_rfc4996
 src/comp/schemes/test/test_rfc4996.exe
 src/comp/schemes/test/test_rfc4996.log
@@ -121,19 +120,14 @@ app/performance/rohc_gen_stream.exe
 app/performance/rohc_gen_stream.1
 app/tunnel/rohctunnel
 app/tunnel/rohctunnel.exe
-app/tunnel/rohctunnel.1
 app/sniffer/rohc_sniffer
 app/sniffer/rohc_sniffer.exe
-app/sniffer/rohc_sniffer.1
 app/fuzzer/rohc_fuzzer
 app/fuzzer/rohc_fuzzer.exe
-app/fuzzer/rohc_fuzzer.1
 app/fuzzer/rohc_rtp_fuzzer
 app/fuzzer/rohc_rtp_fuzzer.exe
-app/fuzzer/rohc_rtp_fuzzer.1
 app/stats/rohc_stats
 app/stats/rohc_stats.exe
-app/stats/rohc_stats.1
 examples/simple_rohc_program
 examples/simple_rohc_program.exe
 examples/print_rohc_version

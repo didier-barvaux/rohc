@@ -99,20 +99,22 @@ rohc_decomp_mans = \
 	man/man3/rohc_decomp_get_general_info.3 \
 	man/man3/rohc_decomp_get_last_packet_info.3
 
-if BUILD_DOC_MAN
-man_MANS = \
+static_man_pages = \
 	rohc.7 \
 	rohc_protocol.7 \
-	rohc_library.7 \
+	rohc_library.7
+
+dynamic_man_pages = \
 	$(rohc_common_man) \
 	$(rohc_common_mans) \
 	$(rohc_comp_man) \
 	$(rohc_comp_mans) \
 	$(rohc_decomp_man) \
 	$(rohc_decomp_mans)
-else
-man_MANS =
-endif
+
+man_MANS = \
+	$(static_man_pages) \
+	$(dynamic_man_pages)
 
 
 rohc_all_sources = \
@@ -171,8 +173,9 @@ rohc_examples_sources = \
 	$(top_srcdir)/examples/*.c
 
 doxy2man_options = \
-	--out man/man3/ --noseealsoall --nosort --include-prefix "rohc/" \
-	--short-pkg "ROHC" --pkg "ROHC library Programmer's Manual"
+	--out man/man3/ --novalidate --noseealsoall --nosort \
+	--include-prefix "rohc/" --short-pkg "ROHC" \
+	--pkg "ROHC library Programmer's Manual"
 
 
 rohc_common_sources = \
@@ -182,8 +185,12 @@ rohc_common_sources = \
 	$(top_srcdir)/src/common/rohc_packets.h \
 	$(top_srcdir)/src/common/rohc_traces.h
 
+if BUILD_DOC_MAN
 $(rohc_common_man): $(rohc_common_sources) $(rohc_examples_sources) | doxygen
 	$(AM_V_GEN)doxy2man $(doxy2man_options) xml/group__rohc.xml
+else
+$(rohc_common_man):
+endif
 $(rohc_common_mans):
 
 
@@ -191,8 +198,12 @@ rohc_comp_sources = \
 	$(top_srcdir)/src/comp/rohc_comp.c \
 	$(top_srcdir)/src/comp/rohc_comp.h
 
+if BUILD_DOC_MAN
 $(rohc_comp_man): $(rohc_comp_sources) $(rohc_examples_sources) | doxygen
 	$(AM_V_GEN)doxy2man $(doxy2man_options) xml/group__rohc__comp.xml
+else
+$(rohc_comp_man):
+endif
 $(rohc_comp_mans):
 
 
@@ -200,8 +211,12 @@ rohc_decomp_sources = \
 	$(top_srcdir)/src/decomp/rohc_decomp.c \
 	$(top_srcdir)/src/decomp/rohc_decomp.h
 
+if BUILD_DOC_MAN
 $(rohc_decomp_man): $(rohc_decomp_sources) $(rohc_examples_sources) | doxygen
 	$(AM_V_GEN)doxy2man $(doxy2man_options) xml/group__rohc__decomp.xml
+else
+$(rohc_decomp_man):
+endif
 $(rohc_decomp_mans):
 
 
@@ -209,10 +224,10 @@ clean-local:
 	-$(RM) doxygen
 	-$(RM) -r html/
 	-$(RM) -r xml/
-	-$(RM) -r man/
 
 
 # extra files for releases
 EXTRA_DIST = \
-	doxygen.conf
+	doxygen.conf \
+	$(dynamic_man_pages)
 
