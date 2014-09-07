@@ -79,11 +79,8 @@ Developers
 Developers may be interested in additional configure options:
   --enable-fail-on-warning  causes the build to fail if a warning is emitted
                             by the compiler (-Werror)
-  --enable-fortify_sources  enables some protections (-D_FORTIFY_SOURCE=2)
   --enable-rohc-debug       enable library extra debug traces with performances
                             impact
-  --enable-fail-on-warning  causes the build to fail if a warning is emitted
-                            by the compiler (-Werror)
   --enable-fortify-sources  enables some overflow protections (-D_FORTIFY_SOURCE=2)
   --enable-code-coverage    compute code coverage
 
