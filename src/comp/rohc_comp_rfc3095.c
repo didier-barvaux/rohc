@@ -945,6 +945,11 @@ bool rohc_comp_rfc3095_feedback(struct rohc_comp_ctxt *const context,
 				{
 					c_ack_sn_wlsb(rfc3095_ctxt->outer_ip_flags.info.v4.ip_id_window, sn);
 				}
+				if(rfc3095_ctxt->ip_hdr_nr > 1 &&
+				   rfc3095_ctxt->inner_ip_flags.version == IPV4)
+				{
+					c_ack_sn_wlsb(rfc3095_ctxt->inner_ip_flags.info.v4.ip_id_window, sn);
+				}
 				c_ack_sn_wlsb(rfc3095_ctxt->sn_window, sn);
 			}
 			break;
