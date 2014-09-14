@@ -124,8 +124,8 @@ compressor_num = 1	packet_num = 62	rohc_size = 1330	packet_type = 10
 compressor_num = 2	packet_num = 62	rohc_size = 1330	packet_type = 10
 compressor_num = 1	packet_num = 63	rohc_size = 1330	packet_type = 10
 compressor_num = 2	packet_num = 63	rohc_size = 1330	packet_type = 10
-compressor_num = 1	packet_num = 64	rohc_size = 1329	packet_type = 10
-compressor_num = 2	packet_num = 64	rohc_size = 1329	packet_type = 10
+compressor_num = 1	packet_num = 64	rohc_size = 1330	packet_type = 10
+compressor_num = 2	packet_num = 64	rohc_size = 1330	packet_type = 10
 compressor_num = 1	packet_num = 65	rohc_size = 1330	packet_type = 10
 compressor_num = 2	packet_num = 65	rohc_size = 1330	packet_type = 10
 compressor_num = 1	packet_num = 66	rohc_size = 1330	packet_type = 10

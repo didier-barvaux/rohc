@@ -937,12 +937,16 @@ bool rohc_comp_rfc3095_feedback(struct rohc_comp_ctxt *const context,
 			assert(remain_len == 1);
 			sn = remain_data[0] & 0xff;
 
-			/* ack IP-ID only if IPv4, but always ack SN */
-			if(rfc3095_ctxt->outer_ip_flags.version == IPV4)
+			/* according to RFC 3095, §4.5.2, ack W-LSB values only in R-mode */
+			if(context->mode == ROHC_R_MODE)
 			{
-				c_ack_sn_wlsb(rfc3095_ctxt->outer_ip_flags.info.v4.ip_id_window, sn);
+				/* ack outer/inner IP-ID only if IPv4, but always ack SN */
+				if(rfc3095_ctxt->outer_ip_flags.version == IPV4)
+				{
+					c_ack_sn_wlsb(rfc3095_ctxt->outer_ip_flags.info.v4.ip_id_window, sn);
+				}
+				c_ack_sn_wlsb(rfc3095_ctxt->sn_window, sn);
 			}
-			c_ack_sn_wlsb(rfc3095_ctxt->sn_window, sn);
 			break;
 
 		case 2: /* FEEDBACK-2 */
@@ -1096,8 +1100,9 @@ static bool rohc_comp_rfc3095_feedback_2(struct rohc_comp_ctxt *const context,
 			rohc_comp_debug(context, "ACK received (CID = %zu, SN = 0x%08x, "
 			                "SN-not-valid = %d)", feedback->cid, sn,
 			                sn_not_valid ? 1 : 0);
+			/* according to RFC 3095, §4.5.2, ack W-LSB values only in R-mode */
 			/* acknowledge IP-ID and SN only if SN is considered as valid */
-			if(!sn_not_valid)
+			if(context->mode == ROHC_R_MODE && !sn_not_valid)
 			{
 				/* ack outer/inner IP-ID only if IPv4, but always ack SN */
 				if(rfc3095_ctxt->outer_ip_flags.version == IPV4)
