@@ -6445,8 +6445,8 @@ static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 			                              &(g_context->tmp.nr_sn_bits));
 			if(!wlsb_k_ok)
 			{
-				rohc_comp_debug(context, "failed to find the minimal number "
-				                "of bits required for SN");
+				rohc_comp_warn(context, "failed to find the minimal number of "
+				               "bits required for SN");
 				goto error;
 			}
 		}
