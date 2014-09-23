@@ -1784,7 +1784,7 @@ static bool rtp_detect_cb(const unsigned char *const ip,
 
 	/* the UDP destination port of RTP packet is even (the RTCP destination
 	 * port are RTP destination port + 1, so it is odd) */
-	if((ntohs(udp_sport) % 2) != 0 || (ntohs(udp_dport) % 2) != 0)
+	if((ntohs(udp_dport) % 2) != 0)
 	{
 		goto not_rtp;
 	}
