@@ -54,10 +54,10 @@ static inline uint64_t rohc_time_interval(const struct rohc_ts begin,
 	uint64_t interval;
 
 	interval = end.sec - begin.sec; /* difference btw seconds */
-	interval *= 1e9;                /* convert in nanoseconds */
+	interval *= 1000000000UL;       /* convert in nanoseconds */
 	interval += end.nsec;           /* additional end nanoseconds */
 	interval -= begin.nsec;         /* superfluous begin nanoseconds */
-	interval /= 1e3;
+	interval /= 1000UL;             /* convert in microseconds */
 
 	return interval;
 }
