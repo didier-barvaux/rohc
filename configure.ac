@@ -760,22 +760,26 @@ if test "x$build_doc_man" = "xyes" ; then
 	AC_CHECK_PROG(is_doxy2man_found, doxy2man, "yes", "no")
 	if test "x$is_doxy2man_found" != "xyes"; then
 		echo
-		echo "ERROR: doxy2man binary not found"
+		echo "INFO: doxy2man binary not found"
 		echo
 		echo "doxy2man is required in order to generate the man pages for the"
-		echo "library documentation."
-		exit 1
+		echo "library documentation. The tool was not found on the system, so"
+		echo "pre-generated man pages will be installed instead."
+		echo
+		# don't fail, just warn user
 	fi
 
 	# check for the help2man binary and abort if it is not found
 	AC_CHECK_PROG(is_help2man_found, help2man, "yes", "no")
 	if test "x$is_help2man_found" != "xyes"; then
 		echo
-		echo "ERROR: help2man binary not found"
+		echo "INFO: help2man binary not found"
 		echo
 		echo "help2man is required in order to generate the man pages for the "
-		echo "documentation of library's tools."
-		exit 1
+		echo "documentation of library's tools. The tool was not found on the "
+		echo "system, so pre-generated man pages will be installed instead."
+		echo
+		# don't fail, just warn user
 	fi
 fi
 
