@@ -32,8 +32,8 @@
 /**
  * @brief The f function as defined in LSB encoding for 16-bit fields
  *
- * Find out the interval \f$[v\_ref - p, v\_ref + (2^k - 1) - p]\f$ for a
- * given k. See 4.5.1 in the RFC 3095 for details.
+ * Find out the interval [v_ref - p, v_ref + (2^k - 1) - p] for a given k.
+ * See 4.5.1 in the RFC 3095 for details.
  *
  * As stated RFC, the values to be encoded have a finite range and the
  * interpretation interval can straddle the wraparound boundary. So, the min
@@ -68,8 +68,8 @@ struct rohc_interval16 rohc_f_16bits(const uint16_t v_ref,
 /**
  * @brief The f function as defined in LSB encoding for 32-bit fields
  *
- * Find out the interval \f$[v\_ref - p, v\_ref + (2^k - 1) - p]\f$ for a
- * given k. See 4.5.1 in the RFC 3095 for details.
+ * Find out the interval [v_ref - p, v_ref + (2^k - 1) - p] for a given k.
+ * See 4.5.1 in the RFC 3095 for details.
  *
  * As stated RFC, the values to be encoded have a finite range and the
  * interpretation interval can straddle the wraparound boundary. So, the min

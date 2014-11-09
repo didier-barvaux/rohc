@@ -379,7 +379,7 @@ static void c_ack_remove(struct c_wlsb *const s, const size_t pos)
  * @brief The g function as defined in LSB encoding for 16-bit fields
  *
  * Find the minimal k value so that v falls into the interval given by
- * \f$f(v\_ref, k)\f$. See 4.5.1 in the RFC 3095.
+ * f(v_ref, k). See 4.5.1 in the RFC 3095.
  *
  * @param v_ref    The reference value
  * @param v        The value to encode
@@ -429,7 +429,7 @@ static size_t rohc_g_16bits(const uint16_t v_ref,
  * @brief The g function as defined in LSB encoding for 32-bit fields
  *
  * Find the minimal k value so that v falls into the interval given by
- * \f$f(v\_ref, k)\f$. See 4.5.1 in the RFC 3095.
+ * f(v_ref, k). See 4.5.1 in the RFC 3095.
  *
  * @param v_ref    The reference value
  * @param v        The value to encode
