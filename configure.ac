@@ -834,7 +834,7 @@ AC_ARG_ENABLE(doc-man,
 AM_CONDITIONAL([BUILD_DOC_MAN], [test "x$build_doc_man" = "xyes"])
 
 
-# doxygen and latex are mandatory if API documentation generation is enabled
+# doxygen and dot are mandatory if API documentation generation is enabled
 if test "x$build_doc" = "xyes" ; then
 	# check for the doxygen binary and abort if it is not found
 	AC_CHECK_PROG(is_doxygen_found, doxygen, "yes", "no")
@@ -846,19 +846,6 @@ if test "x$build_doc" = "xyes" ; then
 		echo
 		echo "Go get it from http://www.doxygen.org/ or use your package manager "
 		echo "to install it on your system."
-		exit 1
-	fi
-
-	# check for the latex binary and abort if it is not found
-	AC_CHECK_PROG(is_latex_found, latex, "yes", "no")
-	if test "x$is_latex_found" != "xyes"; then
-		echo
-		echo "ERROR: latex binary not found"
-		echo
-		echo "latex is required by doxygen in order to generate the library documentation."
-		echo
-		echo "Install your favorite latex distribution on your system either manually or "
-		echo "using your package manager."
 		exit 1
 	fi
 
