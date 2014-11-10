@@ -26,16 +26,16 @@ AC_INIT([ROHC library], 1.7.0, [http://rohc-lib.org/],
 AC_CONFIG_SRCDIR([src])
 AM_CONFIG_HEADER([config.h])
 
-# Retrieve the Bazaar revision number
-if test -d "$srcdir/.bzr" ; then
-	bzr="`which bzr`"
+# Retrieve the git revision number
+if test -d "$srcdir/.git/" ; then
+	git_bin="`which git`"
 	if test $? -ne 0 ; then
 		PACKAGE_REVNO="~unknown"
 	else
-		PACKAGE_REVNO="~`${bzr} revno`"
+		PACKAGE_REVNO="~`${git_bin} rev-parse --short @{0}`"
 	fi
-elif test -f "$srcdir/bzr_revno" ; then
-	PACKAGE_REVNO="`cat $srcdir/bzr_revno`"
+elif test -f "$srcdir/git_ref" ; then
+	PACKAGE_REVNO="`cat $srcdir/git_ref`"
 else
 	PACKAGE_REVNO=""
 fi
@@ -932,7 +932,7 @@ AM_DEP_TRACK
 
 AC_CONFIG_FILES([ \
 	Makefile \
-	bzr_revno \
+	git_ref \
 	src/Makefile \
 	src/test/Makefile \
 	src/common/Makefile \
