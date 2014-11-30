@@ -1863,6 +1863,23 @@ error:
  * go in the lowest compression state. This function can be used once the
  * ROHC channel is established again after an interruption.
  *
+ * The function implements the CONTEXT_REINITIALIZATION signal described by
+ * RFC 3095 at §6.3.1 as:
+ * \verbatim
+   CONTEXT_REINITIALIZATION -- signal
+   This parameter triggers a reinitialization of the entire context at
+   the decompressor, both the static and the dynamic part.  The
+   compressor MUST, when CONTEXT_REINITIALIZATION is triggered, back off
+   to the IR state and fully reinitialize the context by sending IR
+   packets with both the static and dynamic chains covering the entire
+   uncompressed headers until it is reasonably confident that the
+   decompressor contexts are reinitialized.  The context
+   reinitialization MUST be done for all contexts at the compressor.
+   This parameter may for instance be used to do context relocation at,
+   e.g., a cellular handover that results in a change of compression
+   point in the radio access network.
+\endverbatim
+ *
  * @param comp  The ROHC compressor
  * @return      true in case of success, false otherwise
  *
