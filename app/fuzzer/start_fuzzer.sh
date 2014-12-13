@@ -74,5 +74,5 @@ else
 	echo "${msg}"
 fi
 
-exit 0
+exit ${ret}
 
