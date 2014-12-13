@@ -92,9 +92,9 @@ enum
 
 
 bool rohc_is_tunneling(const uint8_t protocol)
-	__attribute((warn_unused_result, pure));
+	__attribute__((warn_unused_result, pure));
 
 bool rohc_is_ipv6_opt(const uint8_t protocol)
-	__attribute((warn_unused_result, pure));
+	__attribute__((warn_unused_result, pure));
 
 #endif
