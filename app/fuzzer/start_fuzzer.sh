@@ -65,8 +65,14 @@ nice -n 19 \
 	./app/fuzzer/rohc_fuzzer ${cmd}
 ret=$?
 
-echo "ROHC fuzzer stopped on $(uname -n) with return code $ret" | \
-	mailsubj "ROHC fuzzer stopped on $(uname -n) with code $ret" "${email_addr}"
+msg="ROHC fuzzer stopped on $(uname -n) with return code $ret"
+
+which mailsubj >/dev/null 2>&1
+if [ $? -eq 0 ] ; then
+	echo "${msg}" | mailsubj "${msg}" "${email_addr}"
+else
+	echo "${msg}"
+fi
 
 exit 0
 
