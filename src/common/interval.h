@@ -40,12 +40,12 @@
  */
 typedef enum
 {
-	ROHC_LSB_SHIFT_IP_ID  =  0,  /**< real value for IP-ID */
-	ROHC_LSB_SHIFT_RTP_TS =  2,  /**< need to compute real value for RTP TS */
-	ROHC_LSB_SHIFT_RTP_SN =  3,  /**< need to compute real value for RTP SN */
-	ROHC_LSB_SHIFT_ESP_SN =  3,  /**< need to compute real value for ESP SN */
 	ROHC_LSB_SHIFT_SN     = -1,  /**< real value for non-RTP SN */
-	ROHC_LSB_SHIFT_VAR    =  1,  /**< real value is variable */
+	ROHC_LSB_SHIFT_IP_ID  =  0,  /**< real value for IP-ID */
+	ROHC_LSB_SHIFT_RTP_TS =  100,  /**< need to compute real value for RTP TS */
+	ROHC_LSB_SHIFT_RTP_SN =  101,  /**< need to compute real value for RTP SN */
+	ROHC_LSB_SHIFT_ESP_SN =  102,  /**< need to compute real value for ESP SN */
+	ROHC_LSB_SHIFT_VAR    =  103,  /**< real value is variable */
 } rohc_lsb_shift_t;
 
 
@@ -140,7 +140,8 @@ static inline int32_t rohc_interval_compute_p(const size_t k,
 		break;
 
 		/* special computation for RTP and ESP SN encoding */
-		case ROHC_LSB_SHIFT_RTP_SN: /* = ROHC_LSB_SHIFT_ESP_SN */
+		case ROHC_LSB_SHIFT_RTP_SN:
+		case ROHC_LSB_SHIFT_ESP_SN:
 		{
 			if(k <= 4)
 			{
