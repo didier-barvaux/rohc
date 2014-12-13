@@ -42,20 +42,6 @@
 #include <assert.h>
 
 
-/* TODO: to be removed once c_lsb and d_c_lsb are removed */
-/**
- * @brief Table of the mask for lsb()
- */
-static unsigned int lsb_masks[] =
-{
-	0x00000,
-	0x00001, 0x00003, 0x00007, 0x0000F,
-	0x0001F, 0x0003F, 0x0007F, 0x000FF,
-	0x001FF, 0x003FF, 0x007FF, 0x00FFF,
-	0x01FFF, 0x03FFF, 0x07FFF, 0x0FFFF,
-	0x1FFFF, 0x3FFFF, 0x7FFFF, 0xFFFFF
-};
-
 
 /**
  * @brief Table of the mask for lsb()
@@ -350,106 +336,66 @@ unsigned int rsf_index_dec( unsigned int rsf_index )
 
 
 /**
- * @brief Compress the lower bits of the given value.
- *
- * See RFC4997 page 27
- *
- * @param context          The compressor context
- * @param num_lsbs_param   The number of bits
- * @param offset_param     The offset
- * @param context_value    The value of the context
- * @param original_value   The value to compress
- * @return                 The compressed value with num_lsbs_param bits
- *
- * @todo TODO: duplicated code from rfc4996_encoding.c
- */
-static uint32_t d_c_lsb(const struct rohc_decomp_ctxt *const context,
-                        int num_lsbs_param,
-                        unsigned int offset_param,
-                        unsigned int context_value,
-                        unsigned int original_value)
-{
-	unsigned int lower_bound;
-	unsigned int upper_bound;
-	unsigned int value;
-
-	assert(context != NULL);
-
-	rohc_decomp_debug(context, "num_lsb = %d, offset_param = %d, "
-	                  "context_value = 0x%x, original_value = 0x%x",
-	                  num_lsbs_param, offset_param, context_value,
-	                  original_value);
-
-	assert( num_lsbs_param > 0 && num_lsbs_param <= 18 );
-
-	lower_bound = context_value - offset_param;
-	upper_bound = context_value + lsb_masks[num_lsbs_param] - offset_param;
-
-	value = original_value & lsb_masks[num_lsbs_param];
-
-	rohc_decomp_debug(context, "0x%x < value (0x%x) < 0x%x => return 0x%x",
-	                  lower_bound, original_value, upper_bound, value);
-
-	return value;
-}
-
-
-/**
  * @brief Decompress the lower bits of IP-ID
  *
  * See RFC4996 page 75
  *
- * @param context        The decompression context
- * @param behavior       The IP-ID behavior
- * @param k              The num_lsbs_param parameter for d_lsb()
- * @param p              The offset parameter for d_lsb()
- * @param context_ip_id  The context IP-ID value
- * @param value          The value to decompress
- * @param msn            The Master Sequence Number
- * @return               The IP-ID
+ * @param context            The decompression context
+ * @param ip_id_lsb_ctxt     The LSB decoding context for the IP-ID offset
+ * @param behavior           The IP-ID behavior
+ * @param msn                The Master Sequence Number
+ * @param ip_id_bits         The received IP-ID offset bits to decode
+ * @param ip_id_bits_nr      The number of received IP-ID offset bits to decode
+ * @param p                  The offset parameter p to use for LSB decoding
+ * @param[out] ip_id_offset  The decoded IP-ID offset value
+ * @param[out] ip_id         The decoded IP-ID value
+ * @return                   true if IP-ID was successfully decoded,
+ *                           false if decoding failed
  */
-uint16_t d_ip_id_lsb(const struct rohc_decomp_ctxt *const context,
-                     const int behavior,
-                     const unsigned int k,
-                     const unsigned int p,
-                     const uint16_t context_ip_id,
-                     const uint16_t value,
-                     const uint16_t msn)
+bool d_ip_id_lsb(const struct rohc_decomp_ctxt *const context,
+                 const struct rohc_lsb_decode *const ip_id_lsb_ctxt,
+                 const int behavior,
+                 const uint16_t msn,
+                 const uint32_t ip_id_bits,
+                 const size_t ip_id_bits_nr,
+                 const rohc_lsb_shift_t p,
+                 uint16_t *const ip_id_offset,
+                 uint16_t *const ip_id)
 {
-	uint16_t ip_id_offset;
-	uint16_t ip_id;
+	bool decode_ok;
+	uint32_t ip_id_offset32;
 
 	assert(context != NULL);
+	assert(ip_id_lsb_ctxt != NULL);
+	assert(ip_id_offset != NULL);
+	assert(ip_id != NULL);
 
-	rohc_decomp_debug(context, "behavior = %d, k = %d, p = %d, "
-	                  "context_ip_id = 0x%04x, value = 0x%04x, msn = 0x%04x",
-	                  behavior, k, p, context_ip_id, value, msn);
-
-	switch(behavior)
+	decode_ok = rohc_lsb_decode(ip_id_lsb_ctxt, ROHC_LSB_REF_0, 0,
+	                            ip_id_bits, ip_id_bits_nr, p, &ip_id_offset32);
+	if(!decode_ok)
 	{
-		case IP_ID_BEHAVIOR_SEQ:
-			ip_id = context_ip_id + 1;
-			ip_id_offset = ip_id - msn;
-			ip_id_offset = d_c_lsb(context, k, p, context_ip_id - msn,
-			                       ip_id_offset);
-			rohc_decomp_debug(context, "new ip_id = 0x%04x, ip_id_offset = "
-			                  "0x%04x, value = 0x%04x", ip_id, ip_id_offset,
-			                  value);
-			assert(ip_id_offset == value); /* TODO: should not assert */
-			return ip_id;
-		case IP_ID_BEHAVIOR_SEQ_SWAP:
-			ip_id = swab16(context_ip_id);
-			ip_id++;
-			ip_id_offset = ip_id - msn;
-			ip_id_offset = d_c_lsb(context, k, p, ip_id - 1 - msn, ip_id_offset);
-			rohc_decomp_debug(context, "new ip_id = 0x%04x, ip_id_offset = "
-			                  "0x%04x, value = 0x%04x", ip_id, ip_id_offset,
-			                  value);
-			assert(ip_id_offset == value); /* TODO: should not assert */
-			return ip_id;
+		rohc_decomp_warn(context, "failed to decode %zu innermost IP-ID offset "
+		                 "bits 0x%x with p = %u", ip_id_bits_nr, ip_id_bits, p);
+		goto error;
 	}
+	*ip_id_offset = (uint16_t) (ip_id_offset32 & 0xffff);
+	rohc_decomp_debug(context, "decoded IP-ID offset = 0x%x (%zu bits 0x%x with "
+	                  "p = %d)", *ip_id_offset, ip_id_bits_nr, ip_id_bits, p);
 
-	return 0;
+	// TODO: check for unexpected behaviors
+	/* add the decoded offset with SN, taking care of overflow */
+	*ip_id = (msn + (*ip_id_offset)) & 0xffff;
+	if(behavior == IP_ID_BEHAVIOR_SEQ_SWAP)
+	{
+		*ip_id = swab16(*ip_id);
+	}
+	rohc_decomp_debug(context, "decoded IP-ID = 0x%04x (MSN = 0x%04x, "
+	                  "behavior = %d)", *ip_id, msn, behavior);
+
+	return true;
+
+error:
+	return false;
 }
 
 
@@ -458,83 +404,80 @@ uint16_t d_ip_id_lsb(const struct rohc_decomp_ctxt *const context,
  *
  * See RFC4996 page 76
  *
- * @param context        The decompression context
- * @param rohc_data      The compressed value
- * @param behavior       The IP-ID behavior
- * @param indicator      The compression indicator
- * @param context_ip_id  The context IP-ID value
- * @param ip_id          Pointer to the uncompressed IP-ID
- * @param msn            The Master Sequence Number
- * @return               The length (in bytes) of the compressed value,
- *                       -1 if ROHC data is malformed
+ * @param context            The decompression context
+ * @param ip_id_lsb_ctxt     The LSB decoding context for the IP-ID offset
+ * @param rohc_data          The compressed IP-ID offset value
+ * @param behavior           The IP-ID behavior
+ * @param indicator          The compression indicator
+ * @param[out] ip_id_offset  The decoded IP-ID offset value
+ * @param[out] ip_id         The decoded IP-ID value
+ * @param msn                The Master Sequence Number
+ * @return                   The length (in bytes) of the compressed value,
+ *                           -1 if ROHC data is malformed
  */
 int d_optional_ip_id_lsb(const struct rohc_decomp_ctxt *const context,
+                         const struct rohc_lsb_decode *const ip_id_lsb_ctxt,
                          const uint8_t *const rohc_data,
                          const int behavior,
                          const int indicator,
-                         const uint16_t context_ip_id,
+                         uint16_t *const ip_id_offset,
                          uint16_t *const ip_id,
                          const uint16_t msn)
 {
-	size_t length = 0;
+	int length;
 
 	assert(context != NULL);
 
-	rohc_decomp_debug(context, "behavior = %d, indicator = %d, "
-	                  "context_ip_id = 0x%04x, msn = 0x%04x", behavior,
-	                  indicator, context_ip_id, msn);
+	// TODO: check rohc_data length
 
 	switch(behavior)
 	{
 		case IP_ID_BEHAVIOR_SEQ:
-			if(indicator == 0)
-			{
-				*ip_id = (context_ip_id & 0xff00) |
-				         d_ip_id_lsb(context, behavior, 8, 3, context_ip_id,
-				                     rohc_data[0], msn);
-				rohc_decomp_debug(context, "read ip_id = 0x%04x -> 0x%04x",
-				                  rohc_data[0], *ip_id);
-				length++;
-			}
-			else
-			{
-				memcpy(ip_id, rohc_data, sizeof(uint16_t));
-				length += sizeof(uint16_t);
-				*ip_id = rohc_ntoh16(*ip_id);
-				rohc_decomp_debug(context, "read ip_id = 0x%04x", *ip_id);
-			}
-			break;
 		case IP_ID_BEHAVIOR_SEQ_SWAP:
 		{
-			const uint16_t swapped_context_ip_id = swab16(context_ip_id);
 			if(indicator == 0)
 			{
-				*ip_id = (swapped_context_ip_id & 0xff00) |
-				          d_ip_id_lsb(context, behavior, 8, 3, context_ip_id,
-				                      rohc_data[0], msn);
+				const bool decode_ok =
+					d_ip_id_lsb(context, ip_id_lsb_ctxt, behavior, msn, rohc_data[0],
+					            8, 3, ip_id_offset, ip_id);
+				if(!decode_ok)
+				{
+					rohc_decomp_warn(context, "failed to decode innermost IP-ID offset");
+					goto error;
+				}
 				rohc_decomp_debug(context, "read ip_id = 0x%04x -> 0x%04x",
 				                  rohc_data[0], *ip_id);
-				length++;
+				length = 1;
 			}
 			else
 			{
 				memcpy(ip_id, rohc_data, sizeof(uint16_t));
-				length += sizeof(uint16_t);
+				length = sizeof(uint16_t);
 				*ip_id = rohc_ntoh16(*ip_id);
 				rohc_decomp_debug(context, "read ip_id = 0x%04x", *ip_id);
 			}
 			break;
 		}
 		case IP_ID_BEHAVIOR_RAND:
-			break;
 		case IP_ID_BEHAVIOR_ZERO:
-			*ip_id = 0;
+		{
+			rohc_decomp_debug(context, "IP-ID not present since IP-ID behavior is %d",
+			                  behavior);
+			length = 0;
 			break;
+		}
 		default:
-			break;
+		{
+			rohc_decomp_warn(context, "failed to decode innermost IP-ID offset: "
+			                 "unexpected behavior %d", behavior);
+			goto error;
+		}
 	}
 
 	return length;
+
+error:
+	return -1;
 }
 
 

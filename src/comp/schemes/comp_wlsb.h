@@ -56,6 +56,12 @@ bool wlsb_get_k_16bits(const struct c_wlsb *const wlsb,
                        const uint16_t value,
                        size_t *const bits_nr)
 	__attribute__((warn_unused_result, nonnull(1, 3)));
+bool wlsb_get_kp_16bits(const struct c_wlsb *const wlsb,
+                        const uint16_t value,
+                        const rohc_lsb_shift_t p,
+                        size_t *const bits_nr)
+	__attribute__((warn_unused_result, nonnull(1, 4)));
+
 bool wlsb_get_k_32bits(const struct c_wlsb *const wlsb,
                        const uint32_t value,
                        size_t *const bits_nr)

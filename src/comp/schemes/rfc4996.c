@@ -453,81 +453,15 @@ unsigned int rsf_index_enc(const struct rohc_comp_ctxt *const context,
 
 
 /**
- * @brief Compress the lower bits of IP-ID
- *
- * See RFC4996 page 75
- *
- * @param context          The compressor context
- * @param behavior         The IP-ID behavior
- * @param k                The num_lsbs_param parameter for c_lsb()
- * @param p                The offset parameter for c_lsb()
- * @param context_ip_id    The context value of IP-ID
- * @param ip_id            The IP-ID value to compress
- * @param msn              The Master Sequence Number
- * @return                 The lsb of offset between IP-ID and MSN
- */
-uint16_t c_ip_id_lsb(const struct rohc_comp_ctxt *const context,
-                     const int behavior,
-                     const unsigned int k,
-                     const unsigned int p,
-                     const uint16_t context_ip_id,
-                     const uint16_t ip_id,
-                     const uint16_t msn)
-{
-	uint16_t ip_id_offset;
-	uint16_t ip_id_nbo;
-	uint16_t swapped_context_ip_id;
-
-	assert(context != NULL);
-	assert(behavior == IP_ID_BEHAVIOR_SEQ ||
-	       behavior == IP_ID_BEHAVIOR_SEQ_SWAP );
-
-	rohc_comp_debug(context, "behavior = %d, context_ip_id = 0x%04x, "
-	                "ip_id = 0x%04x, msn = 0x%04x", behavior,
-	                context_ip_id, ip_id, msn);
-
-	switch(behavior)
-	{
-		case IP_ID_BEHAVIOR_SEQ:
-			ip_id_offset = ip_id - msn;
-			rohc_comp_debug(context, "ip_id_offset = 0x%04x - 0x%04x = 0x%04x",
-			                ip_id, msn, ip_id_offset);
-			ip_id_offset = c_lsb(context, k, p, context_ip_id - msn,
-			                     ip_id_offset);
-			rohc_comp_debug(context, "ip_id_offset = 0x%04x", ip_id_offset);
-			break;
-		case IP_ID_BEHAVIOR_SEQ_SWAP:
-			ip_id_nbo = swab16(ip_id);
-			rohc_comp_debug(context, "ip_id_nbo = 0x%04x", ip_id_nbo);
-			ip_id_offset = ip_id_nbo - msn;
-			rohc_comp_debug(context, "ip_id_offset = 0x%04x", ip_id_offset);
-			swapped_context_ip_id = swab16(context_ip_id);
-			ip_id_offset = c_lsb(context, k, p, swapped_context_ip_id - msn,
-			                     ip_id_offset);
-			rohc_comp_debug(context, "ip_id_offset = 0x%04x", ip_id_offset);
-			break;
-		default:
-			/* should not happen */
-#if defined(NDEBUG) || defined(__KERNEL__) || defined(ENABLE_DEAD_CODE)
-			ip_id_offset = 0;
-#endif
-			assert(0);
-			break;
-	}
-	return ip_id_offset;
-}
-
-
-/**
  * @brief Compress or not the IP-ID
  *
  * See RFC4996 page 76
  *
  * @param context          The compressor context
  * @param behavior         The IP-ID behavior
- * @param context_ip_id    The context value of IP-ID
  * @param ip_id            The IP-ID value to compress
- * @param msn              The Master Sequence Number
+ * @param ip_id_offset     The IP-ID offset value to compress
+ * @param nr_bits_wlsb     The number of IP-ID offset bits required for W-LSB
  * @param[out] rohc_data   The compressed value
  * @param[out] indicator   The indicator: 0 if short, 1 if long
  * @return                 The number of ROHC bytes written,
@@ -535,9 +469,9 @@ uint16_t c_ip_id_lsb(const struct rohc_comp_ctxt *const context,
  */
 int c_optional_ip_id_lsb(const struct rohc_comp_ctxt *const context,
                          const int behavior,
-                         const uint16_t context_ip_id,
                          const uint16_t ip_id,
-                         const uint16_t msn,
+                         const uint16_t ip_id_offset,
+                         const size_t nr_bits_wlsb,
                          uint8_t *const rohc_data,
                          int *const indicator)
 {
@@ -545,17 +479,17 @@ int c_optional_ip_id_lsb(const struct rohc_comp_ctxt *const context,
 
 	assert(context != NULL);
 
-	rohc_comp_debug(context, "behavior = 0x%04x, context_ip_id = 0x%04x, "
-	                "ip_id = 0x%04x, msn = 0x%04x", behavior, context_ip_id,
-	                ip_id, msn);
+	rohc_comp_debug(context, "optional_ip_id_lsb(behavior = %d, IP-ID = 0x%04x, "
+	                "IP-ID offset = 0x%04x, nr of bits required for WLSB encoding "
+	                "= %zu)", behavior, ip_id, ip_id_offset, nr_bits_wlsb);
 
 	switch(behavior)
 	{
+		case IP_ID_BEHAVIOR_SEQ_SWAP:
 		case IP_ID_BEHAVIOR_SEQ:
-			if((context_ip_id & 0xff00) == (ip_id & 0xff00))
+			if(nr_bits_wlsb <= 8)
 			{
-				rohc_data[0] = c_ip_id_lsb(context, behavior, 8, 3,
-				                           context_ip_id, ip_id, msn);
+				rohc_data[0] = ip_id_offset & 0xff;
 				*indicator = 0;
 				length++;
 				rohc_comp_debug(context, "write ip_id = 0x%02x", rohc_data[0]);
@@ -567,25 +501,6 @@ int c_optional_ip_id_lsb(const struct rohc_comp_ctxt *const context,
 				length += sizeof(uint16_t);
 				*indicator = 1;
 				rohc_comp_debug(context, "write ip_id = 0x%04x", ip_id);
-			}
-			break;
-		case IP_ID_BEHAVIOR_SEQ_SWAP:
-			if((context_ip_id & 0x00ff) == (ip_id & 0x00ff))
-			{
-				rohc_data[0] = c_ip_id_lsb(context, behavior, 8, 3,
-				                           context_ip_id, ip_id, msn);
-				*indicator = 0;
-				length++;
-				rohc_comp_debug(context, "write ip_id = 0x%02x", rohc_data[0]);
-			}
-			else
-			{
-				const uint16_t swapped_ip_id = swab16(ip_id);
-				const uint16_t swapped_ip_id_nbo = rohc_hton16(swapped_ip_id);
-				memcpy(rohc_data, &swapped_ip_id_nbo, sizeof(uint16_t));
-				*indicator = 1;
-				length += sizeof(uint16_t);
-				rohc_comp_debug(context, "write ip_id = 0x%04x", swapped_ip_id_nbo);
 			}
 			break;
 		case IP_ID_BEHAVIOR_RAND:

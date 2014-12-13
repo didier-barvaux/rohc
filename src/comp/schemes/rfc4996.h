@@ -158,22 +158,13 @@ void c_field_scaling(uint32_t *const scaled_value,
 // RFC4996 page 71
 unsigned int rsf_index_enc(const struct rohc_comp_ctxt *const context,
                            unsigned int rsf_flags);
-// RFC4996 page 75
-uint16_t c_ip_id_lsb(const struct rohc_comp_ctxt *const context,
-                     const int behavior,
-                     const unsigned int k,
-                     const unsigned int p,
-                     const uint16_t context_ip_id,
-                     const uint16_t ip_id,
-                     const uint16_t msn)
-	__attribute__((warn_unused_result, nonnull(1)));
 
 /* optional_ip_id_lsb encoding method */
 int c_optional_ip_id_lsb(const struct rohc_comp_ctxt *const context,
                          const int behavior,
-                         const uint16_t context_ip_id,
                          const uint16_t ip_id,
-                         const uint16_t msn,
+                         const uint16_t ip_id_offset,
+                         const size_t nr_bits_wlsb,
                          uint8_t *const rohc_data,
                          int *const indicator)
 	__attribute__((warn_unused_result, nonnull(1, 6, 7)));
