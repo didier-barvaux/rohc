@@ -33,6 +33,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <assert.h>
+#include <errno.h>
 
 /* ROHC includes */
 #include <rohc/rohc.h>
@@ -52,6 +53,15 @@ static void print_rohc_traces(void *const priv_ctxt,
                               const char *const format,
                               ...)
 	__attribute__((format(printf, 5, 6), nonnull(5)));
+
+static unsigned long compute_eta(const struct timespec ts_begin,
+                                 const unsigned long max_iter,
+                                 const unsigned long cur_iter)
+	__attribute__((warn_unused_result));
+static void print_time(const char *const descr, const unsigned long sec)
+	__attribute__((nonnull(1)));
+static bool now(struct timespec *const now)
+	__attribute__((warn_unused_result, nonnull(1)));
 
 
 /** The maximum number of traces to keep */
@@ -83,6 +93,8 @@ int main(int argc, char *argv[])
 	const unsigned long max_iter = 2000000000;
 	unsigned long cur_iter;
 	size_t i;
+
+	struct timespec ts_begin;
 
 	/* no traces at the moment */
 	for(i = 0; i < MAX_LAST_TRACES; i++)
@@ -161,6 +173,9 @@ int main(int argc, char *argv[])
 	                                   ROHC_PROFILE_IP, ROHC_PROFILE_UDPLITE,
 	                                   ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1));
 
+	/* get timestamp at the beginning of the test */
+	assert(now(&ts_begin));
+
 	/* decompress many random packets in a row */
 	for(cur_iter = 1; cur_iter <= max_iter; cur_iter++)
 	{
@@ -180,6 +195,10 @@ int main(int argc, char *argv[])
 				printf("\r");
 			}
 			printf("iteration %lu / %lu", cur_iter, max_iter);
+			if(cur_iter > 1)
+			{
+				print_time("  ETA", compute_eta(ts_begin, max_iter, cur_iter));
+			}
 			fflush(stdout);
 		}
 
@@ -279,5 +298,67 @@ static void print_rohc_traces(void *const priv_ctxt __attribute__((unused)),
 		print_rohc_traces(priv_ctxt, level, entity, profile,
 		                  "previous trace truncated\n");
 	}
+}
+
+
+/**
+ * @brief Compute the Estimed Time for Arrival (ETA), ie. the end of the test
+ *
+ * @param ts_begin  The timestamp at the beginning of the test
+ *                  (in seconds and nanoseconds)
+ * @param max_iter  The number of iterations that need to be performed
+ * @param cur_iter  The number of iterations done so far
+ * @return          The ETA in seconds
+ */
+static unsigned long compute_eta(const struct timespec ts_begin,
+                                 const unsigned long max_iter,
+                                 const unsigned long cur_iter)
+{
+	struct timespec ts_now;
+
+	assert(now(&ts_now));
+
+	const uint64_t interval_ns = (ts_now.tv_sec - ts_begin.tv_sec) * 1e9 +
+	                             ts_now.tv_nsec - ts_begin.tv_nsec;
+	const unsigned long nr_done_10000 = cur_iter / 10000UL;
+	const uint64_t nr_ns_for_10000 = interval_ns / nr_done_10000;
+	const unsigned long nr_remain_10000 = ((max_iter - cur_iter) / 10000UL);
+	const uint64_t eta_ns = nr_remain_10000 * nr_ns_for_10000;
+	const unsigned long eta_s = eta_ns / 1e9;
+
+	return eta_s;
+}
+
+
+/**
+ * @brief Pretty print the given timestamp
+ *
+ * @param ts  The timestamp to print (in seconds)
+ */
+static void print_time(const char *const descr, const unsigned long sec)
+{
+	const unsigned long min = sec / 60;
+	const unsigned long sec_reminder = sec % 60;
+	const unsigned long hour = min / 60;
+	const unsigned long min_reminder = min % 60;
+
+	printf("%s %2luh %2lum %2lus", descr, hour, min_reminder, sec_reminder);
+}
+
+
+/**
+ * @brief Retrieve the current timestamp
+ *
+ * @param[out] now  The current timestamp in seconds and nanoseconds
+ */
+static bool now(struct timespec *const now)
+{
+	if(clock_gettime(CLOCK_MONOTONIC_RAW, now) != 0)
+	{
+		fprintf(stderr, "failed to retrieve current timestamp: %s (%d)\n",
+		        strerror(errno), errno);
+		return false;
+	}
+	return true;
 }
 
