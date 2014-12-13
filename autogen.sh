@@ -48,6 +48,9 @@ doxy2man="$( which doxy2man 2>/dev/null )"
 if [ $? -eq 0 ] && [ "x${doxy2man}" != "x" ] && [ -x "${doxy2man}" ] ; then
 	add_opts="${add_opts} --enable-doc-man"
 fi
+if [ "${USE_VALGRIND}" = yes ] ; then
+	add_opts="${add_opts} --enable-rohc-tests-valgrind"
+fi
 
 # run configure with failure on compiler warnings enabled since autogen.sh
 # is for developpers not users, also enable tests, stats, doc and examples.
