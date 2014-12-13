@@ -9,6 +9,7 @@ git_ref
 .*.o.cmd
 *.gcda
 *.gcno
+.*.swp
 test-suite.log
 test_*.sh.log
 test_*.sh.trs
