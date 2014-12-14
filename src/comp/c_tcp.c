@@ -752,9 +752,6 @@ static void tcp_field_descr_present(const struct rohc_comp_ctxt *const context,
                                     const bool present)
 	__attribute__((nonnull(1, 2)));
 
-static char * tcp_ip_id_behavior_get_descr(const tcp_ip_id_behavior_t ip_id_behavior)
-	__attribute__((warn_unused_result, const));
-
 static char * tcp_opt_get_descr(const uint8_t opt_type)
 	__attribute__((warn_unused_result, const));
 
@@ -7020,33 +7017,6 @@ static void tcp_field_descr_present(const struct rohc_comp_ctxt *const context,
                                     const bool present)
 {
 	rohc_comp_debug(context, "%s is%s present", name, present ? "" : " not");
-}
-
-
-/**
- * @brief Get a string that describes the given IP-ID behavior
- *
- * @param behavior  The type of the option to get a description for
- * @return          The description of the option
- */
-static char * tcp_ip_id_behavior_get_descr(const tcp_ip_id_behavior_t behavior)
-{
-	switch(behavior)
-	{
-		case IP_ID_BEHAVIOR_SEQ:
-			return "sequential";
-		case IP_ID_BEHAVIOR_SEQ_SWAP:
-			return "sequential swapped";
-		case IP_ID_BEHAVIOR_RAND:
-			return "random";
-		case IP_ID_BEHAVIOR_ZERO:
-			return "constant zero";
-		default:
-			assert(0);
-#if defined(NDEBUG) || defined(__KERNEL__) || defined(ENABLE_DEAD_CODE)
-			return "unknown";
-#endif
-	}
 }
 
 

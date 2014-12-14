@@ -30,6 +30,7 @@
 #define ROHC_PROTOCOLS_TCP_H
 
 #include <stdint.h>
+#include <assert.h>
 
 #ifdef __KERNEL__
 #	include <endian.h>
@@ -1430,6 +1431,38 @@ typedef union
 	ip_ah_opt_t *ip_ah_opt;
 	tcphdr_t *tcphdr;
 } base_header_ip_t;
+
+
+
+static inline char * tcp_ip_id_behavior_get_descr(const tcp_ip_id_behavior_t ip_id_behavior)
+	__attribute__((warn_unused_result, const));
+
+
+/**
+ * @brief Get a string that describes the given IP-ID behavior
+ *
+ * @param behavior  The type of the option to get a description for
+ * @return          The description of the option
+ */
+static inline char * tcp_ip_id_behavior_get_descr(const tcp_ip_id_behavior_t behavior)
+{
+	switch(behavior)
+	{
+		case IP_ID_BEHAVIOR_SEQ:
+			return "sequential";
+		case IP_ID_BEHAVIOR_SEQ_SWAP:
+			return "sequential swapped";
+		case IP_ID_BEHAVIOR_RAND:
+			return "random";
+		case IP_ID_BEHAVIOR_ZERO:
+			return "constant zero";
+		default:
+			assert(0);
+#if defined(NDEBUG) || defined(__KERNEL__) || defined(ENABLE_DEAD_CODE)
+			return "unknown";
+#endif
+	}
+}
 
 
 #endif /* ROHC_PROTOCOLS_TCP_H */

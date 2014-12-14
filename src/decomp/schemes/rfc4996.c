@@ -445,7 +445,7 @@ int d_optional_ip_id_lsb(const struct rohc_decomp_ctxt *const context,
 					rohc_decomp_warn(context, "failed to decode innermost IP-ID offset");
 					goto error;
 				}
-				rohc_decomp_debug(context, "read ip_id = 0x%04x -> 0x%04x",
+				rohc_decomp_debug(context, "read ip_id = 0x%02x -> 0x%04x",
 				                  rohc_data[0], *ip_id);
 				length = 1;
 			}
