@@ -123,6 +123,19 @@ void rohc_lsb_free(struct rohc_lsb_decode *const lsb)
 
 
 /**
+ * @brief Is the LSB decoding context ready to decode a compressed value
+ *
+ * @param lsb  The LSB object used to decode
+ * @return     Whether the LSB decoding context is ready to decode a value
+ */
+bool rohc_lsb_is_ready(const struct rohc_lsb_decode *const lsb)
+{
+	assert(lsb != NULL);
+	return lsb->is_init;
+}
+
+
+/**
  * @brief Get the shift parameter p of the LSB decoding context
  *
  * @param lsb  The LSB object used to decode
