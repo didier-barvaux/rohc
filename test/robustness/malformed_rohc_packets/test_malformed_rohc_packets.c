@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <strings.h>
 #include <string.h>
+#include <stdarg.h>
 
 /* include for the PCAP library */
 #if HAVE_PCAP_PCAP_H == 1
@@ -50,6 +51,18 @@ for ./configure ? If yes, check configure output and config.log"
 static void usage(void);
 static int test_decomp(const char *const filename,
                        const size_t failure_start);
+
+static void print_rohc_traces(void *const priv_ctxt,
+                              const rohc_trace_level_t level,
+                              const rohc_trace_entity_t entity,
+                              const int profile,
+                              const char *const format,
+                              ...)
+	__attribute__((format(printf, 5, 6), nonnull(5)));
+
+
+/** Whether to be verbose or not */
+static bool is_verbose = false;
 
 
 /**
@@ -85,6 +98,11 @@ int main(int argc, char *argv[])
 			/* print help */
 			usage();
 			goto error;
+		}
+		else if(!strcmp(*argv, "-v"))
+		{
+			/* be more verbose */
+			is_verbose = true;
 		}
 		else if(filename == NULL)
 		{
@@ -139,7 +157,8 @@ static void usage(void)
 	        "ROHC decompression tool: test the ROHC library with a flow\n"
 	        "                         of malformed ROHC packets\n"
 	        "\n"
-	        "usage: test_malformed_rohc_packets FLOW FAILURE_START\n");
+	        "usage: test_malformed_rohc_packets -h\n"
+	        "       test_malformed_rohc_packets [-v] FLOW FAILURE_START\n");
 }
 
 
@@ -203,6 +222,13 @@ static int test_decomp(const char *const filename,
 	{
 		fprintf(stderr, "cannot create the decompressor\n");
 		goto close_input;
+	}
+
+	/* set the callback for traces */
+	if(!rohc_decomp_set_traces_cb2(decomp, print_rohc_traces, NULL))
+	{
+		fprintf(stderr, "failed to set trace callback\n");
+		goto destroy_decomp;
 	}
 
 	/* enable decompression profiles */
@@ -279,5 +305,43 @@ close_input:
 	pcap_close(handle);
 error:
 	return is_failure;
+}
+
+
+/**
+ * @brief Callback to print traces of the ROHC library
+ *
+ * @param priv_ctxt  An optional private context, may be NULL
+ * @param level      The priority level of the trace
+ * @param entity     The entity that emitted the trace among:
+ *                    \li ROHC_TRACE_COMP
+ *                    \li ROHC_TRACE_DECOMP
+ * @param profile    The ID of the ROHC compression/decompression profile
+ *                   the trace is related to
+ * @param format     The format string of the trace
+ */
+static void print_rohc_traces(void *const priv_ctxt,
+                              const rohc_trace_level_t level,
+                              const rohc_trace_entity_t entity,
+                              const int profile,
+                              const char *const format,
+                              ...)
+{
+	const char *level_descrs[] =
+	{
+		[ROHC_TRACE_DEBUG]   = "DEBUG",
+		[ROHC_TRACE_INFO]    = "INFO",
+		[ROHC_TRACE_WARNING] = "WARNING",
+		[ROHC_TRACE_ERROR]   = "ERROR"
+	};
+
+	if(level >= ROHC_TRACE_WARNING || is_verbose)
+	{
+		va_list args;
+		fprintf(stdout, "[%s] ", level_descrs[level]);
+		va_start(args, format);
+		vfprintf(stdout, format, args);
+		va_end(args);
+	}
 }
 
