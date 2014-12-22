@@ -235,7 +235,7 @@ static int test_decomp(const char *const filename,
 	if(!rohc_decomp_enable_profiles(decomp, ROHC_PROFILE_UNCOMPRESSED,
 	                                ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
 	                                ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
-	                                ROHC_PROFILE_ESP, -1))
+	                                ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
 	{
 		fprintf(stderr, "failed to enable the decompression profiles\n");
 		goto destroy_decomp;
