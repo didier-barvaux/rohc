@@ -232,8 +232,9 @@ typedef struct
 /** Define the TCP part of the decompression profile context */
 struct d_tcp_context
 {
-	// The Master Sequence Number
-	uint16_t msn;
+	/** The LSB decoding context of MSN */
+	struct rohc_lsb_decode *msn_lsb_ctxt;
+	uint16_t msn_tmp;
 
 	/** The LSB decoding context of innermost IP-ID */
 	struct rohc_lsb_decode *ip_id_lsb_ctxt;
@@ -465,6 +466,15 @@ static void * d_tcp_create(const struct rohc_decomp_ctxt *const context)
 	}
 	memset(tcp_context, 0, sizeof(struct d_tcp_context));
 
+	/* create the LSB decoding context for the MSN */
+	tcp_context->msn_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_TCP_SN, 16);
+	if(tcp_context->msn_lsb_ctxt == NULL)
+	{
+		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
+		           "failed to create the LSB decoding context for the MSN");
+		goto destroy_context;
+	}
+
 	/* create the LSB decoding context for the innermost IP-ID */
 	tcp_context->ip_id_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_SN, 16);
 	if(tcp_context->ip_id_lsb_ctxt == NULL)
@@ -472,7 +482,7 @@ static void * d_tcp_create(const struct rohc_decomp_ctxt *const context)
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "failed to create the LSB decoding context for the innermost "
 		           "IP-ID");
-		goto destroy_context;
+		goto free_lsb_msn;
 	}
 
 	/* create the LSB decoding context for the sequence number */
@@ -547,6 +557,8 @@ free_lsb_seq:
 	rohc_lsb_free(tcp_context->seq_lsb_ctxt);
 free_lsb_ip_id:
 	rohc_lsb_free(tcp_context->ip_id_lsb_ctxt);
+free_lsb_msn:
+	rohc_lsb_free(tcp_context->msn_lsb_ctxt);
 destroy_context:
 	zfree(tcp_context);
 quit:
@@ -580,6 +592,8 @@ static void d_tcp_destroy(void *const context)
 	rohc_lsb_free(tcp_context->seq_lsb_ctxt);
 	/* destroy the LSB decoding context for the innermost IP-ID */
 	rohc_lsb_free(tcp_context->ip_id_lsb_ctxt);
+	/* destroy the LSB decoding context for the MSN */
+	rohc_lsb_free(tcp_context->msn_lsb_ctxt);
 
 	/* free the TCP decompression context itself */
 	free(tcp_context);
@@ -1998,6 +2012,7 @@ static int tcp_parse_dynamic_tcp(struct rohc_decomp_ctxt *const context,
 	const tcp_dynamic_t *tcp_dynamic;
 	const uint8_t *remain_data;
 	size_t remain_len;
+	uint16_t msn_decoded;
 
 	assert(rohc_packet != NULL);
 
@@ -2025,7 +2040,7 @@ static int tcp_parse_dynamic_tcp(struct rohc_decomp_ctxt *const context,
 	                  tcp_dynamic->rsf_flags, tcp_dynamic->urg_flag,
 	                  tcp_dynamic->ack_flag, tcp_dynamic->psh_flag);
 
-	/* retrieve the TCP sequence number from the ROHC packet */
+	/* retrieve the TCP flags and sequence number from the ROHC packet */
 	tcp_context->ecn_used = tcp_dynamic->ecn_used;
 	tcp_context->res_flags = tcp_dynamic->tcp_res_flags;
 	tcp_context->ecn_flags = tcp_dynamic->tcp_ecn_flags;
@@ -2033,9 +2048,12 @@ static int tcp_parse_dynamic_tcp(struct rohc_decomp_ctxt *const context,
 	tcp_context->ack_flag = tcp_dynamic->ack_flag;
 	tcp_context->psh_flag = tcp_dynamic->psh_flag;
 	tcp_context->rsf_flags = tcp_dynamic->rsf_flags;
-	tcp_context->msn = rohc_ntoh16(tcp_dynamic->msn);
-	rohc_decomp_debug(context, "MSN = 0x%04x", tcp_context->msn);
 	tcp_context->seq_num = tcp_dynamic->seq_num;
+
+	/* retrieve the MSN from the ROHC packet */
+	msn_decoded = rohc_ntoh16(tcp_dynamic->msn);
+	rohc_decomp_debug(context, "MSN = 0x%04x", msn_decoded);
+	tcp_context->msn_tmp = msn_decoded;
 
 	/* optional ACK number */
 	if(tcp_dynamic->ack_zero == 1)
@@ -4127,12 +4145,15 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 	size_t seq_num_scaled_nr = 0;
 	uint8_t header_crc;
 	uint8_t crc_computed;
-	uint16_t msn;
 	size_t rohc_opts_len;
 	int ttl_irregular_chain_flag = 0;
 	uint16_t ip_id_offset;
 	uint16_t ip_id;
 	int ret;
+
+	uint16_t msn_decoded;
+	uint16_t msn_bits;
+	size_t msn_bits_nr;
 
 	size_t crc_type;
 
@@ -4211,7 +4232,8 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 			rohc_header_len += sizeof(rnd_1_t);
 			assert(rohc_header_len <= rohc_length);
 			header_crc = rnd_1->header_crc;
-			msn = rnd_1->msn;
+			msn_bits = rnd_1->msn;
+			msn_bits_nr = 4;
 			crc_type = 3;
 			break;
 		}
@@ -4231,7 +4253,8 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 			rohc_header_len += sizeof(rnd_2_t);
 			assert(rohc_header_len <= rohc_length);
 			header_crc = rnd_2->header_crc;
-			msn = rnd_2->msn;
+			msn_bits = rnd_2->msn;
+			msn_bits_nr = 4;
 			crc_type = 3;
 			break;
 		}
@@ -4251,7 +4274,8 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 			rohc_header_len += sizeof(rnd_3_t);
 			assert(rohc_header_len <= rohc_length);
 			header_crc = rnd_3->header_crc;
-			msn = rnd_3->msn;
+			msn_bits = rnd_3->msn;
+			msn_bits_nr = 4;
 			crc_type = 3;
 			break;
 		}
@@ -4271,7 +4295,8 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 			rohc_header_len += sizeof(rnd_4_t);
 			assert(rohc_header_len <= rohc_length);
 			header_crc = rnd_4->header_crc;
-			msn = rnd_4->msn;
+			msn_bits = rnd_4->msn;
+			msn_bits_nr = 4;
 			crc_type = 3;
 			break;
 		}
@@ -4291,7 +4316,8 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 			rohc_header_len += sizeof(rnd_5_t);
 			assert(rohc_header_len <= rohc_length);
 			header_crc = rnd_5->header_crc;
-			msn = rnd_5->msn;
+			msn_bits = rnd_5->msn;
+			msn_bits_nr = 4;
 			crc_type = 3;
 			break;
 		}
@@ -4311,7 +4337,8 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 			rohc_header_len += sizeof(rnd_6_t);
 			assert(rohc_header_len <= rohc_length);
 			header_crc = rnd_6->header_crc;
-			msn = rnd_6->msn;
+			msn_bits = rnd_6->msn;
+			msn_bits_nr = 4;
 			crc_type = 3;
 			break;
 		}
@@ -4331,7 +4358,8 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 			rohc_header_len += sizeof(rnd_7_t);
 			assert(rohc_header_len <= rohc_length);
 			header_crc = rnd_7->header_crc;
-			msn = rnd_7->msn;
+			msn_bits = rnd_7->msn;
+			msn_bits_nr = 4;
 			crc_type = 3;
 			break;
 		}
@@ -4351,7 +4379,8 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 			rohc_header_len += sizeof(rnd_8_t);
 			assert(rohc_header_len <= rohc_length);
 			header_crc = rnd_8->header_crc;
-			msn = (rnd_8->msn1 << 3) | rnd_8->msn2;
+			msn_bits = (rnd_8->msn1 << 3) | rnd_8->msn2;
+			msn_bits_nr = 4;
 			rohc_decomp_debug(context, "rnd_8 header is %zu-byte long",
 			                  rohc_header_len);
 			is_list_present = !!rnd_8->list_present;
@@ -4374,7 +4403,8 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 			rohc_header_len += sizeof(seq_1_t);
 			assert(rohc_header_len <= rohc_length);
 			header_crc = seq_1->header_crc;
-			msn = seq_1->msn;
+			msn_bits = seq_1->msn;
+			msn_bits_nr = 4;
 			crc_type = 3;
 			break;
 		}
@@ -4394,7 +4424,8 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 			rohc_header_len += sizeof(seq_2_t);
 			assert(rohc_header_len <= rohc_length);
 			header_crc = seq_2->header_crc;
-			msn = seq_2->msn;
+			msn_bits = seq_2->msn;
+			msn_bits_nr = 4;
 			crc_type = 3;
 			break;
 		}
@@ -4414,7 +4445,8 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 			rohc_header_len += sizeof(seq_3_t);
 			assert(rohc_header_len <= rohc_length);
 			header_crc = seq_3->header_crc;
-			msn = seq_3->msn;
+			msn_bits = seq_3->msn;
+			msn_bits_nr = 4;
 			crc_type = 3;
 			break;
 		}
@@ -4434,7 +4466,8 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 			rohc_header_len += sizeof(seq_4_t);
 			assert(rohc_header_len <= rohc_length);
 			header_crc = seq_4->header_crc;
-			msn = seq_4->msn;
+			msn_bits = seq_4->msn;
+			msn_bits_nr = 4;
 			crc_type = 3;
 			break;
 		}
@@ -4454,7 +4487,8 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 			rohc_header_len += sizeof(seq_5_t);
 			assert(rohc_header_len <= rohc_length);
 			header_crc = seq_5->header_crc;
-			msn = seq_5->msn;
+			msn_bits = seq_5->msn;
+			msn_bits_nr = 4;
 			crc_type = 3;
 			break;
 		}
@@ -4474,7 +4508,8 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 			rohc_header_len += sizeof(seq_6_t);
 			assert(rohc_header_len <= rohc_length);
 			header_crc = seq_6->header_crc;
-			msn = seq_6->msn;
+			msn_bits = seq_6->msn;
+			msn_bits_nr = 4;
 			crc_type = 3;
 			break;
 		}
@@ -4494,7 +4529,8 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 			rohc_header_len += sizeof(seq_7_t);
 			assert(rohc_header_len <= rohc_length);
 			header_crc = seq_7->header_crc;
-			msn = seq_7->msn;
+			msn_bits = seq_7->msn;
+			msn_bits_nr = 4;
 			crc_type = 3;
 			break;
 		}
@@ -4514,7 +4550,8 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 			rohc_header_len += sizeof(seq_8_t);
 			assert(rohc_header_len <= rohc_length);
 			header_crc = seq_8->header_crc;
-			msn = seq_8->msn;
+			msn_bits = seq_8->msn;
+			msn_bits_nr = 4;
 			rohc_decomp_debug(context, "seq_8 header is %zu-byte long",
 			                  rohc_header_len);
 			is_list_present = !!seq_8->list_present;
@@ -4597,7 +4634,8 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 			/* check the crc */
 			header_crc = co_common->header_crc;
 
-			msn = co_common->msn;
+			msn_bits = co_common->msn;
+			msn_bits_nr = 4;
 
 			is_list_present = !!co_common->list_present;
 			crc_type = 7;
@@ -4649,22 +4687,22 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 #endif
 	rohc_header_len += rohc_opts_len;
 
-	// Check the MSN received with MSN required
-	if( ( (tcp_context->msn + 1) & 0x000F ) != msn)
+	/* decode MSN */ /* TODO: should be decode after parsing is successful */
 	{
-		rohc_decomp_debug(context, "last_msn = 0x%04x, waiting for msn = 0x%x, "
-		                  "received 0x%x!", tcp_context->msn,
-		                  (tcp_context->msn + 1) & 0x000F, msn);
-		// To be completed !!!
-		// Store and rework packets
+		uint32_t msn_decoded32;
+
+		if(!rohc_lsb_decode(tcp_context->msn_lsb_ctxt, ROHC_LSB_REF_0, 0,
+		                    msn_bits, msn_bits_nr,
+		                    lsb_get_p(tcp_context->msn_lsb_ctxt), &msn_decoded32))
+		{
+			rohc_decomp_warn(context, "failed to decode %zu MSN bits 0x%x",
+			                 msn_bits_nr, msn_bits);
+			goto error;
+		}
+		msn_decoded = (uint16_t) (msn_decoded32 & 0xffff);
+		rohc_decomp_debug(context, "decoded MSN = 0x%04x (%zu bits 0x%x)",
+		                  msn_decoded, msn_bits_nr, msn_bits);
 	}
-	else
-	{
-		rohc_decomp_debug(context, "last msn (0x%04x) + 1 = 0x%04x, received = "
-		                  "0x%x", tcp_context->msn, tcp_context->msn + 1, msn);
-	}
-	msn = d_lsb(context, 4, 4, tcp_context->msn + 1, msn);
-	rohc_decomp_debug(context, "MSN = 0x%04x", msn);
 
 	/* parse dynamic part */
 	if(packet_type == ROHC_PACKET_TCP_CO_COMMON)
@@ -4754,7 +4792,7 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 		ret = d_optional_ip_id_lsb(context, tcp_context->ip_id_lsb_ctxt,
 		                           rohc_opts_data, co_common->ip_id_behavior,
 		                           co_common->ip_id_indicator,
-		                           &ip_id_offset, &ip_id, msn);
+		                           &ip_id_offset, &ip_id, msn_decoded);
 		if(ret < 0)
 		{
 			rohc_decomp_warn(context, "optional_ip_id_lsb(ip_id) failed");
@@ -5070,7 +5108,7 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 
 				/* decode innermost IP-ID offset from packet bits and context */
 				if(!d_ip_id_lsb(context, tcp_context->ip_id_lsb_ctxt,
-				                ip_inner_context->ctxt.v4.ip_id_behavior, msn,
+				                ip_inner_context->ctxt.v4.ip_id_behavior, msn_decoded,
 				                seq_1->ip_id, 4, 3, &ip_id_offset, &ip_id))
 				{
 					goto error;
@@ -5107,7 +5145,7 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 				/* decode innermost IP-ID offset from packet bits and context */
 				ip_id_lsb = (seq_2->ip_id1 << 4) | seq_2->ip_id2;
 				if(!d_ip_id_lsb(context, tcp_context->ip_id_lsb_ctxt,
-				                ip_inner_context->ctxt.v4.ip_id_behavior, msn,
+				                ip_inner_context->ctxt.v4.ip_id_behavior, msn_decoded,
 				                ip_id_lsb, 7, 3, &ip_id_offset, &ip_id))
 				{
 					goto error;
@@ -5138,7 +5176,7 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 
 				/* decode innermost IP-ID offset from packet bits and context */
 				if(!d_ip_id_lsb(context, tcp_context->ip_id_lsb_ctxt,
-				                ip_inner_context->ctxt.v4.ip_id_behavior, msn,
+				                ip_inner_context->ctxt.v4.ip_id_behavior, msn_decoded,
 				                seq_3->ip_id, 4, 3, &ip_id_offset, &ip_id))
 				{
 					goto error;
@@ -5188,7 +5226,7 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 
 				/* decode innermost IP-ID offset from packet bits and context */
 				if(!d_ip_id_lsb(context, tcp_context->ip_id_lsb_ctxt,
-				                ip_inner_context->ctxt.v4.ip_id_behavior, msn,
+				                ip_inner_context->ctxt.v4.ip_id_behavior, msn_decoded,
 				                seq_4->ip_id, 3, 1, &ip_id_offset, &ip_id))
 				{
 					goto error;
@@ -5216,7 +5254,7 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 
 				/* decode innermost IP-ID offset from packet bits and context */
 				if(!d_ip_id_lsb(context, tcp_context->ip_id_lsb_ctxt,
-				                ip_inner_context->ctxt.v4.ip_id_behavior, msn,
+				                ip_inner_context->ctxt.v4.ip_id_behavior, msn_decoded,
 				                seq_5->ip_id, 4, 3, &ip_id_offset, &ip_id))
 				{
 					goto error;
@@ -5263,7 +5301,7 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 
 				/* decode innermost IP-ID offset from packet bits and context */
 				if(!d_ip_id_lsb(context, tcp_context->ip_id_lsb_ctxt,
-				                ip_inner_context->ctxt.v4.ip_id_behavior, msn,
+				                ip_inner_context->ctxt.v4.ip_id_behavior, msn_decoded,
 				                seq_6->ip_id, 7, 3, &ip_id_offset, &ip_id))
 				{
 					goto error;
@@ -5299,7 +5337,7 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 
 				/* decode innermost IP-ID offset from packet bits and context */
 				if(!d_ip_id_lsb(context, tcp_context->ip_id_lsb_ctxt,
-				                ip_inner_context->ctxt.v4.ip_id_behavior, msn,
+				                ip_inner_context->ctxt.v4.ip_id_behavior, msn_decoded,
 				                seq_7->ip_id, 5, 3, &ip_id_offset, &ip_id))
 				{
 					goto error;
@@ -5332,7 +5370,7 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 
 				/* decode innermost IP-ID offset from packet bits and context */
 				if(!d_ip_id_lsb(context, tcp_context->ip_id_lsb_ctxt,
-				                ip_inner_context->ctxt.v4.ip_id_behavior, msn,
+				                ip_inner_context->ctxt.v4.ip_id_behavior, msn_decoded,
 				                seq_8->ip_id, 4, 3, &ip_id_offset, &ip_id))
 				{
 					goto error;
@@ -5402,7 +5440,7 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 		tcp_context->options_len = 0;
 	}
 
-	tcp_context->msn = msn;
+	tcp_context->msn_tmp = msn_decoded;
 
 	/* parse irregular chain: IP parts */
 	for(ip_contexts_nr = 0; ip_contexts_nr < tcp_context->ip_contexts_nr;
@@ -6109,6 +6147,11 @@ static void d_tcp_update_context(struct rohc_decomp_ctxt *const context,
                                  const size_t payload_len)
 {
 	const struct d_tcp_context *const tcp_context = context->specific;
+	const uint16_t msn = tcp_context->msn_tmp;
+
+	/* MSN */
+	rohc_lsb_set_ref(tcp_context->msn_lsb_ctxt, msn, false);
+	rohc_decomp_debug(context, "MSN 0x%04x / %u is the new reference", msn, msn);
 
 	/* IP-ID of the innermost IP header if IPv4 */
 	{
@@ -6120,7 +6163,7 @@ static void d_tcp_update_context(struct rohc_decomp_ctxt *const context,
 		if(innermost_ip_version == IPV4)
 		{
 			const uint16_t inner_ip_id = innermost_ip_context->ctxt.v4.ip_id;
-			const uint16_t inner_ip_id_offset = inner_ip_id - tcp_context->msn;
+			const uint16_t inner_ip_id_offset = inner_ip_id - msn;
 			rohc_lsb_set_ref(tcp_context->ip_id_lsb_ctxt, inner_ip_id_offset, false);
 			rohc_decomp_debug(context, "innermost IP-ID offset 0x%04x is the new "
 			                  "reference", inner_ip_id_offset);
@@ -6161,11 +6204,9 @@ static void d_tcp_update_context(struct rohc_decomp_ctxt *const context,
 static uint32_t d_tcp_get_msn(const struct rohc_decomp_ctxt *const context)
 {
 	const struct d_tcp_context *const tcp_context = context->specific;
-
-	rohc_decomp_debug(context, "MSN = %u (0x%x)", tcp_context->msn,
-	                  tcp_context->msn);
-
-	return tcp_context->msn;
+	const uint16_t msn = rohc_lsb_get_ref(tcp_context->msn_lsb_ctxt, ROHC_LSB_REF_0);
+	rohc_decomp_debug(context, "MSN = %u (0x%x)", msn, msn);
+	return msn;
 }
 
 
