@@ -27,6 +27,9 @@ librohc_decomp_la_SOURCES = \
 	d_udp_lite.c \
 	d_esp.c \
 	d_rtp.c \
+	d_tcp_static.c \
+	d_tcp_dynamic.c \
+	d_tcp_irregular.c \
 	d_tcp.c
 
 librohc_decomp_la_LIBADD = \
@@ -54,7 +57,11 @@ noinst_HEADERS = \
 	feedback_create.h \
 	rohc_decomp_rfc3095.h \
 	d_ip.h \
-	d_udp.h
+	d_udp.h \
+	d_tcp_defines.h \
+	d_tcp_static.h \
+	d_tcp_dynamic.h \
+	d_tcp_irregular.h
 
 # extra files for releases
 EXTRA_DIST = \
