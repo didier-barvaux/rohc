@@ -29,6 +29,7 @@
 
 #include "rohc_internal.h"
 #include "rohc_decomp.h"
+#include "rohc_traces_internal.h"
 
 
 /*

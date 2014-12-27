@@ -20,7 +20,8 @@ librohc_decomp_schemes_la_SOURCES = \
 	decomp_scaled_rtp_ts.c \
 	decomp_list.c \
 	decomp_list_ipv6.c \
-	rfc4996.c
+	rfc4996.c \
+	tcp_sack.c
 
 librohc_decomp_schemes_la_LIBADD = \
 	$(additional_platform_libs)
@@ -42,5 +43,6 @@ noinst_HEADERS = \
 	decomp_scaled_rtp_ts.h \
 	decomp_list.h \
 	decomp_list_ipv6.h \
-	rfc4996.h
+	rfc4996.h \
+	tcp_sack.h
 
