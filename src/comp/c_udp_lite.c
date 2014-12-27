@@ -81,18 +81,18 @@ struct sc_udp_lite_context
 	unsigned char FK;
 
 	/// The number of times the checksum coverage field did not change
-	int coverage_equal_count;
+	size_t coverage_equal_count;
 	/// The number of times the checksum coverage field may be inferred
-	int coverage_inferred_count;
+	size_t coverage_inferred_count;
 	/// Temporary variables related to the checksum coverage field
 	int tmp_coverage;
 
 	/// The number of CCE() packets sent by the compressor
-	int sent_cce_only_count;
+	size_t sent_cce_only_count;
 	/// The number of CCE(ON) packets sent by the compressor
-	int sent_cce_on_count;
+	size_t sent_cce_on_count;
 	/// The number of CCE(OFF) packets sent by the compressor
-	int sent_cce_off_count;
+	size_t sent_cce_off_count;
 
 	/// The previous UDP-Lite header
 	struct udphdr old_udp_lite;
@@ -151,8 +151,8 @@ static size_t udp_lite_code_uo_remainder(const struct rohc_comp_ctxt *const cont
                                          const size_t counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static void udp_lite_init_cc(const struct rohc_comp_ctxt *context,
-                             const unsigned char *next_header);
+static void udp_lite_init_cc(struct rohc_comp_ctxt *const context,
+                             const unsigned char *const next_header);
 
 
 
@@ -605,8 +605,8 @@ static size_t udp_lite_code_dynamic_udplite_part(const struct rohc_comp_ctxt *co
  * @param context     The compression context
  * @param next_header The UDP-Lite header
  */
-static void udp_lite_init_cc(const struct rohc_comp_ctxt *context,
-                             const unsigned char *next_header)
+static void udp_lite_init_cc(struct rohc_comp_ctxt *const context,
+                             const unsigned char *const next_header)
 {
 	const struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	struct sc_udp_lite_context *udp_lite_context;
@@ -619,15 +619,15 @@ static void udp_lite_init_cc(const struct rohc_comp_ctxt *context,
 	packet_length = udp_lite_context->tmp.udp_size;
 	udp_lite = (struct udphdr *) next_header;
 
-	if(rfc3095_ctxt->ir_count == 1)
+	if(context->ir_count == 1)
 	{
 		udp_lite_context->cfp = 0;
 		udp_lite_context->cfi = 1;
 	}
 
-	rohc_comp_debug(context, "CFP = %d, CFI = %d (ir_count = %d)",
+	rohc_comp_debug(context, "CFP = %d, CFI = %d (ir_count = %zu)",
 	                udp_lite_context->cfp, udp_lite_context->cfi,
-	                rfc3095_ctxt->ir_count);
+	                context->ir_count);
 
 	udp_lite_context->cfp =
 		(rohc_ntoh16(udp_lite->len) != packet_length) || udp_lite_context->cfp;
@@ -842,8 +842,8 @@ const struct rohc_comp_profile c_udp_lite_profile =
 	.check_profile  = c_udp_lite_check_profile,
 	.check_context  = c_udp_lite_check_context,
 	.encode         = c_udp_lite_encode,
-	.reinit_context = rohc_comp_rfc3095_reinit_context,
+	.reinit_context = rohc_comp_reinit_context,
 	.feedback       = rohc_comp_rfc3095_feedback,
-	.use_udp_port   = rohc_comp_rfc3095_use_udp_port,
+	.use_udp_port   = rohc_comp_use_udp_port,
 };
 

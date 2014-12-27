@@ -2424,6 +2424,10 @@ static struct rohc_comp_ctxt *
 	/* initialize the previously found context */
 	c = &comp->contexts[cid_to_use];
 
+	c->ir_count = 0;
+	c->fo_count = 0;
+	c->so_count = 0;
+
 	c->total_uncompressed_size = 0;
 	c->total_compressed_size = 0;
 	c->header_uncompressed_size = 0;
@@ -2667,5 +2671,90 @@ static void c_destroy_contexts(struct rohc_comp *const comp)
 
 	free(comp->contexts);
 	comp->contexts = NULL;
+}
+
+
+/**
+ * @brief Change the mode of the context.
+ *
+ * @param context  The compression context
+ * @param new_mode The new mode the context must enter in
+ */
+void rohc_comp_change_mode(struct rohc_comp_ctxt *const context,
+                           const rohc_mode_t new_mode)
+{
+	if(context->mode != new_mode)
+	{
+		/* change mode and go back to IR state */
+		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		          "CID %zu: change from mode %d to mode %d",
+		          context->cid, context->mode, new_mode);
+		context->mode = new_mode;
+		rohc_comp_change_state(context, ROHC_COMP_STATE_IR);
+	}
+}
+
+
+/**
+ * @brief Change the state of the context.
+ *
+ * @param context   The compression context
+ * @param new_state The new state the context must enter in
+ */
+void rohc_comp_change_state(struct rohc_comp_ctxt *const context,
+                            const rohc_comp_state_t new_state)
+{
+	if(new_state != context->state)
+	{
+		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		          "CID %zu: change from state %d to state %d",
+		          context->cid, context->state, new_state);
+
+		/* reset counters */
+		context->ir_count = 0;
+		context->fo_count = 0;
+		context->so_count = 0;
+
+		/* change state */
+		context->state = new_state;
+	}
+}
+
+
+/**
+ * @brief Re-initialize the given context
+ *
+ * Make the context restart its initialization with decompressor, ie. it goes
+ * in the lowest compression state.
+ *
+ * @param context  The compression context to re-initialize
+ * @return         true in case of success, false otherwise
+ */
+bool rohc_comp_reinit_context(struct rohc_comp_ctxt *const context)
+{
+	assert(context != NULL);
+
+	/* go back to U-mode and IR state */
+	rohc_comp_change_mode(context, ROHC_U_MODE);
+	rohc_comp_change_state(context, ROHC_COMP_STATE_IR);
+
+	return true;
+}
+
+
+/**
+ * @brief Whether the profile uses the given UDP port
+ *
+ * This function is one of the functions that must exist in one profile for the
+ * framework to work.
+ *
+ * @param context  The compression context
+ * @param port     The UDP port number to check
+ * @return         always return true, it is used by non-RTP profiles
+ */
+bool rohc_comp_use_udp_port(const struct rohc_comp_ctxt *const context __attribute__((unused)),
+                            const unsigned int port __attribute__((unused)))
+{
+	return false;
 }
 

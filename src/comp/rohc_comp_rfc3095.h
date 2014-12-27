@@ -56,16 +56,16 @@ struct ipv4_header_info
 	struct ipv4_hdr old_ip;
 
 	/// The number of times the DF field was added to the compressed header
-	int df_count;
+	size_t df_count;
 	/// @brief The number of times the IP-ID is specified as random in the
 	///        compressed header
-	int rnd_count;
+	size_t rnd_count;
 	/// @brief The number of times the IP-ID is specified as coded in Network
 	///        Byte Order (NBO) in the compressed header
-	int nbo_count;
+	size_t nbo_count;
 	/// @brief The number of times the IP-ID is specified as static in the
 	///        compressed header
-	int sid_count;
+	size_t sid_count;
 
 	/// Whether the IP-ID is considered as random or not
 	int rnd;
@@ -116,12 +116,12 @@ struct ip_header_info
 	ip_version version;            ///< The version of the IP header
 
 	/// The number of times the TOS/TC field was added to the compressed header
-	int tos_count;
+	size_t tos_count;
 	/// The number of times the TTL/HL field was added to the compressed header
-	int ttl_count;
+	size_t ttl_count;
 	/// @brief The number of times the Protocol/Next Header field was added to
 	///        the compressed header
-	int protocol_count;
+	size_t protocol_count;
 
 	/** Whether the old_* members of the struct and in its children are
 	 *  initialized or not */
@@ -182,13 +182,6 @@ struct rohc_comp_rfc3095_ctxt
 	/// A window used to encode the SN
 	struct c_wlsb *sn_window;
 
-	/// The number of packets sent while in Initialization & Refresh (IR) state
-	int ir_count;
-	/// The number of packets sent while in First Order (FO) state
-	int fo_count;
-	/// The number of packets sent while in Second Order (SO) state
-	int so_count;
-
 	/// @brief The number of packet sent while in SO state, used for the periodic
 	///        refreshes of the context
 	/// @see periodic_down_transition
@@ -232,8 +225,8 @@ struct rohc_comp_rfc3095_ctxt
 	rohc_ext_t (*decide_extension)(const struct rohc_comp_ctxt *context);
 
 	/// The handler used to initialize some data just before the IR packet build
-	void (*init_at_IR)(const struct rohc_comp_ctxt *context,
-	                   const unsigned char *next_header);
+	void (*init_at_IR)(struct rohc_comp_ctxt *const context,
+	                   const unsigned char *const next_header);
 
 	/** Determine the next SN value */
 	uint32_t (*get_next_sn)(const struct rohc_comp_ctxt *const context,
@@ -320,10 +313,6 @@ bool rohc_comp_rfc3095_check_profile(const struct rohc_comp *const comp,
                                      const struct net_pkt *const packet)
 		__attribute__((warn_unused_result, nonnull(1, 2)));
 
-void change_state(struct rohc_comp_ctxt *const context,
-                  const rohc_comp_state_t new_state)
-	__attribute__((nonnull(1)));
-
 rohc_ext_t decide_extension(const struct rohc_comp_ctxt *const context)
 	__attribute__((warn_unused_result, nonnull(1)));
 
@@ -335,14 +324,9 @@ int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
                              size_t *const payload_offset)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
 
-bool rohc_comp_rfc3095_reinit_context(struct rohc_comp_ctxt *const context);
-
 bool rohc_comp_rfc3095_feedback(struct rohc_comp_ctxt *const context,
                                 const struct c_feedback *const feedback)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
-
-bool rohc_comp_rfc3095_use_udp_port(const struct rohc_comp_ctxt *const ctxt,
-                                    const unsigned int port);
 
 void decide_state(struct rohc_comp_ctxt *const context);
 

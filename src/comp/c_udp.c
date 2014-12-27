@@ -69,7 +69,7 @@ struct sc_udp_context
 {
 	/** @brief The number of times the checksum field was added to the
 	 *         compressed header */
-	int udp_checksum_change_count;
+	size_t udp_checksum_change_count;
 
 	/** The previous UDP header */
 	struct udphdr old_udp;
@@ -408,7 +408,7 @@ static void udp_decide_state(struct rohc_comp_ctxt *const context)
 	{
 		rohc_comp_debug(context, "go back to IR state because UDP checksum "
 		                "behaviour changed in the last few packets");
-		change_state(context, ROHC_COMP_STATE_IR);
+		rohc_comp_change_state(context, ROHC_COMP_STATE_IR);
 	}
 	else
 	{
@@ -591,8 +591,8 @@ const struct rohc_comp_profile c_udp_profile =
 	.check_profile  = c_udp_check_profile,
 	.check_context  = c_udp_check_context,
 	.encode         = c_udp_encode,
-	.reinit_context = rohc_comp_rfc3095_reinit_context,
+	.reinit_context = rohc_comp_reinit_context,
 	.feedback       = rohc_comp_rfc3095_feedback,
-	.use_udp_port   = rohc_comp_rfc3095_use_udp_port,
+	.use_udp_port   = rohc_comp_use_udp_port,
 };
 

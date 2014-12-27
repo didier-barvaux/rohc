@@ -85,11 +85,7 @@ static void ip_header_info_free(struct ip_header_info *const header_info)
 
 static void c_init_tmp_variables(struct generic_tmp_vars *const tmp_vars);
 
-static void change_mode(struct rohc_comp_ctxt *const context,
-                        const rohc_mode_t new_mode)
-	__attribute__((nonnull(1)));
-
-static rohc_packet_t decide_packet(const struct rohc_comp_ctxt *const context)
+static rohc_packet_t decide_packet(struct rohc_comp_ctxt *const context)
 	__attribute__((warn_unused_result, nonnull(1)));
 
 static int code_packet(struct rohc_comp_ctxt *const context,
@@ -233,7 +229,7 @@ static int code_EXT2_packet(const struct rohc_comp_ctxt *const context,
                             int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static int code_EXT3_packet(const struct rohc_comp_ctxt *const context,
+static int code_EXT3_packet(struct rohc_comp_ctxt *const context,
                             const struct net_pkt *const uncomp_pkt,
                             unsigned char *const dest,
                             int counter)
@@ -284,17 +280,17 @@ static void update_context_ip_hdr(struct ip_header_info *const ip_flags,
 static bool rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const context,
                                              const struct net_pkt *const uncomp_pkt)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
-static int changed_static_both_hdr(const struct rohc_comp_ctxt *const context,
+static int changed_static_both_hdr(struct rohc_comp_ctxt *const context,
                                    const struct net_pkt *const uncomp_pkt)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
-static int changed_static_one_hdr(const struct rohc_comp_ctxt *const context,
+static int changed_static_one_hdr(struct rohc_comp_ctxt *const context,
                                   const unsigned short changed_fields,
                                   struct ip_header_info *const header_info)
 	__attribute__((warn_unused_result, nonnull(1, 3)));
-static int changed_dynamic_both_hdr(const struct rohc_comp_ctxt *const context,
+static int changed_dynamic_both_hdr(struct rohc_comp_ctxt *const context,
                                    const struct net_pkt *const uncomp_pkt)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
-static int changed_dynamic_one_hdr(const struct rohc_comp_ctxt *const context,
+static int changed_dynamic_one_hdr(struct rohc_comp_ctxt *const context,
                                    const unsigned short changed_fields,
                                    struct ip_header_info *const header_info,
                                    const struct ip_packet *const ip)
@@ -501,12 +497,11 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 
 	/* initialize some context variables:
 	 *  1. init the parameters to encode the SN with W-LSB encoding
-	 *  2. init the counters of packet types
-	 *  3. init the counters for the periodic transition to lower states
-	 *  4. init the info related to the outer IP header, the info related to the
+	 *  2. init the counters for the periodic transition to lower states
+	 *  3. init the info related to the outer IP header, the info related to the
 	 *     inner IP header will be initialized later if necessary
-	 *  5. init the temporary variables
-	 *  6. init the profile-specific variables to safe values
+	 *  4. init the temporary variables
+	 *  5. init the profile-specific variables to safe values
 	 */
 
 	/* step 1 */
@@ -522,15 +517,10 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 	}
 
 	/* step 2 */
-	rfc3095_ctxt->ir_count = 0;
-	rfc3095_ctxt->fo_count = 0;
-	rfc3095_ctxt->so_count = 0;
-
-	/* step 3 */
 	rfc3095_ctxt->go_back_fo_count = 0;
 	rfc3095_ctxt->go_back_ir_count = 0;
 
-	/* step 4 */
+	/* step 3 */
 	if(!ip_header_info_new(&rfc3095_ctxt->outer_ip_flags,
 	                       &packet->outer_ip,
 	                       context->compressor->list_trans_nr,
@@ -560,10 +550,10 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 		rfc3095_ctxt->ip_hdr_nr = 1;
 	}
 
-	/* step 5 */
+	/* step 4 */
 	c_init_tmp_variables(&rfc3095_ctxt->tmp);
 
-	/* step 6 */
+	/* step 5 */
 	rfc3095_ctxt->specific = NULL;
 	rfc3095_ctxt->next_header_proto = packet->transport->proto;
 	rfc3095_ctxt->next_header_len = 0;
@@ -742,57 +732,6 @@ bad_profile:
 
 
 /**
- * @brief Change the mode of the context.
- *
- * @param context  The compression context
- * @param new_mode The new mode the context must enter in
- */
-static void change_mode(struct rohc_comp_ctxt *const context,
-                        const rohc_mode_t new_mode)
-{
-	if(context->mode != new_mode)
-	{
-		/* change mode and go back to IR state */
-		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		          "CID %zu: change from mode %d to mode %d",
-		          context->cid, context->mode, new_mode);
-		context->mode = new_mode;
-		change_state(context, ROHC_COMP_STATE_IR);
-	}
-}
-
-
-/**
- * @brief Change the state of the context.
- *
- * @param context   The compression context
- * @param new_state The new state the context must enter in
- */
-void change_state(struct rohc_comp_ctxt *const context,
-                  const rohc_comp_state_t new_state)
-{
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-
-	if(new_state != context->state)
-	{
-		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		          "CID %zu: change from state %d to state %d",
-		          context->cid, context->state, new_state);
-
-		/* reset counters */
-		rfc3095_ctxt->ir_count = 0;
-		rfc3095_ctxt->fo_count = 0;
-		rfc3095_ctxt->so_count = 0;
-
-		/* change state */
-		context->state = new_state;
-	}
-}
-
-
-/**
  * @brief Encode an IP packet according to a pattern decided by several
  *        different factors.
  *
@@ -877,27 +816,6 @@ int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
 
 error:
 	return -1;
-}
-
-
-/**
- * @brief Re-initialize the given context
- *
- * Make the context restart its initialization with decompressor, ie. it goes
- * in the lowest compression state.
- *
- * @param context  The compression context to re-initialize
- * @return         true in case of success, false otherwise
- */
-bool rohc_comp_rfc3095_reinit_context(struct rohc_comp_ctxt *const context)
-{
-	assert(context != NULL);
-
-	/* go back to U-mode and IR state */
-	change_mode(context, ROHC_U_MODE);
-	change_state(context, ROHC_COMP_STATE_IR);
-
-	return true;
 }
 
 
@@ -1089,7 +1007,7 @@ static bool rohc_comp_rfc3095_feedback_2(struct rohc_comp_ctxt *const context,
 		/* mode can be changed only if feedback is protected by a CRC */
 		if(is_crc_used)
 		{
-			change_mode(context, mode);
+			rohc_comp_change_mode(context, mode);
 		}
 		else
 		{
@@ -1130,7 +1048,7 @@ static bool rohc_comp_rfc3095_feedback_2(struct rohc_comp_ctxt *const context,
 			          "NACK received for CID %zu", feedback->cid);
 			if(context->state == ROHC_COMP_STATE_SO)
 			{
-				change_state(context, ROHC_COMP_STATE_FO);
+				rohc_comp_change_state(context, ROHC_COMP_STATE_FO);
 			}
 			break;
 		}
@@ -1139,7 +1057,7 @@ static bool rohc_comp_rfc3095_feedback_2(struct rohc_comp_ctxt *const context,
 		{
 			rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 			          "STATIC-NACK received for CID %zu", feedback->cid);
-			change_state(context, ROHC_COMP_STATE_IR);
+			rohc_comp_change_state(context, ROHC_COMP_STATE_IR);
 			break;
 		}
 
@@ -1160,23 +1078,6 @@ static bool rohc_comp_rfc3095_feedback_2(struct rohc_comp_ctxt *const context,
 	return true;
 
 error:
-	return false;
-}
-
-
-/**
- * @brief Whether the profile uses the given UDP port
- *
- * This function is one of the functions that must exist in one profile for the
- * framework to work.
- *
- * @param context  The compression context
- * @param port     The UDP port number to check
- * @return         always return true, it is used by non-RTP profiles
- */
-bool rohc_comp_rfc3095_use_udp_port(const struct rohc_comp_ctxt *const context __attribute__((unused)),
-                                    const unsigned int port __attribute__((unused)))
-{
 	return false;
 }
 
@@ -1293,7 +1194,7 @@ static void periodic_down_transition(struct rohc_comp_ctxt *const context)
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		          "CID %zu: periodic change to FO state", context->cid);
 		rfc3095_ctxt->go_back_fo_count = 0;
-		change_state(context, ROHC_COMP_STATE_FO);
+		rohc_comp_change_state(context, ROHC_COMP_STATE_FO);
 	}
 	else if(rfc3095_ctxt->go_back_ir_count >=
 	        context->compressor->periodic_refreshes_ir_timeout)
@@ -1301,7 +1202,7 @@ static void periodic_down_transition(struct rohc_comp_ctxt *const context)
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		          "CID %zu: periodic change to IR state", context->cid);
 		rfc3095_ctxt->go_back_ir_count = 0;
-		change_state(context, ROHC_COMP_STATE_IR);
+		rohc_comp_change_state(context, ROHC_COMP_STATE_IR);
 	}
 
 	if(context->state == ROHC_COMP_STATE_SO)
@@ -1337,11 +1238,11 @@ void decide_state(struct rohc_comp_ctxt *const context)
 
 	if(curr_state == ROHC_COMP_STATE_IR)
 	{
-		if(rfc3095_ctxt->ir_count < MAX_IR_COUNT)
+		if(context->ir_count < MAX_IR_COUNT)
 		{
 			rohc_comp_debug(context, "no enough packets transmitted in IR state "
-			                "for the moment (%d/%d), so stay in IR state",
-			                rfc3095_ctxt->ir_count, MAX_IR_COUNT);
+			                "for the moment (%zu/%u), so stay in IR state",
+			                context->ir_count, MAX_IR_COUNT);
 			next_state = ROHC_COMP_STATE_IR;
 		}
 		else if(rfc3095_ctxt->tmp.send_static)
@@ -1377,11 +1278,11 @@ void decide_state(struct rohc_comp_ctxt *const context)
 	}
 	else if(curr_state == ROHC_COMP_STATE_FO)
 	{
-		if(rfc3095_ctxt->fo_count < MAX_FO_COUNT)
+		if(context->fo_count < MAX_FO_COUNT)
 		{
 			rohc_comp_debug(context, "no enough packets transmitted in FO state "
-			                "for the moment (%d/%d), so stay in FO state",
-			                rfc3095_ctxt->fo_count, MAX_FO_COUNT);
+			                "for the moment (%zu/%u), so stay in FO state",
+			                context->fo_count, MAX_FO_COUNT);
 			next_state = ROHC_COMP_STATE_FO;
 		}
 		else if(rfc3095_ctxt->tmp.send_static || rfc3095_ctxt->tmp.send_dynamic)
@@ -1443,7 +1344,7 @@ void decide_state(struct rohc_comp_ctxt *const context)
 		return;
 	}
 
-	change_state(context, next_state);
+	rohc_comp_change_state(context, next_state);
 
 	if(context->mode == ROHC_U_MODE)
 	{
@@ -1465,7 +1366,7 @@ void decide_state(struct rohc_comp_ctxt *const context)
  *                        in case of success
  *                    \li ROHC_PACKET_UNKNOWN in case of failure
  */
-static rohc_packet_t decide_packet(const struct rohc_comp_ctxt *const context)
+static rohc_packet_t decide_packet(struct rohc_comp_ctxt *const context)
 {
 	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
@@ -1476,7 +1377,7 @@ static rohc_packet_t decide_packet(const struct rohc_comp_ctxt *const context)
 		case ROHC_COMP_STATE_IR:
 		{
 			rohc_comp_debug(context, "decide packet in IR state");
-			rfc3095_ctxt->ir_count++;
+			context->ir_count++;
 			packet = ROHC_PACKET_IR;
 			break;
 		}
@@ -1484,7 +1385,7 @@ static rohc_packet_t decide_packet(const struct rohc_comp_ctxt *const context)
 		case ROHC_COMP_STATE_FO:
 		{
 			rohc_comp_debug(context, "decide packet in FO state");
-			rfc3095_ctxt->fo_count++;
+			context->fo_count++;
 			if(rfc3095_ctxt->decide_FO_packet != NULL)
 			{
 				packet = rfc3095_ctxt->decide_FO_packet(context);
@@ -1499,7 +1400,7 @@ static rohc_packet_t decide_packet(const struct rohc_comp_ctxt *const context)
 		case ROHC_COMP_STATE_SO:
 		{
 			rohc_comp_debug(context, "decide packet in SO state");
-			rfc3095_ctxt->so_count++;
+			context->so_count++;
 			if(rfc3095_ctxt->decide_SO_packet != NULL)
 			{
 				packet = rfc3095_ctxt->decide_SO_packet(context);
@@ -4814,7 +4715,7 @@ error:
  * @return            The new position in the rohc-packet-under-build buffer
  *                    if successful, -1 otherwise
  */
-static int code_EXT3_packet(const struct rohc_comp_ctxt *const context,
+static int code_EXT3_packet(struct rohc_comp_ctxt *const context,
                             const struct net_pkt *const uncomp_pkt,
                             unsigned char *const dest,
                             int counter)
@@ -4955,7 +4856,7 @@ static int code_EXT3_packet(const struct rohc_comp_ctxt *const context,
 	/* if random bit is set we have the IP-ID field outside this function */
 	if(ip_get_version(&uncomp_pkt->outer_ip) == IPV4)
 	{
-		rohc_comp_debug(context, "rnd_count_up = %d",
+		rohc_comp_debug(context, "rnd_count_up = %zu",
 		                rfc3095_ctxt->outer_ip_flags.info.v4.rnd_count);
 	}
 
@@ -5806,7 +5707,7 @@ static void update_context_ip_hdr(struct ip_header_info *const ip_flags,
  * @param uncomp_pkt  The uncompressed packet
  * @return            The number of static fields that changed
  */
-static int changed_static_both_hdr(const struct rohc_comp_ctxt *const context,
+static int changed_static_both_hdr(struct rohc_comp_ctxt *const context,
                                    const struct net_pkt *const uncomp_pkt)
 {
 	int nb_fields = 0; /* number of fields that changed */
@@ -5854,25 +5755,22 @@ static int changed_static_both_hdr(const struct rohc_comp_ctxt *const context,
  * @param header_info    The header info stored in the profile
  * @return               The number of fields that changed
  */
-static int changed_static_one_hdr(const struct rohc_comp_ctxt *const context,
+static int changed_static_one_hdr(struct rohc_comp_ctxt *const context,
                                   const unsigned short changed_fields,
                                   struct ip_header_info *const header_info)
 {
 	int nb_fields = 0; /* number of fields that changed */
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
 
 	/* check the IPv4 Protocol / IPv6 Next Header field for change */
 	if(is_field_changed(changed_fields, MOD_PROTOCOL) ||
 	   header_info->protocol_count < MAX_FO_COUNT)
 	{
-		rohc_comp_debug(context, "protocol_count %d", header_info->protocol_count);
+		rohc_comp_debug(context, "protocol_count %zu", header_info->protocol_count);
 
 		if(is_field_changed(changed_fields, MOD_PROTOCOL))
 		{
 			header_info->protocol_count = 0;
-			rfc3095_ctxt->fo_count = 0;
+			context->fo_count = 0;
 		}
 		nb_fields += 1;
 	}
@@ -5889,7 +5787,7 @@ static int changed_static_one_hdr(const struct rohc_comp_ctxt *const context,
  * @param uncomp_pkt  The uncompressed packet
  * @return            The number of dynamic fields that changed
  */
-static int changed_dynamic_both_hdr(const struct rohc_comp_ctxt *const context,
+static int changed_dynamic_both_hdr(struct rohc_comp_ctxt *const context,
                                     const struct net_pkt *const uncomp_pkt)
 {
 	int nb_fields = 0; /* number of fields that changed */
@@ -5941,16 +5839,13 @@ static int changed_dynamic_both_hdr(const struct rohc_comp_ctxt *const context,
  * @param ip             The header of the new IP packet
  * @return               The number of fields that changed
  */
-static int changed_dynamic_one_hdr(const struct rohc_comp_ctxt *const context,
+static int changed_dynamic_one_hdr(struct rohc_comp_ctxt *const context,
                                    const unsigned short changed_fields,
                                    struct ip_header_info *const header_info,
                                    const struct ip_packet *const ip)
 {
 	int nb_fields = 0; /* number of fields that changed */
 	int nb_flags = 0; /* number of flags that changed */
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
 
 	/* check the Type Of Service / Traffic Class field for change */
 	if(is_field_changed(changed_fields, MOD_TOS) ||
@@ -5960,7 +5855,7 @@ static int changed_dynamic_one_hdr(const struct rohc_comp_ctxt *const context,
 		{
 			rohc_comp_debug(context, "TOS/TC changed in the current packet");
 			header_info->tos_count = 0;
-			rfc3095_ctxt->fo_count = 0;
+			context->fo_count = 0;
 		}
 		else
 		{
@@ -5977,7 +5872,7 @@ static int changed_dynamic_one_hdr(const struct rohc_comp_ctxt *const context,
 		{
 			rohc_comp_debug(context, "TTL/HL changed in the current packet");
 			header_info->ttl_count = 0;
-			rfc3095_ctxt->fo_count = 0;
+			context->fo_count = 0;
 		}
 		else
 		{
@@ -6000,7 +5895,7 @@ static int changed_dynamic_one_hdr(const struct rohc_comp_ctxt *const context,
 			{
 				rohc_comp_debug(context, "DF changed in the current packet");
 				header_info->info.v4.df_count = 0;
-				rfc3095_ctxt->fo_count = 0;
+				context->fo_count = 0;
 			}
 			else
 			{
@@ -6019,7 +5914,7 @@ static int changed_dynamic_one_hdr(const struct rohc_comp_ctxt *const context,
 				                "current packet", header_info->info.v4.old_rnd,
 				                header_info->info.v4.rnd);
 				header_info->info.v4.rnd_count = 0;
-				rfc3095_ctxt->fo_count = 0;
+				context->fo_count = 0;
 			}
 			else
 			{
@@ -6038,7 +5933,7 @@ static int changed_dynamic_one_hdr(const struct rohc_comp_ctxt *const context,
 				                "current packet", header_info->info.v4.old_nbo,
 				                header_info->info.v4.nbo);
 				header_info->info.v4.nbo_count = 0;
-				rfc3095_ctxt->fo_count = 0;
+				context->fo_count = 0;
 			}
 			else
 			{
@@ -6062,7 +5957,7 @@ static int changed_dynamic_one_hdr(const struct rohc_comp_ctxt *const context,
 				                "current packet", header_info->info.v4.old_sid,
 				                header_info->info.v4.sid);
 				header_info->info.v4.sid_count = 0;
-				rfc3095_ctxt->fo_count = 0;
+				context->fo_count = 0;
 			}
 			else
 			{

@@ -924,7 +924,7 @@ static void rtp_decide_state(struct rohc_comp_ctxt *const context)
 		 * IR-DYN packet is */
 		rohc_comp_debug(context, "go back to IR state because UDP checksum "
 		                "behaviour changed in the last few packets");
-		change_state(context, ROHC_COMP_STATE_IR);
+		rohc_comp_change_state(context, ROHC_COMP_STATE_IR);
 	}
 	else if(rtp_context->tmp.send_rtp_dynamic)
 	{
@@ -937,7 +937,7 @@ static void rtp_decide_state(struct rohc_comp_ctxt *const context)
 		{
 			rohc_comp_debug(context, "%d RTP dynamic fields changed, go in FO "
 			                "state", rtp_context->tmp.send_rtp_dynamic);
-			change_state(context, ROHC_COMP_STATE_FO);
+			rohc_comp_change_state(context, ROHC_COMP_STATE_FO);
 		}
 	}
 	else
@@ -1542,7 +1542,7 @@ const struct rohc_comp_profile c_rtp_profile =
 	.check_profile  = c_rtp_check_profile,
 	.check_context  = c_rtp_check_context,
 	.encode         = c_rtp_encode,
-	.reinit_context = rohc_comp_rfc3095_reinit_context,
+	.reinit_context = rohc_comp_reinit_context,
 	.feedback       = rohc_comp_rfc3095_feedback,
 	.use_udp_port   = c_rtp_use_udp_port,
 };

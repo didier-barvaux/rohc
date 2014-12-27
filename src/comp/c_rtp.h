@@ -87,14 +87,14 @@ struct sc_rtp_context
 {
 	/// @brief The number of times the UDP checksum field was added to the
 	///        compressed header
-	int udp_checksum_change_count;
+	size_t udp_checksum_change_count;
 
 	/// The previous UDP header
 	struct udphdr old_udp;
 
 	/// @brief The number of times the RTP Payload Type (PT) field was added to
 	///        the compressed header
-	int rtp_pt_change_count;
+	size_t rtp_pt_change_count;
 
 	/// @brief The number of times the RTP Padding (P) bit was added to
 	///        the compressed header

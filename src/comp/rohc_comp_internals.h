@@ -61,11 +61,11 @@
 
 /** The minimal number of packets that must be sent while in IR state before
  *  being able to switch to the FO state */
-#define MAX_IR_COUNT  3
+#define MAX_IR_COUNT  3U
 
 /** The minimal number of packets that must be sent while in FO state before
  *  being able to switch to the SO state */
-#define MAX_FO_COUNT  3
+#define MAX_FO_COUNT  3U
 
 /** The minimal number of packets that must be sent while in INIT_STRIDE
  *  state before being able to switch to the SEND_SCALED state */
@@ -331,6 +331,13 @@ struct rohc_comp_ctxt
 	/* The type of ROHC packet created for the last compressed packet */
 	rohc_packet_t packet_type;
 
+	/** The number of packets sent while in Initialization & Refresh (IR) state */
+	size_t ir_count;
+	/** The number of packets sent while in First Order (FO) state */
+	size_t fo_count;
+	/** The number of packets sent while in Second Order (SO) state */
+	size_t so_count;
+
 	/** The average size of the uncompressed packets */
 	int total_uncompressed_size;
 	/** The average size of the compressed packets */
@@ -395,6 +402,22 @@ struct c_feedback
 		RESERVED
 	} acktype;
 };
+
+
+void rohc_comp_change_mode(struct rohc_comp_ctxt *const context,
+                           const rohc_mode_t new_mode)
+	__attribute__((nonnull(1)));
+
+void rohc_comp_change_state(struct rohc_comp_ctxt *const context,
+                            const rohc_comp_state_t new_state)
+	__attribute__((nonnull(1)));
+
+bool rohc_comp_reinit_context(struct rohc_comp_ctxt *const context)
+	__attribute__((warn_unused_result, nonnull(1)));
+
+bool rohc_comp_use_udp_port(const struct rohc_comp_ctxt *const context,
+                            const unsigned int port)
+	__attribute__((warn_unused_result, nonnull(1)));
 
 #endif
 
