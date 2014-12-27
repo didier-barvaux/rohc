@@ -322,6 +322,23 @@ static rohc_status_t d_tcp_decode(struct rohc_decomp *const decomp,
                                   rohc_packet_t *const packet_type)
 		__attribute__((warn_unused_result, nonnull(1, 2, 6, 7)));
 
+static bool tcp_parse_static_chain(struct rohc_decomp_ctxt *const context,
+                                   const uint8_t *const rohc_packet,
+                                   const size_t rohc_length,
+                                   size_t *const parsed_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
+static bool tcp_parse_dyn_chain(struct rohc_decomp_ctxt *const context,
+                                const uint8_t *const rohc_packet,
+                                const size_t rohc_length,
+                                size_t *const parsed_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
+static bool tcp_parse_irreg_chain(struct rohc_decomp_ctxt *const context,
+                                  const uint8_t *const rohc_packet,
+                                  const size_t rohc_length,
+                                  const bool ttl_irregular_chain_flag,
+                                  size_t *const parsed_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
+
 static int tcp_parse_static_ipv6_option(struct rohc_decomp_ctxt *const context,
                                         ip_context_t *const ip_context,
                                         ipv6_option_context_t *const opt_context,
@@ -348,15 +365,21 @@ static int tcp_parse_irregular_ip(struct rohc_decomp_ctxt *const context,
                                   const uint8_t *rohc_data,
                                   const size_t rohc_data_len,
                                   const bool is_innermost,
-                                  int ttl_irregular_chain_flag,
-                                  int ip_inner_ecn)
+                                  const bool ttl_irregular_chain_flag,
+                                  const uint8_t ip_ecn_flags)
 	__attribute__((warn_unused_result));
+
 static int tcp_parse_static_tcp(struct rohc_decomp_ctxt *const context,
                                 const unsigned char *const rohc_packet,
                                 const size_t rohc_length);
 static int tcp_parse_dynamic_tcp(struct rohc_decomp_ctxt *const context,
                                  const unsigned char *const rohc_packet,
                                  const size_t rohc_length);
+static int tcp_parse_irregular_tcp(struct rohc_decomp_ctxt *const context,
+                                   ip_context_t *const ip_inner_context,
+                                   const uint8_t *const rohc_data,
+                                   const size_t rohc_data_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static rohc_packet_t tcp_detect_packet_type(const struct rohc_decomp_ctxt *const context,
                                             const uint8_t *const rohc_packet,
@@ -854,14 +877,13 @@ static rohc_status_t d_tcp_decode_ir(struct rohc_decomp_ctxt *context,
                                      struct rohc_buf *const uncomp_packet)
 {
 	struct d_tcp_context *tcp_context = context->specific;
-	size_t ip_contexts_nr;
 	const uint8_t *payload;
 	size_t payload_size;
 	const uint8_t *remain_data;
 	size_t remain_len;
-	uint8_t protocol;
+	size_t static_chain_len;
+	size_t dyn_chain_len;
 	size_t uncomp_hdr_size;
-	int read;
 
 	remain_data = rohc_packet;
 	remain_len = rohc_length;
@@ -889,85 +911,25 @@ static rohc_status_t d_tcp_decode_ir(struct rohc_decomp_ctxt *context,
 	remain_data++;
 	remain_len--;
 
-	/* parse static IP chain */
-	ip_contexts_nr = 0;
-	do
+	/* parse static chain */
+	if(!tcp_parse_static_chain(context, remain_data, remain_len, &static_chain_len))
 	{
-		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_contexts_nr]);
-
-		/* IP static part */
-		read = tcp_parse_static_ip(context, ip_context, remain_data, remain_len);
-		if(read < 0)
-		{
-			rohc_decomp_warn(context, "malformed ROHC packet: malformed IP "
-			                 "static part");
-			goto error;
-		}
-		rohc_decomp_debug(context, "IPv%u static part is %d-byte length",
-								ip_context->version, read);
-		assert(remain_len >= ((size_t) read));
-		remain_data += read;
-		remain_len -= read;
-
-		protocol = ip_context->ctxt.vx.next_header;
-		ip_contexts_nr++;
-	}
-	while(rohc_is_tunneling(protocol) && ip_contexts_nr < ROHC_TCP_MAX_IP_HDRS);
-
-	if(rohc_is_tunneling(protocol) && ip_contexts_nr >= ROHC_TCP_MAX_IP_HDRS)
-	{
-		rohc_decomp_warn(context, "too many IP headers to decompress");
+		rohc_decomp_warn(context, "failed to parse the static chain");
 		goto error;
 	}
-	tcp_context->ip_contexts_nr = ip_contexts_nr;
+	remain_data += static_chain_len;
+	remain_len -= static_chain_len;
 
-	/* parse TCP static part */
-	read = tcp_parse_static_tcp(context, remain_data, remain_len);
-	if(read < 0)
+	/* parse dynamic chain */
+	if(!tcp_parse_dyn_chain(context, remain_data, remain_len, &dyn_chain_len))
 	{
-		rohc_decomp_warn(context, "malformed ROHC packet: malformed TCP static "
-		                 "part");
+		rohc_decomp_warn(context, "failed to parse the dynamic chain");
 		goto error;
 	}
-	rohc_decomp_debug(context, "TCP static part is %d-byte length", read);
-	assert(remain_len >= ((size_t) read));
-	remain_data += read;
-	remain_len -= read;
+	remain_data += dyn_chain_len;
+	remain_len -= dyn_chain_len;
 
-	/* parse dynamic chain (IPv4/IPv6 headers and extension headers) */
-	for(ip_contexts_nr = 0; ip_contexts_nr < tcp_context->ip_contexts_nr;
-	    ip_contexts_nr++)
-	{
-		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_contexts_nr]);
-
-		/* IP dynamic part */
-		read = tcp_parse_dynamic_ip(context, ip_context, remain_data, remain_len);
-		if(read < 0)
-		{
-			rohc_decomp_warn(context, "malformed ROHC packet: malformed IP "
-			                 "dynamic part");
-			goto error;
-		}
-		rohc_decomp_debug(context, "IPv%u dynamic part is %d-byte length",
-								ip_context->version, read);
-		assert(remain_len >= ((size_t) read));
-		remain_data += read;
-		remain_len -= read;
-	}
-
-	/* parse TCP dynamic part */
-	read = tcp_parse_dynamic_tcp(context, remain_data, remain_len);
-	if(read < 0)
-	{
-		rohc_decomp_warn(context, "malformed ROHC packet: malformed TCP "
-		                 "dynamic part");
-		goto error;
-	}
-	rohc_decomp_debug(context, "TCP dynamic part is %d-byte length", read);
-	assert(remain_len >= ((size_t) read));
-	remain_data += read;
-	remain_len -= read;
-
+	/* remaining data is the packet payload */
 	rohc_decomp_debug(context, "ROHC header is %zu-byte length",
 	                  rohc_length - remain_len);
 	payload = remain_data;
@@ -1026,13 +988,12 @@ static rohc_status_t d_tcp_decode_irdyn(struct rohc_decomp_ctxt *context,
                                         struct rohc_buf *const uncomp_packet)
 {
 	struct d_tcp_context *tcp_context = context->specific;
-	size_t ip_contexts_nr;
 	const uint8_t *payload;
 	size_t payload_size;
 	const uint8_t *remain_data;
 	size_t remain_len;
+	size_t dyn_chain_len;
 	size_t uncomp_hdr_size;
-	int read;
 
 	remain_data = rohc_packet;
 	remain_len = rohc_length;
@@ -1060,39 +1021,16 @@ static rohc_status_t d_tcp_decode_irdyn(struct rohc_decomp_ctxt *context,
 	remain_data++;
 	remain_len--;
 
-	/* parse dynamic chain (IPv4/IPv6 headers and extension headers) */
-	for(ip_contexts_nr = 0; ip_contexts_nr < tcp_context->ip_contexts_nr;
-	    ip_contexts_nr++)
+	/* parse dynamic chain */
+	if(!tcp_parse_dyn_chain(context, remain_data, remain_len, &dyn_chain_len))
 	{
-		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_contexts_nr]);
-
-		/* IP dynamic part */
-		read = tcp_parse_dynamic_ip(context, ip_context, remain_data, remain_len);
-		if(read < 0)
-		{
-			rohc_decomp_warn(context, "malformed ROHC packet: malformed IP "
-			                 "dynamic part");
-			goto error;
-		}
-		rohc_decomp_debug(context, "IPv%u dynamic part is %d-byte length",
-								ip_context->version, read);
-		assert(remain_len >= ((size_t) read));
-		remain_data += read;
-		remain_len -= read;
-	}
-
-	/* parse TCP dynamic part */
-	read = tcp_parse_dynamic_tcp(context, remain_data, remain_len);
-	if(read < 0)
-	{
-		rohc_decomp_warn(context, "malformed ROHC packet: malformed TCP "
-		                 "dynamic part");
+		rohc_decomp_warn(context, "failed to parse the dynamic chain");
 		goto error;
 	}
-	rohc_decomp_debug(context, "TCP dynamic part is %d-byte length", read);
-	remain_data += read;
-	remain_len -= read;
+	remain_data += dyn_chain_len;
+	remain_len -= dyn_chain_len;
 
+	/* remaining data is the packet payload */
 	rohc_decomp_debug(context, "ROHC header is %zu-byte length",
 	                  rohc_length - remain_len);
 	payload = remain_data;
@@ -1126,6 +1064,220 @@ static rohc_status_t d_tcp_decode_irdyn(struct rohc_decomp_ctxt *context,
 
 error:
 	return ROHC_STATUS_ERROR;
+}
+
+
+/**
+ * @brief Parse the static chain of the IR packet
+ *
+ * @param context          The decompression context
+ * @param rohc_packet      The remaining part of the ROHC packet
+ * @param rohc_length      The remaining length (in bytes) of the ROHC packet
+ * @param[out] parsed_len  The length (in bytes) of static chain in case of success
+ * @return                 true in the static chain was successfully parsed,
+ *                         false if the ROHC packet was malformed
+ */
+static bool tcp_parse_static_chain(struct rohc_decomp_ctxt *const context,
+                                   const uint8_t *const rohc_packet,
+                                   const size_t rohc_length,
+                                   size_t *const parsed_len)
+{
+	struct d_tcp_context *tcp_context = context->specific;
+	const uint8_t *remain_data = rohc_packet;
+	size_t remain_len = rohc_length;
+	size_t ip_contexts_nr;
+	uint8_t protocol;
+	int ret;
+
+	(*parsed_len) = 0;
+
+	/* parse static IP part (IPv4/IPv6 headers and extension headers) */
+	ip_contexts_nr = 0;
+	do
+	{
+		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_contexts_nr]);
+
+		ret = tcp_parse_static_ip(context, ip_context, remain_data, remain_len);
+		if(ret < 0)
+		{
+			rohc_decomp_warn(context, "malformed ROHC packet: malformed IP "
+			                 "static part");
+			goto error;
+		}
+		rohc_decomp_debug(context, "IPv%u static part is %d-byte length",
+								ip_context->version, ret);
+		assert(remain_len >= ((size_t) ret));
+		remain_data += ret;
+		remain_len -= ret;
+		(*parsed_len) += ret;
+
+		protocol = ip_context->ctxt.vx.next_header;
+		ip_contexts_nr++;
+	}
+	while(rohc_is_tunneling(protocol) && ip_contexts_nr < ROHC_TCP_MAX_IP_HDRS);
+
+	if(rohc_is_tunneling(protocol) && ip_contexts_nr >= ROHC_TCP_MAX_IP_HDRS)
+	{
+		rohc_decomp_warn(context, "too many IP headers to decompress");
+		goto error;
+	}
+	tcp_context->ip_contexts_nr = ip_contexts_nr;
+
+	/* parse TCP static part */
+	ret = tcp_parse_static_tcp(context, remain_data, remain_len);
+	if(ret < 0)
+	{
+		rohc_decomp_warn(context, "malformed ROHC packet: malformed TCP static "
+		                 "part");
+		goto error;
+	}
+	rohc_decomp_debug(context, "TCP static part is %d-byte length", ret);
+	assert(remain_len >= ((size_t) ret));
+	remain_data += ret;
+	remain_len -= ret;
+	(*parsed_len) += ret;
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Parse the dynamic chain of the IR/IR-DYN packet
+ *
+ * @param context          The decompression context
+ * @param rohc_packet      The remaining part of the ROHC packet
+ * @param rohc_length      The remaining length (in bytes) of the ROHC packet
+ * @param[out] parsed_len  The length (in bytes) of static chain in case of success
+ * @return                 true in the dynamic chain was successfully parsed,
+ *                         false if the ROHC packet was malformed
+ */
+static bool tcp_parse_dyn_chain(struct rohc_decomp_ctxt *const context,
+                                const uint8_t *const rohc_packet,
+                                const size_t rohc_length,
+                                size_t *const parsed_len)
+{
+	struct d_tcp_context *tcp_context = context->specific;
+	const uint8_t *remain_data = rohc_packet;
+	size_t remain_len = rohc_length;
+	size_t ip_contexts_nr;
+	int ret;
+
+	(*parsed_len) = 0;
+
+	/* parse dynamic IP part (IPv4/IPv6 headers and extension headers) */
+	for(ip_contexts_nr = 0; ip_contexts_nr < tcp_context->ip_contexts_nr;
+	    ip_contexts_nr++)
+	{
+		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_contexts_nr]);
+
+		ret = tcp_parse_dynamic_ip(context, ip_context, remain_data, remain_len);
+		if(ret < 0)
+		{
+			rohc_decomp_warn(context, "malformed ROHC packet: malformed IP "
+			                 "dynamic part");
+			goto error;
+		}
+		rohc_decomp_debug(context, "IPv%u dynamic part is %d-byte length",
+								ip_context->version, ret);
+		assert(remain_len >= ((size_t) ret));
+		remain_data += ret;
+		remain_len -= ret;
+		(*parsed_len) += ret;
+	}
+
+	/* parse TCP dynamic part */
+	ret = tcp_parse_dynamic_tcp(context, remain_data, remain_len);
+	if(ret < 0)
+	{
+		rohc_decomp_warn(context, "malformed ROHC packet: malformed TCP "
+		                 "dynamic part");
+		goto error;
+	}
+	rohc_decomp_debug(context, "TCP dynamic part is %d-byte length", ret);
+	assert(remain_len >= ((size_t) ret));
+	remain_data += ret;
+	remain_len -= ret;
+	(*parsed_len) += ret;
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Parse the irregular chain of the ROHC packet
+ *
+ * @param context                   The decompression context
+ * @param rohc_packet               The remaining part of the ROHC packet
+ * @param rohc_length               The remaining length (in bytes) of ROHC packet
+ * @param ttl_irregular_chain_flag  true if one of the TTL value of header changed
+ * @param[out] parsed_len           The length (in bytes) of static chain in case
+ *                                  of success
+ * @return                          true in the irregular chain was successfully
+ *                                  parsed, false if the ROHC packet was malformed
+ */
+static bool tcp_parse_irreg_chain(struct rohc_decomp_ctxt *const context,
+                                  const uint8_t *const rohc_packet,
+                                  const size_t rohc_length,
+                                  const bool ttl_irregular_chain_flag,
+                                  size_t *const parsed_len)
+{
+	struct d_tcp_context *tcp_context = context->specific;
+	const uint8_t *remain_data = rohc_packet;
+	size_t remain_len = rohc_length;
+	ip_context_t *ip_inner_context = NULL;
+	size_t ip_contexts_nr;
+	int ret;
+
+	(*parsed_len) = 0;
+
+	/* parse irregular IP part (IPv4/IPv6 headers and extension headers) */
+	for(ip_contexts_nr = 0; ip_contexts_nr < tcp_context->ip_contexts_nr;
+	    ip_contexts_nr++)
+	{
+		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_contexts_nr]);
+		const bool is_inner_ip =
+			(ip_contexts_nr == (tcp_context->ip_contexts_nr - 1));
+		const uint8_t ip_ecn_flags = ip_context->ctxt.vx.ip_ecn_flags;
+
+		ret = tcp_parse_irregular_ip(context, ip_context, remain_data, remain_len,
+		                             is_inner_ip, ttl_irregular_chain_flag,
+		                             ip_ecn_flags);
+		if(ret < 0)
+		{
+			rohc_decomp_warn(context, "failed to decode IP part of irregular chain");
+			goto error;
+		}
+		assert(remain_len >= (size_t) ret);
+		remain_data += ret;
+		remain_len -= ret;
+		(*parsed_len) += ret;
+
+		ip_inner_context = ip_context;
+	}
+	assert(ip_inner_context != NULL);
+
+	/* parse irregular TCP part */
+	ret = tcp_parse_irregular_tcp(context, ip_inner_context, remain_data, remain_len);
+	if(ret < 0)
+	{
+		rohc_decomp_warn(context, "failed to decode TCP part of irregular chain");
+		goto error;
+	}
+	assert(remain_len >= (size_t) ret);
+	remain_data += ret;
+	remain_len -= ret;
+	(*parsed_len) += ret;
+
+	return true;
+
+error:
+	return false;
 }
 
 
@@ -1809,8 +1961,8 @@ error:
  * @param rohc_data                 The remaining part of the ROHC packet
  * @param rohc_data_len             The length of remaining part of the ROHC packet
  * @param is_innermost              True if the IP header is the innermost of the packet
- * @param ttl_irregular_chain_flag  True if one of the TTL value of header change
- * @param ip_inner_ecn              The ECN flags of inner IP header
+ * @param ttl_irregular_chain_flag  true if one of the TTL value of header changed
+ * @param ip_ecn_flags              The 2-bit ECN flags of the IP header
  * @return                          The number of ROHC bytes parsed,
  *                                  -1 if packet is malformed
  */
@@ -1819,19 +1971,21 @@ static int tcp_parse_irregular_ip(struct rohc_decomp_ctxt *const context,
                                   const uint8_t *rohc_data,
                                   const size_t rohc_data_len,
                                   const bool is_innermost,
-                                  int ttl_irregular_chain_flag,
-                                  int ip_inner_ecn)
+                                  const bool ttl_irregular_chain_flag,
+                                  const uint8_t ip_ecn_flags)
 {
 	struct d_tcp_context *tcp_context = context->specific;
 	const uint8_t *remain_data;
 	size_t remain_len;
 
+	assert((ip_ecn_flags & 0x3) == ip_ecn_flags);
+
 	remain_data = rohc_data;
 	remain_len = rohc_data_len;
 
 	rohc_decomp_debug(context, "is_innermost = %d, ttl_irregular_chain_flag = %d, "
-	                  "ip_inner_ecn = %d", is_innermost,
-	                  ttl_irregular_chain_flag, ip_inner_ecn);
+	                  "ip_ecn_flags = %d", is_innermost,
+	                  ttl_irregular_chain_flag ? 1 : 0, ip_ecn_flags);
 
 	if(ip_context->ctxt.vx.version == IPV4)
 	{
@@ -1858,15 +2012,12 @@ static int tcp_parse_irregular_ip(struct rohc_decomp_ctxt *const context,
 		}
 		if(is_innermost)
 		{
-			// ipv4_innermost_irregular
-			// assert( ip_inner_ecn == base_header.ipv4->ip_ecn_flags );
-			ip_context->ctxt.v4.ip_ecn_flags = ip_inner_ecn; // TODO: review ???
+			/* ipv4_innermost_irregular */
+			ip_context->ctxt.v4.ip_ecn_flags = ip_ecn_flags;
 		}
 		else
 		{
-			// ipv4_outer_with/without_ttl_irregular
-			// dscp =:= static_or_irreg( ecn_used.UVALUE )
-			// ip_ecn_flags =:= static_or_irreg( ecn_used.UVALUE )
+			/* ipv4_outer_with_ttl_irregular or ipv4_outer_without_ttl_irregular */
 			if(tcp_context->ecn_used != 0)
 			{
 				if(remain_len < 1)
@@ -1876,17 +2027,18 @@ static int tcp_parse_irregular_ip(struct rohc_decomp_ctxt *const context,
 					             "available while at least 1 byte required", remain_len);
 					goto error;
 				}
+				/* dscp =:= static_or_irreg(ecn_used.UVALUE) */
 				ip_context->ctxt.v4.dscp = remain_data[0] >> 2;
+				/* ip_ecn_flags =:= static_or_irreg(ecn_used.UVALUE) */
 				ip_context->ctxt.v4.ip_ecn_flags = remain_data[0] & 0x03;
 				remain_data++;
 				rohc_decomp_debug(context, "read DSCP = 0x%x, ip_ecn_flags = %d",
 				                  ip_context->ctxt.v4.dscp,
 				                  ip_context->ctxt.v4.ip_ecn_flags);
 			}
-			if(ttl_irregular_chain_flag == 1)
+			if(ttl_irregular_chain_flag)
 			{
-				// ipv4_outer_with_ttl_irregular
-				// ttl_hopl =:= irregular(8)
+				/* ipv4_outer_with_ttl_irregular only */
 				if(remain_len < 1)
 				{
 					rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, ROHC_PROFILE_TCP,
@@ -1894,12 +2046,12 @@ static int tcp_parse_irregular_ip(struct rohc_decomp_ctxt *const context,
 					             "available while at least 1 byte required", remain_len);
 					goto error;
 				}
+				/* ttl_hopl =:= irregular(8) */
 				ip_context->ctxt.v4.ttl_hopl = remain_data[0];
 				remain_data++;
 				rohc_decomp_debug(context, "read ttl_hopl = 0x%x",
 				                  ip_context->ctxt.v4.ttl_hopl);
 			}
-			/* else: ipv4_outer_without_ttl_irregular */
 		}
 	}
 	else
@@ -1923,7 +2075,7 @@ static int tcp_parse_irregular_ip(struct rohc_decomp_ctxt *const context,
 				ip_context->ctxt.v6.ip_ecn_flags = (remain_data[0] & 0x03);
 				remain_data++;
 			}
-			if(ttl_irregular_chain_flag == 1)
+			if(ttl_irregular_chain_flag)
 			{
 				if(remain_len < 1)
 				{
@@ -4157,14 +4309,13 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 {
 	unsigned char *packed_rohc_packet = malloc(5000); // TODO: change that
 	struct d_tcp_context *const tcp_context = context->specific;
-	size_t ip_contexts_nr;
 	uint16_t tcp_options_size = 0;
 	uint32_t seq_num_scaled_bits = 0;
 	size_t seq_num_scaled_nr = 0;
 	uint8_t header_crc;
 	uint8_t crc_computed;
 	size_t rohc_opts_len;
-	int ttl_irregular_chain_flag = 0;
+	bool ttl_irregular_chain_flag = false;
 	uint16_t ip_id_offset;
 	uint16_t ip_id;
 	int ret;
@@ -4733,7 +4884,7 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 		tcp_context->res_flags = tcp_context->old_tcphdr.res_flags;
 		tcp_context->urg_ptr = tcp_context->old_tcphdr.urg_ptr;
 
-		ttl_irregular_chain_flag = co_common->ttl_hopl_outer_flag;
+		ttl_irregular_chain_flag = !!(co_common->ttl_hopl_outer_flag);
 		tcp_context->ack_flag = co_common->ack_flag;
 		tcp_context->psh_flag = co_common->psh_flag;
 		tcp_context->urg_flag = co_common->urg_flag;
@@ -5498,43 +5649,20 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 
 	tcp_context->msn_tmp = msn_decoded;
 
-	/* parse irregular chain: IP parts */
-	for(ip_contexts_nr = 0; ip_contexts_nr < tcp_context->ip_contexts_nr;
-	    ip_contexts_nr++)
+	/* parse irregular chain */
 	{
-		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_contexts_nr]);
-		const bool is_inner_ip =
-			(ip_contexts_nr == (tcp_context->ip_contexts_nr - 1));
-		const uint8_t ip_ecn_flags = ip_context->ctxt.vx.ip_ecn_flags;
+		size_t irreg_chain_len;
 
-		ret = tcp_parse_irregular_ip(context, ip_context, rohc_remain_data,
-		                             rohc_remain_len, is_inner_ip,
-		                             ttl_irregular_chain_flag, ip_ecn_flags);
-		if(ret < 0)
+		if(!tcp_parse_irreg_chain(context, rohc_remain_data, rohc_remain_len,
+		                          ttl_irregular_chain_flag, &irreg_chain_len))
 		{
-			rohc_decomp_warn(context, "failed to decode IP part of irregular chain");
+			rohc_decomp_warn(context, "failed to parse the irregular chain");
 			goto error;
 		}
-		rohc_remain_data += ret;
-		assert(rohc_remain_len >= (size_t) ret);
-		rohc_remain_len -= ret;
-		rohc_header_len += ret;
-		assert(rohc_header_len <= rohc_length);
+		rohc_remain_data += irreg_chain_len;
+		rohc_remain_len -= irreg_chain_len;
+		rohc_header_len += irreg_chain_len;
 	}
-
-	/* irregular chain: TCP part */
-	ret = tcp_parse_irregular_tcp(context, ip_inner_context,
-	                              rohc_remain_data, rohc_remain_len);
-	if(ret < 0)
-	{
-		rohc_decomp_warn(context, "failed to decode TCP part of irregular chain");
-		goto error;
-	}
-	rohc_remain_data += ret;
-	assert(rohc_remain_len >= (size_t) ret);
-	rohc_remain_len -= ret;
-	rohc_header_len += ret;
-	assert(rohc_header_len <= rohc_length);
 
 	/* decode IP-ID according to its behavior */
 	if(ip_inner_context->ctxt.vx.version == IPV4)
