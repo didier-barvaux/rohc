@@ -418,6 +418,36 @@ static int d_tcp_opt_sack(const struct rohc_decomp_ctxt *const context,
                           uint32_t ack_value)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
+static bool d_tcp_build_ipv4_hdr(const struct rohc_decomp_ctxt *const context,
+                                 const ip_context_t *const ip_context,
+                                 struct rohc_buf *const uncomp_packet,
+                                 size_t *const ip_hdr_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
+static bool d_tcp_build_ipv6_hdr(const struct rohc_decomp_ctxt *const context,
+                                 const ip_context_t *const ip_context,
+                                 struct rohc_buf *const uncomp_packet,
+                                 size_t *const ip_hdr_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
+static bool d_tcp_build_ip_hdr(const struct rohc_decomp_ctxt *const context,
+                               const ip_context_t *const ip_context,
+                               struct rohc_buf *const uncomp_packet,
+                               size_t *const ip_hdr_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
+static bool d_tcp_build_ip_hdrs(const struct rohc_decomp_ctxt *const context,
+                                struct rohc_buf *const uncomp_packet,
+                                size_t *const ip_hdrs_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+static bool d_tcp_build_tcp_hdr(const struct rohc_decomp_ctxt *const context,
+                                struct rohc_buf *const uncomp_packet,
+                                size_t *const tcp_hdr_len)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
+static bool d_tcp_build_uncomp_pkt(const struct rohc_decomp_ctxt *const context,
+                                   const uint8_t *const payload,
+                                   const size_t payload_len,
+                                   struct rohc_buf *const uncomp_packet,
+                                   size_t *const uncomp_hdr_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
+
 
 /**
  * @brief Create the TCP decompression context.
@@ -886,6 +916,7 @@ static rohc_status_t d_tcp_decode_ir(struct rohc_decomp_ctxt *context,
 	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt = context->specific;
 	struct d_tcp_context *tcp_context = rfc3095_ctxt->specific;
 	size_t ip_contexts_nr;
+	const uint8_t *payload;
 	size_t payload_size;
 	const uint8_t *remain_data;
 	size_t remain_len;
@@ -1000,6 +1031,7 @@ static rohc_status_t d_tcp_decode_ir(struct rohc_decomp_ctxt *context,
 
 	rohc_decomp_debug(context, "ROHC header is %zu-byte length",
 	                  rohc_length - remain_len);
+	payload = remain_data;
 	payload_size = remain_len;
 	rohc_decomp_debug(context, "ROHC payload is %zu-byte length", payload_size);
 
@@ -1015,219 +1047,13 @@ static rohc_status_t d_tcp_decode_ir(struct rohc_decomp_ctxt *context,
 		                  tcp_context->seq_num_scaled);
 	}
 
-	/*
-	 * build uncompressed packet
-	 */
-
-	/* IP headers */
-	uncomp_hdr_size = 0;
-	for(ip_contexts_nr = 0; ip_contexts_nr < tcp_context->ip_contexts_nr;
-	    ip_contexts_nr++)
+	/* build uncompressed packet */
+	if(!d_tcp_build_uncomp_pkt(context, payload, payload_size, uncomp_packet,
+	                           &uncomp_hdr_size))
 	{
-		const ip_context_t *const ip_context =
-			&(tcp_context->ip_contexts[ip_contexts_nr]);
-
-		if(ip_context->version == IPV4)
-		{
-			base_header_ip_v4_t *const ipv4 =
-				(base_header_ip_v4_t *) rohc_buf_data(*uncomp_packet);
-
-			if(rohc_buf_avail_len(*uncomp_packet) < sizeof(base_header_ip_v4_t))
-			{
-				rohc_decomp_warn(context, "output buffer too small for the %zu-byte "
-				                 "IPv4 header #%zu", sizeof(base_header_ip_v4_t),
-				                 ip_contexts_nr + 1);
-				goto error;
-			}
-
-			/* static part */
-			ipv4->version = IPV4;
-			ipv4->header_length = sizeof(base_header_ip_v4_t) >> 2;
-			ipv4->protocol = ip_context->ctxt.v4.protocol;
-			ipv4->src_addr = ip_context->ctxt.v4.src_addr;
-			ipv4->dest_addr = ip_context->ctxt.v4.dst_addr;
-			/* dynamic part */
-			ipv4->rf = 0;
-			ipv4->df = ip_context->ctxt.v4.df;
-			ipv4->mf = 0;
-			ipv4->dscp = ip_context->ctxt.v4.dscp;
-			ipv4->ip_ecn_flags = ip_context->ctxt.v4.ip_ecn_flags;
-			ipv4->ttl_hopl = ip_context->ctxt.v4.ttl_hopl;
-			rohc_decomp_debug(context, "DSCP = 0x%x, ip_ecn_flags = %d",
-			                  ipv4->dscp, ipv4->ip_ecn_flags);
-#if WORDS_BIGENDIAN != 1
-			ipv4->frag_offset1 = 0;
-			ipv4->frag_offset2 = 0;
-#else
-			ipv4->frag_offset = 0;
-#endif
-			/* IP-ID */
-			ipv4->ip_id = rohc_hton16(ip_context->ctxt.v4.ip_id);
-
-			/* length and checksums will be computed once all headers are built */
-
-			uncomp_packet->len += sizeof(base_header_ip_v4_t);
-			rohc_buf_pull(uncomp_packet, sizeof(base_header_ip_v4_t));
-			uncomp_hdr_size += sizeof(base_header_ip_v4_t);
-		}
-		else
-		{
-			base_header_ip_v6_t *const ipv6 =
-				(base_header_ip_v6_t *) rohc_buf_data(*uncomp_packet);
-			const size_t ipv6_exts_len = ip_context->ctxt.v6.opts_len;
-			const size_t full_ipv6_len =
-				sizeof(base_header_ip_v6_t) + ipv6_exts_len;
-
-			if(rohc_buf_avail_len(*uncomp_packet) < full_ipv6_len)
-			{
-				rohc_decomp_warn(context, "output buffer too small for the %zu-byte "
-				                 "IPv6 header #%zu (with %zu bytes of extension "
-				                 "headers)", full_ipv6_len, ip_contexts_nr + 1,
-				                 ipv6_exts_len);
-				goto error;
-			}
-			rohc_decomp_debug(context, "build %zu-byte IPv6 header #%zu (with %zu "
-			                  "bytes of extension headers)", full_ipv6_len,
-			                  ip_contexts_nr + 1, ipv6_exts_len);
-
-			/* static part */
-			ipv6->version = IPV6;
-			ipv6->flow_label1 = ip_context->ctxt.v6.flow_label1;
-			ipv6->flow_label2 = ip_context->ctxt.v6.flow_label2;
-			ipv6->next_header = ip_context->ctxt.v6.next_header;
-			memcpy(ipv6->src_addr, ip_context->ctxt.v6.src_addr, sizeof(uint32_t) * 4);
-			memcpy(ipv6->dest_addr, ip_context->ctxt.v6.dest_addr, sizeof(uint32_t) * 4);
-			/* dynamic part */
-			ipv6->dscp1 = ip_context->ctxt.v6.dscp >> 2;
-			ipv6->dscp2 = ip_context->ctxt.v6.dscp & 0x03;
-			ipv6->ip_ecn_flags = ip_context->ctxt.v6.ip_ecn_flags;
-			ipv6->ttl_hopl = ip_context->ctxt.v6.ttl_hopl;
-
-			/* total length will be computed once all headers are built */
-
-			uncomp_packet->len += sizeof(base_header_ip_v6_t);
-			rohc_buf_pull(uncomp_packet, sizeof(base_header_ip_v6_t));
-			uncomp_hdr_size += sizeof(base_header_ip_v6_t);
-
-			/* copy IPv6 extension headers */
-			size_t all_opts_len = 0;
-			for(size_t i = 0; i < ip_context->ctxt.v6.opts_nr; i++)
-			{
-				const ipv6_option_context_t *const opt = &(ip_context->ctxt.v6.opts[i]);
-				rohc_decomp_debug(context, "build %u-byte IPv6 extension header #%zu",
-				                  opt->generic.option_length, i + 1);
-				uncomp_packet->len += 2;
-				rohc_buf_byte_at(*uncomp_packet, 0) = opt->generic.next_header;
-				assert((opt->generic.option_length % 8) == 0);
-				assert((opt->generic.option_length / 8) > 0);
-				rohc_buf_byte_at(*uncomp_packet, 1) =
-					opt->generic.option_length / 8 - 1;
-				rohc_buf_append(uncomp_packet, opt->generic.data,
-				                opt->generic.option_length - 2);
-				rohc_buf_pull(uncomp_packet, opt->generic.option_length);
-				uncomp_hdr_size += opt->generic.option_length;
-				all_opts_len += opt->generic.option_length;
-			}
-			assert(all_opts_len == ipv6_exts_len);
-		}
-	}
-
-	/* TCP header */
-	{
-		tcphdr_t *const tcp = (tcphdr_t *) rohc_buf_data(*uncomp_packet);
-		const size_t full_tcp_len = sizeof(tcphdr_t) + tcp_context->options_len;
-
-		if(rohc_buf_avail_len(*uncomp_packet) < full_tcp_len)
-		{
-			rohc_decomp_warn(context, "output buffer too small for the %zu-byte "
-			                 "TCP header and TCP options", full_tcp_len);
-			goto error;
-		}
-		rohc_decomp_debug(context, "build %zu-byte TCP header (with %zu bytes "
-		                  "of options)", full_tcp_len, tcp_context->options_len);
-
-		/* static part */
-		tcp->src_port = tcp_context->tcp_src_port;
-		tcp->dst_port = tcp_context->tcp_dst_port;
-		/* dynamic part */
-		tcp->data_offset = (full_tcp_len >> 2) & 0xf;
-		tcp->res_flags = tcp_context->res_flags;
-		tcp->ecn_flags = tcp_context->ecn_flags;
-		tcp->urg_flag = tcp_context->urg_flag;
-		tcp->ack_flag = tcp_context->ack_flag;
-		tcp->psh_flag = tcp_context->psh_flag;
-		tcp->rsf_flags = tcp_context->rsf_flags;
-		tcp->seq_num = tcp_context->seq_num;
-		tcp->ack_num = tcp_context->ack_num;
-		tcp->window = tcp_context->window;
-		tcp->checksum = tcp_context->checksum;
-		tcp->urg_ptr = tcp_context->urg_ptr;
-		memcpy(tcp->options, tcp_context->options, tcp_context->options_len);
-
-		uncomp_packet->len += full_tcp_len;
-		rohc_buf_pull(uncomp_packet, full_tcp_len);
-		uncomp_hdr_size += full_tcp_len;
-
-		/* update context (should only be done at the very end, to be moved) */
-		memcpy(&tcp_context->old_tcphdr, tcp, sizeof(tcphdr_t));
-	}
-
-	/* payload */
-	rohc_decomp_debug(context, "uncompressed header is %zu-byte length",
-	                  uncomp_hdr_size);
-	rohc_decomp_debug(context, "copy %zu bytes of payload", payload_size);
-	if(rohc_buf_avail_len(*uncomp_packet) < payload_size)
-	{
-		rohc_decomp_warn(context, "output buffer too small for the %zu-byte "
-		                 "payload", payload_size);
+		rohc_decomp_warn(context, "failed to build uncompressed packet");
 		goto error;
 	}
-	rohc_buf_append(uncomp_packet, remain_data, payload_size);
-	rohc_buf_push(uncomp_packet, uncomp_hdr_size);
-	rohc_decomp_debug(context, "uncompressed packet is %zu-byte length",
-	                  uncomp_packet->len);
-
-	/* compute payload lengths and checksums for all headers */
-	for(ip_contexts_nr = 0; ip_contexts_nr < tcp_context->ip_contexts_nr;
-	    ip_contexts_nr++)
-	{
-		const ip_context_t *const ip_context =
-			&(tcp_context->ip_contexts[ip_contexts_nr]);
-
-		if(ip_context->version == IPV4)
-		{
-			base_header_ip_v4_t *const ipv4 =
-				(base_header_ip_v4_t *) rohc_buf_data(*uncomp_packet);
-			ipv4->length = rohc_hton16(uncomp_packet->len);
-			ipv4->checksum = 0;
-			ipv4->checksum =
-				ip_fast_csum(rohc_buf_data(*uncomp_packet), ipv4->header_length);
-			rohc_decomp_debug(context, "IP checksum = 0x%04x on %zu bytes",
-			                  rohc_ntoh16(ipv4->checksum),
-			                  ipv4->header_length * sizeof(uint32_t));
-			rohc_buf_pull(uncomp_packet, ipv4->header_length * sizeof(uint32_t));
-		}
-		else
-		{
-			base_header_ip_v6_t *const ipv6 =
-				(base_header_ip_v6_t *) rohc_buf_data(*uncomp_packet);
-			rohc_buf_pull(uncomp_packet, sizeof(base_header_ip_v6_t));
-			ipv6->payload_length = rohc_hton16(uncomp_packet->len);
-			rohc_decomp_debug(context, "IPv6 payload length = %d",
-			                  rohc_ntoh16(ipv6->payload_length));
-			rohc_buf_pull(uncomp_packet, ip_context->ctxt.v6.opts_len);
-		}
-	}
-	{
-		const size_t full_tcp_len = sizeof(tcphdr_t) + tcp_context->options_len;
-		rohc_buf_push(uncomp_packet, uncomp_hdr_size - full_tcp_len);
-	}
-
-	rohc_dump_buf(context->decompressor->trace_callback,
-	              context->decompressor->trace_callback_priv,
-	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
-	              "current IP + TCP packet",
-	              rohc_buf_data(*uncomp_packet), uncomp_hdr_size);
 
 	/* update context (to be completed) */
 	{
@@ -1289,6 +1115,7 @@ static rohc_status_t d_tcp_decode_irdyn(struct rohc_decomp_ctxt *context,
 	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt = context->specific;
 	struct d_tcp_context *tcp_context = rfc3095_ctxt->specific;
 	size_t ip_contexts_nr;
+	const uint8_t *payload;
 	size_t payload_size;
 	const uint8_t *remain_data;
 	size_t remain_len;
@@ -1356,6 +1183,7 @@ static rohc_status_t d_tcp_decode_irdyn(struct rohc_decomp_ctxt *context,
 
 	rohc_decomp_debug(context, "ROHC header is %zu-byte length",
 	                  rohc_length - remain_len);
+	payload = remain_data;
 	payload_size = remain_len;
 	rohc_decomp_debug(context, "ROHC payload is %zu-byte length", payload_size);
 
@@ -1371,220 +1199,13 @@ static rohc_status_t d_tcp_decode_irdyn(struct rohc_decomp_ctxt *context,
 		                  tcp_context->seq_num_scaled);
 	}
 
-	/* TODO: duplicated from IR */
-	/*
-	 * build uncompressed packet
-	 */
-
-	/* IP headers */
-	uncomp_hdr_size = 0;
-	for(ip_contexts_nr = 0; ip_contexts_nr < tcp_context->ip_contexts_nr;
-	    ip_contexts_nr++)
+	/* build uncompressed packet */
+	if(!d_tcp_build_uncomp_pkt(context, payload, payload_size, uncomp_packet,
+	                           &uncomp_hdr_size))
 	{
-		const ip_context_t *const ip_context =
-			&(tcp_context->ip_contexts[ip_contexts_nr]);
-
-		if(ip_context->version == IPV4)
-		{
-			base_header_ip_v4_t *const ipv4 =
-				(base_header_ip_v4_t *) rohc_buf_data(*uncomp_packet);
-
-			if(rohc_buf_avail_len(*uncomp_packet) < sizeof(base_header_ip_v4_t))
-			{
-				rohc_decomp_warn(context, "output buffer too small for the %zu-byte "
-				                 "IPv4 header #%zu", sizeof(base_header_ip_v4_t),
-				                 ip_contexts_nr + 1);
-				goto error;
-			}
-
-			/* static part */
-			ipv4->version = IPV4;
-			ipv4->header_length = sizeof(base_header_ip_v4_t) >> 2;
-			ipv4->protocol = ip_context->ctxt.v4.protocol;
-			ipv4->src_addr = ip_context->ctxt.v4.src_addr;
-			ipv4->dest_addr = ip_context->ctxt.v4.dst_addr;
-			/* dynamic part */
-			ipv4->rf = 0;
-			ipv4->df = ip_context->ctxt.v4.df;
-			ipv4->mf = 0;
-			ipv4->dscp = ip_context->ctxt.v4.dscp;
-			ipv4->ip_ecn_flags = ip_context->ctxt.v4.ip_ecn_flags;
-			ipv4->ttl_hopl = ip_context->ctxt.v4.ttl_hopl;
-			rohc_decomp_debug(context, "DSCP = 0x%x, ip_ecn_flags = %d",
-			                  ipv4->dscp, ipv4->ip_ecn_flags);
-#if WORDS_BIGENDIAN != 1
-			ipv4->frag_offset1 = 0;
-			ipv4->frag_offset2 = 0;
-#else
-			ipv4->frag_offset = 0;
-#endif
-			/* IP-ID */
-			ipv4->ip_id = rohc_hton16(ip_context->ctxt.v4.ip_id);
-
-			/* length and checksums will be computed once all headers are built */
-
-			uncomp_packet->len += sizeof(base_header_ip_v4_t);
-			rohc_buf_pull(uncomp_packet, sizeof(base_header_ip_v4_t));
-			uncomp_hdr_size += sizeof(base_header_ip_v4_t);
-		}
-		else
-		{
-			base_header_ip_v6_t *const ipv6 =
-				(base_header_ip_v6_t *) rohc_buf_data(*uncomp_packet);
-			const size_t ipv6_exts_len = ip_context->ctxt.v6.opts_len;
-			const size_t full_ipv6_len =
-				sizeof(base_header_ip_v6_t) + ipv6_exts_len;
-
-			if(rohc_buf_avail_len(*uncomp_packet) < full_ipv6_len)
-			{
-				rohc_decomp_warn(context, "output buffer too small for the %zu-byte "
-				                 "IPv6 header #%zu (with %zu bytes of extension "
-				                 "headers)", full_ipv6_len, ip_contexts_nr + 1,
-				                 ipv6_exts_len);
-				goto error;
-			}
-			rohc_decomp_debug(context, "build %zu-byte IPv6 header %zu (with %zu "
-			                  "bytes of extension headers)", full_ipv6_len,
-			                  ip_contexts_nr + 1, ipv6_exts_len);
-
-			/* static part */
-			ipv6->version = IPV6;
-			ipv6->flow_label1 = ip_context->ctxt.v6.flow_label1;
-			ipv6->flow_label2 = ip_context->ctxt.v6.flow_label2;
-			ipv6->next_header = ip_context->ctxt.v6.next_header;
-			memcpy(ipv6->src_addr, ip_context->ctxt.v6.src_addr, sizeof(uint32_t) * 4);
-			memcpy(ipv6->dest_addr, ip_context->ctxt.v6.dest_addr, sizeof(uint32_t) * 4);
-			/* dynamic part */
-			ipv6->dscp1 = ip_context->ctxt.v6.dscp >> 2;
-			ipv6->dscp2 = ip_context->ctxt.v6.dscp & 0x03;
-			ipv6->ip_ecn_flags = ip_context->ctxt.v6.ip_ecn_flags;
-			ipv6->ttl_hopl = ip_context->ctxt.v6.ttl_hopl;
-
-			/* total length will be computed once all headers are built */
-
-			uncomp_packet->len += sizeof(base_header_ip_v6_t);
-			rohc_buf_pull(uncomp_packet, sizeof(base_header_ip_v6_t));
-			uncomp_hdr_size += sizeof(base_header_ip_v6_t);
-
-			/* copy IPv6 extension headers */
-			size_t all_opts_len = 0;
-			for(size_t i = 0; i < ip_context->ctxt.v6.opts_nr; i++)
-			{
-				const ipv6_option_context_t *const opt = &(ip_context->ctxt.v6.opts[i]);
-				rohc_decomp_debug(context, "build %u-byte IPv6 extension header #%zu",
-				                  opt->generic.option_length, i + 1);
-				uncomp_packet->len += 2;
-				rohc_buf_byte_at(*uncomp_packet, 0) = opt->generic.next_header;
-				assert((opt->generic.option_length % 8) == 0);
-				assert((opt->generic.option_length / 8) > 0);
-				rohc_buf_byte_at(*uncomp_packet, 1) =
-					opt->generic.option_length / 8 - 1;
-				rohc_buf_append(uncomp_packet, opt->generic.data,
-				                opt->generic.option_length - 2);
-				rohc_buf_pull(uncomp_packet, opt->generic.option_length);
-				uncomp_hdr_size += opt->generic.option_length;
-				all_opts_len += opt->generic.option_length;
-			}
-			assert(all_opts_len == ipv6_exts_len);
-		}
-	}
-
-	/* TCP header */
-	{
-		tcphdr_t *const tcp = (tcphdr_t *) rohc_buf_data(*uncomp_packet);
-		const size_t full_tcp_len = sizeof(tcphdr_t) + tcp_context->options_len;
-
-		if(rohc_buf_avail_len(*uncomp_packet) < full_tcp_len)
-		{
-			rohc_decomp_warn(context, "output buffer too small for the %zu-byte "
-			                 "TCP header and TCP options", full_tcp_len);
-			goto error;
-		}
-		rohc_decomp_debug(context, "build %zu-byte TCP header (with %zu bytes "
-		                  "of options)", full_tcp_len, tcp_context->options_len);
-
-		/* static part */
-		tcp->src_port = tcp_context->tcp_src_port;
-		tcp->dst_port = tcp_context->tcp_dst_port;
-		/* dynamic part */
-		tcp->data_offset = (full_tcp_len >> 2) & 0xf;
-		tcp->res_flags = tcp_context->res_flags;
-		tcp->ecn_flags = tcp_context->ecn_flags;
-		tcp->urg_flag = tcp_context->urg_flag;
-		tcp->ack_flag = tcp_context->ack_flag;
-		tcp->psh_flag = tcp_context->psh_flag;
-		tcp->rsf_flags = tcp_context->rsf_flags;
-		tcp->seq_num = tcp_context->seq_num;
-		tcp->ack_num = tcp_context->ack_num;
-		tcp->window = tcp_context->window;
-		tcp->checksum = tcp_context->checksum;
-		tcp->urg_ptr = tcp_context->urg_ptr;
-		memcpy(tcp->options, tcp_context->options, tcp_context->options_len);
-
-		uncomp_packet->len += full_tcp_len;
-		rohc_buf_pull(uncomp_packet, full_tcp_len);
-		uncomp_hdr_size += full_tcp_len;
-
-		/* update context (should only be done at the very end, to be moved) */
-		memcpy(&tcp_context->old_tcphdr, tcp, sizeof(tcphdr_t));
-	}
-
-	/* payload */
-	rohc_decomp_debug(context, "uncompressed header is %zu-byte length",
-	                  uncomp_hdr_size);
-	rohc_decomp_debug(context, "copy %zu bytes of payload", payload_size);
-	if(rohc_buf_avail_len(*uncomp_packet) < payload_size)
-	{
-		rohc_decomp_warn(context, "output buffer too small for the %zu-byte "
-		                 "payload", payload_size);
+		rohc_decomp_warn(context, "failed to build uncompressed packet");
 		goto error;
 	}
-	rohc_buf_append(uncomp_packet, remain_data, payload_size);
-	rohc_buf_push(uncomp_packet, uncomp_hdr_size);
-	rohc_decomp_debug(context, "uncompressed packet is %zu-byte length",
-	                  uncomp_packet->len);
-
-	/* compute payload lengths and checksums for all headers */
-	for(ip_contexts_nr = 0; ip_contexts_nr < tcp_context->ip_contexts_nr;
-	    ip_contexts_nr++)
-	{
-		const ip_context_t *const ip_context =
-			&(tcp_context->ip_contexts[ip_contexts_nr]);
-
-		if(ip_context->version == IPV4)
-		{
-			base_header_ip_v4_t *const ipv4 =
-				(base_header_ip_v4_t *) rohc_buf_data(*uncomp_packet);
-			ipv4->length = rohc_hton16(uncomp_packet->len);
-			ipv4->checksum = 0;
-			ipv4->checksum =
-				ip_fast_csum(rohc_buf_data(*uncomp_packet), ipv4->header_length);
-			rohc_decomp_debug(context, "IP checksum = 0x%04x on %zu bytes",
-			                  rohc_ntoh16(ipv4->checksum),
-			                  ipv4->header_length * sizeof(uint32_t));
-			rohc_buf_pull(uncomp_packet, ipv4->header_length * sizeof(uint32_t));
-		}
-		else
-		{
-			base_header_ip_v6_t *const ipv6 =
-				(base_header_ip_v6_t *) rohc_buf_data(*uncomp_packet);
-			rohc_buf_pull(uncomp_packet, sizeof(base_header_ip_v6_t));
-			ipv6->payload_length = rohc_hton16(uncomp_packet->len);
-			rohc_decomp_debug(context, "IPv6 payload length = %d",
-			                  rohc_ntoh16(ipv6->payload_length));
-			rohc_buf_pull(uncomp_packet, ip_context->ctxt.v6.opts_len);
-		}
-	}
-	{
-		const size_t full_tcp_len = sizeof(tcphdr_t) + tcp_context->options_len;
-		rohc_buf_push(uncomp_packet, uncomp_hdr_size - full_tcp_len);
-	}
-
-	rohc_dump_buf(context->decompressor->trace_callback,
-	              context->decompressor->trace_callback_priv,
-	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
-	              "current IP + TCP packet",
-	              rohc_buf_data(*uncomp_packet), uncomp_hdr_size);
 
 	/* TODO: duplicated from IR */
 	/* update context (to be completed) */
@@ -5177,6 +4798,7 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 	size_t rohc_remain_len;
 
 	/* ROHC and uncompressed payloads (they are the same) */
+	const uint8_t *payload;
 	size_t payload_len;
 
 	assert(decomp != NULL);
@@ -6541,6 +6163,7 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 	rohc_header_len += large_cid_len;
 	assert(rohc_header_len <= rohc_length);
 
+	payload = rohc_remain_data;
 	payload_len = rohc_length - rohc_header_len;
 	rohc_decomp_debug(context, "payload length = %zu bytes", payload_len);
 
@@ -6592,220 +6215,13 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 		                  tcp_context->seq_num_scaled);
 	}
 
-	/* TODO: duplicated from IR */
-	/*
-	 * build uncompressed packet
-	 */
-
-	/* IP headers */
-	uncomp_header_len = 0;
-	for(ip_contexts_nr = 0; ip_contexts_nr < tcp_context->ip_contexts_nr;
-	    ip_contexts_nr++)
+	/* build uncompressed packet */
+	if(!d_tcp_build_uncomp_pkt(context, payload, payload_len, uncomp_packet,
+	                           &uncomp_header_len))
 	{
-		const ip_context_t *const ip_context =
-			&(tcp_context->ip_contexts[ip_contexts_nr]);
-
-		if(ip_context->version == IPV4)
-		{
-			base_header_ip_v4_t *const ipv4 =
-				(base_header_ip_v4_t *) rohc_buf_data(*uncomp_packet);
-
-			if(rohc_buf_avail_len(*uncomp_packet) < sizeof(base_header_ip_v4_t))
-			{
-				rohc_decomp_warn(context, "output buffer too small for the %zu-byte "
-				                 "IPv4 header #%zu", sizeof(base_header_ip_v4_t),
-				                 ip_contexts_nr + 1);
-				goto error;
-			}
-
-			/* static part */
-			ipv4->version = IPV4;
-			ipv4->header_length = sizeof(base_header_ip_v4_t) >> 2;
-			ipv4->protocol = ip_context->ctxt.v4.protocol;
-			ipv4->src_addr = ip_context->ctxt.v4.src_addr;
-			ipv4->dest_addr = ip_context->ctxt.v4.dst_addr;
-			/* dynamic part */
-			ipv4->rf = 0;
-			ipv4->df = ip_context->ctxt.v4.df;
-			ipv4->mf = 0;
-			ipv4->dscp = ip_context->ctxt.v4.dscp;
-			ipv4->ip_ecn_flags = ip_context->ctxt.v4.ip_ecn_flags;
-			ipv4->ttl_hopl = ip_context->ctxt.v4.ttl_hopl;
-			rohc_decomp_debug(context, "DSCP = 0x%x, ip_ecn_flags = %d",
-			                  ipv4->dscp, ipv4->ip_ecn_flags);
-#if WORDS_BIGENDIAN != 1
-			ipv4->frag_offset1 = 0;
-			ipv4->frag_offset2 = 0;
-#else
-			ipv4->frag_offset = 0;
-#endif
-			/* IP-ID */
-			ipv4->ip_id = rohc_hton16(ip_context->ctxt.v4.ip_id);
-
-			/* length and checksums will be computed once all headers are built */
-
-			uncomp_packet->len += sizeof(base_header_ip_v4_t);
-			rohc_buf_pull(uncomp_packet, sizeof(base_header_ip_v4_t));
-			uncomp_header_len += sizeof(base_header_ip_v4_t);
-		}
-		else
-		{
-			base_header_ip_v6_t *const ipv6 =
-				(base_header_ip_v6_t *) rohc_buf_data(*uncomp_packet);
-			const size_t ipv6_exts_len = ip_context->ctxt.v6.opts_len;
-			const size_t full_ipv6_len =
-				sizeof(base_header_ip_v6_t) + ipv6_exts_len;
-
-			if(rohc_buf_avail_len(*uncomp_packet) < full_ipv6_len)
-			{
-				rohc_decomp_warn(context, "output buffer too small for the %zu-byte "
-				                 "IPv6 header #%zu (with %zu bytes of extension "
-				                 "headers)", full_ipv6_len, ip_contexts_nr + 1,
-				                 ipv6_exts_len);
-				goto error;
-			}
-			rohc_decomp_debug(context, "build %zu-byte IPv6 header %zu (with %zu "
-			                  "bytes of extension headers)", full_ipv6_len,
-			                  ip_contexts_nr + 1, ipv6_exts_len);
-
-			/* static part */
-			ipv6->version = IPV6;
-			ipv6->flow_label1 = ip_context->ctxt.v6.flow_label1;
-			ipv6->flow_label2 = ip_context->ctxt.v6.flow_label2;
-			ipv6->next_header = ip_context->ctxt.v6.next_header;
-			memcpy(ipv6->src_addr, ip_context->ctxt.v6.src_addr, sizeof(uint32_t) * 4);
-			memcpy(ipv6->dest_addr, ip_context->ctxt.v6.dest_addr, sizeof(uint32_t) * 4);
-			/* dynamic part */
-			ipv6->dscp1 = ip_context->ctxt.v6.dscp >> 2;
-			ipv6->dscp2 = ip_context->ctxt.v6.dscp & 0x03;
-			ipv6->ip_ecn_flags = ip_context->ctxt.v6.ip_ecn_flags;
-			ipv6->ttl_hopl = ip_context->ctxt.v6.ttl_hopl;
-
-			/* total length will be computed once all headers are built */
-
-			uncomp_packet->len += sizeof(base_header_ip_v6_t);
-			rohc_buf_pull(uncomp_packet, sizeof(base_header_ip_v6_t));
-			uncomp_header_len += sizeof(base_header_ip_v6_t);
-
-			/* copy IPv6 extension headers */
-			size_t all_opts_len = 0;
-			for(size_t i = 0; i < ip_context->ctxt.v6.opts_nr; i++)
-			{
-				const ipv6_option_context_t *const opt = &(ip_context->ctxt.v6.opts[i]);
-				rohc_decomp_debug(context, "build %u-byte IPv6 extension header #%zu",
-				                  opt->generic.option_length, i + 1);
-				uncomp_packet->len += 2;
-				rohc_buf_byte_at(*uncomp_packet, 0) = opt->generic.next_header;
-				assert((opt->generic.option_length % 8) == 0);
-				assert((opt->generic.option_length / 8) > 0);
-				rohc_buf_byte_at(*uncomp_packet, 1) =
-					opt->generic.option_length / 8 - 1;
-				rohc_buf_append(uncomp_packet, opt->generic.data,
-				                opt->generic.option_length - 2);
-				rohc_buf_pull(uncomp_packet, opt->generic.option_length);
-				uncomp_header_len += opt->generic.option_length;
-				all_opts_len += opt->generic.option_length;
-			}
-			assert(all_opts_len == ipv6_exts_len);
-		}
-	}
-
-	/* TCP header */
-	{
-		tcphdr_t *const tcp = (tcphdr_t *) rohc_buf_data(*uncomp_packet);
-		const size_t full_tcp_len = sizeof(tcphdr_t) + tcp_context->options_len;
-
-		if(rohc_buf_avail_len(*uncomp_packet) < full_tcp_len)
-		{
-			rohc_decomp_warn(context, "output buffer too small for the %zu-byte "
-			                 "TCP header and TCP options", full_tcp_len);
-			goto error;
-		}
-		rohc_decomp_debug(context, "build %zu-byte TCP header (with %zu bytes "
-		                  "of options)", full_tcp_len, tcp_context->options_len);
-
-		/* static part */
-		tcp->src_port = tcp_context->tcp_src_port;
-		tcp->dst_port = tcp_context->tcp_dst_port;
-		/* dynamic part */
-		tcp->data_offset = (full_tcp_len >> 2) & 0xf;
-		tcp->res_flags = tcp_context->res_flags;
-		tcp->ecn_flags = tcp_context->ecn_flags;
-		tcp->urg_flag = tcp_context->urg_flag;
-		tcp->ack_flag = tcp_context->ack_flag;
-		tcp->psh_flag = tcp_context->psh_flag;
-		tcp->rsf_flags = tcp_context->rsf_flags;
-		tcp->seq_num = tcp_context->seq_num;
-		tcp->ack_num = tcp_context->ack_num;
-		tcp->window = tcp_context->window;
-		tcp->checksum = tcp_context->checksum;
-		tcp->urg_ptr = tcp_context->urg_ptr;
-		memcpy(tcp->options, tcp_context->options, tcp_context->options_len);
-
-		uncomp_packet->len += full_tcp_len;
-		rohc_buf_pull(uncomp_packet, full_tcp_len);
-		uncomp_header_len += full_tcp_len;
-
-		/* update context (should only be done at the very end, to be moved) */
-		memcpy(&tcp_context->old_tcphdr, tcp, sizeof(tcphdr_t));
-	}
-
-	/* payload */
-	rohc_decomp_debug(context, "uncompressed header is %zu-byte length",
-	                  uncomp_header_len);
-	rohc_decomp_debug(context, "copy %zu bytes of payload", payload_len);
-	if(rohc_buf_avail_len(*uncomp_packet) < payload_len)
-	{
-		rohc_decomp_warn(context, "output buffer too small for the %zu-byte "
-		                 "payload", payload_len);
+		rohc_decomp_warn(context, "failed to build uncompressed packet");
 		goto error;
 	}
-	rohc_buf_append(uncomp_packet, rohc_remain_data, payload_len);
-	rohc_buf_push(uncomp_packet, uncomp_header_len);
-	rohc_decomp_debug(context, "uncompressed packet is %zu-byte length",
-	                  uncomp_packet->len);
-
-	/* compute payload lengths and checksums for all headers */
-	for(ip_contexts_nr = 0; ip_contexts_nr < tcp_context->ip_contexts_nr;
-	    ip_contexts_nr++)
-	{
-		const ip_context_t *const ip_context =
-			&(tcp_context->ip_contexts[ip_contexts_nr]);
-
-		if(ip_context->version == IPV4)
-		{
-			base_header_ip_v4_t *const ipv4 =
-				(base_header_ip_v4_t *) rohc_buf_data(*uncomp_packet);
-			ipv4->length = rohc_hton16(uncomp_packet->len);
-			ipv4->checksum = 0;
-			ipv4->checksum =
-				ip_fast_csum(rohc_buf_data(*uncomp_packet), ipv4->header_length);
-			rohc_decomp_debug(context, "IP checksum = 0x%04x on %zu bytes",
-			                  rohc_ntoh16(ipv4->checksum),
-			                  ipv4->header_length * sizeof(uint32_t));
-			rohc_buf_pull(uncomp_packet, ipv4->header_length * sizeof(uint32_t));
-		}
-		else
-		{
-			base_header_ip_v6_t *const ipv6 =
-				(base_header_ip_v6_t *) rohc_buf_data(*uncomp_packet);
-			rohc_buf_pull(uncomp_packet, sizeof(base_header_ip_v6_t));
-			ipv6->payload_length = rohc_hton16(uncomp_packet->len);
-			rohc_decomp_debug(context, "IPv6 payload length = %d",
-			                  rohc_ntoh16(ipv6->payload_length));
-			rohc_buf_pull(uncomp_packet, ip_context->ctxt.v6.opts_len);
-		}
-	}
-	{
-		const size_t full_tcp_len = sizeof(tcphdr_t) + tcp_context->options_len;
-		rohc_buf_push(uncomp_packet, uncomp_header_len - full_tcp_len);
-	}
-
-	rohc_dump_buf(context->decompressor->trace_callback,
-	              context->decompressor->trace_callback_priv,
-	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
-	              "current IP + TCP packet",
-	              rohc_buf_data(*uncomp_packet), uncomp_header_len);
 
 	/* check CRC on decompressed headers */
 	switch(crc_type)
@@ -6944,6 +6360,427 @@ static bool rohc_decomp_tcp_decode_ack(const struct rohc_decomp_ctxt *const cont
 		rohc_decomp_debug(context, "ACK flag not set, but %zu bits 0x%x were "
 		                  "transmitted for ACK number", ack_bits_nr, ack_bits);
 	}
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Build one single uncompressed IPv4 header
+ *
+ * Build one single uncompressed IPv4 header from the context and packet
+ * informations.
+ *
+ * @param context             The decompression context
+ * @param ip_context          The decompression context of the IPv4 header
+ * @param[out] uncomp_packet  The uncompressed packet being built
+ * @param[out] ip_hdr_len     The length of the IPv4 header (in bytes)
+ * @return                    true if IPv4 header was successfully built,
+ *                            false if the output \e uncomp_packet was not
+ *                            large enough
+ *
+ * @todo TODO: replace base_header_ip_v4_t
+ */
+static bool d_tcp_build_ipv4_hdr(const struct rohc_decomp_ctxt *const context,
+                                 const ip_context_t *const ip_context,
+                                 struct rohc_buf *const uncomp_packet,
+                                 size_t *const ip_hdr_len)
+{
+	base_header_ip_v4_t *const ipv4 =
+		(base_header_ip_v4_t *) rohc_buf_data(*uncomp_packet);
+	const size_t hdr_len = sizeof(base_header_ip_v4_t);
+
+	rohc_decomp_debug(context, "build %zu-byte IPv4 header", hdr_len);
+
+	if(rohc_buf_avail_len(*uncomp_packet) < hdr_len)
+	{
+		rohc_decomp_warn(context, "output buffer too small for the %zu-byte IPv4 "
+		                 "header", hdr_len);
+		goto error;
+	}
+
+	/* static part */
+	ipv4->version = IPV4;
+	ipv4->header_length = hdr_len >> 2;
+	ipv4->protocol = ip_context->ctxt.v4.protocol;
+	ipv4->src_addr = ip_context->ctxt.v4.src_addr;
+	ipv4->dest_addr = ip_context->ctxt.v4.dst_addr;
+
+	/* dynamic part */
+	ipv4->rf = 0;
+	ipv4->df = ip_context->ctxt.v4.df;
+	ipv4->mf = 0;
+	ipv4->dscp = ip_context->ctxt.v4.dscp;
+	ipv4->ip_ecn_flags = ip_context->ctxt.v4.ip_ecn_flags;
+	ipv4->ttl_hopl = ip_context->ctxt.v4.ttl_hopl;
+	rohc_decomp_debug(context, "DSCP = 0x%x, ip_ecn_flags = %d",
+	                  ipv4->dscp, ipv4->ip_ecn_flags);
+#if WORDS_BIGENDIAN != 1
+	ipv4->frag_offset1 = 0;
+	ipv4->frag_offset2 = 0;
+#else
+	ipv4->frag_offset = 0;
+#endif
+	/* IP-ID */
+	ipv4->ip_id = rohc_hton16(ip_context->ctxt.v4.ip_id);
+
+	/* length and checksums will be computed once all headers are built */
+
+	/* skip IPv4 header */
+	uncomp_packet->len += hdr_len;
+	rohc_buf_pull(uncomp_packet, hdr_len);
+	*ip_hdr_len += hdr_len;
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Build one single uncompressed IPv6 header
+ *
+ * Build one single uncompressed IPv6 header - including IPv6 extension
+ * headers - from the context and packet informations.
+ *
+ * @param context             The decompression context
+ * @param ip_context          The decompression context of the IPv6 header
+ * @param[out] uncomp_packet  The uncompressed packet being built
+ * @param[out] ip_hdr_len     The length of the IPv6 header (in bytes)
+ * @return                    true if IPv6 header was successfully built,
+ *                            false if the output \e uncomp_packet was not
+ *                            large enough
+ *
+ * @todo TODO: replace base_header_ip_v6_t
+ */
+static bool d_tcp_build_ipv6_hdr(const struct rohc_decomp_ctxt *const context,
+                                 const ip_context_t *const ip_context,
+                                 struct rohc_buf *const uncomp_packet,
+                                 size_t *const ip_hdr_len)
+{
+	base_header_ip_v6_t *const ipv6 =
+		(base_header_ip_v6_t *) rohc_buf_data(*uncomp_packet);
+	const size_t hdr_len = sizeof(base_header_ip_v6_t);
+	const size_t ipv6_exts_len = ip_context->ctxt.v6.opts_len;
+	const size_t full_ipv6_len = hdr_len + ipv6_exts_len;
+
+	rohc_decomp_debug(context, "build %zu-byte IPv6 header (with %zu bytes of "
+	                  "extension headers)", full_ipv6_len, ipv6_exts_len);
+
+	if(rohc_buf_avail_len(*uncomp_packet) < full_ipv6_len)
+	{
+		rohc_decomp_warn(context, "output buffer too small for the %zu-byte IPv6 "
+		                 "header (with %zu bytes of extension headers)",
+		                 full_ipv6_len, ipv6_exts_len);
+		goto error;
+	}
+
+	/* static part */
+	ipv6->version = IPV6;
+	ipv6->flow_label1 = ip_context->ctxt.v6.flow_label1;
+	ipv6->flow_label2 = ip_context->ctxt.v6.flow_label2;
+	ipv6->next_header = ip_context->ctxt.v6.next_header;
+	memcpy(ipv6->src_addr, ip_context->ctxt.v6.src_addr, sizeof(uint32_t) * 4);
+	memcpy(ipv6->dest_addr, ip_context->ctxt.v6.dest_addr, sizeof(uint32_t) * 4);
+
+	/* dynamic part */
+	ipv6->dscp1 = ip_context->ctxt.v6.dscp >> 2;
+	ipv6->dscp2 = ip_context->ctxt.v6.dscp & 0x03;
+	ipv6->ip_ecn_flags = ip_context->ctxt.v6.ip_ecn_flags;
+	ipv6->ttl_hopl = ip_context->ctxt.v6.ttl_hopl;
+
+	/* total length will be computed once all headers are built */
+
+	/* skip IPv6 header */
+	uncomp_packet->len += hdr_len;
+	rohc_buf_pull(uncomp_packet, hdr_len);
+	*ip_hdr_len += hdr_len;
+
+	/* copy IPv6 extension headers */
+	size_t all_opts_len = 0;
+	for(size_t i = 0; i < ip_context->ctxt.v6.opts_nr; i++)
+	{
+		const ipv6_option_context_t *const opt = &(ip_context->ctxt.v6.opts[i]);
+		rohc_decomp_debug(context, "build %u-byte IPv6 extension header #%zu",
+		                  opt->generic.option_length, i + 1);
+		uncomp_packet->len += 2;
+		rohc_buf_byte_at(*uncomp_packet, 0) = opt->generic.next_header;
+		assert((opt->generic.option_length % 8) == 0);
+		assert((opt->generic.option_length / 8) > 0);
+		rohc_buf_byte_at(*uncomp_packet, 1) = opt->generic.option_length / 8 - 1;
+		rohc_buf_append(uncomp_packet, opt->generic.data,
+		                opt->generic.option_length - 2);
+		rohc_buf_pull(uncomp_packet, opt->generic.option_length);
+		*ip_hdr_len += opt->generic.option_length;
+		all_opts_len += opt->generic.option_length;
+	}
+	assert(all_opts_len == ipv6_exts_len);
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Build one single uncompressed IP header
+ *
+ * Build one single uncompressed IP header - IPv4 or IPv6 - from the context
+ * and packet informations.
+ *
+ * @param context             The decompression context
+ * @param ip_context          The decompression context of the IP header
+ * @param[out] uncomp_packet  The uncompressed packet being built
+ * @param[out] ip_hdr_len     The length of the IP header (in bytes)
+ * @return                    true if IP header was successfully built,
+ *                            false if the output \e uncomp_packet was not
+ *                            large enough
+ */
+static bool d_tcp_build_ip_hdr(const struct rohc_decomp_ctxt *const context,
+                               const ip_context_t *const ip_context,
+                               struct rohc_buf *const uncomp_packet,
+                               size_t *const ip_hdr_len)
+{
+	if(ip_context->version == IPV4)
+	{
+		if(!d_tcp_build_ipv4_hdr(context, ip_context, uncomp_packet, ip_hdr_len))
+		{
+			rohc_decomp_warn(context, "failed to build uncompressed IPv4 header");
+			goto error;
+		}
+	}
+	else
+	{
+		if(!d_tcp_build_ipv6_hdr(context, ip_context, uncomp_packet, ip_hdr_len))
+		{
+			rohc_decomp_warn(context, "failed to build uncompressed IPv6 header");
+			goto error;
+		}
+	}
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Build all of the uncompressed IP headers
+ *
+ * Build all of the uncompressed IP headers - IPv4 or IPv6 - from the context
+ * and packet informations.
+ *
+ * @param context             The decompression context
+ * @param[out] uncomp_packet  The uncompressed packet being built
+ * @param[out] ip_hdrs_len    The length of all the IP headers (in bytes)
+ * @return                    true if IP headers were successfully built,
+ *                            false if the output \e uncomp_packet was not
+ *                            large enough
+ */
+static bool d_tcp_build_ip_hdrs(const struct rohc_decomp_ctxt *const context,
+                                struct rohc_buf *const uncomp_packet,
+                                size_t *const ip_hdrs_len)
+{
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt = context->specific;
+	struct d_tcp_context *tcp_context = rfc3095_ctxt->specific;
+	size_t ip_contexts_nr;
+
+	*ip_hdrs_len = 0;
+	for(ip_contexts_nr = 0; ip_contexts_nr < tcp_context->ip_contexts_nr;
+	    ip_contexts_nr++)
+	{
+		const ip_context_t *const ip_context =
+			&(tcp_context->ip_contexts[ip_contexts_nr]);
+		size_t ip_hdr_len = 0;
+
+		if(!d_tcp_build_ip_hdr(context, ip_context, uncomp_packet, &ip_hdr_len))
+		{
+			rohc_decomp_warn(context, "failed to build uncompressed IP header #%zu",
+			                 ip_contexts_nr + 1);
+			goto error;
+		}
+		*ip_hdrs_len += ip_hdr_len;
+	}
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Build the uncompressed TCP header
+ *
+ * Build the uncompressed TCP header - including the TCP options - from the
+ * context and packet informations.
+ *
+ * @param context             The decompression context
+ * @param[out] uncomp_packet  The uncompressed packet being built
+ * @param[out] tcp_hdr_len    The length of the TCP header (in bytes)
+ * @return                    true if TCP header was successfully built,
+ *                            false if the output \e uncomp_packet was not
+ *                            large enough
+ */
+static bool d_tcp_build_tcp_hdr(const struct rohc_decomp_ctxt *const context,
+                                struct rohc_buf *const uncomp_packet,
+                                size_t *const tcp_hdr_len)
+{
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt = context->specific;
+	struct d_tcp_context *tcp_context = rfc3095_ctxt->specific;
+	tcphdr_t *const tcp = (tcphdr_t *) rohc_buf_data(*uncomp_packet);
+	const size_t full_tcp_len = sizeof(tcphdr_t) + tcp_context->options_len;
+
+	if(rohc_buf_avail_len(*uncomp_packet) < full_tcp_len)
+	{
+		rohc_decomp_warn(context, "output buffer too small for the %zu-byte "
+		                 "TCP header and TCP options", full_tcp_len);
+		goto error;
+	}
+	rohc_decomp_debug(context, "build %zu-byte TCP header (with %zu bytes "
+	                  "of options)", full_tcp_len, tcp_context->options_len);
+
+	/* static part */
+	tcp->src_port = tcp_context->tcp_src_port;
+	tcp->dst_port = tcp_context->tcp_dst_port;
+
+	/* dynamic part */
+	tcp->data_offset = (full_tcp_len >> 2) & 0xf;
+	tcp->res_flags = tcp_context->res_flags;
+	tcp->ecn_flags = tcp_context->ecn_flags;
+	tcp->urg_flag = tcp_context->urg_flag;
+	tcp->ack_flag = tcp_context->ack_flag;
+	tcp->psh_flag = tcp_context->psh_flag;
+	tcp->rsf_flags = tcp_context->rsf_flags;
+	tcp->seq_num = tcp_context->seq_num;
+	tcp->ack_num = tcp_context->ack_num;
+	tcp->window = tcp_context->window;
+	tcp->checksum = tcp_context->checksum;
+	tcp->urg_ptr = tcp_context->urg_ptr;
+
+	/* TCP options */
+	assert((tcp_context->options_len % sizeof(uint32_t)) == 0);
+	memcpy(tcp->options, tcp_context->options, tcp_context->options_len);
+
+	/* skip TCP header and TCP options */
+	uncomp_packet->len += full_tcp_len;
+	rohc_buf_pull(uncomp_packet, full_tcp_len);
+	*tcp_hdr_len += full_tcp_len;
+
+	/* update context (should only be done at the very end, to be moved) */
+	memcpy(&tcp_context->old_tcphdr, tcp, sizeof(tcphdr_t));
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Build the uncompressed packet
+ *
+ * Build all the uncompressed IP headers, TCP headers from the context and
+ * packet informations, then copy the ROHC payload as TCP payload.
+ *
+ * @param context              The decompression context
+ * @param payload              The packet payload
+ * @param payload_len          The length of the packet payload (in bytes)
+ * @param[out] uncomp_packet   The uncompressed packet being built
+ * @param[out] uncomp_hdr_len  The length of the IP and TCP headers (in bytes)
+ * @return                     true if packet was successfully built,
+ *                             false if the output \e uncomp_packet was not
+ *                             large enough
+ */
+static bool d_tcp_build_uncomp_pkt(const struct rohc_decomp_ctxt *const context,
+                                   const uint8_t *const payload,
+                                   const size_t payload_len,
+                                   struct rohc_buf *const uncomp_packet,
+											  size_t *const uncomp_hdr_len)
+{
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt = context->specific;
+	struct d_tcp_context *tcp_context = rfc3095_ctxt->specific;
+	size_t ip_hdrs_len = 0;
+	size_t tcp_hdr_len = 0;
+	size_t ip_contexts_nr;
+
+	*uncomp_hdr_len = 0;
+
+	/* build IP headers */
+	if(!d_tcp_build_ip_hdrs(context, uncomp_packet, &ip_hdrs_len))
+	{
+		rohc_decomp_warn(context, "failed to build uncompressed IP headers");
+		goto error;
+	}
+	*uncomp_hdr_len += ip_hdrs_len;
+
+	/* build TCP header */
+	if(!d_tcp_build_tcp_hdr(context, uncomp_packet, &tcp_hdr_len))
+	{
+		rohc_decomp_warn(context, "failed to build uncompressed TCP header");
+		goto error;
+	}
+	*uncomp_hdr_len += tcp_hdr_len;
+
+	/* copy TCP payload */
+	rohc_decomp_debug(context, "uncompressed header is %zu-byte length",
+	                  *uncomp_hdr_len);
+	rohc_decomp_debug(context, "copy %zu bytes of payload", payload_len);
+	if(rohc_buf_avail_len(*uncomp_packet) < payload_len)
+	{
+		rohc_decomp_warn(context, "output buffer too small for the %zu-byte "
+		                 "payload", payload_len);
+		goto error;
+	}
+	rohc_buf_append(uncomp_packet, payload, payload_len);
+	rohc_buf_push(uncomp_packet, *uncomp_hdr_len);
+	rohc_decomp_debug(context, "uncompressed packet is %zu-byte length",
+	                  uncomp_packet->len);
+
+	/* compute payload lengths and checksums for all headers */
+	for(ip_contexts_nr = 0; ip_contexts_nr < tcp_context->ip_contexts_nr;
+	    ip_contexts_nr++)
+	{
+		const ip_context_t *const ip_context =
+			&(tcp_context->ip_contexts[ip_contexts_nr]);
+
+		if(ip_context->version == IPV4)
+		{
+			base_header_ip_v4_t *const ipv4 =
+				(base_header_ip_v4_t *) rohc_buf_data(*uncomp_packet);
+			ipv4->length = rohc_hton16(uncomp_packet->len);
+			ipv4->checksum = 0;
+			ipv4->checksum =
+				ip_fast_csum(rohc_buf_data(*uncomp_packet), ipv4->header_length);
+			rohc_decomp_debug(context, "IP checksum = 0x%04x on %zu bytes",
+			                  rohc_ntoh16(ipv4->checksum),
+			                  ipv4->header_length * sizeof(uint32_t));
+			rohc_buf_pull(uncomp_packet, ipv4->header_length * sizeof(uint32_t));
+		}
+		else
+		{
+			base_header_ip_v6_t *const ipv6 =
+				(base_header_ip_v6_t *) rohc_buf_data(*uncomp_packet);
+			rohc_buf_pull(uncomp_packet, sizeof(base_header_ip_v6_t));
+			ipv6->payload_length = rohc_hton16(uncomp_packet->len);
+			rohc_decomp_debug(context, "IPv6 payload length = %d",
+			                  rohc_ntoh16(ipv6->payload_length));
+			rohc_buf_pull(uncomp_packet, ip_context->ctxt.v6.opts_len);
+		}
+	}
+	rohc_buf_push(uncomp_packet, ip_hdrs_len);
+
+	rohc_dump_buf(context->decompressor->trace_callback,
+	              context->decompressor->trace_callback_priv,
+	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
+	              "current IP + TCP packet",
+	              rohc_buf_data(*uncomp_packet), *uncomp_hdr_len);
 
 	return true;
 
