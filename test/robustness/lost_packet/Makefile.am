@@ -9,7 +9,8 @@
 TESTS = \
 	test_lost_packet_7-7_7_non_sequential_rtp_ts.sh \
 	test_lost_packet_102-105_125_rtp_with_sn_wrapround.sh \
-	test_lost_packet_274-287_289_nominal_rtp.sh
+	test_lost_packet_274-287_289_nominal_rtp.sh \
+	test_lost_packet_13-16_16_nominal_tcp.sh
 
 check_PROGRAMS = \
 	test_lost_packet

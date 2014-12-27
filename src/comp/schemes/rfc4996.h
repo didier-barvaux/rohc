@@ -107,8 +107,8 @@ int c_static_or_irreg8(const uint8_t context_value,
                        uint8_t *const rohc_data,
                        int *const indicator)
 	__attribute__((warn_unused_result, nonnull(3, 4)));
-int c_static_or_irreg16(const uint16_t context_value,
-                        const uint16_t packet_value,
+int c_static_or_irreg16(const uint16_t packet_value,
+                        const bool is_static,
                         uint8_t *const rohc_data,
                         int *const indicator)
 	__attribute__((warn_unused_result, nonnull(3, 4)));

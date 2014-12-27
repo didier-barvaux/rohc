@@ -144,6 +144,7 @@ int d_static_or_irreg16(const uint8_t *rohc_data,
 	{
 		/* TODO: check ROHC packet length */
 		memcpy(decoded_value, rohc_data, sizeof(uint16_t));
+		*decoded_value = rohc_ntoh16(*decoded_value);
 		length = sizeof(uint16_t);
 	}
 

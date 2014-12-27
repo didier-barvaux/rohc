@@ -74,6 +74,9 @@ struct tcp_tmp_variables
 	/** The minimal number of bits required to encode the MSN value */
 	size_t nr_msn_bits;
 
+	/** The minimal number of bits required to encode the TCP window */
+	size_t nr_window_bits;
+
 	/** The minimal number of bits required to encode the TCP sequence number
 	 *  with p = 65535 */
 	size_t nr_seq_bits_65535;
@@ -164,8 +167,6 @@ struct tcp_tmp_variables
 	bool tcp_urg_flag_changed;
 	bool tcp_ecn_flag_changed;
 	bool tcp_rsf_flag_changed;
-
-	bool tcp_window_changed;
 
 	bool ecn_used;
 
@@ -377,12 +378,13 @@ struct sc_tcp_context
 
 	uint32_t tcp_last_seq_num;
 
-	uint16_t window;
-
 	uint16_t msn;               /**< The Master Sequence Number (MSN) */
 	struct c_wlsb *msn_wlsb;    /**< The W-LSB decoding context for MSN */
 
 	struct c_wlsb *ip_id_wlsb;
+
+// lsb(15, 16383)
+	struct c_wlsb *window_wlsb; /**< The W-LSB decoding context for TCP window */
 
 	uint32_t seq_num;
 	struct c_wlsb *seq_wlsb;
@@ -1022,6 +1024,16 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 		goto free_wlsb_msn;
 	}
 
+	/* TCP window offset */
+	tcp_context->window_wlsb =
+		c_create_wlsb(16, comp->wlsb_window_width, ROHC_LSB_SHIFT_TCP_WINDOW);
+	if(tcp_context->window_wlsb == NULL)
+	{
+		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "failed to create W-LSB context for TCP window");
+		goto free_wlsb_ip_id;
+	}
+
 	/* TCP sequence number */
 	tcp_context->seq_num = rohc_ntoh32(tcp->seq_num);
 	tcp_context->seq_wlsb =
@@ -1030,7 +1042,7 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		           "failed to create W-LSB context for TCP sequence number");
-		goto free_wlsb_ip_id;
+		goto free_wlsb_window;
 	}
 	tcp_context->seq_scaled_wlsb = c_create_wlsb(32, 4, 7);
 	if(tcp_context->seq_scaled_wlsb == NULL)
@@ -1135,6 +1147,8 @@ free_wlsb_seq:
 	c_destroy_wlsb(tcp_context->seq_wlsb);
 free_wlsb_ip_id:
 	c_destroy_wlsb(tcp_context->ip_id_wlsb);
+free_wlsb_window:
+	c_destroy_wlsb(tcp_context->window_wlsb);
 free_wlsb_msn:
 	c_destroy_wlsb(tcp_context->msn_wlsb);
 free_context:
@@ -1167,6 +1181,7 @@ static void c_tcp_destroy(struct rohc_comp_ctxt *const context)
 	c_destroy_wlsb(tcp_context->seq_scaled_wlsb);
 	c_destroy_wlsb(tcp_context->seq_wlsb);
 	c_destroy_wlsb(tcp_context->ip_id_wlsb);
+	c_destroy_wlsb(tcp_context->window_wlsb);
 	c_destroy_wlsb(tcp_context->msn_wlsb);
 	rohc_comp_rfc3095_destroy(context);
 }
@@ -2692,8 +2707,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 	                tcp_dynamic->urp_zero ? "not " : "");
 
 	/* ack_stride */ /* TODO: comparison with new computed ack_stride? */
-	ret = c_static_or_irreg16(tcp_context->ack_stride,
-	                          rohc_hton16(tcp_context->ack_stride),
+	ret = c_static_or_irreg16(false /* TODO */, rohc_hton16(tcp_context->ack_stride),
 	                          mptr.uint8, &indicator);
 	if(ret < 0)
 	{
@@ -4689,8 +4703,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 	                encoded_ack_len, c_base_header.co_common->ack_indicator);
 
 	/* ack_stride */ /* TODO: comparison with new computed ack_stride? */
-	ret = c_static_or_irreg16(tcp_context->ack_stride,
-	                          rohc_hton16(tcp_context->ack_stride),
+	ret = c_static_or_irreg16(false /* TODO */, rohc_hton16(tcp_context->ack_stride),
 	                          mptr.uint8, &indicator);
 	if(ret < 0)
 	{
@@ -4705,7 +4718,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 	                tcp_context->ack_stride);
 
 	/* window */
-	ret = c_static_or_irreg16(tcp_context->old_tcphdr.window, tcp->window,
+	ret = c_static_or_irreg16(tcp->window, !!(tcp_context->tmp.nr_window_bits == 0),
 	                          mptr.uint8, &indicator);
 	if(ret < 0)
 	{
@@ -4832,8 +4845,8 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 	if( (c_base_header.co_common->urg_flag = tcp->urg_flag) != 0) // TODO: check that!
 	{
 		/* urg_ptr */
-		ret = c_static_or_irreg16(tcp_context->old_tcphdr.urg_ptr, tcp->urg_ptr,
-		                          mptr.uint8, &indicator);
+		ret = c_static_or_irreg16(!!(tcp_context->old_tcphdr.urg_ptr == tcp->urg_ptr),
+		                          tcp->urg_ptr, mptr.uint8, &indicator);
 		if(ret < 0)
 		{
 			rohc_comp_warn(context, "failed to encode static_or_irreg(urg_ptr)");
@@ -6129,10 +6142,31 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	tcp_field_descr_change(context, "RSF flag",
 	                       tcp_context->tmp.tcp_rsf_flag_changed);
 
-	tcp_context->tmp.tcp_window_changed =
-		(tcp->window != tcp_context->old_tcphdr.window);
-	tcp_field_descr_change(context, "window",
-	                       tcp_context->tmp.tcp_window_changed);
+	/* how many bits are required to encode the new TCP window? */
+	if(context->state == ROHC_COMP_STATE_IR)
+	{
+		/* send all bits in IR state */
+		tcp_context->tmp.nr_window_bits = 16;
+		rohc_comp_debug(context, "IR state: force using 16 bits to encode "
+		                "new TCP window");
+	}
+	else
+	{
+		/* send only required bits in FO or SO states */
+		if(!wlsb_get_kp_16bits(tcp_context->window_wlsb, rohc_ntoh16(tcp->window),
+		                       ROHC_LSB_SHIFT_TCP_WINDOW,
+		                       &tcp_context->tmp.nr_window_bits))
+		{
+			rohc_comp_warn(context, "failed to find the minimal number of bits "
+			               "required for TCP window 0x%04x", rohc_ntoh16(tcp->window));
+			goto error;
+		}
+		rohc_comp_debug(context, "%zu bits are required to encode new TCP window "
+		                "0x%04x", tcp_context->tmp.nr_window_bits,
+		                rohc_ntoh16(tcp->window));
+	}
+	/* TODO: move this after successful packet compression */
+	c_add_wlsb(tcp_context->window_wlsb, tcp_context->msn, rohc_ntoh16(tcp->window));
 
 	/* compute new scaled TCP sequence number */
 	{
@@ -6584,7 +6618,7 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 		if(ip_inner_context->vx->ip_id_behavior <= IP_ID_BEHAVIOR_SEQ_SWAP &&
 		   tcp_context->tmp.nr_seq_bits_8191 <= 14 &&
 		   tcp_context->tmp.nr_ack_bits_8191 <= 15 &&
-		   !tcp_context->tmp.tcp_window_changed)
+		   tcp_context->tmp.nr_window_bits == 0)
 		{
 			/* IP_ID_BEHAVIOR_SEQ or IP_ID_BEHAVIOR_SEQ_SWAP */
 			TRACE_GOTO_CHOICE;
@@ -6592,7 +6626,7 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 		}
 		else if(tcp_context->tmp.nr_seq_bits_65535 <= 16 &&
 		        tcp_context->tmp.nr_ack_bits_16383 <= 16 &&
-		        !tcp_context->tmp.tcp_window_changed)
+		        tcp_context->tmp.nr_window_bits == 0)
 		{
 			TRACE_GOTO_CHOICE;
 			packet_type = ROHC_PACKET_TCP_RND_8;
@@ -6619,7 +6653,7 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 			 *  - at most 15 LSB of the TCP ACK number are required,
 			 *  - at most 4 LSBs of IP-ID must be transmitted
 			 * otherwise use co_common packet */
-			if(!tcp_context->tmp.tcp_window_changed &&
+			if(tcp_context->tmp.nr_window_bits == 0 &&
 			   tcp_context->tmp.nr_ip_id_bits_3 <= 4 &&
 			   true /* TODO: list changed */ &&
 			   true /* TODO: no more than 4 bits of SN */ &&
@@ -6637,7 +6671,7 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 				packet_type = ROHC_PACKET_TCP_CO_COMMON;
 			}
 		}
-		else if(tcp_context->tmp.tcp_window_changed)
+		else if(tcp_context->tmp.nr_window_bits > 0)
 		{
 			/* seq_7 or co_common */
 			if(/* TODO: no more than 15 bits of TCP window */
@@ -6762,7 +6796,7 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 
 		if(tcp_context->tmp.is_tcp_opts_list_struct_changed)
 		{
-			if(!tcp_context->tmp.tcp_window_changed &&
+			if(tcp_context->tmp.nr_window_bits == 0 &&
 			   tcp_context->tmp.nr_seq_bits_65535 <= 16 &&
 			   tcp_context->tmp.nr_ack_bits_16383 <= 16)
 			{
@@ -6779,7 +6813,7 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 		{
 			if(tcp_context->tmp.tcp_rsf_flag_changed)
 			{
-				if(!tcp_context->tmp.tcp_window_changed &&
+				if(tcp_context->tmp.nr_window_bits == 0 &&
 				   tcp_context->tmp.nr_ack_bits_16383 <= 16 &&
 				   tcp_context->tmp.nr_seq_bits_65535 <= 16)
 				{
@@ -6798,7 +6832,7 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 				TRACE_GOTO_CHOICE;
 				packet_type = ROHC_PACKET_TCP_CO_COMMON;
 			}
-			else if(tcp_context->tmp.tcp_window_changed)
+			else if(tcp_context->tmp.nr_window_bits > 0)
 			{
 				if(tcp_context->tmp.nr_ack_bits_65535 <= 18 &&
 				   true /* TODO: no more than 4 bits of SN */)

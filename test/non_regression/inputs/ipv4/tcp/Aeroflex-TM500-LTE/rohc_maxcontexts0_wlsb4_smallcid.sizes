@@ -1,2 +1,2 @@
-compressor_num = 1	packet_num = 1	rohc_size = 41	packet_type = 0
-compressor_num = 2	packet_num = 1	rohc_size = 46	packet_type = 0
+compressor_num = 1	packet_num = 1	rohc_size = 43	packet_type = 0
+compressor_num = 2	packet_num = 1	rohc_size = 48	packet_type = 0

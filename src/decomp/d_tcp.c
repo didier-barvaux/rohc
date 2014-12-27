@@ -255,7 +255,6 @@ struct d_tcp_context
 	uint8_t rsf_flags:3;
 	uint32_t seq_num;
 	uint32_t ack_num;
-	uint16_t window;
 	uint16_t checksum;
 	uint16_t urg_ptr;
 #define MAX_TCP_DATA_OFFSET_WORDS  ((1 << 4) - 1)
@@ -263,6 +262,10 @@ struct d_tcp_context
 #define MAX_TCP_OPTIONS_LEN        (MAX_TCP_DATA_OFFSET_BYTES - sizeof(tcphdr_t))
 	size_t options_len;
 	uint8_t options[MAX_TCP_OPTIONS_LEN];
+
+	/** The LSB decoding context of TCP window */
+	struct rohc_lsb_decode *window_lsb_ctxt;
+	uint16_t window_tmp;
 
 	uint32_t seq_num_scaled;
 	uint32_t seq_num_residue;
@@ -485,6 +488,15 @@ static void * d_tcp_create(const struct rohc_decomp_ctxt *const context)
 		goto free_lsb_msn;
 	}
 
+	/* create the LSB decoding context for the TCP window */
+	tcp_context->window_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_TCP_WINDOW, 16);
+	if(tcp_context->window_lsb_ctxt == NULL)
+	{
+		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
+		           "failed to create the LSB decoding context for the TCP window");
+		goto free_lsb_ip_id;
+	}
+
 	/* create the LSB decoding context for the sequence number */
 	tcp_context->seq_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_VAR, 32);
 	if(tcp_context->seq_lsb_ctxt == NULL)
@@ -492,7 +504,7 @@ static void * d_tcp_create(const struct rohc_decomp_ctxt *const context)
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "failed to create the LSB decoding context for the sequence "
 		           "number");
-		goto free_lsb_ip_id;
+		goto free_lsb_window;
 	}
 
 	/* create the LSB decoding context for the scaled sequence number */
@@ -555,6 +567,8 @@ free_lsb_scaled_seq:
 	rohc_lsb_free(tcp_context->seq_scaled_lsb_ctxt);
 free_lsb_seq:
 	rohc_lsb_free(tcp_context->seq_lsb_ctxt);
+free_lsb_window:
+	rohc_lsb_free(tcp_context->window_lsb_ctxt);
 free_lsb_ip_id:
 	rohc_lsb_free(tcp_context->ip_id_lsb_ctxt);
 free_lsb_msn:
@@ -590,6 +604,8 @@ static void d_tcp_destroy(void *const context)
 	rohc_lsb_free(tcp_context->seq_scaled_lsb_ctxt);
 	/* destroy the LSB decoding context for the sequence number */
 	rohc_lsb_free(tcp_context->seq_lsb_ctxt);
+	/* destroy the LSB decoding context for the TCP window */
+	rohc_lsb_free(tcp_context->window_lsb_ctxt);
 	/* destroy the LSB decoding context for the innermost IP-ID */
 	rohc_lsb_free(tcp_context->ip_id_lsb_ctxt);
 	/* destroy the LSB decoding context for the MSN */
@@ -2013,6 +2029,7 @@ static int tcp_parse_dynamic_tcp(struct rohc_decomp_ctxt *const context,
 	const uint8_t *remain_data;
 	size_t remain_len;
 	uint16_t msn_decoded;
+	uint16_t window_decoded;
 
 	assert(rohc_packet != NULL);
 
@@ -2091,11 +2108,12 @@ static int tcp_parse_dynamic_tcp(struct rohc_decomp_ctxt *const context,
 		                 "window", remain_len, sizeof(uint16_t));
 		goto error;
 	}
-	memcpy(&tcp_context->window, remain_data, sizeof(uint16_t));
+	memcpy(&window_decoded, remain_data, sizeof(uint16_t));
+	window_decoded = rohc_ntoh16(window_decoded);
 	remain_data += sizeof(uint16_t);
 	remain_len -= sizeof(uint16_t);
-	rohc_decomp_debug(context, "TCP window = 0x%04x",
-	                  rohc_ntoh16(tcp_context->window));
+	rohc_decomp_debug(context, "TCP window = 0x%04x", window_decoded);
+	tcp_context->window_tmp = window_decoded;
 
 	/* checksum */
 	if(remain_len < sizeof(uint16_t))
@@ -4774,18 +4792,22 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 		rohc_opts_data += ret;
 
 		/* window */
-		ret = d_static_or_irreg16(rohc_opts_data,
-		                          tcp_context->old_tcphdr.window,
-		                          co_common->window_indicator, &tcp_context->window);
-		if(ret < 0)
 		{
-			rohc_decomp_warn(context, "static_or_irreg(window) failed");
-			goto error;
+			const uint16_t window_ref =
+				rohc_lsb_get_ref(tcp_context->window_lsb_ctxt, ROHC_LSB_REF_0);
+			uint16_t window_decoded;
+			ret = d_static_or_irreg16(rohc_opts_data, window_ref,
+			                          co_common->window_indicator, &window_decoded);
+			if(ret < 0)
+			{
+				rohc_decomp_warn(context, "static_or_irreg(window) failed");
+				goto error;
+			}
+			rohc_decomp_debug(context, "window = 0x%x (reference window = 0x%x, "
+			                  "%d bytes in packet)", window_decoded, window_ref, ret);
+			rohc_opts_data += ret;
+			tcp_context->window_tmp = window_decoded;
 		}
-		rohc_decomp_debug(context, "window = 0x%x (old_window = 0x%x, %d bytes "
-		                  "in packet)", rohc_ntoh16(tcp_context->window),
-		                  rohc_ntoh16(tcp_context->old_tcphdr.window), ret);
-		rohc_opts_data += ret;
 
 		/* IP-ID behavior */
 		ip_inner_context->ctxt.vx.ip_id_behavior = co_common->ip_id_behavior;
@@ -4884,11 +4906,15 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 	}
 	else
 	{
-		uint32_t ack_num_bits;
+		uint32_t ack_num_bits = 0; /* init to shut GCC warning up */
 		uint32_t ack_num_bits_nr = 0;
-		uint32_t ack_num_p;
+		uint32_t ack_num_p = 0; /* init to shut GCC warning up */
 		uint32_t ack_num_scaled;
 		uint8_t ttl_hopl;
+
+		uint16_t window_decoded;
+		uint16_t window_bits;
+		size_t window_bits_nr = 0;
 
 		tcp_context->seq_num = tcp_context->old_tcphdr.seq_num;
 		tcp_context->ack_num = tcp_context->old_tcphdr.ack_num;
@@ -4897,7 +4923,6 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 		tcp_context->urg_flag = tcp_context->old_tcphdr.urg_flag;
 		tcp_context->ack_flag = tcp_context->old_tcphdr.ack_flag;
 		tcp_context->rsf_flags = tcp_context->old_tcphdr.rsf_flags;
-		tcp_context->window = tcp_context->old_tcphdr.window;
 		tcp_context->urg_ptr = tcp_context->old_tcphdr.urg_ptr;
 
 		switch(packet_type)
@@ -5039,7 +5064,8 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 				ack_num_bits_nr = 18;
 				ack_num_p = 65535;
 
-				tcp_context->window = rnd_7->window;
+				window_bits = rnd_7->window;
+				window_bits_nr = 16;
 				tcp_context->psh_flag = rnd_7->psh_flag;
 				break;
 			}
@@ -5318,7 +5344,6 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 			case ROHC_PACKET_TCP_SEQ_7:
 			{
 				const seq_7_t *const seq_7 = (seq_7_t *) packed_rohc_packet;
-				uint16_t window;
 
 				rohc_decomp_debug(context, "decode seq_7 packet");
 
@@ -5331,9 +5356,9 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 					goto error;
 				}
 
-				window = (seq_7->window1 << 11) | (seq_7->window2 << 3) |
-				         seq_7->window3;
-				tcp_context->window = rohc_hton16( d_lsb(context, 15,16383,rohc_ntoh16(tcp_context->old_tcphdr.window),window) );
+				window_bits = (seq_7->window1 << 11) | (seq_7->window2 << 3) |
+				              seq_7->window3;
+				window_bits_nr = 15;
 
 				/* decode innermost IP-ID offset from packet bits and context */
 				if(!d_ip_id_lsb(context, tcp_context->ip_id_lsb_ctxt,
@@ -5413,6 +5438,37 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 				goto error;
 			}
 		}
+
+		if(packet_type == ROHC_PACKET_TCP_RND_7)
+		{
+			/* TCP window is irregular */
+			assert(window_bits_nr == 16);
+			window_decoded = rohc_hton16(window_bits);
+		}
+		else if(packet_type != ROHC_PACKET_TCP_SEQ_7)
+		{
+			/* TCP window is static */
+			assert(window_bits_nr == 0);
+			window_decoded =
+				rohc_lsb_get_ref(tcp_context->window_lsb_ctxt, ROHC_LSB_REF_0);
+		}
+		else /* ROHC_PACKET_TCP_SEQ_7 */
+		{
+			uint32_t window_decoded32;
+			assert(window_bits_nr > 0);
+			if(!rohc_lsb_decode(tcp_context->window_lsb_ctxt, ROHC_LSB_REF_0, 0,
+			                    window_bits, window_bits_nr, ROHC_LSB_SHIFT_TCP_WINDOW,
+			                    &window_decoded32))
+			{
+				rohc_decomp_warn(context, "failed to decode %zu TCP window bits 0x%x",
+				                 window_bits_nr, window_bits);
+				goto error;
+			}
+			window_decoded = (uint16_t) (window_decoded32 & 0xffff);
+			rohc_decomp_debug(context, "decoded TCP window = 0x%04x (%zu bits 0x%x)",
+			                  window_decoded, window_bits_nr, window_bits);
+		}
+		tcp_context->window_tmp = window_decoded;
 
 		/* decode the transmitted ACK bits if any */
 		if(ack_num_bits_nr > 0)
@@ -6009,7 +6065,7 @@ static bool d_tcp_build_tcp_hdr(const struct rohc_decomp_ctxt *const context,
 	tcp->rsf_flags = tcp_context->rsf_flags;
 	tcp->seq_num = tcp_context->seq_num;
 	tcp->ack_num = tcp_context->ack_num;
-	tcp->window = tcp_context->window;
+	tcp->window = rohc_ntoh16(tcp_context->window_tmp);
 	tcp->checksum = tcp_context->checksum;
 	tcp->urg_ptr = tcp_context->urg_ptr;
 
@@ -6169,6 +6225,11 @@ static void d_tcp_update_context(struct rohc_decomp_ctxt *const context,
 			                  "reference", inner_ip_id_offset);
 		}
 	}
+
+	/* TCP window */
+	rohc_lsb_set_ref(tcp_context->window_lsb_ctxt, tcp_context->window_tmp, false);
+	rohc_decomp_debug(context, "window 0x%04x is the new reference",
+	                  tcp_context->window_tmp);
 
 	/* TCP (scaled) sequence number */
 	rohc_lsb_set_ref(tcp_context->seq_lsb_ctxt, rohc_ntoh32(tcp_context->seq_num),

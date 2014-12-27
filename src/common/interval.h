@@ -47,6 +47,7 @@ typedef enum
 	ROHC_LSB_SHIFT_RTP_SN =  101,  /**< need to compute real value for RTP SN */
 	ROHC_LSB_SHIFT_ESP_SN =  102,  /**< need to compute real value for ESP SN */
 	ROHC_LSB_SHIFT_VAR    =  103,  /**< real value is variable */
+	ROHC_LSB_SHIFT_TCP_WINDOW = 16383,  /**< real value for TCP window */
 } rohc_lsb_shift_t;
 
 
