@@ -448,6 +448,10 @@ static bool d_tcp_build_uncomp_pkt(const struct rohc_decomp_ctxt *const context,
                                    size_t *const uncomp_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
 
+static void d_tcp_update_context(struct rohc_decomp_ctxt *const context,
+                                 const size_t payload_len)
+	__attribute__((nonnull(1)));
+
 
 /**
  * @brief Create the TCP decompression context.
@@ -1055,34 +1059,8 @@ static rohc_status_t d_tcp_decode_ir(struct rohc_decomp_ctxt *context,
 		goto error;
 	}
 
-	/* update context (to be completed) */
-	{
-		assert(tcp_context->ip_contexts_nr > 0);
-		const ip_context_t *const ip_context =
-			&(tcp_context->ip_contexts[tcp_context->ip_contexts_nr - 1]);
-		const ip_version innermost_ip_version = ip_context->ctxt.vx.version;
-		const uint16_t inner_ip_id = ip_context->ctxt.v4.ip_id;
-		const uint16_t inner_ip_id_offset = inner_ip_id - tcp_context->msn;
-		if(innermost_ip_version == IPV4)
-		{
-			rohc_lsb_set_ref(tcp_context->ip_id_lsb_ctxt, inner_ip_id_offset, false);
-			rohc_decomp_debug(context, "innermost IP-ID offset 0x%04x is the new "
-			                  "reference", inner_ip_id_offset);
-		}
-	}
-	rohc_lsb_set_ref(tcp_context->seq_lsb_ctxt, rohc_ntoh32(tcp_context->seq_num), false);
-	rohc_decomp_debug(context, "sequence number 0x%08x is the new reference",
-	                  rohc_ntoh32(tcp_context->seq_num));
-	if(payload_size != 0)
-	{
-		rohc_lsb_set_ref(tcp_context->seq_scaled_lsb_ctxt,
-		                 tcp_context->seq_num_scaled, false);
-		rohc_decomp_debug(context, "scaled sequence number 0x%08x is the new "
-		                  "reference", tcp_context->seq_num_scaled);
-	}
-	rohc_lsb_set_ref(tcp_context->ack_lsb_ctxt, rohc_ntoh32(tcp_context->ack_num), false);
-	rohc_decomp_debug(context, "ACK number 0x%08x is the new reference",
-	                  rohc_ntoh32(tcp_context->ack_num));
+	/* update context with informations from the decoded packet */
+	d_tcp_update_context(context, payload_size);
 
 	// TODO: to be reworked
 	context->state = ROHC_DECOMP_STATE_FC;
@@ -1207,35 +1185,8 @@ static rohc_status_t d_tcp_decode_irdyn(struct rohc_decomp_ctxt *context,
 		goto error;
 	}
 
-	/* TODO: duplicated from IR */
-	/* update context (to be completed) */
-	{
-		assert(tcp_context->ip_contexts_nr > 0);
-		const ip_context_t *const ip_context =
-			&(tcp_context->ip_contexts[tcp_context->ip_contexts_nr - 1]);
-		const ip_version innermost_ip_version = ip_context->ctxt.vx.version;
-		const uint16_t inner_ip_id = ip_context->ctxt.v4.ip_id;
-		const uint16_t inner_ip_id_offset = inner_ip_id - tcp_context->msn;
-		if(innermost_ip_version == IPV4)
-		{
-			rohc_lsb_set_ref(tcp_context->ip_id_lsb_ctxt, inner_ip_id_offset, false);
-			rohc_decomp_debug(context, "innermost IP-ID offset 0x%04x is the new "
-			                  "reference", inner_ip_id_offset);
-		}
-	}
-	rohc_lsb_set_ref(tcp_context->seq_lsb_ctxt, rohc_ntoh32(tcp_context->seq_num), false);
-	rohc_decomp_debug(context, "sequence number 0x%08x is the new reference",
-	                  rohc_ntoh32(tcp_context->seq_num));
-	if(payload_size != 0)
-	{
-		rohc_lsb_set_ref(tcp_context->seq_scaled_lsb_ctxt,
-		                 tcp_context->seq_num_scaled, false);
-		rohc_decomp_debug(context, "scaled sequence number 0x%08x is the new "
-		                  "reference", tcp_context->seq_num_scaled);
-	}
-	rohc_lsb_set_ref(tcp_context->ack_lsb_ctxt, rohc_ntoh32(tcp_context->ack_num), false);
-	rohc_decomp_debug(context, "ACK number 0x%08x is the new reference",
-	                  rohc_ntoh32(tcp_context->ack_num));
+	/* update context with informations from the decoded packet */
+	d_tcp_update_context(context, payload_size);
 
 	return ROHC_STATUS_OK;
 
@@ -6251,35 +6202,8 @@ static rohc_status_t d_tcp_decode_CO(struct rohc_decomp *decomp,
 	rohc_decomp_debug(context, "the %zu-byte decompressed header matches the "
 	                  "CRC 0x%02x", uncomp_header_len, header_crc);
 
-	/* TODO: duplicated from IR */
-	/* update context (to be completed) */
-	{
-		assert(tcp_context->ip_contexts_nr > 0);
-		const ip_context_t *const ip_context =
-			&(tcp_context->ip_contexts[tcp_context->ip_contexts_nr - 1]);
-		const ip_version innermost_ip_version = ip_context->ctxt.vx.version;
-		const uint16_t inner_ip_id = ip_context->ctxt.v4.ip_id;
-		const uint16_t inner_ip_id_offset = inner_ip_id - tcp_context->msn;
-		if(innermost_ip_version == IPV4)
-		{
-			rohc_lsb_set_ref(tcp_context->ip_id_lsb_ctxt, inner_ip_id_offset, false);
-			rohc_decomp_debug(context, "innermost IP-ID offset 0x%04x is the new "
-			                  "reference", inner_ip_id_offset);
-		}
-	}
-	rohc_lsb_set_ref(tcp_context->seq_lsb_ctxt, rohc_ntoh32(tcp_context->seq_num), false);
-	rohc_decomp_debug(context, "sequence number 0x%08x is the new reference",
-	                  rohc_ntoh32(tcp_context->seq_num));
-	if(payload_len != 0)
-	{
-		rohc_lsb_set_ref(tcp_context->seq_scaled_lsb_ctxt,
-		                 tcp_context->seq_num_scaled, false);
-		rohc_decomp_debug(context, "scaled sequence number 0x%08x is the new "
-		                  "reference", tcp_context->seq_num_scaled);
-	}
-	rohc_lsb_set_ref(tcp_context->ack_lsb_ctxt, rohc_ntoh32(tcp_context->ack_num), false);
-	rohc_decomp_debug(context, "ACK number 0x%08x is the new reference",
-	                  rohc_ntoh32(tcp_context->ack_num));
+	/* update context with informations from the decoded packet */
+	d_tcp_update_context(context, payload_len);
 
 	// TODO: to be reworked
 	context->state = ROHC_DECOMP_STATE_FC;
@@ -6786,6 +6710,57 @@ static bool d_tcp_build_uncomp_pkt(const struct rohc_decomp_ctxt *const context,
 
 error:
 	return false;
+}
+
+
+/**
+ * @brief Update the decompression context with the infos of current packet
+ *
+ * @param context      The decompression context
+ * @param payload_len  The length of the packet payload (in bytes)
+ */
+static void d_tcp_update_context(struct rohc_decomp_ctxt *const context,
+                                 const size_t payload_len)
+{
+	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt = context->specific;
+	struct d_tcp_context *tcp_context = rfc3095_ctxt->specific;
+
+	/* IP-ID of the innermost IP header if IPv4 */
+	{
+		assert(tcp_context->ip_contexts_nr > 0);
+		const ip_context_t *const innermost_ip_context =
+			&(tcp_context->ip_contexts[tcp_context->ip_contexts_nr - 1]);
+		const ip_version innermost_ip_version = innermost_ip_context->ctxt.vx.version;
+
+		if(innermost_ip_version == IPV4)
+		{
+			const uint16_t inner_ip_id = innermost_ip_context->ctxt.v4.ip_id;
+			const uint16_t inner_ip_id_offset = inner_ip_id - tcp_context->msn;
+			rohc_lsb_set_ref(tcp_context->ip_id_lsb_ctxt, inner_ip_id_offset, false);
+			rohc_decomp_debug(context, "innermost IP-ID offset 0x%04x is the new "
+			                  "reference", inner_ip_id_offset);
+		}
+	}
+
+	/* TCP (scaled) sequence number */
+	rohc_lsb_set_ref(tcp_context->seq_lsb_ctxt, rohc_ntoh32(tcp_context->seq_num),
+	                 false);
+	rohc_decomp_debug(context, "sequence number 0x%08x is the new reference",
+	                  rohc_ntoh32(tcp_context->seq_num));
+	if(payload_len != 0)
+	{
+		rohc_lsb_set_ref(tcp_context->seq_scaled_lsb_ctxt,
+		                 tcp_context->seq_num_scaled, false);
+		rohc_decomp_debug(context, "scaled sequence number 0x%08x is the new "
+		                  "reference", tcp_context->seq_num_scaled);
+	}
+
+	/* TCP (scaled) acknowledgment number */
+	rohc_lsb_set_ref(tcp_context->ack_lsb_ctxt, rohc_ntoh32(tcp_context->ack_num),
+	                 false);
+	rohc_decomp_debug(context, "ACK number 0x%08x is the new reference",
+	                  rohc_ntoh32(tcp_context->ack_num));
+	/* TODO: scaled acknowledgment number */
 }
 
 

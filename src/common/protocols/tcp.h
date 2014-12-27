@@ -983,7 +983,7 @@ typedef struct __attribute__((packed)) rnd_2
 /**
  * @brief Define the rnd_3 compressed packet format
  *
- * Send acknowlegment number LSBs
+ * Send acknowledgment number LSBs
  * See RFC4996 page 81
  */
 typedef struct __attribute__((packed)) rnd_3
