@@ -2916,7 +2916,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 						               sizeof(sack_block_t) * 4);
 						goto error;
 					}
-					memcpy(tcp_context->tcp_option_sackblocks,options + 1,
+					memcpy(tcp_context->tcp_option_sackblocks, options + 1,
 					       tcp_context->tcp_option_sack_length);
 					break;
 				case TCP_OPT_TIMESTAMP:
@@ -4004,7 +4004,7 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 					break;
 				case TCP_INDEX_SACK: // see RFC2018
 					if(tcp_context->tcp_option_sack_length == *(options + 1) &&
-					   memcmp(tcp_context->tcp_option_sackblocks,options + 2,*(options + 1)) == 0)
+					   memcmp(tcp_context->tcp_option_sackblocks, options + 2,*(options + 1)) == 0)
 					{
 						i -= *(options + 1);
 						options += *(options + 1);

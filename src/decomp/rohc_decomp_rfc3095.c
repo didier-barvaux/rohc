@@ -328,15 +328,6 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
  * Private function prototypes for miscellaneous functions
  */
 
-static bool check_ir_crc(const struct rohc_decomp *const decomp,
-                         const struct rohc_decomp_ctxt *const context,
-                         const unsigned char *const rohc_hdr,
-                         const size_t rohc_hdr_len,
-                         const size_t add_cid_len,
-                         const size_t large_cid_len,
-                         const uint8_t crc_packet)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
-
 static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
                              const struct rohc_decomp_ctxt *const context,
                              const unsigned char *const outer_ip_hdr,
@@ -361,11 +352,6 @@ static bool is_sn_wraparound(const struct rohc_ts cur_arrival_time,
 
 static void update_context(const struct rohc_decomp_ctxt *const context,
                            const struct rohc_decoded_values decoded)
-	__attribute__((nonnull(1)));
-
-static void stats_add_decomp_success(struct rohc_decomp_ctxt *const context,
-                                     const size_t comp_hdr_len,
-                                     const size_t uncomp_hdr_len)
 	__attribute__((nonnull(1)));
 
 static void reset_extr_bits(const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt,
@@ -765,7 +751,7 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 	*rohc_hdr_len += size;
 
 	/* check for IP version switch during context re-use */
-	if(context->num_recv_packets > 1 &&
+	if(context->num_recv_packets >= 1 &&
 	   bits->outer_ip.version != ip_get_version(&rfc3095_ctxt->outer_ip_changes->ip))
 	{
 		rohc_decomp_debug(context, "outer IP version mismatch (packet = %d, "
@@ -782,7 +768,7 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 		rohc_decomp_debug(context, "second IP header detected");
 
 		/* check for 1 to 2 IP headers switch during context re-use */
-		if(context->num_recv_packets > 1 && !rfc3095_ctxt->multiple_ip)
+		if(context->num_recv_packets >= 1 && !rfc3095_ctxt->multiple_ip)
 		{
 			rohc_decomp_debug(context, "number of IP headers mismatch (packet "
 			                  "= 2, context = 1) -> context is being reused");
@@ -795,7 +781,7 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 	else
 	{
 		/* check for 2 to 1 IP headers switch during context re-use */
-		if(context->num_recv_packets > 1 && rfc3095_ctxt->multiple_ip)
+		if(context->num_recv_packets >= 1 && rfc3095_ctxt->multiple_ip)
 		{
 			rohc_decomp_debug(context, "number of IP headers mismatch (packet "
 			                  "= 1, context = 2) -> context is being reused");
@@ -822,7 +808,7 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 		*rohc_hdr_len += size;
 
 		/* check for IP version switch during context re-use */
-		if(context->num_recv_packets > 1 &&
+		if(context->num_recv_packets >= 1 &&
 		   bits->inner_ip.version != ip_get_version(&rfc3095_ctxt->inner_ip_changes->ip))
 		{
 			rohc_decomp_debug(context, "inner IP version mismatch (packet = %d, "
@@ -1428,17 +1414,18 @@ rohc_status_t rohc_decomp_rfc3095_decode(struct rohc_decomp *const decomp,
 
 	if((*packet_type) == ROHC_PACKET_IR || (*packet_type) == ROHC_PACKET_IR_DYN)
 	{
-		const bool crc_ok = check_ir_crc(decomp, context,
-		                                 rohc_buf_data(rohc_packet) - add_cid_len,
-		                                 add_cid_len + rohc_header_len,
-		                                 large_cid_len, add_cid_len, bits.crc);
+		const bool crc_ok =
+			rohc_decomp_check_ir_crc(decomp, context,
+			                         rohc_buf_data(rohc_packet) - add_cid_len,
+			                         add_cid_len + rohc_header_len,
+			                         large_cid_len, add_cid_len, bits.crc);
 		if(!crc_ok)
 		{
 			rohc_decomp_warn(context, "CRC detected a transmission failure for "
-			                 "IR packet");
+			                 "%s packet", rohc_get_packet_descr(*packet_type));
 #if ROHC_EXTRA_DEBUG == 1
 			rohc_dump_buf(decomp->trace_callback, decomp->trace_callback_priv,
-			              ROHC_TRACE_DECOMP, ROHC_TRACE_WARNING, "IR headers",
+			              ROHC_TRACE_DECOMP, ROHC_TRACE_WARNING, "ROHC header",
 			              rohc_buf_data(rohc_packet) - add_cid_len,
 			              rohc_header_len + add_cid_len);
 #endif
@@ -1668,7 +1655,7 @@ rohc_status_t rohc_decomp_rfc3095_decode(struct rohc_decomp *const decomp,
 	update_context(context, decoded);
 
 	/* update statistics */
-	stats_add_decomp_success(context, rohc_header_len, uncomp_header_len);
+	rohc_decomp_stats_add_success(context, rohc_header_len, uncomp_header_len);
 
 	/* decompression is successful */
 	return ROHC_STATUS_OK;
@@ -5610,74 +5597,6 @@ error:
 
 
 /**
- * @brief Check whether the CRC on IR or IR-DYN header is correct or not
- *
- * The CRC for IR/IR-DYN headers is always CRC-8. It is computed on the
- * whole compressed header (payload excluded, but any CID bits included).
- *
- * @param decomp          The ROHC decompressor
- * @param context         The decompression context
- * @param rohc_hdr        The compressed IR or IR-DYN header
- * @param rohc_hdr_len    The length (in bytes) of the compressed header
- * @param add_cid_len     The length of the optional Add-CID field
- * @param large_cid_len   The length of the optional large CID field
- * @param crc_packet      The CRC extracted from the ROHC header
- * @return                true if the CRC is correct, false otherwise
- */
-static bool check_ir_crc(const struct rohc_decomp *const decomp,
-                         const struct rohc_decomp_ctxt *const context,
-                         const unsigned char *const rohc_hdr,
-                         const size_t rohc_hdr_len,
-                         const size_t add_cid_len,
-                         const size_t large_cid_len,
-                         const uint8_t crc_packet)
-{
-	const unsigned char *crc_table;
-	const rohc_crc_type_t crc_type = ROHC_CRC_TYPE_8;
-	const unsigned char crc_zero[] = { 0x00 };
-	unsigned int crc_comp; /* computed CRC */
-
-	assert(decomp != NULL);
-	assert(rohc_hdr != NULL);
-	assert(rohc_hdr_len > 3);
-
-	crc_table = decomp->crc_table_8;
-
-	/* ROHC header before CRC field:
-	 * optional Add-CID + IR type + Profile ID + optional large CID */
-	crc_comp = crc_calculate(crc_type, rohc_hdr,
-	                         add_cid_len + 2 + large_cid_len,
-	                         CRC_INIT_8, crc_table);
-
-	/* zeroed CRC field */
-	crc_comp = crc_calculate(crc_type, crc_zero, 1, crc_comp, crc_table);
-
-	/* ROHC header after CRC field */
-	crc_comp = crc_calculate(crc_type,
-	                         rohc_hdr + add_cid_len + 2 + large_cid_len + 1,
-	                         rohc_hdr_len - add_cid_len - 2 - large_cid_len - 1,
-	                         crc_comp, crc_table);
-
-	rohc_decomp_debug(context, "CRC-%d on compressed %zu-byte ROHC header = "
-	                  "0x%x", crc_type, rohc_hdr_len, crc_comp);
-
-	/* does the computed CRC match the one in packet? */
-	if(crc_comp != crc_packet)
-	{
-		rohc_decomp_warn(context, "CRC failure (computed = 0x%02x, packet = "
-		                 "0x%02x)", crc_comp, crc_packet);
-		goto error;
-	}
-
-	/* computed CRC matches the one in packet */
-	return true;
-
-error:
-	return false;
-}
-
-
-/**
  * @brief Check whether the CRC on uncompressed header is correct or not
  *
  * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
@@ -5811,7 +5730,7 @@ static bool attempt_repair(const struct rohc_decomp *const decomp,
 	if(is_sn_wraparound(rfc3095_ctxt->cur_arrival_time, rfc3095_ctxt->arrival_times,
 	                    rfc3095_ctxt->arrival_times_nr,
 	                    rfc3095_ctxt->arrival_times_index, bits->sn_nr,
-	                    lsb_get_p(rfc3095_ctxt->sn_lsb_ctxt)))
+	                    rfc3095_ctxt->sn_lsb_p))
 	{
 		rohc_decomp_warn(context, "CID %zu: CRC repair: CRC failure seems to "
 		                 "be caused by a sequence number LSB wraparound",
@@ -5980,8 +5899,7 @@ static bool decode_values_from_bits(struct rohc_decomp_ctxt *const context,
 		/* decode SN from packet bits and context */
 		decode_ok = rohc_lsb_decode(rfc3095_ctxt->sn_lsb_ctxt, bits.sn_ref_type,
 		                            bits.sn_ref_offset, bits.sn, bits.sn_nr,
-		                            lsb_get_p(rfc3095_ctxt->sn_lsb_ctxt),
-		                            &decoded->sn);
+		                            rfc3095_ctxt->sn_lsb_p, &decoded->sn);
 		if(!decode_ok)
 		{
 			rohc_decomp_warn(context, "failed to decode %zu SN bits 0x%x",
@@ -5994,7 +5912,7 @@ static bool decode_values_from_bits(struct rohc_decomp_ctxt *const context,
 	                  bits.sn_nr, bits.sn, bits.sn);
 
 	/* warn if value(SN) is not context(SN) + 1 */
-	if(context->num_recv_packets > 1 && !bits.is_context_reused)
+	if(context->num_recv_packets >= 1 && !bits.is_context_reused)
 	{
 		uint32_t sn_context;
 		uint32_t expected_next_sn;
@@ -6491,23 +6409,6 @@ static void update_context(const struct rohc_decomp_ctxt *const context,
 	{
 		rfc3095_ctxt->update_context(context, decoded);
 	}
-}
-
-
-/**
- * @brief Update statistics upon successful decompression
- *
- * @param context         The decompression context
- * @param comp_hdr_len    The length (in bytes) of the compressed header
- * @param uncomp_hdr_len  The length (in bytes) of the uncompressed header
- */
-static void stats_add_decomp_success(struct rohc_decomp_ctxt *const context,
-                                     const size_t comp_hdr_len,
-                                     const size_t uncomp_hdr_len)
-{
-	assert(context != NULL);
-	context->header_compressed_size += comp_hdr_len;
-	context->header_uncompressed_size += uncomp_hdr_len;
 }
 
 

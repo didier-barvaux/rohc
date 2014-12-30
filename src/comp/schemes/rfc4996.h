@@ -35,8 +35,6 @@
 
 struct rohc_comp_ctxt;
 
-extern unsigned int lsb_xor_masks[];
-
 
 /**
  * @brief Define union of different compressed datas pointers

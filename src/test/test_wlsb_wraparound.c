@@ -44,8 +44,20 @@
 	} while(0)
 
 
+static bool run_test8_with_shift_param(bool be_verbose, const short p);
 static bool run_test16_with_shift_param(bool be_verbose, const short p);
 static bool run_test32_with_shift_param(bool be_verbose, const short p);
+
+static void init_wlsb_8(struct c_wlsb *const wlsb,
+                        struct rohc_lsb_decode *const lsb,
+                        const uint8_t value8)
+	__attribute__((nonnull(1, 2)));
+static bool test_wlsb_8(struct c_wlsb *const wlsb,
+                        struct rohc_lsb_decode *const lsb,
+                        const uint8_t value8,
+                        const short p,
+                        const bool be_verbose)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static void init_wlsb_16(struct c_wlsb *const wlsb,
                          struct rohc_lsb_decode *const lsb,
@@ -126,6 +138,17 @@ int main(int argc, char *argv[])
 	/* run the test with different shift values */
 	for(p_index = 0; p_index < p_nums; p_index++)
 	{
+		/* 8-bit field */
+		trace(verbose, "run test with 8-bit field and shift parameter %d\n",
+		      p_params[p_index]);
+		if(!run_test8_with_shift_param(extraverbose, p_params[p_index]))
+		{
+			fprintf(stderr, "test with 8-bit field and shift parameter %d "
+			        "failed\n", p_params[p_index]);
+			goto error;
+		}
+		trace(extraverbose, "\n");
+
 		/* 16-bit field */
 		trace(verbose, "run test with 16-bit field and shift parameter %d\n",
 		      p_params[p_index]);
@@ -165,6 +188,75 @@ error:
  * @param p           The shift parameter to run test with
  * @return            true if test succeeds, false otherwise
  */
+bool run_test8_with_shift_param(bool be_verbose, const short p)
+{
+	struct c_wlsb *wlsb; /* the W-LSB encoding context */
+	struct rohc_lsb_decode *lsb; /* the LSB decoding context */
+
+	uint8_t value8; /* the value to encode */
+
+	int is_success = false; /* test fails by default */
+
+	uint32_t i;
+
+	/* create the W-LSB encoding context */
+	wlsb = c_create_wlsb(8, ROHC_WLSB_WINDOW_WIDTH, p);
+	if(wlsb == NULL)
+	{
+		fprintf(stderr, "no memory to allocate W-LSB encoding context\n");
+		goto error;
+	}
+
+	/* init the LSB decoding context with value 0 */
+	value8 = 0;
+	trace(be_verbose, "\tinitialize with 8 bits of value 0x%02x ...\n", value8);
+	lsb = rohc_lsb_new(8);
+	if(lsb == NULL)
+	{
+		fprintf(stderr, "no memory to allocate LSB decoding context\n");
+		goto destroy_wlsb;
+	}
+	rohc_lsb_set_ref(lsb, value8, false);
+
+	/* initialize the W-LSB encoding context */
+	for(i = 1; i < 3; i++)
+	{
+		value8 = i % 0xffff;
+		trace(be_verbose, "\tinitialize with 8 bits of value 0x%02x ...\n", value8);
+		init_wlsb_8(wlsb, lsb, value8);
+	}
+
+	/* encode then decode 8-bit values from ranges [3, 0xff] and [0, 100] */
+	for(i = 3; i <= (((uint32_t) 0xff) + 1 + 100); i++)
+	{
+		/* encode/decode value */
+		value8 = i % (((uint32_t) 0xff) + 1);
+		if(!test_wlsb_8(wlsb, lsb, value8, p, be_verbose))
+		{
+			goto destroy_lsb;
+		}
+	}
+
+	/* test succeeds */
+	trace(be_verbose, "\ttest with shift parameter %d is successful\n", p);
+	is_success = true;
+
+destroy_lsb:
+	rohc_lsb_free(lsb);
+destroy_wlsb:
+	c_destroy_wlsb(wlsb);
+error:
+	return is_success;
+}
+
+
+/**
+ * @brief Run the test with the given shift parameter
+ *
+ * @param be_verbose  Whether to print traces or not
+ * @param p           The shift parameter to run test with
+ * @return            true if test succeeds, false otherwise
+ */
 bool run_test16_with_shift_param(bool be_verbose, const short p)
 {
 	struct c_wlsb *wlsb; /* the W-LSB encoding context */
@@ -187,7 +279,7 @@ bool run_test16_with_shift_param(bool be_verbose, const short p)
 	/* init the LSB decoding context with value 0 */
 	value16 = 0;
 	trace(be_verbose, "\tinitialize with 16 bits of value 0x%04x ...\n", value16);
-	lsb = rohc_lsb_new(p, 16);
+	lsb = rohc_lsb_new(16);
 	if(lsb == NULL)
 	{
 		fprintf(stderr, "no memory to allocate LSB decoding context\n");
@@ -257,7 +349,7 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 	/* init the LSB decoding context with value 0 */
 	value32 = 0;
 	trace(be_verbose, "\tinitialize with 32 bits of value 0x%08x ...\n", value32);
-	lsb = rohc_lsb_new(p, 32);
+	lsb = rohc_lsb_new(32);
 	if(lsb == NULL)
 	{
 		fprintf(stderr, "no memory to allocate LSB decoding context\n");
@@ -301,7 +393,7 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 	/* init the LSB decoding context with value 0xffffffff - 100 - 3 */
 	value32 = 0xffffffff - 100 - 3;
 	trace(be_verbose, "\tinitialize with 32 bits of value 0x%08x ...\n", value32);
-	lsb = rohc_lsb_new(p, 32);
+	lsb = rohc_lsb_new(32);
 	if(lsb == NULL)
 	{
 		fprintf(stderr, "no memory to allocate LSB decoding context\n");
@@ -347,7 +439,7 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 	value32 = 0xffffffff - 4500 - 1700;
 	trace(be_verbose, "\tinitialize with 32 bits of value 0x%08x ...\n",
 	      value32);
-	lsb = rohc_lsb_new(p, 32);
+	lsb = rohc_lsb_new(32);
 	if(lsb == NULL)
 	{
 		fprintf(stderr, "no memory to allocate LSB decoding context\n");
@@ -402,6 +494,105 @@ error:
 /**
  * @brief Initialize W-LSB encoding with the given value
  *
+ * @param wlsb    The W-LSB encoding context
+ * @param lsb     The LSB decoding context
+ * @param value8  The value to encode/decode
+ */
+static void init_wlsb_8(struct c_wlsb *const wlsb,
+                        struct rohc_lsb_decode *const lsb,
+                        const uint8_t value8)
+{
+	/* transmit all bits without W-LSB encoding, so update encoding and
+	 * decoding contexts */
+	c_add_wlsb(wlsb, value8, value8);
+	rohc_lsb_set_ref(lsb, value8, false);
+}
+
+
+/**
+ * @brief Encode/decode the given value with W-LSB
+ *
+ * @param wlsb        The W-LSB encoding context
+ * @param lsb         The LSB decoding context
+ * @param value8      The value to encode/decode
+ * @param p           The shift parameter to run test with
+ * @param be_verbose  Whether to print traces or not
+ * @return            true if test succeeds, false otherwise
+ */
+static bool test_wlsb_8(struct c_wlsb *const wlsb,
+                        struct rohc_lsb_decode *const lsb,
+                        const uint8_t value8,
+                        const short p,
+                        const bool be_verbose)
+{
+	uint8_t value8_encoded;
+	uint8_t value8_decoded;
+	size_t required_bits;
+	uint8_t required_bits_mask;
+	uint32_t decoded32;
+	bool wlsb_k_ok;
+	bool lsb_decode_ok;
+
+	/* encode */
+	trace(be_verbose, "\tencode value 0x%02x ...\n", value8);
+	wlsb_k_ok = wlsb_get_k_8bits(wlsb, value8, &required_bits);
+	if(!wlsb_k_ok)
+	{
+		fprintf(stderr, "failed to determine how many bits are required "
+		        "to be sent\n");
+		goto error;
+	}
+	assert(required_bits <= 8);
+	if(required_bits == 8)
+	{
+		required_bits_mask = 0xff;
+	}
+	else
+	{
+		required_bits_mask = (1 << required_bits) - 1;
+	}
+	value8_encoded = value8 & required_bits_mask;
+	trace(be_verbose, "\t\tencoded on %zu bits: 0x%02x\n", required_bits,
+	      value8_encoded);
+
+	/* update encoding context */
+	c_add_wlsb(wlsb, value8, value8);
+
+	/* decode */
+	trace(be_verbose, "\t\tdecode %zu-bit value 0x%02x ...\n", required_bits,
+	      value8_encoded);
+	lsb_decode_ok = rohc_lsb_decode(lsb, ROHC_LSB_REF_0, 0, value8_encoded,
+	                                required_bits, p, &decoded32);
+	if(!lsb_decode_ok)
+	{
+		fprintf(stderr, "failed to decode %zd-bit value\n", required_bits);
+		goto error;
+	}
+	assert(decoded32 <= 0xff);
+	value8_decoded = decoded32;
+	trace(be_verbose, "\t\tdecoded: 0x%02x\n", value8_decoded);
+
+	/* update decoding context */
+	rohc_lsb_set_ref(lsb, value8_decoded, false);
+
+	/* check test result */
+	if(value8 != value8_decoded)
+	{
+		fprintf(stderr, "original and decoded values do not match while "
+		        "testing value 0x%02x with shift parameter %d\n", value8, p);
+		goto error;
+	}
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Initialize W-LSB encoding with the given value
+ *
  * @param wlsb        The W-LSB encoding context
  * @param lsb         The LSB decoding context
  * @param value16     The value to encode/decode
@@ -418,7 +609,7 @@ static void init_wlsb_16(struct c_wlsb *const wlsb,
 
 
 /**
- * @brief Encode/decode the givenn value with W-LSB
+ * @brief Encode/decode the given value with W-LSB
  *
  * @param wlsb        The W-LSB encoding context
  * @param lsb         The LSB decoding context
@@ -517,7 +708,7 @@ static void init_wlsb_32(struct c_wlsb *const wlsb,
 
 
 /**
- * @brief Encode/decode the givenn value with W-LSB
+ * @brief Encode/decode the given value with W-LSB
  *
  * @param wlsb        The W-LSB encoding context
  * @param lsb         The LSB decoding context

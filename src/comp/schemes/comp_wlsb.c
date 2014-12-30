@@ -85,6 +85,12 @@ struct c_wlsb
 static void c_ack_remove(struct c_wlsb *const s, const size_t pos)
 	__attribute__((nonnull(1)));
 
+static size_t rohc_g_8bits(const uint8_t v_ref,
+                           const uint8_t v,
+                           const rohc_lsb_shift_t p,
+                           const size_t bits_nr)
+	__attribute__((warn_unused_result, const ));
+
 static size_t rohc_g_16bits(const uint16_t v_ref,
                             const uint16_t v,
                             const rohc_lsb_shift_t p,
@@ -182,6 +188,79 @@ void c_add_wlsb(struct c_wlsb *const wlsb,
 	wlsb->window[wlsb->next].sn = sn;
 	wlsb->window[wlsb->next].value = value;
 	wlsb->next = (wlsb->next + 1) & wlsb->window_mask;
+}
+
+
+/**
+ * @brief Find out the minimal number of bits of the to-be-encoded value
+ *        required to be able to uniquely recreate it given the window
+ *
+ * The function is dedicated to 8-bit fields.
+ *
+ * @param wlsb          The W-LSB object
+ * @param value         The value to encode using the LSB algorithm
+ * @param[out] bits_nr  The number of bits required to uniquely recreate the value
+ * @return              true in case of success,
+ *                      false if the minimal number of bits can not be found
+ */
+bool wlsb_get_k_8bits(const struct c_wlsb *const wlsb,
+                      const uint8_t value,
+                      size_t *const bits_nr)
+{
+	assert(wlsb != NULL);
+	return wlsb_get_kp_8bits(wlsb, value, wlsb->p, bits_nr);
+}
+
+
+/**
+ * @brief Find out the minimal number of bits of the to-be-encoded value
+ *        required to be able to uniquely recreate it given the window
+ *
+ * The function is dedicated to 8-bit fields.
+ *
+ * @param wlsb          The W-LSB object
+ * @param value         The value to encode using the LSB algorithm
+ * @param p             The shift parameter p
+ * @param[out] bits_nr  The number of bits required to uniquely recreate the value
+ * @return              true in case of success,
+ *                      false if the minimal number of bits can not be found
+ */
+bool wlsb_get_kp_8bits(const struct c_wlsb *const wlsb,
+                       const uint8_t value,
+                       const rohc_lsb_shift_t p,
+                       size_t *const bits_nr)
+{
+	size_t entry;
+	size_t i;
+
+	/* cannot do anything if the window contains no value */
+	if(wlsb->count == 0)
+	{
+		goto error;
+	}
+
+	*bits_nr = 0;
+
+	/* find the minimal number of bits of the value required to be able
+	 * to recreate it thanks to ANY value in the window */
+	for(i = wlsb->count, entry = wlsb->oldest;
+	    i > 0;
+	    i--, entry = (entry + 1) & wlsb->window_mask)
+	{
+		const size_t k =
+			rohc_g_8bits(wlsb->window[entry].value, value, p, wlsb->bits);
+		if(k > (*bits_nr))
+		{
+			*bits_nr = k;
+		}
+	}
+
+	assert((*bits_nr) <= 8);
+
+	return true;
+
+error:
+	return false;
 }
 
 
@@ -396,6 +475,56 @@ static void c_ack_remove(struct c_wlsb *const s, const size_t pos)
 			break;
 		}
 	}
+}
+
+
+/**
+ * @brief The g function as defined in LSB encoding for 8-bit fields
+ *
+ * Find the minimal k value so that v falls into the interval given by
+ * f(v_ref, k). See 4.5.1 in the RFC 3095.
+ *
+ * @param v_ref    The reference value
+ * @param v        The value to encode
+ * @param p        The shift parameter
+ * @param bits_nr  The number of bits that may be used to represent the
+ *                 LSB-encoded value
+ * @return         The minimal k value as defined by the LSB algorithm
+ */
+static size_t rohc_g_8bits(const uint8_t v_ref,
+                           const uint8_t v,
+                           const rohc_lsb_shift_t p,
+                           const size_t bits_nr)
+{
+	struct rohc_interval8 interval;
+	size_t k;
+
+	assert(bits_nr <= 8);
+
+	for(k = 0; k < bits_nr; k++)
+	{
+		interval = rohc_f_8bits(v_ref, k, p);
+		if(interval.min <= interval.max)
+		{
+			/* interpretation interval does not straddle field boundaries,
+			 * check if value is in [min, max] */
+			if(v >= interval.min && v <= interval.max)
+			{
+				break;
+			}
+		}
+		else
+		{
+			/* the interpretation interval does straddle the field boundaries,
+			 * check if value is in [min, 0xffff] or [0, max] */
+			if(v >= interval.min || v <= interval.max)
+			{
+				break;
+			}
+		}
+	}
+
+	return k;
 }
 
 

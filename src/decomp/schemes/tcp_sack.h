@@ -29,9 +29,18 @@
 #define ROHC_DECOMP_SCHEMES_TCP_SACK_H
 
 #include "rohc_decomp_internals.h"
+#include "protocols/tcp.h"
 
 #include <stdlib.h>
 #include <stdint.h>
+
+/** The context to parse and decode the TCP SACK option */
+struct d_tcp_opt_sack
+{
+	sack_block_t blocks[TCP_SACK_BLOCKS_MAX_NR]; /**< The SACK blocks */
+	size_t blocks_nr;                            /**< The number of SACK blocks */
+	size_t uncomp_opt_offset;                    /**< The uncompressed SACK option */
+};
 
 int d_tcp_sack_size(const struct rohc_decomp_ctxt *const context,
                     const uint8_t *const rohc_data,
@@ -39,14 +48,11 @@ int d_tcp_sack_size(const struct rohc_decomp_ctxt *const context,
                     uint16_t *const uncomp_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
-int d_tcp_sack_decode(const struct rohc_decomp_ctxt *const context,
-                      const uint8_t *const data,
-                      const size_t data_len,
-                      uint8_t *const tcp_opts,
-                      size_t *const tcp_opts_len,
-                      const size_t tcp_opts_max_len,
-                      const uint32_t ack_value)
-	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
+int d_tcp_sack_parse(const struct rohc_decomp_ctxt *const context,
+                     const uint8_t *const data,
+                     const size_t data_len,
+                     struct d_tcp_opt_sack *const opt_sack)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
 #endif /* ROHC_DECOMP_SCHEMES_TCP_SACK_H */
 

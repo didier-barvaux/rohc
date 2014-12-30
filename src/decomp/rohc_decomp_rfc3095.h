@@ -245,9 +245,6 @@ struct rohc_decoded_ip_values
 /**
  * @brief The values decoded from the bits extracted from ROHC header
  *
- * @see decode_uo0
- * @see decode_uo1
- * @see decode_uor2
  * @see decode_values_from_bits
  * @see rtp_decode_values_from_bits
  */
@@ -315,18 +312,6 @@ struct rohc_decomp_rfc3095_changes
 
 
 /**
- * @brief The different correction algorithms available in case of CRC failure
- */
-typedef enum
-{
-	ROHC_DECOMP_CRC_CORR_SN_NONE    = 0, /**< No correction */
-	ROHC_DECOMP_CRC_CORR_SN_WRAP    = 1, /**< Correction of SN wraparound */
-	ROHC_DECOMP_CRC_CORR_SN_UPDATES = 2, /**< Correction of incorrect SN updates */
-
-} rohc_decomp_crc_corr_t;
-
-
-/**
  * @brief The generic decompression context for RFC3095-based profiles
  *
  * The object defines the generic context that manages IP(/nextheader) and
@@ -340,6 +325,8 @@ struct rohc_decomp_rfc3095_ctxt
 	/// Information about the inner IP header
 	struct rohc_decomp_rfc3095_changes *inner_ip_changes;
 
+	/** The LSB shift parameter for the Sequence Number (SN) */
+	rohc_lsb_shift_t sn_lsb_p;
 	/// The LSB decoding context for the Sequence Number (SN)
 	struct rohc_lsb_decode *sn_lsb_ctxt;
 	/// The IP-ID of the outer IP header

@@ -28,7 +28,6 @@
 
 #include "tcp_sack.h"
 
-#include "protocols/tcp.h"
 #include "rohc_utils.h"
 
 static int d_tcp_sack_block_size(const struct rohc_decomp_ctxt *const context,
@@ -44,16 +43,14 @@ static int d_tcp_sack_field_size(const struct rohc_decomp_ctxt *const context,
 static int d_tcp_sack_block(const struct rohc_decomp_ctxt *const context,
                             const uint8_t *const data,
                             const size_t data_len,
-                            const uint32_t reference,
                             sack_block_t *const sack_block)
-	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
 static int d_tcp_sack_pure_lsb(const struct rohc_decomp_ctxt *const context,
                                const uint8_t *const data,
                                const size_t data_len,
-                               const uint32_t base,
                                uint32_t *const field)
-	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
 
 /**
@@ -63,7 +60,7 @@ static int d_tcp_sack_pure_lsb(const struct rohc_decomp_ctxt *const context,
  * (and RFC2018 for Selective Acknowledgement option)
  *
  * @param context      The decompression context
- * @param rohc_data    The remaining ROHC data to decode
+ * @param rohc_data    The remaining ROHC data to parse
  * @param rohc_length  The length (in bytes) of the remaining ROHC data
  * @param uncomp_len   The length (in bytes) of the uncompressed TCP option
  * @return             The size (in bytes) of the compressed value,
@@ -129,48 +126,34 @@ error:
 	return -1;
 }
 
+
 /**
- * @brief Uncompress the SACK TCP option
+ * @brief Parse the SACK TCP option
  *
  * See RFC6846 page 68
  * (and RFC2018 for Selective Acknowledgement option)
  *
- * @param context            The decompression context
- * @param data               The data to decode
- * @param data_len           The length of the data to decode
- * @param[out] tcp_opts      The uncompressed TCP options
- * @param[out] tcp_opts_len  The length of the uncompressed TCP options
- * @param tcp_opts_max_len   The max length for uncompressed TCP options (in bytes)
- * @param ack_value          The ack value
- * @return                   The number of ROHC bytes parsed,
- *                           -1 if packet is malformed
+ * @param context        The decompression context
+ * @param data           The ROHC data to parse
+ * @param data_len       The length of the ROHC data to parse
+ * @param[out] opt_sack  The information of SACK option extracted from the packet
+ * @return               The number of ROHC bytes parsed,
+ *                       -1 if packet is malformed
  */
-int d_tcp_sack_decode(const struct rohc_decomp_ctxt *const context,
-                      const uint8_t *const data,
-                      const size_t data_len,
-                      uint8_t *const tcp_opts,
-                      size_t *const tcp_opts_len,
-                      const size_t tcp_opts_max_len,
-                      const uint32_t ack_value)
+int d_tcp_sack_parse(const struct rohc_decomp_ctxt *const context,
+                     const uint8_t *const data,
+                     const size_t data_len,
+                     struct d_tcp_opt_sack *const opt_sack)
 {
 	const uint8_t *remain_data;
 	size_t remain_data_len;
-	uint8_t *remain_opts;
-	size_t remain_opts_len;
 	uint8_t discriminator;
 	int i;
 
-	assert(context != NULL);
-	assert(data != NULL);
-
-	rohc_decomp_debug(context, "parse SACK option (reference ACK = 0x%08x)",
-	                  ack_value);
+	rohc_decomp_debug(context, "parse SACK option");
 
 	remain_data = data;
 	remain_data_len = data_len;
-	remain_opts = tcp_opts;
-	remain_opts_len = tcp_opts_max_len;
-	*tcp_opts_len = 0;
 
 	/* parse discriminator */
 	if(remain_data_len < 1)
@@ -184,68 +167,31 @@ int d_tcp_sack_decode(const struct rohc_decomp_ctxt *const context,
 	discriminator = remain_data[0];
 	remain_data++;
 	remain_data_len--;
-	if(discriminator > 4)
+	if(discriminator > TCP_SACK_BLOCKS_MAX_NR)
 	{
 		rohc_decomp_warn(context, "invalid discriminator value (%d)",
 		                 discriminator);
 		goto error;
 	}
 
-	if(remain_opts_len < 2)
-	{
-		rohc_decomp_warn(context, "not enough room in context to store the "
-		                 "2 bytes type/length: there is only %lu bytes free",
-		                 remain_opts_len);
-		goto error;
-	}
-	/* option ID */
-	remain_opts[0] = TCP_OPT_SACK;
-	remain_opts++;
-	remain_opts_len--;
-	(*tcp_opts_len)++;
-	/* option length */
-	remain_opts[0] = (discriminator << 3) + 2;
-	remain_opts++;
-	remain_opts_len--;
-	(*tcp_opts_len)++;
-
+	/* parse up to 4 SACK blocks */
 	for(i = 0; i < discriminator; i++)
 	{
-		sack_block_t *const sack_block = (sack_block_t *) remain_opts;
-
-		if(remain_opts_len < sizeof(sack_block_t))
-		{
-			rohc_decomp_warn(context, "not enough room in context to store the "
-			                 "%zu-byte SACK block: there is only %lu bytes free",
-			                 sizeof(sack_block_t), remain_opts_len);
-			goto error;
-		}
-
 		const int ret = d_tcp_sack_block(context, remain_data, remain_data_len,
-		                                 ack_value, sack_block);
+		                                 &(opt_sack->blocks[i]));
 		if(ret < 0)
 		{
-			rohc_decomp_warn(context, "failed to decode block #%d of SACK "
+			rohc_decomp_warn(context, "failed to parse block #%d of SACK "
 			                 "option", i + 1);
 			goto error;
 		}
 		remain_data += ret;
 		remain_data_len -= ret;
-		rohc_decomp_debug(context, "block #%d of SACK option: start = 0x%08x, "
-		                  "end = 0x%08x", i + 1,
-		                  rohc_ntoh32(sack_block->block_start),
-		                  rohc_ntoh32(sack_block->block_end));
-
-		remain_opts += sizeof(sack_block_t);
-		remain_opts_len -= sizeof(sack_block_t);
-		(*tcp_opts_len) += sizeof(sack_block_t);
+		rohc_decomp_debug(context, "block #%d of SACK option: start bits = 0x%08x, "
+		                  "end bits = 0x%08x", i + 1, opt_sack->blocks[i].block_start,
+		                  opt_sack->blocks[i].block_end);
 	}
-	assert(tcp_opts[1] == (*tcp_opts_len));
-
-	rohc_dump_buf(context->decompressor->trace_callback,
-	              context->decompressor->trace_callback_priv,
-	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
-	              "TCP option SACK", tcp_opts, *tcp_opts_len);
+	opt_sack->blocks_nr = discriminator;
 
 	return (data_len - remain_data_len);
 
@@ -261,7 +207,7 @@ error:
  * (and RFC2018 for Selective Acknowledgement option)
  *
  * @param context      The decompression context
- * @param rohc_data    The remaining ROHC data to decode
+ * @param rohc_data    The remaining ROHC data to parse
  * @param rohc_length  The length (in bytes) of the remaining ROHC data
  * @return             The size (in bytes) of the compressed value,
  *                     -1 in case of problem
@@ -275,22 +221,22 @@ static int d_tcp_sack_block_size(const struct rohc_decomp_ctxt *const context,
 	size_t size = 0;
 	int ret;
 
-	/* decode block start */
+	/* parse block start */
 	ret = d_tcp_sack_field_size(context, remain_data, remain_len);
 	if(ret < 0)
 	{
-		rohc_decomp_warn(context, "failed to decode the TCP SACK block_start");
+		rohc_decomp_warn(context, "failed to parse the TCP SACK block start");
 		goto error;
 	}
 	remain_data += ret;
 	remain_len -= ret;
 	size += ret;
 
-	/* decode block end */
+	/* parse block end */
 	ret = d_tcp_sack_field_size(context, remain_data, remain_len);
 	if(ret < 0)
 	{
-		rohc_decomp_warn(context, "failed to decode the TCP SACK block_end");
+		rohc_decomp_warn(context, "failed to parse the TCP SACK block end");
 		goto error;
 	}
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
@@ -312,7 +258,7 @@ error:
  * (and RFC2018 for Selective Acknowledgement option)
  *
  * @param context      The decompression context
- * @param rohc_data    The remaining ROHC data to decode
+ * @param rohc_data    The remaining ROHC data to parse
  * @param rohc_length  The length (in bytes) of the remaining ROHC data
  * @return             The size (in bytes) of the compressed value,
  *                     -1 in case of problem
@@ -376,31 +322,29 @@ error:
 
 
 /**
- * @brief Uncompress a SACK block
+ * @brief Parse a SACK block of the TCP SACK option
  *
  * See RFC6846 page 68
  * (and RFC2018 for Selective Acknowledgement option)
  *
- * @param context    The decompression context
- * @param data       The data to decode
- * @param data_len   The length of the data to decode
- * @param reference  The reference value
- * @param sack_block Pointer to the uncompressed sack_block
- * @return           The number of data bytes parsed,
- *                   -1 if data is malformed
+ * @param context          The decompression context
+ * @param data             The data to parse
+ * @param data_len         The length of the data to parse
+ * @param[out] sack_block  The SACK block bits extracted from ROHC packet
+ * @return                 The number of data bytes parsed,
+ *                         -1 if data is malformed
  */
 static int d_tcp_sack_block(const struct rohc_decomp_ctxt *const context,
                             const uint8_t *const data,
                             const size_t data_len,
-                            const uint32_t reference,
                             sack_block_t *const sack_block)
 {
 	const uint8_t *remain_data = data;
 	size_t remain_len = data_len;
 	int ret;
 
-	/* decode block start */
-	ret = d_tcp_sack_pure_lsb(context, remain_data, remain_len, reference,
+	/* parse block start */
+	ret = d_tcp_sack_pure_lsb(context, remain_data, remain_len,
 	                          &sack_block->block_start);
 	if(ret < 0)
 	{
@@ -409,9 +353,8 @@ static int d_tcp_sack_block(const struct rohc_decomp_ctxt *const context,
 	remain_data += ret;
 	remain_len -= ret;
 
-	/* decode block end */
+	/* parse block end */
 	ret = d_tcp_sack_pure_lsb(context, remain_data, remain_len,
-	                          rohc_ntoh32(sack_block->block_start),
 	                          &sack_block->block_end);
 	if(ret < 0)
 	{
@@ -428,28 +371,25 @@ error:
 
 
 /**
- * @brief Uncompress the SACK field value.
+ * @brief Parse a SACK field of a SACK block of the TCP SACK option
  *
  * See RFC6846 page 67
  * (and RFC2018 for Selective Acknowledgement option)
  *
- * @param context    The decompression context
- * @param data       The data to decode
- * @param data_len   The length of the data to decode
- * @param base       The base value
- * @param field      Pointer to the uncompressed value
- * @return           The number of data bytes parsed,
- *                   -1 if data is malformed
+ * @param context          The decompression context
+ * @param data             The ROHC data to parse
+ * @param data_len         The length of the ROHC data to parse
+ * @param[out] sack_field  The uncompressed SACK field
+ * @return                 The number of data bytes parsed,
+ *                         -1 if data is malformed
  */
 static int d_tcp_sack_pure_lsb(const struct rohc_decomp_ctxt *const context,
                                const uint8_t *const data,
                                const size_t data_len,
-                               const uint32_t base,
-                               uint32_t *const field)
+                               uint32_t *const sack_field)
 {
 	const uint8_t *remain_data = data;
 	size_t remain_len = data_len;
-	uint32_t sack_field;
 
 	if(remain_len < 2)
 	{
@@ -463,13 +403,15 @@ static int d_tcp_sack_pure_lsb(const struct rohc_decomp_ctxt *const context,
 	if((remain_data[0] & 0x80) == 0)
 	{
 		/* discriminator '0' */
-		sack_field = *(remain_data++) << 8;
-		sack_field |= *(remain_data++);
+		rohc_decomp_debug(context, "SACK block is 2-byte long");
+		(*sack_field) = *(remain_data++) << 8;
+		(*sack_field) |= *(remain_data++);
 		remain_len -= 2;
 	}
 	else if((remain_data[0] & 0x40) == 0)
 	{
 		/* discriminator '10' */
+		rohc_decomp_debug(context, "SACK block is 3-byte long");
 		if(remain_len < 3)
 		{
 			rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, ROHC_PROFILE_TCP,
@@ -478,16 +420,17 @@ static int d_tcp_sack_pure_lsb(const struct rohc_decomp_ctxt *const context,
 			             "required", remain_len);
 			goto error;
 		}
-		sack_field = *(remain_data++) & 0x3f;
-		sack_field <<= 8;
-		sack_field |= *(remain_data++);
-		sack_field <<= 8;
-		sack_field |= *(remain_data++);
+		(*sack_field) = *(remain_data++) & 0x3f;
+		(*sack_field) <<= 8;
+		(*sack_field) |= *(remain_data++);
+		(*sack_field) <<= 8;
+		(*sack_field) |= *(remain_data++);
 		remain_len -= 3;
 	}
 	else if((remain_data[0] & 0x20) == 0)
 	{
 		/* discriminator '110' */
+		rohc_decomp_debug(context, "SACK block is 4-byte long");
 		if(remain_len < 4)
 		{
 			rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, ROHC_PROFILE_TCP,
@@ -496,18 +439,19 @@ static int d_tcp_sack_pure_lsb(const struct rohc_decomp_ctxt *const context,
 			             "required", remain_len);
 			goto error;
 		}
-		sack_field = *(remain_data++) & 0x1f;
-		sack_field <<= 8;
-		sack_field |= *(remain_data++);
-		sack_field <<= 8;
-		sack_field |= *(remain_data++);
-		sack_field <<= 8;
-		sack_field |= *(remain_data++);
+		(*sack_field) = *(remain_data++) & 0x1f;
+		(*sack_field) <<= 8;
+		(*sack_field) |= *(remain_data++);
+		(*sack_field) <<= 8;
+		(*sack_field) |= *(remain_data++);
+		(*sack_field) <<= 8;
+		(*sack_field) |= *(remain_data++);
 		remain_len -= 4;
 	}
 	else if(remain_data[0] == 0xff)
 	{
 		/* discriminator '11111111' */
+		rohc_decomp_debug(context, "SACK block is 5-byte long");
 		if(remain_len < 5)
 		{
 			rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, ROHC_PROFILE_TCP,
@@ -517,21 +461,21 @@ static int d_tcp_sack_pure_lsb(const struct rohc_decomp_ctxt *const context,
 			goto error;
 		}
 		remain_data++; /* skip discriminator */
-		sack_field = *(remain_data++);
-		sack_field <<= 8;
-		sack_field |= *(remain_data++);
-		sack_field <<= 8;
-		sack_field |= *(remain_data++);
-		sack_field <<= 8;
-		sack_field |= *(remain_data++);
+		(*sack_field) = *(remain_data++);
+		(*sack_field) <<= 8;
+		(*sack_field) |= *(remain_data++);
+		(*sack_field) <<= 8;
+		(*sack_field) |= *(remain_data++);
+		(*sack_field) <<= 8;
+		(*sack_field) |= *(remain_data++);
 		remain_len -= 5;
 	}
 	else
 	{
+		rohc_decomp_warn(context, "malformed SACK block: unexpected "
+		                 "discriminator 0x%02x", remain_data[0]);
 		goto error;
 	}
-
-	*field = rohc_hton32(base + sack_field);
 
 	return (data_len - remain_len);
 

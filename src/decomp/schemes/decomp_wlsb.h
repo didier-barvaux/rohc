@@ -53,22 +53,44 @@ typedef enum
 } rohc_lsb_ref_t;
 
 
+/** The context to parse and decode one LSB-encoded 32-bit field */
+struct rohc_lsb_field32
+{
+	uint32_t bits;        /**< The bits extracted from the ROHC packet */
+	size_t bits_nr;       /**< The number of bits extracted from the ROHC packet */
+	rohc_lsb_shift_t p;   /**< The LSB shift parameter to decode extracted bits */
+};
+
+
+/** The context to parse and decode one LSB-encoded 16-bit field */
+struct rohc_lsb_field16
+{
+	uint16_t bits;        /**< The bits extracted from the ROHC packet */
+	size_t bits_nr;       /**< The number of bits extracted from the ROHC packet */
+	rohc_lsb_shift_t p;   /**< The LSB shift parameter to decode extracted bits */
+};
+
+
+/** The context to parse and decode one LSB-encoded 8-bit field */
+struct rohc_lsb_field8
+{
+	uint8_t bits;         /**< The bits extracted from the ROHC packet */
+	size_t bits_nr;       /**< The number of bits extracted from the ROHC packet */
+	rohc_lsb_shift_t p;   /**< The LSB shift parameter to decode extracted bits */
+};
+
 
 /*
  * Function prototypes
  */
 
-struct rohc_lsb_decode * rohc_lsb_new(const rohc_lsb_shift_t p,
-                                      const size_t max_len)
+struct rohc_lsb_decode * rohc_lsb_new(const size_t max_len)
 	__attribute__((warn_unused_result));
 
 void rohc_lsb_free(struct rohc_lsb_decode *const lsb)
 	__attribute__((nonnull(1)));
 
 bool rohc_lsb_is_ready(const struct rohc_lsb_decode *const lsb)
-	__attribute__((warn_unused_result, nonnull(1), pure));
-
-rohc_lsb_shift_t lsb_get_p(const struct rohc_lsb_decode *const lsb)
 	__attribute__((warn_unused_result, nonnull(1), pure));
 
 bool rohc_lsb_decode(const struct rohc_lsb_decode *const lsb,

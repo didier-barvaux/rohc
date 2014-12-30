@@ -187,7 +187,8 @@ void * d_rtp_create(const struct rohc_decomp_ctxt *const context)
 	rfc3095_ctxt->specific = rtp_context;
 
 	/* create the LSB decoding context for SN */
-	rfc3095_ctxt->sn_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_RTP_SN, 16);
+	rfc3095_ctxt->sn_lsb_p = ROHC_LSB_SHIFT_RTP_SN;
+	rfc3095_ctxt->sn_lsb_ctxt = rohc_lsb_new(16);
 	if(rfc3095_ctxt->sn_lsb_ctxt == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
@@ -625,7 +626,7 @@ static int rtp_parse_static_rtp(const struct rohc_decomp_ctxt *const context,
 	read += sizeof(uint32_t);
 
 	/* is context re-used? */
-	if(context->num_recv_packets > 1 &&
+	if(context->num_recv_packets >= 1 &&
 	   memcmp(&bits->rtp_ssrc, &rtp_context->ssrc, sizeof(uint32_t)) != 0)
 	{
 		rohc_decomp_debug(context, "RTP SSRC mismatch (packet = 0x%08x, "

@@ -51,6 +51,8 @@ rohc_decomp_sources = \
 	../../src/decomp/schemes/decomp_list.c \
 	../../src/decomp/schemes/decomp_list_ipv6.c \
 	../../src/decomp/schemes/rfc4996.c \
+	../../src/decomp/schemes/tcp_ts.c \
+	../../src/decomp/schemes/tcp_sack.c \
 	../../src/decomp/rohc_decomp_detect_packet.c \
 	../../src/decomp/rohc_decomp.c \
 	../../src/decomp/feedback_create.c \
@@ -61,6 +63,9 @@ rohc_decomp_sources = \
 	../../src/decomp/d_udp_lite.c \
 	../../src/decomp/d_rtp.c \
 	../../src/decomp/d_esp.c \
+	../../src/decomp/d_tcp_static.c \
+	../../src/decomp/d_tcp_dynamic.c \
+	../../src/decomp/d_tcp_irregular.c \
 	../../src/decomp/d_tcp.c
 
 rohc_sources = \

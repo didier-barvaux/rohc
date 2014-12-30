@@ -30,6 +30,8 @@
 #define ROHC_DECOMP_TCP_IRREGULAR_H
 
 #include "rohc_decomp_internals.h"
+#include "d_tcp_defines.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -37,9 +39,10 @@
 bool tcp_parse_irreg_chain(struct rohc_decomp_ctxt *const context,
                            const uint8_t *const rohc_packet,
                            const size_t rohc_length,
-                           const bool ttl_irregular_chain_flag,
+                           const tcp_ip_id_behavior_t innermost_ip_id_behavior,
+                           struct rohc_tcp_extr_bits *const bits,
                            size_t *const parsed_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6)));
 
 #endif /* ROHC_DECOMP_TCP_IRREGULAR_H */
 

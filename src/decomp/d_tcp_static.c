@@ -28,6 +28,8 @@
 
 #include "d_tcp_static.h"
 
+#include "config.h" /* for ROHC_EXTRA_DEBUG */
+
 #include "d_tcp_defines.h"
 #include "rohc_bit_ops.h"
 #include "rohc_utils.h"
@@ -37,24 +39,26 @@
 #  include <string.h>
 #endif
 
-static int tcp_parse_static_ip(struct rohc_decomp_ctxt *const context,
-                               ip_context_t *const ip_context,
-                               const unsigned char *const rohc_packet,
-                               const size_t rohc_length)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static int tcp_parse_static_ipv6_option(struct rohc_decomp_ctxt *const context,
-                                        ip_context_t *const ip_context,
+static int tcp_parse_static_ip(const struct rohc_decomp_ctxt *const context,
+                               const unsigned char *const rohc_packet,
+                               const size_t rohc_length,
+                               struct rohc_tcp_extr_ip_bits *const ip_bits)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
+
+static int tcp_parse_static_ipv6_option(const struct rohc_decomp_ctxt *const context,
+                                        struct rohc_tcp_extr_ip_bits *const ip_bits,
                                         ipv6_option_context_t *const opt_context,
                                         const uint8_t protocol,
                                         const unsigned char *const rohc_packet,
                                         const size_t rohc_length)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
-static int tcp_parse_static_tcp(struct rohc_decomp_ctxt *const context,
+static int tcp_parse_static_tcp(const struct rohc_decomp_ctxt *const context,
                                 const unsigned char *const rohc_packet,
-                                const size_t rohc_length)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+                                const size_t rohc_length,
+                                struct rohc_tcp_extr_bits *const bits)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
 
 /**
@@ -63,31 +67,32 @@ static int tcp_parse_static_tcp(struct rohc_decomp_ctxt *const context,
  * @param context          The decompression context
  * @param rohc_packet      The remaining part of the ROHC packet
  * @param rohc_length      The remaining length (in bytes) of the ROHC packet
+ * @param[out] bits        The bits extracted from the static chain
  * @param[out] parsed_len  The length (in bytes) of static chain in case of success
  * @return                 true in the static chain was successfully parsed,
  *                         false if the ROHC packet was malformed
  */
-bool tcp_parse_static_chain(struct rohc_decomp_ctxt *const context,
+bool tcp_parse_static_chain(const struct rohc_decomp_ctxt *const context,
                             const uint8_t *const rohc_packet,
                             const size_t rohc_length,
+                            struct rohc_tcp_extr_bits *const bits,
                             size_t *const parsed_len)
 {
-	struct d_tcp_context *tcp_context = context->specific;
 	const uint8_t *remain_data = rohc_packet;
 	size_t remain_len = rohc_length;
-	size_t ip_contexts_nr;
+	size_t ip_hdrs_nr;
 	uint8_t protocol;
 	int ret;
 
 	(*parsed_len) = 0;
 
 	/* parse static IP part (IPv4/IPv6 headers and extension headers) */
-	ip_contexts_nr = 0;
+	ip_hdrs_nr = 0;
 	do
 	{
-		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_contexts_nr]);
+		struct rohc_tcp_extr_ip_bits *const ip_bits = &(bits->ip[ip_hdrs_nr]);
 
-		ret = tcp_parse_static_ip(context, ip_context, remain_data, remain_len);
+		ret = tcp_parse_static_ip(context, remain_data, remain_len, ip_bits);
 		if(ret < 0)
 		{
 			rohc_decomp_warn(context, "malformed ROHC packet: malformed IP "
@@ -95,26 +100,27 @@ bool tcp_parse_static_chain(struct rohc_decomp_ctxt *const context,
 			goto error;
 		}
 		rohc_decomp_debug(context, "IPv%u static part is %d-byte length",
-								ip_context->version, ret);
+		                  ip_bits->version, ret);
 		assert(remain_len >= ((size_t) ret));
 		remain_data += ret;
 		remain_len -= ret;
 		(*parsed_len) += ret;
 
-		protocol = ip_context->ctxt.vx.next_header;
-		ip_contexts_nr++;
+		assert(ip_bits->proto_nr == 8);
+		protocol = ip_bits->proto;
+		ip_hdrs_nr++;
 	}
-	while(rohc_is_tunneling(protocol) && ip_contexts_nr < ROHC_TCP_MAX_IP_HDRS);
+	while(rohc_is_tunneling(protocol) && ip_hdrs_nr < ROHC_TCP_MAX_IP_HDRS);
 
-	if(rohc_is_tunneling(protocol) && ip_contexts_nr >= ROHC_TCP_MAX_IP_HDRS)
+	if(rohc_is_tunneling(protocol) && ip_hdrs_nr >= ROHC_TCP_MAX_IP_HDRS)
 	{
 		rohc_decomp_warn(context, "too many IP headers to decompress");
 		goto error;
 	}
-	tcp_context->ip_contexts_nr = ip_contexts_nr;
+	bits->ip_nr = ip_hdrs_nr;
 
 	/* parse TCP static part */
-	ret = tcp_parse_static_tcp(context, remain_data, remain_len);
+	ret = tcp_parse_static_tcp(context, remain_data, remain_len, bits);
 	if(ret < 0)
 	{
 		rohc_decomp_warn(context, "malformed ROHC packet: malformed TCP static "
@@ -137,17 +143,17 @@ error:
 /**
  * @brief Decode the static IP header of the rohc packet.
  *
- * @param context             The decompression context
- * @param ip_context          The specific IP decompression context
- * @param rohc_packet         The remaining part of the ROHC packet
- * @param rohc_length         The remaining length (in bytes) of the ROHC packet
- * @return                    The length of static IP header in case of success,
- *                            -1 if an error occurs
+ * @param context       The decompression context
+ * @param rohc_packet   The remaining part of the ROHC packet
+ * @param rohc_length   The remaining length (in bytes) of the ROHC packet
+ * @param[out] ip_bits  The bits extracted from the IP part of the static chain
+ * @return              The length of static IP header in case of success,
+ *                      -1 if an error occurs
  */
-static int tcp_parse_static_ip(struct rohc_decomp_ctxt *const context,
-                               ip_context_t *const ip_context,
+static int tcp_parse_static_ip(const struct rohc_decomp_ctxt *const context,
                                const unsigned char *const rohc_packet,
-                               const size_t rohc_length)
+                               const size_t rohc_length,
+                               struct rohc_tcp_extr_ip_bits *const ip_bits)
 {
 	const uint8_t *remain_data = rohc_packet;
 	size_t remain_len = rohc_length;
@@ -176,12 +182,13 @@ static int tcp_parse_static_ip(struct rohc_decomp_ctxt *const context,
 			goto error;
 		}
 
-		ip_context->version = IPV4;
-		ip_context->ctxt.v4.version = IPV4;
-		ip_context->ctxt.v4.context_length = sizeof(ipv4_context_t);
-		ip_context->ctxt.v4.protocol = ipv4_static->protocol;
-		ip_context->ctxt.v4.src_addr = ipv4_static->src_addr;
-		ip_context->ctxt.v4.dst_addr = ipv4_static->dst_addr;
+		ip_bits->version = IPV4;
+		ip_bits->proto = ipv4_static->protocol;
+		ip_bits->proto_nr = 8;
+		memcpy(ip_bits->saddr, &ipv4_static->src_addr, sizeof(uint32_t));
+		ip_bits->saddr_nr = 32;
+		memcpy(ip_bits->daddr, &ipv4_static->dst_addr, sizeof(uint32_t));
+		ip_bits->daddr_nr = 32;
 
 		read += sizeof(ipv4_static_t);
 		remain_data += sizeof(ipv4_static_t);
@@ -191,9 +198,7 @@ static int tcp_parse_static_ip(struct rohc_decomp_ctxt *const context,
 	{
 		uint8_t protocol;
 
-		ip_context->version = IPV6;
-		ip_context->ctxt.v6.version = IPV6;
-		ip_context->ctxt.v6.context_length = sizeof(ipv6_context_t);
+		ip_bits->version = IPV6;
 
 		/* static 1 or static 2 variant? */
 		if(GET_BIT_4(remain_data) == 0)
@@ -208,11 +213,13 @@ static int tcp_parse_static_ip(struct rohc_decomp_ctxt *const context,
 				goto error;
 			}
 
-			ip_context->ctxt.v6.flow_label1 = 0;
-			ip_context->ctxt.v6.flow_label2 = 0;
-			ip_context->ctxt.v6.next_header = ipv6_static1->next_header;
-			memcpy(ip_context->ctxt.v6.src_addr, ipv6_static1->src_addr,
-			       sizeof(uint32_t) * 4 * 2);
+			ip_bits->flowid = 0;
+			ip_bits->proto = ipv6_static1->next_header;
+			ip_bits->proto_nr = 8;
+			memcpy(ip_bits->saddr, &ipv6_static1->src_addr, sizeof(uint32_t) * 4);
+			ip_bits->saddr_nr = 128;
+			memcpy(ip_bits->daddr, &ipv6_static1->dst_addr, sizeof(uint32_t) * 4);
+			ip_bits->daddr_nr = 128;
 
 			read += sizeof(ipv6_static1_t);
 			remain_data += sizeof(ipv6_static1_t);
@@ -230,33 +237,36 @@ static int tcp_parse_static_ip(struct rohc_decomp_ctxt *const context,
 				goto error;
 			}
 
-			ip_context->ctxt.v6.flow_label1 = ipv6_static2->flow_label1;
-			ip_context->ctxt.v6.flow_label2 = ipv6_static2->flow_label2;
-			ip_context->ctxt.v6.next_header = ipv6_static2->next_header;
-			memcpy(ip_context->ctxt.v6.src_addr, ipv6_static2->src_addr,
-			       sizeof(uint32_t) * 4 * 2);
+			ip_bits->flowid = rohc_ntoh32((ipv6_static2->flow_label1 << 20) |
+			                              ipv6_static2->flow_label2);
+			ip_bits->proto = ipv6_static2->next_header;
+			ip_bits->proto_nr = 8;
+			memcpy(ip_bits->saddr, &ipv6_static2->src_addr, sizeof(uint32_t) * 4);
+			ip_bits->saddr_nr = 128;
+			memcpy(ip_bits->daddr, &ipv6_static2->dst_addr, sizeof(uint32_t) * 4);
+			ip_bits->daddr_nr = 128;
 
 			read += sizeof(ipv6_static2_t);
 			remain_data += sizeof(ipv6_static2_t);
 			remain_len -= sizeof(ipv6_static2_t);
 		}
 
-		protocol = ip_context->ctxt.v6.next_header;
-		ip_context->ctxt.v6.opts_nr = 0;
-		ip_context->ctxt.v6.opts_len = 0;
+		protocol = ip_bits->proto;
+		ip_bits->opts_nr = 0;
+		ip_bits->opts_len = 0;
 		while(rohc_is_ipv6_opt(protocol))
 		{
 			ipv6_option_context_t *opt;
 
-			if(ip_context->ctxt.v6.opts_nr >= ROHC_TCP_MAX_IPv6_EXT_HDRS)
+			if(ip_bits->opts_nr >= ROHC_TCP_MAX_IPV6_EXT_HDRS)
 			{
 				rohc_decomp_warn(context, "too many IPv6 extension headers");
 				goto error;
 			}
-			opt = &(ip_context->ctxt.v6.opts[ip_context->ctxt.v6.opts_nr]);
+			opt = &(ip_bits->opts[ip_bits->opts_nr]);
 
-			ret = tcp_parse_static_ipv6_option(context, ip_context, opt,
-			                                   protocol, remain_data, remain_len);
+			ret = tcp_parse_static_ipv6_option(context, ip_bits, opt, protocol,
+			                                   remain_data, remain_len);
 			if(ret < 0)
 			{
 				rohc_decomp_warn(context, "malformed ROHC packet: malformed "
@@ -271,10 +281,10 @@ static int tcp_parse_static_ip(struct rohc_decomp_ctxt *const context,
 			remain_len -= ret;
 
 			protocol = opt->generic.next_header;
-			ip_context->ctxt.v6.opts_nr++;
+			ip_bits->opts_nr++;
 		}
 		rohc_decomp_debug(context, "IPv6 header is followed by %zu extension "
-		                  "headers", ip_context->ctxt.v6.opts_nr);
+		                  "headers", ip_bits->opts_nr);
 	}
 	rohc_dump_buf(context->decompressor->trace_callback,
 	              context->decompressor->trace_callback_priv,
@@ -291,17 +301,17 @@ error:
 /**
  * @brief Decode the static IPv6 option header of the rohc packet.
  *
- * @param context        The decompression context
- * @param ip_context     The specific IP decompression context
- * @param opt_context    The specific IPv6 option decompression context
- * @param protocol       The IPv6 protocol option
- * @param rohc_packet    The remaining part of the ROHC packet
- * @param rohc_length    The remaining length (in bytes) of the ROHC packet
- * @return               The length of static IP header in case of success,
- *                       -1 if an error occurs
+ * @param context           The decompression context
+ * @param[out] ip_bits      The bits extracted from the IP part of the static chain
+ * @param[out] opt_context  The specific IPv6 option decompression context
+ * @param protocol          The IPv6 protocol option
+ * @param rohc_packet       The remaining part of the ROHC packet
+ * @param rohc_length       The remaining length (in bytes) of the ROHC packet
+ * @return                  The length of static IP header in case of success,
+ *                          -1 if an error occurs
  */
-static int tcp_parse_static_ipv6_option(struct rohc_decomp_ctxt *const context,
-                                        ip_context_t *const ip_context,
+static int tcp_parse_static_ipv6_option(const struct rohc_decomp_ctxt *const context,
+                                        struct rohc_tcp_extr_ip_bits *const ip_bits,
                                         ipv6_option_context_t *const opt_context,
                                         const uint8_t protocol,
                                         const unsigned char *const rohc_packet,
@@ -506,7 +516,7 @@ static int tcp_parse_static_ipv6_option(struct rohc_decomp_ctxt *const context,
 			goto error;
 		}
 	}
-	ip_context->ctxt.v6.opts_len += opt_context->generic.option_length;
+	ip_bits->opts_len += opt_context->generic.option_length;
 
 #if ROHC_EXTRA_DEBUG == 1
 	rohc_dump_buf(context->decompressor->trace_callback,
@@ -528,14 +538,15 @@ error:
  * @param context      The decompression context
  * @param rohc_packet  The remaining part of the ROHC packet
  * @param rohc_length  The remaining length (in bytes) of the ROHC packet
+ * @param[out] bits    The bits extracted from the CO packet
  * @return             The number of bytes read in the ROHC packet,
  *                     -1 in case of failure
  */
-static int tcp_parse_static_tcp(struct rohc_decomp_ctxt *const context,
+static int tcp_parse_static_tcp(const struct rohc_decomp_ctxt *const context,
                                 const unsigned char *const rohc_packet,
-                                const size_t rohc_length)
+                                const size_t rohc_length,
+                                struct rohc_tcp_extr_bits *const bits)
 {
-	struct d_tcp_context *const tcp_context = context->specific;
 	const tcp_static_t *tcp_static;
 
 	assert(rohc_packet != NULL);
@@ -556,14 +567,14 @@ static int tcp_parse_static_tcp(struct rohc_decomp_ctxt *const context,
 	tcp_static = (tcp_static_t *) rohc_packet;
 
 	/* TCP source port */
-	tcp_context->tcp_src_port = tcp_static->src_port;
-	rohc_decomp_debug(context, "TCP source port = %u",
-	                  rohc_ntoh16(tcp_context->tcp_src_port));
+	bits->src_port = rohc_ntoh16(tcp_static->src_port);
+	bits->src_port_nr = 16;
+	rohc_decomp_debug(context, "TCP source port = %u", bits->src_port);
 
 	/* TCP destination port */
-	tcp_context->tcp_dst_port = tcp_static->dst_port;
-	rohc_decomp_debug(context, "TCP dest port = %u",
-	                  rohc_ntoh16(tcp_context->tcp_dst_port));
+	bits->dst_port = rohc_ntoh16(tcp_static->dst_port);
+	bits->dst_port_nr = 16;
+	rohc_decomp_debug(context, "TCP dest port = %u", bits->dst_port);
 
 	/* number of bytes read from the packet */
 	rohc_decomp_debug(context, "TCP static part is %zu-byte long",

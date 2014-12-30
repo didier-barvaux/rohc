@@ -44,6 +44,10 @@
 	} while(0)
 
 
+static bool run_test8_with_shift_param(bool be_verbose,
+                                       const short p,
+                                       const size_t win_size,
+                                       const size_t loss_nr);
 static bool run_test16_with_shift_param(bool be_verbose,
                                         const short p,
                                         const size_t win_size,
@@ -114,6 +118,19 @@ int main(int argc, char *argv[])
 	/* run the test with different shift values */
 	for(p_index = 0; p_index < p_nums; p_index++)
 	{
+		/* 8-bit field */
+		trace(verbose, "run test with 8-bit field, shift parameter %d, window "
+		      "width %zu, and %zu lost values\n", p_params[p_index], win_size,
+		      loss_nr);
+		if(!run_test8_with_shift_param(extraverbose, p_params[p_index],
+		                               win_size, loss_nr))
+		{
+			fprintf(stderr, "test with 8-bit field and shift parameter %d "
+			        "failed\n", p_params[p_index]);
+			goto error;
+		}
+		trace(extraverbose, "\n");
+
 		/* 16-bit field */
 		trace(verbose, "run test with 16-bit field, shift parameter %d, windows "
 		      "width %zd, and %zd lost values\n", p_params[p_index], win_size,
@@ -159,6 +176,164 @@ error:
  * @param loss_nr     The number of values to lose
  * @return            true if test succeeds, false otherwise
  */
+static bool run_test8_with_shift_param(bool be_verbose,
+                                       const short p,
+                                       const size_t win_size,
+                                       const size_t loss_nr)
+{
+	struct c_wlsb *wlsb; /* the W-LSB encoding context */
+	struct rohc_lsb_decode *lsb; /* the LSB decoding context */
+
+	uint8_t value8; /* the value to encode */
+	uint8_t value8_encoded; /* the encoded value to decode */
+	uint8_t value8_decoded; /* the decoded value */
+
+	int is_success = false; /* test fails by default */
+
+	uint32_t i;
+
+	assert(win_size > 0);
+
+	/* create the W-LSB encoding context */
+	wlsb = c_create_wlsb(8, win_size, p);
+	if(wlsb == NULL)
+	{
+		fprintf(stderr, "no memory to allocate W-LSB encoding context\n");
+		goto error;
+	}
+
+	/* init the LSB decoding context with value 0 */
+	value8 = 0;
+	trace(be_verbose, "\tinitialize with 8 bits of value 0x%02x ...\n", value8);
+	lsb = rohc_lsb_new(8);
+	if(lsb == NULL)
+	{
+		fprintf(stderr, "no memory to allocate LSB decoding context\n");
+		goto destroy_wlsb;
+	}
+	rohc_lsb_set_ref(lsb, value8, false);
+
+	/* initialize the W-LSB encoding context */
+	for(i = 1; i < 3; i++)
+	{
+		/* value to encode/decode */
+		value8 = i % 0xffff;
+
+		trace(be_verbose, "\tinitialize with 8 bits of value 0x%02x ...\n", value8);
+
+		/* update encoding context */
+		c_add_wlsb(wlsb, value8, value8);
+
+		/* transmit all bits without encoding */
+		value8_encoded = value8;
+		value8_decoded = value8_encoded;
+
+		/* update decoding context */
+		rohc_lsb_set_ref(lsb, value8_decoded, false);
+	}
+
+	/* 1/ encode then decode 8-bit values from range [3, win_size]
+	 * 2/ encode then drop 8-bit values from range
+	 *    [win_size + 1, win_size + loss_nr]
+	 * 3/ encode then decode 8-bit values from range
+	 *    [win_size + loss_nr + 1, win_size + loss_nr + 10]
+	 */
+	for(i = 3; i <= ((uint32_t) (win_size + loss_nr + 10)); i++)
+	{
+		size_t required_bits;
+		uint8_t required_bits_mask;
+		bool wlsb_k_ok;
+		bool lsb_decode_ok;
+
+		/* value to encode/decode */
+		value8 = i % (((uint32_t) 0xff) + 1);
+
+		/* encode */
+		trace(be_verbose, "\tencode value 0x%02x ...\n", value8);
+		wlsb_k_ok = wlsb_get_k_8bits(wlsb, value8, &required_bits);
+		if(!wlsb_k_ok)
+		{
+			fprintf(stderr, "failed to determine how many bits are required "
+			        "to be sent\n");
+			goto destroy_lsb;
+		}
+		assert(required_bits <= 8);
+		if(required_bits == 8)
+		{
+			required_bits_mask = 0xff;
+		}
+		else
+		{
+			required_bits_mask = (1 << required_bits) - 1;
+		}
+		value8_encoded = value8 & required_bits_mask;
+		trace(be_verbose, "\t\tencoded on %zu bits: 0x%02x\n", required_bits,
+		      value8_encoded);
+
+		/* update encoding context */
+		c_add_wlsb(wlsb, value8, value8);
+
+		/* do we lose that value? */
+		if(i >= (win_size + 1) && i <= (win_size + loss_nr))
+		{
+			/* value is lost, so do not decode it */
+			trace(be_verbose, "\t\tlose %zu-bit value 0x%02x\n", required_bits,
+			      value8_encoded);
+		}
+		else
+		{
+			uint32_t decoded32;
+
+			/* value is not lost, so decode it */
+			trace(be_verbose, "\t\tdecode %zu-bit value 0x%02x ...\n", required_bits,
+			      value8_encoded);
+			lsb_decode_ok = rohc_lsb_decode(lsb, ROHC_LSB_REF_0, 0, value8_encoded,
+			                                required_bits, p, &decoded32);
+			if(!lsb_decode_ok)
+			{
+				fprintf(stderr, "failed to decode %zu-bit value\n", required_bits);
+				goto destroy_lsb;
+			}
+			assert(decoded32 <= 0xff);
+			value8_decoded = decoded32;
+			trace(be_verbose, "\t\tdecoded: 0x%02x\n", value8_decoded);
+
+			/* update decoding context */
+			rohc_lsb_set_ref(lsb, value8_decoded, false);
+
+			/* check test result */
+			if(value8 != value8_decoded)
+			{
+				fprintf(stderr, "original and decoded values do not match while "
+				        "testing value 0x%02x with shift parameter %d\n", value8, p);
+				goto destroy_lsb;
+			}
+		}
+	}
+
+	/* test succeeds */
+	trace(be_verbose, "\ttest with shift parameter %d is successful\n", p);
+	is_success = true;
+
+destroy_lsb:
+	rohc_lsb_free(lsb);
+destroy_wlsb:
+	c_destroy_wlsb(wlsb);
+error:
+	return is_success;
+}
+
+
+
+/**
+ * @brief Run the test with the given shift parameter
+ *
+ * @param be_verbose  Whether to print traces or not
+ * @param p           The shift parameter to run test with
+ * @param win_size    The width of the W-LSB window
+ * @param loss_nr     The number of values to lose
+ * @return            true if test succeeds, false otherwise
+ */
 static bool run_test16_with_shift_param(bool be_verbose,
                                         const short p,
                                         const size_t win_size,
@@ -188,7 +363,7 @@ static bool run_test16_with_shift_param(bool be_verbose,
 	/* init the LSB decoding context with value 0 */
 	value16 = 0;
 	trace(be_verbose, "\tinitialize with 16 bits of value 0x%04x ...\n", value16);
-	lsb = rohc_lsb_new(p, 16);
+	lsb = rohc_lsb_new(16);
 	if(lsb == NULL)
 	{
 		fprintf(stderr, "no memory to allocate LSB decoding context\n");
@@ -345,7 +520,7 @@ static bool run_test32_with_shift_param(bool be_verbose,
 	/* init the LSB decoding context with value 0 */
 	value32 = 0;
 	trace(be_verbose, "\tinitialize with 32 bits of value 0x%08x ...\n", value32);
-	lsb = rohc_lsb_new(p, 32);
+	lsb = rohc_lsb_new(32);
 	if(lsb == NULL)
 	{
 		fprintf(stderr, "no memory to allocate LSB decoding context\n");

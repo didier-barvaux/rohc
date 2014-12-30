@@ -69,7 +69,7 @@ struct ip_id_offset_decode * ip_id_offset_new(void)
 		goto error;
 	}
 
-	ipid->lsb = rohc_lsb_new(ROHC_LSB_SHIFT_IP_ID, 16);
+	ipid->lsb = rohc_lsb_new(16);
 	if(ipid->lsb == NULL)
 	{
 		goto destroy_ipid;

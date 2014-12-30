@@ -129,7 +129,8 @@ void * d_udp_create(const struct rohc_decomp_ctxt *const context)
 	rfc3095_ctxt->specific = udp_context;
 
 	/* create the LSB decoding context for SN */
-	rfc3095_ctxt->sn_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_SN, 16);
+	rfc3095_ctxt->sn_lsb_p = ROHC_LSB_SHIFT_SN;
+	rfc3095_ctxt->sn_lsb_ctxt = rohc_lsb_new(16);
 	if(rfc3095_ctxt->sn_lsb_ctxt == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
@@ -276,7 +277,7 @@ int udp_parse_static_udp(const struct rohc_decomp_ctxt *const context,
 	read += 2;
 
 	/* is context re-used? */
-	if(context->num_recv_packets > 1 &&
+	if(context->num_recv_packets >= 1 &&
 	   bits->udp_src != rohc_hton16(udp_context->sport))
 	{
 		rohc_decomp_debug(context, "UDP source port mismatch (packet = %u, "
@@ -285,7 +286,7 @@ int udp_parse_static_udp(const struct rohc_decomp_ctxt *const context,
 		bits->is_context_reused = true;
 	}
 	udp_context->sport = rohc_ntoh16(bits->udp_src);
-	if(context->num_recv_packets > 1 &&
+	if(context->num_recv_packets >= 1 &&
 	   bits->udp_dst != rohc_hton16(udp_context->dport))
 	{
 		rohc_decomp_debug(context, "UDP destination port mismatch (packet = %u, "

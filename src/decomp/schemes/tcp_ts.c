@@ -34,6 +34,14 @@
 #  include <string.h>
 #endif
 
+
+static int d_tcp_ts_lsb_parse(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const data,
+                              const size_t data_len,
+                              struct rohc_lsb_field32 *const ts_field)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
+
+
 /**
  * @brief Calculate the size of TimeStamp compressed TCP option
  *
@@ -101,37 +109,75 @@ error:
 
 
 /**
- * @brief Decompress the LSBs bits of TimeStamp TCP option
+ * @brief Parse the TCP TimeStamp (TS) option
  *
  * See RFC4996 page 65
  *
- * @param context    The decompression context
- * @param lsb        The LSB decoding context
- * @param data       The data to decode
- * @param data_len   The length of the data to decode
- * @param timestamp  Pointer to the uncompressed value
- * @return           The number of data bytes parsed,
- *                   -1 if data is malformed
+ * @param context      The decompression context
+ * @param data         The data to decode
+ * @param data_len     The length of the data to decode
+ * @param[out] opt_ts  The information of TS option field extracted from packet
+ * @return             The number of data bytes parsed,
+ *                     -1 if data is malformed
  */
-int d_tcp_ts_lsb_decode(const struct rohc_decomp_ctxt *const context,
-                        const struct rohc_lsb_decode *const lsb,
-                        const uint8_t *const data,
-                        const size_t data_len,
-                        uint32_t *const timestamp)
+int d_tcp_ts_parse(const struct rohc_decomp_ctxt *const context,
+                   const uint8_t *const data,
+                   const size_t data_len,
+                   struct d_tcp_opt_ts *const opt_ts)
 {
-	uint32_t ts_bits;
-	size_t ts_bits_nr;
-	rohc_lsb_shift_t p;
-	bool decode_ok;
-	uint32_t decoded;
-	uint32_t decoded_nbo;
+	const uint8_t *remain_data = data;
+	size_t remain_len = data_len;
+	size_t ts_len = 0;
+	int ret;
+
+	/* parse TS echo request */
+	ret = d_tcp_ts_lsb_parse(context, remain_data, remain_len, &opt_ts->req);
+	if(ret < 0)
+	{
+		rohc_decomp_warn(context, "failed to parse TS echo request");
+		goto error;
+	}
+	remain_data += ret;
+	remain_len -= ret;
+	ts_len += ret;
+
+	/* parse TS echo reply */
+	ret = d_tcp_ts_lsb_parse(context, remain_data, remain_len, &opt_ts->rep);
+	if(ret < 0)
+	{
+		rohc_decomp_warn(context, "failed to parse TS echo reply");
+		goto error;
+	}
+	remain_data += ret;
+	remain_len -= ret;
+	ts_len += ret;
+
+	return ts_len;
+
+error:
+	return -1;
+}
+
+
+/**
+ * @brief Parse the LSBs bits of one of the TS echo request/reply fields
+ *
+ * See RFC4996 page 65
+ *
+ * @param context        The decompression context
+ * @param data           The data to decode
+ * @param data_len       The length of the data to decode
+ * @param[out] ts_field  The information of TS option field extracted from packet
+ * @return               The number of data bytes parsed,
+ *                       -1 if data is malformed
+ */
+static int d_tcp_ts_lsb_parse(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const data,
+                              const size_t data_len,
+                              struct rohc_lsb_field32 *const ts_field)
+{
 	const uint8_t *remain_data;
 	size_t remain_len;
-
-	assert(context != NULL);
-	assert(lsb != NULL);
-	assert(data != NULL);
-	assert(timestamp != NULL);
 
 	remain_data = data;
 	remain_len = data_len;
@@ -147,14 +193,16 @@ int d_tcp_ts_lsb_decode(const struct rohc_decomp_ctxt *const context,
 	if((remain_data[0] & 0x80) == 0)
 	{
 		/* discriminator '0' */
-		ts_bits = remain_data[0];
-		ts_bits_nr = 7;
-		p = -1;
+		rohc_decomp_debug(context, "TCP TS option: TS field is 1-byte long");
+		ts_field->bits = remain_data[0];
+		ts_field->bits_nr = 7;
+		ts_field->p = -1;
 		remain_len--;
 	}
 	else if((remain_data[0] & 0x40) == 0)
 	{
 		/* discriminator '10' */
+		rohc_decomp_debug(context, "TCP TS option: TS field is 2-byte long");
 		if(remain_len < 2)
 		{
 			rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, ROHC_PROFILE_TCP,
@@ -162,15 +210,16 @@ int d_tcp_ts_lsb_decode(const struct rohc_decomp_ctxt *const context,
 			             "while at least 2 bytes required", remain_len);
 			goto error;
 		}
-		ts_bits = (remain_data[0] & 0x3f) << 8;
-		ts_bits |= remain_data[1];
-		ts_bits_nr = 14;
-		p = -1;
+		ts_field->bits = (remain_data[0] & 0x3f) << 8;
+		ts_field->bits |= remain_data[1];
+		ts_field->bits_nr = 14;
+		ts_field->p = -1;
 		remain_len -= 2;
 	}
 	else if((remain_data[0] & 0x20) == 0)
 	{
 		/* discriminator '110' */
+		rohc_decomp_debug(context, "TCP TS option: TS field is 3-byte long");
 		if(remain_len < 3)
 		{
 			rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, ROHC_PROFILE_TCP,
@@ -178,16 +227,17 @@ int d_tcp_ts_lsb_decode(const struct rohc_decomp_ctxt *const context,
 			             "while at least 3 bytes required", remain_len);
 			goto error;
 		}
-		ts_bits = (remain_data[0] & 0x1f) << 16;
-		ts_bits |= remain_data[1] << 8;
-		ts_bits |= remain_data[2];
-		ts_bits_nr = 21;
-		p = 0x40000;
+		ts_field->bits = (remain_data[0] & 0x1f) << 16;
+		ts_field->bits |= remain_data[1] << 8;
+		ts_field->bits |= remain_data[2];
+		ts_field->bits_nr = 21;
+		ts_field->p = 0x40000;
 		remain_len -= 3;
 	}
 	else
 	{
 		/* discriminator '111' */
+		rohc_decomp_debug(context, "TCP TS option: TS field is 4-byte long");
 		if(remain_len < 4)
 		{
 			rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, ROHC_PROFILE_TCP,
@@ -195,29 +245,14 @@ int d_tcp_ts_lsb_decode(const struct rohc_decomp_ctxt *const context,
 			             "while at least 4 bytes required", remain_len);
 			goto error;
 		}
-		ts_bits = (remain_data[0] & 0x1f) << 24;
-		ts_bits |= remain_data[1] << 16;
-		ts_bits |= remain_data[2] << 8;
-		ts_bits |= remain_data[3];
-		ts_bits_nr = 29;
-		p = 0x40000;
+		ts_field->bits = (remain_data[0] & 0x1f) << 24;
+		ts_field->bits |= remain_data[1] << 16;
+		ts_field->bits |= remain_data[2] << 8;
+		ts_field->bits |= remain_data[3];
+		ts_field->bits_nr = 29;
+		ts_field->p = 0x40000;
 		remain_len -= 4;
 	}
-
-	decode_ok = rohc_lsb_decode(lsb, ROHC_LSB_REF_0, 0, ts_bits, ts_bits_nr, p,
-	                            &decoded);
-	if(!decode_ok)
-	{
-		rohc_decomp_warn(context, "failed to decode %zu timestamp bits 0x%x "
-		                 "with p = %u", ts_bits_nr, ts_bits, p);
-		goto error;
-	}
-	rohc_decomp_debug(context, "decoded timestamp = 0x%08x (%zu bits 0x%x "
-	                  "with ref 0x%08x and p = %d)", decoded, ts_bits_nr,
-	                  ts_bits, rohc_lsb_get_ref(lsb, ROHC_LSB_REF_0), p);
-
-	decoded_nbo = rohc_hton32(decoded);
-	memcpy(timestamp, &decoded_nbo, sizeof(uint32_t));
 
 	return (data_len - remain_len);
 

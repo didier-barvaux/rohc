@@ -138,7 +138,8 @@ static void * d_esp_create(const struct rohc_decomp_ctxt *const context)
 	rfc3095_ctxt->specific = esp_context;
 
 	/* create the LSB decoding context for SN (same shift value as RTP) */
-	rfc3095_ctxt->sn_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_ESP_SN, 32);
+	rfc3095_ctxt->sn_lsb_p = ROHC_LSB_SHIFT_ESP_SN;
+	rfc3095_ctxt->sn_lsb_ctxt = rohc_lsb_new(32);
 	if(rfc3095_ctxt->sn_lsb_ctxt == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
@@ -273,7 +274,7 @@ static int esp_parse_static_esp(const struct rohc_decomp_ctxt *const context,
 	read += spi_length;
 
 	/* is context re-used? */
-	if(context->num_recv_packets > 1 &&
+	if(context->num_recv_packets >= 1 &&
 	   memcmp(&bits->esp_spi, &esp_context->spi, spi_length) != 0)
 	{
 		rohc_decomp_debug(context, "ESP SPI mismatch (packet = 0x%08x, "

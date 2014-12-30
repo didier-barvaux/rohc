@@ -168,7 +168,8 @@ void * d_udp_lite_create(const struct rohc_decomp_ctxt *const context)
 	rfc3095_ctxt->specific = udp_lite_context;
 
 	/* create the LSB decoding context for SN */
-	rfc3095_ctxt->sn_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_SN, 16);
+	rfc3095_ctxt->sn_lsb_p = ROHC_LSB_SHIFT_SN;
+	rfc3095_ctxt->sn_lsb_ctxt = rohc_lsb_new(16);
 	if(rfc3095_ctxt->sn_lsb_ctxt == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,

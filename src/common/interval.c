@@ -30,6 +30,42 @@
 
 
 /**
+ * @brief The f function as defined in LSB encoding for 8-bit fields
+ *
+ * Find out the interval [v_ref - p, v_ref + (2^k - 1) - p] for a given k.
+ * See 4.5.1 in the RFC 3095 for details.
+ *
+ * As stated RFC, the values to be encoded have a finite range and the
+ * interpretation interval can straddle the wraparound boundary. So, the min
+ * value may be greater than the max value!
+ *
+ * @param v_ref The reference value
+ * @param k     The number of least significant bits of the value that are
+ *              transmitted
+ * @param p     The shift parameter (may be negative)
+ * @return      The computed interval
+ */
+struct rohc_interval8 rohc_f_8bits(const uint8_t v_ref,
+                                   const size_t k,
+                                   const rohc_lsb_shift_t p)
+{
+	struct rohc_interval32 interval32;
+	struct rohc_interval8 interval8;
+
+	/* do not accept more bits than the field may contain */
+	assert(k <= 8);
+
+	/* use the function for 32-bit fields, then ensure that nothing is greater
+	 * than 0xff */
+	interval32 = rohc_f_32bits(v_ref, k, p);
+	interval8.min = interval32.min & 0xfff;
+	interval8.max = interval32.max & 0xfff;
+
+	return interval8;
+}
+
+
+/**
  * @brief The f function as defined in LSB encoding for 16-bit fields
  *
  * Find out the interval [v_ref - p, v_ref + (2^k - 1) - p] for a given k.

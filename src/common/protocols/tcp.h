@@ -620,18 +620,23 @@ typedef struct  __attribute__((packed)) ipv6_extension
 	uint8_t datas[1];
 } ipv6_extension_t;
 
+
 /**
  * @brief Define the Selective Acknowlegment TCP option
  *
  * See RFC2018 for TCP Selective Acknowledgement Options
  * See RFC4996 page 66
  */
-
 typedef struct __attribute__((packed))
 {
 	uint32_t block_start;
 	uint32_t block_end;
 } sack_block_t;
+
+
+/** The maximum number of SACK blocks in the TCP SACK option */
+#define TCP_SACK_BLOCKS_MAX_NR  4U
+
 
 /**
  * @brief Define the TCP header

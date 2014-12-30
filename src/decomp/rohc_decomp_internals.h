@@ -151,6 +151,18 @@ struct rohc_decomp
 
 
 /**
+ * @brief The different correction algorithms available in case of CRC failure
+ */
+typedef enum
+{
+	ROHC_DECOMP_CRC_CORR_SN_NONE    = 0, /**< No correction */
+	ROHC_DECOMP_CRC_CORR_SN_WRAP    = 1, /**< Correction of SN wraparound */
+	ROHC_DECOMP_CRC_CORR_SN_UPDATES = 2, /**< Correction of incorrect SN updates */
+
+} rohc_decomp_crc_corr_t;
+
+
+/**
  * @brief The ROHC decompression context
  */
 struct rohc_decomp_ctxt
@@ -255,6 +267,20 @@ struct rohc_decomp_profile
 	uint32_t (*get_sn)(const struct rohc_decomp_ctxt *const context);
 };
 
+
+bool rohc_decomp_check_ir_crc(const struct rohc_decomp *const decomp,
+                              const struct rohc_decomp_ctxt *const context,
+                              const unsigned char *const rohc_hdr,
+                              const size_t rohc_hdr_len,
+                              const size_t add_cid_len,
+                              const size_t large_cid_len,
+                              const uint8_t crc_packet)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+
+void rohc_decomp_stats_add_success(struct rohc_decomp_ctxt *const context,
+                                   const size_t comp_hdr_len,
+                                   const size_t uncomp_hdr_len)
+	__attribute__((nonnull(1)));
 
 #endif
 

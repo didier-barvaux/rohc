@@ -26,6 +26,7 @@
 #define ROHC_UTILS_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 
 /** Get the max value of the 2 given */
@@ -36,6 +37,10 @@
 #define rohc_min(value1, value2) \
 	( ((value1) <= (value2)) ? (value1) : (value2) )
 
+
+static inline unsigned int rohc_b2u(const bool boolean)
+	__attribute__((warn_unused_result, const));
+
 uint32_t rohc_ntoh32(const uint32_t net32)
 	__attribute__((warn_unused_result, const));
 uint16_t rohc_ntoh16(const uint16_t net16)
@@ -44,6 +49,20 @@ uint32_t rohc_hton32(const uint32_t host32)
 	__attribute__((warn_unused_result, const));
 uint16_t rohc_hton16(const uint16_t host16)
 	__attribute__((warn_unused_result, const));
+
+
+/**
+ * @brief Convert the given boolean value to one unsigned integer
+ *
+ * true is converted to 1 ; false is converted to 0
+ *
+ * @param boolean  The boolean value to convert
+ * @return         The converted unsigned integer value
+ */
+static inline unsigned int rohc_b2u(const bool boolean)
+{
+	return (boolean ? 1 : 0);
+}
 
 #endif
 

@@ -129,13 +129,13 @@ struct ts_sc_decomp * d_create_sc(rohc_trace_callback2_t trace_cb,
 	ts_sc->new_ts_scaled = 0;
 	ts_sc->new_ts_offset = 0;
 
-	ts_sc->lsb_ts_scaled = rohc_lsb_new(ROHC_LSB_SHIFT_RTP_TS, 32);
+	ts_sc->lsb_ts_scaled = rohc_lsb_new(32);
 	if(ts_sc->lsb_ts_scaled == NULL)
 	{
 		goto free_context;
 	}
 
-	ts_sc->lsb_ts_unscaled = rohc_lsb_new(ROHC_LSB_SHIFT_RTP_TS, 32);
+	ts_sc->lsb_ts_unscaled = rohc_lsb_new(32);
 	if(ts_sc->lsb_ts_unscaled == NULL)
 	{
 		goto free_lsb_ts_scaled;
