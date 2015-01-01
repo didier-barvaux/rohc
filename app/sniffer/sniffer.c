@@ -209,6 +209,9 @@ static bool is_daemon;
 /** Whether the application runs in verbose mode or not */
 static bool is_verbose;
 
+/** Whether the application prints stats at regular interval of time or not */
+static bool do_print_stat;
+
 /** The PCAP dumpers */
 static pcap_dumper_t *sniffer_dumpers[ROHC_LARGE_CID_MAX + 1] = { 0 };
 
@@ -225,7 +228,7 @@ static int last_traces_first;
 static int last_traces_last;
 
 /** Whether to print traces on stderr or not */
-static bool do_print_stderr;
+static bool do_print_stderr = true;
 
 /** Print a trace in syslog and eventually on stderr */
 #define SNIFFER_LOG(prio, format, ...) \
@@ -272,6 +275,8 @@ int main(int argc, char *argv[])
 
 	/* set to quiet mode by default */
 	is_verbose = false;
+	/* disable stat printing by default */
+	do_print_stat = false;
 	/* disable daemon mode by default */
 	is_daemon = false;
 
@@ -324,6 +329,11 @@ int main(int argc, char *argv[])
 		{
 			/* enable verbose mode */
 			is_verbose = true;
+		}
+		else if(!strcmp(*argv, "--stat"))
+		{
+			/* enable stat mode */
+			do_print_stat = true;
 		}
 		else if(!strcmp(*argv, "--daemon") || !strcmp(*argv, "-d"))
 		{
@@ -566,6 +576,7 @@ static void usage(void)
 	       "      --disable PROFILE   A ROHC profile to disable\n"
 	       "                          (may be specified several times)\n"
 	       "      --verbose           Make the test more verbose\n"
+	       "      --stat              Print statistics at regular interval of time\n"
 	       "\n"
 	       "Examples:\n"
 	       "  rohc_sniffer smallcid eth0          compress traffic from eth0\n"
@@ -1031,6 +1042,16 @@ static bool sniff(const rohc_cid_type_t cid_type,
 			}
 			printf("packet #%lu", sniffer_stats.total_packets);
 			fflush(stdout);
+
+			if(do_print_stat && (sniffer_stats.total_packets % 1000) == 0)
+			{
+				printf("\n\n");
+				fprintf(stderr, "================================================\n");
+				sniffer_print_stats(SIGUSR1);
+				fprintf(stderr, "================================================\n");
+				fprintf(stderr, "\n");
+				fflush(stderr);
+			}
 		}
 
 		/* compress & decompress from compressor to decompressor */
@@ -1678,7 +1699,7 @@ static void print_rohc_traces(void *const priv_ctxt __attribute__((unused)),
 	if(level >= ROHC_TRACE_WARNING || is_verbose)
 	{
 		va_list args;
-		if(do_print_stderr)
+		if(is_verbose)
 		{
 			fprintf(stdout, "[%s] ", level_descrs[level]);
 			va_start(args, format);
