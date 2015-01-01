@@ -60,7 +60,7 @@ static unsigned long compute_eta(const struct timespec ts_begin,
 	__attribute__((warn_unused_result));
 static void print_time(const char *const descr, const unsigned long sec)
 	__attribute__((nonnull(1)));
-static bool now(struct timespec *const now)
+static bool get_ts_now(struct timespec *const now)
 	__attribute__((warn_unused_result, nonnull(1)));
 
 
@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
 	                                   ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1));
 
 	/* get timestamp at the beginning of the test */
-	assert(now(&ts_begin));
+	assert(get_ts_now(&ts_begin));
 
 	/* decompress many random packets in a row */
 	for(cur_iter = 1; cur_iter <= max_iter; cur_iter++)
@@ -316,7 +316,7 @@ static unsigned long compute_eta(const struct timespec ts_begin,
 {
 	struct timespec ts_now;
 
-	assert(now(&ts_now));
+	assert(get_ts_now(&ts_now));
 
 	const uint64_t interval_ns = (ts_now.tv_sec - ts_begin.tv_sec) * 1e9 +
 	                             ts_now.tv_nsec - ts_begin.tv_nsec;
@@ -351,7 +351,7 @@ static void print_time(const char *const descr, const unsigned long sec)
  *
  * @param[out] now  The current timestamp in seconds and nanoseconds
  */
-static bool now(struct timespec *const now)
+static bool get_ts_now(struct timespec *const now)
 {
 	if(clock_gettime(CLOCK_MONOTONIC_RAW, now) != 0)
 	{

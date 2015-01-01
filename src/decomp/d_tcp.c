@@ -1005,7 +1005,9 @@ static bool d_tcp_parse_ir(struct rohc_decomp_ctxt *const context,
 		goto error;
 	}
 	remain_data += dyn_chain_len;
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	remain_len -= dyn_chain_len;
+#endif
 
 	*rohc_hdr_len = remain_data - rohc_packet;
 	return true;
@@ -1073,7 +1075,9 @@ static bool d_tcp_parse_irdyn(struct rohc_decomp_ctxt *const context,
 		goto error;
 	}
 	remain_data += dyn_chain_len;
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	remain_len -= dyn_chain_len;
+#endif
 
 	*rohc_hdr_len = remain_data - rohc_packet;
 	return true;
@@ -2043,8 +2047,10 @@ static bool d_tcp_parse_CO(struct rohc_decomp_ctxt *const context,
 			rohc_decomp_warn(context, "failed to parse the irregular chain");
 			goto error;
 		}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		rohc_remain_data += irreg_chain_len;
 		rohc_remain_len -= irreg_chain_len;
+#endif
 		*rohc_hdr_len += irreg_chain_len;
 	}
 

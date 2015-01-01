@@ -148,8 +148,10 @@ int d_tcp_ts_parse(const struct rohc_decomp_ctxt *const context,
 		rohc_decomp_warn(context, "failed to parse TS echo reply");
 		goto error;
 	}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	remain_data += ret;
 	remain_len -= ret;
+#endif
 	ts_len += ret;
 
 	return ts_len;

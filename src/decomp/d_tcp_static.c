@@ -129,8 +129,10 @@ bool tcp_parse_static_chain(const struct rohc_decomp_ctxt *const context,
 	}
 	rohc_decomp_debug(context, "TCP static part is %d-byte length", ret);
 	assert(remain_len >= ((size_t) ret));
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	remain_data += ret;
 	remain_len -= ret;
+#endif
 	(*parsed_len) += ret;
 
 	return true;
@@ -191,8 +193,10 @@ static int tcp_parse_static_ip(const struct rohc_decomp_ctxt *const context,
 		ip_bits->daddr_nr = 32;
 
 		read += sizeof(ipv4_static_t);
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		remain_data += sizeof(ipv4_static_t);
 		remain_len -= sizeof(ipv4_static_t);
+#endif
 	}
 	else
 	{

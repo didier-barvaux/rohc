@@ -152,8 +152,10 @@ bool tcp_parse_irreg_chain(struct rohc_decomp_ctxt *const context,
 		goto error;
 	}
 	assert(remain_len >= (size_t) ret);
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	remain_data += ret;
 	remain_len -= ret;
+#endif
 	(*parsed_len) += ret;
 
 	return true;

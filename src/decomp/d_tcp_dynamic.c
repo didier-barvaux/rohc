@@ -113,8 +113,10 @@ bool tcp_parse_dyn_chain(const struct rohc_decomp_ctxt *const context,
 	}
 	rohc_decomp_debug(context, "TCP dynamic part is %d-byte length", ret);
 	assert(remain_len >= ((size_t) ret));
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	remain_data += ret;
 	remain_len -= ret;
+#endif
 	(*parsed_len) += ret;
 
 	return true;
@@ -199,8 +201,10 @@ static int tcp_parse_dynamic_ip(const struct rohc_decomp_ctxt *const context,
 			rohc_decomp_debug(context, "IP-ID = 0x%04x", ip_bits->id.bits);
 
 			size += sizeof(ipv4_dynamic2_t);
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 			remain_data += sizeof(ipv4_dynamic2_t);
 			remain_len -= sizeof(ipv4_dynamic2_t);
+#endif
 		}
 	}
 	else
@@ -287,9 +291,6 @@ static int tcp_parse_dynamic_ipv6_option(const struct rohc_decomp_ctxt *const co
 {
 	size_t remain_len = rohc_length;
 	size_t size = 0;
-#if 0
-	int ret;
-#endif
 
 	assert(context != NULL);
 	assert(rohc_packet != NULL);
@@ -329,6 +330,12 @@ static int tcp_parse_dynamic_ipv6_option(const struct rohc_decomp_ctxt *const co
 		}
 		case ROHC_IPPROTO_GRE:
 		{
+#if 0
+			int ret;
+#endif
+			rohc_decomp_warn(context, "GRE extension header not supported yet");
+			goto error;
+#if 0 /* TODO: handle GRE header */
 			if(opt_context->gre.c_flag != 0)
 			{
 				if(remain_len < sizeof(uint32_t))
@@ -338,14 +345,11 @@ static int tcp_parse_dynamic_ipv6_option(const struct rohc_decomp_ctxt *const co
 					                 "bytes required", remain_len);
 					goto error;
 				}
-#if 0 /* to be moved after parsing */
 				memcpy(base_header.ip_gre_opt->datas, rohc_packet + size,
 				       sizeof(uint32_t));
-#endif
 				size += sizeof(uint32_t);
 				remain_len -= sizeof(uint32_t);
 			}
-#if 0 /* to be moved after parsing */
 			ret = d_optional32(opt_context->gre.s_flag,
 			                   rohc_packet + size, remain_len,
 			                   base_header.ip_gre_opt->datas[opt_context->gre.c_flag],
@@ -360,8 +364,8 @@ static int tcp_parse_dynamic_ipv6_option(const struct rohc_decomp_ctxt *const co
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 			remain_len -= ret;
 #endif
-#endif
 			break;
+#endif
 		}
 		case ROHC_IPPROTO_MINE:
 		{

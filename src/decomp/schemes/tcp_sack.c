@@ -360,7 +360,9 @@ static int d_tcp_sack_block(const struct rohc_decomp_ctxt *const context,
 	{
 		goto error;
 	}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	remain_data += ret;
+#endif
 	remain_len -= ret;
 
 	return (data_len - remain_len);
