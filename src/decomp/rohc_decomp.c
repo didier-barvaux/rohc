@@ -115,14 +115,6 @@ static bool rohc_decomp_create_contexts(struct rohc_decomp *const decomp,
                                         const rohc_cid_t max_cid)
 	__attribute__((nonnull(1), warn_unused_result));
 
-static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
-                                     const struct rohc_buf rohc_packet,
-                                     struct rohc_buf *const uncomp_packet,
-                                     struct rohc_buf *const rcvd_feedback,
-                                     struct d_decode_data *ddata,
-                                     rohc_packet_t *const packet_type)
-	__attribute__((nonnull(1, 3, 5, 6), warn_unused_result));
-
 static const struct rohc_decomp_profile *
 	find_profile(const struct rohc_decomp *const decomp,
 	             const rohc_profile_t profile_id)
@@ -138,6 +130,14 @@ static struct rohc_decomp_ctxt *
 static void context_free(struct rohc_decomp_ctxt *const context)
 	__attribute__((nonnull(1)));
 
+static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
+                                     const struct rohc_buf rohc_packet,
+                                     struct rohc_buf *const uncomp_packet,
+                                     struct rohc_buf *const rcvd_feedback,
+                                     struct d_decode_data *ddata,
+                                     rohc_packet_t *const packet_type)
+	__attribute__((nonnull(1, 3, 5, 6), warn_unused_result));
+
 static bool rohc_decomp_decode_cid(struct rohc_decomp *decomp,
                                    const unsigned char *packet,
                                    unsigned int len,
@@ -146,6 +146,35 @@ static bool rohc_decomp_decode_cid(struct rohc_decomp *decomp,
 
 static void rohc_decomp_parse_padding(const struct rohc_decomp *const decomp,
                                       struct rohc_buf *const packet)
+	__attribute__((nonnull(1, 2)));
+
+static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
+                                            struct rohc_decomp_ctxt *const context,
+                                            const struct rohc_buf rohc_packet,
+                                            const size_t add_cid_len,
+                                            const size_t large_cid_len,
+                                            struct rohc_buf *const uncomp_packet,
+                                            rohc_packet_t *const packet_type)
+	__attribute__((warn_unused_result, nonnull(1, 2, 6, 7)));
+
+static bool rohc_decomp_check_ir_crc(const struct rohc_decomp *const decomp,
+                                     const struct rohc_decomp_ctxt *const context,
+                                     const unsigned char *const rohc_hdr,
+                                     const size_t rohc_hdr_len,
+                                     const size_t add_cid_len,
+                                     const size_t large_cid_len,
+                                     const uint8_t crc_packet)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+
+static void rohc_decomp_stats_add_success(struct rohc_decomp_ctxt *const context,
+                                          const size_t comp_hdr_len,
+                                          const size_t uncomp_hdr_len)
+	__attribute__((nonnull(1)));
+
+static void rohc_decomp_update_context(struct rohc_decomp_ctxt *const context,
+	                                    const void *const decoded_values,
+	                                    const size_t payload_len,
+	                                    const struct rohc_ts pkt_arrival_time)
 	__attribute__((nonnull(1, 2)));
 
 /* feedback-related functions */
@@ -243,6 +272,16 @@ static struct rohc_decomp_ctxt * context_create(struct rohc_decomp *decomp,
 	context->do_change_mode = false;
 	context->curval = 0;
 
+	/* init the context for packet/context corrections upon CRC failures */
+	/* at the beginning, no attempt to correct CRC failure */
+	context->crc_corr.algo = ROHC_DECOMP_CRC_CORR_SN_NONE;
+	context->crc_corr.counter = 0;
+	/* arrival times for correction upon CRC failure */
+	memset(context->crc_corr.arrival_times, 0,
+	       sizeof(struct rohc_ts) * ROHC_MAX_ARRIVAL_TIMES);
+	context->crc_corr.arrival_times_nr = 0;
+	context->crc_corr.arrival_times_index = 0;
+
 	/* init some statistics */
 	context->num_recv_packets = 0;
 	context->total_uncompressed_size = 0;
@@ -259,13 +298,13 @@ static struct rohc_decomp_ctxt * context_create(struct rohc_decomp *decomp,
 	context->first_used = arrival_time.sec;
 	context->latest_used = arrival_time.sec;
 
-	/* profile-specific data (created at the every end so that everything
-	   is initialized in context first) */
-	context->specific = profile->new_context(context);
-	if(context->specific == NULL)
+	/* create the profile-specific parts of the decompression context (performed
+	 * at the every end so that everything is initialized in context first) */
+	if(!profile->new_context(context, &context->persist_ctxt, &context->volat_ctxt))
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, profile->id,
-		             "cannot allocate profile-specific data");
+		             "failed to initialize the profile-specific parts of the "
+		             "decompression context");
 		goto destroy_context;
 	}
 
@@ -293,13 +332,12 @@ static void context_free(struct rohc_decomp_ctxt *const context)
 {
 	assert(context->decompressor != NULL);
 	assert(context->profile != NULL);
-	assert(context->specific != NULL);
 
 	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 	           "free context with CID %zu", context->cid);
 
 	/* destroy the profile-specific data */
-	context->profile->free_context(context->specific);
+	context->profile->free_context(context->persist_ctxt, &context->volat_ctxt);
 
 	/* decompressor got one more context */
 	assert(context->decompressor->num_contexts_used > 0);
@@ -1243,9 +1281,9 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 	assert((*packet_type) == ROHC_PACKET_IR || !is_new_context);
 
 	/* decode the packet thanks to the profile-specific routines */
-	status = profile->decode(decomp, ddata->active, remain_rohc_data,
-	                         ddata->addcidUsed, ddata->large_cid_size,
-	                         uncomp_packet, packet_type);
+	status = rohc_decomp_decode_pkt(decomp, ddata->active, remain_rohc_data,
+	                                ddata->addcidUsed, ddata->large_cid_size,
+	                                uncomp_packet, packet_type);
 	if(status != ROHC_STATUS_OK)
 	{
 		/* decompression failed, free ressources if necessary */
@@ -1293,6 +1331,345 @@ error_no_context:
 
 
 /**
+ * @brief Decode one ROHC packet
+ *
+ * Steps:
+ *  \li A. Parse the ROHC header
+ *  \li B. For IR and IR-DYN packet, check for correct compressed header (CRC)
+ *  \li C. Decode extracted bits
+ *  \li D. Build uncompressed headers (and check for correct decompression
+ *         for UO* packets)
+ *  \li E. Copy the payload (if any)
+ *  \li F. Update the compression context
+ *
+ * Steps C and D may be repeated if packet or context repair is attempted
+ * upon CRC failure.
+ *
+ * @param decomp               The ROHC decompressor
+ * @param context              The decompression context
+ * @param rohc_packet          The ROHC packet to decode
+ * @param add_cid_len          The length of the optional Add-CID field
+ * @param large_cid_len        The length of the optional large CID field
+ * @param[out] uncomp_packet   The uncompressed packet
+ * @param[in,out] packet_type  IN:  The type of the ROHC packet to parse
+ *                             OUT: The type of the parsed ROHC packet
+ * @return                     ROHC_STATUS_OK if packet is successfully decoded,
+ *                             ROHC_STATUS_MALFORMED if packet is malformed,
+ *                             ROHC_STATUS_BAD_CRC if a CRC error occurs,
+ *                             ROHC_STATUS_ERROR if an error occurs
+ */
+static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
+                                            struct rohc_decomp_ctxt *const context,
+                                            const struct rohc_buf rohc_packet,
+                                            const size_t add_cid_len,
+                                            const size_t large_cid_len,
+                                            struct rohc_buf *const uncomp_packet,
+                                            rohc_packet_t *const packet_type)
+{
+	const struct rohc_decomp_profile *const profile = context->profile;
+	struct rohc_decomp_crc *const extr_crc_bits = &context->volat_ctxt.crc;
+	void *const extr_bits = context->volat_ctxt.extr_bits;
+	void *const decoded_values = context->volat_ctxt.decoded_values;
+
+	/* length of the parsed ROHC header and of the uncompressed headers */
+	size_t rohc_hdr_len;
+	size_t uncomp_hdr_len;
+
+	/* ROHC and uncompressed payloads (they are the same) */
+	const uint8_t *payload_data;
+	size_t payload_len;
+
+	/* Whether to attempt packet correction or not */
+	bool try_decoding_again;
+
+	/* helper variables for values returned by functions */
+	bool parsing_ok;
+	bool decode_ok;
+	rohc_status_t build_ret;
+
+	assert(add_cid_len == 0 || add_cid_len == 1);
+	assert(large_cid_len <= 2);
+	assert((*packet_type) != ROHC_PACKET_UNKNOWN);
+
+	/* A. Parse the ROHC header */
+
+	rohc_decomp_debug(context, "parse packet type '%s' (%d)",
+	                  rohc_get_packet_descr(*packet_type), *packet_type);
+
+	/* let's parse the packet! */
+	parsing_ok = profile->parse_pkt(context, rohc_packet, large_cid_len,
+	                                packet_type, extr_crc_bits, extr_bits,
+	                                &rohc_hdr_len);
+	if(!parsing_ok)
+	{
+		rohc_decomp_warn(context, "failed to parse the %s header",
+		                 rohc_get_packet_descr(*packet_type));
+		goto error_malformed;
+	}
+
+	/* ROHC base header and its optional extension is now fully parsed,
+	 * remaining data is the payload */
+	payload_data = rohc_buf_data(rohc_packet) + rohc_hdr_len;
+	payload_len = rohc_packet.len - rohc_hdr_len;
+	rohc_decomp_debug(context, "ROHC payload (length = %zu bytes) starts at "
+	                  "offset %zu", payload_len, rohc_hdr_len);
+
+
+	/*
+	 * B. Check for correct compressed header (CRC)
+	 *
+	 * Use the CRC on compressed headers to check whether IR header was
+	 * correctly received. The optional Add-CID is part of the CRC.
+	 */
+
+	if((*packet_type) == ROHC_PACKET_IR || (*packet_type) == ROHC_PACKET_IR_DYN)
+	{
+		bool crc_ok;
+
+		assert(extr_crc_bits->type == ROHC_CRC_TYPE_NONE);
+		assert(extr_crc_bits->bits_nr == 8);
+
+		crc_ok = rohc_decomp_check_ir_crc(decomp, context,
+		                                  rohc_buf_data(rohc_packet) - add_cid_len,
+		                                  add_cid_len + rohc_hdr_len, large_cid_len,
+		                                  add_cid_len, extr_crc_bits->bits);
+		if(!crc_ok)
+		{
+			rohc_decomp_warn(context, "CRC detected a transmission failure for "
+			                 "%s packet", rohc_get_packet_descr(*packet_type));
+#if ROHC_EXTRA_DEBUG == 1
+			rohc_dump_buf(decomp->trace_callback, decomp->trace_callback_priv,
+			              ROHC_TRACE_DECOMP, ROHC_TRACE_WARNING, "ROHC header",
+			              rohc_buf_data(rohc_packet) - add_cid_len,
+			              rohc_hdr_len + add_cid_len);
+#endif
+			goto error_crc;
+		}
+
+		/* reset the correction attempt */
+		context->crc_corr.counter = 0;
+	}
+
+
+	try_decoding_again = false;
+	do
+	{
+		if(try_decoding_again)
+		{
+			rohc_decomp_warn(context, "CID %zu: CRC repair: try decoding packet "
+			                 "again with new assumptions", context->cid);
+		}
+
+
+		/* C. Decode extracted bits
+		 *
+		 * All bits are now extracted from the packet, let's decode them.
+		 */
+
+		decode_ok =
+			profile->decode_bits(context, extr_bits, payload_len, decoded_values);
+		if(!decode_ok)
+		{
+			rohc_decomp_warn(context, "failed to decode values from bits "
+			                 "extracted from ROHC header");
+			goto error;
+		}
+
+
+		/* D. Build uncompressed headers & check for correct decompression
+		 *
+		 * All fields are now decoded, let's build the uncompressed headers.
+		 *
+		 * Use the CRC on decompressed headers to check whether decompression was
+		 * correct.
+		 */
+
+		/* build the uncompressed headers */
+		build_ret = profile->build_hdrs(decomp, context, *packet_type, extr_crc_bits,
+		                                decoded_values, payload_len,
+		                                uncomp_packet, &uncomp_hdr_len);
+		if(build_ret == ROHC_STATUS_OK)
+		{
+			/* uncompressed headers successfully built and CRC is correct,
+			 * no need to try decoding with different values */
+			rohc_buf_pull(uncomp_packet, uncomp_hdr_len);
+
+			if(context->crc_corr.algo == ROHC_DECOMP_CRC_CORR_SN_NONE)
+			{
+				rohc_decomp_debug(context, "CRC is correct");
+			}
+			else
+			{
+				rohc_decomp_debug(context, "CID %zu: CRC repair: CRC is correct",
+				                  context->cid);
+				try_decoding_again = false;
+			}
+		}
+		else if(build_ret == ROHC_STATUS_OUTPUT_TOO_SMALL)
+		{
+			rohc_decomp_warn(context, "CID %zu: failed to build uncompressed "
+			                 "headers: output buffer too small", context->cid);
+			goto error_output_too_small;
+		}
+		else if(build_ret != ROHC_STATUS_BAD_CRC)
+		{
+			/* uncompressed headers cannot be built, stop decoding */
+			rohc_decomp_warn(context, "CID %zu: failed to build uncompressed "
+			                 "headers", context->cid);
+#if ROHC_EXTRA_DEBUG == 1
+			rohc_dump_packet(decomp->trace_callback, decomp->trace_callback_priv,
+			                 ROHC_TRACE_DECOMP, ROHC_TRACE_WARNING,
+			                 "compressed headers", rohc_packet);
+#endif
+			goto error;
+		}
+		else
+		{
+			/* uncompressed headers successfully built but CRC is incorrect,
+			 * try decoding with different values (repair) */
+
+			/* CRC for IR and IR-DYN packets checked before, so cannot fail here */
+			assert((*packet_type) != ROHC_PACKET_IR);
+			assert((*packet_type) != ROHC_PACKET_IR_DYN);
+
+			rohc_decomp_warn(context, "CID %zu: failed to build uncompressed "
+			                 "headers (CRC failure)", context->cid);
+
+			/* attempt a context/packet repair */
+			try_decoding_again =
+				profile->attempt_repair(decomp, context, rohc_packet.time,
+				                        &context->crc_corr, extr_bits);
+
+			/* report CRC failure if attempt is not possible */
+			if(!try_decoding_again)
+			{
+				/* uncompressed headers successfully built, CRC is incorrect, repair
+				 * was disabled or attempted without any success, so give up */
+				rohc_decomp_warn(context, "CID %zu: failed to build uncompressed "
+				                 "headers (CRC failure)", context->cid);
+#if ROHC_EXTRA_DEBUG == 1
+				rohc_dump_packet(decomp->trace_callback, decomp->trace_callback_priv,
+				                 ROHC_TRACE_DECOMP, ROHC_TRACE_WARNING,
+				                 "compressed headers", rohc_packet);
+#endif
+				goto error_crc;
+			}
+		}
+	}
+	while(try_decoding_again);
+
+	/* after CRC failure, if the SN value seems to be correctly guessed, we must
+	 * wait for 3 CRC-valid packets before the correction is approved. Two
+	 * packets are therefore thrown away. */
+	if(context->crc_corr.algo != ROHC_DECOMP_CRC_CORR_SN_NONE)
+	{
+		if(context->crc_corr.counter > 1)
+		{
+			/* update context with decoded values even if we drop the packet */
+			rohc_decomp_update_context(context, decoded_values, payload_len,
+			                           rohc_packet.time);
+
+			context->crc_corr.counter--;
+			rohc_decomp_warn(context, "CID %zu: CRC repair: throw away packet, "
+			                 "still %zu CRC-valid packets required",
+			                 context->cid, context->crc_corr.counter);
+
+			goto error_crc;
+		}
+		else if(context->crc_corr.counter == 1)
+		{
+			rohc_decomp_warn(context, "CID %zu: CRC repair: correction is "
+			                 "successful, keep packet", context->cid);
+			context->corrected_crc_failures++;
+			switch(context->crc_corr.algo)
+			{
+				case ROHC_DECOMP_CRC_CORR_SN_WRAP:
+					context->corrected_sn_wraparounds++;
+					break;
+				case ROHC_DECOMP_CRC_CORR_SN_UPDATES:
+					context->corrected_wrong_sn_updates++;
+					break;
+				case ROHC_DECOMP_CRC_CORR_SN_NONE:
+				default:
+					rohc_error(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+					           "CID %zu: CRC repair: unsupported repair algorithm %d",
+					           context->cid, context->crc_corr.algo);
+					assert(0);
+					goto error;
+			}
+			context->crc_corr.algo = ROHC_DECOMP_CRC_CORR_SN_NONE;
+			context->crc_corr.counter--;
+		}
+	}
+
+
+	/* E. Copy the payload (if any) */
+
+	if((rohc_hdr_len + payload_len) != rohc_packet.len)
+	{
+		rohc_decomp_warn(context, "ROHC %s header (%zu bytes) and payload "
+		                 "(%zu bytes) do not match the full ROHC packet "
+		                 "(%zu bytes)", rohc_get_packet_descr(*packet_type),
+		                 rohc_hdr_len, payload_len, rohc_packet.len);
+		goto error;
+	}
+	if(rohc_buf_avail_len(*uncomp_packet) < payload_len)
+	{
+		rohc_decomp_warn(context, "uncompressed packet too small (%zu bytes "
+		                 "max) for the %zu-byte payload",
+		                 rohc_buf_avail_len(*uncomp_packet), payload_len);
+		goto error_output_too_small;
+	}
+	if(payload_len != 0)
+	{
+		rohc_buf_append(uncomp_packet, payload_data, payload_len);
+		rohc_buf_pull(uncomp_packet, payload_len);
+	}
+	/* unhide the uncompressed headers and payload */
+	rohc_buf_push(uncomp_packet, uncomp_hdr_len + payload_len);
+	rohc_decomp_debug(context, "uncompressed packet length = %zu bytes",
+	                  uncomp_packet->len);
+
+
+	/* F. Update the compression context
+	 *
+	 * Once CRC check is done, update the compression context with the values
+	 * that were decoded earlier.
+	 *
+	 * TODO: check what fields shall be updated in the context
+	 */
+
+	/* we are either already in full context state or we can transit
+	 * through it */
+	if(context->state != ROHC_DECOMP_STATE_FC)
+	{
+		rohc_decomp_debug(context, "change from state %d to state %d",
+		                  context->state, ROHC_DECOMP_STATE_FC);
+		context->state = ROHC_DECOMP_STATE_FC;
+	}
+
+	/* update context with decoded values */
+	rohc_decomp_update_context(context, decoded_values, payload_len,
+	                           rohc_packet.time);
+
+	/* update statistics */
+	rohc_decomp_stats_add_success(context, rohc_hdr_len, uncomp_hdr_len);
+
+	/* decompression is successful */
+	return ROHC_STATUS_OK;
+
+error:
+	return ROHC_STATUS_ERROR;
+error_output_too_small:
+	return ROHC_STATUS_OUTPUT_TOO_SMALL;
+error_crc:
+	return ROHC_STATUS_BAD_CRC;
+error_malformed:
+	return ROHC_STATUS_MALFORMED;
+}
+
+
+/**
  * @brief Check whether the CRC on IR or IR-DYN header is correct or not
  *
  * The CRC for IR/IR-DYN headers is always CRC-8. It is computed on the
@@ -1307,14 +1684,15 @@ error_no_context:
  * @param crc_packet      The CRC extracted from the ROHC header
  * @return                true if the CRC is correct, false otherwise
  */
-bool rohc_decomp_check_ir_crc(const struct rohc_decomp *const decomp,
-                              const struct rohc_decomp_ctxt *const context,
-                              const unsigned char *const rohc_hdr,
-                              const size_t rohc_hdr_len,
-                              const size_t add_cid_len,
-                              const size_t large_cid_len,
-                              const uint8_t crc_packet)
+static bool rohc_decomp_check_ir_crc(const struct rohc_decomp *const decomp,
+                                     const struct rohc_decomp_ctxt *const context,
+                                     const unsigned char *const rohc_hdr,
+                                     const size_t rohc_hdr_len,
+                                     const size_t add_cid_len,
+                                     const size_t large_cid_len,
+                                     const uint8_t crc_packet)
 {
+	const size_t rohc_hdr_full_len = add_cid_len + large_cid_len + rohc_hdr_len;
 	const unsigned char *crc_table;
 	const rohc_crc_type_t crc_type = ROHC_CRC_TYPE_8;
 	const unsigned char crc_zero[] = { 0x00 };
@@ -1322,7 +1700,7 @@ bool rohc_decomp_check_ir_crc(const struct rohc_decomp *const decomp,
 
 	assert(decomp != NULL);
 	assert(rohc_hdr != NULL);
-	assert(rohc_hdr_len > 3);
+	assert(rohc_hdr_len >= (add_cid_len + 2 + large_cid_len + 1));
 
 	crc_table = decomp->crc_table_8;
 
@@ -1332,17 +1710,22 @@ bool rohc_decomp_check_ir_crc(const struct rohc_decomp *const decomp,
 	                         add_cid_len + 2 + large_cid_len,
 	                         CRC_INIT_8, crc_table);
 
-	/* zeroed CRC field */
-	crc_comp = crc_calculate(crc_type, crc_zero, 1, crc_comp, crc_table);
+	/* all profiles but the Uncompressed profile compute their CRC through the
+	 * zeroed CRC field and the rest of the ROHC header */
+	if(context->profile->id != ROHC_PROFILE_UNCOMPRESSED)
+	{
+		/* zeroed CRC field */
+		crc_comp = crc_calculate(crc_type, crc_zero, 1, crc_comp, crc_table);
 
-	/* ROHC header after CRC field */
-	crc_comp = crc_calculate(crc_type,
-	                         rohc_hdr + add_cid_len + 2 + large_cid_len + 1,
-	                         rohc_hdr_len - add_cid_len - 2 - large_cid_len - 1,
-	                         crc_comp, crc_table);
+		/* ROHC header after CRC field */
+		crc_comp = crc_calculate(crc_type,
+		                         rohc_hdr + add_cid_len + 2 + large_cid_len + 1,
+		                         rohc_hdr_len - add_cid_len - 2 - large_cid_len - 1,
+		                         crc_comp, crc_table);
+	}
 
 	rohc_decomp_debug(context, "CRC-%d on compressed %zu-byte ROHC header = "
-	                  "0x%x", crc_type, rohc_hdr_len, crc_comp);
+	                  "0x%x", crc_type, rohc_hdr_full_len, crc_comp);
 
 	/* does the computed CRC match the one in packet? */
 	if(crc_comp != crc_packet)
@@ -1357,6 +1740,33 @@ bool rohc_decomp_check_ir_crc(const struct rohc_decomp *const decomp,
 
 error:
 	return false;
+}
+
+
+/**
+ * @brief Update context with decoded values
+ *
+ * @param context            The decompression context
+ * @param decoded            The decoded values to update in the context
+ * @param payload_len        The length of the packet payload
+ * @param pkt_arrival_time   The arrival time of the decoded ROHC packet
+ */
+static void rohc_decomp_update_context(struct rohc_decomp_ctxt *const context,
+	                                    const void *const decoded,
+	                                    const size_t payload_len,
+	                                    const struct rohc_ts pkt_arrival_time)
+{
+	struct rohc_decomp_crc_corr_ctxt *const crc_corr = &context->crc_corr;
+
+	/* call the profile-specific callback */
+	context->profile->update_ctxt(context, decoded, payload_len);
+
+	/* update arrival time */
+	crc_corr->arrival_times[crc_corr->arrival_times_index] = pkt_arrival_time;
+	crc_corr->arrival_times_index =
+		(crc_corr->arrival_times_index + 1) % ROHC_MAX_ARRIVAL_TIMES;
+	crc_corr->arrival_times_nr =
+		rohc_min(crc_corr->arrival_times_nr + 1, ROHC_MAX_ARRIVAL_TIMES);
 }
 
 
@@ -1728,9 +2138,9 @@ static void d_operation_mode_feedback(struct rohc_decomp *decomp,
  * @param comp_hdr_len    The length (in bytes) of the compressed header
  * @param uncomp_hdr_len  The length (in bytes) of the uncompressed header
  */
-void rohc_decomp_stats_add_success(struct rohc_decomp_ctxt *const context,
-                                   const size_t comp_hdr_len,
-                                   const size_t uncomp_hdr_len)
+static void rohc_decomp_stats_add_success(struct rohc_decomp_ctxt *const context,
+                                          const size_t comp_hdr_len,
+                                          const size_t uncomp_hdr_len)
 {
 	context->header_compressed_size += comp_hdr_len;
 	context->header_uncompressed_size += uncomp_hdr_len;

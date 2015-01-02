@@ -36,7 +36,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-bool tcp_parse_irreg_chain(struct rohc_decomp_ctxt *const context,
+bool tcp_parse_irreg_chain(const struct rohc_decomp_ctxt *const context,
                            const uint8_t *const rohc_packet,
                            const size_t rohc_length,
                            const tcp_ip_id_behavior_t innermost_ip_id_behavior,

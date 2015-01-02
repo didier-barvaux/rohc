@@ -72,10 +72,6 @@ const char * rohc_get_packet_descr(const rohc_packet_t packet_type)
 		case ROHC_PACKET_UOR_2_TS:
 			return "UOR-2-TS";
 
-		case ROHC_PACKET_CCE:
-			return "UDP-Lite/CCE";
-		case ROHC_PACKET_CCE_OFF:
-			return "UDP-Lite/CCE(OFF)";
 		case ROHC_PACKET_NORMAL:
 			return "Uncomp/Normal";
 

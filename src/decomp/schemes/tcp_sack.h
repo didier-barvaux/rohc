@@ -39,7 +39,6 @@ struct d_tcp_opt_sack
 {
 	sack_block_t blocks[TCP_SACK_BLOCKS_MAX_NR]; /**< The SACK blocks */
 	size_t blocks_nr;                            /**< The number of SACK blocks */
-	size_t uncomp_opt_offset;                    /**< The uncompressed SACK option */
 };
 
 int d_tcp_sack_size(const struct rohc_decomp_ctxt *const context,

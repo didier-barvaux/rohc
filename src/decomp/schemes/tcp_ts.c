@@ -35,13 +35,6 @@
 #endif
 
 
-static int d_tcp_ts_lsb_parse(const struct rohc_decomp_ctxt *const context,
-                              const uint8_t *const data,
-                              const size_t data_len,
-                              struct rohc_lsb_field32 *const ts_field)
-	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
-
-
 /**
  * @brief Calculate the size of TimeStamp compressed TCP option
  *
@@ -109,59 +102,6 @@ error:
 
 
 /**
- * @brief Parse the TCP TimeStamp (TS) option
- *
- * See RFC4996 page 65
- *
- * @param context      The decompression context
- * @param data         The data to decode
- * @param data_len     The length of the data to decode
- * @param[out] opt_ts  The information of TS option field extracted from packet
- * @return             The number of data bytes parsed,
- *                     -1 if data is malformed
- */
-int d_tcp_ts_parse(const struct rohc_decomp_ctxt *const context,
-                   const uint8_t *const data,
-                   const size_t data_len,
-                   struct d_tcp_opt_ts *const opt_ts)
-{
-	const uint8_t *remain_data = data;
-	size_t remain_len = data_len;
-	size_t ts_len = 0;
-	int ret;
-
-	/* parse TS echo request */
-	ret = d_tcp_ts_lsb_parse(context, remain_data, remain_len, &opt_ts->req);
-	if(ret < 0)
-	{
-		rohc_decomp_warn(context, "failed to parse TS echo request");
-		goto error;
-	}
-	remain_data += ret;
-	remain_len -= ret;
-	ts_len += ret;
-
-	/* parse TS echo reply */
-	ret = d_tcp_ts_lsb_parse(context, remain_data, remain_len, &opt_ts->rep);
-	if(ret < 0)
-	{
-		rohc_decomp_warn(context, "failed to parse TS echo reply");
-		goto error;
-	}
-#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
-	remain_data += ret;
-	remain_len -= ret;
-#endif
-	ts_len += ret;
-
-	return ts_len;
-
-error:
-	return -1;
-}
-
-
-/**
  * @brief Parse the LSBs bits of one of the TS echo request/reply fields
  *
  * See RFC4996 page 65
@@ -173,10 +113,10 @@ error:
  * @return               The number of data bytes parsed,
  *                       -1 if data is malformed
  */
-static int d_tcp_ts_lsb_parse(const struct rohc_decomp_ctxt *const context,
-                              const uint8_t *const data,
-                              const size_t data_len,
-                              struct rohc_lsb_field32 *const ts_field)
+int d_tcp_ts_lsb_parse(const struct rohc_decomp_ctxt *const context,
+                       const uint8_t *const data,
+                       const size_t data_len,
+                       struct rohc_lsb_field32 *const ts_field)
 {
 	const uint8_t *remain_data;
 	size_t remain_len;

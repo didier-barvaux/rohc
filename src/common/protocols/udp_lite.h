@@ -29,5 +29,13 @@
 
 #include "protocols/udp.h"
 
+typedef enum /* TODO: doxygen */
+{
+	ROHC_PACKET_CCE       = 0,
+	ROHC_PACKET_CCE_ON    = 1,
+	ROHC_PACKET_CCE_OFF   = 2,
+	ROHC_PACKET_CCE_OTHER = 3,
+} rohc_packet_cce_t;
+
 #endif
 

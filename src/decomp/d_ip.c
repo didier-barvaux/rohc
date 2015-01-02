@@ -40,8 +40,14 @@
  * Private function prototypes.
  */
 
-static void d_ip_destroy(void *const context)
-	__attribute__((nonnull(1)));
+static bool d_ip_create(const struct rohc_decomp_ctxt *const context,
+                        struct rohc_decomp_rfc3095_ctxt **const persist_ctxt,
+                        struct rohc_decomp_volat_ctxt *const volat_ctxt)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+
+static void d_ip_destroy(struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt,
+                         const struct rohc_decomp_volat_ctxt *const volat_ctxt)
+	__attribute__((nonnull(1, 2)));
 
 
 /**
@@ -50,10 +56,15 @@ static void d_ip_destroy(void *const context)
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param context  The decompression context
- * @return         The newly-created IP decompression context
+ * @param context            The decompression context
+ * @param[out] persist_ctxt  The persistent part of the decompression context
+ * @param[out] volat_ctxt    The volatile part of the decompression context
+ * @return                   true if the UDP context was successfully created,
+ *                           false if a problem occurred
  */
-void * d_ip_create(const struct rohc_decomp_ctxt *const context)
+static bool d_ip_create(const struct rohc_decomp_ctxt *const context,
+                        struct rohc_decomp_rfc3095_ctxt **const persist_ctxt,
+                        struct rohc_decomp_volat_ctxt *const volat_ctxt)
 {
 	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 
@@ -62,18 +73,16 @@ void * d_ip_create(const struct rohc_decomp_ctxt *const context)
 	assert(context->profile != NULL);
 
 	/* create the generic context */
-	rfc3095_ctxt =
-		rohc_decomp_rfc3095_create(context,
-		                           context->decompressor->trace_callback,
-		                           context->decompressor->trace_callback_priv,
-		                           context->profile->id);
-	if(rfc3095_ctxt == NULL)
+	if(!rohc_decomp_rfc3095_create(context, persist_ctxt, volat_ctxt,
+	                               context->decompressor->trace_callback,
+	                               context->decompressor->trace_callback_priv,
+	                               context->profile->id))
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "failed to create the generic decompression context");
-
 		goto quit;
 	}
+	rfc3095_ctxt = *persist_ctxt;
 	rfc3095_ctxt->specific = NULL;
 
 	/* create the LSB decoding context for SN */
@@ -90,12 +99,12 @@ void * d_ip_create(const struct rohc_decomp_ctxt *const context)
 	rfc3095_ctxt->parse_dyn_next_hdr = ip_parse_dynamic_ip;
 	rfc3095_ctxt->parse_ext3 = ip_parse_ext3;
 
-	return rfc3095_ctxt;
+	return true;
 
 free_context:
 	zfree(rfc3095_ctxt);
 quit:
-	return NULL;
+	return false;
 }
 
 
@@ -105,17 +114,14 @@ quit:
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param context The compression context
+ * @param rfc3095_ctxt  The persistent decompression context for the RFC3095 profiles
+ * @param volat_ctxt    The volatile decompression context
  */
-void d_ip_destroy(void *const context)
+static void d_ip_destroy(struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt,
+                         const struct rohc_decomp_volat_ctxt *const volat_ctxt)
 {
-	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
-
-	assert(context != NULL);
-	rfc3095_ctxt = (struct rohc_decomp_rfc3095_ctxt *) context;
-
 	rohc_lsb_free(rfc3095_ctxt->sn_lsb_ctxt);
-	rohc_decomp_rfc3095_destroy(context);
+	rohc_decomp_rfc3095_destroy(rfc3095_ctxt, volat_ctxt);
 }
 
 
@@ -272,7 +278,8 @@ int ip_parse_ext3(const struct rohc_decomp_ctxt *const context,
                   const rohc_packet_t packet_type,
                   struct rohc_extr_bits *const bits)
 {
-	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
+	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
+		context->persist_ctxt;
 	const unsigned char *ip_flags_pos = NULL;
 	const unsigned char *ip2_flags_pos = NULL;
 	uint8_t S, I, ip, ip2;
@@ -284,13 +291,9 @@ int ip_parse_ext3(const struct rohc_decomp_ctxt *const context,
 	size_t rohc_remain_len;
 
 	/* sanity checks */
-	assert(context != NULL);
-	assert(context->specific != NULL);
 	assert(rohc_data != NULL);
 	assert(packet_type == ROHC_PACKET_UOR_2);
 	assert(bits != NULL);
-
-	rfc3095_ctxt = context->specific;
 
 	rohc_decomp_debug(context, "decode extension 3");
 
@@ -309,6 +312,15 @@ int ip_parse_ext3(const struct rohc_decomp_ctxt *const context,
 	S = GET_REAL(GET_BIT_5(rohc_remain_data));
 	bits->mode = GET_BIT_3_4(rohc_remain_data);
 	bits->mode_nr = 2;
+	if(bits->mode == 0)
+	{
+		rohc_decomp_debug(context, "malformed ROHC packet: unexpected value zero "
+		                  "for Mode bits in extension 3, value zero is reserved "
+		                  "for future usage according to RFC3095");
+#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
+		goto error;
+#endif
+	}
 	I = GET_REAL(GET_BIT_2(rohc_remain_data));
 	ip = GET_REAL(GET_BIT_1(rohc_remain_data));
 	ip2 = GET_REAL(GET_BIT_0(rohc_remain_data));
@@ -531,7 +543,6 @@ int parse_inner_header_flags(const struct rohc_decomp_ctxt *const context,
 	int read = 0;
 
 	assert(context != NULL);
-	assert(context->specific != NULL);
 	assert(flags != NULL);
 	assert(fields != NULL);
 	assert(bits != NULL);
@@ -769,10 +780,14 @@ error:
 const struct rohc_decomp_profile d_ip_profile =
 {
 	.id              = ROHC_PROFILE_IP, /* profile ID (see 5 in RFC 3843) */
-	.new_context     = d_ip_create,
-	.free_context    = d_ip_destroy,
-	.decode          = rohc_decomp_rfc3095_decode,
+	.new_context     = (rohc_decomp_new_context_t) d_ip_create,
+	.free_context    = (rohc_decomp_free_context_t) d_ip_destroy,
 	.detect_pkt_type = ip_detect_packet_type,
+	.parse_pkt       = (rohc_decomp_parse_pkt_t) rfc3095_decomp_parse_pkt,
+	.decode_bits     = (rohc_decomp_decode_bits_t) rfc3095_decomp_decode_bits,
+	.build_hdrs      = (rohc_decomp_build_hdrs_t) rfc3095_decomp_build_hdrs,
+	.update_ctxt     = (rohc_decomp_update_ctxt_t) rfc3095_decomp_update_ctxt,
+	.attempt_repair  = (rohc_decomp_attempt_repair_t) rfc3095_decomp_attempt_repair,
 	.get_sn          = rohc_decomp_rfc3095_get_sn,
 };
 

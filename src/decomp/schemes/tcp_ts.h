@@ -35,7 +35,7 @@
 #include <stdint.h>
 
 /** The context to parse and decode the TCP TimeStamp (TS) option */
-struct d_tcp_opt_ts
+struct d_tcp_opt_ts /* TODO */
 {
 	struct rohc_lsb_field32 req;  /**< The context for the TS request field */
 	struct rohc_lsb_field32 rep;  /**< The context for the TS reply field */
@@ -47,11 +47,12 @@ int d_tcp_ts_lsb_size(const struct rohc_decomp_ctxt *const context,
                       const size_t rohc_length)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-int d_tcp_ts_parse(const struct rohc_decomp_ctxt *const context,
-                   const uint8_t *const data,
-                   const size_t data_len,
-                   struct d_tcp_opt_ts *const opt_ts)
+int d_tcp_ts_lsb_parse(const struct rohc_decomp_ctxt *const context,
+                       const uint8_t *const data,
+                       const size_t data_len,
+                       struct rohc_lsb_field32 *const ts_field)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
+
 
 #endif /* ROHC_DECOMP_SCHEMES_TCP_TS_H */
 

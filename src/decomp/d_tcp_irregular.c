@@ -31,13 +31,14 @@
 #include "config.h" /* for ROHC_EXTRA_DEBUG */
 
 #include "d_tcp_defines.h"
+#include "d_tcp_opts_list.h"
 #include "rohc_utils.h"
 
 #ifndef __KERNEL__
 #  include <string.h>
 #endif
 
-static int tcp_parse_irregular_ip(struct rohc_decomp_ctxt *const context,
+static int tcp_parse_irregular_ip(const struct rohc_decomp_ctxt *const context,
                                   const ip_context_t *const ip_context,
                                   const uint8_t *rohc_data,
                                   const size_t rohc_data_len,
@@ -47,7 +48,7 @@ static int tcp_parse_irregular_ip(struct rohc_decomp_ctxt *const context,
                                   struct rohc_tcp_extr_ip_bits *const ip_bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 7, 8)));
 
-static int tcp_parse_irregular_ipv4(struct rohc_decomp_ctxt *const context,
+static int tcp_parse_irregular_ipv4(const struct rohc_decomp_ctxt *const context,
                                     const uint8_t *rohc_data,
                                     const size_t rohc_data_len,
                                     const bool is_innermost,
@@ -56,7 +57,7 @@ static int tcp_parse_irregular_ipv4(struct rohc_decomp_ctxt *const context,
                                     struct rohc_tcp_extr_ip_bits *const ip_bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 6, 7)));
 
-static int tcp_parse_irregular_ipv6(struct rohc_decomp_ctxt *const context,
+static int tcp_parse_irregular_ipv6(const struct rohc_decomp_ctxt *const context,
                                     const uint8_t *rohc_data,
                                     const size_t rohc_data_len,
                                     const bool is_innermost,
@@ -64,7 +65,7 @@ static int tcp_parse_irregular_ipv6(struct rohc_decomp_ctxt *const context,
                                     struct rohc_tcp_extr_ip_bits *const ip_bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6)));
 
-static int tcp_parse_irregular_tcp(struct rohc_decomp_ctxt *const context,
+static int tcp_parse_irregular_tcp(const struct rohc_decomp_ctxt *const context,
                                    const uint8_t *const rohc_data,
                                    const size_t rohc_data_len,
                                    struct rohc_tcp_extr_bits *const bits,
@@ -90,17 +91,17 @@ static bool d_tcp_is_ecn_used(const struct d_tcp_context tcp_ctxt,
  * @return                          true in the irregular chain was successfully
  *                                  parsed, false if the ROHC packet was malformed
  */
-bool tcp_parse_irreg_chain(struct rohc_decomp_ctxt *const context,
+bool tcp_parse_irreg_chain(const struct rohc_decomp_ctxt *const context,
                            const uint8_t *const rohc_packet,
                            const size_t rohc_length,
                            const tcp_ip_id_behavior_t innermost_ip_id_behavior,
                            struct rohc_tcp_extr_bits *const bits,
                            size_t *const parsed_len)
 {
-	struct d_tcp_context *tcp_context = context->specific;
+	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
 	const uint8_t *remain_data = rohc_packet;
 	size_t remain_len = rohc_length;
-	ip_context_t *ip_inner_context = NULL;
+	const ip_context_t *ip_inner_context = NULL;
 	struct rohc_tcp_extr_ip_bits *ip_inner_bits = NULL;
 	size_t ip_contexts_nr;
 	int ret;
@@ -111,7 +112,8 @@ bool tcp_parse_irreg_chain(struct rohc_decomp_ctxt *const context,
 	for(ip_contexts_nr = 0; ip_contexts_nr < tcp_context->ip_contexts_nr;
 	    ip_contexts_nr++)
 	{
-		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_contexts_nr]);
+		const ip_context_t *const ip_context =
+			&(tcp_context->ip_contexts[ip_contexts_nr]);
 		struct rohc_tcp_extr_ip_bits *const ip_bits = &(bits->ip[ip_contexts_nr]);
 		const bool is_inner_ip =
 			(ip_contexts_nr == (tcp_context->ip_contexts_nr - 1));
@@ -182,7 +184,7 @@ error:
  * @return                The number of ROHC bytes parsed,
  *                        -1 if packet is malformed
  */
-static int tcp_parse_irregular_ip(struct rohc_decomp_ctxt *const context,
+static int tcp_parse_irregular_ip(const struct rohc_decomp_ctxt *const context,
                                   const ip_context_t *const ip_context,
                                   const uint8_t *rohc_data,
                                   const size_t rohc_data_len,
@@ -243,7 +245,7 @@ error:
  * @return                The number of ROHC bytes parsed,
  *                        -1 if packet is malformed
  */
-static int tcp_parse_irregular_ipv4(struct rohc_decomp_ctxt *const context,
+static int tcp_parse_irregular_ipv4(const struct rohc_decomp_ctxt *const context,
                                     const uint8_t *rohc_data,
                                     const size_t rohc_data_len,
                                     const bool is_innermost,
@@ -251,7 +253,7 @@ static int tcp_parse_irregular_ipv4(struct rohc_decomp_ctxt *const context,
                                     struct rohc_tcp_extr_bits *const bits,
                                     struct rohc_tcp_extr_ip_bits *const ip_bits)
 {
-	struct d_tcp_context *tcp_context = context->specific;
+	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
 	const uint8_t *remain_data;
 	size_t remain_len;
 
@@ -343,14 +345,14 @@ error:
  * @return                The number of ROHC bytes parsed,
  *                        -1 if packet is malformed
  */
-static int tcp_parse_irregular_ipv6(struct rohc_decomp_ctxt *const context,
+static int tcp_parse_irregular_ipv6(const struct rohc_decomp_ctxt *const context,
                                     const uint8_t *rohc_data,
                                     const size_t rohc_data_len,
                                     const bool is_innermost,
                                     struct rohc_tcp_extr_bits *const bits,
                                     struct rohc_tcp_extr_ip_bits *const ip_bits)
 {
-	struct d_tcp_context *tcp_context = context->specific;
+	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
 	const uint8_t *remain_data;
 	size_t remain_len;
 
@@ -422,25 +424,18 @@ error:
  * @return                    The number of ROHC bytes parsed,
  *                            -1 if packet is malformed
  */
-static int tcp_parse_irregular_tcp(struct rohc_decomp_ctxt *const context,
+static int tcp_parse_irregular_tcp(const struct rohc_decomp_ctxt *const context,
                                    const uint8_t *const rohc_data,
                                    const size_t rohc_data_len,
                                    struct rohc_tcp_extr_bits *const bits,
                                    struct rohc_tcp_extr_ip_bits *const ip_inner_bits)
 {
-	struct d_tcp_context *const tcp_context = context->specific;
-	const uint8_t *remain_data;
-	size_t remain_len;
-	uint8_t *tcp_options = bits->opts;
-	size_t tcp_opts_len;
-	size_t opt_padding_len;
-	size_t i;
+	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
+	const uint8_t *remain_data = rohc_data;
+	size_t remain_len = rohc_data_len;
 	int ret;
 
 	rohc_decomp_debug(context, "decode TCP irregular chain");
-
-	remain_data = rohc_data;
-	remain_len = rohc_data_len;
 
 	/* parse IP ECN flags, RES flags, and TCP ECN flags if present */
 	if(d_tcp_is_ecn_used(*tcp_context, *bits))
@@ -483,217 +478,23 @@ static int tcp_parse_irregular_tcp(struct rohc_decomp_ctxt *const context,
 	rohc_decomp_debug(context, "TCP checksum = 0x%04x", bits->tcp_check);
 
 	/* complete TCP options with the irregular part */
-	tcp_opts_len = 0;
-	for(i = 0;
-	    i < ROHC_TCP_OPTS_MAX && tcp_context->tcp_opts_list_struct[i] != 0xff;
-	    i++)
+	ret = d_tcp_parse_tcp_opts_irreg(context, remain_data, remain_len,
+	                                 &bits->tcp_opts);
+	if(ret < 0)
 	{
-		if(bits->is_tcp_opts_list_item_present[i])
-		{
-			const uint8_t opt_type = tcp_context->tcp_opts_list_struct[i];
-			const uint8_t opt_len = bits->tcp_opts_list_item_uncomp_length[i];
-			assert(bits->tcp_opts_list_item_uncomp_length[i] <= 0xff);
-			rohc_decomp_debug(context, "TCP irregular part: option %u is not present",
-			                  opt_type);
-			if((tcp_opts_len + opt_len) > MAX_TCP_OPTIONS_LEN)
-			{
-				rohc_decomp_warn(context, "not enough room in context to store "
-				                 "the %u-byte option %u: room is only %lu "
-				                 "bytes and %zu bytes of options are already in",
-				                 opt_len, opt_type, MAX_TCP_OPTIONS_LEN, tcp_opts_len);
-				goto error;
-			}
-			tcp_options += bits->tcp_opts_list_item_uncomp_length[i];
-			tcp_opts_len += bits->tcp_opts_list_item_uncomp_length[i];
-		}
-		else
-		{
-			rohc_decomp_debug(context, "TCP irregular part: option %u is present",
-			                  tcp_context->tcp_opts_list_struct[i]);
-			if((tcp_opts_len + 1) > MAX_TCP_OPTIONS_LEN)
-			{
-				rohc_decomp_warn(context, "not enough room in context to store "
-				                 "the option type: room is only %lu bytes and %zu "
-				                 "bytes of options are already in",
-				                 MAX_TCP_OPTIONS_LEN, tcp_opts_len);
-				goto error;
-			}
-			tcp_options[0] = tcp_context->tcp_opts_list_struct[i];
-			tcp_options++;
-			tcp_opts_len++;
-
-			switch(tcp_context->tcp_opts_list_struct[i])
-			{
-				case TCP_OPT_NOP:
-				case TCP_OPT_EOL:
-					break;
-				case TCP_OPT_MAXSEG:
-					if((tcp_opts_len + TCP_OLEN_MAXSEG - 1) > MAX_TCP_OPTIONS_LEN)
-					{
-						rohc_decomp_warn(context, "not enough room in context to store "
-						                 "the %u-byte MSS option: room is only %lu "
-						                 "bytes and %zu bytes of options are already in",
-						                 TCP_OLEN_MAXSEG - 1, MAX_TCP_OPTIONS_LEN,
-						                 tcp_opts_len);
-						goto error;
-					}
-					// Length
-					tcp_options[0] = TCP_OLEN_MAXSEG;
-					tcp_options++;
-					tcp_opts_len++;
-					// Max segment size value
-					memcpy(tcp_options, &tcp_context->tcp_option_maxseg, 2);
-					tcp_options += TCP_OLEN_MAXSEG - 2;
-					tcp_opts_len += TCP_OLEN_MAXSEG - 2;
-					break;
-				case TCP_OPT_WINDOW:
-					if((tcp_opts_len + TCP_OLEN_WINDOW - 1) > MAX_TCP_OPTIONS_LEN)
-					{
-						rohc_decomp_warn(context, "not enough room in context to store "
-						                 "the %u-byte Window option: room is only %lu "
-						                 "bytes and %zu bytes of options are already in",
-						                 TCP_OLEN_WINDOW - 1, MAX_TCP_OPTIONS_LEN,
-						                 tcp_opts_len);
-						goto error;
-					}
-					// Length
-					tcp_options[0] = TCP_OLEN_WINDOW;
-					tcp_options++;
-					tcp_opts_len++;
-					// Window scale value
-					tcp_options[0] = tcp_context->tcp_option_window;
-					tcp_options++;
-					tcp_opts_len++;
-					break;
-				case TCP_OPT_TIMESTAMP:
-				{
-					/* TS option cannot be present more than once in both option
-					 * list of the co_common/seq_8/rnd_8 packets and in the irregular
-					 * chain */
-					if(bits->opt_ts.req.bits_nr > 0 || bits->opt_ts.rep.bits_nr > 0)
-					{
-						rohc_decomp_warn(context, "malformed irregular chain: "
-						                 "unexpected duplicated TS option");
-						goto error;
-					}
-
-					if((tcp_opts_len + TCP_OLEN_TIMESTAMP - 1) > MAX_TCP_OPTIONS_LEN)
-					{
-						rohc_decomp_warn(context, "not enough room in context to store "
-						                 "the %u-byte Timestamp option: room is only "
-						                 "%lu bytes and %zu bytes of options are "
-						                 "already in", TCP_OLEN_TIMESTAMP - 1,
-						                 MAX_TCP_OPTIONS_LEN, tcp_opts_len);
-						goto error;
-					}
-
-					// Length
-					tcp_options[0] = TCP_OLEN_TIMESTAMP;
-					tcp_options++;
-					tcp_opts_len++;
-
-					/* parse TS echo request/reply fields */
-					ret = d_tcp_ts_parse(context, remain_data, remain_len,
-					                     &bits->opt_ts);
-					if(ret < 0)
-					{
-						rohc_decomp_warn(context, "TCP irregular part: failed to parse "
-						                 "TCP option TS echo request/reply fields");
-						goto error;
-					}
-					bits->opt_ts.uncomp_opt_offset = tcp_opts_len;
-					tcp_options += 2 * sizeof(uint32_t);
-					tcp_opts_len += 2 * sizeof(uint32_t);
-					remain_data += ret;
-					remain_len -= ret;
-					break;
-				}
-				case TCP_OPT_SACK_PERMITTED:
-					if((tcp_opts_len + TCP_OLEN_SACK_PERMITTED - 1) > MAX_TCP_OPTIONS_LEN)
-					{
-						rohc_decomp_warn(context, "not enough room in context to store "
-						                 "the %u-byte SACK permitted option: room is "
-						                 "only %lu bytes and %zu bytes of options are "
-						                 "already in", TCP_OLEN_SACK_PERMITTED - 1,
-						                 MAX_TCP_OPTIONS_LEN, tcp_opts_len);
-						goto error;
-					}
-					// Length
-					tcp_options[0] = TCP_OLEN_SACK_PERMITTED;
-					tcp_options++;
-					tcp_opts_len++;
-					break;
-				case TCP_OPT_SACK:
-				{
-					size_t sack_opt_len;
-
-					/* SACK option cannot be present more than once in both option
-					 * list of the co_common/seq_8/rnd_8 packets and in the irregular
-					 * chain */
-					if(bits->opt_sack.blocks_nr > 0)
-					{
-						rohc_decomp_warn(context, "malformed irregular chain: "
-						                 "unexpected duplicated SACK option");
-						goto error;
-					}
-
-					ret = d_tcp_sack_parse(context, remain_data, remain_len,
-					                        &bits->opt_sack);
-					if(ret < 0)
-					{
-						rohc_decomp_warn(context, "failed to decompress TCP SACK "
-						                 "option");
-						goto error;
-					}
-					remain_data += ret;
-					remain_len -= ret;
-					sack_opt_len = 2 + sizeof(sack_block_t) * bits->opt_sack.blocks_nr;
-
-					/* option length */
-					tcp_options[0] = sack_opt_len;
-					tcp_options++;
-					tcp_opts_len++;
-
-					bits->opt_sack.uncomp_opt_offset = tcp_opts_len;
-					tcp_options += sack_opt_len - 2;
-					tcp_opts_len += sack_opt_len - 2;
-					break;
-				}
-				default:  // Generic options
-					rohc_decomp_debug(context, "TCP option %u not handled",
-					                  tcp_context->tcp_opts_list_struct[i]);
-					break;
-			}
-		}
-	}
-	assert(i <= ROHC_TCP_OPTS_MAX);
-	assert(tcp_opts_len <= MAX_TCP_OPTIONS_LEN);
-
-	/* add padding after TCP options (they must be aligned on 32-bit words) */
-	opt_padding_len = sizeof(uint32_t) - (tcp_opts_len % sizeof(uint32_t));
-	opt_padding_len %= sizeof(uint32_t);
-	if((tcp_opts_len + opt_padding_len) > MAX_TCP_OPTIONS_LEN)
-	{
-		rohc_decomp_warn(context, "malformed TCP options: more than %lu bytes "
-		                 "of TCP options: %zu bytes already in + %zu-byte padding",
-		                 MAX_TCP_OPTIONS_LEN, tcp_opts_len, opt_padding_len);
+		rohc_decomp_warn(context, "failed to parse optional compressed list "
+		                 "of TCP options");
 		goto error;
 	}
-	for(i = 0; i < opt_padding_len; i++)
-	{
-		rohc_decomp_debug(context, "  add missing TCP EOL option for padding");
-		tcp_options[0] = TCP_OPT_EOL;
-		tcp_options++;
-	}
-	tcp_opts_len += opt_padding_len;
-	assert((tcp_opts_len % sizeof(uint32_t)) == 0);
+	rohc_decomp_debug(context, "compressed list of TCP options = %d bytes", ret);
+	remain_data += ret;
+	remain_len -= ret;
 
 	rohc_dump_buf(context->decompressor->trace_callback,
 	              context->decompressor->trace_callback_priv,
 	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
 	              "TCP irregular part", rohc_data, rohc_data_len - remain_len);
 
-	bits->opts_len = tcp_opts_len;
 	return (rohc_data_len - remain_len);
 
 error:

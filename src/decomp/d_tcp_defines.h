@@ -29,7 +29,6 @@
 #ifndef ROHC_DECOMP_TCP_DEFINES_H
 #define ROHC_DECOMP_TCP_DEFINES_H
 
-#include "crc.h"
 #include "ip.h"
 #include "interval.h"
 #include "protocols/tcp.h"
@@ -220,6 +219,55 @@ typedef struct
 } ip_context_t;
 
 
+/** The decompression context for one TCP option */
+struct d_tcp_opt_ctxt /* TODO: doxygen */
+{
+	bool used;
+	uint8_t type;
+	union
+	{
+		uint8_t eol_len;
+		uint16_t mss_value;
+		uint8_t ws_value;
+		struct
+		{
+			struct rohc_lsb_field32 req;  /**< The context for the TS request field */
+			struct rohc_lsb_field32 rep;  /**< The context for the TS reply field */
+		} ts;
+		struct d_tcp_opt_sack sack; /* TODO: ptr inside is not needed */
+		struct
+		{
+			bool option_static;
+			uint8_t load_len;
+#define ROHC_TCP_OPT_HDR_LEN 2U
+#define ROHC_TCP_OPT_MAX_LEN 0xffU
+#define ROHC_TCP_OPT_GENERIC_DATA_MAX_LEN \
+	(ROHC_TCP_OPT_MAX_LEN - ROHC_TCP_OPT_HDR_LEN)
+			uint8_t load[ROHC_TCP_OPT_GENERIC_DATA_MAX_LEN];
+		} generic;
+	} data;
+};
+
+
+/** The decompression context for TCP options */
+struct d_tcp_opts_ctxt /* TODO: doxygen */
+{
+	/** The number of options in the list of TCP options */
+	size_t nr;
+
+	/** The structure of the list of TCP options */
+	uint8_t structure[ROHC_TCP_OPTS_MAX];
+	/** Whethee the TCP options are expected in the dynamic part? */
+	bool expected_dynamic[ROHC_TCP_OPTS_MAX];
+	/** The TCP options that were found or not */
+	bool found[ROHC_TCP_OPTS_MAX];
+
+	/** The bits of TCP options extracted from the dynamic chain, the tail of
+	 * co_common/seq_8/rnd_8 packets, or the irregular chain */
+	struct d_tcp_opt_ctxt bits[MAX_TCP_OPTION_INDEX + 1];
+};
+
+
 /** Define the TCP part of the decompression profile context */
 struct d_tcp_context
 {
@@ -255,39 +303,16 @@ struct d_tcp_context
 	/** The LSB decoding context of TCP window */
 	struct rohc_lsb_decode *window_lsb_ctxt;
 
-	// Table of TCP options
-	uint8_t tcp_options_list[ROHC_TCP_OPTS_MAX];   // see RFC4996 page 27
-	uint8_t tcp_options_offset[ROHC_TCP_OPTS_MAX];
-	uint16_t tcp_option_maxseg;
-	uint8_t tcp_option_window;
-	/** The structure of the list of TCP options */
-	uint8_t tcp_opts_list_struct[ROHC_TCP_OPTS_MAX];
-
-	struct tcp_option_timestamp tcp_opt_ts;
+	/** The decoded values of TCP options */
+	struct d_tcp_opts_ctxt tcp_opts;
+	/* TCP TS option */
 	struct rohc_lsb_decode *opt_ts_req_lsb_ctxt;
 	struct rohc_lsb_decode *opt_ts_rep_lsb_ctxt;
-
-	uint8_t tcp_opt_sack_length;
-	uint8_t tcp_opt_sackblocks[sizeof(sack_block_t) * TCP_SACK_BLOCKS_MAX_NR];
-	uint8_t tcp_options_free_offset;
-#define MAX_TCP_OPT_SIZE 64
-	uint8_t tcp_options_values[MAX_TCP_OPT_SIZE];
+	/* TCP SACK option */
+	struct d_tcp_opt_sack opt_sack_blocks;  /**< The TCP SACK blocks */
 
 	size_t ip_contexts_nr;
 	ip_context_t ip_contexts[ROHC_TCP_MAX_IP_HDRS];
-
-
-	/*
-	 * for correction upon CRC failure
-	 */
-	/* TODO: duplicated from rfc3095_ctxt, to be merged in rohc_decomp_ctxt */
-
-	/** The algorithm being used for correction CRC failure */
-	rohc_decomp_crc_corr_t crc_corr;
-	/** Correction counter (see e and f in 5.3.2.2.4 of the RFC 3095) */
-	size_t correction_counter;
-	/** The arrival time of the current packet */
-	struct rohc_ts cur_arrival_time;
 };
 
 
@@ -375,28 +400,9 @@ struct rohc_tcp_extr_bits
 	                           IR/IR-DYN header or in irregular chain of CO header */
 	struct rohc_lsb_field16 urg_ptr;     /**< The TCP Urgent pointer bits */
 
-	/* CRC */
-	rohc_crc_type_t crc_type; /**< The type of CRC that protect the ROHC header */
-	uint8_t crc;              /**< The CRC bits found in ROHC header */
-	size_t crc_nr;            /**< The number of CRC bits found in ROHC header */
-
-	/* Whether the list of TCP options is present in co_common/seq_8/rnd_8 packets */
-	bool is_list_present;
-
-	/** Whether the content of TCP options was transmitted or not */
-	bool is_tcp_opts_list_item_present[ROHC_TCP_OPTS_MAX];
-	/** The lengths of the TCP options that are transmitted */
-	size_t tcp_opts_list_item_uncomp_length[ROHC_TCP_OPTS_MAX];
-
-	struct d_tcp_opt_ts opt_ts;     /**< The parsed TCP TimeStamp option */
-	struct d_tcp_opt_sack opt_sack; /**< The parsed TCP SACK option */
-
-	/* TODO: do not decode TCP options other than TS/SACK before parsing is over */
-#define MAX_TCP_DATA_OFFSET_WORDS  ((1 << 4) - 1)
-#define MAX_TCP_DATA_OFFSET_BYTES  (MAX_TCP_DATA_OFFSET_WORDS * sizeof(uint32_t))
-#define MAX_TCP_OPTIONS_LEN        (MAX_TCP_DATA_OFFSET_BYTES - sizeof(tcphdr_t))
-	size_t opts_len;                    /**< The length of the parsed TCP options */
-	uint8_t opts[MAX_TCP_OPTIONS_LEN];  /**< The parsed TCP options */
+	/** The bits of TCP options extracted from the dynamic chain, the tail of
+	 * co_common/seq_8/rnd_8 packets, or the irregular chain */
+	struct d_tcp_opts_ctxt tcp_opts;
 };
 
 
@@ -462,16 +468,13 @@ struct rohc_tcp_decoded_values
 	uint16_t tcp_check;  /**< The TCP checksum */
 	uint16_t urg_ptr;    /**< The TCP Urgent pointer */
 
+	/** The decoded values of TCP options */
+	struct d_tcp_opts_ctxt tcp_opts;
 	/* TCP TS option */
-	bool opt_ts_present;  /**< Whether the TCP TS option is present */
 	uint32_t opt_ts_req;  /**< The echo request value of the TCP TS option */
 	uint32_t opt_ts_rep;  /**< The echo reply value of the TCP TS option */
-	/** TCP SACK option */
-	uint8_t opt_sack[sizeof(sack_block_t) * TCP_SACK_BLOCKS_MAX_NR];
-	uint8_t opt_sack_length;  /**< The length of the TCP SACK option (in bytes) */
-	/* TODO: do not decode TCP options other than TS/SACK before parsing is over */
-	uint8_t opts[MAX_TCP_OPTIONS_LEN]; /**< The uncompressed TCP options */
-	size_t opts_len;  /**< The length of the uncompressed TCP options */
+	/* TCP SACK option */
+	struct d_tcp_opt_sack opt_sack_blocks;  /**< The TCP SACK blocks */
 };
 
 #endif /* ROHC_DECOMP_TCP_DEFINES_H */

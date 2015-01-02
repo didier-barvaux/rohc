@@ -59,7 +59,7 @@ struct d_rtp_context
 	/** The RTP SSRC */
 	uint32_t ssrc;
 	/** Whether the UDP checksum field is encoded in the ROHC packet or not */
-	int udp_checksum_present;
+	rohc_tristate_t udp_check_present;
 	/** The scaled RTP Timestamp decoding context */
 	struct ts_sc_decomp *ts_scaled_ctxt;
 };
@@ -69,8 +69,14 @@ struct d_rtp_context
  * Private function prototypes.
  */
 
-static void d_rtp_destroy(void *const context)
-	__attribute__((nonnull(1)));
+static bool d_rtp_create(const struct rohc_decomp_ctxt *const context,
+                         struct rohc_decomp_rfc3095_ctxt **const persist_ctxt,
+                         struct rohc_decomp_volat_ctxt *const volat_ctxt)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+
+static void d_rtp_destroy(struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt,
+                          const struct rohc_decomp_volat_ctxt *const volat_ctxt)
+	__attribute__((nonnull(1, 2)));
 
 static rohc_packet_t rtp_detect_packet_type(const struct rohc_decomp_ctxt *const context,
                                             const uint8_t *const rohc_packet,
@@ -125,7 +131,7 @@ static int rtp_build_uncomp_rtp(const struct rohc_decomp_ctxt *const context,
                                 unsigned char *dest,
                                 const unsigned int payload_len);
 
-static void rtp_update_context(const struct rohc_decomp_ctxt *context,
+static void rtp_update_context(struct rohc_decomp_ctxt *const context,
                                const struct rohc_decoded_values decoded)
 	__attribute__((nonnull(1)));
 
@@ -150,9 +156,15 @@ static inline bool is_inner_ipv4_rnd_ctxt(const struct rohc_decomp_rfc3095_ctxt 
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @return The newly-created RTP decompression context
+ * @param context            The decompression context
+ * @param[out] persist_ctxt  The persistent part of the decompression context
+ * @param[out] volat_ctxt    The volatile part of the decompression context
+ * @return                   true if the RTP context was successfully created,
+ *                           false if a problem occurred
  */
-void * d_rtp_create(const struct rohc_decomp_ctxt *const context)
+static bool d_rtp_create(const struct rohc_decomp_ctxt *const context,
+                         struct rohc_decomp_rfc3095_ctxt **const persist_ctxt,
+                         struct rohc_decomp_volat_ctxt *const volat_ctxt)
 {
 	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	struct d_rtp_context *rtp_context;
@@ -163,17 +175,16 @@ void * d_rtp_create(const struct rohc_decomp_ctxt *const context)
 	assert(context->profile != NULL);
 
 	/* create the generic context */
-	rfc3095_ctxt =
-		rohc_decomp_rfc3095_create(context,
-		                           context->decompressor->trace_callback,
-		                           context->decompressor->trace_callback_priv,
-		                           context->profile->id);
-	if(rfc3095_ctxt == NULL)
+	if(!rohc_decomp_rfc3095_create(context, persist_ctxt, volat_ctxt,
+	                               context->decompressor->trace_callback,
+	                               context->decompressor->trace_callback_priv,
+	                               context->profile->id))
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "failed to create the generic decompression context");
 		goto quit;
 	}
+	rfc3095_ctxt = *persist_ctxt;
 
 	/* create the RTP-specific part of the context */
 	rtp_context = malloc(sizeof(struct d_rtp_context));
@@ -198,7 +209,7 @@ void * d_rtp_create(const struct rohc_decomp_ctxt *const context)
 
 	/* the UDP checksum field present flag will be initialized
 	 * with the IR packets */
-	rtp_context->udp_checksum_present = -1;
+	rtp_context->udp_check_present = ROHC_TRISTATE_NONE;
 
 	/* some RTP-specific values and functions */
 	rfc3095_ctxt->next_header_len = nh_len;
@@ -249,7 +260,7 @@ void * d_rtp_create(const struct rohc_decomp_ctxt *const context)
 		goto free_inner_ip_changes_next_header;
 	}
 
-	return rfc3095_ctxt;
+	return true;
 
 free_inner_ip_changes_next_header:
 	zfree(rfc3095_ctxt->inner_ip_changes->next_header);
@@ -260,9 +271,9 @@ free_lsb_sn:
 free_rtp_context:
 	zfree(rtp_context);
 destroy_context:
-	rohc_decomp_rfc3095_destroy(rfc3095_ctxt);
+	rohc_decomp_rfc3095_destroy(rfc3095_ctxt, volat_ctxt);
 quit:
-	return NULL;
+	return false;
 }
 
 
@@ -272,17 +283,14 @@ quit:
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param context The RTP compression context to destroy
+ * @param rfc3095_ctxt  The persistent decompression context for the RFC3095 profiles
+ * @param volat_ctxt    The volatile decompression context
  */
-static void d_rtp_destroy(void *const context)
+static void d_rtp_destroy(struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt,
+                          const struct rohc_decomp_volat_ctxt *const volat_ctxt)
 {
-	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
-	struct d_rtp_context *rtp_context;
-
-	assert(context != NULL);
-	rfc3095_ctxt = (struct rohc_decomp_rfc3095_ctxt *) context;
-	assert(rfc3095_ctxt->specific != NULL);
-	rtp_context = (struct d_rtp_context *) rfc3095_ctxt->specific;
+	const struct d_rtp_context *const rtp_context =
+		(struct d_rtp_context *) rfc3095_ctxt->specific;
 
 	/* destroy the scaled RTP Timestamp decoding object */
 	rohc_ts_scaled_free(rtp_context->ts_scaled_ctxt);
@@ -297,7 +305,7 @@ static void d_rtp_destroy(void *const context)
 	rohc_lsb_free(rfc3095_ctxt->sn_lsb_ctxt);
 
 	/* destroy the resources of the generic context */
-	rohc_decomp_rfc3095_destroy(context);
+	rohc_decomp_rfc3095_destroy(rfc3095_ctxt, volat_ctxt);
 }
 
 
@@ -380,7 +388,8 @@ static rohc_packet_t rtp_choose_uo1_variant(const struct rohc_decomp_ctxt *const
                                             const uint8_t *const packet,
                                             const size_t rohc_length)
 {
-	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt = context->specific;
+	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
+		context->persist_ctxt;
 	rohc_packet_t type;
 	size_t nr_ipv4_non_rnd;
 	size_t nr_ipv4;
@@ -482,7 +491,8 @@ static rohc_packet_t rtp_choose_uor2_variant(const struct rohc_decomp_ctxt *cons
                                              const size_t rohc_length,
                                              const size_t large_cid_len)
 {
-	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt = context->specific;
+	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
+		context->persist_ctxt;
 	rohc_packet_t type;
 	size_t nr_ipv4_non_rnd;
 	size_t nr_ipv4;
@@ -588,15 +598,11 @@ static int rtp_parse_static_rtp(const struct rohc_decomp_ctxt *const context,
                                 size_t length,
                                 struct rohc_extr_bits *const bits)
 {
-	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
-	struct d_rtp_context *rtp_context;
+	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
+		context->persist_ctxt;
+	const struct d_rtp_context *const rtp_context = rfc3095_ctxt->specific;
 	int read; /* number of bytes read from the packet */
 
-	assert(context != NULL);
-	assert(context->specific != NULL);
-	rfc3095_ctxt = context->specific;
-	assert(rfc3095_ctxt->specific != NULL);
-	rtp_context = rfc3095_ctxt->specific;
 	assert(packet != NULL);
 	assert(bits != NULL);
 
@@ -634,7 +640,6 @@ static int rtp_parse_static_rtp(const struct rohc_decomp_ctxt *const context,
 		                  bits->rtp_ssrc, rtp_context->ssrc);
 		bits->is_context_reused = true;
 	}
-	memcpy(&rtp_context->ssrc, &bits->rtp_ssrc, sizeof(uint32_t));
 
 	return read;
 
@@ -658,6 +663,9 @@ static int rtp_parse_dynamic_rtp(const struct rohc_decomp_ctxt *const context,
                                  const size_t length,
                                  struct rohc_extr_bits *const bits)
 {
+	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
+		context->persist_ctxt;
+	const struct d_rtp_context *const rtp_context = rfc3095_ctxt->specific;
 	/* The size (in bytes) of the constant RTP dynamic part:
 	 *
 	 * According to RFC3095 section 5.7.7.6:
@@ -668,17 +676,9 @@ static int rtp_parse_dynamic_rtp(const struct rohc_decomp_ctxt *const context,
 	 * generic CSRC list is not supported yet and thus 1 byte of zero is used.
 	 */
 	const size_t rtp_dyn_size = 9;
-
-	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
-	struct d_rtp_context *rtp_context;
 	size_t remain_len = length;
 	int rx;
 
-	assert(context != NULL);
-	assert(context->specific != NULL);
-	rfc3095_ctxt = context->specific;
-	assert(rfc3095_ctxt->specific != NULL);
-	rtp_context = rfc3095_ctxt->specific;
 	assert(packet != NULL);
 	assert(bits != NULL);
 
@@ -696,7 +696,7 @@ static int rtp_parse_dynamic_rtp(const struct rohc_decomp_ctxt *const context,
 	remain_len -= sizeof(uint16_t);
 
 	/* determine whether the UDP checksum will be present in UO packets */
-	rtp_context->udp_checksum_present = (bits->udp_check > 0);
+	bits->udp_check_present = (bits->udp_check > 0) ? ROHC_TRISTATE_YES : ROHC_TRISTATE_NO;
 
 	/* check the minimal length to decode the constant part of the RTP
 	   dynamic part (parts 2-6) */
@@ -891,7 +891,8 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
                           const rohc_packet_t packet_type,
                           struct rohc_extr_bits *const bits)
 {
-	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
+	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
+		context->persist_ctxt;
 	const unsigned char *ip_flags_pos = NULL;
 	const unsigned char *ip2_flags_pos = NULL;
 	uint8_t S, rts, I, ip, rtp, ip2;
@@ -912,12 +913,8 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
 	bool rnd_changed = false;
 
 	/* sanity checks */
-	assert(context != NULL);
-	assert(context->specific != NULL);
 	assert(rohc_data != NULL);
 	assert(bits != NULL);
-
-	rfc3095_ctxt = context->specific;
 
 	rohc_decomp_debug(context, "decode extension 3");
 
@@ -1272,6 +1269,15 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
 		/* decode RTP header flags */
 		bits->mode = GET_BIT_6_7(rohc_remain_data);
 		bits->mode_nr = 2;
+		if(bits->mode == 0)
+		{
+			rohc_decomp_debug(context, "malformed ROHC packet: unexpected value zero "
+			                  "for Mode bits in extension 3, value zero is reserved "
+			                  "for future usage according to RFC3095");
+#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
+			goto error;
+#endif
+		}
 		rpt = GET_REAL(GET_BIT_5(rohc_remain_data));
 		rtp_m_ext = GET_REAL(GET_BIT_4(rohc_remain_data));
 		/* check that the RTP Marker (M) value found in the extension is the
@@ -1342,12 +1348,10 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
 
 		if(tss)
 		{
-			struct d_rtp_context *rtp_context;
+			const struct d_rtp_context *const rtp_context = rfc3095_ctxt->specific;
 			uint32_t ts_stride;
 			size_t ts_stride_bits_nr;
 			size_t ts_stride_size;
-
-			rtp_context = (struct d_rtp_context *) rfc3095_ctxt->specific;
 
 			/* decode SDVL-encoded TS value */
 			ts_stride_size = sdvl_decode(rohc_remain_data, rohc_remain_len,
@@ -1428,29 +1432,22 @@ static int rtp_parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
                                   unsigned int length,
                                   struct rohc_extr_bits *const bits)
 {
-	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
-	struct d_rtp_context *rtp_context;
+	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
+		context->persist_ctxt;
+	const struct d_rtp_context *const rtp_context = rfc3095_ctxt->specific;
 	int read = 0; /* number of bytes read from the packet */
 
-	assert(context != NULL);
-	assert(context->specific != NULL);
-	rfc3095_ctxt = context->specific;
-	assert(rfc3095_ctxt->specific != NULL);
-	rtp_context = rfc3095_ctxt->specific;
 	assert(packet != NULL);
 	assert(bits != NULL);
 
-	/* UDP checksum if necessary:
-	 *  udp_checksum_present < 0 <=> not initialized
-	 *  udp_checksum_present = 0 <=> UDP checksum field not present
-	 *  udp_checksum_present > 0 <=> UDP checksum field present */
-	if(rtp_context->udp_checksum_present < 0)
+	/* parse extra UDP checksum if present */
+	if(rtp_context->udp_check_present == ROHC_TRISTATE_NONE)
 	{
-		rohc_decomp_warn(context, "udp_checksum_present not initialized and "
-		                 "packet is not one IR packet");
+		rohc_decomp_warn(context, "the behavior of the UDP checksum is not yet "
+		                 "known, but packet is not one IR packet");
 		goto error;
 	}
-	else if(rtp_context->udp_checksum_present == 0)
+	else if(rtp_context->udp_check_present == ROHC_TRISTATE_NO)
 	{
 		bits->udp_check_nr = 0;
 		rohc_decomp_debug(context, "UDP checksum not present");
@@ -1504,16 +1501,12 @@ static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
                                         const struct rohc_extr_bits bits,
                                         struct rohc_decoded_values *const decoded)
 {
-	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
-	struct d_rtp_context *rtp_context;
+	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
+		context->persist_ctxt;
+	const struct d_rtp_context *const rtp_context = rfc3095_ctxt->specific;
 	struct udphdr *udp;
 	struct rtphdr *rtp;
 
-	assert(context != NULL);
-	assert(context->specific != NULL);
-	rfc3095_ctxt = context->specific;
-	assert(rfc3095_ctxt->specific != NULL);
-	rtp_context = rfc3095_ctxt->specific;
 	assert(decoded != NULL);
 
 	udp = (struct udphdr *) rfc3095_ctxt->outer_ip_changes->next_header;
@@ -1549,19 +1542,27 @@ static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 	rohc_decomp_debug(context, "decoded UDP destination port = 0x%04x",
 	                  rohc_ntoh16(decoded->udp_dst));
 
-	/* UDP checksum:
-	 *  - error if udp_checksum_present not initialized,
-	 *    ie. udp_checksum_present < 0
-	 *  - copy from packet if checksum is present,
-	 *    ie. udp_checksum_present > 0
-	 *  - set checksum to zero if checksum is not present,
-	 *    ie. udp_checksum_present = 0  */
-	if(rtp_context->udp_checksum_present < 0)
+	/* take UDP checksum behavior from packet if present, otherwise from context */
+	if(bits.udp_check_present != ROHC_TRISTATE_NONE)
 	{
-		rohc_decomp_warn(context, "udp_checksum_present not initialized");
+		decoded->udp_check_present = bits.udp_check_present;
+	}
+	else
+	{
+		decoded->udp_check_present = rtp_context->udp_check_present;
+	}
+
+	/* UDP checksum:
+	 *  - error if UDP checksum behavior is still unknown,
+	 *  - copy from packet if checksum is present,
+	 *  - set checksum to zero if checksum is not present */
+	if(decoded->udp_check_present == ROHC_TRISTATE_NONE)
+	{
+		rohc_decomp_warn(context, "the behavior of the UDP checksum field is "
+		                 "still not known");
 		goto error;
 	}
-	else if(rtp_context->udp_checksum_present > 0)
+	else if(decoded->udp_check_present == ROHC_TRISTATE_YES)
 	{
 		assert(bits.udp_check_nr == 16);
 		decoded->udp_check = bits.udp_check;
@@ -1574,7 +1575,7 @@ static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 	}
 	rohc_decomp_debug(context, "decoded UDP checksum = 0x%04x (checksum "
 	                  "present = %d)", rohc_ntoh16(decoded->udp_check),
-	                  rtp_context->udp_checksum_present);
+	                  decoded->udp_check_present);
 
 	/* decode version field */
 	if(bits.rtp_version_nr > 0)
@@ -1813,24 +1814,20 @@ static int rtp_build_uncomp_rtp(const struct rohc_decomp_ctxt *const context,
  * @param context  The decompression context
  * @param decoded  The decoded values to update in the context
  */
-static void rtp_update_context(const struct rohc_decomp_ctxt *context,
+static void rtp_update_context(struct rohc_decomp_ctxt *const context,
                                const struct rohc_decoded_values decoded)
 {
-	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
-	struct d_rtp_context *rtp_context;
+	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
+		context->persist_ctxt;
+	struct d_rtp_context *const rtp_context = rfc3095_ctxt->specific;
 	struct udphdr *udp;
 	struct rtphdr *rtp;
-
-	assert(context != NULL);
-	assert(context->specific != NULL);
-	rfc3095_ctxt = context->specific;
-	assert(rfc3095_ctxt->specific != NULL);
-	rtp_context = rfc3095_ctxt->specific;
 
 	/* update context for UDP fields */
 	udp = (struct udphdr *) rfc3095_ctxt->outer_ip_changes->next_header;
 	udp->source = decoded.udp_src;
 	udp->dest = decoded.udp_dst;
+	rtp_context->udp_check_present = decoded.udp_check_present;
 
 	/* update context for RTP fields */
 	rtp = (struct rtphdr *) (udp + 1);
@@ -1843,6 +1840,9 @@ static void rtp_update_context(const struct rohc_decomp_ctxt *context,
 	rtp->m = decoded.rtp_m;
 	rtp->pt = decoded.rtp_pt;
 	rtp->ssrc = decoded.rtp_ssrc;
+
+	/* record SSRC into the context to be able to detect context re-use */
+	memcpy(&rtp_context->ssrc, &decoded.rtp_ssrc, sizeof(uint32_t));
 }
 
 
@@ -1906,10 +1906,14 @@ static inline bool is_inner_ipv4_rnd_ctxt(const struct rohc_decomp_rfc3095_ctxt 
 const struct rohc_decomp_profile d_rtp_profile =
 {
 	.id              = ROHC_PROFILE_RTP, /* profile ID (see 8 in RFC3095) */
-	.new_context     = d_rtp_create,
-	.free_context    = d_rtp_destroy,
-	.decode          = rohc_decomp_rfc3095_decode,
+	.new_context     = (rohc_decomp_new_context_t) d_rtp_create,
+	.free_context    = (rohc_decomp_free_context_t) d_rtp_destroy,
 	.detect_pkt_type = rtp_detect_packet_type,
+	.parse_pkt       = (rohc_decomp_parse_pkt_t) rfc3095_decomp_parse_pkt,
+	.decode_bits     = (rohc_decomp_decode_bits_t) rfc3095_decomp_decode_bits,
+	.build_hdrs      = (rohc_decomp_build_hdrs_t) rfc3095_decomp_build_hdrs,
+	.update_ctxt     = (rohc_decomp_update_ctxt_t) rfc3095_decomp_update_ctxt,
+	.attempt_repair  = (rohc_decomp_attempt_repair_t) rfc3095_decomp_attempt_repair,
 	.get_sn          = rohc_decomp_rfc3095_get_sn,
 };
 

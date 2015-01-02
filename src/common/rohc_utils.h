@@ -29,6 +29,15 @@
 #include <stdbool.h>
 
 
+/** TODO */
+typedef enum
+{
+	ROHC_TRISTATE_NONE = 0,
+	ROHC_TRISTATE_YES  = 1,
+	ROHC_TRISTATE_NO   = 2,
+} rohc_tristate_t;
+
+
 /** Get the max value of the 2 given */
 #define rohc_max(value1, value2) \
 	( ((value1) >= (value2)) ? (value1) : (value2) )

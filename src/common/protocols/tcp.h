@@ -832,29 +832,34 @@ typedef struct __attribute__((packed)) tcp_replicate
  *
  */
 
-#define TCP_OPT_EOL               0
-#define TCP_OPT_NOP               1
-#define TCP_OPT_MAXSEG            2
-#define TCP_OLEN_MAXSEG           4
-#define TCP_OPT_WINDOW            3
-#define TCP_OLEN_WINDOW           3
-#define TCP_OPT_SACK_PERMITTED    4               /* Experimental */
-#define TCP_OLEN_SACK_PERMITTED   2
-#define TCP_OPT_SACK              5               /* Experimental */
-#define TCP_OPT_TIMESTAMP         8
-#define TCP_OLEN_TIMESTAMP        10
-#define TCP_OLEN_TSTAMP_APPA     (TCP_OLEN_TIMESTAMP + 2) /* appendix A */
+#define TCP_OPT_EOL          0U
+#define TCP_OPT_NOP          1U
+#define TCP_OPT_MSS          2U
+#define TCP_OLEN_MSS         4U
+#define TCP_OPT_WS           3U
+#define TCP_OLEN_WS          3U
+#define TCP_OPT_SACK_PERM    4U
+#define TCP_OLEN_SACK_PERM   2U
+#define TCP_OPT_SACK         5U
+#define TCP_OPT_TS           8U
+#define TCP_OLEN_TS         10U
 
-#define TCP_OPT_TSTAMP_HDR      \
-   (TCP_OPT_NOP << 24 | TCP_OPT_NOP << 16 | TCP_OPT_TIMESTAMP << 8 | TCP_OLEN_TIMESTAMP)
-
-#define TCP_INDEX_NOP             0
-#define TCP_INDEX_EOL             1
-#define TCP_INDEX_MAXSEG          2
-#define TCP_INDEX_WINDOW          3
-#define TCP_INDEX_TIMESTAMP       4
-#define TCP_INDEX_SACK_PERMITTED  5
-#define TCP_INDEX_SACK            6
+#define TCP_INDEX_NOP          0U
+#define TCP_INDEX_EOL          1U
+#define TCP_INDEX_MSS          2U
+#define TCP_INDEX_WS           3U
+#define TCP_INDEX_TS           4U
+#define TCP_INDEX_SACK_PERM    5U
+#define TCP_INDEX_SACK         6U
+#define TCP_INDEX_GENERIC7     7U
+#define TCP_INDEX_GENERIC8     8U
+#define TCP_INDEX_GENERIC9     9U
+#define TCP_INDEX_GENERIC10   10U
+#define TCP_INDEX_GENERIC11   11U
+#define TCP_INDEX_GENERIC12   12U
+#define TCP_INDEX_GENERIC13   13U
+#define TCP_INDEX_GENERIC14   14U
+#define TCP_INDEX_GENERIC15   15U
 
 /**
  * @brief Define the Common compressed packet format
@@ -1442,6 +1447,9 @@ typedef union
 static inline char * tcp_ip_id_behavior_get_descr(const tcp_ip_id_behavior_t ip_id_behavior)
 	__attribute__((warn_unused_result, const));
 
+static inline char * tcp_opt_get_descr(const uint8_t opt_type)
+	__attribute__((warn_unused_result, const));
+
 
 /**
  * @brief Get a string that describes the given IP-ID behavior
@@ -1469,6 +1477,35 @@ static inline char * tcp_ip_id_behavior_get_descr(const tcp_ip_id_behavior_t beh
 	}
 }
 
+
+/**
+ * @brief Get a string that describes the given option type
+ *
+ * @param opt_type  The type of the option to get a description for
+ * @return          The description of the option
+ */
+static inline char * tcp_opt_get_descr(const uint8_t opt_type)
+{
+	switch(opt_type)
+	{
+		case TCP_OPT_EOL:
+			return "EOL";
+		case TCP_OPT_NOP:
+			return "NOP";
+		case TCP_OPT_MSS:
+			return "MSS";
+		case TCP_OPT_WS:
+			return "Window Scale";
+		case TCP_OPT_SACK_PERM:
+			return "SACK permitted";
+		case TCP_OPT_SACK:
+			return "SACK";
+		case TCP_OPT_TS:
+			return "Timestamp";
+		default:
+			return "generic";
+	}
+}
 
 #endif /* ROHC_PROTOCOLS_TCP_H */
 

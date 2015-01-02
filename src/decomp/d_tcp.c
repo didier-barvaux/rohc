@@ -30,6 +30,7 @@
 #include "d_tcp_static.h"
 #include "d_tcp_dynamic.h"
 #include "d_tcp_irregular.h"
+#include "d_tcp_opts_list.h"
 
 #include "rohc_decomp.h"
 #include "rohc_decomp_internals.h"
@@ -46,7 +47,8 @@
 #include "protocols/ip_numbers.h"
 #include "crc.h"
 
-#include "config.h" /* for WORDS_BIGENDIAN and ROHC_EXTRA_DEBUG */
+#include "config.h" /* for WORDS_BIGENDIAN, ROHC_EXTRA_DEBUG and
+                       ROHC_RFC_STRICT_DECOMPRESSOR */
 
 #ifndef __KERNEL__
 #  include <string.h>
@@ -58,17 +60,14 @@
  * Private function prototypes.
  */
 
-static void * d_tcp_create(const struct rohc_decomp_ctxt *const context);
-static void d_tcp_destroy(void *const context);
+static bool d_tcp_create(const struct rohc_decomp_ctxt *const context,
+                         struct d_tcp_context **const persist_ctxt,
+                         struct rohc_decomp_volat_ctxt *const volat_ctxt)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static rohc_status_t d_tcp_decode(struct rohc_decomp *const decomp,
-                                  struct rohc_decomp_ctxt *const context,
-                                  const struct rohc_buf rohc_packet,
-                                  const size_t add_cid_len,
-                                  const size_t large_cid_len,
-                                  struct rohc_buf *const uncomp_packet,
-                                  rohc_packet_t *const packet_type)
-		__attribute__((warn_unused_result, nonnull(1, 2, 6, 7)));
+static void d_tcp_destroy(struct d_tcp_context *const tcp_context,
+                          const struct rohc_decomp_volat_ctxt *const volat_ctxt)
+	__attribute__((nonnull(1, 2)));
 
 static rohc_packet_t tcp_detect_packet_type(const struct rohc_decomp_ctxt *const context,
                                             const uint8_t *const rohc_packet,
@@ -80,58 +79,49 @@ static uint32_t d_tcp_get_msn(const struct rohc_decomp_ctxt *const context)
 	__attribute__((warn_unused_result, nonnull(1), pure));
 
 /* parsing */
-static bool d_tcp_parse_packet(struct rohc_decomp_ctxt *const context,
+static bool d_tcp_parse_packet(const struct rohc_decomp_ctxt *const context,
                                const struct rohc_buf rohc_packet,
                                const size_t large_cid_len,
-                               const rohc_packet_t packet_type,
-                               struct rohc_tcp_extr_bits *const bits,
+                               rohc_packet_t *const packet_type,
+                               struct rohc_decomp_crc *const extr_crc,
+                               struct rohc_tcp_extr_bits *const extr_bits,
                                size_t *const rohc_hdr_len)
-	__attribute__((warn_unused_result, nonnull(1, 5, 6)));
-static bool d_tcp_parse_ir(struct rohc_decomp_ctxt *const context,
+	__attribute__((warn_unused_result, nonnull(1, 4, 5, 6, 7)));
+static bool d_tcp_parse_ir(const struct rohc_decomp_ctxt *const context,
                            const unsigned char *const rohc_packet,
                            const size_t rohc_length,
                            const size_t large_cid_len,
+                           struct rohc_decomp_crc *const extr_crc,
                            struct rohc_tcp_extr_bits *const bits,
                            size_t *const rohc_hdr_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6)));
-static bool d_tcp_parse_irdyn(struct rohc_decomp_ctxt *const context,
+	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6, 7)));
+static bool d_tcp_parse_irdyn(const struct rohc_decomp_ctxt *const context,
                               const unsigned char *const rohc_packet,
                               const size_t rohc_length,
                               const size_t large_cid_len,
+                              struct rohc_decomp_crc *const extr_crc,
                               struct rohc_tcp_extr_bits *const bits,
                               size_t *const rohc_hdr_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6)));
-static bool d_tcp_parse_CO(struct rohc_decomp_ctxt *const context,
+	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6, 7)));
+static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
                            const unsigned char *const rohc_packet,
                            const size_t rohc_length,
                            const size_t large_cid_len,
                            const rohc_packet_t packet_type,
+                           struct rohc_decomp_crc *const extr_crc,
                            struct rohc_tcp_extr_bits *const bits,
                            size_t *const rohc_hdr_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 6, 7)));
-static const uint8_t * d_tcp_parse_options(struct rohc_decomp_ctxt *const context,
-                                           const uint8_t *const data,
-                                           const size_t data_len,
-                                           struct rohc_tcp_extr_bits *const bits)
-	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 6, 7, 8)));
 static void d_tcp_reset_extr_bits(const struct rohc_decomp_ctxt *const context,
 											 struct rohc_tcp_extr_bits *const bits)
 	__attribute__((nonnull(1, 2)));
 
 /* decoding */
-static bool d_tcp_decode_values_from_bits(const struct rohc_decomp_ctxt *const context,
-                                          const struct rohc_tcp_extr_bits bits,
-                                          const size_t payload_len,
-                                          struct rohc_tcp_decoded_values *const decoded)
-	__attribute__((warn_unused_result, nonnull(1, 4)));
-static bool d_tcp_decode_opt_ts(const struct rohc_decomp_ctxt *const context,
-                                const struct rohc_lsb_decode *const req_lsb_ctxt,
-                                const struct rohc_lsb_decode *const rep_lsb_ctxt,
-                                const struct d_tcp_opt_ts ts,
-                                bool *const ts_present,
-                                uint32_t *const req_decoded,
-                                uint32_t *const rep_decoded)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
+static bool d_tcp_decode_bits(const struct rohc_decomp_ctxt *const context,
+                              const struct rohc_tcp_extr_bits *const bits,
+                              const size_t payload_len,
+                              struct rohc_tcp_decoded_values *const decoded)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 static bool d_tcp_decode_opt_ts_field(const struct rohc_decomp_ctxt *const context,
                                       const char *const descr,
                                       const struct rohc_lsb_decode *const lsb_ctxt,
@@ -140,45 +130,44 @@ static bool d_tcp_decode_opt_ts_field(const struct rohc_decomp_ctxt *const conte
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 static void d_tcp_decode_opt_sack(const struct rohc_decomp_ctxt *const context,
                                   const uint32_t ack_num,
-                                  const struct d_tcp_opt_sack opt_sack,
-                                  uint8_t *const decoded)
+                                  const struct d_tcp_opt_sack bits,
+                                  struct d_tcp_opt_sack *const decoded)
 	__attribute__((nonnull(1, 4)));
 
 static bool d_tcp_build_ipv4_hdr(const struct rohc_decomp_ctxt *const context,
-                                 const struct rohc_tcp_decoded_ip_values decoded,
+                                 const struct rohc_tcp_decoded_ip_values *const decoded,
                                  struct rohc_buf *const uncomp_packet,
                                  size_t *const ip_hdr_len)
-	__attribute__((warn_unused_result, nonnull(1, 3, 4)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 static bool d_tcp_build_ipv6_hdr(const struct rohc_decomp_ctxt *const context,
-                                 const struct rohc_tcp_decoded_ip_values decoded,
+                                 const struct rohc_tcp_decoded_ip_values *const decoded,
                                  struct rohc_buf *const uncomp_packet,
                                  size_t *const ip_hdr_len)
-	__attribute__((warn_unused_result, nonnull(1, 3, 4)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 static bool d_tcp_build_ip_hdr(const struct rohc_decomp_ctxt *const context,
-                               const struct rohc_tcp_decoded_ip_values decoded,
+                               const struct rohc_tcp_decoded_ip_values *const decoded,
                                struct rohc_buf *const uncomp_packet,
                                size_t *const ip_hdr_len)
-	__attribute__((warn_unused_result, nonnull(1, 3, 4)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 static bool d_tcp_build_ip_hdrs(const struct rohc_decomp_ctxt *const context,
-                                const struct rohc_tcp_decoded_values decoded,
+                                const struct rohc_tcp_decoded_values *const decoded,
                                 struct rohc_buf *const uncomp_packet,
                                 size_t *const ip_hdrs_len)
-	__attribute__((warn_unused_result, nonnull(1, 3, 4)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 static bool d_tcp_build_tcp_hdr(const struct rohc_decomp_ctxt *const context,
-                                const struct rohc_tcp_decoded_values decoded,
+                                const struct rohc_tcp_decoded_values *const decoded,
                                 struct rohc_buf *const uncomp_packet,
-                                size_t *const tcp_hdr_len)
-	__attribute__((warn_unused_result, nonnull(1, 3, 4)));
-static rohc_status_t d_tcp_build_uncomp_hdrs(const struct rohc_decomp *const decomp,
-                                             const struct rohc_decomp_ctxt *const context,
-                                             const rohc_packet_t packet_type,
-                                             const struct rohc_tcp_decoded_values decoded,
-                                             const size_t payload_len,
-                                             const rohc_crc_type_t crc_type,
-                                             const uint8_t crc_packet,
-                                             struct rohc_buf *const uncomp_hdrs,
-                                             size_t *const uncomp_hdrs_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 8, 9)));
+                                size_t *const tcp_full_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
+static rohc_status_t d_tcp_build_hdrs(const struct rohc_decomp *const decomp,
+                                      const struct rohc_decomp_ctxt *const context,
+                                      const rohc_packet_t packet_type,
+                                      const struct rohc_decomp_crc *const extr_crc,
+                                      const struct rohc_tcp_decoded_values *const decoded,
+                                      const size_t payload_len,
+                                      struct rohc_buf *const uncomp_hdrs,
+                                      size_t *const uncomp_hdrs_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5, 7, 8)));
 static bool d_tcp_check_uncomp_crc(const struct rohc_decomp *const decomp,
                                    const struct rohc_decomp_ctxt *const context,
                                    struct rohc_buf *const uncomp_hdrs,
@@ -189,14 +178,16 @@ static bool d_tcp_check_uncomp_crc(const struct rohc_decomp *const decomp,
 /* CRC repair */
 static bool d_tcp_attempt_repair(const struct rohc_decomp *const decomp,
                                  const struct rohc_decomp_ctxt *const context,
+                                 const struct rohc_ts pkt_arrival_time,
+                                 struct rohc_decomp_crc_corr_ctxt *const crc_corr,
                                  struct rohc_tcp_extr_bits *const bits)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
 
 /* updating context */
-static void d_tcp_update_context(struct rohc_decomp_ctxt *const context,
-                                 const struct rohc_tcp_decoded_values decoded,
-                                 const size_t payload_len)
-	__attribute__((nonnull(1)));
+static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
+                              const struct rohc_tcp_decoded_values *const decoded,
+                              const size_t payload_len)
+	__attribute__((nonnull(1, 2)));
 
 
 /**
@@ -205,21 +196,26 @@ static void d_tcp_update_context(struct rohc_decomp_ctxt *const context,
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param context  The decompression context
- * @return         The newly-created TCP decompression context
+ * @param context            The main decompression context
+ * @param[out] persist_ctxt  The persistent part of the decompression context
+ * @param[out] volat_ctxt    The volatile part of the decompression context
+ * @return                   true if creation succeeded, false in case of problem
  */
-static void * d_tcp_create(const struct rohc_decomp_ctxt *const context)
+static bool d_tcp_create(const struct rohc_decomp_ctxt *const context,
+                         struct d_tcp_context **const persist_ctxt,
+                         struct rohc_decomp_volat_ctxt *const volat_ctxt)
 {
 	struct d_tcp_context *tcp_context;
 
 	/* allocate memory for the context */
-	tcp_context = malloc(sizeof(struct d_tcp_context));
-	if(tcp_context == NULL)
+	*persist_ctxt = malloc(sizeof(struct d_tcp_context));
+	if((*persist_ctxt) == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "not enough memory for the TCP decompression context");
 		goto quit;
 	}
+	tcp_context = *persist_ctxt;
 	memset(tcp_context, 0, sizeof(struct d_tcp_context));
 
 	/* create the LSB decoding context for the MSN */
@@ -305,9 +301,6 @@ static void * d_tcp_create(const struct rohc_decomp_ctxt *const context)
 	tcp_context->tcp_src_port = 0xFFFF;
 	tcp_context->tcp_dst_port = 0xFFFF;
 
-	memset(tcp_context->tcp_options_list, 0xff, ROHC_TCP_OPTS_MAX);
-	memset(tcp_context->tcp_opts_list_struct, 0xff, ROHC_TCP_OPTS_MAX);
-
 	/* create the LSB decoding context for the TCP option Timestamp echo
 	 * request */
 	tcp_context->opt_ts_req_lsb_ctxt = rohc_lsb_new(32);
@@ -330,8 +323,30 @@ static void * d_tcp_create(const struct rohc_decomp_ctxt *const context)
 		goto free_lsb_ts_opt_req;
 	}
 
-	return tcp_context;
+	/* volatile part of the decompression context */
+	volat_ctxt->crc.type = ROHC_CRC_TYPE_NONE;
+	volat_ctxt->crc.bits_nr = 0;
+	volat_ctxt->extr_bits = malloc(sizeof(struct rohc_tcp_extr_bits));
+	if(volat_ctxt->extr_bits == NULL)
+	{
+		rohc_decomp_warn(context, "failed to allocate memory for the volatile part "
+		                 "of one of the TCP decompression context");
+		goto free_lsb_ts_opt_rep;
+	}
+	volat_ctxt->decoded_values = malloc(sizeof(struct rohc_tcp_decoded_values));
+	if(volat_ctxt->decoded_values == NULL)
+	{
+		rohc_decomp_warn(context, "failed to allocate memory for the volatile part "
+		                 "of one of the TCP decompression context");
+		goto free_extr_bits;
+	}
 
+	return true;
+
+free_extr_bits:
+	zfree(volat_ctxt->extr_bits);
+free_lsb_ts_opt_rep:
+	rohc_lsb_free(tcp_context->opt_ts_rep_lsb_ctxt);
 free_lsb_ts_opt_req:
 	rohc_lsb_free(tcp_context->opt_ts_req_lsb_ctxt);
 free_lsb_scaled_ack:
@@ -353,7 +368,7 @@ free_lsb_msn:
 destroy_context:
 	zfree(tcp_context);
 quit:
-	return NULL;
+	return false;
 }
 
 
@@ -363,12 +378,12 @@ quit:
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param context The compression context
+ * @param tcp_context  The persistent decompression context for the TCP profile
+ * @param volat_ctxt   The volatile decompression context
  */
-static void d_tcp_destroy(void *const context)
+static void d_tcp_destroy(struct d_tcp_context *const tcp_context,
+                          const struct rohc_decomp_volat_ctxt *const volat_ctxt)
 {
-	struct d_tcp_context *tcp_context = (struct d_tcp_context *) context;
-
 	/* destroy the LSB decoding context for the TCP option Timestamp echo
 	 * request */
 	rohc_lsb_free(tcp_context->opt_ts_req_lsb_ctxt);
@@ -394,6 +409,10 @@ static void d_tcp_destroy(void *const context)
 
 	/* free the TCP decompression context itself */
 	free(tcp_context);
+
+	/* free the volatile part of the decompression context */
+	free(volat_ctxt->decoded_values);
+	free(volat_ctxt->extr_bits);
 }
 
 
@@ -411,7 +430,7 @@ static rohc_packet_t tcp_detect_packet_type(const struct rohc_decomp_ctxt *const
                                             const size_t rohc_length,
                                             const size_t large_cid_len __attribute__((unused)))
 {
-	struct d_tcp_context *tcp_context = context->specific;
+	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
 	rohc_packet_t type;
 
 	assert(rohc_packet != NULL);
@@ -546,390 +565,55 @@ error:
 
 
 /**
- * @brief Decode one IR, IR-DYN, IR-CO IR-CR packet for TCP profile.
- *
- * This function is one of the functions that must exist in one profile for the
- * framework to work.
- *
- * Steps:
- *  \li A. Parsing of ROHC header
- *  \li B. For IR and IR-DYN packet, check for correct compressed header (CRC)
- *  \li C. Decode extracted bits
- *  \li D. Build uncompressed headers (and check for correct decompression
- *         for UO* packets)
- *  \li E. Copy the payload (if any)
- *  \li F. Update the compression context
- *
- * Steps C and D may be repeated if packet or context repair is attempted
- * upon CRC failure.
- *
- * @param decomp              The ROHC decompressor
- * @param context             The decompression context
- * @param rohc_packet         The ROHC packet to decode
- * @param add_cid_len         The length of the optional Add-CID field
- * @param large_cid_len       The length of the optional large CID field
- * @param[out] uncomp_packet  The uncompressed packet
- * @param packet_type         IN:  The type of the ROHC packet to parse
- *                            OUT: The type of the parsed ROHC packet
- * @return                    ROHC_STATUS_OK if packet is successfully decoded,
- *                            ROHC_STATUS_MALFORMED if packet is malformed,
- *                            ROHC_STATUS_BAD_CRC if a CRC error occurs,
- *                            ROHC_STATUS_ERROR if an error occurs
- */
-static rohc_status_t d_tcp_decode(struct rohc_decomp *const decomp,
-                                  struct rohc_decomp_ctxt *const context,
-                                  const struct rohc_buf rohc_packet,
-                                  const size_t add_cid_len,
-                                  const size_t large_cid_len,
-                                  struct rohc_buf *const uncomp_packet,
-                                  rohc_packet_t *const packet_type)
-{
-	struct d_tcp_context *tcp_context = context->specific;
-
-	struct rohc_tcp_extr_bits bits; /* bits extracted from ROHC packet */
-	struct rohc_tcp_decoded_values decoded; /* values decoded from context & bits */
-
-	/* length of the parsed ROHC header and of the uncompressed headers */
-	size_t rohc_hdr_len;
-	size_t uncomp_hdr_len;
-
-	/* ROHC and uncompressed payloads (they are the same) */
-	const uint8_t *payload_data;
-	size_t payload_len;
-
-	/* Whether to attempt packet correction or not */
-	bool try_decoding_again;
-
-	/* helper variables for values returned by functions */
-	bool parsing_ok;
-	bool decode_ok;
-	rohc_status_t build_ret;
-
-	assert(add_cid_len == 0 || add_cid_len == 1);
-	assert(large_cid_len <= 2);
-	assert((*packet_type) != ROHC_PACKET_UNKNOWN);
-
-	/* remember the arrival time of the packet (used for repair upon CRC
-	 * failure for example) */
-	tcp_context->cur_arrival_time = rohc_packet.time;
-
-
-	/* A. Parsing of ROHC base header, extension header and tail of header */
-
-	/* let's parse the packet! */
-	parsing_ok = d_tcp_parse_packet(context, rohc_packet, large_cid_len,
-	                                *packet_type, &bits, &rohc_hdr_len);
-	if(!parsing_ok)
-	{
-		rohc_decomp_warn(context, "failed to parse the %s header",
-		                 rohc_get_packet_descr(*packet_type));
-		goto error_malformed;
-	}
-
-	/* ROHC base header and its optional extension is now fully parsed,
-	 * remaining data is the payload */
-	payload_data = rohc_buf_data(rohc_packet) + rohc_hdr_len;
-	payload_len = rohc_packet.len - rohc_hdr_len;
-	rohc_decomp_debug(context, "ROHC payload (length = %zu bytes) starts at "
-	                  "offset %zu", payload_len, rohc_hdr_len);
-
-
-	/*
-	 * B. Check for correct compressed header (CRC)
-	 *
-	 * Use the CRC on compressed headers to check whether IR header was
-	 * correctly received. The optional Add-CID is part of the CRC.
-	 */
-
-	if((*packet_type) == ROHC_PACKET_IR || (*packet_type) == ROHC_PACKET_IR_DYN)
-	{
-		const bool crc_ok =
-			rohc_decomp_check_ir_crc(decomp, context,
-			                         rohc_buf_data(rohc_packet) - add_cid_len,
-			                         add_cid_len + rohc_hdr_len,
-			                         large_cid_len, add_cid_len, bits.crc);
-		if(!crc_ok)
-		{
-			rohc_decomp_warn(context, "CRC detected a transmission failure for "
-			                 "%s packet", rohc_get_packet_descr(*packet_type));
-#if ROHC_EXTRA_DEBUG == 1
-			rohc_dump_buf(decomp->trace_callback, decomp->trace_callback_priv,
-			              ROHC_TRACE_DECOMP, ROHC_TRACE_WARNING, "ROHC header",
-			              rohc_buf_data(rohc_packet) - add_cid_len,
-			              rohc_hdr_len + add_cid_len);
-#endif
-			goto error_crc;
-		}
-
-		/* reset the correction attempt */
-		tcp_context->correction_counter = 0;
-	}
-
-
-	try_decoding_again = false;
-	do
-	{
-		if(try_decoding_again)
-		{
-			rohc_decomp_warn(context, "CID %zu: CRC repair: try decoding packet "
-			                 "again with new assumptions", context->cid);
-		}
-
-
-		/* C. Decode extracted bits
-		 *
-		 * All bits are now extracted from the packet, let's decode them.
-		 */
-
-		decode_ok =
-			d_tcp_decode_values_from_bits(context, bits, payload_len, &decoded);
-		if(!decode_ok)
-		{
-			rohc_decomp_warn(context, "failed to decode values from bits "
-			                 "extracted from ROHC header");
-			goto error;
-		}
-
-
-		/* D. Build uncompressed headers & check for correct decompression
-		 *
-		 * All fields are now decoded, let's build the uncompressed headers.
-		 *
-		 * Use the CRC on decompressed headers to check whether decompression was
-		 * correct.
-		 */
-
-		/* build the uncompressed headers */
-		build_ret = d_tcp_build_uncomp_hdrs(decomp, context, *packet_type, decoded,
-		                                    payload_len, bits.crc_type, bits.crc,
-		                                    uncomp_packet, &uncomp_hdr_len);
-		if(build_ret == ROHC_STATUS_OK)
-		{
-			/* uncompressed headers successfully built and CRC is correct,
-			 * no need to try decoding with different values */
-			rohc_buf_pull(uncomp_packet, uncomp_hdr_len);
-
-			if(tcp_context->crc_corr == ROHC_DECOMP_CRC_CORR_SN_NONE)
-			{
-				rohc_decomp_debug(context, "CRC is correct");
-			}
-			else
-			{
-				rohc_decomp_debug(context, "CID %zu: CRC repair: CRC is correct",
-				                  context->cid);
-				try_decoding_again = false;
-			}
-		}
-		else if(build_ret == ROHC_STATUS_OUTPUT_TOO_SMALL)
-		{
-			rohc_decomp_warn(context, "CID %zu: failed to build uncompressed "
-			                 "headers: output buffer too small", context->cid);
-			goto error_output_too_small;
-		}
-		else if(build_ret != ROHC_STATUS_BAD_CRC)
-		{
-			/* uncompressed headers cannot be built, stop decoding */
-			rohc_decomp_warn(context, "CID %zu: failed to build uncompressed "
-			                 "headers", context->cid);
-#if ROHC_EXTRA_DEBUG == 1
-			rohc_dump_packet(decomp->trace_callback, decomp->trace_callback_priv,
-			                 ROHC_TRACE_DECOMP, ROHC_TRACE_WARNING,
-			                 "compressed headers", rohc_packet);
-#endif
-			goto error;
-		}
-		else
-		{
-			/* uncompressed headers successfully built but CRC is incorrect,
-			 * try decoding with different values (repair) */
-
-			/* CRC for IR and IR-DYN packets checked before, so cannot fail here */
-			assert((*packet_type) != ROHC_PACKET_IR);
-			assert((*packet_type) != ROHC_PACKET_IR_DYN);
-
-			rohc_decomp_warn(context, "CID %zu: failed to build uncompressed "
-			                 "headers (CRC failure)", context->cid);
-
-			/* attempt a context/packet repair */
-			try_decoding_again = d_tcp_attempt_repair(decomp, context, &bits);
-
-			/* report CRC failure if attempt is not possible */
-			if(!try_decoding_again)
-			{
-				/* uncompressed headers successfully built, CRC is incorrect, repair
-				 * was disabled or attempted without any success, so give up */
-				rohc_decomp_warn(context, "CID %zu: failed to build uncompressed "
-				                 "headers (CRC failure)", context->cid);
-#if ROHC_EXTRA_DEBUG == 1
-				rohc_dump_packet(decomp->trace_callback, decomp->trace_callback_priv,
-				                 ROHC_TRACE_DECOMP, ROHC_TRACE_WARNING,
-				                 "compressed headers", rohc_packet);
-#endif
-				goto error_crc;
-			}
-		}
-	}
-	while(try_decoding_again);
-
-	/* after CRC failure, if the SN value seems to be correctly guessed, we must
-	 * wait for 3 CRC-valid packets before the correction is approved. Two
-	 * packets are therefore thrown away. */
-	if(tcp_context->crc_corr != ROHC_DECOMP_CRC_CORR_SN_NONE)
-	{
-		if(tcp_context->correction_counter > 1)
-		{
-			/* update context with decoded values even if we drop the packet */
-			d_tcp_update_context(context, decoded, payload_len);
-
-			tcp_context->correction_counter--;
-			rohc_decomp_warn(context, "CID %zu: CRC repair: throw away packet, "
-			                 "still %zu CRC-valid packets required",
-			                 context->cid, tcp_context->correction_counter);
-
-			goto error_crc;
-		}
-		else if(tcp_context->correction_counter == 1)
-		{
-			rohc_decomp_warn(context, "CID %zu: CRC repair: correction is "
-			                 "successful, keep packet", context->cid);
-			context->corrected_crc_failures++;
-			switch(tcp_context->crc_corr)
-			{
-				case ROHC_DECOMP_CRC_CORR_SN_WRAP:
-					context->corrected_sn_wraparounds++;
-					break;
-				case ROHC_DECOMP_CRC_CORR_SN_UPDATES:
-					context->corrected_wrong_sn_updates++;
-					break;
-				case ROHC_DECOMP_CRC_CORR_SN_NONE:
-				default:
-					rohc_error(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-					           "CID %zu: CRC repair: unsupported repair algorithm %d",
-					           context->cid, tcp_context->crc_corr);
-					assert(0);
-					goto error;
-			}
-			tcp_context->crc_corr = ROHC_DECOMP_CRC_CORR_SN_NONE;
-			tcp_context->correction_counter--;
-		}
-	}
-
-
-	/* E. Copy the payload (if any) */
-
-	if((rohc_hdr_len + payload_len) != rohc_packet.len)
-	{
-		rohc_decomp_warn(context, "ROHC %s header (%zu bytes) and payload "
-		                 "(%zu bytes) do not match the full ROHC packet "
-		                 "(%zu bytes)", rohc_get_packet_descr(*packet_type),
-		                 rohc_hdr_len, payload_len, rohc_packet.len);
-		goto error;
-	}
-	if(rohc_buf_avail_len(*uncomp_packet) < payload_len)
-	{
-		rohc_decomp_warn(context, "uncompressed packet too small (%zu bytes "
-		                 "max) for the %zu-byte payload",
-		                 rohc_buf_avail_len(*uncomp_packet), payload_len);
-		goto error_output_too_small;
-	}
-	if(payload_len != 0)
-	{
-		rohc_buf_append(uncomp_packet, payload_data, payload_len);
-		rohc_buf_pull(uncomp_packet, payload_len);
-	}
-	/* unhide the uncompressed headers and payload */
-	rohc_buf_push(uncomp_packet, uncomp_hdr_len + payload_len);
-	rohc_decomp_debug(context, "uncompressed packet length = %zu bytes",
-	                  uncomp_packet->len);
-
-
-	/* F. Update the compression context
-	 *
-	 * Once CRC check is done, update the compression context with the values
-	 * that were decoded earlier.
-	 *
-	 * TODO: check what fields shall be updated in the context
-	 */
-
-	/* we are either already in full context state or we can transit
-	 * through it */
-	if(context->state != ROHC_DECOMP_STATE_FC)
-	{
-		rohc_decomp_debug(context, "change from state %d to state %d",
-		                  context->state, ROHC_DECOMP_STATE_FC);
-		context->state = ROHC_DECOMP_STATE_FC;
-	}
-
-	/* update context with decoded values */
-	d_tcp_update_context(context, decoded, payload_len);
-
-	/* update statistics */
-	rohc_decomp_stats_add_success(context, rohc_hdr_len, uncomp_hdr_len);
-
-	/* decompression is successful */
-	return ROHC_STATUS_OK;
-
-error:
-	return ROHC_STATUS_ERROR;
-error_output_too_small:
-	return ROHC_STATUS_OUTPUT_TOO_SMALL;
-error_crc:
-	return ROHC_STATUS_BAD_CRC;
-error_malformed:
-	return ROHC_STATUS_MALFORMED;
-}
-
-
-/**
  * @brief Parse the given ROHC packet for the TCP profile
  *
- * @param context            The decompression context
- * @param rohc_packet        The ROHC packet to decode
- * @param large_cid_len      The length of the optional large CID field
- * @param packet_type        The type of the ROHC packet to parse
- * @param[out] bits          The bits extracted from the CO packet
- * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
- * @return                   true if parsing was successful,
- *                           false if packet was malformed
+ * @param context              The decompression context
+ * @param rohc_packet          The ROHC packet to parse
+ * @param large_cid_len        The length of the optional large CID field
+ * @param[in,out] packet_type  IN:  The type of the ROHC packet to parse
+ *                             OUT: The type of the parsed ROHC packet
+ * @param[out] extr_crc        The CRC bits extracted from the ROHC header
+ * @param[out] extr_bits       The bits extracted from the ROHC packet
+ * @param[out] rohc_hdr_len    The length of the ROHC header (in bytes)
+ * @return                     true if parsing was successful,
+ *                             false if packet was malformed
  */
-static bool d_tcp_parse_packet(struct rohc_decomp_ctxt *const context,
+static bool d_tcp_parse_packet(const struct rohc_decomp_ctxt *const context,
                                const struct rohc_buf rohc_packet,
                                const size_t large_cid_len,
-                               const rohc_packet_t packet_type,
-                               struct rohc_tcp_extr_bits *const bits,
+                               rohc_packet_t *const packet_type,
+                               struct rohc_decomp_crc *const extr_crc,
+                               struct rohc_tcp_extr_bits *const extr_bits,
                                size_t *const rohc_hdr_len)
 {
 	bool parsing_ok;
-
-	rohc_decomp_debug(context, "parse packet type '%s' (%d)",
-	                  rohc_get_packet_descr(packet_type), packet_type);
 
 	rohc_decomp_debug(context, "rohc_length = %zu, large_cid_len = %zu",
 	                  rohc_packet.len, large_cid_len);
 
 	/* reset all extracted bits */
-	d_tcp_reset_extr_bits(context, bits);
+	d_tcp_reset_extr_bits(context, extr_bits);
 
-	if(packet_type == ROHC_PACKET_IR)
+	if((*packet_type) == ROHC_PACKET_IR)
 	{
 		/* decode IR packet */
 		parsing_ok = d_tcp_parse_ir(context, rohc_buf_data(rohc_packet),
 		                            rohc_packet.len, large_cid_len,
-		                            bits, rohc_hdr_len);
+		                            extr_crc, extr_bits, rohc_hdr_len);
 	}
-	else if(packet_type == ROHC_PACKET_IR_DYN)
+	else if((*packet_type) == ROHC_PACKET_IR_DYN)
 	{
 		/* decode IR-DYN packet */
 		parsing_ok = d_tcp_parse_irdyn(context, rohc_buf_data(rohc_packet),
 		                               rohc_packet.len, large_cid_len,
-		                               bits, rohc_hdr_len);
+		                               extr_crc, extr_bits, rohc_hdr_len);
 	}
 	else
 	{
 		/* decode CO packet */
 		parsing_ok = d_tcp_parse_CO(context, rohc_buf_data(rohc_packet),
-		                            rohc_packet.len, large_cid_len, packet_type,
-		                            bits, rohc_hdr_len);
+		                            rohc_packet.len, large_cid_len, *packet_type,
+		                            extr_crc, extr_bits, rohc_hdr_len);
 	}
 
 	return parsing_ok;
@@ -943,15 +627,17 @@ static bool d_tcp_parse_packet(struct rohc_decomp_ctxt *const context,
  * @param rohc_packet        The ROHC packet to decode
  * @param rohc_length        The length of the ROHC packet to decode
  * @param large_cid_len      The length of the optional large CID field
+ * @param[out] extr_crc      The CRC bits extracted from the ROHC header
  * @param[out] bits          The bits extracted from the IR packet
  * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
  * @return                   true if parsing was successful,
  *                           false if packet was malformed
  */
-static bool d_tcp_parse_ir(struct rohc_decomp_ctxt *const context,
+static bool d_tcp_parse_ir(const struct rohc_decomp_ctxt *const context,
                            const unsigned char *const rohc_packet,
                            const size_t rohc_length,
                            const size_t large_cid_len,
+                           struct rohc_decomp_crc *const extr_crc,
                            struct rohc_tcp_extr_bits *const bits,
                            size_t *const rohc_hdr_len)
 {
@@ -982,9 +668,9 @@ static bool d_tcp_parse_ir(struct rohc_decomp_ctxt *const context,
 		                 "CRC byte");
 		goto error;
 	}
-	bits->crc_type = ROHC_CRC_TYPE_NONE;
-	bits->crc = remain_data[0];
-	bits->crc_nr = 8;
+	extr_crc->type = ROHC_CRC_TYPE_NONE;
+	extr_crc->bits = remain_data[0];
+	extr_crc->bits_nr = 8;
 	remain_data++;
 	remain_len--;
 
@@ -1024,15 +710,17 @@ error:
  * @param rohc_packet        The ROHC packet to decode
  * @param rohc_length        The length of the ROHC packet to decode
  * @param large_cid_len      The length of the optional large CID field
+ * @param[out] extr_crc      The CRC bits extracted from the ROHC header
  * @param[out] bits          The bits extracted from the IR-DYN packet
  * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
  * @return                   true if parsing was successful,
  *                           false if packet was malformed
  */
-static bool d_tcp_parse_irdyn(struct rohc_decomp_ctxt *const context,
+static bool d_tcp_parse_irdyn(const struct rohc_decomp_ctxt *const context,
                               const unsigned char *const rohc_packet,
                               const size_t rohc_length,
                               const size_t large_cid_len,
+                              struct rohc_decomp_crc *const extr_crc,
                               struct rohc_tcp_extr_bits *const bits,
                               size_t *const rohc_hdr_len)
 {
@@ -1062,9 +750,9 @@ static bool d_tcp_parse_irdyn(struct rohc_decomp_ctxt *const context,
 		                 "CRC byte");
 		goto error;
 	}
-	bits->crc_type = ROHC_CRC_TYPE_NONE;
-	bits->crc = remain_data[0];
-	bits->crc_nr = 8;
+	extr_crc->type = ROHC_CRC_TYPE_NONE;
+	extr_crc->bits = remain_data[0];
+	extr_crc->bits_nr = 8;
 	remain_data++;
 	remain_len--;
 
@@ -1084,40 +772,6 @@ static bool d_tcp_parse_irdyn(struct rohc_decomp_ctxt *const context,
 
 error:
 	return false;
-}
-
-
-/**
- * @brief Uncompress a generic TCP option
- *
- * See RFC4996 page 67
- *
- * @param ptr              Pointer to the compressed TCP option
- * @param pOptions         Pointer to the uncompressed TCP option
- * @param opts_remain_len  The remaining length for decoded options (in bytes)
- * @return                 Pointer to the next compressed value
- */
-static const uint8_t * d_tcp_opt_generic(const uint8_t *ptr,
-                                         uint8_t **pOptions,
-                                         const size_t opts_remain_len __attribute__((unused)))
-{
-	uint8_t *options;
-
-	options = *pOptions;
-
-	// A COMPLETER
-
-	switch(*ptr)
-	{
-		case 0x00:  // generic_full_irregular
-			break;
-		case 0xFF:  // generic_stable_irregular
-			break;
-	}
-
-	*pOptions = options;
-
-	return ptr;
 }
 
 
@@ -1156,21 +810,23 @@ static const uint8_t * d_tcp_opt_generic(const uint8_t *ptr,
  * @param rohc_length        The length of the ROHC packet
  * @param large_cid_len      The length of the optional large CID field
  * @param packet_type        The type of the ROHC packet to parse
+ * @param[out] extr_crc      The CRC bits extracted from the ROHC header
  * @param[out] bits          The bits extracted from the CO packet
  * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
  * @return                   true if parsing was successful,
  *                           false if packet was malformed
  */
-static bool d_tcp_parse_CO(struct rohc_decomp_ctxt *const context,
+static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
                            const unsigned char *const rohc_packet,
                            const size_t rohc_length,
                            const size_t large_cid_len,
                            const rohc_packet_t packet_type,
+                           struct rohc_decomp_crc *const extr_crc,
                            struct rohc_tcp_extr_bits *const bits,
                            size_t *const rohc_hdr_len)
 {
 	unsigned char *packed_rohc_packet = malloc(5000); // TODO: change that
-	struct d_tcp_context *const tcp_context = context->specific;
+	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
 	int ret;
 
 	/* remaining ROHC data not parsed yet */
@@ -1180,6 +836,9 @@ static bool d_tcp_parse_CO(struct rohc_decomp_ctxt *const context,
 	const ip_context_t *ip_inner_context;
 	struct rohc_tcp_extr_ip_bits *inner_ip_bits;
 	tcp_ip_id_behavior_t innermost_ip_id_behavior;
+
+	bool is_list_present = false;
+	size_t rohc_opts_len;
 
 	assert(rohc_packet != NULL);
 	assert(large_cid_len <= 2);
@@ -1244,9 +903,9 @@ static bool d_tcp_parse_CO(struct rohc_decomp_ctxt *const context,
 			bits->msn.bits_nr = 4;
 			bits->psh_flag_bits = rnd_1->psh_flag;
 			bits->psh_flag_bits_nr = 1;
-			bits->crc_type = ROHC_CRC_TYPE_3;
-			bits->crc = rnd_1->header_crc;
-			bits->crc_nr = 3;
+			extr_crc->type = ROHC_CRC_TYPE_3;
+			extr_crc->bits = rnd_1->header_crc;
+			extr_crc->bits_nr = 3;
 
 			rohc_remain_data += sizeof(rnd_1_t);
 			rohc_remain_len -= sizeof(rnd_1_t);
@@ -1273,9 +932,9 @@ static bool d_tcp_parse_CO(struct rohc_decomp_ctxt *const context,
 			bits->msn.bits_nr = 4;
 			bits->psh_flag_bits = rnd_2->psh_flag;
 			bits->psh_flag_bits_nr = 1;
-			bits->crc_type = ROHC_CRC_TYPE_3;
-			bits->crc = rnd_2->header_crc;
-			bits->crc_nr = 3;
+			extr_crc->type = ROHC_CRC_TYPE_3;
+			extr_crc->bits = rnd_2->header_crc;
+			extr_crc->bits_nr = 3;
 
 			rohc_remain_data += sizeof(rnd_2_t);
 			rohc_remain_len -= sizeof(rnd_2_t);
@@ -1303,9 +962,9 @@ static bool d_tcp_parse_CO(struct rohc_decomp_ctxt *const context,
 			bits->msn.bits_nr = 4;
 			bits->psh_flag_bits = rnd_3->psh_flag;
 			bits->psh_flag_bits_nr = 1;
-			bits->crc_type = ROHC_CRC_TYPE_3;
-			bits->crc = rnd_3->header_crc;
-			bits->crc_nr = 3;
+			extr_crc->type = ROHC_CRC_TYPE_3;
+			extr_crc->bits = rnd_3->header_crc;
+			extr_crc->bits_nr = 3;
 
 			rohc_remain_data += sizeof(rnd_3_t);
 			rohc_remain_len -= sizeof(rnd_3_t);
@@ -1341,9 +1000,9 @@ static bool d_tcp_parse_CO(struct rohc_decomp_ctxt *const context,
 			bits->msn.bits_nr = 4;
 			bits->psh_flag_bits = rnd_4->psh_flag;
 			bits->psh_flag_bits_nr = 1;
-			bits->crc_type = ROHC_CRC_TYPE_3;
-			bits->crc = rnd_4->header_crc;
-			bits->crc_nr = 3;
+			extr_crc->type = ROHC_CRC_TYPE_3;
+			extr_crc->bits = rnd_4->header_crc;
+			extr_crc->bits_nr = 3;
 
 			rohc_remain_data += sizeof(rnd_4_t);
 			rohc_remain_len -= sizeof(rnd_4_t);
@@ -1368,9 +1027,9 @@ static bool d_tcp_parse_CO(struct rohc_decomp_ctxt *const context,
 			bits->psh_flag_bits_nr = 1;
 			bits->msn.bits = rnd_5->msn;
 			bits->msn.bits_nr = 4;
-			bits->crc_type = ROHC_CRC_TYPE_3;
-			bits->crc = rnd_5->header_crc;
-			bits->crc_nr = 3;
+			extr_crc->type = ROHC_CRC_TYPE_3;
+			extr_crc->bits = rnd_5->header_crc;
+			extr_crc->bits_nr = 3;
 			bits->seq.bits = (rnd_5->seq_num1 << 9) |
 			                 (rnd_5->seq_num2 << 1) |
 			                 rnd_5->seq_num3;
@@ -1399,9 +1058,9 @@ static bool d_tcp_parse_CO(struct rohc_decomp_ctxt *const context,
 			}
 
 			assert(rnd_6->discriminator == 0x0a); /* '1010' */
-			bits->crc_type = ROHC_CRC_TYPE_3;
-			bits->crc = rnd_6->header_crc;
-			bits->crc_nr = 3;
+			extr_crc->type = ROHC_CRC_TYPE_3;
+			extr_crc->bits = rnd_6->header_crc;
+			extr_crc->bits_nr = 3;
 			bits->psh_flag_bits = rnd_6->psh_flag;
 			bits->psh_flag_bits_nr = 1;
 			bits->ack.bits = rohc_ntoh16(rnd_6->ack_num);
@@ -1440,9 +1099,9 @@ static bool d_tcp_parse_CO(struct rohc_decomp_ctxt *const context,
 			bits->msn.bits_nr = 4;
 			bits->psh_flag_bits = rnd_7->psh_flag;
 			bits->psh_flag_bits_nr = 1;
-			bits->crc_type = ROHC_CRC_TYPE_3;
-			bits->crc = rnd_7->header_crc;
-			bits->crc_nr = 3;
+			extr_crc->type = ROHC_CRC_TYPE_3;
+			extr_crc->bits = rnd_7->header_crc;
+			extr_crc->bits_nr = 3;
 
 			rohc_remain_data += sizeof(rnd_7_t);
 			rohc_remain_len -= sizeof(rnd_7_t);
@@ -1465,10 +1124,10 @@ static bool d_tcp_parse_CO(struct rohc_decomp_ctxt *const context,
 			assert(rnd_8->discriminator == 0x16); /* '10110' */
 			bits->rsf_flags_bits = rnd_8->rsf_flags;
 			bits->rsf_flags_bits_nr = 2;
-			bits->is_list_present = !!rnd_8->list_present;
-			bits->crc_type = ROHC_CRC_TYPE_7;
-			bits->crc = rnd_8->header_crc;
-			bits->crc_nr = 7;
+			is_list_present = !!rnd_8->list_present;
+			extr_crc->type = ROHC_CRC_TYPE_7;
+			extr_crc->bits = rnd_8->header_crc;
+			extr_crc->bits_nr = 7;
 			bits->msn.bits = (rnd_8->msn1 << 3) | rnd_8->msn2;
 			bits->msn.bits_nr = 4;
 			bits->psh_flag_bits = rnd_8->psh_flag;
@@ -1513,9 +1172,9 @@ static bool d_tcp_parse_CO(struct rohc_decomp_ctxt *const context,
 			bits->msn.bits_nr = 4;
 			bits->psh_flag_bits = seq_1->psh_flag;
 			bits->psh_flag_bits_nr = 1;
-			bits->crc_type = ROHC_CRC_TYPE_3;
-			bits->crc = seq_1->header_crc;
-			bits->crc_nr = 3;
+			extr_crc->type = ROHC_CRC_TYPE_3;
+			extr_crc->bits = seq_1->header_crc;
+			extr_crc->bits_nr = 3;
 
 			rohc_remain_data += sizeof(seq_1_t);
 			rohc_remain_len -= sizeof(seq_1_t);
@@ -1545,9 +1204,9 @@ static bool d_tcp_parse_CO(struct rohc_decomp_ctxt *const context,
 			bits->msn.bits_nr = 4;
 			bits->psh_flag_bits = seq_2->psh_flag;
 			bits->psh_flag_bits_nr = 1;
-			bits->crc_type = ROHC_CRC_TYPE_3;
-			bits->crc = seq_2->header_crc;
-			bits->crc_nr = 3;
+			extr_crc->type = ROHC_CRC_TYPE_3;
+			extr_crc->bits = seq_2->header_crc;
+			extr_crc->bits_nr = 3;
 
 			rohc_remain_data += sizeof(seq_2_t);
 			rohc_remain_len -= sizeof(seq_2_t);
@@ -1578,9 +1237,9 @@ static bool d_tcp_parse_CO(struct rohc_decomp_ctxt *const context,
 			bits->msn.bits_nr = 4;
 			bits->psh_flag_bits = seq_3->psh_flag;
 			bits->psh_flag_bits_nr = 1;
-			bits->crc_type = ROHC_CRC_TYPE_3;
-			bits->crc = seq_3->header_crc;
-			bits->crc_nr = 3;
+			extr_crc->type = ROHC_CRC_TYPE_3;
+			extr_crc->bits = seq_3->header_crc;
+			extr_crc->bits_nr = 3;
 
 			rohc_remain_data += sizeof(seq_3_t);
 			rohc_remain_len -= sizeof(seq_3_t);
@@ -1619,9 +1278,9 @@ static bool d_tcp_parse_CO(struct rohc_decomp_ctxt *const context,
 			bits->msn.bits_nr = 4;
 			bits->psh_flag_bits = seq_4->psh_flag;
 			bits->psh_flag_bits_nr = 1;
-			bits->crc_type = ROHC_CRC_TYPE_3;
-			bits->crc = seq_4->header_crc;
-			bits->crc_nr = 3;
+			extr_crc->type = ROHC_CRC_TYPE_3;
+			extr_crc->bits = seq_4->header_crc;
+			extr_crc->bits_nr = 3;
 
 			rohc_remain_data += sizeof(seq_4_t);
 			rohc_remain_len -= sizeof(seq_4_t);
@@ -1655,9 +1314,9 @@ static bool d_tcp_parse_CO(struct rohc_decomp_ctxt *const context,
 			bits->msn.bits_nr = 4;
 			bits->psh_flag_bits = seq_5->psh_flag;
 			bits->psh_flag_bits_nr = 1;
-			bits->crc_type = ROHC_CRC_TYPE_3;
-			bits->crc = seq_5->header_crc;
-			bits->crc_nr = 3;
+			extr_crc->type = ROHC_CRC_TYPE_3;
+			extr_crc->bits = seq_5->header_crc;
+			extr_crc->bits_nr = 3;
 
 			rohc_remain_data += sizeof(seq_5_t);
 			rohc_remain_len -= sizeof(seq_5_t);
@@ -1691,9 +1350,9 @@ static bool d_tcp_parse_CO(struct rohc_decomp_ctxt *const context,
 			bits->msn.bits_nr = 4;
 			bits->psh_flag_bits = seq_6->psh_flag;
 			bits->psh_flag_bits_nr = 1;
-			bits->crc_type = ROHC_CRC_TYPE_3;
-			bits->crc = seq_6->header_crc;
-			bits->crc_nr = 3;
+			extr_crc->type = ROHC_CRC_TYPE_3;
+			extr_crc->bits = seq_6->header_crc;
+			extr_crc->bits_nr = 3;
 
 			rohc_remain_data += sizeof(seq_6_t);
 			rohc_remain_len -= sizeof(seq_6_t);
@@ -1727,9 +1386,9 @@ static bool d_tcp_parse_CO(struct rohc_decomp_ctxt *const context,
 			bits->msn.bits_nr = 4;
 			bits->psh_flag_bits = seq_7->psh_flag;
 			bits->psh_flag_bits_nr = 1;
-			bits->crc_type = ROHC_CRC_TYPE_3;
-			bits->crc = seq_7->header_crc;
-			bits->crc_nr = 3;
+			extr_crc->type = ROHC_CRC_TYPE_3;
+			extr_crc->bits = seq_7->header_crc;
+			extr_crc->bits_nr = 3;
 
 			rohc_remain_data += sizeof(seq_7_t);
 			rohc_remain_len -= sizeof(seq_7_t);
@@ -1753,10 +1412,10 @@ static bool d_tcp_parse_CO(struct rohc_decomp_ctxt *const context,
 			inner_ip_bits->id.bits = seq_8->ip_id;
 			inner_ip_bits->id.bits_nr = 4;
 			inner_ip_bits->id.p = 3;
-			bits->is_list_present = !!seq_8->list_present;
-			bits->crc_type = ROHC_CRC_TYPE_7;
-			bits->crc = seq_8->header_crc;
-			bits->crc_nr = 7;
+			is_list_present = !!seq_8->list_present;
+			extr_crc->type = ROHC_CRC_TYPE_7;
+			extr_crc->bits = seq_8->header_crc;
+			extr_crc->bits_nr = 7;
 			bits->msn.bits = seq_8->msn;
 			bits->msn.bits_nr = 4;
 			bits->psh_flag_bits = seq_8->psh_flag;
@@ -1803,14 +1462,14 @@ static bool d_tcp_parse_CO(struct rohc_decomp_ctxt *const context,
 			bits->rsf_flags_bits_nr = 2;
 			bits->msn.bits = co_common->msn;
 			bits->msn.bits_nr = 4;
-			bits->is_list_present = !!co_common->list_present;
+			is_list_present = !!co_common->list_present;
 			inner_ip_bits->id_behavior = co_common->ip_id_behavior;
 			inner_ip_bits->id_behavior_nr = 2;
 			bits->urg_flag_bits = co_common->urg_flag;
 			bits->urg_flag_bits_nr = 1;
-			bits->crc_type = ROHC_CRC_TYPE_7;
-			bits->crc = co_common->header_crc;
-			bits->crc_nr = 7;
+			extr_crc->type = ROHC_CRC_TYPE_7;
+			extr_crc->bits = co_common->header_crc;
+			extr_crc->bits_nr = 7;
 
 			rohc_remain_data += sizeof(co_common_t);
 			rohc_remain_len -= sizeof(co_common_t);
@@ -1925,9 +1584,9 @@ static bool d_tcp_parse_CO(struct rohc_decomp_ctxt *const context,
 			/* reserved field shall be zero */
 			if(co_common->reserved != 0)
 			{
-				rohc_decomp_warn(context, "malformed ROHC co_common packet: "
-				                 "reserved field shall be zero but it is %u",
-				                 co_common->reserved);
+				rohc_decomp_debug(context, "malformed ROHC co_common packet: "
+				                  "reserved field shall be zero but it is %u",
+				                  co_common->reserved);
 #ifdef ROHC_RFC_STRICT_DECOMPRESSOR
 				goto error;
 #endif
@@ -1961,9 +1620,9 @@ static bool d_tcp_parse_CO(struct rohc_decomp_ctxt *const context,
 				/* padding field shall be zero */
 				if(dscp_padding != 0)
 				{
-					rohc_decomp_warn(context, "malformed ROHC co_common packet: "
-					                 "DSCP padding shall be zero but it is %u",
-					                 dscp_padding);
+					rohc_decomp_debug(context, "malformed ROHC co_common packet: "
+					                  "DSCP padding shall be zero but it is %u",
+					                  dscp_padding);
 #ifdef ROHC_RFC_STRICT_DECOMPRESSOR
 					goto error;
 #endif
@@ -2023,19 +1682,40 @@ static bool d_tcp_parse_CO(struct rohc_decomp_ctxt *const context,
 		                  tcp_ip_id_behavior_get_descr(innermost_ip_id_behavior));
 	}
 
-	/* parse the TCP options list if present */
+	/* parse the compressed list of TCP options if present */
+	if(is_list_present == 0)
 	{
-		const uint8_t *const rohc_opts_start = rohc_remain_data;
-		const uint8_t *const rohc_opts_end =
-				d_tcp_parse_options(context, rohc_remain_data, rohc_remain_len, bits);
-		size_t rohc_opts_len = rohc_opts_end - rohc_opts_start;
-		rohc_decomp_debug(context, "ROHC packet = header (%zu bytes) + "
-		                  "options (%zu bytes) = %zu bytes", *rohc_hdr_len,
-		                  rohc_opts_len, (*rohc_hdr_len) + rohc_opts_len);
-		rohc_remain_data += rohc_opts_len;
-		rohc_remain_len -= rohc_opts_len;
-		*rohc_hdr_len += rohc_opts_len;
+		size_t i;
+		rohc_decomp_debug(context, "no compressed list of TCP options found "
+		                  "after the ROHC base header");
+		/* same list as in previous packets, but reset the 'present' flags ; the
+		 * list light be updated by irregular chain later */
+		memcpy(&bits->tcp_opts, &tcp_context->tcp_opts, sizeof(struct d_tcp_opts_ctxt));
+		for(i = 0; i < ROHC_TCP_OPTS_MAX; i++)
+		{
+			bits->tcp_opts.expected_dynamic[i] = false;
+			bits->tcp_opts.found[i] = false;
+		}
+		rohc_opts_len = 0;
 	}
+	else
+	{
+		ret = d_tcp_parse_tcp_opts_dyn(context, rohc_remain_data, rohc_remain_len,
+		                               false, &bits->tcp_opts);
+		if(ret < 0)
+		{
+			rohc_decomp_warn(context, "failed to parse optional compressed list "
+			                 "of TCP options");
+			goto error;
+		}
+		rohc_opts_len = ret;
+	}
+	rohc_decomp_debug(context, "ROHC packet = header (%zu bytes) + options (%zu "
+	                  "bytes) = %zu bytes", *rohc_hdr_len, rohc_opts_len,
+	                  (*rohc_hdr_len) + rohc_opts_len);
+	rohc_remain_data += rohc_opts_len;
+	rohc_remain_len -= rohc_opts_len;
+	*rohc_hdr_len += rohc_opts_len;
 
 	/* parse irregular chain */
 	{
@@ -2068,581 +1748,6 @@ error:
 
 
 /**
- * @brief Parse the TCP options
- *
- * @param context    The decompression context
- * @param data       The compressed TCP options
- * @param data_len   The length (in bytes) of compressed TCP options
- * @param[out] bits  The bits extracted from the compressed TCP options
- * @return           Pointer on data after the compressed TCP options,
- *                   NULL in case of malformed data
- */
-static const uint8_t * d_tcp_parse_options(struct rohc_decomp_ctxt *const context,
-                                           const uint8_t *const data,
-                                           const size_t data_len,
-                                           struct rohc_tcp_extr_bits *const bits)
-{
-	struct d_tcp_context *const tcp_context = context->specific;
-	uint8_t present;
-	uint8_t PS;
-	uint8_t opt_idx;
-	size_t xi_len;
-	uint8_t m;
-	size_t i;
-	int ret;
-
-	uint8_t *remain_data;
-	size_t remain_len;
-	const uint8_t *compressed_options;
-	size_t comp_opts_len;
-	uint8_t *options;
-	size_t opt_padding_len;
-	size_t opts_len = 0;
-
-	assert(data != NULL);
-
-	remain_data = (uint8_t *) data;
-	remain_len = data_len;
-
-	/* skip parsing if the compressed list of TCP options is not present */
-	if(bits->is_list_present == 0)
-	{
-		rohc_decomp_debug(context, "no compressed list of TCP options found "
-		                  "after the ROHC base header");
-		for(i = 0; i < ROHC_TCP_OPTS_MAX; i++)
-		{
-			bits->is_tcp_opts_list_item_present[i] = false;
-		}
-		bits->opts_len = 0;
-		return remain_data;
-	}
-
-	/* init pointer to destination TCP options */
-	options = bits->opts;
-
-	/* PS/m byte */
-	if(remain_len < 1)
-	{
-		rohc_decomp_warn(context, "ROHC packet is too small for compressed TCP "
-		                 "options: at least 1 byte required");
-		goto error;
-	}
-	PS = remain_data[0] & 0x10;
-	m = remain_data[0] & 0x0f;
-	remain_data++;
-	remain_len--;
-	if(m > MAX_TCP_OPTION_INDEX)
-	{
-		rohc_decomp_warn(context, "compressed list of TCP options: too many "
-		                 "options");
-		goto error;
-	}
-
-	if(PS == 0)
-	{
-		/* 4-bit XI fields */
-		xi_len = (m + 1) >> 1;
-	}
-	else
-	{
-		/* 8-bit XI fields */
-		xi_len = m;
-	}
-	rohc_decomp_debug(context, "TCP options list: %d-bit XI fields are used "
-							"on %zd bytes", (PS == 0 ? 4 : 8), xi_len);
-	if(remain_len < xi_len)
-	{
-		rohc_decomp_warn(context, "ROHC packet is too small for compressed TCP "
-		                 "options: at least %zu bytes required", xi_len);
-		goto error;
-	}
-	compressed_options = remain_data + xi_len;
-	comp_opts_len = remain_len - xi_len;
-
-	for(i = 0; i < m; i++)
-	{
-		uint8_t opt_type;
-		uint8_t opt_len;
-
-		/* 4-bit XI fields */
-		if(PS == 0)
-		{
-			/* if odd digit */
-			if(i & 1)
-			{
-				opt_idx = remain_data[0];
-				remain_data++;
-				remain_len--;
-			}
-			else
-			{
-				opt_idx = remain_data[0] >> 4;
-			}
-			present = opt_idx & 0x08;
-			opt_idx &= 0x07;
-			rohc_decomp_debug(context, "TCP options list: 4-bit XI field #%zu: "
-			                  "item with index %u is %s", i, opt_idx,
-			                  present ? "present" : "not present");
-		}
-		else
-		{
-			/* 8-bit XI fields */
-			present = remain_data[0] & 0x80;
-			opt_idx = remain_data[0] & 0x0f;
-			remain_data++;
-			remain_len--;
-			rohc_decomp_debug(context, "TCP options list: 8-bit XI field #%zu: "
-			                  "item with index %u is %s", i, opt_idx,
-			                  present ? "present" : "not present");
-		}
-
-		if(present)
-		{
-			/* option content is present */
-			bits->is_tcp_opts_list_item_present[i] = true;
-
-			/* TODO: check ROHC packet length */
-			switch(opt_idx)
-			{
-				case TCP_INDEX_NOP:  // NOP
-					opt_type = TCP_OPT_NOP;
-					opt_len = 1;
-					if((opts_len + opt_len) > MAX_TCP_OPTIONS_LEN)
-					{
-						rohc_decomp_warn(context, "malformed TCP options: more than "
-						                 "%lu bytes of TCP options: %zu bytes already "
-						                 "in + %u-byte NOP option",
-						                 MAX_TCP_OPTIONS_LEN, opts_len, opt_len);
-						goto error;
-					}
-					*(options++) = TCP_OPT_NOP;
-					opts_len += opt_len;
-					break;
-				case TCP_INDEX_EOL:  // EOL
-					opt_type = TCP_OPT_EOL;
-					*(options++) = TCP_OPT_EOL;
-					opt_len = 1;
-					if((opts_len + opt_len) > MAX_TCP_OPTIONS_LEN)
-					{
-						rohc_decomp_warn(context, "malformed TCP options: more than "
-						                 "%lu bytes of TCP options: %zu bytes already "
-						                 "in + %u-byte EOL option",
-						                 MAX_TCP_OPTIONS_LEN, opts_len, opt_len);
-						goto error;
-					}
-					opts_len += opt_len;
-					break;
-				case TCP_INDEX_MAXSEG:  // MSS
-					opt_type = TCP_OPT_MAXSEG;
-					opt_len = TCP_OLEN_MAXSEG;
-					if((opts_len + opt_len) > MAX_TCP_OPTIONS_LEN)
-					{
-						rohc_decomp_warn(context, "malformed TCP options: more than "
-						                 "%lu bytes of TCP options: %zu bytes already "
-						                 "in + %u-byte MSS option",
-						                 MAX_TCP_OPTIONS_LEN, opts_len, opt_len);
-						goto error;
-					}
-					*(options++) = TCP_OPT_MAXSEG;
-					// Length
-					*(options++) = TCP_OLEN_MAXSEG;
-					// Max segment size
-					if(comp_opts_len < 2)
-					{
-						rohc_decomp_warn(context, "ROHC packet is too small for "
-						                 "compressed TCP option MAXSEQ: at least "
-						                 "2 bytes required");
-						goto error;
-					}
-					memcpy(&tcp_context->tcp_option_maxseg,compressed_options,2);
-					*(options++) = *(compressed_options++);
-					*(options++) = *(compressed_options++);
-					comp_opts_len -= 2;
-					opts_len += opt_len;
-					break;
-				case TCP_INDEX_WINDOW:  // WINDOW SCALE
-					opt_type = TCP_OPT_WINDOW;
-					opt_len = TCP_OLEN_WINDOW;
-					if((opts_len + opt_len) > MAX_TCP_OPTIONS_LEN)
-					{
-						rohc_decomp_warn(context, "malformed TCP options: more than "
-						                 "%lu bytes of TCP options: %zu bytes already "
-						                 "in + %u-byte Window option",
-						                 MAX_TCP_OPTIONS_LEN, opts_len, opt_len);
-						goto error;
-					}
-					*(options++) = TCP_OPT_WINDOW;
-					// Length
-					*(options++) = TCP_OLEN_WINDOW;
-					// Window scale
-					if(comp_opts_len < 1)
-					{
-						rohc_decomp_warn(context, "ROHC packet is too small for "
-						                 "compressed TCP option WINDOW: at least "
-						                 "1 byte required");
-						goto error;
-					}
-					options[0] = compressed_options[0];
-					options++;
-					tcp_context->tcp_option_window = compressed_options[0];
-					compressed_options++;
-					comp_opts_len -= 1;
-					opts_len += opt_len;
-					break;
-				case TCP_INDEX_TIMESTAMP:  // TIMESTAMP
-				{
-					/* TS option cannot be present more than once in both option
-					 * list of the co_common/seq_8/rnd_8 packets and in the irregular
-					 * chain */
-					if(bits->opt_ts.req.bits_nr > 0 || bits->opt_ts.rep.bits_nr > 0)
-					{
-						rohc_decomp_warn(context, "malformed irregular chain: "
-						                 "unexpected duplicated TS option");
-						goto error;
-					}
-
-					opt_type = TCP_OPT_TIMESTAMP;
-					opt_len = TCP_OLEN_TIMESTAMP;
-					if((opts_len + opt_len) > MAX_TCP_OPTIONS_LEN)
-					{
-						rohc_decomp_warn(context, "malformed TCP options: more than "
-						                 "%lu bytes of TCP options: %zu bytes already "
-						                 "in + %u-byte Timestamp option",
-						                 MAX_TCP_OPTIONS_LEN, opts_len, opt_len);
-						goto error;
-					}
-					*(options++) = TCP_OPT_TIMESTAMP;
-					// Length
-					*(options++) = TCP_OLEN_TIMESTAMP;
-
-					/* parse TS echo request/reply fields */
-					ret = d_tcp_ts_parse(context, compressed_options, comp_opts_len,
-					                     &(bits->opt_ts));
-					if(ret < 0)
-					{
-						rohc_decomp_warn(context, "failed to decompress TCP option "
-						                 "TS echo request/reply fields");
-						goto error;
-					}
-					bits->opt_ts.uncomp_opt_offset = opts_len + 2;
-					compressed_options += ret;
-					comp_opts_len -= ret;
-
-					options += sizeof(struct tcp_option_timestamp);
-					opts_len += opt_len;
-					break;
-				}
-				case TCP_INDEX_SACK_PERMITTED:  // SACK-PERMITTED see RFC2018
-					opt_type = TCP_OPT_SACK_PERMITTED;
-					opt_len = TCP_OLEN_SACK_PERMITTED;
-					if((opts_len + opt_len) > MAX_TCP_OPTIONS_LEN)
-					{
-						rohc_decomp_warn(context, "malformed TCP options: more than "
-						                 "%lu bytes of TCP options: %zu bytes already "
-						                 "in + %u-byte SACK permitted option",
-						                 MAX_TCP_OPTIONS_LEN, opts_len, opt_len);
-						goto error;
-					}
-					*(options++) = TCP_OPT_SACK_PERMITTED;
-					// Length
-					*(options++) = TCP_OLEN_SACK_PERMITTED;
-					opts_len += opt_len;
-					break;
-				case TCP_INDEX_SACK:  // SACK see RFC2018
-					                   // TODO: save into context
-				{
-					size_t sack_opt_len;
-
-					/* SACK option cannot be present more than once in both option
-					 * list of the co_common/seq_8/rnd_8 packets and in the irregular
-					 * chain */
-					if(bits->opt_sack.blocks_nr > 0)
-					{
-						rohc_decomp_warn(context, "malformed irregular chain: "
-						                 "unexpected duplicated SACK option");
-						goto error;
-					}
-
-					opt_type = TCP_OPT_SACK;
-
-					ret = d_tcp_sack_parse(context, compressed_options, comp_opts_len,
-					                       &(bits->opt_sack));
-					if(ret < 0)
-					{
-						rohc_decomp_warn(context, "failed to decompress TCP SACK "
-						                 "option");
-						goto error;
-					}
-					compressed_options += ret;
-					comp_opts_len -= ret;
-
-					sack_opt_len = 2 + sizeof(sack_block_t) * bits->opt_sack.blocks_nr;
-					if(sack_opt_len > 0xff)
-					{
-						rohc_decomp_warn(context, "malformed ROHC packet: TCP SACK "
-						                 "option is %zu-byte long according to ROHC "
-						                 "packet, but maximum length is %u bytes",
-						                 sack_opt_len, 0xff);
-						goto error;
-					}
-					opt_len = sack_opt_len;
-					if((opts_len + opt_len) > MAX_TCP_OPTIONS_LEN)
-					{
-						rohc_decomp_warn(context, "malformed TCP options: more than "
-						                 "%lu bytes of TCP options: %zu bytes already "
-						                 "in + %u-byte SACK option",
-						                 MAX_TCP_OPTIONS_LEN, opts_len, opt_len);
-						goto error;
-					}
-
-					options[0] = TCP_OPT_SACK;
-					options[1] = opt_len;
-					bits->opt_sack.uncomp_opt_offset = opts_len + 2;
-					options += sack_opt_len;
-					opts_len += opt_len;
-					break;
-				}
-				default:  // Generic options
-				{
-					const uint8_t *const start_opt = options;
-					size_t opt_remain_len = MAX_TCP_OPTIONS_LEN - opts_len;
-					rohc_decomp_warn(context, "TCP option with index %u not "
-					                 "handled", opt_idx);
-					// TODO
-					opt_type = 0xff;
-					compressed_options =
-						d_tcp_opt_generic(compressed_options, &options, opt_remain_len);
-					if((options - start_opt) > 0xff)
-					{
-						rohc_decomp_warn(context, "malformed ROHC packet: TCP option "
-						                 "is %ld-byte long according to ROHC packet, "
-						                 "but maximum length is %u bytes",
-						                 options - start_opt, 0xff);
-						goto error;
-					}
-					opt_len = (options - start_opt);
-					opts_len += opt_len;
-					break;
-				}
-			}
-			bits->tcp_opts_list_item_uncomp_length[i] = opt_len;
-		}
-		else
-		{
-			/* option content not present */
-			bits->is_tcp_opts_list_item_present[i] = false;
-
-			/* TODO: check ROHC packet length */
-			switch(opt_idx)
-			{
-				case TCP_INDEX_NOP:  // NOP
-					opt_type = TCP_OPT_NOP;
-					opt_len = 1;
-					if((opts_len + opt_len) > MAX_TCP_OPTIONS_LEN)
-					{
-						rohc_decomp_warn(context, "malformed TCP options: more than "
-						                 "%lu bytes of TCP options: %zu bytes already "
-						                 "in + %u-byte NOP option",
-						                 MAX_TCP_OPTIONS_LEN, opts_len, opt_len);
-						goto error;
-					}
-					*(options++) = TCP_OPT_NOP;
-					opts_len += opt_len;
-					break;
-				case TCP_INDEX_EOL:  // EOL
-					opt_type = TCP_OPT_EOL;
-					opt_len = 1;
-					if((opts_len + opt_len) > MAX_TCP_OPTIONS_LEN)
-					{
-						rohc_decomp_warn(context, "malformed TCP options: more than "
-						                 "%lu bytes of TCP options: %zu bytes already "
-						                 "in + %u-byte EOL option",
-						                 MAX_TCP_OPTIONS_LEN, opts_len, opt_len);
-						goto error;
-					}
-					*(options++) = TCP_OPT_EOL;
-					opts_len += opt_len;
-					break;
-				case TCP_INDEX_MAXSEG:  // MSS
-					opt_type = TCP_OPT_MAXSEG;
-					opt_len = TCP_OLEN_MAXSEG;
-					if((opts_len + opt_len) > MAX_TCP_OPTIONS_LEN)
-					{
-						rohc_decomp_warn(context, "malformed TCP options: more than "
-						                 "%lu bytes of TCP options: %zu bytes already "
-						                 "in + %u-byte MSS option",
-						                 MAX_TCP_OPTIONS_LEN, opts_len, opt_len);
-						goto error;
-					}
-					*(options++) = TCP_OPT_MAXSEG;
-					// Length
-					*(options++) = TCP_OLEN_MAXSEG;
-					// Max segment size value
-					memcpy(options, &tcp_context->tcp_option_maxseg, TCP_OLEN_MAXSEG - 2);
-					options += TCP_OLEN_MAXSEG - 2;
-					opts_len += opt_len;
-					break;
-				case TCP_INDEX_WINDOW:  // WINDOW SCALE
-					opt_type = TCP_OPT_WINDOW;
-					opt_len = TCP_OLEN_WINDOW;
-					if((opts_len + opt_len) > MAX_TCP_OPTIONS_LEN)
-					{
-						rohc_decomp_warn(context, "malformed TCP options: more than "
-						                 "%lu bytes of TCP options: %zu bytes already "
-						                 "in + %u-byte Window option",
-						                 MAX_TCP_OPTIONS_LEN, opts_len, opt_len);
-						goto error;
-					}
-					*(options++) = TCP_OPT_WINDOW;
-					// Length
-					*(options++) = TCP_OLEN_WINDOW;
-					// Window scale value
-					*(options++) = tcp_context->tcp_option_window;
-					opts_len += opt_len;
-					break;
-				case TCP_INDEX_TIMESTAMP:  // TIMESTAMP
-				{
-					struct tcp_option_timestamp *const opt_ts_pkt =
-						(struct tcp_option_timestamp *) (options + 2);
-
-					opt_type = TCP_OPT_TIMESTAMP;
-					opt_len = TCP_OLEN_TIMESTAMP;
-					if((opts_len + opt_len) > MAX_TCP_OPTIONS_LEN)
-					{
-						rohc_decomp_warn(context, "malformed TCP options: more than "
-						                 "%lu bytes of TCP options: %zu bytes already "
-						                 "in + %u-byte Timestamp option",
-						                 MAX_TCP_OPTIONS_LEN, opts_len, opt_len);
-						goto error;
-					}
-					*(options++) = TCP_OPT_TIMESTAMP;
-					// Length
-					*(options++) = TCP_OLEN_TIMESTAMP;
-					// Timestamp value
-					opt_ts_pkt->ts = tcp_context->tcp_opt_ts.ts;
-					opt_ts_pkt->ts_reply = tcp_context->tcp_opt_ts.ts_reply;
-					options += TCP_OLEN_TIMESTAMP - 2;
-					opts_len += opt_len;
-					break;
-				}
-				case TCP_INDEX_SACK_PERMITTED:  // SACK-PERMITTED see RFC2018
-					opt_type = TCP_OPT_SACK_PERMITTED;
-					opt_len = TCP_OLEN_SACK_PERMITTED;
-					if((opts_len + opt_len) > MAX_TCP_OPTIONS_LEN)
-					{
-						rohc_decomp_warn(context, "malformed TCP options: more than "
-						                 "%lu bytes of TCP options: %zu bytes already "
-						                 "in + %u-byte SACK permitted option",
-						                 MAX_TCP_OPTIONS_LEN, opts_len, opt_len);
-						goto error;
-					}
-					*(options++) = TCP_OPT_SACK_PERMITTED;
-					opts_len++;
-					// Length
-					*(options++) = TCP_OLEN_SACK_PERMITTED;
-					opts_len++;
-					break;
-				case TCP_INDEX_SACK:  // SACK see RFC2018
-					opt_type = TCP_OPT_SACK;
-					if(tcp_context->tcp_opt_sack_length > (0xff - 2))
-					{
-						rohc_decomp_warn(context, "malformed ROHC packet: TCP SACK "
-						                 "option is (%u+2)-byte long according to ROHC "
-						                 "packet, but maximum length is %u bytes",
-						                 tcp_context->tcp_opt_sack_length, 0xff);
-						goto error;
-					}
-					opt_len = 2 + tcp_context->tcp_opt_sack_length;
-					if((opts_len + opt_len) > MAX_TCP_OPTIONS_LEN)
-					{
-						rohc_decomp_warn(context, "malformed TCP options: more than "
-						                 "%lu bytes of TCP options: %zu bytes already "
-						                 "in + %u-byte SACK option",
-						                 MAX_TCP_OPTIONS_LEN, opts_len, opt_len);
-						goto error;
-					}
-					*(options++) = TCP_OPT_SACK;
-					opts_len++;
-					// Length
-					*(options++) = opt_len;
-					opts_len++;
-					// Value
-					memcpy(options, &tcp_context->tcp_opt_sackblocks,
-					       tcp_context->tcp_opt_sack_length);
-					options += tcp_context->tcp_opt_sack_length;
-					opts_len += opt_len;
-					break;
-				default:  // Generic options
-				{
-					const uint8_t *pValue = tcp_context->tcp_options_values +
-					                        tcp_context->tcp_options_offset[opt_idx];
-					rohc_decomp_debug(context, "TCP option with index %u not "
-					                  "handled", opt_idx);
-					opt_type = tcp_context->tcp_options_list[opt_idx];
-					if(pValue[0] > (0xff - 2))
-					{
-						rohc_decomp_warn(context, "malformed ROHC packet: TCP option "
-						                 "is (%u+2)-byte long according to ROHC packet, "
-						                 "but maximum length is %u bytes", pValue[0], 0xff);
-						goto error;
-					}
-					opt_len = pValue[0] + 2;
-					if((opts_len + opt_len) > MAX_TCP_OPTIONS_LEN)
-					{
-						rohc_decomp_warn(context, "malformed TCP options: more than "
-						                 "%lu bytes of TCP options: %zu bytes already "
-						                 "in + %u-byte TCP option",
-						                 MAX_TCP_OPTIONS_LEN, opts_len, opt_len);
-						goto error;
-					}
-					*(options++) = opt_type;
-					// Length
-					*(options++) = opt_len;
-					// Value
-					memcpy(options, pValue + 1, opt_len - 2);
-					options += opt_len - 2;
-					opts_len += opt_len;
-					break;
-				}
-			}
-		}
-		tcp_context->tcp_opts_list_struct[i] = opt_type;
-		rohc_decomp_debug(context, "    TCP option type 0x%02x (%u)",
-		                  opt_type, opt_type);
-		rohc_decomp_debug(context, "    TCP option is a %u-byte option", opt_len);
-	}
-	memset(tcp_context->tcp_opts_list_struct + m, 0xff, ROHC_TCP_OPTS_MAX - m);
-
-	/* add padding after TCP options (they must be aligned on 32-bit words) */
-	opt_padding_len = sizeof(uint32_t) - (opts_len % sizeof(uint32_t));
-	opt_padding_len %= sizeof(uint32_t);
-	if((opts_len + opt_padding_len) > MAX_TCP_OPTIONS_LEN)
-	{
-		rohc_decomp_warn(context, "malformed TCP options: more than %lu bytes "
-		                 "of TCP options: %zu bytes already in + %zu-byte padding",
-		                 MAX_TCP_OPTIONS_LEN, opts_len, opt_padding_len);
-		goto error;
-	}
-	for(i = 0; i < opt_padding_len; i++)
-	{
-		rohc_decomp_debug(context, "  add missing TCP EOL option for padding");
-		options[0] = TCP_OPT_EOL;
-		options++;
-	}
-	opts_len += opt_padding_len;
-	assert((opts_len % sizeof(uint32_t)) == 0);
-
-	bits->opts_len = opts_len;
-	assert(bits->opts_len <= MAX_TCP_OPTIONS_LEN);
-
-	return compressed_options;
-
-error:
-	return NULL;
-}
-
-
-/**
  * @brief Reset the extracted bits for next parsing
  *
  * @param context    The decompression context
@@ -2651,7 +1756,7 @@ error:
 static void d_tcp_reset_extr_bits(const struct rohc_decomp_ctxt *const context,
 											 struct rohc_tcp_extr_bits *const bits)
 {
-	struct d_tcp_context *const tcp_context = context->specific;
+	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
 	size_t i;
 
 	/* set every bits and sizes to 0 */
@@ -2681,14 +1786,16 @@ static void d_tcp_reset_extr_bits(const struct rohc_decomp_ctxt *const context,
 		bits->ip[i].ttl_hl.p = ROHC_LSB_SHIFT_TCP_TTL;
 	}
 
-	/* by default there is no list of TCP options in co_common/seq_8/rnd_8 packets */
-	bits->is_list_present = false;
-
-	/* no TCP options at the beginning */
+	/* no parsed TCP options at the beginning */
+	bits->tcp_opts.nr = 0;
+	for(i = 0; i <= MAX_TCP_OPTION_INDEX; i++)
+	{
+		bits->tcp_opts.bits[i].used = false;
+	}
 	for(i = 0; i < ROHC_TCP_OPTS_MAX; i++)
 	{
-		bits->is_tcp_opts_list_item_present[i] = false;
-		bits->tcp_opts_list_item_uncomp_length[i] = 0;
+		bits->tcp_opts.expected_dynamic[i] = false;
+		bits->tcp_opts.found[i] = false;
 	}
 }
 
@@ -2697,52 +1804,53 @@ static void d_tcp_reset_extr_bits(const struct rohc_decomp_ctxt *const context,
  * @brief Decode values from extracted bits
  *
  * @param context       The decompression context
- * @param bits          The extracted bits
+ * @param bits          The bits extracted from the ROHC packet
  * @param payload_len   The length of the packet payload (in bytes)
  * @param[out] decoded  The corresponding decoded values
  * @return              true if decoding is successful, false otherwise
  */
-static bool d_tcp_decode_values_from_bits(const struct rohc_decomp_ctxt *const context,
-                                          const struct rohc_tcp_extr_bits bits,
-                                          const size_t payload_len,
-                                          struct rohc_tcp_decoded_values *const decoded)
+static bool d_tcp_decode_bits(const struct rohc_decomp_ctxt *const context,
+                              const struct rohc_tcp_extr_bits *const bits,
+                              const size_t payload_len,
+                              struct rohc_tcp_decoded_values *const decoded)
 {
-	struct d_tcp_context *const tcp_context = context->specific;
+	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
 	size_t ip_hdr_nr;
+	size_t i;
 
 	/* decode MSN */
-	if(bits.msn.bits_nr == 16)
+	if(bits->msn.bits_nr == 16)
 	{
-		decoded->msn = bits.msn.bits;
+		decoded->msn = bits->msn.bits;
 		rohc_decomp_debug(context, "decoded MSN = 0x%04x (%zu bits 0x%x)",
-		                  decoded->msn, bits.msn.bits_nr, bits.msn.bits);
+		                  decoded->msn, bits->msn.bits_nr, bits->msn.bits);
 	}
 	else
 	{
 		uint32_t msn_decoded32;
 
-		assert(bits.msn.bits_nr > 0); /* all packets contain some MSN bits */
+		assert(bits->msn.bits_nr > 0); /* all packets contain some MSN bits */
 
 		if(!rohc_lsb_decode(tcp_context->msn_lsb_ctxt, ROHC_LSB_REF_0, 0,
-		                    bits.msn.bits, bits.msn.bits_nr, bits.msn.p,
+		                    bits->msn.bits, bits->msn.bits_nr, bits->msn.p,
 		                    &msn_decoded32))
 		{
 			rohc_decomp_warn(context, "failed to decode %zu MSN bits 0x%x",
-			                 bits.msn.bits_nr, bits.msn.bits);
+			                 bits->msn.bits_nr, bits->msn.bits);
 			goto error;
 		}
 		decoded->msn = (uint16_t) (msn_decoded32 & 0xffff);
 		rohc_decomp_debug(context, "decoded MSN = 0x%04x (%zu bits 0x%x)",
-		                  decoded->msn, bits.msn.bits_nr, bits.msn.bits);
+		                  decoded->msn, bits->msn.bits_nr, bits->msn.bits);
 	}
 
 	/* decode IP headers */
-	assert(bits.ip_nr > 0);
-	for(ip_hdr_nr = 0; ip_hdr_nr < bits.ip_nr; ip_hdr_nr++)
+	assert(bits->ip_nr > 0);
+	for(ip_hdr_nr = 0; ip_hdr_nr < bits->ip_nr; ip_hdr_nr++)
 	{
 		tcp_ip_id_behavior_t ip_id_behavior;
 		const struct rohc_tcp_extr_ip_bits *const ip_bits =
-			&(bits.ip[ip_hdr_nr]);
+			&(bits->ip[ip_hdr_nr]);
 		const ip_context_t *const ip_context =
 			&(tcp_context->ip_contexts[ip_hdr_nr]);
 		struct rohc_tcp_decoded_ip_values *const ip_decoded =
@@ -2894,8 +2002,8 @@ static bool d_tcp_decode_values_from_bits(const struct rohc_decomp_ctxt *const c
 		}
 		else if(ip_bits->df_nr > 0 && ip_bits->df != 0)
 		{
-			rohc_decomp_warn(context, "malformed ROHC packet: DF shall be zero "
-			                 "for innermost IPv6 header but it is %u", ip_bits->df);
+			rohc_decomp_debug(context, "malformed ROHC packet: DF shall be zero "
+			                  "for innermost IPv6 header but it is %u", ip_bits->df);
 #ifdef ROHC_RFC_STRICT_DECOMPRESSOR
 			goto error;
 #endif
@@ -2991,14 +2099,14 @@ static bool d_tcp_decode_values_from_bits(const struct rohc_decomp_ctxt *const c
 			assert(ip_bits->opts_len == 0);
 		}
 	}
-	decoded->ip_nr = bits.ip_nr;
+	decoded->ip_nr = bits->ip_nr;
 
 	rohc_decomp_debug(context, "decode fields of TCP header");
 
 	/* TCP source port */
-	if(bits.src_port_nr > 0)
+	if(bits->src_port_nr > 0)
 	{
-		decoded->src_port = bits.src_port;
+		decoded->src_port = bits->src_port;
 		rohc_decomp_debug(context, "  decoded source port %u", decoded->src_port);
 	}
 	else
@@ -3009,9 +2117,9 @@ static bool d_tcp_decode_values_from_bits(const struct rohc_decomp_ctxt *const c
 	}
 
 	/* TCP destination port */
-	if(bits.dst_port_nr > 0)
+	if(bits->dst_port_nr > 0)
 	{
-		decoded->dst_port = bits.dst_port;
+		decoded->dst_port = bits->dst_port;
 		rohc_decomp_debug(context, "  decoded destination port %u",
 		                  decoded->dst_port);
 	}
@@ -3024,25 +2132,25 @@ static bool d_tcp_decode_values_from_bits(const struct rohc_decomp_ctxt *const c
 
 	/* ROHC packet contains bits of scaled or unscaled TCP sequence number,
 	 * but not both */
-	assert(bits.seq.bits_nr == 0 || bits.seq_scaled.bits_nr == 0);
+	assert(bits->seq.bits_nr == 0 || bits->seq_scaled.bits_nr == 0);
 
 	/* TCP unscaled & scaled sequence number */
-	if(bits.seq_scaled.bits_nr > 0)
+	if(bits->seq_scaled.bits_nr > 0)
 	{
 		/* decode scaled sequence number from packet bits and context */
 		if(!rohc_lsb_decode(tcp_context->seq_scaled_lsb_ctxt, ROHC_LSB_REF_0, 0,
-		                    bits.seq_scaled.bits, bits.seq_scaled.bits_nr,
-		                    bits.seq_scaled.p, &decoded->seq_num_scaled))
+		                    bits->seq_scaled.bits, bits->seq_scaled.bits_nr,
+		                    bits->seq_scaled.p, &decoded->seq_num_scaled))
 		{
 			rohc_decomp_warn(context, "failed to decode %zu scaled sequence "
-			                 "number bits 0x%x with p = %d", bits.seq_scaled.bits_nr,
-			                 bits.seq_scaled.bits, bits.seq_scaled.p);
+			                 "number bits 0x%x with p = %d", bits->seq_scaled.bits_nr,
+			                 bits->seq_scaled.bits, bits->seq_scaled.p);
 			goto error;
 		}
 		rohc_decomp_debug(context, "  decoded scaled sequence number = 0x%08x "
 		                  "(%zu bits 0x%x with p = %d)", decoded->seq_num_scaled,
-		                  bits.seq_scaled.bits_nr, bits.seq_scaled.bits,
-		                  bits.seq_scaled.p);
+		                  bits->seq_scaled.bits_nr, bits->seq_scaled.bits,
+		                  bits->seq_scaled.p);
 
 		/* decode sequence number from scaled sequence number */
 		if(payload_len == 0)
@@ -3060,28 +2168,28 @@ static bool d_tcp_decode_values_from_bits(const struct rohc_decomp_ctxt *const c
 	}
 	else
 	{
-		if(bits.seq.bits_nr == 32)
+		if(bits->seq.bits_nr == 32)
 		{
-			decoded->seq_num = bits.seq.bits;
+			decoded->seq_num = bits->seq.bits;
 			rohc_decomp_debug(context, "  TCP sequence number = 0x%08x (decoded from "
-			                  "%zu-bit 0x%x)", decoded->seq_num, bits.seq.bits_nr,
-			                  bits.seq.bits);
+			                  "%zu-bit 0x%x)", decoded->seq_num, bits->seq.bits_nr,
+			                  bits->seq.bits);
 		}
-		else if(bits.seq.bits_nr > 0)
+		else if(bits->seq.bits_nr > 0)
 		{
 			/* decode unscaled sequence number from packet bits and context */
 			if(!rohc_lsb_decode(tcp_context->seq_lsb_ctxt, ROHC_LSB_REF_0, 0,
-			                    bits.seq.bits, bits.seq.bits_nr, bits.seq.p,
+			                    bits->seq.bits, bits->seq.bits_nr, bits->seq.p,
 			                    &decoded->seq_num))
 			{
 				rohc_decomp_warn(context, "failed to decode TCP sequence number from "
-				                 "%zu-bit 0x%x with p = %d", bits.seq.bits_nr,
-				                 bits.seq.bits, bits.seq.p);
+				                 "%zu-bit 0x%x with p = %d", bits->seq.bits_nr,
+				                 bits->seq.bits, bits->seq.p);
 				goto error;
 			}
 			rohc_decomp_debug(context, "  TCP sequence number = 0x%08x (decoded from "
 			                  "%zu-bit 0x%x with p = %d)", decoded->seq_num,
-			                  bits.seq.bits_nr, bits.seq.bits, bits.seq.p);
+			                  bits->seq.bits_nr, bits->seq.bits, bits->seq.p);
 		}
 		else
 		{
@@ -3106,32 +2214,32 @@ static bool d_tcp_decode_values_from_bits(const struct rohc_decomp_ctxt *const c
 
 	/* ROHC packet contains bits of scaled or unscaled TCP acknowledgment number,
 	 * but not both */
-	assert(bits.ack.bits_nr == 0 || bits.ack_scaled.bits_nr == 0);
+	assert(bits->ack.bits_nr == 0 || bits->ack_scaled.bits_nr == 0);
 
 	/* TCP ACK stride */
-	if(bits.ack_stride.bits_nr > 0)
+	if(bits->ack_stride.bits_nr > 0)
 	{
-		assert(bits.ack_stride.bits_nr == 16);
-		decoded->ack_stride = bits.ack_stride.bits;
+		assert(bits->ack_stride.bits_nr == 16);
+		decoded->ack_stride = bits->ack_stride.bits;
 	}
 
 	/* TCP unscaled & scaled acknowledgement number */
-	if(bits.ack_scaled.bits_nr > 0)
+	if(bits->ack_scaled.bits_nr > 0)
 	{
 		/* decode scaled acknowledgement number from packet bits and context */
 		if(!rohc_lsb_decode(tcp_context->ack_scaled_lsb_ctxt, ROHC_LSB_REF_0, 0,
-		                    bits.ack_scaled.bits, bits.ack_scaled.bits_nr,
-		                    bits.ack_scaled.p, &decoded->ack_num_scaled))
+		                    bits->ack_scaled.bits, bits->ack_scaled.bits_nr,
+		                    bits->ack_scaled.p, &decoded->ack_num_scaled))
 		{
 			rohc_decomp_warn(context, "failed to decode %zu scaled acknowledgement "
-			                 "number bits 0x%x with p = %d", bits.ack_scaled.bits_nr,
-			                 bits.ack_scaled.bits, bits.ack_scaled.p);
+			                 "number bits 0x%x with p = %d", bits->ack_scaled.bits_nr,
+			                 bits->ack_scaled.bits, bits->ack_scaled.p);
 			goto error;
 		}
 		rohc_decomp_debug(context, "  decoded scaled acknowledgement number = 0x%08x "
 		                  "(%zu bits 0x%x with p = %d)", decoded->ack_num_scaled,
-		                  bits.ack_scaled.bits_nr, bits.ack_scaled.bits,
-		                  bits.ack_scaled.p);
+		                  bits->ack_scaled.bits_nr, bits->ack_scaled.bits,
+		                  bits->ack_scaled.p);
 
 		/* decode acknowledgement number from scaled acknowledgement number */
 		if(payload_len == 0)
@@ -3149,28 +2257,28 @@ static bool d_tcp_decode_values_from_bits(const struct rohc_decomp_ctxt *const c
 	}
 	else
 	{
-		if(bits.ack.bits_nr == 32)
+		if(bits->ack.bits_nr == 32)
 		{
-			decoded->ack_num = bits.ack.bits;
+			decoded->ack_num = bits->ack.bits;
 			rohc_decomp_debug(context, "  TCP ACK number = 0x%08x (decoded from "
-			                  "%zu-bit 0x%x)", decoded->ack_num, bits.ack.bits_nr,
-			                  bits.ack.bits);
+			                  "%zu-bit 0x%x)", decoded->ack_num, bits->ack.bits_nr,
+			                  bits->ack.bits);
 		}
-		else if(bits.ack.bits_nr > 0)
+		else if(bits->ack.bits_nr > 0)
 		{
 			/* decode unscaled acknowledgement number from packet bits and context */
 			if(!rohc_lsb_decode(tcp_context->ack_lsb_ctxt, ROHC_LSB_REF_0, 0,
-			                    bits.ack.bits, bits.ack.bits_nr, bits.ack.p,
+			                    bits->ack.bits, bits->ack.bits_nr, bits->ack.p,
 			                    &decoded->ack_num))
 			{
 				rohc_decomp_warn(context, "failed to decode TCP acknowledgement number "
-				                 "from %zu-bit 0x%x with p = %d", bits.ack.bits_nr,
-				                 bits.ack.bits, bits.ack.p);
+				                 "from %zu-bit 0x%x with p = %d", bits->ack.bits_nr,
+				                 bits->ack.bits, bits->ack.p);
 				goto error;
 			}
 			rohc_decomp_debug(context, "  TCP ACK number = 0x%08x (decoded from "
 			                  "%zu-bit 0x%x with p = %d)", decoded->ack_num,
-			                  bits.ack.bits_nr, bits.ack.bits, bits.ack.p);
+			                  bits->ack.bits_nr, bits->ack.bits, bits->ack.p);
 		}
 		else
 		{
@@ -3194,70 +2302,70 @@ static bool d_tcp_decode_values_from_bits(const struct rohc_decomp_ctxt *const c
 	}
 
 	/* TCP flags */
-	if(bits.res_flags_bits_nr > 0)
+	if(bits->res_flags_bits_nr > 0)
 	{
-		assert(bits.res_flags_bits_nr == 4);
-		decoded->res_flags = bits.res_flags_bits;
+		assert(bits->res_flags_bits_nr == 4);
+		decoded->res_flags = bits->res_flags_bits;
 	}
 	else
 	{
 		decoded->res_flags = tcp_context->res_flags;
 	}
-	if(bits.ecn_flags_bits_nr > 0)
+	if(bits->ecn_flags_bits_nr > 0)
 	{
-		assert(bits.ecn_flags_bits_nr == 2);
-		decoded->ecn_flags = bits.ecn_flags_bits;
+		assert(bits->ecn_flags_bits_nr == 2);
+		decoded->ecn_flags = bits->ecn_flags_bits;
 	}
 	else
 	{
 		decoded->ecn_flags = tcp_context->ecn_flags;
 	}
-	if(bits.ecn_used_bits_nr > 0)
+	if(bits->ecn_used_bits_nr > 0)
 	{
-		assert(bits.ecn_used_bits_nr == 1);
-		decoded->ecn_used = !!bits.ecn_used_bits;
+		assert(bits->ecn_used_bits_nr == 1);
+		decoded->ecn_used = !!bits->ecn_used_bits;
 	}
 	else
 	{
 		decoded->ecn_used = tcp_context->ecn_used;
 	}
-	if(bits.urg_flag_bits_nr > 0)
+	if(bits->urg_flag_bits_nr > 0)
 	{
-		assert(bits.urg_flag_bits_nr == 1);
-		decoded->urg_flag = !!bits.urg_flag_bits;
+		assert(bits->urg_flag_bits_nr == 1);
+		decoded->urg_flag = !!bits->urg_flag_bits;
 	}
 	else
 	{
 		decoded->urg_flag = !!tcp_context->urg_flag;
 	}
-	if(bits.ack_flag_bits_nr > 0)
+	if(bits->ack_flag_bits_nr > 0)
 	{
-		assert(bits.ack_flag_bits_nr == 1);
-		decoded->ack_flag = !!bits.ack_flag_bits;
+		assert(bits->ack_flag_bits_nr == 1);
+		decoded->ack_flag = !!bits->ack_flag_bits;
 	}
 	else
 	{
 		decoded->ack_flag = !!tcp_context->ack_flag;
 	}
-	if(!decoded->ack_flag && bits.ack.bits_nr > 0 && decoded->ack_num != 0)
+	if(!decoded->ack_flag && bits->ack.bits_nr > 0 && decoded->ack_num != 0)
 	{
 		rohc_decomp_debug(context, "ACK flag not set, but %zu bits 0x%x were "
-		                  "transmitted for ACK number", bits.ack.bits_nr,
-		                  bits.ack.bits);
+		                  "transmitted for ACK number", bits->ack.bits_nr,
+		                  bits->ack.bits);
 	}
-	assert(bits.psh_flag_bits_nr == 1); /* all packets contains the PSH flag */
-	decoded->psh_flag = !!bits.psh_flag_bits;
-	if(bits.rsf_flags_bits_nr == 3)
+	assert(bits->psh_flag_bits_nr == 1); /* all packets contains the PSH flag */
+	decoded->psh_flag = !!bits->psh_flag_bits;
+	if(bits->rsf_flags_bits_nr == 3)
 	{
-		decoded->rsf_flags = bits.rsf_flags_bits;
+		decoded->rsf_flags = bits->rsf_flags_bits;
 	}
-	else if(bits.rsf_flags_bits_nr == 2)
+	else if(bits->rsf_flags_bits_nr == 2)
 	{
-		decoded->rsf_flags = rsf_index_dec(bits.rsf_flags_bits);
+		decoded->rsf_flags = rsf_index_dec(bits->rsf_flags_bits);
 	}
 	else
 	{
-		assert(bits.rsf_flags_bits_nr == 0);
+		assert(bits->rsf_flags_bits_nr == 0);
 		decoded->rsf_flags = tcp_context->rsf_flags;
 	}
 	rohc_decomp_debug(context, "  TCP flags: RES = 0x%x, ECN = 0x%x, URG = %u, "
@@ -3267,28 +2375,28 @@ static bool d_tcp_decode_values_from_bits(const struct rohc_decomp_ctxt *const c
 	                  decoded->rsf_flags);
 
 	/* TCP window */
-	if(bits.window.bits_nr == 16)
+	if(bits->window.bits_nr == 16)
 	{
-		decoded->window = bits.window.bits;
+		decoded->window = bits->window.bits;
 		rohc_decomp_debug(context, "  TCP window = 0x%04x (%zu-bit 0x%x)",
-		                  decoded->window, bits.window.bits_nr, bits.window.bits);
+		                  decoded->window, bits->window.bits_nr, bits->window.bits);
 	}
-	else if(bits.window.bits_nr > 0)
+	else if(bits->window.bits_nr > 0)
 	{
 		uint32_t win_decoded32;
 
 		/* decode TCP window from packet bits and context */
 		if(!rohc_lsb_decode(tcp_context->window_lsb_ctxt, ROHC_LSB_REF_0, 0,
-		                    bits.window.bits, bits.window.bits_nr, bits.window.p,
+		                    bits->window.bits, bits->window.bits_nr, bits->window.p,
 		                    &win_decoded32))
 		{
 			rohc_decomp_warn(context, "failed to decode TCP window from %zu-bit "
-			                 "0x%x", bits.window.bits_nr, bits.window.bits);
+			                 "0x%x", bits->window.bits_nr, bits->window.bits);
 			goto error;
 		}
 		decoded->window = (uint16_t) (win_decoded32 & 0xffff);
 		rohc_decomp_debug(context, "  TCP window = 0x%04x (%zu-bit 0x%x)",
-		                  decoded->window, bits.window.bits_nr, bits.window.bits);
+		                  decoded->window, bits->window.bits_nr, bits->window.bits);
 	}
 	else
 	{
@@ -3300,13 +2408,13 @@ static bool d_tcp_decode_values_from_bits(const struct rohc_decomp_ctxt *const c
 	}
 
 	/* TCP checksum */
-	decoded->tcp_check = bits.tcp_check;
+	decoded->tcp_check = bits->tcp_check;
 
 	/* TCP urgent pointer */
-	if(bits.urg_ptr.bits_nr > 0)
+	if(bits->urg_ptr.bits_nr > 0)
 	{
-		assert(bits.urg_ptr.bits_nr == 16);
-		decoded->urg_ptr = bits.urg_ptr.bits;
+		assert(bits->urg_ptr.bits_nr == 16);
+		decoded->urg_ptr = bits->urg_ptr.bits;
 	}
 	else
 	{
@@ -3315,122 +2423,56 @@ static bool d_tcp_decode_values_from_bits(const struct rohc_decomp_ctxt *const c
 
 	rohc_decomp_debug(context, "decode TCP options");
 
-	/* copy TCP options from extracted bits to decoded values */
-	/* TODO: do not decode TCP options other than TS/SACK before parsing is over */
-	decoded->opts_len = bits.opts_len;
-	memcpy(decoded->opts, bits.opts, decoded->opts_len);
+	/* copy the informations collected on TCP options */
+	memcpy(&decoded->tcp_opts, &bits->tcp_opts, sizeof(struct d_tcp_opts_ctxt));
 
-	/* decode and build the TCP TimeStamp (TS) option */
-	if(!d_tcp_decode_opt_ts(context, tcp_context->opt_ts_req_lsb_ctxt,
-	                        tcp_context->opt_ts_rep_lsb_ctxt, bits.opt_ts,
-	                        &decoded->opt_ts_present, &decoded->opt_ts_req,
-	                        &decoded->opt_ts_rep))
+	for(i = 0; i < decoded->tcp_opts.nr; i++)
 	{
-		rohc_decomp_warn(context, "failed to decode TCP TimeStamp option: failed to "
-		                 "decode request/reply fields");
-		goto error;
-	}
-	else if(decoded->opt_ts_present)
-	{
-		const uint32_t ts_req_nbo = rohc_hton32(decoded->opt_ts_req);
-		const uint32_t ts_rep_nbo = rohc_hton32(decoded->opt_ts_rep);
-		memcpy(decoded->opts + bits.opt_ts.uncomp_opt_offset, &ts_req_nbo,
-		       sizeof(uint32_t));
-		memcpy(decoded->opts + bits.opt_ts.uncomp_opt_offset + sizeof(uint32_t),
-		       &ts_rep_nbo, sizeof(uint32_t));
-	}
+		const uint8_t opt_index = decoded->tcp_opts.structure[i];
+		const uint8_t opt_type = decoded->tcp_opts.bits[opt_index].type;
 
-	/* decode and build the SACK blocks of the TCP SACK option */
-	d_tcp_decode_opt_sack(context, decoded->ack_num, bits.opt_sack,
-	                      decoded->opt_sack);
-	if(bits.opt_sack.blocks_nr > 0)
-	{
-		if(bits.opt_sack.blocks_nr > TCP_SACK_BLOCKS_MAX_NR)
+		assert(decoded->tcp_opts.bits[opt_index].used);
+
+		rohc_decomp_debug(context, "  decode TCP option '%s' (%u)",
+		                  tcp_opt_get_descr(opt_type), opt_type);
+
+		/* specific actions for some TCP options */
+		if(opt_index == TCP_INDEX_TS)
 		{
-			rohc_decomp_warn(context, "failed to decode TCP SACK option: too many "
-			                 "%zu SACK blocks", bits.opt_sack.blocks_nr);
-			goto error;
+			/* decode TS request field */
+			if(!d_tcp_decode_opt_ts_field(context, "request",
+			                              tcp_context->opt_ts_req_lsb_ctxt,
+			                              bits->tcp_opts.bits[TCP_INDEX_TS].data.ts.req,
+			                              &decoded->opt_ts_req))
+			{
+				rohc_decomp_warn(context, "failed to decode TimeStamp option: failed to "
+				                 "decode request field");
+				goto error;
+			}
+			rohc_decomp_debug(context, "    TS echo request = 0x%08x",
+			                  decoded->opt_ts_req);
+
+			/* decode TS reply field */
+			if(!d_tcp_decode_opt_ts_field(context, "reply",
+			                              tcp_context->opt_ts_rep_lsb_ctxt,
+			                              bits->tcp_opts.bits[TCP_INDEX_TS].data.ts.rep,
+			                              &decoded->opt_ts_rep))
+			{
+				rohc_decomp_warn(context, "failed to decode TimeStamp option: failed to "
+				                 "decode reply field");
+				goto error;
+			}
+			rohc_decomp_debug(context, "    TS echo reply = 0x%08x",
+			                  decoded->opt_ts_rep);
 		}
-		decoded->opt_sack_length = sizeof(sack_block_t) * bits.opt_sack.blocks_nr;
-		memcpy(decoded->opts + bits.opt_sack.uncomp_opt_offset, decoded->opt_sack,
-		       decoded->opt_sack_length);
-		rohc_decomp_debug(context, "  %u-byte SACK option decoded",
-		                  decoded->opt_sack_length + 2);
-	}
-	else
-	{
-		decoded->opt_sack_length = 0;
+		else if(opt_index == TCP_INDEX_SACK)
+		{
+			d_tcp_decode_opt_sack(context, decoded->ack_num,
+			                      bits->tcp_opts.bits[TCP_INDEX_SACK].data.sack,
+			                      &decoded->opt_sack_blocks);
+		}
 	}
 
-	rohc_dump_buf(context->decompressor->trace_callback,
-	              context->decompressor->trace_callback_priv,
-	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
-	              "TCP options", decoded->opts, decoded->opts_len);
-
-	return true;
-
-error:
-	return false;
-}
-
-
-/**
- * @brief Decode the TCP TimeStamp (TS) option
- *
- * @warning The available length in the \e opt_ts->uncomp_opt buffer shall have
- *          been checked before calling this function
- *
- * @param context           The decompression context
- * @param req_lsb_ctxt      The LSB decoding context to use for request field
- * @param rep_lsb_ctxt      The LSB decoding context to use for reply field
- * @param[out] ts           The TS request/reply bits extracted from the ROHC packet
- * @param[out] ts_present   Whether the TCP TS option is present in ROHC packet
- * @param[out] req_decoded  The TS request and reply fields
- * @param[out] rep_decoded  The TS request and reply fields
- * @return                  true if TS option was successfully decoded,
- *                          false if a problem occured during decoding
- */
-static bool d_tcp_decode_opt_ts(const struct rohc_decomp_ctxt *const context,
-                                const struct rohc_lsb_decode *const req_lsb_ctxt,
-                                const struct rohc_lsb_decode *const rep_lsb_ctxt,
-                                const struct d_tcp_opt_ts ts,
-                                bool *const ts_present,
-                                uint32_t *const req_decoded,
-                                uint32_t *const rep_decoded)
-{
-	/* both request/reply shall be present or absent */
-	assert((ts.req.bits_nr > 0 && ts.rep.bits_nr > 0) ||
-	       (ts.req.bits_nr == 0 && ts.rep.bits_nr == 0));
-
-	*ts_present = !!(ts.req.bits_nr > 0);
-	if(!(*ts_present))
-	{
-		goto skip;
-	}
-
-	rohc_decomp_debug(context, "  decode TS option");
-
-	/* decode TS request field */
-	if(!d_tcp_decode_opt_ts_field(context, "request", req_lsb_ctxt, ts.req,
-	                              req_decoded))
-	{
-		rohc_decomp_warn(context, "failed to decode TimeStamp option: failed to "
-		                 "decode request field");
-		goto error;
-	}
-	rohc_decomp_debug(context, "    TS echo request = 0x%08x", *req_decoded);
-
-	/* decode TS reply field */
-	if(!d_tcp_decode_opt_ts_field(context, "reply", rep_lsb_ctxt, ts.rep,
-	                              rep_decoded))
-	{
-		rohc_decomp_warn(context, "failed to decode TimeStamp option: failed to "
-		                 "decode reply field");
-		goto error;
-	}
-	rohc_decomp_debug(context, "    TS echo reply = 0x%08x", *rep_decoded);
-
-skip:
 	return true;
 
 error:
@@ -3502,34 +2544,32 @@ error:
  *
  * @param context       The decompression context
  * @param ack_num       The TCP ACK number of the current packet
- * @param opt_sack      The information of SACK option extracted from the packet
+ * @param bits          The bits of SACK option extracted from the packet
  * @param[out] decoded  The values decoded from the ROHC packet
  */
 static void d_tcp_decode_opt_sack(const struct rohc_decomp_ctxt *const context,
                                   const uint32_t ack_num,
-                                  const struct d_tcp_opt_sack opt_sack,
-                                  uint8_t *const decoded)
+                                  const struct d_tcp_opt_sack bits,
+                                  struct d_tcp_opt_sack *const decoded)
 {
-	sack_block_t *sack_block;
 	size_t i;
 
-	if(opt_sack.blocks_nr > 0)
+	if(bits.blocks_nr > 0)
 	{
 		rohc_decomp_debug(context, "  decode SACK option (%zu blocks)",
-		                  opt_sack.blocks_nr);
+		                  bits.blocks_nr);
 	}
 
-	for(i = 0, sack_block = (sack_block_t *) decoded;
-	    i < opt_sack.blocks_nr;
-	    i++, sack_block++)
+	for(i = 0; i < bits.blocks_nr; i++)
 	{
-		const uint32_t block_start = ack_num + opt_sack.blocks[i].block_start;
-		const uint32_t block_end = block_start + opt_sack.blocks[i].block_end;
-		sack_block->block_start = rohc_hton32(block_start);
-		sack_block->block_end = rohc_hton32(block_end);
+		const uint32_t block_start = ack_num + bits.blocks[i].block_start;
+		const uint32_t block_end = block_start + bits.blocks[i].block_end;
+		decoded->blocks[i].block_start = rohc_hton32(block_start);
+		decoded->blocks[i].block_end = rohc_hton32(block_end);
 		rohc_decomp_debug(context, "decoded SACK option: block #%zu = "
 		                  "[0x%08x, 0x%08x]", i + 1, block_start, block_end);
 	}
+	decoded->blocks_nr = bits.blocks_nr;
 }
 
 
@@ -3548,24 +2588,24 @@ static void d_tcp_decode_opt_sack(const struct rohc_decomp_ctxt *const context,
  *                            large enough
  */
 static bool d_tcp_build_ip_hdrs(const struct rohc_decomp_ctxt *const context,
-                                struct rohc_tcp_decoded_values decoded,
+                                const struct rohc_tcp_decoded_values *const decoded,
                                 struct rohc_buf *const uncomp_packet,
                                 size_t *const ip_hdrs_len)
 {
 	size_t ip_hdr_nr;
 
-	assert(decoded.ip_nr > 0);
+	assert(decoded->ip_nr > 0);
 
-	rohc_decomp_debug(context, "build the %zu IP headers", decoded.ip_nr);
+	rohc_decomp_debug(context, "build the %zu IP headers", decoded->ip_nr);
 
 	*ip_hdrs_len = 0;
-	for(ip_hdr_nr = 0; ip_hdr_nr < decoded.ip_nr; ip_hdr_nr++)
+	for(ip_hdr_nr = 0; ip_hdr_nr < decoded->ip_nr; ip_hdr_nr++)
 	{
 		const struct rohc_tcp_decoded_ip_values *const ip_decoded =
-			&(decoded.ip[ip_hdr_nr]);
+			&(decoded->ip[ip_hdr_nr]);
 		size_t ip_hdr_len = 0;
 
-		if(!d_tcp_build_ip_hdr(context, *ip_decoded, uncomp_packet, &ip_hdr_len))
+		if(!d_tcp_build_ip_hdr(context, ip_decoded, uncomp_packet, &ip_hdr_len))
 		{
 			rohc_decomp_warn(context, "failed to build uncompressed IP header #%zu",
 			                 ip_hdr_nr + 1);
@@ -3596,11 +2636,11 @@ error:
  *                            large enough
  */
 static bool d_tcp_build_ip_hdr(const struct rohc_decomp_ctxt *const context,
-                               const struct rohc_tcp_decoded_ip_values decoded,
+                               const struct rohc_tcp_decoded_ip_values *const decoded,
                                struct rohc_buf *const uncomp_packet,
                                size_t *const ip_hdr_len)
 {
-	if(decoded.version == IPV4)
+	if(decoded->version == IPV4)
 	{
 		if(!d_tcp_build_ipv4_hdr(context, decoded, uncomp_packet, ip_hdr_len))
 		{
@@ -3641,7 +2681,7 @@ error:
  * @todo TODO: replace base_header_ip_v4_t
  */
 static bool d_tcp_build_ipv4_hdr(const struct rohc_decomp_ctxt *const context,
-                                 const struct rohc_tcp_decoded_ip_values decoded,
+                                 const struct rohc_tcp_decoded_ip_values *const decoded,
                                  struct rohc_buf *const uncomp_packet,
                                  size_t *const ip_hdr_len)
 {
@@ -3659,21 +2699,21 @@ static bool d_tcp_build_ipv4_hdr(const struct rohc_decomp_ctxt *const context,
 	}
 
 	/* static part */
-	ipv4->version = decoded.version;
+	ipv4->version = decoded->version;
 	rohc_decomp_debug(context, "    version = %u", ipv4->version);
 	ipv4->header_length = hdr_len >> 2;
 	rohc_decomp_debug(context, "    ihl = %u", ipv4->header_length);
-	ipv4->protocol = decoded.proto;
-	memcpy(&ipv4->src_addr, decoded.saddr, 4);
-	memcpy(&ipv4->dest_addr, decoded.daddr, 4);
+	ipv4->protocol = decoded->proto;
+	memcpy(&ipv4->src_addr, decoded->saddr, 4);
+	memcpy(&ipv4->dest_addr, decoded->daddr, 4);
 
 	/* dynamic part */
 	ipv4->rf = 0;
-	ipv4->df = decoded.df;
+	ipv4->df = decoded->df;
 	ipv4->mf = 0;
-	ipv4->dscp = decoded.dscp;
-	ipv4->ip_ecn_flags = decoded.ecn_flags;
-	ipv4->ttl_hopl = decoded.ttl;
+	ipv4->dscp = decoded->dscp;
+	ipv4->ip_ecn_flags = decoded->ecn_flags;
+	ipv4->ttl_hopl = decoded->ttl;
 	rohc_decomp_debug(context, "    DSCP = 0x%02x, ip_ecn_flags = %d",
 	                  ipv4->dscp, ipv4->ip_ecn_flags);
 #if WORDS_BIGENDIAN != 1
@@ -3683,13 +2723,13 @@ static bool d_tcp_build_ipv4_hdr(const struct rohc_decomp_ctxt *const context,
 	ipv4->frag_offset = 0;
 #endif
 	/* IP-ID */
-	if(decoded.id_behavior == IP_ID_BEHAVIOR_SEQ_SWAP)
+	if(decoded->id_behavior == IP_ID_BEHAVIOR_SEQ_SWAP)
 	{
-		ipv4->ip_id = rohc_hton16(swab16(decoded.id));
+		ipv4->ip_id = rohc_hton16(swab16(decoded->id));
 	}
 	else
 	{
-		ipv4->ip_id = rohc_hton16(decoded.id);
+		ipv4->ip_id = rohc_hton16(decoded->id);
 	}
 	rohc_decomp_debug(context, "    IP-ID = 0x%04x", rohc_ntoh16(ipv4->ip_id));
 
@@ -3724,14 +2764,14 @@ error:
  * @todo TODO: replace base_header_ip_v6_t
  */
 static bool d_tcp_build_ipv6_hdr(const struct rohc_decomp_ctxt *const context,
-                                 const struct rohc_tcp_decoded_ip_values decoded,
+                                 const struct rohc_tcp_decoded_ip_values *const decoded,
                                  struct rohc_buf *const uncomp_packet,
                                  size_t *const ip_hdr_len)
 {
 	base_header_ip_v6_t *const ipv6 =
 		(base_header_ip_v6_t *) rohc_buf_data(*uncomp_packet);
 	const size_t hdr_len = sizeof(base_header_ip_v6_t);
-	const size_t ipv6_exts_len = decoded.opts_len;
+	const size_t ipv6_exts_len = decoded->opts_len;
 	const size_t full_ipv6_len = hdr_len + ipv6_exts_len;
 	size_t all_opts_len;
 	size_t i;
@@ -3748,19 +2788,19 @@ static bool d_tcp_build_ipv6_hdr(const struct rohc_decomp_ctxt *const context,
 	}
 
 	/* static part */
-	ipv6->version = decoded.version;
+	ipv6->version = decoded->version;
 	rohc_decomp_debug(context, "    version = %u", ipv6->version);
-	ipv6->flow_label1 = (rohc_hton32(decoded.flowid) >> 20) & 0x7;
-	ipv6->flow_label2 = rohc_hton32(decoded.flowid) & 0xffff;
-	ipv6->next_header = decoded.proto;
-	memcpy(ipv6->src_addr, decoded.saddr, sizeof(uint32_t) * 4);
-	memcpy(ipv6->dest_addr, decoded.daddr, sizeof(uint32_t) * 4);
+	ipv6->flow_label1 = (rohc_hton32(decoded->flowid) >> 20) & 0x7;
+	ipv6->flow_label2 = rohc_hton32(decoded->flowid) & 0xffff;
+	ipv6->next_header = decoded->proto;
+	memcpy(ipv6->src_addr, decoded->saddr, sizeof(uint32_t) * 4);
+	memcpy(ipv6->dest_addr, decoded->daddr, sizeof(uint32_t) * 4);
 
 	/* dynamic part */
-	ipv6->dscp1 = decoded.dscp >> 2;
-	ipv6->dscp2 = decoded.dscp & 0x03;
-	ipv6->ip_ecn_flags = decoded.ecn_flags;
-	ipv6->ttl_hopl = decoded.ttl;
+	ipv6->dscp1 = decoded->dscp >> 2;
+	ipv6->dscp2 = decoded->dscp & 0x03;
+	ipv6->ip_ecn_flags = decoded->ecn_flags;
+	ipv6->ttl_hopl = decoded->ttl;
 
 	/* total length will be computed once all headers are built */
 
@@ -3771,9 +2811,9 @@ static bool d_tcp_build_ipv6_hdr(const struct rohc_decomp_ctxt *const context,
 
 	/* copy IPv6 extension headers */
 	all_opts_len = 0;
-	for(i = 0; i < decoded.opts_nr; i++)
+	for(i = 0; i < decoded->opts_nr; i++)
 	{
-		const ipv6_option_context_t *const opt = &(decoded.opts[i]);
+		const ipv6_option_context_t *const opt = &(decoded->opts[i]);
 		rohc_decomp_debug(context, "build %u-byte IPv6 extension header #%zu",
 		                  opt->generic.option_length, i + 1);
 		uncomp_packet->len += 2;
@@ -3805,57 +2845,68 @@ error:
  * @param context             The decompression context
  * @param decoded             The values decoded from ROHC header
  * @param[out] uncomp_packet  The uncompressed packet being built
- * @param[out] tcp_hdr_len    The length of the TCP header (in bytes)
+ * @param[out] tcp_full_len   The length of the TCP header (in bytes)
  * @return                    true if TCP header was successfully built,
  *                            false if the output \e uncomp_packet was not
  *                            large enough
  */
 static bool d_tcp_build_tcp_hdr(const struct rohc_decomp_ctxt *const context,
-                                const struct rohc_tcp_decoded_values decoded,
+                                const struct rohc_tcp_decoded_values *const decoded,
                                 struct rohc_buf *const uncomp_packet,
-                                size_t *const tcp_hdr_len)
+                                size_t *const tcp_full_len)
 {
 	tcphdr_t *const tcp = (tcphdr_t *) rohc_buf_data(*uncomp_packet);
-	const size_t full_tcp_len = sizeof(tcphdr_t) + decoded.opts_len;
+	const size_t tcp_hdr_len = sizeof(tcphdr_t);
+	size_t tcp_opts_len;
 
-	if(rohc_buf_avail_len(*uncomp_packet) < full_tcp_len)
+	*tcp_full_len = 0;
+
+	if(rohc_buf_avail_len(*uncomp_packet) < tcp_hdr_len)
 	{
 		rohc_decomp_warn(context, "output buffer too small for the %zu-byte "
-		                 "TCP header and TCP options", full_tcp_len);
+		                 "TCP header", tcp_hdr_len);
 		goto error;
 	}
-	rohc_decomp_debug(context, "build %zu-byte TCP header (with %zu bytes "
-	                  "of options)", full_tcp_len, decoded.opts_len);
+	rohc_decomp_debug(context, "build %zu-byte TCP header", tcp_hdr_len);
 
 	/* TCP source & destination ports */
-	tcp->src_port = rohc_hton16(decoded.src_port);
-	tcp->dst_port = rohc_hton16(decoded.dst_port);
+	tcp->src_port = rohc_hton16(decoded->src_port);
+	tcp->dst_port = rohc_hton16(decoded->dst_port);
 	/* TCP sequence & acknowledgement numbers */
-	tcp->seq_num = rohc_hton32(decoded.seq_num);
-	tcp->ack_num = rohc_hton32(decoded.ack_num);
-	/* compute data offset */
-	tcp->data_offset = (full_tcp_len >> 2) & 0xf;
+	tcp->seq_num = rohc_hton32(decoded->seq_num);
+	tcp->ack_num = rohc_hton32(decoded->ack_num);
+	/* compute data offset after the build of TCP options */
 	/* TCP flags */
-	tcp->res_flags = decoded.res_flags;
-	tcp->ecn_flags = decoded.ecn_flags;
-	tcp->urg_flag = decoded.urg_flag;
-	tcp->ack_flag = decoded.ack_flag;
-	tcp->psh_flag = decoded.psh_flag;
-	tcp->rsf_flags = decoded.rsf_flags;
+	tcp->res_flags = decoded->res_flags;
+	tcp->ecn_flags = decoded->ecn_flags;
+	tcp->urg_flag = decoded->urg_flag;
+	tcp->ack_flag = decoded->ack_flag;
+	tcp->psh_flag = decoded->psh_flag;
+	tcp->rsf_flags = decoded->rsf_flags;
 	/* TCP window */
-	tcp->window = rohc_ntoh16(decoded.window);
+	tcp->window = rohc_ntoh16(decoded->window);
 	/* TCP checksum */
-	tcp->checksum = rohc_hton16(decoded.tcp_check);
+	tcp->checksum = rohc_hton16(decoded->tcp_check);
 	/* TCP Urgent pointer */
-	tcp->urg_ptr = rohc_hton16(decoded.urg_ptr);
-	/* TCP options */
-	assert((decoded.opts_len % sizeof(uint32_t)) == 0);
-	memcpy(tcp->options, decoded.opts, decoded.opts_len);
+	tcp->urg_ptr = rohc_hton16(decoded->urg_ptr);
 
-	/* skip TCP header and TCP options */
-	uncomp_packet->len += full_tcp_len;
-	rohc_buf_pull(uncomp_packet, full_tcp_len);
-	*tcp_hdr_len += full_tcp_len;
+	/* skip TCP header */
+	uncomp_packet->len += tcp_hdr_len;
+	rohc_buf_pull(uncomp_packet, tcp_hdr_len);
+	*tcp_full_len += tcp_hdr_len;
+
+	/* build TCP options */
+	if(!d_tcp_build_tcp_opts(context, decoded, uncomp_packet, &tcp_opts_len))
+	{
+		rohc_decomp_warn(context, "failed to build TCP options");
+		goto error;
+	}
+	*tcp_full_len += tcp_opts_len;
+
+	/* now, compute data offset */
+	rohc_decomp_debug(context, "TCP header is %zu-byte long with TCP options",
+	                  *tcp_full_len);
+	tcp->data_offset = ((*tcp_full_len) >> 2) & 0xf;
 
 	return true;
 
@@ -3873,10 +2924,9 @@ error:
  * @param decomp                The ROHC decompressor
  * @param context               The decompression context
  * @param packet_type           The type of ROHC packet
+ * @param extr_crc              The CRC bits extracted from the ROHC header
  * @param decoded               The values decoded from ROHC header
  * @param payload_len           The length of the packet payload (in bytes)
- * @param crc_type              The type of CRC
- * @param crc_packet            The CRC extracted from the ROHC header
  * @param[out] uncomp_hdrs      The uncompressed headers being built
  * @param[out] uncomp_hdrs_len  The length of the uncompressed headers written
  *                              into the buffer
@@ -3888,15 +2938,14 @@ error:
  *                               \li ROHC_STATUS_OUTPUT_TOO_SMALL if
  *                                   \e uncomp_packet is too small
  */
-static rohc_status_t d_tcp_build_uncomp_hdrs(const struct rohc_decomp *const decomp,
-                                             const struct rohc_decomp_ctxt *const context,
-                                             const rohc_packet_t packet_type,
-                                             const struct rohc_tcp_decoded_values decoded,
-                                             const size_t payload_len,
-                                             const rohc_crc_type_t crc_type,
-                                             const uint8_t crc_packet,
-                                             struct rohc_buf *const uncomp_hdrs,
-                                             size_t *const uncomp_hdrs_len)
+static rohc_status_t d_tcp_build_hdrs(const struct rohc_decomp *const decomp,
+                                      const struct rohc_decomp_ctxt *const context,
+                                      const rohc_packet_t packet_type,
+                                      const struct rohc_decomp_crc *const extr_crc,
+                                      const struct rohc_tcp_decoded_values *const decoded,
+                                      const size_t payload_len,
+                                      struct rohc_buf *const uncomp_hdrs,
+                                      size_t *const uncomp_hdrs_len)
 {
 	size_t ip_hdrs_len = 0;
 	size_t tcp_hdr_len = 0;
@@ -3927,12 +2976,12 @@ static rohc_status_t d_tcp_build_uncomp_hdrs(const struct rohc_decomp *const dec
 
 	/* compute payload lengths and checksums for all IP headers */
 	rohc_decomp_debug(context, "compute lengths and checksums for the %zu IP "
-	                  "headers", decoded.ip_nr);
-	assert(decoded.ip_nr > 0);
-	for(ip_hdr_nr = 0; ip_hdr_nr < decoded.ip_nr; ip_hdr_nr++)
+	                  "headers", decoded->ip_nr);
+	assert(decoded->ip_nr > 0);
+	for(ip_hdr_nr = 0; ip_hdr_nr < decoded->ip_nr; ip_hdr_nr++)
 	{
 		const struct rohc_tcp_decoded_ip_values *const ip_decoded =
-			&(decoded.ip[ip_hdr_nr]);
+			&(decoded->ip[ip_hdr_nr]);
 
 		rohc_decomp_debug(context, "  IP header #%zu:", ip_hdr_nr + 1);
 		if(ip_decoded->version == IPV4)
@@ -3941,7 +2990,8 @@ static rohc_status_t d_tcp_build_uncomp_hdrs(const struct rohc_decomp *const dec
 			base_header_ip_v4_t *const ipv4 =
 				(base_header_ip_v4_t *) rohc_buf_data(*uncomp_hdrs);
 			ipv4->length = rohc_hton16(ipv4_tot_len);
-			rohc_decomp_debug(context, "    IP total length = 0x%04x", ipv4_tot_len);
+			rohc_decomp_debug(context, "    IP total length = 0x%04x (%u)",
+			                  ipv4_tot_len, ipv4_tot_len);
 			ipv4->checksum = 0;
 			ipv4->checksum =
 				ip_fast_csum(rohc_buf_data(*uncomp_hdrs), ipv4->header_length);
@@ -3965,10 +3015,10 @@ static rohc_status_t d_tcp_build_uncomp_hdrs(const struct rohc_decomp *const dec
 	rohc_buf_push(uncomp_hdrs, ip_hdrs_len);
 
 	/* compute CRC on uncompressed headers if asked */
-	if(crc_type != ROHC_CRC_TYPE_NONE)
+	if(extr_crc->type != ROHC_CRC_TYPE_NONE)
 	{
 		const bool crc_ok = d_tcp_check_uncomp_crc(decomp, context, uncomp_hdrs,
-		                                           crc_type, crc_packet);
+		                                           extr_crc->type, extr_crc->bits);
 		if(!crc_ok)
 		{
 			rohc_decomp_warn(context, "CRC detected a decompression failure for "
@@ -3987,7 +3037,7 @@ static rohc_status_t d_tcp_build_uncomp_hdrs(const struct rohc_decomp *const dec
 
 	rohc_dump_packet(decomp->trace_callback, decomp->trace_callback_priv,
 	                 ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
-	                 "current IP/TCP headers", *uncomp_hdrs);
+	                 "IP/TCP headers", *uncomp_hdrs);
 
 	return ROHC_STATUS_OK;
 
@@ -4064,13 +3114,18 @@ error:
 /**
  * @brief Attempt a packet/context repair upon CRC failure
  *
- * @param decomp     The ROHC decompressor
- * @param context    The decompression context
- * @param[out] bits  The bits extracted from the ROHC header
- * @return           true if repair is possible, false if not
+ * @param decomp            The ROHC decompressor
+ * @param context           The decompression context
+ * @param pkt_arrival_time  The arrival time of the ROHC packet that caused the CRC
+ *                          failure
+ * @param[in,out] crc_corr  The context for corrections upon CRC failures
+ * @param[in,out] bits      The bits extracted from the ROHC header
+ * @return                  true if repair is possible, false if not
  */
 static bool d_tcp_attempt_repair(const struct rohc_decomp *const decomp __attribute__((unused)),
                                  const struct rohc_decomp_ctxt *const context __attribute__((unused)),
+                                 const struct rohc_ts pkt_arrival_time __attribute__((unused)),
+                                 struct rohc_decomp_crc_corr_ctxt *const crc_corr __attribute__((unused)),
                                  struct rohc_tcp_extr_bits *const bits __attribute__((unused)))
 {
 	rohc_decomp_debug(context, "will not attempt packet/context repair");
@@ -4085,26 +3140,30 @@ static bool d_tcp_attempt_repair(const struct rohc_decomp *const decomp __attrib
  * @param decoded      The decoded values to update in the context
  * @param payload_len  The length of the packet payload (in bytes)
  */
-static void d_tcp_update_context(struct rohc_decomp_ctxt *const context,
-                                 const struct rohc_tcp_decoded_values decoded,
-                                 const size_t payload_len)
+static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
+                              const struct rohc_tcp_decoded_values *const decoded,
+                              const size_t payload_len)
 {
-	struct d_tcp_context *const tcp_context = context->specific;
-	const uint16_t msn = decoded.msn;
+	struct d_tcp_context *const tcp_context = context->persist_ctxt;
+	const uint16_t msn = decoded->msn;
 	size_t ip_hdr_nr;
+	size_t i;
+
+	/* mode did not change */
+	context->do_change_mode = false;
 
 	/* MSN */
 	rohc_lsb_set_ref(tcp_context->msn_lsb_ctxt, msn, false);
 	rohc_decomp_debug(context, "MSN 0x%04x / %u is the new reference", msn, msn);
 
 	/* update context for IP headers */
-	assert(decoded.ip_nr > 0);
-	for(ip_hdr_nr = 0; ip_hdr_nr < decoded.ip_nr; ip_hdr_nr++)
+	assert(decoded->ip_nr > 0);
+	for(ip_hdr_nr = 0; ip_hdr_nr < decoded->ip_nr; ip_hdr_nr++)
 	{
 		const struct rohc_tcp_decoded_ip_values *const ip_decoded =
-			&(decoded.ip[ip_hdr_nr]);
+			&(decoded->ip[ip_hdr_nr]);
 		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_nr]);
-		const bool is_inner = !!(ip_hdr_nr == (decoded.ip_nr - 1));
+		const bool is_inner = !!(ip_hdr_nr == (decoded->ip_nr - 1));
 
 		rohc_decomp_debug(context, "update context for IP header #%zu", ip_hdr_nr + 1);
 
@@ -4143,78 +3202,81 @@ static void d_tcp_update_context(struct rohc_decomp_ctxt *const context,
 			memcpy(&ip_context->ctxt.v6.dest_addr, ip_decoded->daddr, 16);
 		}
 	}
-	tcp_context->ip_contexts_nr = decoded.ip_nr;
+	tcp_context->ip_contexts_nr = decoded->ip_nr;
 
 	/* TCP source & destination ports */
-	tcp_context->tcp_src_port = decoded.src_port;
-	tcp_context->tcp_dst_port = decoded.dst_port;
+	tcp_context->tcp_src_port = decoded->src_port;
+	tcp_context->tcp_dst_port = decoded->dst_port;
 
 	/* TCP (scaled) sequence number */
-	rohc_lsb_set_ref(tcp_context->seq_lsb_ctxt, decoded.seq_num, false);
+	rohc_lsb_set_ref(tcp_context->seq_lsb_ctxt, decoded->seq_num, false);
 	rohc_decomp_debug(context, "sequence number 0x%08x is the new reference",
-	                  decoded.seq_num);
+	                  decoded->seq_num);
 	if(payload_len != 0)
 	{
 		rohc_lsb_set_ref(tcp_context->seq_scaled_lsb_ctxt,
-		                 decoded.seq_num_scaled, false);
+		                 decoded->seq_num_scaled, false);
 		rohc_decomp_debug(context, "scaled sequence number 0x%08x is the new "
-		                  "reference", decoded.seq_num_scaled);
-		tcp_context->seq_num_residue = decoded.seq_num_residue;
+		                  "reference", decoded->seq_num_scaled);
+		tcp_context->seq_num_residue = decoded->seq_num_residue;
 		rohc_decomp_debug(context, "scaled sequence residue 0x%08x is the new "
-		                  "reference", decoded.seq_num_residue);
+		                  "reference", decoded->seq_num_residue);
 	}
 
 	/* TCP (scaled) acknowledgment number */
-	rohc_lsb_set_ref(tcp_context->ack_lsb_ctxt, decoded.ack_num, false);
+	rohc_lsb_set_ref(tcp_context->ack_lsb_ctxt, decoded->ack_num, false);
 	rohc_decomp_debug(context, "ACK number 0x%08x is the new reference",
-	                  decoded.ack_num);
+	                  decoded->ack_num);
 	if(payload_len != 0)
 	{
 		rohc_lsb_set_ref(tcp_context->ack_scaled_lsb_ctxt,
-		                 decoded.ack_num_scaled, false);
+		                 decoded->ack_num_scaled, false);
 		rohc_decomp_debug(context, "scaled acknowledgment number 0x%08x is the new "
-		                  "reference", decoded.ack_num_scaled);
-		tcp_context->ack_num_residue = decoded.ack_num_residue;
+		                  "reference", decoded->ack_num_scaled);
+		tcp_context->ack_num_residue = decoded->ack_num_residue;
 		rohc_decomp_debug(context, "scaled acknowledgment residue 0x%08x is the new "
-		                  "reference", decoded.ack_num_residue);
+		                  "reference", decoded->ack_num_residue);
 	}
 
 	/* TCP flags */
-	tcp_context->res_flags = decoded.res_flags;
-	tcp_context->ecn_flags = decoded.ecn_flags;
-	tcp_context->urg_flag = rohc_b2u(decoded.urg_flag);
-	tcp_context->ack_flag = rohc_b2u(decoded.ack_flag);
+	tcp_context->res_flags = decoded->res_flags;
+	tcp_context->ecn_flags = decoded->ecn_flags;
+	tcp_context->urg_flag = rohc_b2u(decoded->urg_flag);
+	tcp_context->ack_flag = rohc_b2u(decoded->ack_flag);
 	/* PSH flag is sent every time, nothing to update in context */
-	tcp_context->rsf_flags = decoded.rsf_flags;
+	tcp_context->rsf_flags = decoded->rsf_flags;
 
 	/* TCP window */
-	rohc_lsb_set_ref(tcp_context->window_lsb_ctxt, decoded.window, false);
+	rohc_lsb_set_ref(tcp_context->window_lsb_ctxt, decoded->window, false);
 	rohc_decomp_debug(context, "window 0x%04x is the new reference",
-	                  decoded.window);
+	                  decoded->window);
 
 	/* TCP checksum is sent every time, nothing to update in context */
 	/* TCP Urgent pointer is sent every time, nothing to update in context */
 
-	/* record the decoded TCP TimeStamp (TS) option in context for next packets
-	 * that will compress out this option */
-	if(decoded.opt_ts_present > 0)
+	/* copy the informations collected on TCP options */
+	memcpy(&tcp_context->tcp_opts, &decoded->tcp_opts, sizeof(struct d_tcp_opts_ctxt));
+	for(i = 0; i < decoded->tcp_opts.nr; i++)
 	{
-		tcp_context->tcp_opt_ts.ts = rohc_hton32(decoded.opt_ts_req);
-		rohc_lsb_set_ref(tcp_context->opt_ts_req_lsb_ctxt, decoded.opt_ts_req, false);
-		tcp_context->tcp_opt_ts.ts_reply = rohc_hton32(decoded.opt_ts_rep);
-		rohc_lsb_set_ref(tcp_context->opt_ts_rep_lsb_ctxt, decoded.opt_ts_rep, false);
-	}
+		const uint8_t opt_index = decoded->tcp_opts.structure[i];
+		const uint8_t opt_type = decoded->tcp_opts.bits[opt_index].type;
 
-	/* record the decoded TCP SACK option in context for next packets that will
-	 * compress out this option */
-	if(decoded.opt_sack_length > 0)
-	{
-		const size_t max_sack_len = sizeof(sack_block_t) * TCP_SACK_BLOCKS_MAX_NR;
-		rohc_decomp_debug(context, "record TCP option SACK in context");
-		tcp_context->tcp_opt_sack_length = decoded.opt_sack_length;
-		assert(tcp_context->tcp_opt_sack_length <= max_sack_len);
-		memcpy(tcp_context->tcp_opt_sackblocks, decoded.opt_sack,
-		       tcp_context->tcp_opt_sack_length);
+		assert(decoded->tcp_opts.bits[opt_index].used);
+
+		rohc_decomp_debug(context, "  update context with TCP option '%s' (%u)",
+		                  tcp_opt_get_descr(opt_type), opt_type);
+
+		/* specific actions for some TCP options */
+		if(opt_index == TCP_INDEX_TS)
+		{
+			rohc_lsb_set_ref(tcp_context->opt_ts_req_lsb_ctxt, decoded->opt_ts_req, false);
+			rohc_lsb_set_ref(tcp_context->opt_ts_rep_lsb_ctxt, decoded->opt_ts_rep, false);
+		}
+		else if(opt_index == TCP_INDEX_SACK)
+		{
+			memcpy(&tcp_context->opt_sack_blocks, &decoded->opt_sack_blocks,
+			       sizeof(struct d_tcp_opt_sack));
+		}
 	}
 }
 
@@ -4230,7 +3292,7 @@ static void d_tcp_update_context(struct rohc_decomp_ctxt *const context,
  */
 static uint32_t d_tcp_get_msn(const struct rohc_decomp_ctxt *const context)
 {
-	const struct d_tcp_context *const tcp_context = context->specific;
+	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
 	const uint16_t msn = rohc_lsb_get_ref(tcp_context->msn_lsb_ctxt, ROHC_LSB_REF_0);
 	rohc_decomp_debug(context, "MSN = %u (0x%x)", msn, msn);
 	return msn;
@@ -4244,10 +3306,14 @@ static uint32_t d_tcp_get_msn(const struct rohc_decomp_ctxt *const context)
 const struct rohc_decomp_profile d_tcp_profile =
 {
 	.id              = ROHC_PROFILE_TCP, /* profile ID (see 8 in RFC3095) */
-	.new_context     = d_tcp_create,
-	.free_context    = d_tcp_destroy,
-	.decode          = d_tcp_decode,
+	.new_context     = (rohc_decomp_new_context_t) d_tcp_create,
+	.free_context    = (rohc_decomp_free_context_t) d_tcp_destroy,
 	.detect_pkt_type = tcp_detect_packet_type,
+	.parse_pkt       = (rohc_decomp_parse_pkt_t) d_tcp_parse_packet,
+	.decode_bits     = (rohc_decomp_decode_bits_t) d_tcp_decode_bits,
+	.build_hdrs      = (rohc_decomp_build_hdrs_t) d_tcp_build_hdrs,
+	.update_ctxt     = (rohc_decomp_update_ctxt_t) d_tcp_update_ctxt,
+	.attempt_repair  = (rohc_decomp_attempt_repair_t) d_tcp_attempt_repair,
 	.get_sn          = d_tcp_get_msn
 };
 

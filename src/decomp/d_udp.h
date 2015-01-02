@@ -36,9 +36,5 @@ int udp_parse_static_udp(const struct rohc_decomp_ctxt *const context,
                          struct rohc_extr_bits *const bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
-void udp_update_context(const struct rohc_decomp_ctxt *context,
-                        const struct rohc_decoded_values decoded)
-	__attribute__((nonnull(1)));
-
 #endif
 

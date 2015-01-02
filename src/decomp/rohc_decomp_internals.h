@@ -30,6 +30,7 @@
 #include "rohc_internal.h"
 #include "rohc_decomp.h"
 #include "rohc_traces_internal.h"
+#include "crc.h"
 
 
 /*
@@ -162,6 +163,55 @@ typedef enum
 } rohc_decomp_crc_corr_t;
 
 
+/** The context for correction upon CRC failure */
+struct rohc_decomp_crc_corr_ctxt
+{
+	/** The algorithm being used for correction CRC failure */
+	rohc_decomp_crc_corr_t algo;
+	/** Correction counter (see e and f in 5.3.2.2.4 of the RFC 3095) */
+	size_t counter;
+/** The number of last packets to record arrival times for */
+#define ROHC_MAX_ARRIVAL_TIMES  10U
+	/** The arrival times for the last packets */
+	struct rohc_ts arrival_times[ROHC_MAX_ARRIVAL_TIMES];
+	/** The number of arrival times in arrival_times */
+	size_t arrival_times_nr;
+	/** The index for the arrival time of the next packet */
+	size_t arrival_times_index;
+};
+
+
+/** The information related to the CRC of a ROHC packet */
+struct rohc_decomp_crc
+{
+	rohc_crc_type_t type;  /**< The type of CRC that protects the ROHC header */
+	uint8_t bits;          /**< The CRC bits found in ROHC header */
+	size_t bits_nr;        /**< The number of CRC bits found in ROHC header */
+};
+
+
+/**
+ * @brief The volatile part of the ROHC decompression context
+ *
+ * The volatile part of the ROHC decompression context lasts only one single
+ * packet. Between two ROHC packets, the volatile part of the context is
+ * erased.
+ */
+struct rohc_decomp_volat_ctxt
+{
+	/** The CRC information extracted from the ROHC packet being parsed */
+	struct rohc_decomp_crc crc;
+
+	/** The profile-specific data for bits extracted from the ROHC packet,
+	 * defined by the profiles */
+	void *extr_bits;
+
+	/** The profile-specific data for values decoded from persistent context
+	 * and bits extracted from the ROHC packet, defined by the profiles */
+	void *decoded_values;
+};
+
+
 /**
  * @brief The ROHC decompression context
  */
@@ -175,8 +225,10 @@ struct rohc_decomp_ctxt
 
 	/** The associated profile */
 	const struct rohc_decomp_profile *profile;
-	/** Profile-specific data, defined by the profiles */
-	void *specific;
+	/** The persistent profile-specific data, defined by the profiles */
+	void *persist_ctxt;
+	/** The volatile data, erased between two ROHC packets */
+	struct rohc_decomp_volat_ctxt volat_ctxt;
 
 	/** The operation mode in which the context operates */
 	rohc_mode_t mode;
@@ -184,7 +236,7 @@ struct rohc_decomp_ctxt
 	rohc_decomp_state_t state;
 
 	/** Whether the operation modes at compressor and decompressor mismatch */
-	bool do_change_mode;
+	bool do_change_mode;  /** TODO: find another way to ACK(mode) */
 
 	/** Usage timestamp */
 	unsigned int latest_used;
@@ -193,6 +245,9 @@ struct rohc_decomp_ctxt
 
 	/** Variable related to feedback interval */
 	int curval;
+
+	/** The context for corrections upon CRC failure */
+	struct rohc_decomp_crc_corr_ctxt crc_corr;
 
 	/* below are some statistics */
 
@@ -226,6 +281,61 @@ struct rohc_decomp_ctxt
 	bool is_duplicated;
 };
 
+typedef bool (*rohc_decomp_new_context_t)(const struct rohc_decomp_ctxt *const context,
+                                          void **const persist_ctxt,
+                                          struct rohc_decomp_volat_ctxt *const volat_ctxt)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+
+typedef void (*rohc_decomp_free_context_t)(void *const persist_ctxt,
+                                           const struct rohc_decomp_volat_ctxt *const volat_ctxt)
+	__attribute__((nonnull(2)));
+
+typedef rohc_packet_t (*rohc_decomp_detect_pkt_type_t) (const struct rohc_decomp_ctxt *const context,
+                                                        const uint8_t *const rohc_packet,
+                                                        const size_t rohc_length,
+                                                        const size_t large_cid_len)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
+
+typedef bool (*rohc_decomp_parse_pkt_t)(const struct rohc_decomp_ctxt *const context,
+                                        const struct rohc_buf rohc_packet,
+                                        const size_t large_cid_len,
+                                        rohc_packet_t *const packet_type,
+                                        struct rohc_decomp_crc *const extr_crc,
+                                        void *const extr_bits,
+                                        size_t *const rohc_hdr_len)
+	__attribute__((warn_unused_result, nonnull(1, 4, 5, 6, 7)));
+
+typedef bool (*rohc_decomp_decode_bits_t)(const struct rohc_decomp_ctxt *const context,
+                                          const void *const extr_bits,
+                                          const size_t payload_len,
+                                          void *const decoded_values)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
+
+typedef rohc_status_t (*rohc_decomp_build_hdrs_t)(const struct rohc_decomp *const decomp,
+                                                  const struct rohc_decomp_ctxt *const context,
+                                                  const rohc_packet_t packet_type,
+                                                  const struct rohc_decomp_crc *const extr_crc,
+                                                  const void *const decoded_values,
+                                                  const size_t payload_len,
+                                                  struct rohc_buf *const uncomp_hdrs,
+                                                  size_t *const uncomp_hdrs_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5, 7, 8)));
+
+typedef void (*rohc_decomp_update_ctxt_t)(struct rohc_decomp_ctxt *const context,
+                                          const void *const decoded_values,
+                                          const size_t payload_len)
+	__attribute__((nonnull(1, 2)));
+
+typedef bool (*rohc_decomp_attempt_repair_t)(const struct rohc_decomp *const decomp,
+                                             const struct rohc_decomp_ctxt *const context,
+                                             const struct rohc_ts pkt_arrival_time,
+                                             struct rohc_decomp_crc_corr_ctxt *const crc_corr,
+                                             void *const extr_bits)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
+
+typedef uint32_t (*rohc_decomp_get_sn_t)(const struct rohc_decomp_ctxt *const context)
+	__attribute__((warn_unused_result, nonnull(1)));
+
 
 /**
  * @brief The ROHC decompression profile.
@@ -235,52 +345,38 @@ struct rohc_decomp_ctxt
  */
 struct rohc_decomp_profile
 {
-	/* The profile ID as reserved by IANA */
+	/** The profile ID as reserved by IANA */
 	const rohc_profile_t id;
 
-	/* @brief The handler used to create the profile-specific part of the
-	 *        decompression context */
-	void * (*new_context)(const struct rohc_decomp_ctxt *const context);
+	/** @brief The handler used to create the profile-specific part of the
+	 *         decompression context */
+	rohc_decomp_new_context_t new_context;
 
-	/* @brief The handler used to destroy the profile-specific part of the
-	 *        decompression context */
-	void (*free_context)(void *const context);
-
-	/* The handler used to decode a ROHC packet */
-	rohc_status_t (*decode)(struct rohc_decomp *const decomp,
-	                        struct rohc_decomp_ctxt *const context,
-	                        const struct rohc_buf rohc_packet,
-	                        const size_t add_cid_len,
-	                        const size_t large_cid_len,
-	                        struct rohc_buf *const uncomp_packet,
-	                        rohc_packet_t *const packet_type)
-		__attribute__((warn_unused_result, nonnull(1, 2, 6, 7)));
+	/** @brief The handler used to destroy the profile-specific part of the
+	 *         decompression context */
+	rohc_decomp_free_context_t free_context;
 
 	/** The handler used to detect the type of the ROHC packet */
-	rohc_packet_t (*detect_pkt_type)(const struct rohc_decomp_ctxt *const context,
-	                                 const uint8_t *const rohc_packet,
-	                                 const size_t rohc_length,
-	                                 const size_t large_cid_len)
-		__attribute__((warn_unused_result, nonnull(1, 2)));
+	rohc_decomp_detect_pkt_type_t detect_pkt_type;
+
+	/* The handler used to parse a ROHC packet */
+	rohc_decomp_parse_pkt_t parse_pkt;
+
+	/* The handler used to decode the bits extracted from a ROHC packet */
+	rohc_decomp_decode_bits_t decode_bits;
+
+	/* The handler used to build the uncompressed packet after decoding */
+	rohc_decomp_build_hdrs_t build_hdrs;
+
+	/* The handler used to update the context after successful decompression */
+	rohc_decomp_update_ctxt_t update_ctxt;
+
+	/* The handler used to attempt packet/context correction upon CRC failure */
+	rohc_decomp_attempt_repair_t attempt_repair;
 
 	/* The handler used to retrieve the Sequence Number (SN) */
-	uint32_t (*get_sn)(const struct rohc_decomp_ctxt *const context);
+	rohc_decomp_get_sn_t get_sn;
 };
-
-
-bool rohc_decomp_check_ir_crc(const struct rohc_decomp *const decomp,
-                              const struct rohc_decomp_ctxt *const context,
-                              const unsigned char *const rohc_hdr,
-                              const size_t rohc_hdr_len,
-                              const size_t add_cid_len,
-                              const size_t large_cid_len,
-                              const uint8_t crc_packet)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
-
-void rohc_decomp_stats_add_success(struct rohc_decomp_ctxt *const context,
-                                   const size_t comp_hdr_len,
-                                   const size_t uncomp_hdr_len)
-	__attribute__((nonnull(1)));
 
 #endif
 
