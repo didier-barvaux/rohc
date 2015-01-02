@@ -1,5 +1,5 @@
 /*
- * Copyright 2012,2013,2014 Didier Barvaux
+ * Copyright 2012,2013,2014,2015 Didier Barvaux
  * Copyright 2012 WBX
  *
  * This library is free software; you can redistribute it and/or
@@ -540,7 +540,7 @@ unsigned int dscp_encode(multi_ptr_t *pmptr,
 	else
 	{
 		/* 6 bits + 2 bits padding */
-		*(pmptr->uint8)++ = packet_value & 0x3F;
+		*(pmptr->uint8)++ = ((packet_value & 0x3F) << 2);
 		return 1;
 	}
 }

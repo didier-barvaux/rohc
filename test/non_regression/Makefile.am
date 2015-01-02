@@ -112,6 +112,7 @@ TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_BUG804552 = \
 
 TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_TCP = \
 	test_non_regression_ipv4_tcp_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_ssh-dscp_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_tcp_sack-opt-with-duplicate-ack_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_tcp_Aeroflex-TM500-LTE_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_tcp_unknown-multipath-opt_maxcontexts0_wlsb4_smallcid.sh \
@@ -238,6 +239,7 @@ TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_BUG804552 = \
 
 TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_TCP = \
 	test_non_regression_ipv4_tcp_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_ssh-dscp_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_tcp_sack-opt-with-duplicate-ack_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_tcp_Aeroflex-TM500-LTE_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_tcp_unknown-multipath-opt_maxcontexts0_wlsb64_smallcid.sh \
@@ -369,6 +371,7 @@ TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_BUG804552 = \
 
 TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_TCP = \
 	test_non_regression_ipv4_tcp_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_ssh-dscp_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_tcp_sack-opt-with-duplicate-ack_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_tcp_Aeroflex-TM500-LTE_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_tcp_unknown-multipath-opt_maxcontexts1_wlsb4_smallcid.sh \
@@ -495,6 +498,7 @@ TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_BUG804552 = \
 
 TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_TCP = \
 	test_non_regression_ipv4_tcp_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_ssh-dscp_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_tcp_sack-opt-with-duplicate-ack_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_tcp_Aeroflex-TM500-LTE_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_tcp_unknown-multipath-opt_maxcontexts1_wlsb64_smallcid.sh \
@@ -631,6 +635,7 @@ TESTS_MAXCONTEXTS0_WLSB4_LARGECID_BUG804552 = \
 
 TESTS_MAXCONTEXTS0_WLSB4_LARGECID_TCP = \
 	test_non_regression_ipv4_tcp_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_ssh-dscp_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv4_tcp_sack-opt-with-duplicate-ack_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv4_tcp_Aeroflex-TM500-LTE_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv4_tcp_unknown-multipath-opt_maxcontexts0_wlsb4_largecid.sh \
@@ -757,6 +762,7 @@ TESTS_MAXCONTEXTS0_WLSB64_LARGECID_BUG804552 = \
 
 TESTS_MAXCONTEXTS0_WLSB64_LARGECID_TCP = \
 	test_non_regression_ipv4_tcp_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_ssh-dscp_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv4_tcp_sack-opt-with-duplicate-ack_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv4_tcp_Aeroflex-TM500-LTE_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv4_tcp_unknown-multipath-opt_maxcontexts0_wlsb64_largecid.sh \
@@ -888,6 +894,7 @@ TESTS_MAXCONTEXTS1_WLSB4_LARGECID_BUG804552 = \
 
 TESTS_MAXCONTEXTS1_WLSB4_LARGECID_TCP = \
 	test_non_regression_ipv4_tcp_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_ssh-dscp_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv4_tcp_sack-opt-with-duplicate-ack_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv4_tcp_Aeroflex-TM500-LTE_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv4_tcp_unknown-multipath-opt_maxcontexts1_wlsb4_largecid.sh \
@@ -1014,6 +1021,7 @@ TESTS_MAXCONTEXTS1_WLSB64_LARGECID_BUG804552 = \
 
 TESTS_MAXCONTEXTS1_WLSB64_LARGECID_TCP = \
 	test_non_regression_ipv4_tcp_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_ssh-dscp_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv4_tcp_sack-opt-with-duplicate-ack_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv4_tcp_Aeroflex-TM500-LTE_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv4_tcp_unknown-multipath-opt_maxcontexts1_wlsb64_largecid.sh \
