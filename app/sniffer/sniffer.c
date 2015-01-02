@@ -1726,9 +1726,15 @@ static void print_rohc_traces(void *const priv_ctxt __attribute__((unused)),
 		va_list args;
 		va_start(args, format);
 		vsnprintf(last_traces[last_traces_last], MAX_TRACE_LEN + 1, format, args);
-		/* TODO: check return code */
 		last_traces[last_traces_last][MAX_TRACE_LEN] = '\0';
+		/* TODO: check return code */
 		va_end(args);
+		/* remove the final \n if present */
+		if(strlen(last_traces[last_traces_last]) >= 1 &&
+		   last_traces[last_traces_last][strlen(last_traces[last_traces_last]) - 1] == '\n')
+		{
+			last_traces[last_traces_last][strlen(last_traces[last_traces_last]) - 1] = '\0';
+		}
 	}
 	if(last_traces_first == -1)
 	{
