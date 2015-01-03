@@ -206,6 +206,14 @@ static int tcp_parse_dynamic_ip(const struct rohc_decomp_ctxt *const context,
 			remain_len -= sizeof(ipv4_dynamic2_t);
 #endif
 		}
+		else
+		{
+			size += sizeof(ipv4_dynamic1_t);
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
+			remain_data += sizeof(ipv4_dynamic1_t);
+			remain_len -= sizeof(ipv4_dynamic1_t);
+#endif
+		}
 	}
 	else
 	{
@@ -568,6 +576,7 @@ static int tcp_parse_dynamic_tcp(const struct rohc_decomp_ctxt *const context,
 	if(tcp_dynamic->ack_stride_flag == 0)
 	{
 		bits->ack_stride.bits_nr = 0;
+		rohc_decomp_debug(context, "TCP ack_stride not present");
 	}
 	else
 	{
@@ -583,6 +592,7 @@ static int tcp_parse_dynamic_tcp(const struct rohc_decomp_ctxt *const context,
 		bits->ack_stride.bits_nr = 16;
 		remain_data += sizeof(uint16_t);
 		remain_len -= sizeof(uint16_t);
+		rohc_decomp_debug(context, "TCP ack_stride = 0x%04x", bits->ack_stride.bits);
 	}
 #if 0 /* TODO: handle ACK stride */
 	if(tcp_context->ack_stride != 0)
