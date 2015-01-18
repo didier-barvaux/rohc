@@ -117,10 +117,7 @@ const char * rohc_get_packet_descr(const rohc_packet_t packet_type)
 			return "TCP/seq_8";
 
 		default:
-			assert(0);
-#if defined(__KERNEL__) || defined(ENABLE_DEAD_CODE)
-			return "no description";
-#endif
+			return "unknown ROHC packet";
 	}
 }
 
@@ -155,10 +152,7 @@ const char * rohc_get_ext_descr(const rohc_ext_t ext_type)
 		case ROHC_EXT_NONE:
 			return "none";
 		default:
-			assert(0);
-#if defined(__KERNEL__) || defined(ENABLE_DEAD_CODE)
-			return "no description";
-#endif
+			return "unknown ROHC extension";
 	}
 }
 
