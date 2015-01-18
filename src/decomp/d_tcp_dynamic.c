@@ -179,7 +179,6 @@ static int tcp_parse_dynamic_ip(const struct rohc_decomp_ctxt *const context,
 		{
 			const ipv4_dynamic2_t *const ipv4_dynamic2 =
 				(ipv4_dynamic2_t *) remain_data;
-			uint16_t ip_id;
 
 			if(remain_len < sizeof(ipv4_dynamic2_t))
 			{
@@ -188,15 +187,7 @@ static int tcp_parse_dynamic_ip(const struct rohc_decomp_ctxt *const context,
 				goto error;
 			}
 
-			if(ipv4_dynamic2->ip_id_behavior == IP_ID_BEHAVIOR_SEQ_SWAP)
-			{
-				ip_id = swab16(ipv4_dynamic2->ip_id);
-			}
-			else
-			{
-				ip_id = ipv4_dynamic2->ip_id;
-			}
-			ip_bits->id.bits = rohc_ntoh16(ip_id);
+			ip_bits->id.bits = rohc_ntoh16(ipv4_dynamic2->ip_id);
 			ip_bits->id.bits_nr = 16;
 			rohc_decomp_debug(context, "IP-ID = 0x%04x", ip_bits->id.bits);
 

@@ -2588,17 +2588,20 @@ static uint8_t * tcp_code_dynamic_ip_part(const struct rohc_comp_ctxt *context,
 		}
 		else
 		{
+			uint16_t ip_id_nbo;
+
 			if(mptr.ipv4_dynamic1->ip_id_behavior == IP_ID_BEHAVIOR_SEQ_SWAP)
 			{
-				mptr.ipv4_dynamic2->ip_id = swab16(base_header.ipv4->ip_id);
+				ip_id_nbo = swab16(base_header.ipv4->ip_id);
 			}
 			else
 			{
-				mptr.ipv4_dynamic2->ip_id = base_header.ipv4->ip_id;
+				ip_id_nbo = base_header.ipv4->ip_id;
 			}
+			mptr.ipv4_dynamic2->ip_id = ip_id_nbo;
 			rohc_comp_debug(context, "ip_id_behavior = %d, IP-ID = 0x%04x",
 			                mptr.ipv4_dynamic1->ip_id_behavior,
-			                rohc_ntoh16(base_header.ipv4->ip_id));
+			                rohc_ntoh16(ip_id_nbo));
 			size = sizeof(ipv4_dynamic2_t);
 		}
 
@@ -6196,8 +6199,8 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		}
 		else if(inner_ip_ctxt.vx->ip_id_behavior == IP_ID_BEHAVIOR_SEQ_SWAP)
 		{
-			const uint16_t ip_id_swapped = swab16(tcp_context->tmp.ip_id);
-			tcp_context->tmp.ip_id_delta = ip_id_swapped - tcp_context->msn;
+			tcp_context->tmp.ip_id = swab16(tcp_context->tmp.ip_id);
+			tcp_context->tmp.ip_id_delta = tcp_context->tmp.ip_id - tcp_context->msn;
 			rohc_comp_debug(context, "new outer IP-ID delta = 0x%x / %u (behavior = %d)",
 			                tcp_context->tmp.ip_id_delta, tcp_context->tmp.ip_id_delta,
 			                inner_ip_ctxt.v4->ip_id_behavior);

@@ -276,7 +276,6 @@ unsigned int rsf_index_dec(const unsigned int rsf_index)
  *
  * @param context            The decompression context
  * @param ip_id_lsb_ctxt     The LSB decoding context for the IP-ID offset
- * @param behavior           The IP-ID behavior
  * @param msn                The Master Sequence Number
  * @param ip_id_bits         The received IP-ID offset bits to decode
  * @param ip_id_bits_nr      The number of received IP-ID offset bits to decode
@@ -287,7 +286,6 @@ unsigned int rsf_index_dec(const unsigned int rsf_index)
  */
 bool d_ip_id_lsb(const struct rohc_decomp_ctxt *const context,
                  const struct rohc_lsb_decode *const ip_id_lsb_ctxt,
-                 const int behavior,
                  const uint16_t msn,
                  const uint32_t ip_id_bits,
                  const size_t ip_id_bits_nr,
@@ -314,15 +312,9 @@ bool d_ip_id_lsb(const struct rohc_decomp_ctxt *const context,
 	rohc_decomp_debug(context, "decoded IP-ID offset = 0x%x (%zu bits 0x%x with "
 	                  "p = %d)", ip_id_offset, ip_id_bits_nr, ip_id_bits, p);
 
-	// TODO: check for unexpected behaviors
 	/* add the decoded offset with SN, taking care of overflow */
 	*ip_id = (msn + ip_id_offset) & 0xffff;
-	if(behavior == IP_ID_BEHAVIOR_SEQ_SWAP)
-	{
-		*ip_id = swab16(*ip_id);
-	}
-	rohc_decomp_debug(context, "decoded IP-ID = 0x%04x (MSN = 0x%04x, "
-	                  "behavior = %d)", *ip_id, msn, behavior);
+	rohc_decomp_debug(context, "decoded IP-ID = 0x%04x (MSN = 0x%04x)", *ip_id, msn);
 
 	return true;
 

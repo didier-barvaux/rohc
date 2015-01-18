@@ -67,13 +67,12 @@ unsigned int rsf_index_dec(const unsigned int rsf_index)
 // RFC4996 page 75
 bool d_ip_id_lsb(const struct rohc_decomp_ctxt *const context,
                  const struct rohc_lsb_decode *const ip_id_lsb_ctxt,
-                 const int behavior,
                  const uint16_t msn,
                  const uint32_t ip_id_bits,
                  const size_t ip_id_bits_nr,
                  const rohc_lsb_shift_t p,
                  uint16_t *const ip_id)
-	__attribute__((warn_unused_result, nonnull(1, 2, 8)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 7)));
 
 // RFC4996 page 76
 int d_optional_ip_id_lsb(const struct rohc_decomp_ctxt *const context,

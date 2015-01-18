@@ -1924,9 +1924,9 @@ static bool d_tcp_decode_bits(const struct rohc_decomp_ctxt *const context,
 				}
 
 				/* decode IP-ID from packet bits and context */
-				if(!d_ip_id_lsb(context, tcp_context->ip_id_lsb_ctxt, ip_id_behavior,
-				                decoded->msn, ip_bits->id.bits, ip_bits->id.bits_nr,
-				                ip_bits->id.p, &ip_decoded->id))
+				if(!d_ip_id_lsb(context, tcp_context->ip_id_lsb_ctxt, decoded->msn,
+				                ip_bits->id.bits, ip_bits->id.bits_nr, ip_bits->id.p,
+				                &ip_decoded->id))
 				{
 					rohc_decomp_warn(context, "failed to decode %zu IP-ID bits "
 					                 "0x%x with p = %d", ip_bits->id.bits_nr,
@@ -2731,7 +2731,9 @@ static bool d_tcp_build_ipv4_hdr(const struct rohc_decomp_ctxt *const context,
 	{
 		ipv4->ip_id = rohc_hton16(decoded->id);
 	}
-	rohc_decomp_debug(context, "    IP-ID = 0x%04x", rohc_ntoh16(ipv4->ip_id));
+	rohc_decomp_debug(context, "    %s IP-ID = 0x%04x",
+	                  tcp_ip_id_behavior_get_descr(decoded->id_behavior),
+	                  rohc_ntoh16(ipv4->ip_id));
 
 	/* length and checksums will be computed once all headers are built */
 
