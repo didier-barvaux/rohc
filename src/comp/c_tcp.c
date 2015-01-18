@@ -1197,6 +1197,7 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 		if(ip_ver == IPV4)
 		{
 			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) remain_data;
+			const size_t ipv4_min_words_nr = sizeof(struct ipv4_hdr) / sizeof(uint32_t);
 
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "found IPv4");
 			if(remain_len < sizeof(struct ipv4_hdr))
@@ -1206,6 +1207,34 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 				           ip_hdrs_nr);
 				goto bad_profile;
 			}
+
+			/* IPv4 options are not supported by the TCP profile */
+			if(ipv4->ihl != ipv4_min_words_nr)
+			{
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "IP packet #%zu is not supported by the profile: "
+				           "IP options are not accepted", ip_hdrs_nr);
+				goto bad_profile;
+			}
+
+			/* check if the IPv4 header is a fragment */
+			if((rohc_ntoh16(ipv4->frag_off) & (~IP_DF)) != 0)
+			{
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "IP packet #%zu is fragmented", ip_hdrs_nr);
+				goto bad_profile;
+			}
+
+			/* check if the checksum of the IPv4 header is correct */
+			if((comp->features & ROHC_COMP_FEATURE_NO_IP_CHECKSUMS) == 0 &&
+			   ip_fast_csum(remain_data, ipv4_min_words_nr) != 0)
+			{
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "IP packet #%zu is not correct (bad checksum)",
+				           ip_hdrs_nr);
+				goto bad_profile;
+			}
+
 			next_proto = ipv4->protocol;
 			remain_data += sizeof(struct ipv4_hdr);
 			remain_len -= sizeof(struct ipv4_hdr);
