@@ -126,7 +126,7 @@ struct sniffer_stats_t
 	/** Cumulative number of packets per state */
 	unsigned long comp_nr_pkts_per_state[ROHC_COMP_STATE_SO + 1];
 	/** Cumulative number of packets per packet type */
-	unsigned long comp_nr_pkts_per_pkt_type[ROHC_PACKET_TCP_SEQ_8 + 1];
+	unsigned long comp_nr_pkts_per_pkt_type[ROHC_PACKET_MAX];
 	/** Cumulative number of times a context is reused (first time included) */
 	unsigned long comp_nr_reused_cid;
 
@@ -836,14 +836,14 @@ static void sniffer_print_stats(int signum __attribute__((unused)))
 	/* packets per packet type */
 	SNIFFER_LOG(LOG_INFO, "packets per packet type:");
 	total = 0;
-	for(i = ROHC_PACKET_IR; i <= ROHC_PACKET_TCP_SEQ_8; i++)
+	for(i = ROHC_PACKET_IR; i < ROHC_PACKET_MAX; i++)
 	{
 		total += sniffer_stats.comp_nr_pkts_per_pkt_type[i];
 	}
-	for(i = ROHC_PACKET_IR; i <= ROHC_PACKET_TCP_SEQ_8; i++)
+	for(i = ROHC_PACKET_IR; i < ROHC_PACKET_MAX; i++)
 	{
 		if(i != ROHC_PACKET_UNKNOWN &&
-		   strcmp(rohc_get_packet_descr(i), "no description") != 0)
+		   strcmp(rohc_get_packet_descr(i), "unknown ROHC packet") != 0)
 		{
 			SNIFFER_LOG(LOG_INFO, "  packet type %s: %lu packets (%llu%%)",
 			            rohc_get_packet_descr(i),
