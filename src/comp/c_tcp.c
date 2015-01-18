@@ -3620,10 +3620,10 @@ static uint8_t * c_sack_pure_lsb(const struct rohc_comp_ctxt *const context,
 		*(ptr++) = sack_field & 0xff;
 		len = 3;
 	}
-	else if(sack_field < 0x40000000)
+	else if(sack_field < 0x20000000)
 	{
 		/* discriminator '110' */
-		*(ptr++) = 0xC0 | ( ( sack_field >> 24 ) & 0x3F );
+		*(ptr++) = 0xc0 | ((sack_field >> 24) & 0x1f);
 		*(ptr++) = (sack_field >> 16) & 0xff;
 		*(ptr++) = (sack_field >> 8) & 0xff;
 		*(ptr++) = sack_field & 0xff;

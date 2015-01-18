@@ -406,7 +406,8 @@ static int d_tcp_sack_pure_lsb(const struct rohc_decomp_ctxt *const context,
 	{
 		/* discriminator '0' */
 		rohc_decomp_debug(context, "SACK block is 2-byte long");
-		(*sack_field) = *(remain_data++) << 8;
+		(*sack_field) = *(remain_data++) & 0x7f;
+		(*sack_field) <<= 8;
 		(*sack_field) |= *(remain_data++);
 		remain_len -= 2;
 	}
