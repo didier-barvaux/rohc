@@ -1397,10 +1397,28 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "TCP option %u found", opt_type);
 
-			if(opt_type == TCP_OPT_EOL || opt_type == TCP_OPT_NOP)
+			if(opt_type == TCP_OPT_NOP)
 			{
-				/* 1-byte TCP options: EOL or NOP */
+				/* 1-byte TCP option NOP */
 				opt_len = 1;
+			}
+			else if(opt_type == TCP_OPT_EOL)
+			{
+				size_t i;
+
+				/* TCP option EOL consumes all the remaining bytes of options */
+				opt_len = opts_len - opts_offset;
+				for(i = 0; i < opt_len; i++)
+				{
+					if(tcp_header->options[opts_offset + i] != TCP_OPT_EOL)
+					{
+						rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+						           "malformed TCP header: malformed option padding: "
+						           "padding byte #%zu is 0x%02x while it should be 0x00",
+						           i + 1, tcp_header->options[opts_offset + i]);
+						goto bad_profile;
+					}
+				}
 			}
 			else
 			{
@@ -1434,6 +1452,8 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 				switch(opt_type)
 				{
 					case TCP_OPT_EOL:
+						assert(opt_len >= 1); /* by definition */
+						break;
 					case TCP_OPT_NOP:
 						assert(opt_len == 1); /* by definition */
 						break;
@@ -3078,7 +3098,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 			switch(*options)
 			{
 				case TCP_OPT_EOL: // End Of List
-					i = 0;
+					i = 0; /* consume all remaining bytes of options */
 					++options;
 					break;
 				case TCP_OPT_NOP: // No Operation
@@ -3774,10 +3794,15 @@ static bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 
 		rohc_comp_debug(context, "  TCP option %u found", opt_type);
 
-		if(opt_type == TCP_OPT_EOL || opt_type == TCP_OPT_NOP)
+		if(opt_type == TCP_OPT_NOP)
 		{
-			/* 1-byte TCP options: EOL or NOP */
+			/* 1-byte TCP option NOP */
 			opt_len = 1;
+		}
+		else if(opt_type == TCP_OPT_EOL)
+		{
+			/* TCP option EOL consumes all the remaining bytes of options */
+			opt_len = (*opts_len) - opts_offset;
 		}
 		else
 		{
