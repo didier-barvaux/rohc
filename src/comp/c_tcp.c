@@ -1399,6 +1399,72 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 					           opt_type, opt_len, opts_len - opts_offset);
 					goto bad_profile;
 				}
+
+				/* check the length of well-known options in order to avoid using
+				 * the TCP profile with malformed TCP packets */
+				switch(opt_type)
+				{
+					case TCP_OPT_EOL:
+					case TCP_OPT_NOP:
+						assert(opt_len == 1); /* by definition */
+						break;
+					case TCP_OPT_MSS:
+						if(opt_len != TCP_OLEN_MSS)
+						{
+							rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+							           "malformed TCP option #%zu: unexpected length "
+							           "for MSS option: %zu found in packet while %u "
+							           "expected", opt_pos + 1, opt_len, TCP_OLEN_MSS);
+							goto bad_profile;
+						}
+						break;
+					case TCP_OPT_WS:
+						if(opt_len != TCP_OLEN_WS)
+						{
+							rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+							           "malformed TCP option #%zu: unexpected length "
+							           "for WS option: %zu found in packet while %u "
+							           "expected", opt_pos + 1, opt_len, TCP_OLEN_WS);
+							goto bad_profile;
+						}
+						break;
+					case TCP_OPT_SACK_PERM:
+						if(opt_len != TCP_OLEN_SACK_PERM)
+						{
+							rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+							           "malformed TCP option #%zu: unexpected length "
+							           "for SACK Permitted option: %zu found in packet "
+							           "while %u expected", opt_pos + 1, opt_len,
+							           TCP_OLEN_SACK_PERM);
+							goto bad_profile;
+						}
+						break;
+					case TCP_OPT_SACK:
+					{
+						size_t sack_blocks_remain = (opt_len - 2) % sizeof(sack_block_t);
+						size_t sack_blocks_nr = (opt_len - 2) / sizeof(sack_block_t);
+						if(sack_blocks_remain != 0 || sack_blocks_nr == 0 || sack_blocks_nr > 4)
+						{
+							rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+							           "malformed TCP option #%zu: unexpected length "
+							           "for SACK option: %zu found in packet while 2 + "
+							           "[1-4] * %zu expected", opt_pos + 1, opt_len,
+							           sizeof(sack_block_t));
+							goto bad_profile;
+						}
+						break;
+					}
+					case TCP_OPT_TS:
+						if(opt_len != TCP_OLEN_TS)
+						{
+							rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+							           "malformed TCP option #%zu: unexpected length "
+							           "for TS option: %zu found in packet while %u "
+							           "expected", opt_pos + 1, opt_len, TCP_OLEN_TS);
+							goto bad_profile;
+						}
+						break;
+				}
 			}
 		}
 		if(opt_pos >= ROHC_TCP_OPTS_MAX && opts_offset != opts_len)
@@ -2881,23 +2947,47 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 			switch(opt_type)
 			{
 				case TCP_OPT_EOL: // End Of List
+					assert(opt_len == 1);
 					rohc_comp_debug(context, "TCP option EOL");
 					break;
 				case TCP_OPT_NOP: // No Operation
+					assert(opt_len == 1);
 					rohc_comp_debug(context, "TCP option NOP");
 					break;
 				case TCP_OPT_MSS: // Max Segment Size
+					if(opt_len != TCP_OLEN_MSS)
+					{
+						rohc_comp_warn(context, "malformed TCP option #%zu: unexpected "
+						               "length for MSS option: %u found in packet while "
+						               "%u expected", opt_pos + 1, opt_len, TCP_OLEN_MSS);
+						goto error;
+					}
 					memcpy(&tcp_context->tcp_option_maxseg,options + 2,2);
 					rohc_comp_debug(context, "TCP option MAXSEG = %d (0x%x)",
 					                rohc_ntoh16(tcp_context->tcp_option_maxseg),
 					                rohc_ntoh16(tcp_context->tcp_option_maxseg));
 					break;
 				case TCP_OPT_WS: // Window
+					if(opt_len != TCP_OLEN_WS)
+					{
+						rohc_comp_warn(context, "malformed TCP option #%zu: unexpected "
+						               "length for WS option: %u found in packet while "
+						               "%u expected", opt_pos + 1, opt_len, TCP_OLEN_WS);
+						goto error;
+					}
 					rohc_comp_debug(context, "TCP option WINDOW = %d",
 					                *(options + 2));
 					tcp_context->tcp_option_window = *(options + 2);
 					break;
 				case TCP_OPT_SACK_PERM: // see RFC2018
+					if(opt_len != TCP_OLEN_SACK_PERM)
+					{
+						rohc_comp_warn(context, "malformed TCP option #%zu: unexpected "
+						               "length for SACK Permitted option: %u found in "
+						               "packet while %u expected", opt_pos + 1, opt_len,
+						               TCP_OLEN_SACK_PERM);
+						goto error;
+					}
 					rohc_comp_debug(context, "TCP option SACK PERMITTED");
 					break;
 				case TCP_OPT_SACK:
@@ -2920,6 +3010,14 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 				{
 					const struct tcp_option_timestamp *const opt_ts =
 						(struct tcp_option_timestamp *) (options + 2);
+
+					if(opt_len != TCP_OLEN_TS)
+					{
+						rohc_comp_warn(context, "malformed TCP option #%zu: unexpected "
+						               "length for TS option: %u found in packet while "
+						               "%u expected", opt_pos + 1, opt_len, TCP_OLEN_TS);
+						goto error;
+					}
 
 					rohc_comp_debug(context, "TCP option TIMESTAMP = 0x%04x 0x%04x",
 					                rohc_ntoh32(opt_ts->ts), rohc_ntoh32(opt_ts->ts_reply));
@@ -3689,6 +3787,7 @@ static bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 				tcp_context->tmp.opt_ts_present = true;
 			}
 		}
+		rohc_comp_debug(context, "    option is %zu-byte long", opt_len);
 
 		/* determine the index of the TCP option */
 		if(opt_type < TCP_LIST_ITEM_MAP_LEN && tcp_options_index[opt_type] >= 0)
