@@ -1221,6 +1221,16 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 				goto bad_profile;
 			}
 
+			/* IPv4 total length shall be correct */
+			if(rohc_ntoh16(ipv4->tot_len) != remain_len)
+			{
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "IP packet #%zu is not supported by the profile: total "
+				           "length is %u while it shall be %zu", ip_hdrs_nr,
+				           rohc_ntoh16(ipv4->tot_len), remain_len);
+				goto bad_profile;
+			}
+
 			/* check if the IPv4 header is a fragment */
 			if((rohc_ntoh16(ipv4->frag_off) & (~IP_DF)) != 0)
 			{
@@ -1259,6 +1269,16 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 			next_proto = ipv6->ip6_nxt;
 			remain_data += sizeof(struct ipv6_hdr);
 			remain_len -= sizeof(struct ipv6_hdr);
+
+			/* payload length shall be correct */
+			if(rohc_ntoh16(ipv6->ip6_plen) != remain_len)
+			{
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "IP packet #%zu is not supported by the profile: payload "
+				           "length is %u while it shall be %zu", ip_hdrs_nr,
+				           rohc_ntoh16(ipv6->ip6_plen), remain_len);
+				goto bad_profile;
+			}
 
 			while(rohc_is_ipv6_opt(next_proto))
 			{
