@@ -352,6 +352,7 @@ struct tcp_opt_context
 	uint8_t type;
 	/** The number of times the TCP option was transmitted */
 	size_t nr_trans;
+	size_t age;
 /** The maximum size (in bytes) of one TCP option */
 #define MAX_TCP_OPT_SIZE 40U
 	/** The value of the TCP option */
@@ -3782,6 +3783,7 @@ static bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 	size_t opt_len;
 	size_t opts_offset;
 	size_t opts_nr = 0;
+	uint8_t opt_idx;
 
 	tcp_context->tmp.is_tcp_opts_list_struct_changed = false;
 	tcp_context->tmp.opt_ts_present = false;
@@ -3793,12 +3795,19 @@ static bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 
 	rohc_comp_debug(context, "parse %zu-byte TCP options", *opts_len);
 
+	for(opt_idx = TCP_INDEX_GENERIC7; opt_idx <= MAX_TCP_OPTION_INDEX; opt_idx++)
+	{
+		if(tcp_context->tcp_options_list[opt_idx].used)
+		{
+			tcp_context->tcp_options_list[opt_idx].age++;
+		}
+	}
+
 	for(opt_pos = 0, opts_offset = 0;
 	    opt_pos < ROHC_TCP_OPTS_MAX && opts_offset < (*opts_len);
 	    opt_pos++, opts_offset += opt_len)
 	{
 		const uint8_t opt_type = opts[opts_offset];
-		uint8_t opt_idx;
 
 		rohc_comp_debug(context, "  TCP option %u found", opt_type);
 
@@ -3863,6 +3872,8 @@ static bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 		else /* TCP option doesn't have a reserved index */
 		{
 			int opt_idx_free = -1;
+			size_t oldest_idx = 0;
+			size_t oldest_idx_age = 0;
 
 			/* find the index that was used for the same option in previous
 			 * packets, or the first unused one */
@@ -3885,9 +3896,16 @@ static bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 			}
 			if(opt_idx_free < 0)
 			{
-				rohc_comp_warn(context, "no free index found for option '%s' "
-				               "(%u)", tcp_opt_get_descr(opt_type), opt_type);
-				goto error;
+				for(opt_idx = TCP_INDEX_GENERIC7; opt_idx <= MAX_TCP_OPTION_INDEX; opt_idx++)
+				{
+					if(tcp_context->tcp_options_list[opt_idx].used &&
+					   tcp_context->tcp_options_list[opt_idx].age > oldest_idx_age)
+					{
+					   oldest_idx_age = tcp_context->tcp_options_list[opt_idx].age;
+						oldest_idx = opt_idx;
+					}
+				}
+				opt_idx_free = oldest_idx;
 			}
 			opt_idx = opt_idx_free;
 		}
@@ -3896,6 +3914,10 @@ static bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 			rohc_comp_debug(context, "    option '%s' (%u) will use same "
 			                "index %u as in previous packet",
 			                tcp_opt_get_descr(opt_type), opt_type, opt_idx);
+			if(tcp_context->tcp_options_list[opt_idx].age > 0)
+			{
+				tcp_context->tcp_options_list[opt_idx].age--;
+			}
 		}
 		else
 		{
@@ -3903,6 +3925,7 @@ static bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 			tcp_context->tcp_options_list[opt_idx].used = true;
 			tcp_context->tcp_options_list[opt_idx].type = opt_type;
 			tcp_context->tcp_options_list[opt_idx].nr_trans = 0;
+			tcp_context->tcp_options_list[opt_idx].age = 0;
 			rohc_comp_debug(context, "    option '%s' (%u) will use new index %u",
 			                tcp_opt_get_descr(opt_type), opt_type, opt_idx);
 		}
