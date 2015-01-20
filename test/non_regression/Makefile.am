@@ -125,7 +125,21 @@ TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_TCP = \
 	test_non_regression_ipv4_tcp_40-nop-options_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv6_tcp_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv6_tcp_non-zero-dscp_maxcontexts0_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_tcp_wlsb-ack-only-for-r-mode_maxcontexts0_wlsb4_smallcid.sh
+	test_non_regression_ipv4_tcp_wlsb-ack-only-for-r-mode_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl0_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl1_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl2_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl3_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl4_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl5_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl6_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl7_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl8_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl9_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl10_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl11_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl12_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl13_maxcontexts0_wlsb4_smallcid.sh
 
 TESTS_MAXCONTEXTS0_WLSB4_SMALLCID = \
 	$(TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_MISC) \
@@ -257,7 +271,21 @@ TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_TCP = \
 	test_non_regression_ipv4_tcp_40-nop-options_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv6_tcp_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv6_tcp_non-zero-dscp_maxcontexts0_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_tcp_wlsb-ack-only-for-r-mode_maxcontexts0_wlsb64_smallcid.sh
+	test_non_regression_ipv4_tcp_wlsb-ack-only-for-r-mode_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl0_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl1_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl2_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl3_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl4_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl5_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl6_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl7_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl8_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl9_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl10_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl11_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl12_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl13_maxcontexts0_wlsb64_smallcid.sh
 
 TESTS_MAXCONTEXTS0_WLSB64_SMALLCID = \
 	$(TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_MISC) \
@@ -394,7 +422,21 @@ TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_TCP = \
 	test_non_regression_ipv4_tcp_40-nop-options_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv6_tcp_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv6_tcp_non-zero-dscp_maxcontexts1_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_tcp_wlsb-ack-only-for-r-mode_maxcontexts1_wlsb4_smallcid.sh
+	test_non_regression_ipv4_tcp_wlsb-ack-only-for-r-mode_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl0_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl1_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl2_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl3_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl4_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl5_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl6_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl7_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl8_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl9_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl10_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl11_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl12_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl13_maxcontexts1_wlsb4_smallcid.sh
 
 TESTS_MAXCONTEXTS1_WLSB4_SMALLCID = \
 	$(TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_MISC) \
@@ -526,7 +568,21 @@ TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_TCP = \
 	test_non_regression_ipv4_tcp_40-nop-options_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv6_tcp_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv6_tcp_non-zero-dscp_maxcontexts1_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_tcp_wlsb-ack-only-for-r-mode_maxcontexts1_wlsb64_smallcid.sh
+	test_non_regression_ipv4_tcp_wlsb-ack-only-for-r-mode_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl0_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl1_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl2_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl3_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl4_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl5_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl6_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl7_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl8_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl9_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl10_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl11_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl12_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl13_maxcontexts1_wlsb64_smallcid.sh
 
 TESTS_MAXCONTEXTS1_WLSB64_SMALLCID = \
 	$(TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_MISC) \
@@ -668,7 +724,21 @@ TESTS_MAXCONTEXTS0_WLSB4_LARGECID_TCP = \
 	test_non_regression_ipv4_tcp_40-nop-options_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv6_tcp_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv6_tcp_non-zero-dscp_maxcontexts0_wlsb4_largecid.sh \
-	test_non_regression_ipv4_tcp_wlsb-ack-only-for-r-mode_maxcontexts0_wlsb4_largecid.sh
+	test_non_regression_ipv4_tcp_wlsb-ack-only-for-r-mode_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl0_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl1_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl2_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl3_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl4_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl5_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl6_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl7_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl8_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl9_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl10_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl11_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl12_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl13_maxcontexts0_wlsb4_largecid.sh
 
 TESTS_MAXCONTEXTS0_WLSB4_LARGECID = \
 	$(TESTS_MAXCONTEXTS0_WLSB4_LARGECID_MISC) \
@@ -800,7 +870,21 @@ TESTS_MAXCONTEXTS0_WLSB64_LARGECID_TCP = \
 	test_non_regression_ipv4_tcp_40-nop-options_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv6_tcp_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv6_tcp_non-zero-dscp_maxcontexts0_wlsb64_largecid.sh \
-	test_non_regression_ipv4_tcp_wlsb-ack-only-for-r-mode_maxcontexts0_wlsb64_largecid.sh
+	test_non_regression_ipv4_tcp_wlsb-ack-only-for-r-mode_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl0_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl1_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl2_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl3_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl4_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl5_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl6_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl7_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl8_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl9_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl10_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl11_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl12_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl13_maxcontexts0_wlsb64_largecid.sh
 
 TESTS_MAXCONTEXTS0_WLSB64_LARGECID = \
 	$(TESTS_MAXCONTEXTS0_WLSB64_LARGECID_MISC) \
@@ -937,7 +1021,21 @@ TESTS_MAXCONTEXTS1_WLSB4_LARGECID_TCP = \
 	test_non_regression_ipv4_tcp_40-nop-options_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv6_tcp_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv6_tcp_non-zero-dscp_maxcontexts1_wlsb4_largecid.sh \
-	test_non_regression_ipv4_tcp_wlsb-ack-only-for-r-mode_maxcontexts1_wlsb4_largecid.sh
+	test_non_regression_ipv4_tcp_wlsb-ack-only-for-r-mode_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl0_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl1_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl2_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl3_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl4_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl5_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl6_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl7_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl8_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl9_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl10_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl11_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl12_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl13_maxcontexts1_wlsb4_largecid.sh
 
 TESTS_MAXCONTEXTS1_WLSB4_LARGECID = \
 	$(TESTS_MAXCONTEXTS1_WLSB4_LARGECID_MISC) \
@@ -1069,7 +1167,21 @@ TESTS_MAXCONTEXTS1_WLSB64_LARGECID_TCP = \
 	test_non_regression_ipv4_tcp_40-nop-options_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv6_tcp_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv6_tcp_non-zero-dscp_maxcontexts1_wlsb64_largecid.sh \
-	test_non_regression_ipv4_tcp_wlsb-ack-only-for-r-mode_maxcontexts1_wlsb64_largecid.sh
+	test_non_regression_ipv4_tcp_wlsb-ack-only-for-r-mode_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl0_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl1_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl2_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl3_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl4_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl5_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl6_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl7_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl8_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl9_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl10_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl11_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl12_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl13_maxcontexts1_wlsb64_largecid.sh
 
 TESTS_MAXCONTEXTS1_WLSB64_LARGECID = \
 	$(TESTS_MAXCONTEXTS1_WLSB64_LARGECID_MISC) \
