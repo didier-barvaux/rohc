@@ -564,6 +564,15 @@ static uint8_t * tcp_code_irregular_tcp_part(struct rohc_comp_ctxt *const contex
                                              uint8_t *const rohc_data,
                                              int ip_inner_ecn);
 
+static int code_IR_packet(struct rohc_comp_ctxt *const context,
+                          const struct ip_packet *const ip,
+                          const int packet_size,
+                          unsigned char *const rohc_pkt,
+                          const size_t rohc_pkt_max_len,
+                          const rohc_packet_t packet_type,
+                          size_t *const payload_offset)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 7)));
+
 static int code_CO_packet(struct rohc_comp_ctxt *const context,
                           const struct ip_packet *ip,
                           const int packet_size,
@@ -1723,10 +1732,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	ip_context_t *ip_inner_context;
 	base_header_ip_t base_header_inner;   // Source innermost
 	base_header_ip_t base_header;   // Source
-	multi_ptr_t mptr;
 	const tcphdr_t *tcp;
-	size_t first_position;
-	int crc_position;
 	int counter;
 	uint8_t protocol;
 	int ecn_used;
@@ -1736,8 +1742,6 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	uint8_t new_context_state;
 #endif
 	size_t i;
-	int ret;
-	size_t ip_hdr_pos;
 
 	assert(rohc_pkt != NULL);
 
@@ -1823,7 +1827,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 							else
 							{
 								rohc_comp_debug(context, "  IPv6 option %u did not change",
-													 protocol);
+								                protocol);
 							}
 							break;
 						case ROHC_IPPROTO_GRE:
@@ -1965,215 +1969,25 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 			rohc_comp_warn(context, "failed to build CO packet");
 			goto error;
 		}
-		rohc_dump_buf(context->compressor->trace_callback,
-		              context->compressor->trace_callback_priv,
-		              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
-		              "current ROHC packet", rohc_pkt, counter);
 	}
 	else /* ROHC_PACKET_IR or ROHC_PACKET_IR_DYN */
 	{
 		assert((*packet_type) == ROHC_PACKET_IR ||
 		       (*packet_type) == ROHC_PACKET_IR_DYN);
 
-		/* parts 1 and 3:
-		 *  - part 2 will be placed at 'first_position'
-		 *  - part 4 will start at 'counter'
-		 */
-		ret = code_cid_values(context->compressor->medium.cid_type,
-		                      context->cid, rohc_pkt, rohc_pkt_max_len,
-		                      &first_position);
-		if(ret < 1)
+		counter = code_IR_packet(context, &uncomp_pkt->outer_ip, uncomp_pkt->len,
+		                         rohc_pkt, rohc_pkt_max_len, *packet_type,
+		                         payload_offset);
+		if(counter < 0)
 		{
-			rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the "
-			               "%zu-byte ROHC buffer is too small",
-			               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
-			               "small" : "large", context->cid, rohc_pkt_max_len);
+			rohc_comp_warn(context, "failed to build IR(-DYN) packet");
 			goto error;
 		}
-		counter = ret;
-		rohc_comp_debug(context, "%s CID %zu encoded on %d byte(s)",
-		                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
-		                "small" : "large", context->cid, counter - 1);
-
-		/* part 2: type of packet */
-		if((*packet_type) == ROHC_PACKET_IR)
-		{
-			rohc_pkt[first_position] = ROHC_PACKET_TYPE_IR;
-		}
-		else /* ROHC_PACKET_IR_DYN */
-		{
-			rohc_pkt[first_position] = ROHC_PACKET_TYPE_IR_DYN;
-		}
-		rohc_comp_debug(context, "packet type = 0x%02x", rohc_pkt[first_position]);
-
-		/* part 4 */
-		rohc_comp_debug(context, "profile ID = 0x%02x", context->profile->id);
-		rohc_pkt[counter] = context->profile->id;
-		counter++;
-
-		/* part 5: the CRC is computed later since it must be computed
-		 * over the whole packet with an empty CRC field */
-		rohc_comp_debug(context, "CRC = 0x00 for CRC calculation");
-		crc_position = counter;
-		rohc_pkt[counter] = 0;
-		counter++;
-
-		mptr.uint8 = &rohc_pkt[counter];
-
-		/* add static chain for IR packet only */
-		if((*packet_type) == ROHC_PACKET_IR)
-		{
-			// Init pointer to the initial packet
-			base_header.ipvx = (base_header_ip_vx_t *) uncomp_pkt->outer_ip.data;
-			for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)
-			{
-				const ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
-				size_t ip_ext_pos;
-
-				rohc_comp_debug(context, "found IPv%d", base_header.ipvx->version);
-
-				switch(base_header.ipvx->version)
-				{
-					case IPV4:
-						mptr.uint8 =
-						   tcp_code_static_ip_part(context, base_header, mptr);
-						/* get the transport protocol */
-						protocol = base_header.ipv4->protocol;
-						++base_header.ipv4;
-						break;
-					case IPV6:
-						mptr.uint8 =
-						   tcp_code_static_ip_part(context, base_header, mptr);
-						protocol = base_header.ipv6->next_header;
-						++base_header.ipv6;
-						for(ip_ext_pos = 0; ip_ext_pos < ip_context->ctxt.v6.opts_nr; ip_ext_pos++)
-						{
-							const ipv6_option_context_t *const opt_ctxt =
-								&(ip_context->ctxt.v6.opts[ip_ext_pos]);
-
-							rohc_comp_debug(context, "IPv6 option #%zu: type %u / "
-							                "length %zu", ip_ext_pos + 1, protocol,
-							                opt_ctxt->generic.option_length);
-							mptr.uint8 =
-							   tcp_code_static_ipv6_option_part(context, mptr,
-							                                    protocol, base_header);
-							if(mptr.uint8 == NULL)
-							{
-								rohc_comp_warn(context, "failed to code the IPv6 "
-								               "extension part of the static chain");
-								goto error;
-							}
-							protocol = base_header.ipv6_opt->next_header;
-							base_header.uint8 += opt_ctxt->generic.option_length;
-						}
-						break;
-					default:
-						rohc_comp_warn(context, "unexpected IP version %u",
-						               base_header.ipvx->version);
-						assert(0);
-						goto error;
-				}
-				rohc_comp_debug(context, "counter = %d, protocol = %d",
-				                (int)(mptr.uint8 - &rohc_pkt[counter]), protocol);
-			}
-
-			// add TCP static part
-			mptr.uint8 = tcp_code_static_tcp_part(context,base_header.tcphdr,mptr);
-			rohc_dump_buf(context->compressor->trace_callback,
-			              context->compressor->trace_callback_priv,
-			              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
-			              "current ROHC packet", rohc_pkt, mptr.uint8 - rohc_pkt);
-		}
-
-		/* add dynamic chain for both IR and IR-DYN packet */
-		base_header.ipvx = (base_header_ip_vx_t *) uncomp_pkt->outer_ip.data;
-		for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)
-		{
-			ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
-			size_t ip_ext_pos;
-
-			rohc_comp_debug(context, "found IPv%d", base_header.ipvx->version);
-
-			mptr.uint8 = tcp_code_dynamic_ip_part(context, ip_context, base_header,
-			                                      mptr,
-			                                      base_header.uint8 == base_header_inner.uint8);
-
-			switch(base_header.ipvx->version)
-			{
-				case IPV4:
-					/* get the transport protocol */
-					protocol = base_header.ipv4->protocol;
-					++base_header.ipv4;
-					break;
-				case IPV6:
-					protocol = base_header.ipv6->next_header;
-					++base_header.ipv6;
-					for(ip_ext_pos = 0; ip_ext_pos < ip_context->ctxt.v6.opts_nr; ip_ext_pos++)
-					{
-						ipv6_option_context_t *const opt_ctxt =
-							&(ip_context->ctxt.v6.opts[ip_ext_pos]);
-
-						rohc_comp_debug(context, "IPv6 option %u", protocol);
-						mptr.uint8 =
-						   tcp_code_dynamic_ipv6_option_part(context, opt_ctxt, mptr,
-																		 protocol, base_header);
-						if(mptr.uint8 == NULL)
-						{
-							rohc_comp_warn(context, "failed to code the IPv6 "
-							               "extension part of the dynamic chain");
-							goto error;
-						}
-						protocol = base_header.ipv6_opt->next_header;
-						base_header.uint8 += opt_ctxt->generic.option_length;
-					}
-					break;
-				default:
-					rohc_comp_warn(context, "unexpected IP version %u",
-					               base_header.ipvx->version);
-					assert(0);
-					goto error;
-			}
-		}
-
-		// add TCP dynamic part
-		mptr.uint8 = tcp_code_dynamic_tcp_part(context,base_header.uint8,mptr);
-		if(mptr.uint8 == NULL)
-		{
-			rohc_comp_warn(context, "failed to code the TCP part of the dynamic "
-			               "chain");
-			goto error;
-		}
-
-		counter = (int) ( mptr.uint8 - rohc_pkt );
-		rohc_dump_buf(context->compressor->trace_callback,
-		              context->compressor->trace_callback_priv,
-		              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
-		              "current ROHC packet", rohc_pkt, counter);
-
-		/* last part : payload */
-		base_header.uint8 += (base_header.tcphdr->data_offset << 2);
-
-		rohc_dump_buf(context->compressor->trace_callback,
-		              context->compressor->trace_callback_priv,
-		              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
-		              "current ROHC packet", rohc_pkt, counter);
-
-		/* part 5 */
-		rohc_pkt[crc_position] = crc_calculate(ROHC_CRC_TYPE_8, rohc_pkt,
-		                                       counter, CRC_INIT_8,
-		                                       context->compressor->crc_table_8);
-		rohc_comp_debug(context, "CRC (header length = %d, crc = 0x%x)",
-		                counter, rohc_pkt[crc_position]);
-
-		rohc_comp_debug(context, "IR packet, length %d",counter);
-		rohc_dump_buf(context->compressor->trace_callback,
-		              context->compressor->trace_callback_priv,
-		              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
-		              "current ROHC packet", rohc_pkt, counter);
-
-		*packet_type = ROHC_PACKET_IR;
-		*payload_offset = base_header.uint8 - (uint8_t *) uncomp_pkt->outer_ip.data;
 	}
+	rohc_dump_buf(context->compressor->trace_callback,
+	              context->compressor->trace_callback_priv,
+	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
+	              "current ROHC packet", rohc_pkt, counter);
 
 	rohc_comp_debug(context, "payload_offset = %zu", *payload_offset);
 
@@ -2193,6 +2007,242 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		                "changed", tcp_context->seq_num_scaling_nr,
 		                ROHC_INIT_TS_STRIDE_MIN);
 	}
+
+	return counter;
+
+error:
+	return -1;
+}
+
+
+/**
+ * @brief Encode an IP/TCP packet as IR or IR-DYN packet
+ *
+ * @param context           The compression context
+ * @param ip                The outer IP header
+ * @param packet_size       The length of the uncompressed packet (in bytes)
+ * @param rohc_pkt          OUT: The ROHC packet
+ * @param rohc_pkt_max_len  The maximum length of the ROHC packet
+ * @param packet_type       The type of ROHC packet that is created
+ * @param payload_offset    OUT: The offset for the payload in the IP packet
+ * @return                  The length of the ROHC packet if successful,
+ *                          -1 otherwise
+ */
+static int code_IR_packet(struct rohc_comp_ctxt *const context,
+                          const struct ip_packet *const ip,
+                          const int packet_size __attribute__((unused)),
+                          unsigned char *const rohc_pkt,
+                          const size_t rohc_pkt_max_len,
+                          const rohc_packet_t packet_type,
+                          size_t *const payload_offset)
+{
+	struct sc_tcp_context *const tcp_context = context->specific;
+	base_header_ip_t base_header;
+	multi_ptr_t mptr;
+	size_t first_position;
+	size_t crc_position;
+	size_t ip_hdr_pos;
+	size_t counter;
+	uint8_t protocol;
+	int ret;
+
+	/* parts 1 and 3:
+	 *  - part 2 will be placed at 'first_position'
+	 *  - part 4 will start at 'counter'
+	 */
+	ret = code_cid_values(context->compressor->medium.cid_type,
+	                      context->cid, rohc_pkt, rohc_pkt_max_len,
+	                      &first_position);
+	if(ret < 1)
+	{
+		rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the %zu-byte "
+		               "ROHC buffer is too small",
+		               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
+		               "small" : "large", context->cid, rohc_pkt_max_len);
+		goto error;
+	}
+	counter = ret;
+	rohc_comp_debug(context, "%s CID %zu encoded on %zu byte(s)",
+	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
+	                "small" : "large", context->cid, counter - 1);
+
+	/* part 2: type of packet */
+	if(packet_type == ROHC_PACKET_IR)
+	{
+		rohc_pkt[first_position] = ROHC_PACKET_TYPE_IR;
+	}
+	else /* ROHC_PACKET_IR_DYN */
+	{
+		rohc_pkt[first_position] = ROHC_PACKET_TYPE_IR_DYN;
+	}
+	rohc_comp_debug(context, "packet type = 0x%02x", rohc_pkt[first_position]);
+
+	/* part 4 */
+	rohc_comp_debug(context, "profile ID = 0x%02x", context->profile->id);
+	rohc_pkt[counter] = context->profile->id;
+	counter++;
+
+	/* part 5: the CRC is computed later since it must be computed
+	 * over the whole packet with an empty CRC field */
+	rohc_comp_debug(context, "CRC = 0x00 for CRC calculation");
+	crc_position = counter;
+	rohc_pkt[counter] = 0;
+	counter++;
+
+	mptr.uint8 = &rohc_pkt[counter];
+
+	/* add static chain for IR packet only */
+	if(packet_type == ROHC_PACKET_IR)
+	{
+		base_header.ipvx = (base_header_ip_vx_t *) ip->data;
+
+		/* add IP parts of static chain */
+		for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)
+		{
+			const ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
+			size_t ip_ext_pos;
+
+			rohc_comp_debug(context, "found IPv%d", base_header.ipvx->version);
+
+			if(base_header.ipvx->version == IPV4)
+			{
+				mptr.uint8 = tcp_code_static_ip_part(context, base_header, mptr);
+				/* get the transport protocol */
+				protocol = base_header.ipv4->protocol;
+				base_header.ipv4++;
+			}
+			else if(base_header.ipvx->version == IPV6)
+			{
+				mptr.uint8 = tcp_code_static_ip_part(context, base_header, mptr);
+				protocol = base_header.ipv6->next_header;
+				base_header.ipv6++;
+				for(ip_ext_pos = 0; ip_ext_pos < ip_context->ctxt.v6.opts_nr; ip_ext_pos++)
+				{
+					const ipv6_option_context_t *const opt_ctxt =
+						&(ip_context->ctxt.v6.opts[ip_ext_pos]);
+
+					rohc_comp_debug(context, "IPv6 option #%zu: type %u / length %zu",
+					                ip_ext_pos + 1, protocol,
+					                opt_ctxt->generic.option_length);
+					mptr.uint8 =
+						tcp_code_static_ipv6_option_part(context, mptr,
+						                                 protocol, base_header);
+					if(mptr.uint8 == NULL)
+					{
+						rohc_comp_warn(context, "failed to code the IPv6 extension "
+						               "part of the static chain");
+						goto error;
+					}
+					protocol = base_header.ipv6_opt->next_header;
+					base_header.uint8 += opt_ctxt->generic.option_length;
+				}
+			}
+			else
+			{
+				rohc_comp_warn(context, "unexpected IP version %u",
+				               base_header.ipvx->version);
+				assert(0);
+				goto error;
+			}
+			rohc_comp_debug(context, "counter = %d, protocol = %d",
+			                (int)(mptr.uint8 - &rohc_pkt[counter]), protocol);
+		}
+
+		/* add TCP static part */
+		mptr.uint8 = tcp_code_static_tcp_part(context,base_header.tcphdr,mptr);
+		rohc_dump_buf(context->compressor->trace_callback,
+		              context->compressor->trace_callback_priv,
+		              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
+		              "current ROHC packet", rohc_pkt, mptr.uint8 - rohc_pkt);
+	}
+
+	/* add dynamic chain for both IR and IR-DYN packet */
+	base_header.ipvx = (base_header_ip_vx_t *) ip->data;
+	for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)
+	{
+		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
+		const bool is_inner = (ip_hdr_pos + 1 == tcp_context->ip_contexts_nr);
+		size_t ip_ext_pos;
+
+		rohc_comp_debug(context, "found IPv%d", base_header.ipvx->version);
+
+		mptr.uint8 = tcp_code_dynamic_ip_part(context, ip_context, base_header,
+		                                      mptr, is_inner);
+
+		if(base_header.ipvx->version == IPV4)
+		{
+			/* get the transport protocol */
+			protocol = base_header.ipv4->protocol;
+			base_header.ipv4++;
+		}
+		else if(base_header.ipvx->version == IPV6)
+		{
+			protocol = base_header.ipv6->next_header;
+			base_header.ipv6++;
+			for(ip_ext_pos = 0; ip_ext_pos < ip_context->ctxt.v6.opts_nr; ip_ext_pos++)
+			{
+				ipv6_option_context_t *const opt_ctxt =
+					&(ip_context->ctxt.v6.opts[ip_ext_pos]);
+
+				rohc_comp_debug(context, "IPv6 option %u", protocol);
+				mptr.uint8 =
+				   tcp_code_dynamic_ipv6_option_part(context, opt_ctxt, mptr,
+				                                     protocol, base_header);
+				if(mptr.uint8 == NULL)
+				{
+					rohc_comp_warn(context, "failed to code the IPv6 extension part "
+					               "of the dynamic chain");
+					goto error;
+				}
+				protocol = base_header.ipv6_opt->next_header;
+				base_header.uint8 += opt_ctxt->generic.option_length;
+			}
+		}
+		else
+		{
+			rohc_comp_warn(context, "unexpected IP version %u",
+			               base_header.ipvx->version);
+			assert(0);
+			goto error;
+		}
+	}
+
+	/* add TCP dynamic part */
+	mptr.uint8 = tcp_code_dynamic_tcp_part(context,base_header.uint8,mptr);
+	if(mptr.uint8 == NULL)
+	{
+		rohc_comp_warn(context, "failed to code the TCP part of the dynamic chain");
+		goto error;
+	}
+
+	counter = (int) ( mptr.uint8 - rohc_pkt );
+	rohc_dump_buf(context->compressor->trace_callback,
+	              context->compressor->trace_callback_priv,
+	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
+	              "current ROHC packet", rohc_pkt, counter);
+
+	/* last part : payload */
+	base_header.uint8 += (base_header.tcphdr->data_offset << 2);
+
+	rohc_dump_buf(context->compressor->trace_callback,
+	              context->compressor->trace_callback_priv,
+	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
+	              "current ROHC packet", rohc_pkt, counter);
+
+	/* part 5 */
+	rohc_pkt[crc_position] = crc_calculate(ROHC_CRC_TYPE_8, rohc_pkt,
+	                                       counter, CRC_INIT_8,
+	                                       context->compressor->crc_table_8);
+	rohc_comp_debug(context, "CRC (header length = %zu, crc = 0x%x)",
+	                counter, rohc_pkt[crc_position]);
+
+	rohc_comp_debug(context, "IR(-DYN) packet, length %zu", counter);
+	rohc_dump_buf(context->compressor->trace_callback,
+	              context->compressor->trace_callback_priv,
+	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
+	              "current ROHC packet", rohc_pkt, counter);
+
+	*payload_offset = base_header.uint8 - ip->data;
 
 	return counter;
 
