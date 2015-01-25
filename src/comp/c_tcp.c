@@ -171,7 +171,7 @@ struct tcp_tmp_variables
 	uint8_t tcp_opts_idx_max;
 };
 
-#define MAX_IPV6_OPTION_LENGTH        6   // FOR Destination/Hop-by-Hop/Routing/ah
+#define MAX_IPV6_OPTION_LENGTH        0xffU
 #define MAX_IPV6_CONTEXT_OPTION_SIZE  (2 + ((MAX_IPV6_OPTION_LENGTH + 1) << 3))
 
 
@@ -924,6 +924,7 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 				memcpy(ip_context.v6->src_addr,base_header.ipv6->src_addr,sizeof(uint32_t) * 4 * 2);
 				++base_header.ipv6;
 				++ip_context.v6;
+				rohc_comp_debug(context, "parse IPv6 extension headers");
 				while(rohc_is_ipv6_opt(proto))
 				{
 					switch(proto)
@@ -932,11 +933,18 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 						case ROHC_IPPROTO_ROUTING:  // IPv6 routing header
 						case ROHC_IPPROTO_DSTOPTS:  // IPv6 destination options
 							size_option = ( base_header.ipv6_opt->length + 1 ) << 3;
+							rohc_comp_debug(context, "  IPv6 extension header is %zu-byte long",
+							                size_option);
+							ip_context.v6_option->option_length = size_option;
 							ip_context.v6_option->context_length = 2 + size_option;
 							memcpy(&ip_context.v6_option->next_header,&base_header.ipv6_opt->next_header,
 							       size_option);
 							break;
 						case ROHC_IPPROTO_GRE:
+							size_option = base_header.ip_gre_opt->c_flag +
+							              base_header.ip_gre_opt->k_flag +
+							              base_header.ip_gre_opt->s_flag + 1;
+							size_option <<= 3;
 							ip_context.v6_gre_option->context_length = sizeof(ipv6_gre_option_context_t);
 							ip_context.v6_gre_option->c_flag = base_header.ip_gre_opt->c_flag;
 							ip_context.v6_gre_option->k_flag = base_header.ip_gre_opt->k_flag;
@@ -949,6 +957,7 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 							                                 base_header.ip_gre_opt->k_flag];
 							break;
 						case ROHC_IPPROTO_MINE:
+							size_option = ( 2 + base_header.ip_mime_opt->s_bit ) << 3;
 							ip_context.v6_mime_option->context_length = sizeof(ipv6_mime_option_context_t);
 							ip_context.v6_mime_option->next_header = base_header.ipv6_opt->next_header;
 							ip_context.v6_mime_option->s_bit = base_header.ip_mime_opt->s_bit;
@@ -958,6 +967,9 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 							ip_context.v6_mime_option->orig_src = base_header.ip_mime_opt->orig_src;
 							break;
 						case ROHC_IPPROTO_AH:
+							size_option = sizeof(ip_ah_opt_t) - sizeof(uint32_t) +
+							              ( base_header.ip_ah_opt->length << 4 ) - sizeof(int32_t);
+							ip_context.v6_ah_option->option_length = size_option;
 							ip_context.v6_ah_option->context_length = sizeof(ipv6_ah_option_context_t);
 							ip_context.v6_ah_option->next_header = base_header.ipv6_opt->next_header;
 							ip_context.v6_ah_option->length = base_header.ip_ah_opt->length;
@@ -969,6 +981,9 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 						default:
 							goto free_context;
 					}
+					proto = base_header.ipv6_opt->next_header;
+					base_header.uint8 += size_option;
+					ip_context.uint8 += ip_context.v6_option->context_length;
 				}
 				break;
 			default:
@@ -1177,7 +1192,7 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 
 	/* check that the the versions of IP headers are 4 or 6 and that IP headers
 	 * are not IP fragments */
-	ip_hdrs_nr = 1;
+	ip_hdrs_nr = 0;
 	do
 	{
 		ip_version ip_ver;
@@ -1187,14 +1202,14 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "uncompressed packet too short for version field of IP "
-			           "header #%zu", ip_hdrs_nr);
+			           "header #%zu", ip_hdrs_nr + 1);
 			goto bad_profile;
 		}
 		if(!get_ip_version(remain_data, remain_len, &ip_ver))
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "failed to determine the version of IP header #%zu",
-			           ip_hdrs_nr);
+			           ip_hdrs_nr + 1);
 			goto bad_profile;
 		}
 
@@ -1208,7 +1223,7 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 			{
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 				           "uncompressed packet too short for IP header #%zu",
-				           ip_hdrs_nr);
+				           ip_hdrs_nr + 1);
 				goto bad_profile;
 			}
 
@@ -1217,7 +1232,7 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 			{
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 				           "IP packet #%zu is not supported by the profile: "
-				           "IP options are not accepted", ip_hdrs_nr);
+				           "IP options are not accepted", ip_hdrs_nr + 1);
 				goto bad_profile;
 			}
 
@@ -1226,7 +1241,7 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 			{
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 				           "IP packet #%zu is not supported by the profile: total "
-				           "length is %u while it shall be %zu", ip_hdrs_nr,
+				           "length is %u while it shall be %zu", ip_hdrs_nr + 1,
 				           rohc_ntoh16(ipv4->tot_len), remain_len);
 				goto bad_profile;
 			}
@@ -1235,7 +1250,7 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 			if((rohc_ntoh16(ipv4->frag_off) & (~IP_DF)) != 0)
 			{
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "IP packet #%zu is fragmented", ip_hdrs_nr);
+				           "IP packet #%zu is fragmented", ip_hdrs_nr + 1);
 				goto bad_profile;
 			}
 
@@ -1245,7 +1260,7 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 			{
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 				           "IP packet #%zu is not correct (bad checksum)",
-				           ip_hdrs_nr);
+				           ip_hdrs_nr + 1);
 				goto bad_profile;
 			}
 
@@ -1256,6 +1271,7 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 		else if(ip_ver == IPV6)
 		{
 			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
+			size_t ipv6_ext_nr;
 			size_t size_option;
 
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "found IPv6");
@@ -1263,7 +1279,7 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 			{
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 				           "uncompressed packet too short for IP header #%zu",
-				           ip_hdrs_nr);
+				           ip_hdrs_nr + 1);
 				goto bad_profile;
 			}
 			next_proto = ipv6->ip6_nxt;
@@ -1275,15 +1291,17 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 			{
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 				           "IP packet #%zu is not supported by the profile: payload "
-				           "length is %u while it shall be %zu", ip_hdrs_nr,
+				           "length is %u while it shall be %zu", ip_hdrs_nr + 1,
 				           rohc_ntoh16(ipv6->ip6_plen), remain_len);
 				goto bad_profile;
 			}
 
-			while(rohc_is_ipv6_opt(next_proto))
+			ipv6_ext_nr = 0;
+			while(rohc_is_ipv6_opt(next_proto) && ipv6_ext_nr < ROHC_TCP_MAX_IPV6_EXT_HDRS)
 			{
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "  found extension header %u", next_proto);
+				           "  found extension header #%zu of type %u",
+				           ipv6_ext_nr + 1, next_proto);
 				switch(next_proto)
 				{
 					case ROHC_IPPROTO_HOPOPTS: // IPv6 Hop-by-Hop options
@@ -1372,8 +1390,23 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 					default:
 						goto bad_profile;
 				}
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "  extension header %zu-byte long", size_option);
 				remain_data += size_option;
 				remain_len -= size_option;
+
+				ipv6_ext_nr++;
+			}
+
+			/* profile cannot handle the packet if it bypasses internal limit of
+			 * IPv6 extension headers */
+			if(ipv6_ext_nr > ROHC_TCP_MAX_IPV6_EXT_HDRS)
+			{
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "IP header #%zu got too many IPv6 extension headers for "
+				           "TCP profile (%u headers max)", ip_hdrs_nr + 1,
+				           ROHC_TCP_MAX_IPV6_EXT_HDRS);
+				goto bad_profile;
 			}
 		}
 		else
@@ -1382,8 +1415,18 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 			           "unsupported version %d for header #%zu", ip_ver, ip_hdrs_nr);
 			goto bad_profile;
 		}
+		ip_hdrs_nr++;
 	}
-	while(rohc_is_tunneling(next_proto));
+	while(rohc_is_tunneling(next_proto) && ip_hdrs_nr < ROHC_TCP_MAX_IP_HDRS);
+
+	/* profile cannot handle the packet if it bypasses internal limit of IP headers */
+	if(ip_hdrs_nr > ROHC_TCP_MAX_IP_HDRS)
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "too many IP headers for TCP profile (%u headers max)",
+		           ROHC_TCP_MAX_IP_HDRS);
+		goto bad_profile;
+	}
 
 	/* check that the transport protocol is TCP */
 	if(next_proto != ROHC_IPPROTO_TCP)
@@ -1800,8 +1843,8 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 						case ROHC_IPPROTO_AH:
 							if(base_header.ipv6_opt->length != ip_context.v6_option->length)
 							{
-								rohc_comp_debug(context, "IPv6 option %d length "
-								                "changed (%d -> %d)", protocol,
+								rohc_comp_debug(context, "IPv6 option %d length changed "
+								                "(%d -> %d)", protocol,
 								                ip_context.v6_option->length,
 								                base_header.ipv6_opt->length);
 								assert( base_header.ipv6_opt->length < MAX_IPV6_OPTION_LENGTH );
@@ -1818,10 +1861,8 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 							if(memcmp(base_header.ipv6_opt->value,ip_context.v6_option->value,
 							          ip_context.v6_option->option_length - 2) != 0)
 							{
-								rohc_comp_debug(context, "IPv6 option %d value "
-								                "changed (%d -> %d)", protocol,
-								                ip_context.v6_option->length,
-								                base_header.ipv6_opt->length);
+								rohc_comp_debug(context, "IPv6 option %d value changed",
+													 protocol);
 								memcpy(ip_context.v6_option->value,base_header.ipv6_opt->value,
 								       ip_context.v6_option->option_length - 2);
 #ifdef TODO

@@ -621,6 +621,10 @@ typedef struct  __attribute__((packed)) ipv6_extension
 } ipv6_extension_t;
 
 
+#define ROHC_TCP_MAX_IP_HDRS        10U
+#define ROHC_TCP_MAX_IPV6_EXT_HDRS  20U
+
+
 /**
  * @brief Define the Selective Acknowlegment TCP option
  *

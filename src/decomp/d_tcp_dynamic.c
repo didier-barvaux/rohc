@@ -233,12 +233,14 @@ static int tcp_parse_dynamic_ip(const struct rohc_decomp_ctxt *const context,
 		remain_data += sizeof(ipv6_dynamic_t);
 		remain_len -= sizeof(ipv6_dynamic_t);
 
+		rohc_decomp_debug(context, "parse the dynamic parts of the %zu IPv6 "
+		                  "extension headers", ip_bits->opts_nr);
+
 		assert(ip_bits->proto_nr == 8);
 		protocol = ip_bits->proto;
 		for(opts_nr = 0; opts_nr < ip_bits->opts_nr; opts_nr++)
 		{
-			ipv6_option_context_t *const opt =
-				&(ip_bits->opts[ip_bits->opts_nr]);
+			ipv6_option_context_t *const opt = &(ip_bits->opts[opts_nr]);
 
 			ret = tcp_parse_dynamic_ipv6_option(context, opt, protocol,
 			                                    remain_data, remain_len);
@@ -307,14 +309,6 @@ static int tcp_parse_dynamic_ipv6_option(const struct rohc_decomp_ctxt *const co
 				rohc_decomp_warn(context, "malformed IPv6 option: malformed "
 				                 "option %u: %zu bytes available while %zu bytes "
 				                 "required", protocol, remain_len, size);
-				goto error;
-			}
-			if(size > 6)
-			{
-				rohc_decomp_warn(context, "static part of the IPv6 %u too "
-				                 "large for implementation: %zu bytes required "
-				                 "while only %u bytes available", protocol,
-				                 size, 6U);
 				goto error;
 			}
 			memcpy(opt_context->generic.data, rohc_packet, size);

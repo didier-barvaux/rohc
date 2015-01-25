@@ -2088,8 +2088,9 @@ static bool d_tcp_decode_bits(const struct rohc_decomp_ctxt *const context,
 		{
 			ip_decoded->opts_nr = ip_bits->opts_nr;
 			ip_decoded->opts_len = ip_bits->opts_len;
-			assert(ip_bits->opts_len <= ROHC_TCP_MAX_IPV6_EXT_HDRS);
-			memcpy(ip_decoded->opts, ip_bits->opts, ip_bits->opts_len);
+			assert(ip_bits->opts_nr <= ROHC_TCP_MAX_IPV6_EXT_HDRS);
+			memcpy(ip_decoded->opts, ip_bits->opts,
+			       ip_bits->opts_nr * sizeof(ipv6_option_context_t));
 			rohc_decomp_debug(context, "  %zu extension headers on %zu bytes",
 			                  ip_decoded->opts_nr, ip_decoded->opts_len);
 		}

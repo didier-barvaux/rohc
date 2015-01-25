@@ -48,7 +48,7 @@ typedef struct __attribute__((packed)) ipv6_option_context
 	uint8_t option_length;
 	uint8_t next_header;
 	uint8_t length;
-	uint8_t data[0];
+	uint8_t data[(255 + 1) * 8 - 2];
 
 } ipv6_generic_option_context_t;
 
@@ -167,9 +167,6 @@ typedef struct __attribute__((packed)) ipv4_context
 
 } ipv4_context_t;
 
-
-#define ROHC_TCP_MAX_IP_HDRS        10U
-#define ROHC_TCP_MAX_IPV6_EXT_HDRS  10U
 
 /**
  * @brief Define the IPv6 header context.

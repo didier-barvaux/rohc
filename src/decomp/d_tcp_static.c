@@ -353,15 +353,7 @@ static int tcp_parse_static_ipv6_option(const struct rohc_decomp_ctxt *const con
 				                 "the static part of the IPv6 Hop-by-Hop option");
 				goto error;
 			}
-			if(ip_opt_static->length > ((0xff - 48) / 64))
-			{
-				rohc_decomp_warn(context, "malformed ROHC packet: malformed static "
-				                 "part of IPv6 option %u: length is %u * 64 + 48 "
-				                 "according to ROHC packet, but maximum length is "
-				                 "%u bytes", protocol, ip_opt_static->length, 0xff);
-				goto error;
-			}
-			opt_context->generic.option_length = ip_opt_static->length * 64 + 48;
+			opt_context->generic.option_length = (ip_opt_static->length + 1) << 3;
 			opt_context->generic.context_length = 2 + opt_context->generic.option_length;
 			rohc_decomp_debug(context, "IPv6 option Hop-by-Hop: length = %d, "
 			                  "context_length = %d, option_length = %d",
@@ -380,14 +372,6 @@ static int tcp_parse_static_ipv6_option(const struct rohc_decomp_ctxt *const con
 			{
 				rohc_decomp_warn(context, "malformed ROHC packet: too short for "
 				                 "the static part of the IPv6 Routing option");
-				goto error;
-			}
-			if(size > (6 + 2))
-			{
-				rohc_decomp_warn(context, "static part of the IPv6 Routing "
-				                 "option too large for implementation: %zu "
-				                 "bytes required while only %u bytes "
-				                 "available", size, 6U + 2U);
 				goto error;
 			}
 			opt_context->generic.context_length = 2 + size;
