@@ -177,6 +177,9 @@ static int tcp_parse_static_ip(const struct rohc_decomp_ctxt *const context,
 	{
 		const ipv4_static_t *const ipv4_static = (ipv4_static_t *) remain_data;
 
+		rohc_decomp_debug(context, "  IPv4 static part");
+		ip_bits->version = IPV4;
+
 		if(remain_len < sizeof(ipv4_static_t))
 		{
 			rohc_decomp_warn(context, "malformed ROHC packet: too short for the "
@@ -184,7 +187,6 @@ static int tcp_parse_static_ip(const struct rohc_decomp_ctxt *const context,
 			goto error;
 		}
 
-		ip_bits->version = IPV4;
 		ip_bits->proto = ipv4_static->protocol;
 		ip_bits->proto_nr = 8;
 		memcpy(ip_bits->saddr, &ipv4_static->src_addr, sizeof(uint32_t));
@@ -202,6 +204,7 @@ static int tcp_parse_static_ip(const struct rohc_decomp_ctxt *const context,
 	{
 		uint8_t protocol;
 
+		rohc_decomp_debug(context, "  IPv6 static part");
 		ip_bits->version = IPV6;
 
 		/* static 1 or static 2 variant? */
@@ -330,7 +333,8 @@ static int tcp_parse_static_ipv6_option(const struct rohc_decomp_ctxt *const con
 	assert(context != NULL);
 	assert(rohc_packet != NULL);
 
-	rohc_decomp_debug(context, "parse static part of IPv6 extension header");
+	rohc_decomp_debug(context, "  parse static part of IPv6 extension header %u",
+	                  protocol);
 
 	/* at least 1 byte required to read the next header and length */
 	if(rohc_length < 2)
@@ -354,11 +358,8 @@ static int tcp_parse_static_ipv6_option(const struct rohc_decomp_ctxt *const con
 				goto error;
 			}
 			opt_context->generic.option_length = (ip_opt_static->length + 1) << 3;
-			opt_context->generic.context_length = 2 + opt_context->generic.option_length;
-			rohc_decomp_debug(context, "IPv6 option Hop-by-Hop: length = %d, "
-			                  "context_length = %d, option_length = %d",
-			                  ip_opt_static->length,
-			                  opt_context->generic.context_length,
+			rohc_decomp_debug(context, "  IPv6 option Hop-by-Hop: length = %d, "
+			                  "option_length = %zu", ip_opt_static->length,
 			                  opt_context->generic.option_length);
 			opt_context->generic.length = ip_opt_static->length;
 			break;
@@ -367,17 +368,19 @@ static int tcp_parse_static_ipv6_option(const struct rohc_decomp_ctxt *const con
 		{
 			const ip_rout_opt_static_t *const ip_rout_opt_static =
 				(ip_rout_opt_static_t *) ip_opt_static;
-			size = (ip_opt_static->length + 1) << 3;
+			size = (ip_rout_opt_static->length + 1) << 3;
 			if(rohc_length < size)
 			{
 				rohc_decomp_warn(context, "malformed ROHC packet: too short for "
 				                 "the static part of the IPv6 Routing option");
 				goto error;
 			}
-			opt_context->generic.context_length = 2 + size;
 			opt_context->generic.option_length = size;
 			memcpy(&opt_context->generic.length, &ip_rout_opt_static->length,
 			       size - 1);
+			rohc_decomp_debug(context, "  IPv6 option Routing: length = %u, "
+			                  "option_length = %zu", ip_rout_opt_static->length,
+			                  opt_context->generic.option_length);
 			break;
 		}
 		case ROHC_IPPROTO_GRE:
@@ -391,7 +394,6 @@ static int tcp_parse_static_ipv6_option(const struct rohc_decomp_ctxt *const con
 				                 "the static part of the IPv6 GRE option");
 				goto error;
 			}
-			opt_context->generic.context_length = sizeof(ipv6_gre_option_context_t);
 #if 0 /* to be clarified */
 			if((opt_context->gre.protocol ==
 			    ip_gre_opt_static->protocol) == 0) // TODO: check that
@@ -448,11 +450,8 @@ static int tcp_parse_static_ipv6_option(const struct rohc_decomp_ctxt *const con
 				goto error;
 			}
 			opt_context->generic.option_length = (ip_opt_static->length + 1) << 3;
-			opt_context->generic.context_length = 2 + opt_context->generic.option_length;
-			rohc_decomp_debug(context, "IPv6 option Destination: length = %d, "
-			                  "context_length = %d, option_length = %d",
-			                  ip_opt_static->length,
-			                  opt_context->generic.context_length,
+			rohc_decomp_debug(context, "  IPv6 option Destination: length = %d, "
+			                  "option_length = %zu", ip_opt_static->length,
 			                  opt_context->generic.option_length);
 			opt_context->generic.length = ip_dest_opt_static->length;
 			break;
@@ -469,7 +468,6 @@ static int tcp_parse_static_ipv6_option(const struct rohc_decomp_ctxt *const con
 				                 "the static part of the IPv6 Destination option");
 				goto error;
 			}
-			opt_context->generic.context_length = sizeof(ipv6_mime_option_context_t);
 			opt_context->generic.option_length = (2 + ip_mime_opt_static->s_bit) << 3;
 			opt_context->mime.s_bit = ip_mime_opt_static->s_bit;
 			opt_context->mime.res_bits = ip_mime_opt_static->res_bits;
@@ -491,7 +489,6 @@ static int tcp_parse_static_ipv6_option(const struct rohc_decomp_ctxt *const con
 				                 "the static part of the IPv6 Destination option");
 				goto error;
 			}
-			opt_context->generic.context_length = sizeof(ipv6_ah_option_context_t);
 			opt_context->generic.option_length =
 				sizeof(ip_ah_opt_t) - sizeof(uint32_t) +
 				(ip_ah_opt_static->length << 4) - sizeof(int32_t);

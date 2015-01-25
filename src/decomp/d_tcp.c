@@ -2817,7 +2817,7 @@ static bool d_tcp_build_ipv6_hdr(const struct rohc_decomp_ctxt *const context,
 	for(i = 0; i < decoded->opts_nr; i++)
 	{
 		const ipv6_option_context_t *const opt = &(decoded->opts[i]);
-		rohc_decomp_debug(context, "build %u-byte IPv6 extension header #%zu",
+		rohc_decomp_debug(context, "build %zu-byte IPv6 extension header #%zu",
 		                  opt->generic.option_length, i + 1);
 		uncomp_packet->len += 2;
 		rohc_buf_byte_at(*uncomp_packet, 0) = opt->generic.next_header;
@@ -3184,7 +3184,6 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 
 		if(ip_context->version == IPV4)
 		{
-			ip_context->ctxt.v4.context_length = sizeof(ipv4_context_t);
 			ip_context->ctxt.v4.df = ip_decoded->df;
 			ip_context->ctxt.v4.ip_id = ip_decoded->id;
 			memcpy(&ip_context->ctxt.v4.src_addr, ip_decoded->saddr, 4);
@@ -3200,7 +3199,6 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 		}
 		else /* IPv6 */
 		{
-			ip_context->ctxt.v6.context_length = sizeof(ipv4_context_t);
 			memcpy(&ip_context->ctxt.v6.src_addr, ip_decoded->saddr, 16);
 			memcpy(&ip_context->ctxt.v6.dest_addr, ip_decoded->daddr, 16);
 		}

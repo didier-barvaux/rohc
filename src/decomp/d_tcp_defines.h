@@ -44,8 +44,7 @@
  */
 typedef struct __attribute__((packed)) ipv6_option_context
 {
-	uint8_t context_length;
-	uint8_t option_length;
+	size_t option_length;
 	uint8_t next_header;
 	uint8_t length;
 	uint8_t data[(255 + 1) * 8 - 2];
@@ -58,8 +57,7 @@ typedef struct __attribute__((packed)) ipv6_option_context
  */
 typedef struct __attribute__((packed)) ipv6_gre_option_context
 {
-	uint8_t context_length;
-	uint8_t option_length;
+	size_t option_length;
 
 	uint8_t next_header;
 
@@ -80,8 +78,7 @@ typedef struct __attribute__((packed)) ipv6_gre_option_context
  */
 typedef struct __attribute__((packed)) ipv6_mime_option_context
 {
-	uint8_t context_length;
-	uint8_t option_length;
+	size_t option_length;
 
 	uint8_t next_header;
 
@@ -98,8 +95,7 @@ typedef struct __attribute__((packed)) ipv6_mime_option_context
  */
 typedef struct __attribute__((packed)) ipv6_ah_option_context
 {
-	uint8_t context_length;
-	uint8_t option_length;
+	size_t option_length;
 
 	uint8_t next_header;
 	uint8_t length;
@@ -127,8 +123,6 @@ typedef struct __attribute__((packed)) ipvx_context
 	uint8_t version : 4;
 	uint8_t unused : 4;
 
-	uint8_t context_length;
-
 	uint8_t dscp : 6;
 	uint8_t ip_ecn_flags : 2;
 
@@ -149,8 +143,6 @@ typedef struct __attribute__((packed)) ipv4_context
 	uint8_t version : 4;
 	uint8_t df : 1;
 	uint8_t unused : 3;
-
-	uint8_t context_length;
 
 	uint8_t dscp : 6;
 	uint8_t ip_ecn_flags : 2;
@@ -175,8 +167,6 @@ typedef struct __attribute__((packed)) ipv6_context
 {
 	uint8_t version : 4;
 	uint8_t unused : 4;
-
-	uint8_t context_length;
 
 	uint8_t dscp : 6;
 	uint8_t ip_ecn_flags : 2;
