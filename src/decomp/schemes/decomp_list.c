@@ -80,6 +80,39 @@ static bool rohc_list_is_gen_id_known(const struct list_decomp *const decomp,
                                       const unsigned int gen_id)
 	__attribute__((warn_unused_result, nonnull(1)));
 
+static int rohc_list_parse_insertion_scheme(struct list_decomp *const decomp,
+                                            const uint8_t *packet,
+                                            size_t packet_len,
+                                            const int ps,
+                                            const int xi_1,
+                                            const size_t items_nr,
+                                            const struct rohc_list *const ref_list,
+                                            struct rohc_list *const ins_list)
+	__attribute__((warn_unused_result, nonnull(1, 2, 7, 8)));
+
+static int rohc_list_parse_removal_scheme(struct list_decomp *const decomp,
+                                          const uint8_t *packet,
+                                          size_t packet_len,
+                                          const struct rohc_list *const ref_list,
+                                          struct rohc_list *const rem_list)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
+
+static int rohc_list_decode_mask(struct list_decomp *const decomp,
+                                 const char *const descr,
+                                 const uint8_t *const packet,
+                                 const size_t packet_len,
+                                 uint8_t mask[2],
+                                 size_t *const mask_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 6)));
+
+static size_t rohc_list_get_xi_nr(const uint8_t ins_mask[2],
+                                  const size_t ins_mask_len)
+	__attribute__((warn_unused_result));
+
+static size_t rohc_list_get_xi_len(const size_t xi_nr,
+                                   const int ps)
+	__attribute__((warn_unused_result, const));
+
 static uint8_t rohc_get_bit(const unsigned char byte, const size_t pos)
 	__attribute__((warn_unused_result, const));
 
@@ -552,8 +585,6 @@ error:
  * @return            \li In case of success, the number of bytes read in the
  *                        given packet, ie. the length of the compressed list
  *                    \li -1 in case of failure
- *
- * @todo factorize some code with \ref rohc_list_decode_type_3
  */
 static int rohc_list_decode_type_1(struct list_decomp *const decomp,
                                    const unsigned char *packet,
@@ -563,24 +594,13 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
                                    const int xi_1)
 {
 	size_t packet_read_len = 0;
-	unsigned char mask[2]; /* insertion bit mask on 1-2 bytes */
-	size_t mask_length; /* the length (in bits) of the insertion mask */
-	size_t k; /* the number of ones in insertion mask and the number of elements in XI list */
-	size_t xi_len; /* the length (in bytes) of the XI list */
-	int xi_index; /* the index of the current XI in XI list */
-	size_t item_read_len; /* the amount of bytes currently read in the item field */
 	unsigned int ref_id;
-	size_t ref_list_cur_pos; /* current position in reference list */
-	size_t i;
-	int j;
+	int ret;
 
 	assert(decomp != NULL);
 	assert(packet != NULL);
 	assert(gen_id != ROHC_LIST_GEN_ID_NONE);
 	assert(ps == 0 || ps == 1);
-
-	/* init mask[1] to avoid a false warning of GCC */
-	mask[1] = 0x00;
 
 	/* in case of 8-bit XI, the XI 1 field should be set to 0 */
 	if(ps && xi_1 != 0)
@@ -593,13 +613,12 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 #endif
 	}
 
-	/* is there enough data in packet for the ref_id and minimal insertion
-	   bit mask fields ? */
-	if(packet_len < 2)
+	/* is there enough data in packet for the ref_id? */
+	if(packet_len < 1)
 	{
 		rd_list_warn(decomp, "packet too small for ref_id and minimal "
 		             "insertion bit mask fields (only %zu bytes while at least "
-		             "2 bytes are required)", packet_len);
+		             "1 byte is required)", packet_len);
 		goto error;
 	}
 
@@ -624,248 +643,19 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 		goto error;
 	}
 
-	/* determine the number of bits set to 1 in the insertion bit mask */
-	k = 0;
-	mask[0] = *packet;
-	packet++;
-	rd_list_debug(decomp, "insertion bit mask (first byte) = 0x%02x", mask[0]);
-	for(j = 6; j >= 0; j--)
-	{
-		if(rohc_get_bit(mask[0], j))
-		{
-			k++;
-		}
-	}
-	if(GET_REAL(GET_BIT_7(mask)) == 1)
-	{
-		/* 15-bit mask */
-		if(packet_len < 2)
-		{
-			rd_list_warn(decomp, "packet too small for a 2-byte insertion bit "
-			             "mask (only %zu bytes available)", packet_len);
-			goto error;
-		}
-		mask_length = 15;
-		mask[1] = *packet;
-		packet++;
-		rd_list_debug(decomp, "insertion bit mask (second byte) = 0x%02x", mask[1]);
-
-		for(j = 7; j >= 0; j--)
-		{
-			if(rohc_get_bit(mask[1], j))
-			{
-				k++;
-			}
-		}
-
-		/* skip the insertion mask */
-		packet_read_len += 2;
-		packet_len -= 2;
-	}
-	else
-	{
-		/* 7-bit mask */
-		rd_list_debug(decomp, "no second byte of insertion bit mask");
-		mask_length = 7;
-
-		/* skip the insertion mask */
-		packet_read_len++;
-		packet_len--;
-	}
-
-	/* determine the length (in bytes) of the XI list */
-	if(ps == 0)
-	{
-		/* 4-bit XI */
-		if((k - 1) % 2 == 0)
-		{
-			/* odd number of 4-bit XI fields and first XI field stored in
-			   first byte of header, so last byte is full */
-			xi_len = (k - 1) / 2;
-		}
-		else
-		{
-			/* even number of 4-bit XI fields and first XI field stored in
-			   first byte of header, so last byte is not full */
-			xi_len = (k - 1) / 2 + 1;
-		}
-	}
-	else
-	{
-		/* 8-bit XI */
-		xi_len = k;
-	}
-
-	/* is there enough room in packet for all the XI list ? */
-	if(packet_len < xi_len)
-	{
-		rd_list_warn(decomp, "packet too small for k = %zu XI items (only %zu "
-		             "bytes while at least %zu bytes are required)", k,
-		             packet_len, xi_len);
-		goto error;
-	}
-
-	/* will the decompressed list contain too many items? */
-	if((decomp->pkt_list.items_nr + k) > ROHC_LIST_ITEMS_MAX)
+	/* insertion scheme */
+	ret = rohc_list_parse_insertion_scheme(decomp, packet, packet_len, ps, xi_1, 0,
+	                                       &(decomp->lists[ref_id]),
+	                                       &decomp->pkt_list);
+	if(ret < 0)
 	{
 		rd_list_warn(decomp, "failed to decompress list with ID %u based on "
-		             "reference list %u with %zu items and %zu additional new "
-		             "items: too many items for list (%u items max)", gen_id,
-		             ref_id, decomp->pkt_list.items_nr, k, ROHC_LIST_ITEMS_MAX);
+		             "reference list %u: insertion scheme failed", gen_id, ref_id);
 		goto error;
 	}
-
-	/* insert of new items in the list */
-	xi_index = 0;
-	item_read_len = 0;
-	ref_list_cur_pos = 0;
-	for(i = 0; i < mask_length; i++)
-	{
-		int new_item_to_insert;
-
-		/* retrieve the corresponding bit in the insertion mask */
-		if(i < 7)
-		{
-			/* bit is located in first byte of insertion mask */
-			new_item_to_insert = rohc_get_bit(mask[0], 6 - i);
-		}
-		else
-		{
-			/* bit is located in 2nd byte of insertion mask */
-			new_item_to_insert = rohc_get_bit(mask[1], 14 - i);
-		}
-
-		/* insert item if required */
-		if(!new_item_to_insert)
-		{
-			/* take the next item from reference list (if there no more item in
-			   reference list, do nothing) */
-			if(ref_list_cur_pos < decomp->lists[ref_id].items_nr)
-			{
-				rd_list_debug(decomp, "use item from reference list "
-				              "(index %zu) into current list (index %zu)",
-				              ref_list_cur_pos, i);
-				/* use next item from reference list */
-				decomp->pkt_list.items[i] =
-					decomp->lists[ref_id].items[ref_list_cur_pos];
-				decomp->pkt_list.items_nr++;
-				/* skip item in reference list */
-				ref_list_cur_pos++;
-			}
-		}
-		else
-		{
-			unsigned int xi_x_value; /* the value of the X field in one XI field */
-			unsigned int xi_index_value; /* the value of the Index field in one XI field */
-			/* new item to insert in list, parse the related XI field */
-			if(!ps)
-			{
-				/* ROHC header contains 4-bit XIs */
-
-				/* which type of XI do we parse ? first one, odd one or even one ? */
-				if(xi_index == 0)
-				{
-					/* first XI is stored in the first byte of the header */
-					xi_x_value = GET_BIT_3(&xi_1);
-					xi_index_value = GET_BIT_0_2(&xi_1);
-				}
-				else if((xi_index % 2) != 0)
-				{
-					/* handle odd XI, ie. XI stored in MSB */
-					xi_x_value = GET_BIT_7(packet + (xi_index - 1) / 2);
-					xi_index_value = GET_BIT_4_6(packet + (xi_index - 1) / 2);
-				}
-				else
-				{
-					/* handle even XI, ie. XI stored in LSB */
-					xi_x_value = GET_BIT_3(packet + (xi_index - 1) / 2);
-					xi_index_value = GET_BIT_0_2(packet + (xi_index - 1) / 2);
-				}
-			}
-			else
-			{
-				/* ROHC header contains 8-bit XIs */
-				xi_x_value = GET_BIT_3(packet + xi_index);
-				xi_index_value = GET_BIT_0_2(packet + xi_index);
-			}
-
-			/* is the XI index valid? */
-			if(!decomp->check_item(decomp, xi_index_value))
-			{
-				rd_list_warn(decomp, "XI #%u got invalid index %u", xi_index,
-				             xi_index_value);
-				goto error;
-			}
-
-			/* parse the corresponding item if present */
-			if(xi_x_value)
-			{
-				const uint8_t *const xi_item = packet + xi_len + item_read_len;
-				const size_t xi_item_max_len = packet_len - xi_len - item_read_len;
-				size_t item_len;
-
-				rd_list_debug(decomp, "handle XI item #%u", xi_index);
-
-				/* create (or update if it already exists) the corresponding
-				 * item with the item transmitted in the ROHC header */
-				if(!rohc_decomp_list_create_item(decomp, xi_index, xi_index_value,
-				                                 xi_item, xi_item_max_len,
-				                                 &item_len))
-				{
-					rd_list_warn(decomp, "failed to create XI item #%u from "
-					             "packet", xi_index);
-					goto error;
-				}
-
-				/* skip the item in ROHC header */
-				item_read_len += item_len;
-			}
-			else
-			{
-				/* X bit not set in XI, so item is not provided in ROHC header,
-				 * it must already be known by decompressor */
-				if(!decomp->trans_table[xi_index_value].known)
-				{
-					rd_list_warn(decomp, "list item with index #%u referenced by "
-					             "XI #%d is not known yet", xi_index_value,
-					             xi_index);
-					goto error;
-				}
-			}
-
-			/* use new item from packet */
-			rd_list_debug(decomp, "use new item #%d into current list (index "
-			              "%zu)", xi_index, i);
-			decomp->pkt_list.items[i] = &(decomp->trans_table[xi_index_value]);
-			decomp->pkt_list.items_nr++;
-
-			/* skip the XI we have just parsed */
-			xi_index++;
-		}
-	}
-
-	/* ensure that in case of an even number of 4-bit XIs, the 4 bits of
-	 * padding are set to 0 */
-	if(ps == 0 && (k % 2) == 0)
-	{
-		const uint8_t xi_padding = GET_BIT_0_3(packet + xi_len - 1);
-		if(xi_padding != 0)
-		{
-			rd_list_warn(decomp, "sender does not conform to ROHC standards: "
-			             "when an even number of 4-bit XIs is used, the last 4 "
-			             "bits of the XI list should be set to 0, not 0x%x",
-			             xi_padding);
-#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
-			goto error;
-#endif
-		}
-	}
-
-	/* skip the XI list and the item list */
-	packet_read_len += xi_len + item_read_len;
-#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
-	packet_len -= xi_len + item_read_len;
-#endif
+	packet += ret;
+	packet_read_len += ret;
+	packet_len -= ret;
 
 	return packet_read_len;
 
@@ -885,8 +675,6 @@ error:
  * @return            \li In case of success, the number of bytes read in the given
  *                        packet, ie. the length of the compressed list
  *                    \li -1 in case of failure
- *
- * @todo factorize some code with \ref rohc_list_decode_type_3
  */
 static int rohc_list_decode_type_2(struct list_decomp *const decomp,
                                    const unsigned char *packet,
@@ -894,17 +682,12 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
                                    const unsigned int gen_id)
 {
 	size_t packet_read_len = 0;
-	unsigned char mask[2]; /* removal bit mask on 1-2 bytes */
-	size_t mask_length; /* the length (in bits) of the removal mask */
 	unsigned int ref_id;
-	size_t i;
+	int ret;
 
 	assert(decomp != NULL);
 	assert(packet != NULL);
 	assert(gen_id != ROHC_LIST_GEN_ID_NONE);
-
-	/* init mask[1] to avoid a false warning of GCC */
-	mask[1] = 0x00;
 
 	/* is there enough data in packet for the ref_id and minimal removal
 	   bit mask fields ? */
@@ -937,92 +720,19 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 		goto error;
 	}
 
-	/* determine the length removal bit mask */
-	mask[0] = *packet;
-	packet++;
-	rd_list_debug(decomp, "removal bit mask (first byte) = 0x%02x", mask[0]);
-	if(GET_REAL(GET_BIT_7(mask)) == 1)
+	/* removal scheme */
+	ret = rohc_list_parse_removal_scheme(decomp, packet, packet_len,
+	                                     &(decomp->lists[ref_id]),
+	                                     &(decomp->pkt_list));
+	if(ret < 0)
 	{
-		/* 15-bit mask */
-		if(packet_len < 2)
-		{
-			rd_list_warn(decomp, "packet too small for a 2-byte removal bit "
-			             "mask (only %zu bytes available)", packet_len);
-			goto error;
-		}
-		mask_length = 15;
-		mask[1] = *packet;
-		packet++;
-		rd_list_debug(decomp, "removal bit mask (second byte) = 0x%02x", mask[1]);
-
-		/* skip the removal mask */
-		packet_read_len += 2;
-#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
-		packet_len -= 2;
-#endif
+		rd_list_warn(decomp, "failed to decompress list with ID %u based on "
+		             "reference list %u: removal scheme failed", gen_id, ref_id);
+		goto error;
 	}
-	else
-	{
-		/* 7-bit mask */
-		rd_list_debug(decomp, "no second byte of removal bit mask");
-		mask_length = 7;
-
-		/* skip the removal mask */
-		packet_read_len++;
-#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
-		packet_len--;
-#endif
-	}
-
-	/* copy the items from the reference list into the current list but skip
-	 * the items specified in the removal mask */
-	for(i = 0; i < mask_length; i++)
-	{
-		int item_to_remove;
-
-		/* retrieve the corresponding bit in the removal mask */
-		if(i < 7)
-		{
-			/* bit is located in first byte of removal mask */
-			item_to_remove = rohc_get_bit(mask[0], 6 - i);
-		}
-		else
-		{
-			/* bit is located in 2nd byte of insertion mask */
-			item_to_remove = rohc_get_bit(mask[1], 14 - i);
-		}
-
-		/* remove item if required */
-		if(item_to_remove)
-		{
-			/* skip item only if reference list is large enough */
-			if(i < decomp->lists[ref_id].items_nr)
-			{
-				rd_list_debug(decomp, "skip item at index %zu of reference "
-				              "list", i);
-			}
-		}
-		else
-		{
-			rd_list_debug(decomp, "take item at index %zu of reference list "
-			              "as item at index %zu of current list", i,
-			              decomp->pkt_list.items_nr);
-
-			/* check that reference list is large enough */
-			if(i >= decomp->lists[ref_id].items_nr)
-			{
-				rd_list_warn(decomp, "reference list is too short: item at index "
-				             "%zu requested while list contains only %zu items",
-				             i, decomp->lists[ref_id].items_nr);
-				goto error;
-			}
-
-			/* take the item of the reference list */
-			decomp->pkt_list.items[decomp->pkt_list.items_nr] =
-				decomp->lists[ref_id].items[i];
-			decomp->pkt_list.items_nr++;
-		}
-	}
+	packet += ret;
+	packet_read_len += ret;
+	packet_len -= ret;
 
 	return packet_read_len;
 
@@ -1044,9 +754,6 @@ error:
  * @return            \li In case of success, the number of bytes read in the given
  *                        packet, ie. the length of the compressed list
  *                    \li -1 in case of failure
- *
- * @todo factorize some code with \ref rohc_list_decode_type_1
- * @todo factorize some code with \ref rohc_list_decode_type_2
  */
 static int rohc_list_decode_type_3(struct list_decomp *const decomp,
                                    const unsigned char *packet,
@@ -1056,29 +763,14 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
                                    const int xi_1)
 {
 	size_t packet_read_len = 0;
-	unsigned char rem_mask[2]; /* removal bit mask on 1-2 bytes */
-	unsigned char ins_mask[2]; /* insertion bit mask on 1-2 bytes */
-	size_t rem_mask_length; /* the length (in bits) of the removal mask */
-	size_t ins_mask_length; /* the length (in bits) of the insertion mask */
-	size_t k; /* the number of ones in insertion mask and the number of elements in XI list */
-	size_t xi_len; /* the length (in bytes) of the XI list */
-	int xi_index; /* the index of the current XI in XI list */
-	size_t item_read_len; /* the amount of bytes currently read in the item field */
-	unsigned int ref_id;
 	struct rohc_list removal_list; /* list after removal scheme but before insertion scheme */
-	size_t removal_list_cur_pos; /* current position in list after removal */
-	size_t i;
-	int j;
+	unsigned int ref_id;
+	int ret;
 
 	assert(decomp != NULL);
 	assert(packet != NULL);
 	assert(gen_id != ROHC_LIST_GEN_ID_NONE);
 	assert(ps == 0 || ps == 1);
-
-	/* init rem_mask[1], ins_mask[1] and removal_list_size to avoid a false
-	 * warning of GCC */
-	rem_mask[1] = 0x00;
-	ins_mask[1] = 0x00;
 
 	/* in case of 8-bit XI, the XI 1 field should be set to 0 */
 	if(ps && xi_1 != 0)
@@ -1091,13 +783,12 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 #endif
 	}
 
-	/* is there enough data in packet for the ref_id and minimal removal
-	   bit mask fields ? */
-	if(packet_len < 2)
+	/* is there enough data in packet for the ref_id? */
+	if(packet_len < 1)
 	{
 		rd_list_warn(decomp, "packet too small for ref_id and minimal removal "
-		             "bit mask fields (only %zu bytes while at least 1 bytes "
-		             "are required)", packet_len);
+		             "bit mask fields (only %zu bytes while at least 1 byte "
+		             "is required)", packet_len);
 		goto error;
 	}
 
@@ -1122,180 +813,111 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 		goto error;
 	}
 
-	/*
-	 * Removal scheme
-	 */
-
-	/* determine the length removal bit mask */
-	rem_mask[0] = *packet;
-	packet++;
-	rd_list_debug(decomp, "removal bit mask (first byte) = 0x%02x", rem_mask[0]);
-	if(GET_REAL(GET_BIT_7(rem_mask)) == 1)
-	{
-		/* 15-bit mask */
-		if(packet_len < 2)
-		{
-			rd_list_warn(decomp, "packet too small for a 2-byte removal bit "
-			             "mask (only %zu bytes available)", packet_len);
-			goto error;
-		}
-		rem_mask_length = 15;
-		rem_mask[1] = *packet;
-		packet++;
-		rd_list_debug(decomp, "removal bit mask (second byte) = 0x%02x", rem_mask[1]);
-
-		/* skip the removal mask */
-		packet_read_len += 2;
-		packet_len -= 2;
-	}
-	else
-	{
-		/* 7-bit mask */
-		rd_list_debug(decomp, "no second byte of removal bit mask");
-		rem_mask_length = 7;
-
-		/* skip the removal mask */
-		packet_read_len++;
-		packet_len--;
-	}
-
-	/* copy non-removed items from reference list */
+	/* removal scheme */
 	rohc_list_reset(&removal_list);
-	for(i = 0; i < rem_mask_length; i++)
+	ret = rohc_list_parse_removal_scheme(decomp, packet, packet_len,
+	                                     &(decomp->lists[ref_id]), &removal_list);
+	if(ret < 0)
 	{
-		int item_to_remove;
-
-		/* retrieve the corresponding bit in the removal mask */
-		if(i < 7)
-		{
-			/* bit is located in first byte of removal mask */
-			item_to_remove = rohc_get_bit(rem_mask[0], 6 - i);
-		}
-		else
-		{
-			/* bit is located in 2nd byte of insertion mask */
-			item_to_remove = rohc_get_bit(rem_mask[1], 14 - i);
-		}
-
-		/* remove item if required */
-		if(item_to_remove)
-		{
-			/* skip item only if reference list is large enough */
-			if(i < decomp->lists[ref_id].items_nr)
-			{
-				rd_list_debug(decomp, "skip item at index %zu of reference "
-				              "list", i);
-			}
-		}
-		else
-		{
-			rd_list_debug(decomp, "take item at index %zu of reference list "
-			              "as item at index %zu of current list", i,
-			              removal_list.items_nr);
-
-			/* check that reference list is large enough */
-			if(i >= decomp->lists[ref_id].items_nr)
-			{
-				rd_list_warn(decomp, "reference list is too short: item at index "
-				             "%zu requested while list contains only %zu items",
-				             i, decomp->lists[ref_id].items_nr);
-				goto error;
-			}
-
-			/* take the item of the reference list */
-			removal_list.items[removal_list.items_nr] =
-				decomp->lists[ref_id].items[i];
-			removal_list.items_nr++;
-		}
-	}
-
-	/*
-	 * Insertion scheme
-	 */
-
-	/* is there enough data in packet for minimal insertion bit mask field ? */
-	if(packet_len < 1)
-	{
-		rd_list_warn(decomp, "packet too small for minimal insertion bit mask "
-		             "field (only %zu bytes while at least 1 byte is "
-		             "required)", packet_len);
+		rd_list_warn(decomp, "failed to decompress list with ID %u based on "
+		             "reference list %u: removal scheme failed", gen_id, ref_id);
 		goto error;
 	}
+	packet += ret;
+	packet_read_len += ret;
+	packet_len -= ret;
 
-	/* determine the number of bits set to 1 in the insertion bit mask */
-	k = 0;
-	ins_mask[0] = *packet;
-	packet++;
-	rd_list_debug(decomp, "insertion bit mask (first byte) = 0x%02x", ins_mask[0]);
-	for(j = 6; j >= 0; j--)
+	/* insertion scheme */
+	ret = rohc_list_parse_insertion_scheme(decomp, packet, packet_len, ps, xi_1,
+	                                       removal_list.items_nr, &removal_list,
+	                                       &decomp->pkt_list);
+	if(ret < 0)
 	{
-		if(rohc_get_bit(ins_mask[0], j))
-		{
-			k++;
-		}
+		rd_list_warn(decomp, "failed to decompress list with ID %u based on "
+		             "reference list %u: insertion scheme failed", gen_id, ref_id);
+		goto error;
 	}
-	if(GET_REAL(GET_BIT_7(ins_mask)) == 1)
+	packet += ret;
+	packet_read_len += ret;
+	packet_len -= ret;
+
+	return packet_read_len;
+
+error:
+	return -1;
+}
+
+
+/**
+ * @brief Check if the given gen_id is known, ie. present in list table
+ *
+ * @param decomp  The list decompressor
+ * @param gen_id  The gen_id to check for
+ * @return        true if successful, false otherwise
+ */
+static bool rohc_list_is_gen_id_known(const struct list_decomp *const decomp,
+                                      const unsigned int gen_id)
+{
+	assert(decomp != NULL);
+	return (gen_id <= ROHC_LIST_GEN_ID_MAX &&
+	        decomp->lists[gen_id].counter > 0);
+}
+
+
+/**
+ * @brief Process the insertion scheme of the list compression
+ *
+ * @param decomp         The list decompressor
+ * @param packet         The ROHC packet to decompress
+ * @param packet_len     The length (in bytes) of the packet to decompress
+ * @param ps             The PS bit
+ * @param xi_1           The XI 1 field if PS = 1 (4-bit XI)
+ * @param items_nr       The number of items in the initial list
+ * @param ref_list       The list to use as reference
+ * @param[out] ins_list  The list with new items added
+ * @return               \li In case of success, the number of bytes read in the
+ *                           given packet, ie. the length of the insertion mask
+ *                       \li -1 in case of failure
+ */
+static int rohc_list_parse_insertion_scheme(struct list_decomp *const decomp,
+                                            const uint8_t *packet,
+                                            size_t packet_len,
+                                            const int ps,
+                                            const int xi_1,
+                                            const size_t items_nr,
+                                            const struct rohc_list *const ref_list,
+                                            struct rohc_list *const ins_list)
+{
+	size_t packet_read_len = 0;
+	uint8_t mask[2]; /* removal bit mask on 1-2 bytes */
+	size_t mask_len; /* length (in bits) of the removal mask */
+	size_t item_read_len; /* the amount of bytes currently read in the item field */
+	size_t ref_list_cur_pos; /* current position in reference list */
+	size_t xi_index; /* the index of the current XI in XI list */
+	size_t xi_len; /* the length (in bytes) of the XI list */
+	size_t k; /* the number of ones in insertion mask and the number of elements in XI list */
+	size_t i;
+	int ret;
+
+	assert(ps == 0 || ps == 1);
+
+	/* parse the insertion bit mask */
+	ret = rohc_list_decode_mask(decomp, "insertion", packet, packet_len,
+	                            mask, &mask_len);
+	if(ret < 0)
 	{
-		/* 15-bit mask */
-		if(packet_len < 2)
-		{
-			rd_list_warn(decomp, "packet too small for a 2-byte insertion bit "
-			             "mask (only %zu bytes available)", packet_len);
-			goto error;
-		}
-		ins_mask_length = 15;
-		ins_mask[1] = *packet;
-		packet++;
-		rd_list_debug(decomp, "insertion bit mask (second byte) = 0x%02x",
-		              ins_mask[1]);
-
-		for(j = 7; j >= 0; j--)
-		{
-			if(rohc_get_bit(ins_mask[1], j))
-			{
-				k++;
-			}
-		}
-
-		/* skip the insertion mask */
-		packet_read_len += 2;
-		packet_len -= 2;
+		rd_list_warn(decomp, "failed to parse the insertion bit mask");
+		goto error;
 	}
-	else
-	{
-		/* 7-bit mask */
-		rd_list_debug(decomp, "no second byte of insertion bit mask");
-		ins_mask_length = 7;
+	packet += ret;
+	packet_read_len += ret;
+	packet_len -= ret;
 
-		/* skip the insertion mask */
-		packet_read_len++;
-		packet_len--;
-	}
+	/* determine the number of indexes in the XI list */
+	k = rohc_list_get_xi_nr(mask, mask_len);
 
 	/* determine the length (in bytes) of the XI list */
-	if(ps == 0)
-	{
-		/* 4-bit XI */
-		if((k - 1) % 2 == 0)
-		{
-			/* odd number of 4-bit XI fields and first XI field stored in
-			   first byte of header, so last byte is full */
-			xi_len = (k - 1) / 2;
-		}
-		else
-		{
-			/* even number of 4-bit XI fields and first XI field stored in
-			   first byte of header, so last byte is not full */
-			xi_len = (k - 1) / 2 + 1;
-		}
-	}
-	else
-	{
-		/* 8-bit XI */
-		xi_len = k;
-	}
-
-	/* is there enough room in packet for all the XI list ? */
+	xi_len = rohc_list_get_xi_len(k, ps);
 	if(packet_len < xi_len)
 	{
 		rd_list_warn(decomp, "packet too small for k = %zu XI items (only %zu "
@@ -1305,20 +927,20 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 	}
 
 	/* will the decompressed list contain too many items? */
-	if((removal_list.items_nr + k) > ROHC_LIST_ITEMS_MAX)
+	if((items_nr + k) > ROHC_LIST_ITEMS_MAX)
 	{
-		rd_list_warn(decomp, "failed to decompress list with ID %u based on "
-		             "reference list %u with %zu items and %zu additional new "
-		             "items: too many items for list (%u items max)", gen_id,
-		             ref_id, removal_list.items_nr, k, ROHC_LIST_ITEMS_MAX);
+		rd_list_warn(decomp, "failed to decompress list based on reference list "
+		             "with %zu existing items and %zu additional new items: too "
+		             "many items for list (%u items max)", items_nr, k,
+		             ROHC_LIST_ITEMS_MAX);
 		goto error;
 	}
 
 	/* create current list with reference list and new provided items */
 	xi_index = 0;
 	item_read_len = 0;
-	removal_list_cur_pos = 0;
-	for(i = 0; i < ins_mask_length; i++)
+	ref_list_cur_pos = 0;
+	for(i = 0; i < mask_len; i++)
 	{
 		uint8_t new_item_to_insert;
 
@@ -1326,12 +948,12 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 		if(i < 7)
 		{
 			/* bit is located in first byte of insertion mask */
-			new_item_to_insert = rohc_get_bit(ins_mask[0], 6 - i);
+			new_item_to_insert = rohc_get_bit(mask[0], 6 - i);
 		}
 		else
 		{
 			/* bit is located in 2nd byte of insertion mask */
-			new_item_to_insert = rohc_get_bit(ins_mask[1], 14 - i);
+			new_item_to_insert = rohc_get_bit(mask[1], 14 - i);
 		}
 
 		/* insert item if required */
@@ -1339,16 +961,16 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 		{
 			/* take the next item from reference list (if there no more item in
 			   reference list, do nothing) */
-			if(removal_list_cur_pos < removal_list.items_nr)
+			if(ref_list_cur_pos < ref_list->items_nr)
 			{
 				/* new list, insert the item from reference list */
 				rd_list_debug(decomp, "use item from reference list (index %zu) into "
-				              "current list (index %zu)", removal_list_cur_pos, i);
+				              "current list (index %zu)", ref_list_cur_pos, i);
 				/* use next item from reference list */
-				decomp->pkt_list.items[i] = removal_list.items[removal_list_cur_pos];
-				decomp->pkt_list.items_nr++;
+				ins_list->items[i] = ref_list->items[ref_list_cur_pos];
+				ins_list->items_nr++;
 				/* skip item in removal list */
-				removal_list_cur_pos++;
+				ref_list_cur_pos++;
 			}
 		}
 		else
@@ -1391,7 +1013,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 			/* is the XI index valid? */
 			if(!decomp->check_item(decomp, xi_index_value))
 			{
-				rd_list_warn(decomp, "XI #%u got invalid index %u", xi_index,
+				rd_list_warn(decomp, "XI #%zu got invalid index %u", xi_index,
 				             xi_index_value);
 				goto error;
 			}
@@ -1403,7 +1025,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 				const size_t xi_item_max_len = packet_len - xi_len - item_read_len;
 				size_t item_len;
 
-				rd_list_debug(decomp, "handle XI item #%u", xi_index);
+				rd_list_debug(decomp, "handle XI item #%zu", xi_index);
 
 				/* create (or update if it already exists) the corresponding
 				 * item with the item transmitted in the ROHC header */
@@ -1411,7 +1033,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 				                                 xi_item, xi_item_max_len,
 				                                 &item_len))
 				{
-					rd_list_warn(decomp, "failed to create XI item #%u from "
+					rd_list_warn(decomp, "failed to create XI item #%zu from "
 					             "packet", xi_index);
 					goto error;
 				}
@@ -1426,17 +1048,17 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 				if(!decomp->trans_table[xi_index_value].known)
 				{
 					rd_list_warn(decomp, "list item with index #%u referenced by "
-					             "XI #%d is not known yet", xi_index_value,
+					             "XI #%zu is not known yet", xi_index_value,
 					             xi_index);
 					goto error;
 				}
 			}
 
 			/* use new item from packet */
-			rd_list_debug(decomp, "use new item #%d into current list (index "
+			rd_list_debug(decomp, "use new item #%zu into current list (index "
 			              "%zu)", xi_index, i);
-			decomp->pkt_list.items[i] = &(decomp->trans_table[xi_index_value]);
-			decomp->pkt_list.items_nr++;
+			ins_list->items[i] = &(decomp->trans_table[xi_index_value]);
+			ins_list->items_nr++;
 
 			/* skip the XI we have just parsed */
 			xi_index++;
@@ -1462,7 +1084,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 
 	/* skip the XI list and the item list */
 	packet_read_len += xi_len + item_read_len;
-#ifndef __clang_analyzer__ /* silent warning about dead decrement */
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	packet_len -= xi_len + item_read_len;
 #endif
 
@@ -1474,18 +1096,228 @@ error:
 
 
 /**
- * @brief Check if the given gen_id is known, ie. present in list table
+ * @brief Process the removal scheme of the list compression
  *
- * @param decomp  The list decompressor
- * @param gen_id  The gen_id to check for
- * @return        true if successful, false otherwise
+ * @param decomp            The list decompressor
+ * @param packet            The ROHC packet to decompress
+ * @param packet_len        The length (in bytes) of the packet to decompress
+ * @param ref_list          The list to use as reference
+ * @param[in,out] rem_list  in: the initial list,
+ *                          out: the list with superfluous items removed
+ * @return                  \li In case of success, the number of bytes read in the
+ *                              given packet, ie. the length of the removal mask
+ *                          \li -1 in case of failure
  */
-static bool rohc_list_is_gen_id_known(const struct list_decomp *const decomp,
-                                      const unsigned int gen_id)
+static int rohc_list_parse_removal_scheme(struct list_decomp *const decomp,
+                                          const uint8_t *packet,
+                                          size_t packet_len,
+                                          const struct rohc_list *const ref_list,
+                                          struct rohc_list *const rem_list)
 {
-	assert(decomp != NULL);
-	return (gen_id <= ROHC_LIST_GEN_ID_MAX &&
-	        decomp->lists[gen_id].counter > 0);
+	size_t packet_read_len = 0;
+	uint8_t mask[2]; /* removal bit mask on 1-2 bytes */
+	size_t mask_len; /* length (in bits) of the removal mask */
+	size_t i;
+	int ret;
+
+	/* parse the removal bit mask */
+	ret = rohc_list_decode_mask(decomp, "removal", packet, packet_len,
+	                            mask, &mask_len);
+	if(ret < 0)
+	{
+		rd_list_warn(decomp, "failed to parse the removal bit mask");
+		goto error;
+	}
+	packet += ret;
+	packet_read_len += ret;
+	packet_len -= ret;
+
+	/* copy non-removed items from reference list */
+	for(i = 0; i < mask_len; i++)
+	{
+		uint8_t item_to_remove;
+
+		/* retrieve the corresponding bit in the removal mask */
+		if(i < 7)
+		{
+			/* bit is located in first byte of removal mask */
+			item_to_remove = rohc_get_bit(mask[0], 6 - i);
+		}
+		else
+		{
+			/* bit is located in 2nd byte of insertion mask */
+			item_to_remove = rohc_get_bit(mask[1], 14 - i);
+		}
+
+		/* remove item if required */
+		if(item_to_remove)
+		{
+			/* skip item only if reference list is large enough */
+			if(i < ref_list->items_nr)
+			{
+				rd_list_debug(decomp, "skip item at index %zu of reference "
+				              "list", i);
+			}
+		}
+		else
+		{
+			rd_list_debug(decomp, "take item at index %zu of reference list "
+			              "as item at index %zu of current list", i,
+			              rem_list->items_nr);
+
+			/* check that reference list is large enough */
+			if(i >= ref_list->items_nr)
+			{
+				rd_list_warn(decomp, "reference list is too short: item at index "
+				             "%zu requested while list contains only %zu items",
+				             i, ref_list->items_nr);
+				goto error;
+			}
+
+			/* take the item of the reference list */
+			rem_list->items[rem_list->items_nr] = ref_list->items[i];
+			rem_list->items_nr++;
+		}
+	}
+
+	return packet_read_len;
+
+error:
+	return -1;
+}
+
+
+/**
+ * @brief Determine the number of bits set to 1 in the insertion/removal bit mask
+ *
+ * @param decomp          The list decompressor
+ * @param descr           The name of bit mask being decoded
+ * @param packet          The ROHC packet to decompress
+ * @param packet_len      The length (in bytes) of the packet to decompress
+ * @param[out] mask       The insertion/removal bit mask on 1-2 bytes
+ * @param[out] mask_len   The length of the insertion/removal mask (in bits)
+ * @return                \li In case of success, the number of bytes read in the
+ *                            given packet, ie. the length of the compressed list
+ *                        \li -1 in case of failure
+ */
+static int rohc_list_decode_mask(struct list_decomp *const decomp,
+                                 const char *const descr,
+                                 const uint8_t *const packet,
+                                 const size_t packet_len,
+                                 uint8_t mask[2],
+                                 size_t *const mask_len)
+{
+	size_t parsed_bytes_nr;
+
+	/* is there enough data in packet for minimal insertion bit mask field ? */
+	if(packet_len < 1)
+	{
+		rd_list_warn(decomp, "packet too small for minimal %s bit mask field "
+		             "(only %zu bytes while at least 1 byte is required)",
+		             descr, packet_len);
+		goto error;
+	}
+
+	/* determine the number of bits set to 1 in the insertion bit mask */
+	mask[0] = packet[0];
+	rd_list_debug(decomp, "%s bit mask (first byte) = 0x%02x", descr, mask[0]);
+	if(GET_REAL(GET_BIT_7(mask)) == 1)
+	{
+		/* 15-bit mask */
+		if(packet_len < 2)
+		{
+			rd_list_warn(decomp, "packet too small for a 2-byte %s bit mask "
+			             "(only %zu bytes available)", descr, packet_len);
+			goto error;
+		}
+		*mask_len = 15;
+		mask[1] = packet[1];
+		rd_list_debug(decomp, "%s bit mask (second byte) = 0x%02x", descr, mask[1]);
+		parsed_bytes_nr = 2;
+	}
+	else
+	{
+		/* 7-bit mask */
+		rd_list_debug(decomp, "no second byte of %s bit mask", descr);
+		*mask_len = 7;
+		parsed_bytes_nr = 1;
+	}
+
+	return parsed_bytes_nr;
+
+error:
+	return -1;
+}
+
+
+/**
+ * @brief Determine the number of indexes in the XI list
+ *
+ * @param ins_mask      The insertion bit mask
+ * @param ins_mask_len  The length of the insertion bit mask (in bits)
+ * @return              The number of indexes in the XI list
+ */
+static size_t rohc_list_get_xi_nr(const uint8_t ins_mask[2],
+                                  const size_t ins_mask_len)
+{
+	size_t xi_nr = 0;
+	int j;
+
+	/* determine the number of bits set to 1 in the insertion bit mask */
+	for(j = 6; j >= 0; j--)
+	{
+		if(rohc_get_bit(ins_mask[0], j))
+		{
+			xi_nr++;
+		}
+	}
+	for(j = ins_mask_len - 8; j >= 0; j--)
+	{
+		if(rohc_get_bit(ins_mask[0], j))
+		{
+			xi_nr++;
+		}
+	}
+
+	return xi_nr;
+}
+
+
+/**
+ * @brief Determine the length of the XI list
+ *
+ * @param xi_nr  The number of indexes in the XI list
+ * @param ps     The PS bit
+ * @return       The length of the XI list (in bytes)
+ */
+static size_t rohc_list_get_xi_len(const size_t xi_nr,
+                                   const int ps)
+{
+	size_t xi_len;
+
+	if(ps == 0)
+	{
+		/* 4-bit XI */
+		if((xi_nr - 1) % 2 == 0)
+		{
+			/* odd number of 4-bit XI fields and first XI field stored in
+			   first byte of header, so last byte is full */
+			xi_len = (xi_nr - 1) / 2;
+		}
+		else
+		{
+			/* even number of 4-bit XI fields and first XI field stored in
+			   first byte of header, so last byte is not full */
+			xi_len = (xi_nr - 1) / 2 + 1;
+		}
+	}
+	else
+	{
+		/* 8-bit XI */
+		xi_len = xi_nr;
+	}
+
+	return xi_len;
 }
 
 
