@@ -1693,14 +1693,14 @@ static void print_rohc_traces(void *const priv_ctxt __attribute__((unused)),
 	if(level >= ROHC_TRACE_WARNING || is_verbose)
 	{
 		va_list args;
-		if(is_verbose)
+		if(!is_daemon)
 		{
 			fprintf(stdout, "[%s] ", level_descrs[level]);
 			va_start(args, format);
 			vfprintf(stdout, format, args);
 			va_end(args);
 		}
-		if(is_daemon)
+		else
 		{
 			va_start(args, format);
 			vsyslog(LOG_DEBUG, format, args);
