@@ -1164,11 +1164,8 @@ static int compress_decompress(struct rohc_comp *comp,
 	/* check Ethernet frame length */
 	if(header.len <= link_len_src || header.len != header.caplen)
 	{
-		if(is_verbose)
-		{
-			SNIFFER_LOG(LOG_WARNING, "bad PCAP packet (full len = %d, capture "
-			            "len = %d)", header.len, header.caplen);
-		}
+		SNIFFER_LOG(LOG_WARNING, "bad PCAP packet (full len = %d, capture "
+		            "len = %d)", header.len, header.caplen);
 		ret = -3;
 		goto error;
 	}
@@ -1199,12 +1196,9 @@ static int compress_decompress(struct rohc_comp *comp,
 
 		if(tot_len < ip_packet.len)
 		{
-			if(is_verbose)
-			{
-				SNIFFER_LOG(LOG_INFO, "the Ethernet frame has %zd bytes of "
-				            "padding after the %u byte IP packet!",
-				            ip_packet.len - tot_len, tot_len);
-			}
+			SNIFFER_LOG(LOG_INFO, "the Ethernet frame has %zd bytes of "
+			            "padding after the %u byte IP packet!",
+			            ip_packet.len - tot_len, tot_len);
 			ip_packet.len = tot_len;
 		}
 	}
