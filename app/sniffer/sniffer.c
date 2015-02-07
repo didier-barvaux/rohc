@@ -88,10 +88,10 @@ for ./configure ? If yes, check configure output and config.log"
 #define max(x, y)  (((x) > (y)) ? (x) : (y))
 
 /** The device MTU (TODO: should not be hardcoded) */
-#define DEV_MTU 1518U
+#define DEV_MTU  0xffffU
 
 /** The maximal size for the ROHC packets */
-#define MAX_ROHC_SIZE  (5 * 1024)
+#define MAX_ROHC_SIZE  (DEV_MTU + 100U)
 
 /** The length of the Linux Cooked Sockets header */
 #define LINUX_COOKED_HDR_LEN  16U

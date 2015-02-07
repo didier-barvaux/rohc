@@ -825,7 +825,8 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
                            struct rohc_tcp_extr_bits *const bits,
                            size_t *const rohc_hdr_len)
 {
-	unsigned char *packed_rohc_packet = malloc(5000); // TODO: change that
+	const size_t packed_rohc_packet_max_len = 0xffff + 100;
+	unsigned char *packed_rohc_packet = malloc(packed_rohc_packet_max_len); // TODO: change that
 	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
 	int ret;
 
@@ -866,7 +867,7 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 
 	/* copy the first byte of header over the last byte of the large CID field
 	 * to be able to map packet strutures to the ROHC bytes */
-	if((rohc_remain_len - large_cid_len) > 5000)
+	if((rohc_remain_len - large_cid_len) > packed_rohc_packet_max_len)
 	{
 		rohc_decomp_warn(context, "internal problem: internal buffer too small");
 		goto error;
