@@ -422,6 +422,22 @@ void c_field_scaling(uint32_t *const scaled_value,
 
 
 /**
+ * @brief Is is possible to use the rsf_index_enc encoding?
+ *
+ * See RFC4996 page 71
+ *
+ * @param rsf_flags  The RSF flags
+ * @return           true if the rsf_index_enc may be used, false if it cannot
+ */
+bool rsf_index_enc_possible(const uint8_t rsf_flags)
+{
+	/* the rsf_index_enc encoding is possible only if at most one of the RST,
+	 * SYN or FIN flag is set */
+	return (__builtin_popcount(rsf_flags) <= 1);
+}
+
+
+/**
  * @brief Calculate the rsf_index from the rsf flags
  *
  * See RFC4996 page 71

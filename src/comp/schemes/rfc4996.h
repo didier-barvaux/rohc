@@ -154,6 +154,8 @@ void c_field_scaling(uint32_t *const scaled_value,
 	__attribute__((nonnull(1, 2)));
 
 // RFC4996 page 71
+bool rsf_index_enc_possible(const uint8_t rsf_flags)
+	__attribute__((warn_unused_result, const));
 unsigned int rsf_index_enc(const struct rohc_comp_ctxt *const context,
                            unsigned int rsf_flags);
 
