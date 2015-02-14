@@ -3771,16 +3771,32 @@ static uint8_t * c_tcp_opt_sack(const struct rohc_comp_ctxt *const context,
  */
 static uint8_t * c_tcp_opt_generic(struct sc_tcp_context *tcp_context __attribute__((unused)),
                                    uint8_t *ptr,
-                                   uint8_t *options __attribute__((unused)))
+                                   uint8_t *options)
 {
-	// generic_static_irregular
+	/* TODO: for what option option_static = 1 would be helpful? */
+	const uint8_t option_static = 0;
+	const uint8_t opt_type = options[0];
+	const uint8_t opt_len = options[1];
 
-	// generic_stable_irregular
-	*(ptr++) = 0xFF;
-	// generic_full_irregular
-	*(ptr++) = 0x00;
+	/* the compressed generic option cannot handle very long options */
+	if((opt_len & 0x7f) != opt_len)
+	{
+		goto error;
+	}
+
+	/* TODO: check the size of ptr */
+	*ptr = opt_type;
+	ptr++;
+	*ptr = (option_static << 7) | (opt_len & 0x7f);
+	ptr++;
+	assert(opt_len >= 2); /* check in caller */
+	memcpy(ptr, options + 2, opt_len - 2);
+	ptr += opt_len - 2;
 
 	return ptr;
+
+error:
+	return NULL;
 }
 
 
@@ -4060,7 +4076,7 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 												 size_t *const comp_opts_len)
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
-	uint8_t compressed_options[40];
+	uint8_t compressed_options[40]; /* TODO: is it enough? */
 	uint8_t *ptr_compressed_options;
 	uint8_t *options;
 	int options_length;
@@ -4390,6 +4406,13 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 					// see RFC4996 page 69
 					ptr_compressed_options =
 						c_tcp_opt_generic(tcp_context, ptr_compressed_options, options);
+					if(ptr_compressed_options == NULL)
+					{
+						rohc_comp_warn(context, "compressed list of TCP options: failed "
+						               "to compress the %u-byte generic option of type %u",
+						               opt_len, opt_type);
+						goto error;
+					}
 					comp_opt_len += ptr_compressed_options - opt_start;
 					i -= opt_len;
 					options += opt_len;

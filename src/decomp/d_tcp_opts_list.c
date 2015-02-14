@@ -627,14 +627,15 @@ static int d_tcp_opt_list_parse_item(const struct rohc_decomp_ctxt *const contex
 		                  "with index %u in the %s",
 		                  d_tcp_opts[opt_index.index].descr,
 		                  d_tcp_opts[opt_index.index].kind, opt_index.index,
-		                  is_dynamic_chain ? "dynamic chain" : "optional list");
+		                  is_dynamic_chain ? "dynamic chain" :
+		                  "optional list or irregular chain");
 		opt_bits->type = d_tcp_opts[opt_index.index].kind;
 	}
 	else
 	{
 		rohc_decomp_debug(context, "    parse the generic TCP option with index %u "
-		                  "in the %s chain", opt_index.index,
-		                  is_dynamic_chain ? "dynamic" : "irregular");
+		                  "in the %s", opt_index.index, is_dynamic_chain ?
+		                  "dynamic chain" : "optional list or irregular chain");
 	}
 
 	/* parse TCP option */
@@ -644,7 +645,8 @@ static int d_tcp_opt_list_parse_item(const struct rohc_decomp_ctxt *const contex
 	{
 		rohc_decomp_warn(context, "malformed ROHC packet: failed to parse item "
 		                 "with index %u in the %s chain", opt_index.index,
-		                  is_dynamic_chain ? "dynamic" : "irregular");
+		                  is_dynamic_chain ? "dynamic chain" :
+		                  "optional list or irregular chain");
 		goto error;
 	}
 	remain_data += ret;
