@@ -1463,6 +1463,7 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 	{
 		const size_t opts_len =
 			tcp_header->data_offset * sizeof(uint32_t) - sizeof(struct tcphdr);
+		size_t opt_types_count[TCP_OPT_MAX + 1] = { 0 };
 		size_t opts_offset;
 		size_t opt_pos;
 		size_t opt_len;
@@ -1475,6 +1476,8 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "TCP option %u found", opt_type);
+
+			opt_types_count[opt_type]++;
 
 			if(opt_type == TCP_OPT_NOP)
 			{
@@ -1602,6 +1605,26 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 			           "options found in packet but only %u options possible",
 			           opt_pos, ROHC_TCP_OPTS_MAX);
 			goto bad_profile;
+		}
+
+		/* TCP options shall occur at most once, except EOL and NOP */
+		{
+			unsigned int opt_type;
+
+			for(opt_type = 0; opt_type <= TCP_OPT_MAX; opt_type++)
+			{
+				if(opt_type != TCP_OPT_EOL &&
+				   opt_type != TCP_OPT_NOP &&
+				   opt_types_count[opt_type] > 1)
+				{
+					rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+					           "malformed TCP options: TCP option '%s' (%u) should "
+					           "occur at most once, but it was found %zu times",
+					           tcp_opt_get_descr(opt_type), opt_type,
+					           opt_types_count[opt_type]);
+					goto bad_profile;
+				}
+			}
 		}
 	}
 

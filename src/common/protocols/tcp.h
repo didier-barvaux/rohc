@@ -831,22 +831,25 @@ typedef struct __attribute__((packed)) tcp_replicate
 
 } tcp_replicate_t;
 
-/**
- * @brief Define the TCP options.
- *
- */
 
-#define TCP_OPT_EOL          0U
-#define TCP_OPT_NOP          1U
-#define TCP_OPT_MSS          2U
+/** The different TCP options */
+typedef enum
+{
+	TCP_OPT_EOL       = 0U,  /**< The End of Option List (EOL) TCP option */
+	TCP_OPT_NOP       = 1U,  /**< The No OPeration (NOP) TCP option */
+	TCP_OPT_MSS       = 2U,  /**< The Maximum Segment Size (MSS) TCP option */
 #define TCP_OLEN_MSS         4U
-#define TCP_OPT_WS           3U
+	TCP_OPT_WS        = 3U,  /**< The Window Scale (WS) TCP option */
 #define TCP_OLEN_WS          3U
-#define TCP_OPT_SACK_PERM    4U
+	TCP_OPT_SACK_PERM = 4U,  /**< The SACK Permitted TCP option */
 #define TCP_OLEN_SACK_PERM   2U
-#define TCP_OPT_SACK         5U
-#define TCP_OPT_TS           8U
+	TCP_OPT_SACK      = 5U,  /**< The Selective ACKnowledgement (SACK) TCP option */
+	TCP_OPT_TS        = 8U,  /**< The TimeStamp (TS) TCP option */
 #define TCP_OLEN_TS         10U
+	TCP_OPT_MAX       = 255U /**< The maximum TCP option */
+
+} rohc_tcp_option_type_t;
+
 
 #define TCP_INDEX_NOP          0U
 #define TCP_INDEX_EOL          1U
