@@ -1133,6 +1133,8 @@ static void c_tcp_destroy(struct rohc_comp_ctxt *const context)
 static bool c_tcp_check_profile(const struct rohc_comp *const comp,
                                 const struct net_pkt *const packet)
 {
+	/* TODO: should avoid code duplication by using net_pkt as
+	 * rohc_comp_rfc3095_check_profile() does */
 	const uint8_t *remain_data;
 	size_t remain_len;
 	size_t ip_hdrs_nr;
@@ -1226,8 +1228,10 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 		else if(ip_ver == IPV6)
 		{
 			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
+			size_t ipv6_ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
 			size_t ipv6_ext_nr;
 			size_t size_option;
+			unsigned int ext_type;
 
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "found IPv6");
 			if(remain_len < sizeof(struct ipv6_hdr))
@@ -1279,6 +1283,22 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 							goto bad_profile;
 						}
 						next_proto = ipv6_opt->next_header;
+
+						/* RFC 2460 §4 reads:
+						 *   The Hop-by-Hop Options header, when present, must
+						 *   immediately follow the IPv6 header.
+						 *   [...]
+						 *   The same action [ie. reject packet] should be taken if a
+						 *   node encounters a Next Header value of zero in any header other
+						 *   than an IPv6 header. */
+						if(next_proto == ROHC_IPPROTO_HOPOPTS && ipv6_ext_nr != 0)
+						{
+							rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+							           "malformed IPv6 header: the Hop-By-Hop extension "
+							           "header should be the very first extension header, "
+							           "not the #%zu one", ipv6_ext_nr + 1);
+							goto bad_profile;
+						}
 						break;
 					}
 					case ROHC_IPPROTO_GRE:
@@ -1351,6 +1371,7 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 				remain_len -= size_option;
 
 				ipv6_ext_nr++;
+				ipv6_ext_types_count[next_proto]++;
 			}
 
 			/* profile cannot handle the packet if it bypasses internal limit of
@@ -1362,6 +1383,30 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 				           "TCP profile (%u headers max)", ip_hdrs_nr + 1,
 				           ROHC_TCP_MAX_IPV6_EXT_HDRS);
 				goto bad_profile;
+			}
+
+			/* RFC 2460 §4.1 reads:
+			 *   Each extension header should occur at most once, except for the
+			 *   Destination Options header which should occur at most twice (once
+			 *   before a Routing header and once before the upper-layer header). */
+			for(ext_type = 0; ext_type <= ROHC_IPPROTO_MAX; ext_type++)
+			{
+				if(ext_type == ROHC_IPPROTO_DSTOPTS && ipv6_ext_types_count[ext_type] > 2)
+				{
+					rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+					           "malformed IPv6 header: the Destination extension "
+					           "header should occur at most twice, but it was "
+					           "found %zu times", ipv6_ext_types_count[ext_type]);
+					goto bad_profile;
+				}
+				else if(ext_type != ROHC_IPPROTO_DSTOPTS && ipv6_ext_types_count[ext_type] > 1)
+				{
+					rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+					           "malformed IPv6 header: the extension header of type "
+					           "%u header should occur at most once, but it was found "
+					           "%zu times", ext_type, ipv6_ext_types_count[ext_type]);
+					goto bad_profile;
+				}
 			}
 		}
 		else

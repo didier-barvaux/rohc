@@ -1138,14 +1138,30 @@ error:
 static bool ext_get_next_layer(const struct net_hdr *const nh,
                                struct net_hdr *const nl)
 {
+	size_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
+	unsigned int ext_type;
 	size_t remain_len = nh->len;
+	size_t ext_nr = 0;
 
 	nl->proto = nh->proto;
 	nl->data = nh->data;
 	nl->len = nh->len;
 
+	/* parse packet until all extension headers are parsed */
 	while(rohc_is_ipv6_opt(nl->proto))
 	{
+		ext_types_count[nl->proto]++;
+		ext_nr++;
+
+		/* RFC 2460 §4 reads:
+		 *   The Hop-by-Hop Options header, when present, must immediately follow
+		 *   the IPv6 header. */
+		if(nl->proto == ROHC_IPPROTO_HOPOPTS && ext_nr != 1)
+		{
+			return false;
+		}
+
+		/* parse extension header */
 		if(!ext_get_next_header(nl->data, remain_len, nl))
 		{
 			return false;
@@ -1153,6 +1169,19 @@ static bool ext_get_next_layer(const struct net_hdr *const nh,
 		remain_len -= nl->len;
 	}
 	nl->len = remain_len;
+
+	/* RFC 2460 §4.1 reads:
+	 *   Each extension header should occur at most once, except for the Destination
+	 *   Options header which should occur at most twice (once before a Routing
+	 *   header and once before the upper-layer header). */
+	for(ext_type = 0; ext_type <= ROHC_IPPROTO_MAX; ext_type++)
+	{
+		if((ext_type == ROHC_IPPROTO_DSTOPTS && ext_types_count[ext_type] > 2) ||
+		   (ext_type != ROHC_IPPROTO_DSTOPTS && ext_types_count[ext_type] > 1))
+		{
+			return false;
+		}
+	}
 
 	return true;
 }

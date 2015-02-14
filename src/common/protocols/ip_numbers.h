@@ -88,6 +88,8 @@ enum
 	ROHC_IPPROTO_RESERVED1 = 253,
 	/** The IP protocol number reserved for experimentation and testing */
 	ROHC_IPPROTO_RESERVED2 = 254,
+	/** The maximum IP protocol number */
+	ROHC_IPPROTO_MAX       = 255
 };
 
 
