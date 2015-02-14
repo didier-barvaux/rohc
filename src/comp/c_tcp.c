@@ -2887,7 +2887,6 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 	tcp_dynamic_t *tcp_dynamic;
 	unsigned char *options;
 	int options_length;
-	unsigned char *urgent_datas;
 	int indicator;
 	int ret;
 
@@ -2908,17 +2907,6 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 	rohc_comp_debug(context, "TCP window = 0x%04x, check = 0x%x, "
 	                "urg_ptr = %d", rohc_ntoh16(tcp->window),
 	                rohc_ntoh16(tcp->checksum), rohc_ntoh16(tcp->urg_ptr));
-
-	/* If urgent datas present */
-	if(tcp->urg_flag != 0)
-	{
-		urgent_datas = ((unsigned char *) &tcp->seq_num) +
-		               rohc_ntoh16(tcp->urg_ptr);
-		rohc_dump_buf(context->compressor->trace_callback,
-		              context->compressor->trace_callback_priv,
-		              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
-		              "TCP urgent", urgent_datas, 16);
-	}
 
 	tcp_dynamic = mptr.tcp_dynamic;
 	++mptr.tcp_dynamic;
