@@ -74,7 +74,8 @@ bool ip_create(struct ip_packet *const ip,
 	 * (may be IP_UNKNOWN if packet is not IP) */
 	if(!get_ip_version(packet, size, &version))
 	{
-		goto error;
+		ip->version = IP_UNKNOWN;
+		goto unknown;
 	}
 
 	ip->version = version;
@@ -215,18 +216,8 @@ const unsigned char * ip_get_raw_data(const struct ip_packet *const ip)
 bool ip_get_inner_packet(const struct ip_packet *const outer,
                          struct ip_packet *const inner)
 {
-	unsigned char *next_header;
-
-	/* get the next header data in the IP packet (skip IP extensions) */
-	next_header = ip_get_next_layer(outer);
-	if(next_header == NULL)
-	{
-		/* no next header, or malformed packet */
-		return false;
-	}
-
 	/* create an IP packet with the next header data */
-	return ip_create(inner, next_header, ip_get_plen(outer));
+	return ip_create(inner, outer->nl.data, outer->nl.len);
 }
 
 
@@ -1074,6 +1065,8 @@ static bool ip_find_next_layer(const struct ip_packet *const ip,
 {
 	if(ip->version == IPV4)
 	{
+		size_t ip_hdr_len;
+
 		/* find next header after IPv4 header */
 		nh->proto = ip->header.v4.protocol;
 
@@ -1081,16 +1074,10 @@ static bool ip_find_next_layer(const struct ip_packet *const ip,
 		{
 			goto error;
 		}
-		else if(ip->size == sizeof(struct ipv4_hdr))
-		{
-			nh->data = NULL;
-			nh->len = 0;
-		}
-		else
-		{
-			nh->data = ((unsigned char *) ip->data) + sizeof(struct ipv4_hdr);
-			nh->len = ip->size - sizeof(struct ipv4_hdr);
-		}
+		ip_hdr_len = ip_get_hdrlen(ip);
+
+		nh->data = ((unsigned char *) ip->data) + ip_hdr_len;
+		nh->len = ip->size - ip_hdr_len;
 
 		/* no support for IPv4 extension headers, so next layer is next header */
 		nl->proto = nh->proto;

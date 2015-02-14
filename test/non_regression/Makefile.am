@@ -15,7 +15,8 @@ TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_MISC = \
 	test_non_regression_unknown_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipvx_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv4fragmented_maxcontexts0_wlsb4_smallcid.sh \
-	test_non_regression_ipv4-with-options_maxcontexts0_wlsb4_smallcid.sh
+	test_non_regression_ipv4-with-options_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4-with-options_ipv4-empty-afl25_maxcontexts0_wlsb4_smallcid.sh
 
 TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_IPONLY = \
 	test_non_regression_ipv4_icmp_maxcontexts0_wlsb4_smallcid.sh \
@@ -140,7 +141,8 @@ TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_MISC = \
 	test_non_regression_unknown_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipvx_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv4fragmented_maxcontexts0_wlsb64_smallcid.sh \
-	test_non_regression_ipv4-with-options_maxcontexts0_wlsb64_smallcid.sh
+	test_non_regression_ipv4-with-options_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4-with-options_ipv4-empty-afl25_maxcontexts0_wlsb64_smallcid.sh
 
 TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_IPONLY = \
 	test_non_regression_ipv4_icmp_maxcontexts0_wlsb64_smallcid.sh \
@@ -270,7 +272,8 @@ TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_MISC = \
 	test_non_regression_unknown_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipvx_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv4fragmented_maxcontexts1_wlsb4_smallcid.sh \
-	test_non_regression_ipv4-with-options_maxcontexts1_wlsb4_smallcid.sh
+	test_non_regression_ipv4-with-options_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4-with-options_ipv4-empty-afl25_maxcontexts1_wlsb4_smallcid.sh
 
 TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_IPONLY = \
 	test_non_regression_ipv4_icmp_maxcontexts1_wlsb4_smallcid.sh \
@@ -395,7 +398,8 @@ TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_MISC = \
 	test_non_regression_unknown_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipvx_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv4fragmented_maxcontexts1_wlsb64_smallcid.sh \
-	test_non_regression_ipv4-with-options_maxcontexts1_wlsb64_smallcid.sh
+	test_non_regression_ipv4-with-options_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4-with-options_ipv4-empty-afl25_maxcontexts1_wlsb64_smallcid.sh
 
 TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_IPONLY = \
 	test_non_regression_ipv4_icmp_maxcontexts1_wlsb64_smallcid.sh \
@@ -530,7 +534,8 @@ TESTS_MAXCONTEXTS0_WLSB4_LARGECID_MISC = \
 	test_non_regression_unknown_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipvx_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv4fragmented_maxcontexts0_wlsb4_largecid.sh \
-	test_non_regression_ipv4-with-options_maxcontexts0_wlsb4_largecid.sh
+	test_non_regression_ipv4-with-options_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4-with-options_ipv4-empty-afl25_maxcontexts0_wlsb4_largecid.sh
 
 TESTS_MAXCONTEXTS0_WLSB4_LARGECID_IPONLY = \
 	test_non_regression_ipv4_icmp_maxcontexts0_wlsb4_largecid.sh \
@@ -655,7 +660,8 @@ TESTS_MAXCONTEXTS0_WLSB64_LARGECID_MISC = \
 	test_non_regression_unknown_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipvx_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv4fragmented_maxcontexts0_wlsb64_largecid.sh \
-	test_non_regression_ipv4-with-options_maxcontexts0_wlsb64_largecid.sh
+	test_non_regression_ipv4-with-options_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4-with-options_ipv4-empty-afl25_maxcontexts0_wlsb64_largecid.sh
 
 TESTS_MAXCONTEXTS0_WLSB64_LARGECID_IPONLY = \
 	test_non_regression_ipv4_icmp_maxcontexts0_wlsb64_largecid.sh \
@@ -785,7 +791,8 @@ TESTS_MAXCONTEXTS1_WLSB4_LARGECID_MISC = \
 	test_non_regression_unknown_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipvx_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv4fragmented_maxcontexts1_wlsb4_largecid.sh \
-	test_non_regression_ipv4-with-options_maxcontexts1_wlsb4_largecid.sh
+	test_non_regression_ipv4-with-options_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4-with-options_ipv4-empty-afl25_maxcontexts1_wlsb4_largecid.sh
 
 TESTS_MAXCONTEXTS1_WLSB4_LARGECID_IPONLY = \
 	test_non_regression_ipv4_icmp_maxcontexts1_wlsb4_largecid.sh \
@@ -910,7 +917,8 @@ TESTS_MAXCONTEXTS1_WLSB64_LARGECID_MISC = \
 	test_non_regression_unknown_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipvx_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv4fragmented_maxcontexts1_wlsb64_largecid.sh \
-	test_non_regression_ipv4-with-options_maxcontexts1_wlsb64_largecid.sh
+	test_non_regression_ipv4-with-options_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4-with-options_ipv4-empty-afl25_maxcontexts1_wlsb64_largecid.sh
 
 TESTS_MAXCONTEXTS1_WLSB64_LARGECID_IPONLY = \
 	test_non_regression_ipv4_icmp_maxcontexts1_wlsb64_largecid.sh \
