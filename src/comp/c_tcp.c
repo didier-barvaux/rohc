@@ -7089,7 +7089,6 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 			if(tcp_context->tmp.nr_window_bits == 0 &&
 			   tcp_context->tmp.nr_ip_id_bits_3 <= 4 &&
 			   true /* TODO: list changed */ &&
-			   true /* TODO: no more than 4 bits of SN */ &&
 			   true /* TODO: no more than 3 bits of TTL */ &&
 			   tcp_context->tmp.nr_seq_bits_8191 <= 14 &&
 			   tcp_context->tmp.nr_ack_bits_8191 <= 15)
@@ -7110,7 +7109,6 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 			if(/* TODO: no more than 15 bits of TCP window */
 			   tcp_context->tmp.nr_ip_id_bits_3 <= 5 &&
 			   tcp_context->tmp.nr_ack_bits_32767 <= 16 &&
-			   true /* TODO: no more than 4 bits of SN */ &&
 			   tcp_context->tmp.tcp_rsf_flag_changed)
 			{
 				/* seq_7 is possible */
@@ -7128,8 +7126,7 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 		{
 			/* seq_1, seq_2 or co_common */
 			if(tcp_context->tmp.nr_ip_id_bits_3 <= 4 &&
-			   tcp_context->tmp.nr_seq_bits_32767 <= 16 &&
-			   true /* TODO: no more than 4 bits of SN */)
+			   tcp_context->tmp.nr_seq_bits_32767 <= 16)
 			{
 				/* seq_1 is possible */
 				TRACE_GOTO_CHOICE;
@@ -7137,8 +7134,7 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 			}
 			else if(tcp_context->tmp.nr_ip_id_bits_3 <= 7 &&
 			        tcp_context->seq_num_scaling_nr >= ROHC_INIT_TS_STRIDE_MIN &&
-			        tcp_context->tmp.nr_seq_scaled_bits <= 4 &&
-			        true /* TODO: no more than 4 bits of SN */)
+			        tcp_context->tmp.nr_seq_scaled_bits <= 4)
 			{
 				/* seq_2 is possible */
 				TRACE_GOTO_CHOICE;
@@ -7157,16 +7153,14 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 		{
 			/* seq_3, seq_4, or co_common */
 			if(tcp_context->tmp.nr_ip_id_bits_3 <= 4 &&
-			   tcp_context->tmp.nr_ack_bits_16383 <= 16 &&
-			   true /* TODO: no more than 4 bits of SN */)
+			   tcp_context->tmp.nr_ack_bits_16383 <= 16)
 			{
 				TRACE_GOTO_CHOICE;
 				packet_type = ROHC_PACKET_TCP_SEQ_3;
 			}
 			else if(tcp_context->tmp.nr_ip_id_bits_1 <= 3 &&
 			        tcp_context->ack_stride != 0 &&
-			        tcp_context->tmp.nr_ack_scaled_bits <= 4 &&
-			        true /* TODO: no more than 4 bits of SN */)
+			        tcp_context->tmp.nr_ack_scaled_bits <= 4)
 			{
 				TRACE_GOTO_CHOICE;
 				packet_type = ROHC_PACKET_TCP_SEQ_4;
@@ -7183,8 +7177,7 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 			 * seq_5, seq_6, seq_8 or co_common */
 			if(tcp_context->tmp.nr_ip_id_bits_3 <= 4 &&
 			   tcp_context->tmp.nr_ack_bits_16383 <= 16 &&
-			   tcp_context->tmp.nr_seq_bits_32767 <= 16 &&
-			   true /* TODO: no more than 4 bits of SN */)
+			   tcp_context->tmp.nr_seq_bits_32767 <= 16)
 			{
 				TRACE_GOTO_CHOICE;
 				packet_type = ROHC_PACKET_TCP_SEQ_5;
@@ -7192,8 +7185,7 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 			else if(tcp_context->tmp.nr_ip_id_bits_3 <= 4 &&
 			        tcp_context->seq_num_scaling_nr >= ROHC_INIT_TS_STRIDE_MIN &&
 			        tcp_context->tmp.nr_seq_scaled_bits <= 4 &&
-			        tcp_context->tmp.nr_ack_bits_16383 <= 16 &&
-			        true /* TODO: no more than 4 bits of SN */)
+			        tcp_context->tmp.nr_ack_bits_16383 <= 16)
 			{
 				TRACE_GOTO_CHOICE;
 				assert(tcp_context->tmp.payload_len > 0);
@@ -7201,7 +7193,6 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 			}
 			else if(tcp_context->tmp.nr_ip_id_bits_3 <= 4 &&
 			        true /* TODO: list changed */ &&
-			        true /* TODO: no more than 4 bits of SN */ &&
 			        true /* TODO: no more than 3 bits of TTL */ &&
 			        tcp_context->tmp.nr_ack_bits_8191 <= 15 &&
 			        tcp_context->tmp.nr_seq_bits_8191 <= 14)
@@ -7267,8 +7258,7 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 			}
 			else if(tcp_context->tmp.nr_window_bits > 0)
 			{
-				if(tcp_context->tmp.nr_ack_bits_65535 <= 18 &&
-				   true /* TODO: no more than 4 bits of SN */)
+				if(tcp_context->tmp.nr_ack_bits_65535 <= 18)
 				{
 					/* rnd_7 is possible */
 					TRACE_GOTO_CHOICE;
