@@ -1437,13 +1437,23 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 	/* innermost IP payload shall be large enough for TCP header */
 	if(remain_len < sizeof(struct tcphdr))
 	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "innermost IP payload too small for minimal TCP header");
 		goto bad_profile;
 	}
 
 	/* retrieve the TCP header */
 	tcp_header = (const struct tcphdr *) remain_data;
+	if(tcp_header->data_offset < 5)
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "TCP data offset too small for minimal TCP header");
+		goto bad_profile;
+	}
 	if(remain_len < (tcp_header->data_offset * sizeof(uint32_t)))
 	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "TCP data too small for full TCP header with options");
 		goto bad_profile;
 	}
 
