@@ -3400,10 +3400,9 @@ static uint8_t * tcp_code_irregular_tcp_part(struct rohc_comp_ctxt *const contex
 	// ip_ecn_flags = := tcp_irreg_ip_ecn(ip_inner_ecn)
 	// tcp_res_flags =:= static_or_irreg(ecn_used.CVALUE,4)
 	// tcp_ecn_flags =:= static_or_irreg(ecn_used.CVALUE,2)
-	if(tcp_context->ecn_used != 0)
+	if(tcp_context->ecn_used != 0 || tcp->res_flags != 0)
 	{
-		remain_data[0] =
-			(((ip_inner_ecn << 2) | tcp->ecn_flags) << 4) | tcp->res_flags;
+		remain_data[0] = (ip_inner_ecn << 6) | (tcp->res_flags << 2) | tcp->ecn_flags;
 		rohc_comp_debug(context, "add TCP ecn_flags res_flags = 0x%02x",
 		                remain_data[0]);
 		remain_data++;
@@ -7053,7 +7052,8 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 		TRACE_GOTO_CHOICE;
 		packet_type = ROHC_PACKET_TCP_CO_COMMON;
 	}
-	else if(tcp_context->tmp.ecn_used != 0) /* ecn used change */
+	else if(tcp_context->tmp.ecn_used != 0 /* ecn used change */ ||
+	        tcp->res_flags != 0)
 	{
 		/* use compressed header with a 7-bit CRC (rnd_8, seq_8 or common):
 		 *  - use common if too many LSB of sequence number are required
