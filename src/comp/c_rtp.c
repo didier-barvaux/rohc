@@ -510,11 +510,17 @@ static rohc_packet_t c_rtp_decide_FO_packet(const struct rohc_comp_ctxt *context
 	nr_sn_bits = g_context->tmp.nr_sn_bits;
 	nr_ts_bits = rtp_context->tmp.nr_ts_bits;
 
-	if((g_context->outer_ip_flags.version == IPV4 &&
-	    g_context->outer_ip_flags.info.v4.sid_count < MAX_FO_COUNT) ||
-	   (nr_of_ip_hdr > 1 &&
-	    g_context->inner_ip_flags.version == IPV4 &&
-	   	g_context->inner_ip_flags.info.v4.sid_count < MAX_FO_COUNT))
+	if(rtp_context->udp_checksum_change_count < MAX_IR_COUNT)
+	{
+		packet = ROHC_PACKET_IR_DYN;
+		rohc_comp_debug(context, "choose packet IR-DYN because UDP checksum "
+		                "behavior changed");
+	}
+	else if((g_context->outer_ip_flags.version == IPV4 &&
+	         g_context->outer_ip_flags.info.v4.sid_count < MAX_FO_COUNT) ||
+	        (nr_of_ip_hdr > 1 &&
+	         g_context->inner_ip_flags.version == IPV4 &&
+	         g_context->inner_ip_flags.info.v4.sid_count < MAX_FO_COUNT))
 	{
 		packet = ROHC_PACKET_IR_DYN;
 		rohc_comp_debug(context, "choose packet IR-DYN because at least one "
@@ -741,10 +747,16 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *context
 	                   &nr_outermost_ip_id_bits);
 
 	/* what packet type do we choose? */
-	if(nr_sn_bits <= 4 &&
-	   nr_ipv4_non_rnd_with_bits == 0 &&
-	   is_ts_scaled && (nr_ts_bits == 0 || is_ts_deducible) &&
-	   !rtp_context->tmp.is_marker_bit_set)
+	if(rtp_context->udp_checksum_change_count < MAX_IR_COUNT)
+	{
+		packet = ROHC_PACKET_IR_DYN;
+		rohc_comp_debug(context, "choose packet IR-DYN because UDP checksum "
+		                "behavior changed");
+	}
+	else if(nr_sn_bits <= 4 &&
+	        nr_ipv4_non_rnd_with_bits == 0 &&
+	        is_ts_scaled && (nr_ts_bits == 0 || is_ts_deducible) &&
+	        !rtp_context->tmp.is_marker_bit_set)
 	{
 		packet = ROHC_PACKET_UO_0;
 		rohc_comp_debug(context, "choose packet UO-0 because %zd <= 4 SN bits "
@@ -987,16 +999,7 @@ static void rtp_decide_state(struct rohc_comp_ctxt *const context)
 	g_context = (struct c_generic_context *) context->specific;
 	rtp_context = (struct sc_rtp_context *) g_context->specific;
 
-	if(context->state != ROHC_COMP_STATE_IR &&
-	   rtp_context->udp_checksum_change_count < MAX_IR_COUNT)
-	{
-		/* TODO: could be optimized: IR state is not required, only IR or
-		 * IR-DYN packet is */
-		rohc_comp_debug(context, "go back to IR state because UDP checksum "
-		                "behaviour changed in the last few packets");
-		change_state(context, ROHC_COMP_STATE_IR);
-	}
-	else if(rtp_context->tmp.send_rtp_dynamic)
+	if(rtp_context->tmp.send_rtp_dynamic)
 	{
 		if(context->state == ROHC_COMP_STATE_IR)
 		{
