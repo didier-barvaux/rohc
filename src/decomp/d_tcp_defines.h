@@ -214,8 +214,16 @@ struct d_tcp_opt_ctxt /* TODO: doxygen */
 	union
 	{
 		uint8_t eol_len;
-		uint16_t mss_value;
-		uint8_t ws_value;
+		struct
+		{
+			bool is_static;
+			uint16_t value;
+		} mss;
+		struct
+		{
+			bool is_static;
+			uint8_t value;
+		} ws;
 		struct
 		{
 			struct rohc_lsb_field32 req;  /**< The context for the TS request field */

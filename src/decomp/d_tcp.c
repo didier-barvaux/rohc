@@ -2431,7 +2431,8 @@ static bool d_tcp_decode_bits(const struct rohc_decomp_ctxt *const context,
 	for(i = 0; i < decoded->tcp_opts.nr; i++)
 	{
 		const uint8_t opt_index = decoded->tcp_opts.structure[i];
-		const uint8_t opt_type = decoded->tcp_opts.bits[opt_index].type;
+		struct d_tcp_opt_ctxt *const opt_bits = &(decoded->tcp_opts.bits[opt_index]);
+		const uint8_t opt_type = opt_bits->type;
 
 		assert(decoded->tcp_opts.bits[opt_index].used);
 
@@ -2439,7 +2440,23 @@ static bool d_tcp_decode_bits(const struct rohc_decomp_ctxt *const context,
 		                  tcp_opt_get_descr(opt_type), opt_type);
 
 		/* specific actions for some TCP options */
-		if(opt_index == TCP_INDEX_TS)
+		if(opt_index == TCP_INDEX_MSS)
+		{
+			if(opt_bits->data.mss.is_static)
+			{
+				opt_bits->data.mss.value =
+					tcp_context->tcp_opts.bits[opt_index].data.mss.value;
+			}
+		}
+		else if(opt_index == TCP_INDEX_WS)
+		{
+			if(opt_bits->data.ws.is_static)
+			{
+				opt_bits->data.ws.value =
+					tcp_context->tcp_opts.bits[opt_index].data.ws.value;
+			}
+		}
+		else if(opt_index == TCP_INDEX_TS)
 		{
 			/* decode TS request field */
 			if(!d_tcp_decode_opt_ts_field(context, "request",
@@ -3257,7 +3274,21 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 	/* TCP Urgent pointer is sent every time, nothing to update in context */
 
 	/* copy the informations collected on TCP options */
-	memcpy(&tcp_context->tcp_opts, &decoded->tcp_opts, sizeof(struct d_tcp_opts_ctxt));
+	tcp_context->tcp_opts.nr = decoded->tcp_opts.nr;
+	memcpy(&tcp_context->tcp_opts.structure, &decoded->tcp_opts.structure,
+	       sizeof(uint8_t) * ROHC_TCP_OPTS_MAX);
+	memcpy(&tcp_context->tcp_opts.expected_dynamic, &decoded->tcp_opts.expected_dynamic,
+	       sizeof(bool) * ROHC_TCP_OPTS_MAX);
+	memcpy(&tcp_context->tcp_opts.found, &decoded->tcp_opts.found,
+	       sizeof(bool) * ROHC_TCP_OPTS_MAX);
+	for(i = 0; i <= MAX_TCP_OPTION_INDEX; i++)
+	{
+		if(decoded->tcp_opts.bits[i].used)
+		{
+			memcpy(&tcp_context->tcp_opts.bits[i], &decoded->tcp_opts.bits[i],
+			       sizeof(struct d_tcp_opt_ctxt));
+		}
+	}
 	for(i = 0; i < decoded->tcp_opts.nr; i++)
 	{
 		const uint8_t opt_index = decoded->tcp_opts.structure[i];

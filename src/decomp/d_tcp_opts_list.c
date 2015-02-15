@@ -402,6 +402,7 @@ int d_tcp_parse_tcp_opts_irreg(const struct rohc_decomp_ctxt *const context,
                                const size_t rohc_length,
                                struct d_tcp_opts_ctxt *const tcp_opts)
 {
+	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
 	const uint8_t *remain_data = rohc_packet;
 	size_t remain_len = rohc_length;
 	size_t i;
@@ -411,18 +412,21 @@ int d_tcp_parse_tcp_opts_irreg(const struct rohc_decomp_ctxt *const context,
 	{
 		const uint8_t opt_index = tcp_opts->structure[i];
 		struct d_tcp_opt_ctxt *const tcp_opt = &(tcp_opts->bits[opt_index]);
-		const uint8_t opt_type = tcp_opt->type;
+		uint8_t opt_type;
 
 		assert(tcp_opt->used);
 
 		if(tcp_opts->expected_dynamic[i])
 		{
+			opt_type = tcp_opt->type;
 			rohc_decomp_debug(context, "TCP irregular part: TCP option '%s' (%u) "
 			                  "with index %u is not present",
 			                  d_tcp_opts[opt_index].descr, opt_type, opt_index);
 		}
 		else
 		{
+			tcp_opt->type = tcp_context->tcp_opts.bits[opt_index].type;
+			opt_type = tcp_opt->type;
 			rohc_decomp_debug(context, "TCP irregular part: TCP option '%s' (%u) "
 			                  "with index %u is present",
 			                  d_tcp_opts[opt_index].descr, opt_type, opt_index);
@@ -832,10 +836,11 @@ static int d_tcp_parse_mss_dyn(const struct rohc_decomp_ctxt *const context,
 		                 "required for MSS option", data_len, mss_dyn_len);
 		goto error;
 	}
-	memcpy(&opt_ctxt->data.mss_value, data, mss_dyn_len);
-	opt_ctxt->data.mss_value = rohc_ntoh16(opt_ctxt->data.mss_value);
+	opt_ctxt->data.mss.is_static = false;
+	memcpy(&opt_ctxt->data.mss.value, data, mss_dyn_len);
+	opt_ctxt->data.mss.value = rohc_ntoh16(opt_ctxt->data.mss.value);
 	rohc_decomp_debug(context, "    TCP option MAXSEG = %u (0x%04x)",
-	                  opt_ctxt->data.mss_value, opt_ctxt->data.mss_value);
+	                  opt_ctxt->data.mss.value, opt_ctxt->data.mss.value);
 
 	return mss_dyn_len;
 
@@ -850,6 +855,7 @@ static int d_tcp_parse_mss_irreg(const struct rohc_decomp_ctxt *const context __
                                  const size_t data_len __attribute__((unused)),
                                  struct d_tcp_opt_ctxt *const opt_ctxt __attribute__((unused)))
 {
+	opt_ctxt->data.mss.is_static = true;
 	return 0;
 }
 
@@ -862,7 +868,7 @@ static bool d_tcp_build_mss(const struct rohc_decomp_ctxt *const context,
                             size_t *const opt_len)
 {
 	const size_t mss_len = 2 + sizeof(uint16_t);
-	const uint16_t mss_value_nbo = rohc_hton16(tcp_opt->data.mss_value);
+	const uint16_t mss_value_nbo = rohc_hton16(tcp_opt->data.mss.value);
 
 	if(rohc_buf_avail_len(*uncomp_packet) < mss_len)
 	{
@@ -900,7 +906,8 @@ static int d_tcp_parse_ws_dyn(const struct rohc_decomp_ctxt *const context,
 		                 "required for WS option", data_len, ws_dyn_len);
 		goto error;
 	}
-	opt_ctxt->data.ws_value = data[0];
+	opt_ctxt->data.ws.is_static = false;
+	opt_ctxt->data.ws.value = data[0];
 
 	return ws_dyn_len;
 
@@ -915,6 +922,7 @@ static int d_tcp_parse_ws_irreg(const struct rohc_decomp_ctxt *const context __a
                                 const size_t data_len __attribute__((unused)),
                                 struct d_tcp_opt_ctxt *const opt_ctxt __attribute__((unused)))
 {
+	opt_ctxt->data.ws.is_static = true;
 	return 0;
 }
 
@@ -937,7 +945,7 @@ static bool d_tcp_build_ws(const struct rohc_decomp_ctxt *const context,
 
 	rohc_buf_byte_at(*uncomp_packet, 0) = TCP_OPT_WS;
 	rohc_buf_byte_at(*uncomp_packet, 1) = ws_len;
-	rohc_buf_byte_at(*uncomp_packet, 2) = tcp_opt->data.ws_value;
+	rohc_buf_byte_at(*uncomp_packet, 2) = tcp_opt->data.ws.value;
 	uncomp_packet->len += ws_len;
 	*opt_len = ws_len;
 
