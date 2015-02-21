@@ -158,6 +158,7 @@ struct tcp_tmp_variables
 	bool ip_df_changed;
 	bool dscp_changed;
 
+	bool tcp_res_flag_changed;
 	bool tcp_ack_flag_changed;
 	bool tcp_urg_flag_present;
 	bool tcp_urg_flag_changed;
@@ -3400,7 +3401,7 @@ static uint8_t * tcp_code_irregular_tcp_part(struct rohc_comp_ctxt *const contex
 	// ip_ecn_flags = := tcp_irreg_ip_ecn(ip_inner_ecn)
 	// tcp_res_flags =:= static_or_irreg(ecn_used.CVALUE,4)
 	// tcp_ecn_flags =:= static_or_irreg(ecn_used.CVALUE,2)
-	if(tcp_context->ecn_used != 0 || tcp->res_flags != 0)
+	if(tcp_context->ecn_used != 0 || tcp_context->tmp.tcp_res_flag_changed)
 	{
 		remain_data[0] = (ip_inner_ecn << 6) | (tcp->res_flags << 2) | tcp->ecn_flags;
 		rohc_comp_debug(context, "add TCP ecn_flags res_flags = 0x%02x",
@@ -5100,7 +5101,8 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 		                c_base_header.co_common->ttl_hopl_present);
 	}
 	// cf RFC3168 and RFC4996 page 20 :
-	if(tcp_context->ecn_used == 0)
+	/* ecn_used controls the presence of IP ECN flags, and TCP RES/ECN flags */
+	if(tcp_context->ecn_used == 0 && !tcp_context->tmp.tcp_res_flag_changed)
 	{
 		// =:= one_bit_choice [ 1 ];
 		c_base_header.co_common->ecn_used = 0;
@@ -6573,6 +6575,10 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	                rohc_ntoh16(tcp->window), rohc_ntoh16(tcp->checksum),
 	                rohc_ntoh16(tcp->urg_ptr));
 
+	tcp_context->tmp.tcp_res_flag_changed =
+		(tcp->res_flags != tcp_context->old_tcphdr.res_flags);
+	tcp_field_descr_change(context, "RES flags",
+	                       tcp_context->tmp.tcp_res_flag_changed);
 	tcp_context->tmp.tcp_ack_flag_changed =
 		(tcp->ack_flag != tcp_context->old_tcphdr.ack_flag);
 	tcp_field_descr_change(context, "ACK flag",
@@ -7066,7 +7072,7 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 		packet_type = ROHC_PACKET_TCP_CO_COMMON;
 	}
 	else if(tcp_context->tmp.ecn_used != 0 /* ecn used change */ ||
-	        tcp->res_flags != 0)
+	        tcp_context->tmp.tcp_res_flag_changed)
 	{
 		/* use compressed header with a 7-bit CRC (rnd_8, seq_8 or common):
 		 *  - use common if too many LSB of sequence number are required

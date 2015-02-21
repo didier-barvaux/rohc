@@ -158,7 +158,8 @@ TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_TCP = \
 	test_non_regression_ipv4_tcp_afl28-reserved-flags_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_tcp_afl29-urg-ptr_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_tcp_afl30-mss-or-ws-opts-in-irregular-chain_maxcontexts0_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_tcp_afl32-irregular-generic-option_maxcontexts0_wlsb4_smallcid.sh
+	test_non_regression_ipv4_tcp_afl32-irregular-generic-option_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl33-reserved-flags-changing_maxcontexts0_wlsb4_smallcid.sh
 
 TESTS_MAXCONTEXTS0_WLSB4_SMALLCID = \
 	$(TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_MISC) \
@@ -323,7 +324,8 @@ TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_TCP = \
 	test_non_regression_ipv4_tcp_afl28-reserved-flags_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_tcp_afl29-urg-ptr_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_tcp_afl30-mss-or-ws-opts-in-irregular-chain_maxcontexts0_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_tcp_afl32-irregular-generic-option_maxcontexts0_wlsb64_smallcid.sh
+	test_non_regression_ipv4_tcp_afl32-irregular-generic-option_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl33-reserved-flags-changing_maxcontexts0_wlsb64_smallcid.sh
 
 TESTS_MAXCONTEXTS0_WLSB64_SMALLCID = \
 	$(TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_MISC) \
@@ -493,7 +495,8 @@ TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_TCP = \
 	test_non_regression_ipv4_tcp_afl28-reserved-flags_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_tcp_afl29-urg-ptr_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_tcp_afl30-mss-or-ws-opts-in-irregular-chain_maxcontexts1_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_tcp_afl32-irregular-generic-option_maxcontexts1_wlsb4_smallcid.sh
+	test_non_regression_ipv4_tcp_afl32-irregular-generic-option_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl33-reserved-flags-changing_maxcontexts1_wlsb4_smallcid.sh
 
 TESTS_MAXCONTEXTS1_WLSB4_SMALLCID = \
 	$(TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_MISC) \
@@ -658,7 +661,8 @@ TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_TCP = \
 	test_non_regression_ipv4_tcp_afl28-reserved-flags_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_tcp_afl29-urg-ptr_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_tcp_afl30-mss-or-ws-opts-in-irregular-chain_maxcontexts1_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_tcp_afl32-irregular-generic-option_maxcontexts1_wlsb64_smallcid.sh
+	test_non_regression_ipv4_tcp_afl32-irregular-generic-option_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl33-reserved-flags-changing_maxcontexts1_wlsb64_smallcid.sh
 
 TESTS_MAXCONTEXTS1_WLSB64_SMALLCID = \
 	$(TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_MISC) \
@@ -833,7 +837,8 @@ TESTS_MAXCONTEXTS0_WLSB4_LARGECID_TCP = \
 	test_non_regression_ipv4_tcp_afl28-reserved-flags_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv4_tcp_afl29-urg-ptr_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv4_tcp_afl30-mss-or-ws-opts-in-irregular-chain_maxcontexts0_wlsb4_largecid.sh \
-	test_non_regression_ipv4_tcp_afl32-irregular-generic-option_maxcontexts0_wlsb4_largecid.sh
+	test_non_regression_ipv4_tcp_afl32-irregular-generic-option_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl33-reserved-flags-changing_maxcontexts0_wlsb4_largecid.sh
 
 TESTS_MAXCONTEXTS0_WLSB4_LARGECID = \
 	$(TESTS_MAXCONTEXTS0_WLSB4_LARGECID_MISC) \
@@ -998,7 +1003,8 @@ TESTS_MAXCONTEXTS0_WLSB64_LARGECID_TCP = \
 	test_non_regression_ipv4_tcp_afl28-reserved-flags_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv4_tcp_afl29-urg-ptr_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv4_tcp_afl30-mss-or-ws-opts-in-irregular-chain_maxcontexts0_wlsb64_largecid.sh \
-	test_non_regression_ipv4_tcp_afl32-irregular-generic-option_maxcontexts0_wlsb64_largecid.sh
+	test_non_regression_ipv4_tcp_afl32-irregular-generic-option_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl33-reserved-flags-changing_maxcontexts0_wlsb64_largecid.sh
 
 TESTS_MAXCONTEXTS0_WLSB64_LARGECID = \
 	$(TESTS_MAXCONTEXTS0_WLSB64_LARGECID_MISC) \
@@ -1168,7 +1174,8 @@ TESTS_MAXCONTEXTS1_WLSB4_LARGECID_TCP = \
 	test_non_regression_ipv4_tcp_afl28-reserved-flags_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv4_tcp_afl29-urg-ptr_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv4_tcp_afl30-mss-or-ws-opts-in-irregular-chain_maxcontexts1_wlsb4_largecid.sh \
-	test_non_regression_ipv4_tcp_afl32-irregular-generic-option_maxcontexts1_wlsb4_largecid.sh
+	test_non_regression_ipv4_tcp_afl32-irregular-generic-option_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl33-reserved-flags-changing_maxcontexts1_wlsb4_largecid.sh
 
 TESTS_MAXCONTEXTS1_WLSB4_LARGECID = \
 	$(TESTS_MAXCONTEXTS1_WLSB4_LARGECID_MISC) \
@@ -1333,7 +1340,8 @@ TESTS_MAXCONTEXTS1_WLSB64_LARGECID_TCP = \
 	test_non_regression_ipv4_tcp_afl28-reserved-flags_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv4_tcp_afl29-urg-ptr_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv4_tcp_afl30-mss-or-ws-opts-in-irregular-chain_maxcontexts1_wlsb64_largecid.sh \
-	test_non_regression_ipv4_tcp_afl32-irregular-generic-option_maxcontexts1_wlsb64_largecid.sh
+	test_non_regression_ipv4_tcp_afl32-irregular-generic-option_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl33-reserved-flags-changing_maxcontexts1_wlsb64_largecid.sh
 
 TESTS_MAXCONTEXTS1_WLSB64_LARGECID = \
 	$(TESTS_MAXCONTEXTS1_WLSB64_LARGECID_MISC) \
