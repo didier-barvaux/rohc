@@ -3457,6 +3457,7 @@ static uint8_t * tcp_code_irregular_tcp_part(struct rohc_comp_ctxt *const contex
 			{
 				assert((opts_offset + 1) < opts_len); /* length already checked */
 				opt_len = opts[opts_offset + 1];
+				assert(opt_len >= 2);
 				assert((opts_offset + opt_len) <= opts_len);
 
 				/* don't put this option in the irregular chain in already present
@@ -3509,6 +3510,18 @@ static uint8_t * tcp_code_irregular_tcp_part(struct rohc_comp_ctxt *const contex
 					remain_data = c_tcp_opt_sack(context, remain_data,
 					                             rohc_ntoh32(tcp->ack_num),
 					                             opt_len, sack_block);
+				}
+				else if(opt_type != TCP_OPT_MSS &&
+				        opt_type != TCP_OPT_WS &&
+				        opt_type != TCP_OPT_SACK_PERM)
+				{
+					/* generic encoding */
+					/* TODO: in what case option_static could be set to 1 ? */
+					/* TODO: handle generic_stable_irregular() */
+					remain_data[0] = 0x00;
+					remain_data++;
+					memcpy(remain_data, opts + opts_offset + 2, opt_len - 2);
+					remain_data += opt_len - 2;
 				}
 			}
 		}
