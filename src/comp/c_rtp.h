@@ -92,6 +92,10 @@ struct sc_rtp_context
 	/// The previous UDP header
 	struct udphdr old_udp;
 
+	/// @brief The number of times the RTP Version field was added to
+	///        the compressed header
+	size_t rtp_version_change_count;
+
 	/// @brief The number of times the RTP Payload Type (PT) field was added to
 	///        the compressed header
 	size_t rtp_pt_change_count;

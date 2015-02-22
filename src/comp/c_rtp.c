@@ -162,6 +162,7 @@ static bool c_rtp_create(struct rohc_comp_ctxt *const context,
 	/* initialize the RTP part of the profile context */
 	rtp_context->udp_checksum_change_count = 0;
 	memcpy(&rtp_context->old_udp, udp, sizeof(struct udphdr));
+	rtp_context->rtp_version_change_count = 0;
 	rtp_context->rtp_pt_change_count = 0;
 	rtp_context->rtp_padding_change_count = 0;
 	rtp_context->rtp_extension_change_count = 0;
@@ -446,6 +447,12 @@ static rohc_packet_t c_rtp_decide_FO_packet(const struct rohc_comp_ctxt *context
 		rohc_comp_debug(context, "choose packet IR-DYN because UDP checksum "
 		                "behavior changed");
 	}
+	else if(rtp_context->rtp_version_change_count < MAX_IR_COUNT)
+	{
+		packet = ROHC_PACKET_IR_DYN;
+		rohc_comp_debug(context, "choose packet IR-DYN because RTP Version "
+		                "changed");
+	}
 	else if((rfc3095_ctxt->outer_ip_flags.version == IPV4 &&
 	         rfc3095_ctxt->outer_ip_flags.info.v4.sid_count < MAX_FO_COUNT) ||
 	        (nr_of_ip_hdr > 1 &&
@@ -683,6 +690,12 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *context
 		rohc_comp_debug(context, "choose packet IR-DYN because UDP checksum "
 		                "behavior changed");
 	}
+	else if(rtp_context->rtp_version_change_count < MAX_IR_COUNT)
+	{
+		packet = ROHC_PACKET_IR_DYN;
+		rohc_comp_debug(context, "choose packet IR-DYN because RTP Version "
+		                "changed");
+	}
 	else if(nr_sn_bits <= 4 &&
 	        nr_ipv4_non_rnd_with_bits == 0 &&
 	        is_ts_scaled && (nr_ts_bits == 0 || is_ts_deducible) &&
@@ -880,7 +893,7 @@ static int c_rtp_encode(struct rohc_comp_ctxt *const context,
 
 	/* encode the IP packet */
 	size = rohc_comp_rfc3095_encode(context, uncomp_pkt, rohc_pkt, rohc_pkt_max_len,
-	                        packet_type, payload_offset);
+	                                packet_type, payload_offset);
 	if(size < 0)
 	{
 		goto quit;
@@ -1242,6 +1255,7 @@ static size_t rtp_code_dynamic_rtp_part(const struct rohc_comp_ctxt *const conte
 	                rtp->version & 0x03, rtp->padding & 0x01, rx_byte,
 	                rtp->cc & 0x0f, dest[counter + nr_written]);
 	nr_written++;
+	rtp_context->rtp_version_change_count++;
 	rtp_context->rtp_padding_change_count++;
 
 	/* part 3 */
@@ -1387,6 +1401,27 @@ static int rtp_changed_rtp_dynamic(const struct rohc_comp_ctxt *const context,
 		}
 
 		/* do not count the UDP checksum change as other RTP dynamic fields
+		 * because it requires a specific behaviour (IR or IR-DYN packet
+		 * required). */
+	}
+
+	/* check RTP Version field */
+	if(rtp->version != rtp_context->old_rtp.version ||
+	   rtp_context->rtp_version_change_count < MAX_IR_COUNT)
+	{
+		if(rtp->version != rtp_context->old_rtp.version)
+		{
+			rohc_comp_debug(context, "RTP Version field changed (%u -> %u)",
+			                rtp_context->old_rtp.version, rtp->version);
+			rtp_context->rtp_version_change_count = 0;
+		}
+		else
+		{
+			rohc_comp_debug(context, "RTP Payload Type (PT) field did not "
+			                "change but changed in the last few packets");
+		}
+
+		/* do not count the RTP Version change as other RTP dynamic fields
 		 * because it requires a specific behaviour (IR or IR-DYN packet
 		 * required). */
 	}
