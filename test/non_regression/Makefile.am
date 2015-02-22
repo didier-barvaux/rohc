@@ -88,6 +88,7 @@ TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_IP_UDP_RTP = \
 	test_non_regression_ipv4_ipv6ext_udp_rtp_video1_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_udp_rtp_afl31-variable-udp-checksum-behavior_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_udp_rtp_afl35-rtp-version-changing_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_afl36-rtp-scaled-ts-0-bit-not-deducible_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_udp_rtp_afl38-rtp-version-changing-2_maxcontexts0_wlsb4_smallcid.sh
 
 TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_ESP = \
@@ -217,6 +218,7 @@ TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_IP_UDP_RTP = \
 	test_non_regression_ipv4_ipv6ext_udp_rtp_video1_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_udp_rtp_afl31-variable-udp-checksum-behavior_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_udp_rtp_afl35-rtp-version-changing_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_afl36-rtp-scaled-ts-0-bit-not-deducible_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_udp_rtp_afl38-rtp-version-changing-2_maxcontexts0_wlsb64_smallcid.sh
 
 TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_ESP = \
@@ -351,6 +353,7 @@ TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_IP_UDP_RTP = \
 	test_non_regression_ipv4_ipv6ext_udp_rtp_video1_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_udp_rtp_afl31-variable-udp-checksum-behavior_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_udp_rtp_afl35-rtp-version-changing_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_afl36-rtp-scaled-ts-0-bit-not-deducible_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_udp_rtp_afl38-rtp-version-changing-2_maxcontexts1_wlsb4_smallcid.sh
 
 TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_ESP = \
@@ -480,6 +483,7 @@ TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_IP_UDP_RTP = \
 	test_non_regression_ipv4_ipv6ext_udp_rtp_video1_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_udp_rtp_afl31-variable-udp-checksum-behavior_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_udp_rtp_afl35-rtp-version-changing_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_afl36-rtp-scaled-ts-0-bit-not-deducible_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_udp_rtp_afl38-rtp-version-changing-2_maxcontexts1_wlsb64_smallcid.sh
 
 TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_ESP = \
@@ -619,6 +623,7 @@ TESTS_MAXCONTEXTS0_WLSB4_LARGECID_IP_UDP_RTP = \
 	test_non_regression_ipv6_udp_rtp_video1_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv4_udp_rtp_afl31-variable-udp-checksum-behavior_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv4_udp_rtp_afl35-rtp-version-changing_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_afl36-rtp-scaled-ts-0-bit-not-deducible_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv4_udp_rtp_afl38-rtp-version-changing-2_maxcontexts0_wlsb4_largecid.sh
 
 TESTS_MAXCONTEXTS0_WLSB4_LARGECID_ESP = \
@@ -748,6 +753,7 @@ TESTS_MAXCONTEXTS0_WLSB64_LARGECID_IP_UDP_RTP = \
 	test_non_regression_ipv6_udp_rtp_video1_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv4_udp_rtp_afl31-variable-udp-checksum-behavior_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv4_udp_rtp_afl35-rtp-version-changing_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_afl36-rtp-scaled-ts-0-bit-not-deducible_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv4_udp_rtp_afl38-rtp-version-changing-2_maxcontexts0_wlsb64_largecid.sh
 
 TESTS_MAXCONTEXTS0_WLSB64_LARGECID_ESP = \
@@ -882,6 +888,7 @@ TESTS_MAXCONTEXTS1_WLSB4_LARGECID_IP_UDP_RTP = \
 	test_non_regression_ipv6_udp_rtp_video1_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv4_udp_rtp_afl31-variable-udp-checksum-behavior_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv4_udp_rtp_afl35-rtp-version-changing_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_afl36-rtp-scaled-ts-0-bit-not-deducible_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv4_udp_rtp_afl38-rtp-version-changing-2_maxcontexts1_wlsb4_largecid.sh
 
 TESTS_MAXCONTEXTS1_WLSB4_LARGECID_ESP = \
@@ -1011,6 +1018,7 @@ TESTS_MAXCONTEXTS1_WLSB64_LARGECID_IP_UDP_RTP = \
 	test_non_regression_ipv6_udp_rtp_video1_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv4_udp_rtp_afl31-variable-udp-checksum-behavior_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv4_udp_rtp_afl35-rtp-version-changing_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_afl36-rtp-scaled-ts-0-bit-not-deducible_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv4_udp_rtp_afl38-rtp-version-changing-2_maxcontexts1_wlsb64_largecid.sh
 
 TESTS_MAXCONTEXTS1_WLSB64_LARGECID_ESP = \
