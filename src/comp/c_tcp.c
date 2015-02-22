@@ -410,6 +410,7 @@ struct sc_tcp_context
 	size_t tcp_opts_list_struct_nr;
 	uint8_t tcp_opts_list_struct[ROHC_TCP_OPTS_MAX];
 	struct tcp_opt_context tcp_options_list[MAX_TCP_OPTION_INDEX + 1];
+	size_t tcp_option_eol_len;
 	uint16_t tcp_option_maxseg;
 	uint8_t tcp_option_window;
 
@@ -3025,7 +3026,8 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 			{
 				case TCP_OPT_EOL: // End Of List
 					assert(opt_len == 1);
-					rohc_comp_debug(context, "TCP option EOL");
+					rohc_comp_debug(context, "TCP option EOL (%d bytes)", i);
+					tcp_context->tcp_option_eol_len = i;
 					break;
 				case TCP_OPT_NOP: // No Operation
 					assert(opt_len == 1);
@@ -4185,8 +4187,18 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 					item_needed = false;
 					break;
 				case TCP_INDEX_EOL: // End Of List
-					i = 0;
-					item_needed = false;
+					if(tcp_context->tcp_option_eol_len != (size_t) i)
+					{
+						rohc_comp_debug(context, "TCP options list: option 'EOL' "
+						                "changed its length (%zu -> %d)",
+						                tcp_context->tcp_option_eol_len, i);
+						item_needed = true;
+					}
+					else
+					{
+						item_needed = false;
+					}
+					i--;
 					break;
 				case TCP_INDEX_MSS: // Max Segment Size
 					                 // If same value that in the context
@@ -4281,8 +4293,18 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 					item_needed = false;
 					break;
 				case TCP_INDEX_EOL: // End Of List
-					i = 0;
-					item_needed = false;
+					if(tcp_context->tcp_option_eol_len != (size_t) i)
+					{
+						rohc_comp_debug(context, "TCP options list: option 'EOL' "
+						                "changed its length (%zu -> %d)",
+						                tcp_context->tcp_option_eol_len, i);
+						item_needed = true;
+					}
+					else
+					{
+						item_needed = false;
+					}
+					i--;
 					break;
 				case TCP_INDEX_SACK_PERM: // see RFC2018
 					i -= TCP_OLEN_SACK_PERM;
@@ -4357,9 +4379,14 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 			switch(opt_type)
 			{
 				case TCP_OPT_NOP: // No Operation
-				case TCP_OPT_EOL: // End Of List
 				case TCP_OPT_SACK_PERM: // see RFC2018
 					assert(0); /* those options should never need an item */
+					break;
+				case TCP_OPT_EOL: /* End Of List */
+					*(ptr_compressed_options++) = i - 1;
+					comp_opt_len++;
+					options += i;
+					i = 0;
 					break;
 				case TCP_OPT_MSS: // Max Segment Size
 					// see RFC4996 page 64
