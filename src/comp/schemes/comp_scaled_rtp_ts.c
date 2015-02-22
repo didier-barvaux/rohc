@@ -410,7 +410,17 @@ void add_unscaled(const struct ts_sc_comp *const ts_sc, const uint16_t sn)
 bool nb_bits_scaled(const struct ts_sc_comp *const ts_sc,
                     size_t *const bits_nr)
 {
-	return wlsb_get_k_32bits(ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled, bits_nr);
+	const bool status =
+		wlsb_get_k_32bits(ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled, bits_nr);
+
+	/* do not send 0 bit of TS if TS is not deducible, because decompressor
+	 * will interprets a 0-bit value as deducible */
+	if(status && !ts_sc->is_deducible && (*bits_nr) == 0)
+	{
+		(*bits_nr) = 1;
+	}
+
+	return status;
 }
 
 
