@@ -303,6 +303,8 @@ static bool c_rtp_check_profile(const struct rohc_comp *const comp,
 	/* check if the IP/UDP packet is a RTP packet */
 	if(comp->rtp_callback != NULL)
 	{
+		const struct rtphdr *rtp;
+
 		/* check if the IP/UDP packet is a RTP packet with the user callback
 		   dedicated to RTP stream detection: if the RTP callback returns 1,
 		   consider that the packet matches the RTP profile */
@@ -331,6 +333,16 @@ static bool c_rtp_check_profile(const struct rohc_comp *const comp,
 
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "RTP packet detected by the RTP callback");
+
+		/* RTP packets with one or more CSRC items cannot be compressed by the
+		 * RTP profile for the moment */
+		rtp = (struct rtphdr *) udp_payload;
+		if(rtp->cc != 0)
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "compression of CSRC items is not supported yet by RTP profile");
+			goto bad_profile;
+		}
 	}
 	else
 	{
