@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # Copyright 2010,2012,2013,2014 Viveris Technologies
-# Copyright 2010,2011,2012,2013 Didier Barvaux
+# Copyright 2010,2011,2012,2013,2015 Didier Barvaux
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -38,6 +38,10 @@
 # where:
 #   verbose          prints the traces of test application
 #
+# Environment variables:
+#    USE_VALGRIND=yes|no   run the tests within Valgrind or not
+#    USE_PYTHON=yes|no     run the tests of the Python binding or not
+#
 
 # skip test in case of cross-compilation
 if [ "${CROSS_COMPILATION}" = "yes" ] && \
@@ -56,9 +60,11 @@ VERBOSE="$1"
 if [ "x$MAKELEVEL" != "x" ] ; then
 	BASEDIR="${srcdir}"
 	APP="../test_non_regression${KERNEL_SUFFIX}${CROSS_COMPILATION_EXEEXT}"
+	APP_PYTHON="../../../contrib/python/test_non_regression.py"
 else
 	BASEDIR=$( dirname "${SCRIPT}" )
 	APP="${BASEDIR}/../test_non_regression${KERNEL_SUFFIX}${CROSS_COMPILATION_EXEEXT}"
+	APP_PYTHON="${BASEDIR}/../../../contrib/python/test_non_regression.py"
 fi
 
 # extract the CID type and capture name from the name of the script
@@ -103,42 +109,65 @@ if [ ${MAX_CONTEXTS} -eq 0 ] ; then
 	fi
 fi
 
-CMD="${CROSS_COMPILATION_EMULATOR} ${APP}"
+APP="${CROSS_COMPILATION_EMULATOR} ${APP}"
+CMD_PYTHON="${APP_PYTHON}"
 if [ -n "${KERNEL_SUFFIX}" ] ; then
 	# normal mode for kernel: compare with existing ROHC output captures
-	CMD="${CMD} -c ${CAPTURE_COMPARE} ${CAPTURE_SOURCE}"
+	CMD="${APP} -c ${CAPTURE_COMPARE} ${CAPTURE_SOURCE}"
 elif [ "${VERBOSE}" = "generate" ] ; then
 	# generate ROHC output captures
-	CMD="${CMD} -o ${CAPTURE_COMPARE} --rohc-size-output ${SIZE_COMPARE}"
+	CMD="${APP} -o ${CAPTURE_COMPARE} --rohc-size-output ${SIZE_COMPARE}"
 	CMD="${CMD} --wlsb-width ${WLSB_WIDTH}"
 	CMD="${CMD} --max-contexts ${MAX_CONTEXTS}"
 	CMD="${CMD} ${CID_TYPE} ${CAPTURE_SOURCE}"
 else
 	# normal mode: compare with existing ROHC output captures
-	CMD="${CMD} -c ${CAPTURE_COMPARE}"
-	CMD="${CMD} --wlsb-width ${WLSB_WIDTH}"
-	CMD="${CMD} --max-contexts ${MAX_CONTEXTS}"
-	CMD="${CMD} ${CID_TYPE} ${CAPTURE_SOURCE}"
+	CMD_PARAMS="${CMD_PARAMS} --wlsb-width ${WLSB_WIDTH}"
+	CMD_PARAMS="${CMD_PARAMS} --max-contexts ${MAX_CONTEXTS}"
+	CMD_PARAMS="${CMD_PARAMS} ${CID_TYPE} ${CAPTURE_SOURCE}"
 	if [ "${VERBOSE}" = "verbose" ] ; then
-		CMD="${CMD} --verbose"
+		CMD_PARAMS="${CMD_PARAMS} --verbose"
 	fi
+	CMD="${APP} ${CMD_PARAMS} -c ${CAPTURE_COMPARE}"
+	CMD_PYTHON="${CMD_PYTHON} ${CMD_PARAMS} -c ${CAPTURE_COMPARE}"
 fi
 
 # source valgrind-related functions
 . ${BASEDIR}/../../valgrind.sh
 
-# do not run tests with large CIDs in the Linux kernel to save some time
-[ -n "${KERNEL_SUFFIX}" ] && [ "${CID_TYPE}" = "largecid" ] && exit 77
+# C or Pyhton test?
+if [ -z "${USE_PYTHON}" ] || [ "${USE_PYTHON}" != "yes" ] ; then
+	# run C tests
 
-# run without valgrind
-run_test_without_valgrind ${CMD} || exit $?
+	# run without valgrind
+	run_test_without_valgrind ${CMD} || exit $?
 
-# skip Valgrind tests if they are not enabled
-[ "${USE_VALGRIND}" != "yes" ] && exit 0
+	[ "${VERBOSE}" = "generate" ] && exit 77
 
-# tests with Valgrind are not possible in the Linux kernel
-[ -n "${KERNEL_SUFFIX}" ] && exit 0
+	# run Valgrind tests if they are enabled
+	if [ "${USE_VALGRIND}" = "yes" ] ; then
+		# tests with Valgrind are not possible in the Linux kernel
+		[ -n "${KERNEL_SUFFIX}" ] && exit 0
+		# run with valgrind in verbose mode or quiet mode
+		run_test_with_valgrind ${BASEDIR}/../../valgrind.xsl ${CMD} || exit $?
+	fi
 
-# run with valgrind in verbose mode or quiet mode
-run_test_with_valgrind ${BASEDIR}/../../valgrind.xsl ${CMD} || exit $?
+elif [ "${USE_PYTHON}" = "yes" ] ; then
+	# run Python tests
+
+	# tests with Python are not possible in the Linux kernel
+	[ -n "${KERNEL_SUFFIX}" ] && exit 77
+	# generation is not possible with Python tests
+	[ "${VERBOSE}" = "generate" ] && exit 77
+
+	# run python bindings without valgrind
+	root_dir="${BASEDIR}/../../../"
+	export LD_LIBRARY_PATH="${root_dir}/src/.libs/:${root_dir}/contrib/python/build/lib.linux-x86_64-2.7"
+	export PYTHONPATH="${root_dir}/contrib/python/build/lib.linux-x86_64-2.7"
+	run_test_without_valgrind ${CMD_PYTHON} || exit $?
+
+else
+	# not C nor Python: unknown tests
+	exit 77
+fi
 

@@ -73,6 +73,44 @@ Add option --enable-rohc-tests-valgrind if you want to run tests within
 valgrind.
 
 
+Python binding
+--------------
+
+As of version 2.0.0, a Python binding was added. It is located in the
+contrib/python/ sub-directory.
+
+Notes:
+* The Python binding is not as CPU performant as the C library, so it is only
+  recommended for testing or rapid prototyping.
+* The Python binding currently only supports Python 2.x. The Python module
+  does not work correctly with Python 3.x for the moment.
+
+Build the Python binding:
+
+ $ cd contrib/python/
+ $ python setup.py build
+
+Install the Python binding:
+
+ $ python setup.py install
+
+An example is provided in contrib/python/example.py. You may execute it to test
+the Python binding (once it was installed on your system):
+
+ $ ./contrib/python/example.py 10
+ create a stream of RTP packets
+ 10 60-byte RTP packets created with 20-byte payload
+ create ROHC compressor
+ create ROHC decompressor
+ ..........
+ all 10 packets were successfully compressed
+ 232 bytes (39%) saved by compression
+
+You may also run the non-regression tests for the Python binding:
+
+ $ USE_PYTHON=yes make -C test/non_regression/ check
+
+
 Developers
 -----------
 

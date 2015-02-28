@@ -148,4 +148,14 @@ examples/example_rohc_decomp.exe
 examples/rtp_detection
 examples/rtp_detection.exe
 contrib/rohc.spec
+contrib/python/rohc_wrap.c
+contrib/python/rohc.py
+contrib/python/rohc.pyc
+contrib/python/RohcCompressor.pyc
+contrib/python/RohcDecompressor.pyc
+contrib/python/build/
+contrib/python/dist/
+contrib/python/__pycache__/
+contrib/python/rohc.egg-info/
+contrib/python/_rohc.so
 dump_stream_cid_*.pcap
