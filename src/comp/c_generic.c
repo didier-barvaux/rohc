@@ -723,10 +723,19 @@ bool c_generic_check_profile(const struct rohc_comp *const comp,
 		version = ip_get_version(&packet->inner_ip);
 		if(version != IPV4 && version != IPV6)
 		{
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "the inner IP packet contains a bad version (%d): "
-			           "only IPv%d and IPv%d are supported",
-			           (packet->inner_ip.data[0] >> 4) & 0x0f, IPV4, IPV6);
+			if(packet->inner_ip.size > 0)
+			{
+				const uint8_t pkt_vers = (packet->inner_ip.data[0] >> 4) & 0x0f;
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "the inner IP packet contains a bad version (%u): only "
+				           "IPv%d and IPv%d are supported", pkt_vers, IPV4, IPV6);
+			}
+			else
+			{
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "the inner IP packet contains a bad version: only "
+				           "IPv%d and IPv%d are supported", IPV4, IPV6);
+			}
 			goto bad_profile;
 		}
 
