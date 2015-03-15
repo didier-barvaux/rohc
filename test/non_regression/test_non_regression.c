@@ -120,11 +120,6 @@ for ./configure ? If yes, check configure output and config.log"
 #include <rohc_comp.h>
 #include <rohc_decomp.h>
 
-
-/// The program version
-#define TEST_VERSION  "ROHC non-regression test application, version 0.1\n"
-
-
 /* prototypes of private functions */
 static void usage(void);
 static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
@@ -260,7 +255,8 @@ int main(int argc, char *argv[])
 		if(!strcmp(*argv, "-v"))
 		{
 			/* print version */
-			printf(TEST_VERSION);
+			printf("ROHC non-regression test application, version %s\n",
+			       rohc_version());
 			goto error;
 		}
 		else if(!strcmp(*argv, "-h"))
