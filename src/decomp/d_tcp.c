@@ -2032,14 +2032,14 @@ static bool d_tcp_decode_bits(const struct rohc_decomp_ctxt *const context,
 			{
 				assert(ip_bits->flowid_nr == 20);
 				ip_decoded->flowid = ip_bits->flowid;
-				rohc_decomp_debug(context, "  decoded flow label = 0x%03x",
+				rohc_decomp_debug(context, "  decoded flow label = 0x%05x",
 				                  ip_decoded->flowid);
 			}
 			else
 			{
 				ip_decoded->flowid = (ip_context->ctxt.v6.flow_label1 << 16) |
 				                     ip_context->ctxt.v6.flow_label2;
-				rohc_decomp_debug(context, "  flow label = 0x%03x taken from context",
+				rohc_decomp_debug(context, "  flow label = 0x%05x taken from context",
 				                  ip_decoded->flowid);
 			}
 		}
@@ -2811,8 +2811,10 @@ static bool d_tcp_build_ipv6_hdr(const struct rohc_decomp_ctxt *const context,
 	/* static part */
 	ipv6->version = decoded->version;
 	rohc_decomp_debug(context, "    version = %u", ipv6->version);
-	ipv6->flow_label1 = (rohc_hton32(decoded->flowid) >> 20) & 0x7;
-	ipv6->flow_label2 = rohc_hton32(decoded->flowid) & 0xffff;
+	ipv6->flow_label1 = (decoded->flowid >> 16) & 0xf;
+	ipv6->flow_label2 = decoded->flowid & 0xffff;
+	rohc_decomp_debug(context, "    flow label = 0x%01x%04x", ipv6->flow_label1,
+	                  ipv6->flow_label2);
 	ipv6->next_header = decoded->proto;
 	memcpy(ipv6->src_addr, decoded->saddr, sizeof(uint32_t) * 4);
 	memcpy(ipv6->dest_addr, decoded->daddr, sizeof(uint32_t) * 4);

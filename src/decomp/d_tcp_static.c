@@ -221,6 +221,7 @@ static int tcp_parse_static_ip(const struct rohc_decomp_ctxt *const context,
 			}
 
 			ip_bits->flowid = 0;
+			ip_bits->flowid_nr = 20;
 			ip_bits->proto = ipv6_static1->next_header;
 			ip_bits->proto_nr = 8;
 			memcpy(ip_bits->saddr, &ipv6_static1->src_addr, sizeof(uint32_t) * 4);
@@ -244,8 +245,9 @@ static int tcp_parse_static_ip(const struct rohc_decomp_ctxt *const context,
 				goto error;
 			}
 
-			ip_bits->flowid = rohc_ntoh32((ipv6_static2->flow_label1 << 20) |
-			                              ipv6_static2->flow_label2);
+			ip_bits->flowid = (ipv6_static2->flow_label1 << 16) | ipv6_static2->flow_label2;
+			rohc_decomp_debug(context, "  IPv6 flow label = 0x%05x", ip_bits->flowid);
+			ip_bits->flowid_nr = 20;
 			ip_bits->proto = ipv6_static2->next_header;
 			ip_bits->proto_nr = 8;
 			memcpy(ip_bits->saddr, &ipv6_static2->src_addr, sizeof(uint32_t) * 4);
