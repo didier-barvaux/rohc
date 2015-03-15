@@ -5140,30 +5140,24 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 		c_base_header.co_common->ecn_used = 1;
 	}
 	rohc_comp_debug(context, "ecn_used = %d", c_base_header.co_common->ecn_used);
-	// =:= irregular(1) [ 1 ];
+
+	/* urg_flag */
 	c_base_header.co_common->urg_flag = tcp->urg_flag;
-	if(c_base_header.co_common->urg_flag)
+	rohc_comp_debug(context, "urg_flag = %d", c_base_header.co_common->urg_flag);
+	/* urg_ptr */
+	ret = c_static_or_irreg16(tcp->urg_ptr,
+	                          !!(tcp_context->old_tcphdr.urg_ptr == tcp->urg_ptr),
+	                          mptr.uint8, &indicator);
+	if(ret < 0)
 	{
-		/* urg_ptr */
-		ret = c_static_or_irreg16(tcp->urg_ptr,
-		                          !!(tcp_context->old_tcphdr.urg_ptr == tcp->urg_ptr),
-		                          mptr.uint8, &indicator);
-		if(ret < 0)
-		{
-			rohc_comp_warn(context, "failed to encode static_or_irreg(urg_ptr)");
-			goto error;
-		}
-		c_base_header.co_common->urg_ptr_present = indicator;
-		mptr.uint8 += ret;
-		rohc_comp_debug(context, "urg_flag = %d, urg_ptr_present = %d",
-		                c_base_header.co_common->urg_flag,
-		                c_base_header.co_common->urg_ptr_present);
+		rohc_comp_warn(context, "failed to encode static_or_irreg(urg_ptr)");
+		goto error;
 	}
-	else
-	{
-		// =:= irregular(1) [ 1 ];
-		c_base_header.co_common->urg_ptr_present = 0;
-	}
+	c_base_header.co_common->urg_ptr_present = indicator;
+	mptr.uint8 += ret;
+	rohc_comp_debug(context, "urg_ptr_present = %d",
+	                c_base_header.co_common->urg_ptr_present);
+
 	// =:= compressed_value(1, 0) [ 1 ];
 	c_base_header.co_common->reserved = 0;
 
