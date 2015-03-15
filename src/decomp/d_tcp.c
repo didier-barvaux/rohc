@@ -2315,11 +2315,13 @@ static bool d_tcp_decode_bits(const struct rohc_decomp_ctxt *const context,
 	}
 	if(bits->ecn_flags_bits_nr > 0)
 	{
+		rohc_decomp_debug(context, "ECN flags taken from packet");
 		assert(bits->ecn_flags_bits_nr == 2);
 		decoded->ecn_flags = bits->ecn_flags_bits;
 	}
 	else
 	{
+		rohc_decomp_debug(context, "ECN flags taken from context");
 		decoded->ecn_flags = tcp_context->ecn_flags;
 	}
 	if(bits->ecn_used_bits_nr > 0)

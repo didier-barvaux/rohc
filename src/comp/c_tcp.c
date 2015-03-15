@@ -6623,6 +6623,10 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		(tcp->ecn_flags != tcp_context->old_tcphdr.ecn_flags);
 	tcp_field_descr_change(context, "ECN flag",
 	                       tcp_context->tmp.tcp_ecn_flag_changed);
+	if(tcp_context->tmp.tcp_ecn_flag_changed)
+	{
+		tcp_context->ecn_used = 1;
+	}
 	tcp_context->tmp.tcp_rsf_flag_changed =
 		(tcp->rsf_flags != tcp_context->old_tcphdr.rsf_flags);
 	tcp_field_descr_change(context, "RSF flag",
