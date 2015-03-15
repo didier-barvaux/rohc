@@ -4192,13 +4192,13 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 						rohc_comp_debug(context, "TCP options list: option 'EOL' "
 						                "changed its length (%zu -> %d)",
 						                tcp_context->tcp_option_eol_len, i);
+						assert(i > 0);
 						item_needed = true;
 					}
 					else
 					{
 						item_needed = false;
 					}
-					i--;
 					break;
 				case TCP_INDEX_MSS: // Max Segment Size
 					                 // If same value that in the context
@@ -4298,13 +4298,13 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 						rohc_comp_debug(context, "TCP options list: option 'EOL' "
 						                "changed its length (%zu -> %d)",
 						                tcp_context->tcp_option_eol_len, i);
+						assert(i > 0);
 						item_needed = true;
 					}
 					else
 					{
 						item_needed = false;
 					}
-					i--;
 					break;
 				case TCP_INDEX_SACK_PERM: // see RFC2018
 					i -= TCP_OLEN_SACK_PERM;
@@ -4383,6 +4383,7 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 					assert(0); /* those options should never need an item */
 					break;
 				case TCP_OPT_EOL: /* End Of List */
+					assert(i > 0);
 					*(ptr_compressed_options++) = i - 1;
 					comp_opt_len++;
 					options += i;
