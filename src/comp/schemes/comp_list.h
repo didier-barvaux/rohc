@@ -62,7 +62,7 @@ struct list_comp
 	/* Functions for handling the data to compress */
 
 	/// @brief the handler used to get the index of an item
-	int (*get_index_table)(const uint8_t type)
+	int (*get_index_table)(const uint8_t type, const size_t occur_nr)
 		__attribute__((warn_unused_result, const));
 
 	/// @brief the handler used to get the size of an item

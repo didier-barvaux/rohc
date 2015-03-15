@@ -30,7 +30,8 @@
 #endif
 
 
-static int get_index_ipv6_table(const uint8_t next_header_type)
+static int get_index_ipv6_table(const uint8_t next_header_type,
+                                const size_t occur_nr)
 	__attribute__((warn_unused_result, const));
 
 static bool cmp_ipv6_ext(const struct rohc_list_item *const item,
@@ -108,14 +109,20 @@ void rohc_comp_list_ipv6_free(struct list_comp *const comp)
  * The list of IPv6 extension headers was retrieved from the registry
  * maintained by IANA at:
  *   http://www.iana.org/assignments/ipv6-parameters/ipv6-parameters.xhtml
- * Remember to update \ref get_index_ipv6_table if you update the list.
+ * Remember to update \ref rohc_is_ipv6_opt if you update the list.
  *
  * @param next_header_type  The Next Header type to get an index for
+ * @param occur_nr          The number of occurrence of the Extension Header
+ *                          seen so far (current one included)
  * @return                  The based table index
  */
-static int get_index_ipv6_table(const uint8_t next_header_type)
+static int get_index_ipv6_table(const uint8_t next_header_type,
+                                const size_t occur_nr)
 {
 	int index_table;
+
+	assert((next_header_type == ROHC_IPPROTO_DSTOPTS && occur_nr <= 2) ||
+	       (next_header_type != ROHC_IPPROTO_DSTOPTS && occur_nr == 1));
 
 	switch(next_header_type)
 	{
@@ -123,7 +130,14 @@ static int get_index_ipv6_table(const uint8_t next_header_type)
 			index_table = 0;
 			break;
 		case ROHC_IPPROTO_DSTOPTS:
-			index_table = 1;
+			if(occur_nr == 1)
+			{
+				index_table = 1;
+			}
+			else
+			{
+				index_table = 13;
+			}
 			break;
 		case ROHC_IPPROTO_ROUTING:
 			index_table = 2;
@@ -166,6 +180,7 @@ static int get_index_ipv6_table(const uint8_t next_header_type)
 			index_table = 12;
 			break;
 #endif
+		/* 13 is used for the 2nd Destination option if any */
 		default:
 			/* unknown extension */
 			index_table = -1;

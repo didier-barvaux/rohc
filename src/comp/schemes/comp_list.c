@@ -98,6 +98,8 @@ bool detect_ipv6_ext_changes(struct list_comp *const comp,
 		/* there is one extension or more */
 		rc_list_debug(comp, "there is at least one IPv6 extension in packet");
 
+		size_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
+
 		/* parse all extension headers:
 		 *  - update the related entries in the translation table,
 		 *  - create the list for the packet */
@@ -106,8 +108,10 @@ bool detect_ipv6_ext_changes(struct list_comp *const comp,
 			int index_table;
 			bool entry_changed = false;
 
+			ext_types_count[ext_type]++;
+
 			/* find the best item to encode the extension in translation table */
-			index_table = comp->get_index_table(ext_type);
+			index_table = comp->get_index_table(ext_type, ext_types_count[ext_type]);
 			if(index_table < 0 || ((size_t) index_table) >= ROHC_LIST_MAX_ITEM)
 			{
 				rohc_comp_list_warn(comp, "failed to handle unknown IPv6 "
@@ -567,6 +571,7 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
                                    unsigned char *const dest,
                                    int counter)
 {
+	size_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
 	const uint8_t et = 0; /* list encoding type 0 */
 	uint8_t gp;
 	size_t m; /* the number of elements in current list = number of XIs */
@@ -587,7 +592,9 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 	{
 		const struct rohc_list_item *const item =
 			comp->lists[comp->cur_id].items[k];
-		const int index_table = comp->get_index_table(item->type);
+		ext_types_count[item->type]++;
+		const int index_table =
+			comp->get_index_table(item->type, ext_types_count[item->type]);
 		if(index_table < 0 || ((size_t) index_table) >= ROHC_LIST_MAX_ITEM)
 		{
 			rohc_comp_list_warn(comp, "failed to handle unknown IPv6 extension "
@@ -599,6 +606,8 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 			ps = 1; /* 8-bit indexes are required */
 		}
 	}
+	/* the count of extensions is wrong, since we were maybe interrupted */
+	memset(ext_types_count, 0, (ROHC_IPPROTO_MAX + 1) * sizeof(size_t));
 
 	/* part 1: ET, GP, PS, CC */
 	gp = (comp->cur_id != ROHC_LIST_GEN_ID_ANON);
@@ -629,7 +638,9 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 		{
 			const struct rohc_list_item *const item =
 				comp->lists[comp->cur_id].items[k];
-			const int index_table = comp->get_index_table(item->type);
+			ext_types_count[item->type]++;
+			const int index_table =
+				comp->get_index_table(item->type, ext_types_count[item->type]);
 			assert(index_table >= 0);
 			assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);
 
@@ -656,7 +667,9 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 		{
 			const struct rohc_list_item *const item =
 				comp->lists[comp->cur_id].items[k];
-			int index_table = comp->get_index_table(item->type);
+			ext_types_count[item->type]++;
+			const int index_table =
+				comp->get_index_table(item->type, ext_types_count[item->type]);
 			assert(index_table >= 0);
 			assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);
 
@@ -680,7 +693,9 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 			{
 				const struct rohc_list_item *const item2 =
 					comp->lists[comp->cur_id].items[k + 1];
-				int index_table2 = comp->get_index_table(item2->type);
+				ext_types_count[item2->type]++;
+				const int index_table2 =
+					comp->get_index_table(item2->type, ext_types_count[item2->type]);
 				assert(index_table2 >= 0);
 				assert(((size_t) index_table2) < ROHC_LIST_MAX_ITEM);
 
@@ -810,6 +825,7 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
                                    unsigned char *const dest,
                                    int counter)
 {
+	size_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
 	const uint8_t et = 1; /* list encoding type 1 */
 	uint8_t gp;
 	uint8_t mask[ROHC_LIST_ITEMS_MAX] = { 0 };
@@ -928,7 +944,9 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 	{
 		const struct rohc_list_item *const item =
 			comp->lists[comp->cur_id].items[k];
-		const int index_table = comp->get_index_table(item->type);
+		ext_types_count[item->type]++;
+		const int index_table =
+			comp->get_index_table(item->type, ext_types_count[item->type]);
 		if(index_table < 0 || ((size_t) index_table) >= ROHC_LIST_MAX_ITEM)
 		{
 			rohc_comp_list_warn(comp, "failed to handle unknown IPv6 extension "
@@ -942,6 +960,8 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 	}
 	rc_list_debug(comp, "PS = %zu", ps);
 	dest[ps_pos] |= (ps & 0x01) << 4;
+	/* the count of extensions is wrong, since we were maybe interrupted */
+	memset(ext_types_count, 0, (ROHC_IPPROTO_MAX + 1) * sizeof(size_t));
 
 	/* part 5: k XI (= X + Indexes) */
 	if(ps)
@@ -955,7 +975,9 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 		{
 			const struct rohc_list_item *const item =
 				comp->lists[comp->cur_id].items[k];
-			const int index_table = comp->get_index_table(item->type);
+			ext_types_count[item->type]++;
+			const int index_table =
+				comp->get_index_table(item->type, ext_types_count[item->type]);
 			assert(index_table >= 0);
 			assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);
 
@@ -998,7 +1020,9 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 		{
 			const struct rohc_list_item *const item =
 				comp->lists[comp->cur_id].items[k];
-			const int index_table = comp->get_index_table(item->type);
+			ext_types_count[item->type]++;
+			const int index_table =
+				comp->get_index_table(item->type, ext_types_count[item->type]);
 			assert(index_table >= 0);
 			assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);
 
@@ -1380,6 +1404,7 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
                                    unsigned char *const dest,
                                    int counter)
 {
+	size_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
 	const uint8_t et = 3; /* list encoding type 3 */
 	uint8_t gp;
 	uint8_t rem_mask[ROHC_LIST_ITEMS_MAX] = { 0 };
@@ -1603,7 +1628,9 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 	{
 		const struct rohc_list_item *const item =
 			comp->lists[comp->cur_id].items[k];
-		const int index_table = comp->get_index_table(item->type);
+		ext_types_count[item->type]++;
+		const int index_table =
+			comp->get_index_table(item->type, ext_types_count[item->type]);
 		if(index_table < 0 || ((size_t) index_table) >= ROHC_LIST_MAX_ITEM)
 		{
 			rohc_comp_list_warn(comp, "failed to handle unknown IPv6 extension "
@@ -1617,6 +1644,8 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 	}
 	rc_list_debug(comp, "PS = %zu", ps);
 	dest[ps_pos] |= (ps & 0x01) << 4;
+	/* the count of extensions is wrong, since we were maybe interrupted */
+	memset(ext_types_count, 0, (ROHC_IPPROTO_MAX + 1) * sizeof(size_t));
 
 	/* part 6: k XI (= X + Indexes) */
 	/* next bytes: indexes */
@@ -1631,7 +1660,9 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 		{
 			const struct rohc_list_item *const item =
 				comp->lists[comp->cur_id].items[k];
-			const int index_table = comp->get_index_table(item->type);
+			ext_types_count[item->type]++;
+			const int index_table =
+				comp->get_index_table(item->type, ext_types_count[item->type]);
 			assert(index_table >= 0);
 			assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);
 
@@ -1674,7 +1705,9 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 		{
 			const struct rohc_list_item *const item =
 				comp->lists[comp->cur_id].items[k];
-			const int index_table = comp->get_index_table(item->type);
+			ext_types_count[item->type]++;
+			const int index_table =
+				comp->get_index_table(item->type, ext_types_count[item->type]);
 			assert(index_table >= 0);
 			assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);
 
