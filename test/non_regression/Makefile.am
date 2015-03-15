@@ -172,7 +172,8 @@ TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_TCP = \
 	test_non_regression_ipv4_tcp_afl42-changing-urg-ptr-with-urg-flag-not-set_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_tcp_afl43-variable-eol-opt-length-1_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_tcp_afl43-variable-eol-opt-length-2_maxcontexts0_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_tcp_afl44-variable-generic-opt-length_maxcontexts0_wlsb4_smallcid.sh
+	test_non_regression_ipv4_tcp_afl44-variable-generic-opt-length_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl45-christmas-tree-packet_maxcontexts0_wlsb4_smallcid.sh
 
 TESTS_MAXCONTEXTS0_WLSB4_SMALLCID = \
 	$(TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_MISC) \
@@ -351,7 +352,8 @@ TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_TCP = \
 	test_non_regression_ipv4_tcp_afl42-changing-urg-ptr-with-urg-flag-not-set_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_tcp_afl43-variable-eol-opt-length-1_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_tcp_afl43-variable-eol-opt-length-2_maxcontexts0_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_tcp_afl44-variable-generic-opt-length_maxcontexts0_wlsb64_smallcid.sh
+	test_non_regression_ipv4_tcp_afl44-variable-generic-opt-length_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl45-christmas-tree-packet_maxcontexts0_wlsb64_smallcid.sh
 
 TESTS_MAXCONTEXTS0_WLSB64_SMALLCID = \
 	$(TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_MISC) \
@@ -535,7 +537,8 @@ TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_TCP = \
 	test_non_regression_ipv4_tcp_afl42-changing-urg-ptr-with-urg-flag-not-set_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_tcp_afl43-variable-eol-opt-length-1_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_tcp_afl43-variable-eol-opt-length-2_maxcontexts1_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_tcp_afl44-variable-generic-opt-length_maxcontexts1_wlsb4_smallcid.sh
+	test_non_regression_ipv4_tcp_afl44-variable-generic-opt-length_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl45-christmas-tree-packet_maxcontexts1_wlsb4_smallcid.sh
 
 TESTS_MAXCONTEXTS1_WLSB4_SMALLCID = \
 	$(TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_MISC) \
@@ -714,7 +717,8 @@ TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_TCP = \
 	test_non_regression_ipv4_tcp_afl42-changing-urg-ptr-with-urg-flag-not-set_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_tcp_afl43-variable-eol-opt-length-1_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_tcp_afl43-variable-eol-opt-length-2_maxcontexts1_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_tcp_afl44-variable-generic-opt-length_maxcontexts1_wlsb64_smallcid.sh
+	test_non_regression_ipv4_tcp_afl44-variable-generic-opt-length_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_afl45-christmas-tree-packet_maxcontexts1_wlsb64_smallcid.sh
 
 TESTS_MAXCONTEXTS1_WLSB64_SMALLCID = \
 	$(TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_MISC) \
@@ -903,7 +907,8 @@ TESTS_MAXCONTEXTS0_WLSB4_LARGECID_TCP = \
 	test_non_regression_ipv4_tcp_afl42-changing-urg-ptr-with-urg-flag-not-set_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv4_tcp_afl43-variable-eol-opt-length-1_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv4_tcp_afl43-variable-eol-opt-length-2_maxcontexts0_wlsb4_largecid.sh \
-	test_non_regression_ipv4_tcp_afl44-variable-generic-opt-length_maxcontexts0_wlsb4_largecid.sh
+	test_non_regression_ipv4_tcp_afl44-variable-generic-opt-length_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl45-christmas-tree-packet_maxcontexts0_wlsb4_largecid.sh
 
 TESTS_MAXCONTEXTS0_WLSB4_LARGECID = \
 	$(TESTS_MAXCONTEXTS0_WLSB4_LARGECID_MISC) \
@@ -1082,7 +1087,8 @@ TESTS_MAXCONTEXTS0_WLSB64_LARGECID_TCP = \
 	test_non_regression_ipv4_tcp_afl42-changing-urg-ptr-with-urg-flag-not-set_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv4_tcp_afl43-variable-eol-opt-length-1_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv4_tcp_afl43-variable-eol-opt-length-2_maxcontexts0_wlsb64_largecid.sh \
-	test_non_regression_ipv4_tcp_afl44-variable-generic-opt-length_maxcontexts0_wlsb64_largecid.sh
+	test_non_regression_ipv4_tcp_afl44-variable-generic-opt-length_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl45-christmas-tree-packet_maxcontexts0_wlsb64_largecid.sh
 
 TESTS_MAXCONTEXTS0_WLSB64_LARGECID = \
 	$(TESTS_MAXCONTEXTS0_WLSB64_LARGECID_MISC) \
@@ -1266,7 +1272,8 @@ TESTS_MAXCONTEXTS1_WLSB4_LARGECID_TCP = \
 	test_non_regression_ipv4_tcp_afl42-changing-urg-ptr-with-urg-flag-not-set_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv4_tcp_afl43-variable-eol-opt-length-1_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv4_tcp_afl43-variable-eol-opt-length-2_maxcontexts1_wlsb4_largecid.sh \
-	test_non_regression_ipv4_tcp_afl44-variable-generic-opt-length_maxcontexts1_wlsb4_largecid.sh
+	test_non_regression_ipv4_tcp_afl44-variable-generic-opt-length_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_afl45-christmas-tree-packet_maxcontexts1_wlsb4_largecid.sh
 
 TESTS_MAXCONTEXTS1_WLSB4_LARGECID = \
 	$(TESTS_MAXCONTEXTS1_WLSB4_LARGECID_MISC) \
@@ -1445,7 +1452,8 @@ TESTS_MAXCONTEXTS1_WLSB64_LARGECID_TCP = \
 	test_non_regression_ipv4_tcp_afl42-changing-urg-ptr-with-urg-flag-not-set_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv4_tcp_afl43-variable-eol-opt-length-1_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv4_tcp_afl43-variable-eol-opt-length-2_maxcontexts1_wlsb64_largecid.sh \
-	test_non_regression_ipv4_tcp_afl44-variable-generic-opt-length_maxcontexts1_wlsb64_largecid.sh
+	test_non_regression_ipv4_tcp_afl44-variable-generic-opt-length_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_afl45-christmas-tree-packet_maxcontexts1_wlsb64_largecid.sh
 
 TESTS_MAXCONTEXTS1_WLSB64_LARGECID = \
 	$(TESTS_MAXCONTEXTS1_WLSB64_LARGECID_MISC) \

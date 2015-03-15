@@ -462,7 +462,8 @@ unsigned int rsf_index_enc(const struct rohc_comp_ctxt *const context,
 		case RSF_FIN_ONLY:
 			return 3;
 		default:
-			rohc_comp_debug(context, "TCP RSF_UNKNOWN!");
+			rohc_comp_warn(context, "uncompressible TCP RSF flags 0x%x", rsf_flags);
+			assert(0);
 			return 0;
 	}
 }

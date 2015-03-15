@@ -7081,11 +7081,10 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 		                "too much");
 		packet_type = ROHC_PACKET_IR_DYN;
 	}
-	else if(tcp_context->tmp.tcp_rsf_flag_changed &&
-	        !rsf_index_enc_possible(tcp->rsf_flags))
+	else if(!rsf_index_enc_possible(tcp->rsf_flags))
 	{
-		rohc_comp_debug(context, "force packet IR-DYN because the RSF flags "
-		                "changed and they are not compressible");
+		rohc_comp_debug(context, "force packet IR-DYN because the RSF flags are "
+		                "not compressible");
 		packet_type = ROHC_PACKET_IR_DYN;
 	}
 	else if(tcp_context->tmp.ip_ttl_changed ||
