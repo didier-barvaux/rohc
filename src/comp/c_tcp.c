@@ -4273,6 +4273,11 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 					else
 					{
 						item_needed = true;
+						/* save option in context */
+						assert(opt_len >= 2);
+						tcp_context->tcp_options_list[opt_idx].value[0] = opt_len - 2;
+						memcpy(tcp_context->tcp_options_list[opt_idx].value + 1, options + 2,
+						       tcp_context->tcp_options_list[opt_idx].value[0]);
 					}
 					break;
 				}
@@ -4318,10 +4323,9 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 				default:
 				{
 					item_needed = true;
-					// Save length
+					/* save option in context */
 					assert(opt_len >= 2);
 					tcp_context->tcp_options_list[opt_idx].value[0] = opt_len - 2;
-					// Save value
 					memcpy(tcp_context->tcp_options_list[opt_idx].value + 1, options + 2,
 					       tcp_context->tcp_options_list[opt_idx].value[0]);
 					break;
