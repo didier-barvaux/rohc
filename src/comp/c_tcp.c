@@ -73,6 +73,8 @@ struct tcp_tmp_variables
 	/** The minimal number of bits required to encode the TCP window */
 	size_t nr_window_bits;
 
+	/** Whether the TCP sequence number changed or not */
+	bool tcp_seq_num_changed;
 	/** The minimal number of bits required to encode the TCP sequence number
 	 *  with p = 65535 */
 	size_t nr_seq_bits_65535;
@@ -6698,6 +6700,8 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	                tcp_context->tmp.payload_len, tcp_context->ack_num_residue);
 
 	/* how many bits are required to encode the new sequence number? */
+	tcp_context->tmp.tcp_seq_num_changed =
+		(tcp->seq_num != tcp_context->old_tcphdr.seq_num);
 	if(context->state == ROHC_COMP_STATE_IR)
 	{
 		/* send all bits in IR state */
@@ -7316,7 +7320,8 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 			}
 			else if(tcp_context->tmp.nr_window_bits > 0)
 			{
-				if(tcp_context->tmp.nr_ack_bits_65535 <= 18)
+				if(!tcp_context->tmp.tcp_seq_num_changed &&
+				   tcp_context->tmp.nr_ack_bits_65535 <= 18)
 				{
 					/* rnd_7 is possible */
 					TRACE_GOTO_CHOICE;
@@ -7346,8 +7351,7 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 					packet_type = ROHC_PACKET_TCP_RND_1;
 				}
 			}
-			else if(tcp->ack_flag != 0 &&
-			        tcp_context->tmp.nr_seq_bits_65535 == 0)
+			else if(tcp->ack_flag != 0 && !tcp_context->tmp.tcp_seq_num_changed)
 			{
 				/* ACK number present */
 				if(tcp_context->tmp.nr_ack_scaled_bits <= 4 &&
