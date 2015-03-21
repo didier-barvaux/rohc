@@ -2422,7 +2422,7 @@ static bool d_tcp_decode_bits(const struct rohc_decomp_ctxt *const context,
 	}
 	else
 	{
-		decoded->urg_ptr = 0;
+		decoded->urg_ptr = tcp_context->urg_ptr;
 	}
 
 	rohc_decomp_debug(context, "decode TCP options");
@@ -3273,6 +3273,9 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 	rohc_lsb_set_ref(tcp_context->window_lsb_ctxt, decoded->window, false);
 	rohc_decomp_debug(context, "window 0x%04x is the new reference",
 	                  decoded->window);
+
+	/* TCP URG pointer */
+	tcp_context->urg_ptr = decoded->urg_ptr;
 
 	/* TCP checksum is sent every time, nothing to update in context */
 	/* TCP Urgent pointer is sent every time, nothing to update in context */

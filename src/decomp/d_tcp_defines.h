@@ -298,6 +298,9 @@ struct d_tcp_context
 	/** The LSB decoding context of TCP window */
 	struct rohc_lsb_decode *window_lsb_ctxt;
 
+	/** The URG pointer */
+	uint16_t urg_ptr;
+
 	/** The decoded values of TCP options */
 	struct d_tcp_opts_ctxt tcp_opts;
 	/* TCP TS option */
