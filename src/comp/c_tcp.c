@@ -2148,7 +2148,9 @@ static int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
                              size_t *const parsed_len)
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
+	ip_context_t *inner_ip_context = NULL;
 	base_header_ip_t base_header;
+	base_header_ip_t inner_ip_hdr = { .ipvx = NULL };
 	multi_ptr_t mptr;
 	size_t ip_hdr_pos;
 	uint8_t protocol;
@@ -2162,6 +2164,10 @@ static int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
 		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
 		const bool is_inner = (ip_hdr_pos + 1 == tcp_context->ip_contexts_nr);
 		size_t ip_ext_pos;
+
+		/* the last IP header is the innermost one */
+		inner_ip_context = ip_context;
+		inner_ip_hdr.ipvx = base_header.ipvx;
 
 		rohc_comp_debug(context, "found IPv%d", base_header.ipvx->version);
 
@@ -2217,6 +2223,28 @@ static int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
 	/* skip TCP options */
 	base_header.uint8 += (base_header.tcphdr->data_offset << 2);
 	*parsed_len = (base_header.uint8 - ip->data);
+
+	/* update context with new values (done at the very end to avoid wrongly
+	 * updating the context in case of compression failure) */
+	if(inner_ip_hdr.ipvx->version == IPV4)
+	{
+		inner_ip_context->ctxt.v4.last_ip_id_behavior = inner_ip_context->ctxt.v4.ip_id_behavior;
+		inner_ip_context->ctxt.v4.last_ip_id = tcp_context->tmp.ip_id;
+		inner_ip_context->ctxt.v4.df = inner_ip_hdr.ipv4->df;
+		inner_ip_context->ctxt.vx.dscp = inner_ip_hdr.ipv4->dscp;
+	}
+	else if(inner_ip_hdr.ipvx->version == IPV6)
+	{
+		inner_ip_context->ctxt.vx.dscp = DSCP_V6(inner_ip_hdr.ipv6);
+	}
+	else
+	{
+		rohc_comp_warn(context, "unexpected IP version %u",
+		               inner_ip_hdr.ipvx->version);
+		assert(0);
+		goto error;
+	}
+	inner_ip_context->ctxt.vx.ttl_hopl = tcp_context->tmp.ttl_hopl;
 
 	return (mptr.uint8 - rohc_pkt);
 
@@ -5038,6 +5066,8 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 	                c_base_header.co_common->window_indicator,
 	                rohc_ntoh16(tcp_context->old_tcphdr.window),
 	                rohc_ntoh16(tcp->window));
+
+	/* innermost IP-ID */
 	if(base_header.ipvx->version == IPV4)
 	{
 		// =:= irregular(1) [ 1 ];
@@ -5055,42 +5085,10 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 		mptr.uint8 += ret;
 		// =:= ip_id_behavior_choice(true) [ 2 ];
 		c_base_header.co_common->ip_id_behavior = ip_context->ctxt.v4.ip_id_behavior;
-		rohc_comp_debug(context, "size = %u, ip_id_indicator = %d, "
-		                "ip_id_behavior = %d",
-		                (unsigned int) (mptr.uint8 - puchar),
+		rohc_comp_debug(context, "ip_id_indicator = %d, "
+		                "ip_id_behavior = %d (innermost IP-ID encoded on %d bytes)",
 		                c_base_header.co_common->ip_id_indicator,
-		                c_base_header.co_common->ip_id_behavior);
-
-		/* dscp_present =:= irregular(1) [ 1 ] */
-		c_base_header.co_common->dscp_present =
-			dscp_encode(&mptr, ip_context->ctxt.vx.dscp, base_header.ipv4->dscp);
-		rohc_comp_debug(context, "dscp_present = %d (context = 0x%02x, "
-		                "value = 0x%02x) => length = %u bytes",
-		                c_base_header.co_common->dscp_present,
-		                ip_context->ctxt.vx.dscp, base_header.ipv4->dscp,
-		                (unsigned int) (mptr.uint8 - puchar));
-		ip_context->ctxt.vx.dscp = base_header.ipv4->dscp;
-
-		/* ttl_hopl */
-		ret = c_static_or_irreg8(ip_context->ctxt.vx.ttl_hopl,
-		                         tcp_context->tmp.ttl_hopl, mptr.uint8,
-		                         &indicator);
-		if(ret < 0)
-		{
-			rohc_comp_warn(context, "failed to encode static_or_irreg(ttl_hopl)");
-			goto error;
-		}
-		c_base_header.co_common->ttl_hopl_present = indicator;
-		mptr.uint8 += ret;
-
-		// =:= dont_fragment(version.UVALUE) [ 1 ];
-		c_base_header.co_common->df = base_header.ipv4->df;
-		ip_context->ctxt.v4.df = base_header.ipv4->df;
-		rohc_comp_debug(context, "size = %u, dscp_present = %d, "
-		                "ttl_hopl_present = %d",
-		                (unsigned int) (mptr.uint8 - puchar),
-		                c_base_header.co_common->dscp_present,
-		                c_base_header.co_common->ttl_hopl_present);
+		                c_base_header.co_common->ip_id_behavior, ret);
 	}
 	else
 	{
@@ -5098,42 +5096,12 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 		c_base_header.co_common->ip_id_indicator = 0;
 		// =:= ip_id_behavior_choice(true) [ 2 ];
 		c_base_header.co_common->ip_id_behavior = IP_ID_BEHAVIOR_RAND;
-		rohc_comp_debug(context, "size = %u, ip_id_indicator = %d, "
-		                "ip_id_behavior = %d",
-		                (unsigned int) (mptr.uint8 - puchar),
+		rohc_comp_debug(context, "ip_id_indicator = %d, "
+		                "ip_id_behavior = %d (innermost IP-ID encoded on 0 byte)",
 		                c_base_header.co_common->ip_id_indicator,
 		                c_base_header.co_common->ip_id_behavior);
-
-		/* dscp_present =:= irregular(1) [ 1 ] */
-		c_base_header.co_common->dscp_present =
-			dscp_encode(&mptr, ip_context->ctxt.vx.dscp, DSCP_V6(base_header.ipv6));
-		rohc_comp_debug(context, "dscp_present = %d (context = 0x%02x, "
-		                "value = 0x%02x) => length = %u bytes",
-		                c_base_header.co_common->dscp_present,
-		                ip_context->ctxt.vx.dscp, DSCP_V6(base_header.ipv6),
-		                (unsigned int) (mptr.uint8 - puchar));
-		ip_context->ctxt.vx.dscp = DSCP_V6(base_header.ipv6);
-
-		/* ttl_hopl */
-		ret = c_static_or_irreg8(ip_context->ctxt.vx.ttl_hopl,
-		                         tcp_context->tmp.ttl_hopl, mptr.uint8,
-		                         &indicator);
-		if(ret < 0)
-		{
-			rohc_comp_warn(context, "failed to encode static_or_irreg(ttl_hopl)");
-			goto error;
-		}
-		c_base_header.co_common->ttl_hopl_present = indicator;
-		mptr.uint8 += ret;
-
-		// =:= dont_fragment(version.UVALUE) [ 1 ];
-		c_base_header.co_common->df = 0;
-		rohc_comp_debug(context, "size = %u, dscp_present = %d, "
-		                "ttl_hopl_present %d",
-		                (unsigned int) (mptr.uint8 - puchar),
-		                c_base_header.co_common->dscp_present,
-		                c_base_header.co_common->ttl_hopl_present);
 	}
+
 	// cf RFC3168 and RFC4996 page 20 :
 	/* ecn_used controls the presence of IP ECN flags, and TCP RES/ECN flags */
 	if(tcp_context->ecn_used == 0 && !tcp_context->tmp.tcp_res_flag_changed)
@@ -5162,8 +5130,69 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 	}
 	c_base_header.co_common->urg_ptr_present = indicator;
 	mptr.uint8 += ret;
-	rohc_comp_debug(context, "urg_ptr_present = %d",
-	                c_base_header.co_common->urg_ptr_present);
+	rohc_comp_debug(context, "urg_ptr_present = %d (URG pointer encoded on %d bytes)",
+	                c_base_header.co_common->urg_ptr_present, ret);
+
+	if(base_header.ipvx->version == IPV4)
+	{
+		/* dscp_present =:= irregular(1) [ 1 ] */
+		c_base_header.co_common->dscp_present =
+			dscp_encode(&mptr, ip_context->ctxt.vx.dscp, base_header.ipv4->dscp);
+		rohc_comp_debug(context, "dscp_present = %d (context = 0x%02x, "
+		                "value = 0x%02x) => length = %u bytes",
+		                c_base_header.co_common->dscp_present,
+		                ip_context->ctxt.vx.dscp, base_header.ipv4->dscp,
+		                (unsigned int) (mptr.uint8 - puchar));
+
+		/* ttl_hopl */
+		ret = c_static_or_irreg8(ip_context->ctxt.vx.ttl_hopl,
+		                         tcp_context->tmp.ttl_hopl, mptr.uint8,
+		                         &indicator);
+		if(ret < 0)
+		{
+			rohc_comp_warn(context, "failed to encode static_or_irreg(ttl_hopl)");
+			goto error;
+		}
+		rohc_comp_debug(context, "TTL = 0x%02x -> 0x%02x",
+		                ip_context->ctxt.vx.ttl_hopl, tcp_context->tmp.ttl_hopl);
+		c_base_header.co_common->ttl_hopl_present = indicator;
+		mptr.uint8 += ret;
+		rohc_comp_debug(context, "ttl_hopl_present = %d (TTL encoded on %d bytes)",
+		                c_base_header.co_common->ttl_hopl_present, ret);
+
+		// =:= dont_fragment(version.UVALUE) [ 1 ];
+		c_base_header.co_common->df = base_header.ipv4->df;
+	}
+	else
+	{
+		/* dscp_present =:= irregular(1) [ 1 ] */
+		c_base_header.co_common->dscp_present =
+			dscp_encode(&mptr, ip_context->ctxt.vx.dscp, DSCP_V6(base_header.ipv6));
+		rohc_comp_debug(context, "dscp_present = %d (context = 0x%02x, "
+		                "value = 0x%02x) => length = %u bytes",
+		                c_base_header.co_common->dscp_present,
+		                ip_context->ctxt.vx.dscp, DSCP_V6(base_header.ipv6),
+		                (unsigned int) (mptr.uint8 - puchar));
+
+		/* ttl_hopl */
+		ret = c_static_or_irreg8(ip_context->ctxt.vx.ttl_hopl,
+		                         tcp_context->tmp.ttl_hopl, mptr.uint8,
+		                         &indicator);
+		if(ret < 0)
+		{
+			rohc_comp_warn(context, "failed to encode static_or_irreg(ttl_hopl)");
+			goto error;
+		}
+		rohc_comp_debug(context, "HOPL = 0x%02x -> 0x%02x",
+		                ip_context->ctxt.vx.ttl_hopl, tcp_context->tmp.ttl_hopl);
+		c_base_header.co_common->ttl_hopl_present = indicator;
+		mptr.uint8 += ret;
+		rohc_comp_debug(context, "ttl_hopl_present = %d (HOPL encoded on %d bytes)",
+		                c_base_header.co_common->ttl_hopl_present, ret);
+
+		// =:= dont_fragment(version.UVALUE) [ 1 ];
+		c_base_header.co_common->df = 0;
+	}
 
 	// =:= compressed_value(1, 0) [ 1 ];
 	c_base_header.co_common->reserved = 0;
@@ -5219,8 +5248,17 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 
 	/* update context with new values (done at the very end to avoid wrongly
 	 * updating the context in case of compression failure) */
-	ip_context->ctxt.v4.last_ip_id_behavior = ip_context->ctxt.v4.ip_id_behavior;
-	ip_context->ctxt.v4.last_ip_id = tcp_context->tmp.ip_id;
+	if(base_header.ipvx->version == IPV4)
+	{
+		ip_context->ctxt.v4.last_ip_id_behavior = ip_context->ctxt.v4.ip_id_behavior;
+		ip_context->ctxt.v4.last_ip_id = tcp_context->tmp.ip_id;
+		ip_context->ctxt.v4.df = base_header.ipv4->df;
+		ip_context->ctxt.vx.dscp = base_header.ipv4->dscp;
+	}
+	else
+	{
+		ip_context->ctxt.vx.dscp = DSCP_V6(base_header.ipv6);
+	}
 	ip_context->ctxt.vx.ttl_hopl = tcp_context->tmp.ttl_hopl;
 
 	return counter;
@@ -6475,7 +6513,8 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 
 	tcp_context->tmp.ip_ttl_changed =
 		(tcp_context->tmp.ttl_irregular_chain_flag != 0);
-	tcp_field_descr_change(context, "TTL", tcp_context->tmp.ip_ttl_changed);
+	tcp_field_descr_change(context, "one or more outer TTL values",
+	                       tcp_context->tmp.ip_ttl_changed);
 
 	if(inner_ip_hdr.ipvx->version == IPV4)
 	{
