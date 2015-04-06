@@ -118,6 +118,9 @@ struct tcp_tmp_variables
 	/** Whether the structure of the list of TCP options changed in the
 	 * current packet */
 	bool is_tcp_opts_list_struct_changed;
+	/** Whether at least one of the static TCP options changed in the
+	 * current packet */
+	bool is_tcp_opts_list_static_changed;
 	/** Whether the content of every TCP options was transmitted or not */
 	bool is_tcp_opts_list_item_present[MAX_TCP_OPTION_INDEX + 1];
 
@@ -3869,6 +3872,7 @@ static bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 	uint8_t opt_idx;
 
 	tcp_context->tmp.is_tcp_opts_list_struct_changed = false;
+	tcp_context->tmp.is_tcp_opts_list_static_changed = false;
 	tcp_context->tmp.opt_ts_present = false;
 	tcp_context->tmp.tcp_opts_nr = 0;
 	tcp_context->tmp.tcp_opts_idx_max = 0;
@@ -3992,11 +3996,31 @@ static bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 			}
 			opt_idx = opt_idx_free;
 		}
+
+		/* the EOL, MSS, and WS options are 'static options': they cannot be
+		 * transmitted in irregular chain if their value changed, so the compressor
+		 * needs to detect such changes and to select a packet type that can
+		 * transmit their changes, ie. IR, IR-DYN, co_common, rnd_8 or seq_8 */
+		if(opt_type == TCP_OPT_EOL || opt_type == TCP_OPT_MSS || opt_type == TCP_OPT_WS)
+		{
+			if(tcp_context->tcp_options_list[opt_idx].used &&
+			   (tcp_context->tcp_options_list[opt_idx].value[0] + 2U) == opt_len &&
+			   memcmp(tcp_context->tcp_options_list[opt_idx].value + 1,
+			          opts + opts_offset + 2,
+			          tcp_context->tcp_options_list[opt_idx].value[0]) != 0)
+			{
+				rohc_comp_debug(context, "    static option changed of value");
+				tcp_context->tmp.is_tcp_opts_list_static_changed = true;
+			}
+		}
+
+		/* was the option already used? */
 		if(tcp_context->tcp_options_list[opt_idx].used)
 		{
 			rohc_comp_debug(context, "    option '%s' (%u) will use same "
 			                "index %u as in previous packet",
 			                tcp_opt_get_descr(opt_type), opt_type, opt_idx);
+			/* option was grown old with all the others, make it grow young again */
 			if(tcp_context->tcp_options_list[opt_idx].age > 0)
 			{
 				tcp_context->tcp_options_list[opt_idx].age--;
@@ -4004,7 +4028,7 @@ static bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 		}
 		else
 		{
-			/* now index used by this option */
+			/* now index is used by this option */
 			tcp_context->tcp_options_list[opt_idx].used = true;
 			tcp_context->tcp_options_list[opt_idx].type = opt_type;
 			tcp_context->tcp_options_list[opt_idx].nr_trans = 0;
@@ -4061,6 +4085,15 @@ static bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 		                "compressed list must be transmitted in the compressed "
 		                "base header");
 		tcp_context->tcp_opts_list_struct_nr = opts_nr;
+		tcp_context->tcp_opts_list_struct_nr_trans = 0;
+	}
+	else if(tcp_context->tmp.is_tcp_opts_list_static_changed)
+	{
+		rohc_comp_debug(context, "structure of TCP options list is unchanged, "
+		                "but at least one static option changed of value, so "
+		                "compressed list must be transmitted in the compressed "
+		                "base header");
+		assert(tcp_context->tcp_opts_list_struct_nr == opts_nr);
 		tcp_context->tcp_opts_list_struct_nr_trans = 0;
 	}
 	else if(tcp_context->tcp_opts_list_struct_nr_trans <
@@ -5179,12 +5212,16 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 	// =:= compressed_value(1, 0) [ 1 ];
 	c_base_header.co_common->reserved = 0;
 
-	/* include the list of TCP options if the structure of the list changed */
-	if(tcp_context->tmp.is_tcp_opts_list_struct_changed)
+	/* include the list of TCP options if the structure of the list changed
+	 * or if some static options changed (irregular chain cannot transmit
+	 * static options) */
+	if(tcp_context->tmp.is_tcp_opts_list_struct_changed ||
+		tcp_context->tmp.is_tcp_opts_list_static_changed)
 	{
 		size_t comp_opts_len;
 
-		/* the structure of the list of TCP options changed, compress them */
+		/* the structure of the list of TCP options changed or at least one of
+		 * the static option changed, compress them */
 		c_base_header.co_common->list_present = 1;
 		is_ok = tcp_compress_tcp_options(context, tcp, mptr.uint8, &comp_opts_len);
 		if(!is_ok)
@@ -5603,10 +5640,14 @@ static bool c_tcp_build_rnd_8(struct rohc_comp_ctxt *const context,
 	/* ACK number */
 	rnd8->ack_num = rohc_hton16(rohc_ntoh32(tcp->ack_num) & 0xffff);
 
-	/* include the list of TCP options if the structure of the list changed */
-	if(tcp_context->tmp.is_tcp_opts_list_struct_changed)
+	/* include the list of TCP options if the structure of the list changed
+	 * or if some static options changed (irregular chain cannot transmit
+	 * static options) */
+	if(tcp_context->tmp.is_tcp_opts_list_struct_changed ||
+		tcp_context->tmp.is_tcp_opts_list_static_changed)
 	{
-		/* the structure of the list of TCP options changed, compress them */
+		/* the structure of the list of TCP options changed or at least one of
+		 * the static option changed, compress them */
 		rnd8->list_present = 1;
 		is_ok = tcp_compress_tcp_options(context, tcp, rnd8->options,
 													&comp_opts_len);
@@ -6040,10 +6081,14 @@ static bool c_tcp_build_seq_8(struct rohc_comp_ctxt *const context,
 	rohc_comp_debug(context, "seq_number = 0x%04x (0x%02x 0x%02x)",
 	                seq_num, seq8->seq_num1, seq8->seq_num2);
 
-	/* include the list of TCP options if the structure of the list changed */
-	if(tcp_context->tmp.is_tcp_opts_list_struct_changed)
+	/* include the list of TCP options if the structure of the list changed
+	 * or if some static options changed (irregular chain cannot transmit
+	 * static options) */
+	if(tcp_context->tmp.is_tcp_opts_list_struct_changed ||
+		tcp_context->tmp.is_tcp_opts_list_static_changed)
 	{
-		/* the structure of the list of TCP options changed, compress them */
+		/* the structure of the list of TCP options changed or at least one of
+		 * the static option changed, compress them */
 		seq8->list_present = 1;
 		is_ok = tcp_compress_tcp_options(context, tcp, seq8->options,
 													&comp_opts_len);
@@ -7159,7 +7204,8 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 		 * co_common or seq_X packet types */
 
 		if(tcp_context->tmp.tcp_rsf_flag_changed ||
-		   tcp_context->tmp.is_tcp_opts_list_struct_changed)
+		   tcp_context->tmp.is_tcp_opts_list_struct_changed ||
+		   tcp_context->tmp.is_tcp_opts_list_static_changed)
 		{
 			/* seq_8 or co_common
 			 *
@@ -7301,7 +7347,8 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 		/* IP_ID_BEHAVIOR_RAND or IP_ID_BEHAVIOR_ZERO:
 		 * co_common or rnd_X packet types */
 
-		if(tcp_context->tmp.is_tcp_opts_list_struct_changed)
+		if(tcp_context->tmp.is_tcp_opts_list_struct_changed ||
+		   tcp_context->tmp.is_tcp_opts_list_static_changed)
 		{
 			if(tcp_context->tmp.nr_window_bits == 0 &&
 			   tcp_context->tmp.nr_seq_bits_65535 <= 16 &&
