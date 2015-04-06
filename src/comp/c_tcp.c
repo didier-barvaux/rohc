@@ -413,8 +413,6 @@ struct sc_tcp_context
 	uint8_t tcp_opts_list_struct[ROHC_TCP_OPTS_MAX];
 	struct tcp_opt_context tcp_options_list[MAX_TCP_OPTION_INDEX + 1];
 	size_t tcp_option_eol_len;
-	uint16_t tcp_option_maxseg;
-	uint8_t tcp_option_window;
 
 	struct tcp_option_timestamp tcp_option_timestamp;
 	bool tcp_option_timestamp_init;
@@ -3063,31 +3061,6 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 					assert(opt_len == 1);
 					rohc_comp_debug(context, "TCP option NOP");
 					break;
-				case TCP_OPT_MSS: // Max Segment Size
-					if(opt_len != TCP_OLEN_MSS)
-					{
-						rohc_comp_warn(context, "malformed TCP option #%zu: unexpected "
-						               "length for MSS option: %u found in packet while "
-						               "%u expected", opt_pos + 1, opt_len, TCP_OLEN_MSS);
-						goto error;
-					}
-					memcpy(&tcp_context->tcp_option_maxseg,options + 2,2);
-					rohc_comp_debug(context, "TCP option MAXSEG = %d (0x%x)",
-					                rohc_ntoh16(tcp_context->tcp_option_maxseg),
-					                rohc_ntoh16(tcp_context->tcp_option_maxseg));
-					break;
-				case TCP_OPT_WS: // Window
-					if(opt_len != TCP_OLEN_WS)
-					{
-						rohc_comp_warn(context, "malformed TCP option #%zu: unexpected "
-						               "length for WS option: %u found in packet while "
-						               "%u expected", opt_pos + 1, opt_len, TCP_OLEN_WS);
-						goto error;
-					}
-					rohc_comp_debug(context, "TCP option WINDOW = %d",
-					                *(options + 2));
-					tcp_context->tcp_option_window = *(options + 2);
-					break;
 				case TCP_OPT_SACK_PERM: // see RFC2018
 					if(opt_len != TCP_OLEN_SACK_PERM)
 					{
@@ -3140,14 +3113,43 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 					           rohc_ntoh32(opt_ts->ts_reply));
 					break;
 				}
+				case TCP_OPT_MSS:
+				case TCP_OPT_WS:
 				default:
 				{
-					/* TODO: check max length */
-					// Save length
+					/* special checks for some options */
+					if(opt_type == TCP_OPT_WS)
+					{
+						if(opt_len != TCP_OLEN_WS)
+						{
+							rohc_comp_warn(context, "malformed TCP option #%zu: unexpected "
+							               "length for WS option: %u found in packet while "
+							               "%u expected", opt_pos + 1, opt_len, TCP_OLEN_WS);
+							goto error;
+						}
+						rohc_comp_debug(context, "TCP option WS = %u", options[2]);
+					}
+					else if(opt_type == TCP_OPT_MSS)
+					{
+						uint16_t mss_val;
+
+						if(opt_len != TCP_OLEN_MSS)
+						{
+							rohc_comp_warn(context, "malformed TCP option #%zu: unexpected "
+							               "length for MSS option: %u found in packet while "
+							               "%u expected", opt_pos + 1, opt_len, TCP_OLEN_MSS);
+							goto error;
+						}
+						memcpy(&mss_val, options + 2, 2);
+						rohc_comp_debug(context, "TCP option MSS = %u (0x%04x)",
+						                rohc_ntoh16(mss_val), rohc_ntoh16(mss_val));
+					}
+
+					/* record option in context */
 					assert(opt_len >= 2);
 					assert(tcp_context->tcp_options_list[opt_idx].used);
 					tcp_context->tcp_options_list[opt_idx].value[0] = opt_len - 2;
-					// Save value
+					assert((uint8_t) (opt_len - 2 + 1) <= MAX_TCP_OPT_SIZE);
 					memcpy(tcp_context->tcp_options_list[opt_idx].value + 1, options + 2,
 					       tcp_context->tcp_options_list[opt_idx].value[0]);
 					break;
@@ -4230,32 +4232,6 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 						item_needed = false;
 					}
 					break;
-				case TCP_INDEX_MSS: // Max Segment Size
-					                 // If same value that in the context
-					if(memcmp(&tcp_context->tcp_option_maxseg,options + 2,2) == 0)
-					{
-						i -= TCP_OLEN_MSS;
-						options += TCP_OLEN_MSS;
-						item_needed = false;
-					}
-					else
-					{
-						item_needed = true;
-					}
-					break;
-				case TCP_INDEX_WS: // Window
-					                // If same value that in the context
-					if(tcp_context->tcp_option_window == *(options + 2) )
-					{
-						i -= TCP_OLEN_WS;
-						options += TCP_OLEN_WS;
-						item_needed = false;
-					}
-					else
-					{
-						item_needed = true;
-					}
-					break;
 				case TCP_INDEX_TS:
 				{
 					if(memcmp(&tcp_context->tcp_option_timestamp, options + 2,
@@ -4289,9 +4265,10 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 						item_needed = true;
 					}
 					break;
+				case TCP_INDEX_MSS:
+				case TCP_INDEX_WS:
 				default:
 				{
-					// If same length/value
 					if((tcp_context->tcp_options_list[opt_idx].value[0] + 2) == opt_len &&
 					   memcmp(tcp_context->tcp_options_list[opt_idx].value + 1, options + 2,
 					          tcp_context->tcp_options_list[opt_idx].value[0]) == 0)
@@ -4302,10 +4279,13 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 					}
 					else
 					{
+						rohc_comp_debug(context, "TCP options list: option '%s' changed",
+						                tcp_opt_get_descr(opt_type));
 						item_needed = true;
-						/* save option in context */
+						/* save new length and value in context */
 						assert(opt_len >= 2);
 						tcp_context->tcp_options_list[opt_idx].value[0] = opt_len - 2;
+						assert((uint8_t) (opt_len - 2 + 1) <= MAX_TCP_OPT_SIZE);
 						memcpy(tcp_context->tcp_options_list[opt_idx].value + 1, options + 2,
 						       tcp_context->tcp_options_list[opt_idx].value[0]);
 					}
@@ -4356,12 +4336,14 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 					/* save option in context */
 					assert(opt_len >= 2);
 					tcp_context->tcp_options_list[opt_idx].value[0] = opt_len - 2;
+					assert((uint8_t) (opt_len - 2 + 1) <= MAX_TCP_OPT_SIZE);
 					memcpy(tcp_context->tcp_options_list[opt_idx].value + 1, options + 2,
 					       tcp_context->tcp_options_list[opt_idx].value[0]);
 					break;
 				}
 			}
 		}
+		assert(tcp_context->tcp_options_list[opt_idx].used);
 		tcp_context->tcp_options_list[opt_idx].nr_trans++;
 
 		/* write index */
