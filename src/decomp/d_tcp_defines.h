@@ -213,7 +213,11 @@ struct d_tcp_opt_ctxt /* TODO: doxygen */
 	uint8_t type;
 	union
 	{
-		uint8_t eol_len;
+		struct
+		{
+			bool is_static;
+			uint8_t len;
+		} eol;
 		struct
 		{
 			bool is_static;

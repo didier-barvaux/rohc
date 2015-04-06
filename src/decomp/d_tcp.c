@@ -2442,7 +2442,15 @@ static bool d_tcp_decode_bits(const struct rohc_decomp_ctxt *const context,
 		                  tcp_opt_get_descr(opt_type), opt_type);
 
 		/* specific actions for some TCP options */
-		if(opt_index == TCP_INDEX_MSS)
+		if(opt_index == TCP_INDEX_EOL)
+		{
+			if(opt_bits->data.eol.is_static)
+			{
+				opt_bits->data.eol.len =
+					tcp_context->tcp_opts.bits[opt_index].data.eol.len;
+			}
+		}
+		else if(opt_index == TCP_INDEX_MSS)
 		{
 			if(opt_bits->data.mss.is_static)
 			{

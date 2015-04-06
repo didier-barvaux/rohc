@@ -782,7 +782,8 @@ static int d_tcp_parse_eol_dyn(const struct rohc_decomp_ctxt *const context,
 		goto error;
 	}
 	rohc_decomp_debug(context, "    EOL option is repeated %zu times", eol_uncomp_len);
-	opt_ctxt->data.eol_len = eol_uncomp_len;
+	opt_ctxt->data.eol.is_static = false;
+	opt_ctxt->data.eol.len = eol_uncomp_len;
 
 	return eol_dyn_len;
 
@@ -798,6 +799,7 @@ static int d_tcp_parse_eol_irreg(const struct rohc_decomp_ctxt *const context __
                                  const uint8_t opt_index __attribute__((unused)),
                                  struct d_tcp_opt_ctxt *const opt_ctxt __attribute__((unused)))
 {
+	opt_ctxt->data.eol.is_static = true;
 	return 0;
 }
 
@@ -809,7 +811,7 @@ static bool d_tcp_build_eol(const struct rohc_decomp_ctxt *const context,
                             struct rohc_buf *const uncomp_packet,
                             size_t *const opt_len)
 {
-	const size_t eol_len = tcp_opt->data.eol_len;
+	const size_t eol_len = tcp_opt->data.eol.len;
 	size_t i;
 
 	if(rohc_buf_avail_len(*uncomp_packet) < eol_len)
