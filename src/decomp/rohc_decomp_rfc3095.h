@@ -118,8 +118,8 @@ struct rohc_extr_bits
 	uint32_t sn;         /**< The SN bits found in ROHC header */
 	size_t sn_nr;        /**< The number of SN bits found in ROHC header */
 	bool is_sn_enc;      /**< Whether value(SN) is encoded with W-LSB or not */
-	rohc_lsb_ref_t sn_ref_type; /**< The SN reference to use for LSB decoding
-	                                 (used for context repair after CRC failure) */
+	rohc_lsb_ref_t lsb_ref_type; /**< The reference to use for LSB decoding
+	                                  (used for context repair after CRC failure) */
 	bool sn_ref_offset;         /**< Optional offset to add to the reference SN
 	                                 (used for context repair after CRC failure) */
 

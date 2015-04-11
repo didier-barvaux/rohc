@@ -25,7 +25,6 @@
  */
 
 #include "ip_id_offset.h"
-#include "decomp_wlsb.h"
 
 #include <stdlib.h>
 #include <assert.h>
@@ -102,6 +101,8 @@ void ip_id_offset_free(struct ip_id_offset_decode *const ipid)
  * @brief Decode the given IP-ID offset
  *
  * @param ipid     The Offset IP-ID object
+ * @param ref_type The reference value to use to decode
+ *                 (used for context repair upon CRC failure)
  * @param m        The IP-ID offset to decode
  * @param k        The number of bits used to code the IP-ID offset
  * @param sn       The SN of the ROHC packet that contains the IP-ID offset
@@ -109,6 +110,7 @@ void ip_id_offset_free(struct ip_id_offset_decode *const ipid)
  * @return         true in case of success, false otherwise
  */
 bool ip_id_offset_decode(const struct ip_id_offset_decode *const ipid,
+                         const rohc_lsb_ref_t ref_type,
                          const uint16_t m,
                          const size_t k,
                          const uint32_t sn,
@@ -117,7 +119,7 @@ bool ip_id_offset_decode(const struct ip_id_offset_decode *const ipid,
 	uint32_t offset_decoded;
 	bool is_success;
 
-	is_success = rohc_lsb_decode(ipid->lsb, ROHC_LSB_REF_0, 0, m, k,
+	is_success = rohc_lsb_decode(ipid->lsb, ref_type, 0, m, k,
 	                             ROHC_LSB_SHIFT_IP_ID, &offset_decoded);
 	if(is_success)
 	{
@@ -132,13 +134,16 @@ bool ip_id_offset_decode(const struct ip_id_offset_decode *const ipid,
 /**
  * @brief Update the reference values for the IP-ID and the SN
  *
- * @param ipid    The Offset IP-ID decoding object
- * @param id_ref  The new IP-ID reference
- * @param sn_ref  The new SN reference
+ * @param ipid              The Offset IP-ID decoding object
+ * @param id_ref            The new IP-ID reference
+ * @param sn_ref            The new SN reference
+ * @param keep_ref_minus_1  Keep ref -1 unchanged (used for SN context repair
+ *                          after CRC failure, see RFC3095 §5.3.2.2.5)
  */
 void ip_id_offset_set_ref(struct ip_id_offset_decode *const ipid,
                           const uint16_t id_ref,
-                          const uint32_t sn_ref)
+                          const uint32_t sn_ref,
+                          const bool keep_ref_minus_1)
 {
 	uint16_t offset_ref;
 
@@ -146,6 +151,6 @@ void ip_id_offset_set_ref(struct ip_id_offset_decode *const ipid,
 	 * (overflow over 16 bits is expected if SN > IP-ID) */
 	offset_ref = id_ref - sn_ref;
 
-	rohc_lsb_set_ref(ipid->lsb, offset_ref, false);
+	rohc_lsb_set_ref(ipid->lsb, offset_ref, keep_ref_minus_1);
 }
 
