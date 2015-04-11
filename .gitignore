@@ -90,6 +90,8 @@ test/robustness/damaged_packet/test_damaged_packet
 test/robustness/damaged_packet/test_damaged_packet.exe
 test/robustness/lost_packet/test_lost_packet
 test/robustness/lost_packet/test_lost_packet.exe
+test/robustness/reordered_packet/test_reordered_packet
+test/robustness/reordered_packet/test_reordered_packet.exe
 test/robustness/piggybacking_feedback/test_piggybacking_feedback
 test/robustness/piggybacking_feedback/test_piggybacking_feedback.exe
 test/robustness/malformed_rohc_packets/test_malformed_rohc_packets

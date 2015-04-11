@@ -7,6 +7,7 @@
 SUBDIRS = \
 	empty_payload \
 	lost_packet \
+	reordered_packet \
 	damaged_packet \
 	piggybacking_feedback \
 	malformed_rohc_packets

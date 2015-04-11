@@ -329,10 +329,11 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
                                        const struct d_generic_changes *const ctxt,
                                        const struct ip_id_offset_decode *const ip_id_decode,
                                        const uint32_t decoded_sn,
+                                       const rohc_lsb_ref_t lsb_ref_type,
                                        const struct rohc_extr_ip_bits bits,
                                        const char *const descr,
                                        struct rohc_decoded_ip_values *const decoded)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 6, 7)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 7, 8)));
 
 
 /*
@@ -5884,7 +5885,7 @@ static bool attempt_repair(const struct rohc_decomp *const decomp,
 		 *   SN (SN curr2) generated when using ref -1 as the reference is
 		 *   different from SN curr1, an additional decompression attempt is
 		 *   performed based on SN curr2 as the decompressed SN. */
-		bits->sn_ref_type = ROHC_LSB_REF_MINUS_1;
+		bits->lsb_ref_type = ROHC_LSB_REF_MINUS_1;
 		rohc_decomp_warn(context, "CID %zu: CRC repair: try using ref -1 (%u) "
 		                 "as reference SN instead of ref 0 (%u)",
 		                 context->cid, sn_ref_minus_1, sn_ref_0);
@@ -6023,7 +6024,7 @@ static bool decode_values_from_bits(struct rohc_decomp_ctxt *const context,
 	else
 	{
 		/* decode SN from packet bits and context */
-		decode_ok = rohc_lsb_decode(g_context->sn_lsb_ctxt, bits.sn_ref_type,
+		decode_ok = rohc_lsb_decode(g_context->sn_lsb_ctxt, bits.lsb_ref_type,
 		                            bits.sn_ref_offset, bits.sn, bits.sn_nr,
 		                            lsb_get_p(g_context->sn_lsb_ctxt),
 		                            &decoded->sn);
@@ -6124,8 +6125,9 @@ static bool decode_values_from_bits(struct rohc_decomp_ctxt *const context,
 	/* decode fields related to the outer IP header */
 	decode_ok = decode_ip_values_from_bits(context, g_context->outer_ip_changes,
 	                                       g_context->outer_ip_id_offset_ctxt,
-	                                       decoded->sn, bits.outer_ip,
-	                                       "outer", &decoded->outer_ip);
+	                                       decoded->sn, bits.lsb_ref_type,
+	                                       bits.outer_ip, "outer",
+	                                       &decoded->outer_ip);
 	if(!decode_ok)
 	{
 		rohc_decomp_warn(context, "failed to decode bits extracted for outer "
@@ -6139,8 +6141,9 @@ static bool decode_values_from_bits(struct rohc_decomp_ctxt *const context,
 		decode_ok = decode_ip_values_from_bits(context,
 		                                       g_context->inner_ip_changes,
 		                                       g_context->inner_ip_id_offset_ctxt,
-		                                       decoded->sn, bits.inner_ip,
-		                                       "inner", &decoded->inner_ip);
+		                                       decoded->sn, bits.lsb_ref_type,
+		                                       bits.inner_ip, "inner",
+		                                       &decoded->inner_ip);
 		if(!decode_ok)
 		{
 			rohc_decomp_warn(context, "failed to decode bits extracted for "
@@ -6174,6 +6177,8 @@ error:
  * @param ctxt          The decompression context for the IP header
  * @param ip_id_decode  The context for decoding IP-ID offset
  * @param decoded_sn    The SN that was decoded
+ * @param lsb_ref_type  The reference value to use to decode LSB values
+ *                      (used for context repair upon CRC failure)
  * @param bits          The IP bits extracted from ROHC header (all headers
  *                      included: static/dynamic chains, UO* base header,
  *                      UO* extension header, UO* remainder header)
@@ -6185,6 +6190,7 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
                                        const struct d_generic_changes *const ctxt,
                                        const struct ip_id_offset_decode *const ip_id_decode,
                                        const uint32_t decoded_sn,
+                                       const rohc_lsb_ref_t lsb_ref_type,
                                        const struct rohc_extr_ip_bits bits,
                                        const char *const descr,
                                        struct rohc_decoded_ip_values *const decoded)
@@ -6322,7 +6328,7 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 			 * decode its new value with the help of the decoded SN and the
 			 * least-significant IP-ID bits transmitted in the ROHC header */
 			int ret;
-			ret = ip_id_offset_decode(ip_id_decode, bits.id, bits.id_nr,
+			ret = ip_id_offset_decode(ip_id_decode, lsb_ref_type, bits.id, bits.id_nr,
 			                          decoded_sn, &decoded->id);
 			if(ret != 1)
 			{
@@ -6454,26 +6460,31 @@ static void update_context(const struct rohc_decomp_ctxt *const context,
                            const struct rohc_decoded_values decoded)
 {
 	struct d_generic_context *g_context;
+	bool keep_ref_minus_1; /* for action upon CRC failure */
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
 	g_context = context->specific;
 
-	/* update SN */
+	/* action upon CRC failure: in case of incorrect SN updates, ref-1 shall not
+	 * be replaced by ref0 in the LSB context */
 	if(g_context->crc_corr == ROHC_DECOMP_CRC_CORR_SN_UPDATES &&
 	   g_context->correction_counter == 3)
 	{
 		/* step f of RFC3095, 5.3.2.2.5. Repair of incorrect SN updates:
 		 *   If the decompressed header generated in d. passes the CRC test,
 		 *   ref -1 is not changed while ref 0 is set to SN curr2. */
-		rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn, true);
+		keep_ref_minus_1 = true;
 	}
 	else
 	{
 		/* nominal case and other repair algorithms replace both ref 0 and
 		 * ref -1 */
-		rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn, false);
+		keep_ref_minus_1 = false;
 	}
+
+	/* update SN */
+	rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn, keep_ref_minus_1);
 
 	/* update fields related to the outer IP header */
 	ip_set_version(&g_context->outer_ip_changes->ip, decoded.outer_ip.version);
@@ -6486,7 +6497,7 @@ static void update_context(const struct rohc_decomp_ctxt *const context,
 	{
 		ipv4_set_id(&g_context->outer_ip_changes->ip, decoded.outer_ip.id);
 		ip_id_offset_set_ref(g_context->outer_ip_id_offset_ctxt,
-		                     decoded.outer_ip.id, decoded.sn);
+		                     decoded.outer_ip.id, decoded.sn, keep_ref_minus_1);
 		ipv4_set_df(&g_context->outer_ip_changes->ip, decoded.outer_ip.df);
 		g_context->outer_ip_changes->nbo = decoded.outer_ip.nbo;
 		g_context->outer_ip_changes->rnd = decoded.outer_ip.rnd;
@@ -6510,7 +6521,7 @@ static void update_context(const struct rohc_decomp_ctxt *const context,
 		{
 			ipv4_set_id(&g_context->inner_ip_changes->ip, decoded.inner_ip.id);
 			ip_id_offset_set_ref(g_context->inner_ip_id_offset_ctxt,
-			                     decoded.inner_ip.id, decoded.sn);
+			                     decoded.inner_ip.id, decoded.sn, keep_ref_minus_1);
 			ipv4_set_df(&g_context->inner_ip_changes->ip, decoded.inner_ip.df);
 			g_context->inner_ip_changes->nbo = decoded.inner_ip.nbo;
 			g_context->inner_ip_changes->rnd = decoded.inner_ip.rnd;
@@ -6577,7 +6588,7 @@ static void reset_extr_bits(const struct d_generic_context *const g_context,
 
 	/* by default, use ref 0 for LSB decoding (ref -1 will be used only for
 	 * correction upon CRC failure) */
-	bits->sn_ref_type = ROHC_LSB_REF_0;
+	bits->lsb_ref_type = ROHC_LSB_REF_0;
 	/* by default, do not apply any offset on reference SN (it will be applied
 	 * only for correction upon CRC failure) */
 	bits->sn_ref_offset = 0;
