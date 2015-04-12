@@ -75,6 +75,10 @@ for ./configure ? If yes, check configure output and config.log"
 #define ETHER_FRAME_MIN_LEN  60U
 
 
+/** Whether to run the tool in verbose mode or not */
+static bool is_verbose = false;
+
+
 /* prototypes of private functions */
 static void usage(void);
 static int generate_comp_stats_all(const rohc_cid_type_t cid_type,
@@ -145,6 +149,11 @@ int main(int argc, char *argv[])
 			/* print version */
 			printf("rohc_stats version %s\n", rohc_version());
 			goto error;
+		}
+		else if(!strcmp(*argv, "--verbose"))
+		{
+			/* be more verbose */
+			is_verbose = true;
 		}
 		else if(!strcmp(*argv, "--max-contexts"))
 		{
@@ -251,6 +260,7 @@ static void usage(void)
 	       "Options:\n"
 	       "  -v, --version           Print version information and exit\n"
 	       "  -h, --help              Print this usage and exit\n"
+	       "      --verbose           Be more verbose\n"
 	       "      --max-contexts NUM  The maximum number of ROHC contexts to\n"
 	       "                          simultaneously use during the test\n"
 	       "\n"
@@ -532,11 +542,13 @@ static void print_rohc_traces(void *const priv_ctxt __attribute__((unused)),
                               const char *const format,
                               ...)
 {
-	va_list args;
-
-	va_start(args, format);
-	vfprintf(stderr, format, args);
-	va_end(args);
+	if(is_verbose)
+	{
+		va_list args;
+		va_start(args, format);
+		vfprintf(stderr, format, args);
+		va_end(args);
+	}
 }
 
 
