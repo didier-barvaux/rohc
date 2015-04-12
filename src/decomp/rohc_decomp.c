@@ -3227,7 +3227,17 @@ static bool rohc_decomp_parse_feedback(struct rohc_decomp *const decomp,
 	/* copy the feedback item in order to return it user if he/she asked for */
 	if(feedback != NULL)
 	{
-		rohc_buf_append(feedback, rohc_buf_data(*rohc_data), feedback_len);
+		if((feedback->len + feedback_len) > rohc_buf_avail_len(*feedback))
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+			             "failed to store %zu-byte feedback into the buffer given "
+			             "by the user, only %zu bytes still available: ignore "
+			             "feedback", feedback_len, rohc_buf_avail_len(*feedback));
+		}
+		else
+		{
+			rohc_buf_append(feedback, rohc_buf_data(*rohc_data), feedback_len);
+		}
 	}
 
 	/* skip the feedback item in the ROHC packet */
