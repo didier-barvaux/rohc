@@ -231,6 +231,7 @@ int main(int argc, char *argv[])
 	bool compat_1_6_x = false;
 	bool no_comparison = false;
 	bool ignore_malformed = false;
+	bool assert_on_error = false;
 	bool no_tcp = false;
 	int status = 1;
 	rohc_cid_type_t cid_type;
@@ -309,6 +310,11 @@ int main(int argc, char *argv[])
 		{
 			/* do not exit with error code if malformed packets are found */
 			ignore_malformed = true;
+		}
+		else if(!strcmp(*argv, "--assert-on-error"))
+		{
+			/* assert on the first encountered error */
+			assert_on_error = true;
 		}
 		else if(!strcmp(*argv, "--no-tcp"))
 		{
@@ -441,6 +447,12 @@ int main(int argc, char *argv[])
 	}
 
 	printf("=== exit test with code %d\n", status);
+
+	if(assert_on_error)
+	{
+		assert(status == 0 || status == 77);
+	}
+
 error:
 	return status;
 }
@@ -477,6 +489,7 @@ static void usage(void)
 	        "  --compat-1-6-x          Mimic the behavior of the 1.6.x versions\n"
 	        "  --no-comparison         Is comparison with ROHC reference optional for test\n"
 	        "  --ignore-malformed      Ignore malformed packets for test\n"
+	        "  --assert-on-error       Stop the test after the very first encountered error\n"
 	        "  --no-tcp                Disable the TCP profile\n"
 	        "  --verbose               Run the test in verbose mode\n");
 }
@@ -1105,6 +1118,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 	if(handle == NULL)
 	{
 		printf("failed to open the source pcap file: %s\n", errbuf);
+		status = 77; /* skip test */
 		goto error;
 	}
 
@@ -1146,6 +1160,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 		if(dumper == NULL)
 		{
 			printf("failed to open dump file: %s\n", errbuf);
+			status = 77; /* skip test */
 			goto close_input;
 		}
 	}
@@ -1161,6 +1176,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 		if(cmp_handle == NULL)
 		{
 			printf("failed to open the comparison pcap file: %s\n", errbuf);
+			status = 77; /* skip test */
 			goto close_output;
 		}
 
@@ -1208,6 +1224,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 		{
 			printf("failed to open file '%s' to output the sizes of ROHC packets: "
 			       "%s (%d)\n", rohc_size_ofilename, strerror(errno), errno);
+			status = 77; /* skip test */
 			goto close_comparison;
 		}
 	}
