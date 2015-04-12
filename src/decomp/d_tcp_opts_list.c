@@ -107,7 +107,7 @@ static size_t d_tcp_opt_list_get_index_len(const uint8_t ps)
 static size_t d_tcp_opt_list_get_indexes_len(const uint8_t ps, const uint8_t m)
 	__attribute__((warn_unused_result, const));
 
-static bool tcp_opt_is_well_known(const uint8_t index)
+static bool tcp_opt_is_well_known(const uint8_t idx)
 	__attribute__((warn_unused_result, pure));
 
 static int d_tcp_parse_nop_dyn(const struct rohc_decomp_ctxt *const context,
@@ -336,7 +336,8 @@ int d_tcp_parse_tcp_opts_dyn(const struct rohc_decomp_ctxt *const context,
 	size_t remain_len = rohc_length;
 	int ret;
 
-	struct d_tcp_opt_index indexes[ROHC_TCP_OPTS_MAX] = { { 0 } };
+	struct d_tcp_opt_index indexes[ROHC_TCP_OPTS_MAX] =
+		{ { .used = 0, .index = 0, .is_item_present = 0 } };
 	uint8_t reserved;
 	uint8_t PS;
 	uint8_t m;
@@ -498,7 +499,7 @@ static int d_tcp_opt_list_parse_indexes(const struct rohc_decomp_ctxt *const con
 	for(i = 0, index_pos = 0; i < m && index_pos < indexes_len; i++)
 	{
 		bool is_item_present;
-		uint8_t index;
+		uint8_t idx;
 
 		if(ps == 0) /* 4-bit XI fields */
 		{
@@ -514,13 +515,13 @@ static int d_tcp_opt_list_parse_indexes(const struct rohc_decomp_ctxt *const con
 				value = indexes[index_pos] >> 4;
 			}
 			is_item_present = GET_BOOL(GET_BIT_3(&value));
-			index = value & 0x07;
+			idx = value & 0x07;
 		}
 		else /* 8-bit XI fields */
 		{
 			const uint8_t reserved = GET_BIT_4_6(indexes + index_pos);
 			is_item_present = GET_BOOL(GET_BIT_7(indexes + index_pos));
-			index = indexes[index_pos] & 0x0f;
+			idx = indexes[index_pos] & 0x0f;
 			if(reserved != 0)
 			{
 				rohc_decomp_debug(context, "malformed compressed list of TCP options: "
@@ -534,7 +535,7 @@ static int d_tcp_opt_list_parse_indexes(const struct rohc_decomp_ctxt *const con
 		}
 		rohc_decomp_debug(context, "TCP options list: %zu-bit XI field #%zu: item "
 		                  "with index %u is %s", d_tcp_opt_list_get_index_len(ps),
-		                  i, index, is_item_present ? "present" : "not present");
+		                  i, idx, is_item_present ? "present" : "not present");
 
 		if(want_all_items_present && !is_item_present)
 		{
@@ -545,7 +546,7 @@ static int d_tcp_opt_list_parse_indexes(const struct rohc_decomp_ctxt *const con
 		}
 
 		opt_indexes[i].used = true;
-		opt_indexes[i].index = index;
+		opt_indexes[i].index = idx;
 		opt_indexes[i].is_item_present = is_item_present;
 	}
 
@@ -699,13 +700,13 @@ static size_t d_tcp_opt_list_get_indexes_len(const uint8_t ps, const uint8_t m)
 /**
  * @brief Is the TCP option index a well-known index in the TCP profile
  *
- * @param index  The index of the TCP option
- * @return       true if the index is a well-known index
+ * @param idx  The index of the TCP option
+ * @return     true if the index is a well-known index
  */
-static bool tcp_opt_is_well_known(const uint8_t index)
+static bool tcp_opt_is_well_known(const uint8_t idx)
 {
-	assert(index <= MAX_TCP_OPTION_INDEX);
-	return d_tcp_opts[index].is_well_known;
+	assert(idx <= MAX_TCP_OPTION_INDEX);
+	return d_tcp_opts[idx].is_well_known;
 }
 
 

@@ -119,8 +119,8 @@ int main(int argc, char *argv[])
 	char *source_filename = NULL;
 	int status = 1;
 	int max_contexts = ROHC_SMALL_CID_MAX + 1;
-	size_t max_possible_contexts;
-	rohc_cid_type_t cid_type;
+	size_t max_possible_contexts = ROHC_SMALL_CID_MAX + 1;
+	rohc_cid_type_t cid_type = ROHC_SMALL_CID;
 	int args_used;
 
 	/* parse program arguments, print the help message in case of failure */

@@ -121,9 +121,9 @@ bool detect_ipv6_ext_changes(struct list_comp *const comp,
 			                                       ext_type, ext, comp->get_size(ext));
 			if(ret < 0)
 			{
-				rc_list_debug(comp, "failed to update entry #%d in translation "
-				              "table with %u-byte extension", index_table,
-				              comp->get_size(ext));
+				rohc_comp_list_warn(comp, "failed to update entry #%d in translation "
+				                    "table with %u-byte extension", index_table,
+				                    comp->get_size(ext));
 				goto error;
 			}
 			else if(ret == 1)
