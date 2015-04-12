@@ -374,15 +374,40 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
 /**
  * @brief Return the number of bits needed to encode unscaled TS
  *
- * @param ts_sc    The ts_sc_comp object
- * @param bits_nr  OUT: The number of bits needed
- * @return         true in case of success,
- *                 false if the minimal number of bits can not be found
+ * @param ts_sc                           The ts_sc_comp object
+ * @param[out] bits_nr_less_equal_than_2  The number of bits needed to encode
+ *                                        TS_SCALED in a field that is smaller
+ *                                        than or equal to 2 bits
+ * @param[out] bits_nr_more_than_2        The number of bits needed to encode
+ *                                        TS_SCALED in a field that is strictly
+ *                                        larger than to 2 bits
+ * @return                                true in case of success, false if the
+ *                                        minimal number of bits can not be found
  */
 bool nb_bits_unscaled(const struct ts_sc_comp *const ts_sc,
-                      size_t *const bits_nr)
+                      size_t *const bits_nr_less_equal_than_2,
+                      size_t *const bits_nr_more_than_2)
 {
-	return wlsb_get_k_32bits(ts_sc->ts_unscaled_wlsb, ts_sc->ts, bits_nr);
+	bool status;
+
+	status = wlsb_get_kp_32bits(ts_sc->ts_unscaled_wlsb, ts_sc->ts, 0,
+	                            bits_nr_less_equal_than_2);
+	if(!status)
+	{
+		goto error;
+	}
+
+	status = wlsb_get_mink_32bits(ts_sc->ts_unscaled_wlsb, ts_sc->ts, 3,
+	                              bits_nr_more_than_2);
+	if(!status)
+	{
+		goto error;
+	}
+
+	return true;
+
+error:
+	return false;
 }
 
 
@@ -402,25 +427,55 @@ void add_unscaled(const struct ts_sc_comp *const ts_sc, const uint16_t sn)
 /**
  * @brief Return the number of bits needed to encode TS_SCALED
  *
- * @param ts_sc    The ts_sc_comp object
- * @param bits_nr  OUT: The number of bits needed
- * @return         true in case of success,
- *                 false if the minimal number of bits can not be found
+ * @param ts_sc                           The ts_sc_comp object
+ * @param[out] bits_nr_less_equal_than_2  The number of bits needed to encode
+ *                                        TS_SCALED in a field that is smaller
+ *                                        than or equal to 2 bits
+ * @param[out] bits_nr_more_than_2        The number of bits needed to encode
+ *                                        TS_SCALED in a field that is strictly
+ *                                        larger than to 2 bits
+ * @return                                true in case of success, false if the
+ *                                        minimal number of bits can not be found
  */
 bool nb_bits_scaled(const struct ts_sc_comp *const ts_sc,
-                    size_t *const bits_nr)
+                    size_t *const bits_nr_less_equal_than_2,
+                    size_t *const bits_nr_more_than_2)
 {
-	const bool status =
-		wlsb_get_k_32bits(ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled, bits_nr);
+	bool status;
+
+	status = wlsb_get_kp_32bits(ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled, 0,
+	                            bits_nr_less_equal_than_2);
+	if(!status)
+	{
+		goto error;
+	}
+
+	status = wlsb_get_mink_32bits(ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled, 3,
+	                              bits_nr_more_than_2);
+	if(!status)
+	{
+		goto error;
+	}
 
 	/* do not send 0 bit of TS if TS is not deducible, because decompressor
 	 * will interprets a 0-bit value as deducible */
-	if(status && !ts_sc->is_deducible && (*bits_nr) == 0)
+	if(!ts_sc->is_deducible)
 	{
-		(*bits_nr) = 1;
+		if((*bits_nr_less_equal_than_2) == 0)
+		{
+			(*bits_nr_less_equal_than_2) = 1;
+		}
+		if((*bits_nr_more_than_2) == 0)
+		{
+			(*bits_nr_more_than_2) = 1;
+		}
 	}
 
-	return status;
+	return true;
+
+error:
+	return false;
+
 }
 
 

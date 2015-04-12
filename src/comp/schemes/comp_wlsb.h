@@ -66,21 +66,43 @@ bool wlsb_get_k_16bits(const struct c_wlsb *const wlsb,
                        const uint16_t value,
                        size_t *const bits_nr)
 	__attribute__((warn_unused_result, nonnull(1, 3)));
+bool wlsb_get_mink_16bits(const struct c_wlsb *const wlsb,
+                          const uint16_t value,
+                          const size_t min_k,
+                          size_t *const bits_nr)
+	__attribute__((warn_unused_result, nonnull(1, 4)));
 bool wlsb_get_kp_16bits(const struct c_wlsb *const wlsb,
                         const uint16_t value,
                         const rohc_lsb_shift_t p,
                         size_t *const bits_nr)
 	__attribute__((warn_unused_result, nonnull(1, 4)));
+bool wlsb_get_minkp_16bits(const struct c_wlsb *const wlsb,
+                           const uint16_t value,
+                           const size_t min_k,
+                           const rohc_lsb_shift_t p,
+                           size_t *const bits_nr)
+	__attribute__((warn_unused_result, nonnull(1, 5)));
 
 bool wlsb_get_k_32bits(const struct c_wlsb *const wlsb,
                        const uint32_t value,
                        size_t *const bits_nr)
 	__attribute__((warn_unused_result, nonnull(1, 3)));
+bool wlsb_get_mink_32bits(const struct c_wlsb *const wlsb,
+                          const uint32_t value,
+                          const size_t min_k,
+                          size_t *const bits_nr)
+	__attribute__((warn_unused_result, nonnull(1, 4)));
 bool wlsb_get_kp_32bits(const struct c_wlsb *const wlsb,
                         const uint32_t value,
                         const rohc_lsb_shift_t p,
                         size_t *const bits_nr)
 	__attribute__((warn_unused_result, nonnull(1, 4)));
+bool wlsb_get_minkp_32bits(const struct c_wlsb *const wlsb,
+                           const uint32_t value,
+                           const size_t min_k,
+                           const rohc_lsb_shift_t p,
+                           size_t *const bits_nr)
+	__attribute__((warn_unused_result, nonnull(1, 5)));
 
 void c_ack_sn_wlsb(struct c_wlsb *const s, const uint32_t sn)
 	__attribute__((nonnull(1)));

@@ -50,7 +50,8 @@ struct rtp_tmp_vars
 	int send_rtp_dynamic;
 
 	/// The number of bits needed to encode ts_send
-	size_t nr_ts_bits;
+	size_t nr_ts_bits_less_equal_than_2;
+	size_t nr_ts_bits_more_than_2;
 
 	/// The number of bits of TS to place in the extension 3 header
 	size_t nr_ts_bits_ext3;

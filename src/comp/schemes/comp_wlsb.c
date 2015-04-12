@@ -93,12 +93,14 @@ static size_t rohc_g_8bits(const uint8_t v_ref,
 
 static size_t rohc_g_16bits(const uint16_t v_ref,
                             const uint16_t v,
+                            const size_t min_k,
                             const rohc_lsb_shift_t p,
                             const size_t bits_nr)
-	__attribute__((warn_unused_result, const ));
+	__attribute__((warn_unused_result, const));
 
 static size_t rohc_g_32bits(const uint32_t v_ref,
                             const uint32_t v,
+                            const size_t min_k,
                             const rohc_lsb_shift_t p,
                             const size_t bits_nr)
 	__attribute__((warn_unused_result, const));
@@ -281,8 +283,32 @@ bool wlsb_get_k_16bits(const struct c_wlsb *const wlsb,
                        const uint16_t value,
                        size_t *const bits_nr)
 {
-	assert(wlsb != NULL);
-	return wlsb_get_kp_16bits(wlsb, value, wlsb->p, bits_nr);
+	const size_t min_k = 0;
+	return wlsb_get_mink_16bits(wlsb, value, min_k, bits_nr);
+}
+
+
+/**
+ * @brief Find out the minimal number of bits of the to-be-encoded value
+ *        required to be able to uniquely recreate it given the window
+ *
+ * The function is dedicated to 16-bit fields.
+ *
+ * @param wlsb     The W-LSB object
+ * @param value    The value to encode using the LSB algorithm
+ * @param min_k    The minimum number of bits to find out
+ * @param bits_nr  OUT: The number of bits required to uniquely recreate the
+ *                      value
+ * @return         true in case of success,
+ *                 false if the minimal number of bits can not be found
+ */
+
+bool wlsb_get_mink_16bits(const struct c_wlsb *const wlsb,
+                          const uint16_t value,
+                          const size_t min_k,
+                          size_t *const bits_nr)
+{
+	return wlsb_get_minkp_16bits(wlsb, value, min_k, wlsb->p, bits_nr);
 }
 
 
@@ -305,6 +331,32 @@ bool wlsb_get_kp_16bits(const struct c_wlsb *const wlsb,
                         const rohc_lsb_shift_t p,
                         size_t *const bits_nr)
 {
+	const size_t min_k = 0;
+	return wlsb_get_minkp_16bits(wlsb, value, min_k, p, bits_nr);
+}
+
+
+/**
+ * @brief Find out the minimal number of bits of the to-be-encoded value
+ *        required to be able to uniquely recreate it given the window
+ *
+ * The function is dedicated to 16-bit fields.
+ *
+ * @param wlsb     The W-LSB object
+ * @param value    The value to encode using the LSB algorithm
+ * @param min_k    The minimum number of bits to find out
+ * @param p        The shift parameter p
+ * @param bits_nr  OUT: The number of bits required to uniquely recreate the
+ *                      value
+ * @return         true in case of success,
+ *                 false if the minimal number of bits can not be found
+ */
+bool wlsb_get_minkp_16bits(const struct c_wlsb *const wlsb,
+                           const uint16_t value,
+                           const size_t min_k,
+                           const rohc_lsb_shift_t p,
+                           size_t *const bits_nr)
+{
 	size_t entry;
 	size_t i;
 
@@ -323,7 +375,7 @@ bool wlsb_get_kp_16bits(const struct c_wlsb *const wlsb,
 	    i--, entry = (entry + 1) & wlsb->window_mask)
 	{
 		const size_t k =
-			rohc_g_16bits(wlsb->window[entry].value, value, p, wlsb->bits);
+			rohc_g_16bits(wlsb->window[entry].value, value, min_k, p, wlsb->bits);
 		if(k > (*bits_nr))
 		{
 			*bits_nr = k;
@@ -356,8 +408,31 @@ bool wlsb_get_k_32bits(const struct c_wlsb *const wlsb,
                        const uint32_t value,
                        size_t *const bits_nr)
 {
-	assert(wlsb != NULL);
-	return wlsb_get_kp_32bits(wlsb, value, wlsb->p, bits_nr);
+	const size_t min_k = 0;
+	return wlsb_get_mink_32bits(wlsb, value, min_k, bits_nr);
+}
+
+
+/**
+ * @brief Find out the minimal number of bits of the to-be-encoded value
+ *        required to be able to uniquely recreate it given the window
+ *
+ * The function is dedicated to 32-bit fields.
+ *
+ * @param wlsb     The W-LSB object
+ * @param value    The value to encode using the LSB algorithm
+ * @param min_k    The minimum number of bits to find out
+ * @param bits_nr  OUT: The number of bits required to uniquely recreate the
+ *                      value
+ * @return         true in case of success,
+ *                 false if the minimal number of bits can not be found
+ */
+bool wlsb_get_mink_32bits(const struct c_wlsb *const wlsb,
+                          const uint32_t value,
+                          const size_t min_k,
+                          size_t *const bits_nr)
+{
+	return wlsb_get_minkp_32bits(wlsb, value, min_k, wlsb->p, bits_nr);
 }
 
 
@@ -379,6 +454,32 @@ bool wlsb_get_kp_32bits(const struct c_wlsb *const wlsb,
                         const uint32_t value,
                         const rohc_lsb_shift_t p,
                         size_t *const bits_nr)
+{
+	const size_t min_k = 0;
+	return wlsb_get_minkp_32bits(wlsb, value, min_k, p, bits_nr);
+}
+
+
+/**
+ * @brief Find out the minimal number of bits of the to-be-encoded value
+ *        required to be able to uniquely recreate it given the window
+ *
+ * The function is dedicated to 32-bit fields.
+ *
+ * @param wlsb     The W-LSB object
+ * @param value    The value to encode using the LSB algorithm
+ * @param min_k    The minimum number of bits to find out
+ * @param p        The shift parameter p
+ * @param bits_nr  OUT: The number of bits required to uniquely recreate the
+ *                      value
+ * @return         true in case of success,
+ *                 false if the minimal number of bits can not be found
+ */
+bool wlsb_get_minkp_32bits(const struct c_wlsb *const wlsb,
+                           const uint32_t value,
+                           const size_t min_k,
+                           const rohc_lsb_shift_t p,
+                           size_t *const bits_nr)
 {
 	size_t entry;
 	size_t i;
@@ -403,7 +504,7 @@ bool wlsb_get_kp_32bits(const struct c_wlsb *const wlsb,
 	    i--, entry = (entry + 1) & wlsb->window_mask)
 	{
 		const size_t k =
-			rohc_g_32bits(wlsb->window[entry].value, value, p, wlsb->bits);
+			rohc_g_32bits(wlsb->window[entry].value, value, min_k, p, wlsb->bits);
 		if(k > (*bits_nr))
 		{
 			*bits_nr = k;
@@ -536,6 +637,7 @@ static size_t rohc_g_8bits(const uint8_t v_ref,
  *
  * @param v_ref    The reference value
  * @param v        The value to encode
+ * @param min_k    The minimum number of bits to find out
  * @param p        The shift parameter
  * @param bits_nr  The number of bits that may be used to represent the
  *                 LSB-encoded value
@@ -543,6 +645,7 @@ static size_t rohc_g_8bits(const uint8_t v_ref,
  */
 static size_t rohc_g_16bits(const uint16_t v_ref,
                             const uint16_t v,
+                            const size_t min_k,
                             const rohc_lsb_shift_t p,
                             const size_t bits_nr)
 {
@@ -550,8 +653,9 @@ static size_t rohc_g_16bits(const uint16_t v_ref,
 	size_t k;
 
 	assert(bits_nr <= 16);
+	assert(min_k <= bits_nr);
 
-	for(k = 0; k < bits_nr; k++)
+	for(k = min_k; k < bits_nr; k++)
 	{
 		interval = rohc_f_16bits(v_ref, k, p);
 		if(interval.min <= interval.max)
@@ -586,6 +690,7 @@ static size_t rohc_g_16bits(const uint16_t v_ref,
  *
  * @param v_ref    The reference value
  * @param v        The value to encode
+ * @param min_k    The minimum number of bits to find out
  * @param p        The shift parameter
  * @param bits_nr  The number of bits that may be used to represent the
  *                 LSB-encoded value
@@ -593,6 +698,7 @@ static size_t rohc_g_16bits(const uint16_t v_ref,
  */
 static size_t rohc_g_32bits(const uint32_t v_ref,
                             const uint32_t v,
+                            const size_t min_k,
                             const rohc_lsb_shift_t p,
                             const size_t bits_nr)
 {
@@ -600,8 +706,9 @@ static size_t rohc_g_32bits(const uint32_t v_ref,
 	size_t k;
 
 	assert(bits_nr <= 32);
+	assert(min_k < bits_nr);
 
-	for(k = 0; k < bits_nr; k++)
+	for(k = min_k; k < bits_nr; k++)
 	{
 		interval = rohc_f_32bits(v_ref, k, p);
 		if(interval.min <= interval.max)

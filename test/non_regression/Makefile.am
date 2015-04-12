@@ -100,7 +100,8 @@ TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_ESP = \
 	test_non_regression_ipv4_esp_large-sn-and-rnd-ip-id_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_ipv4_esp_maxcontexts0_wlsb4_smallcid.sh \
-	test_non_regression_ipv6_esp_maxcontexts0_wlsb4_smallcid.sh
+	test_non_regression_ipv6_esp_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_esp_afl53-variable-sn_maxcontexts0_wlsb4_smallcid.sh
 
 TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_BUG804552 = \
 	test_non_regression_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts0_wlsb4_smallcid.sh \
@@ -288,7 +289,8 @@ TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_ESP = \
 	test_non_regression_ipv4_esp_large-sn-and-rnd-ip-id_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_ipv4_esp_maxcontexts0_wlsb64_smallcid.sh \
-	test_non_regression_ipv6_esp_maxcontexts0_wlsb64_smallcid.sh
+	test_non_regression_ipv6_esp_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_esp_afl53-variable-sn_maxcontexts0_wlsb64_smallcid.sh
 
 TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_BUG804552 = \
 	test_non_regression_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts0_wlsb64_smallcid.sh \
@@ -481,7 +483,8 @@ TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_ESP = \
 	test_non_regression_ipv4_esp_large-sn-and-rnd-ip-id_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_ipv4_esp_maxcontexts1_wlsb4_smallcid.sh \
-	test_non_regression_ipv6_esp_maxcontexts1_wlsb4_smallcid.sh
+	test_non_regression_ipv6_esp_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_esp_afl53-variable-sn_maxcontexts1_wlsb4_smallcid.sh
 
 TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_BUG804552 = \
 	test_non_regression_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts1_wlsb4_smallcid.sh \
@@ -669,7 +672,8 @@ TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_ESP = \
 	test_non_regression_ipv4_esp_large-sn-and-rnd-ip-id_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_ipv4_esp_maxcontexts1_wlsb64_smallcid.sh \
-	test_non_regression_ipv6_esp_maxcontexts1_wlsb64_smallcid.sh
+	test_non_regression_ipv6_esp_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_esp_afl53-variable-sn_maxcontexts1_wlsb64_smallcid.sh
 
 TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_BUG804552 = \
 	test_non_regression_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts1_wlsb64_smallcid.sh \
@@ -867,7 +871,8 @@ TESTS_MAXCONTEXTS0_WLSB4_LARGECID_ESP = \
 	test_non_regression_ipv4_esp_large-sn-and-rnd-ip-id_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv6_esp_maxcontexts0_wlsb4_largecid.sh \
-	test_non_regression_ipv4_ipv4_esp_maxcontexts0_wlsb4_largecid.sh
+	test_non_regression_ipv4_ipv4_esp_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv6_esp_afl53-variable-sn_maxcontexts0_wlsb4_largecid.sh
 
 TESTS_MAXCONTEXTS0_WLSB4_LARGECID_BUG804552 = \
 	test_non_regression_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts0_wlsb4_largecid.sh \
@@ -1055,7 +1060,8 @@ TESTS_MAXCONTEXTS0_WLSB64_LARGECID_ESP = \
 	test_non_regression_ipv4_esp_large-sn-and-rnd-ip-id_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv6_esp_maxcontexts0_wlsb64_largecid.sh \
-	test_non_regression_ipv4_ipv4_esp_maxcontexts0_wlsb64_largecid.sh
+	test_non_regression_ipv4_ipv4_esp_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv6_esp_afl53-variable-sn_maxcontexts0_wlsb64_largecid.sh
 
 TESTS_MAXCONTEXTS0_WLSB64_LARGECID_BUG804552 = \
 	test_non_regression_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts0_wlsb64_largecid.sh \
@@ -1248,7 +1254,8 @@ TESTS_MAXCONTEXTS1_WLSB4_LARGECID_ESP = \
 	test_non_regression_ipv4_esp_large-sn-and-rnd-ip-id_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv6_esp_maxcontexts1_wlsb4_largecid.sh \
-	test_non_regression_ipv4_ipv4_esp_maxcontexts1_wlsb4_largecid.sh
+	test_non_regression_ipv4_ipv4_esp_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv6_esp_afl53-variable-sn_maxcontexts1_wlsb4_largecid.sh
 
 TESTS_MAXCONTEXTS1_WLSB4_LARGECID_BUG804552 = \
 	test_non_regression_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts1_wlsb4_largecid.sh \
@@ -1436,7 +1443,8 @@ TESTS_MAXCONTEXTS1_WLSB64_LARGECID_ESP = \
 	test_non_regression_ipv4_esp_large-sn-and-rnd-ip-id_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv6_esp_maxcontexts1_wlsb64_largecid.sh \
-	test_non_regression_ipv4_ipv4_esp_maxcontexts1_wlsb64_largecid.sh
+	test_non_regression_ipv4_ipv4_esp_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv6_esp_afl53-variable-sn_maxcontexts1_wlsb64_largecid.sh
 
 TESTS_MAXCONTEXTS1_WLSB64_LARGECID_BUG804552 = \
 	test_non_regression_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts1_wlsb64_largecid.sh \
