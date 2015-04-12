@@ -9,7 +9,8 @@
 TESTS = \
 	test_malformed_rohc_packets_ir_1.sh \
 	test_malformed_rohc_packets_ir_with_list_encoding_type1_1.sh \
-	test_malformed_rohc_packets_truncated_uor2id_14.sh
+	test_malformed_rohc_packets_truncated_uor2id_14.sh \
+	test_malformed_rohc_packets_large_feedback_3.sh
 
 
 check_PROGRAMS = \
