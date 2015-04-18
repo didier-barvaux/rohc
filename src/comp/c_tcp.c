@@ -3959,7 +3959,7 @@ static bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 		else /* TCP option doesn't have a reserved index */
 		{
 			int opt_idx_free = -1;
-			size_t oldest_idx = 0;
+			uint8_t oldest_idx = 0;
 			size_t oldest_idx_age = 0;
 
 			/* find the index that was used for the same option in previous
@@ -3970,6 +3970,8 @@ static bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 				if(tcp_context->tcp_options_list[opt_idx].used &&
 				   tcp_context->tcp_options_list[opt_idx].type == opt_type)
 				{
+					rohc_comp_debug(context, "    re-use index %u that was already "
+					                "used for the same option previously", opt_idx);
 					opt_idx_free = opt_idx;
 				}
 			}
@@ -3978,6 +3980,8 @@ static bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 			{
 				if(!tcp_context->tcp_options_list[opt_idx].used)
 				{
+					rohc_comp_debug(context, "    use free index %u that was never "
+					                "used before", opt_idx);
 					opt_idx_free = opt_idx;
 				}
 			}
@@ -3992,7 +3996,10 @@ static bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 						oldest_idx = opt_idx;
 					}
 				}
+				rohc_comp_debug(context, "    no free index, recycle index %u "
+				                "because it is the oldest one", oldest_idx);
 				opt_idx_free = oldest_idx;
+				tcp_context->tcp_options_list[opt_idx_free].used = false;
 			}
 			opt_idx = opt_idx_free;
 		}
