@@ -848,6 +848,14 @@ static int compress_decompress(struct rohc_comp *comp,
 		{
 			struct ipv4_hdr *ip = (struct ipv4_hdr *) rohc_buf_data(ip_packet);
 			tot_len = ntohs(ip->tot_len);
+			if(tot_len < sizeof(struct ipv4_hdr))
+			{
+				printf("malformed IPv4 packet: IPv4 total length is %zu bytes, "
+				       "but it should be at least %zu bytes", tot_len,
+				       sizeof(struct ipv4_hdr));
+				status = -3;
+				goto exit;
+			}
 		}
 		else
 		{
