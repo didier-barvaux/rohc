@@ -18,7 +18,7 @@
  */
 
 /**
- * @file   ip_id_offset.c
+ * @file   decomp/schemes/ip_id_offset.c
  * @brief  Offset IP-ID decoding
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author Didier Barvaux <didier@barvaux.org>

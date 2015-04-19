@@ -956,7 +956,7 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 			}
 
 			assert(rnd_3->discriminator == 0x00); /* '0' */
-			bits->ack.bits = (rnd_3->ack_num1 << 1) | rnd_3->ack_num2;
+			bits->ack.bits = (rnd_3->ack_num1 << 8) | rnd_3->ack_num2;
 			bits->ack.bits_nr = 15;
 			bits->ack.p = 8191;
 			bits->msn.bits = rnd_3->msn;
@@ -1377,6 +1377,7 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 			bits->window.bits =
 				(seq_7->window1 << 11) | (seq_7->window2 << 3) | seq_7->window3;
 			bits->window.bits_nr = 15;
+			bits->window.p = ROHC_LSB_SHIFT_TCP_WINDOW;
 			inner_ip_bits->id.bits = seq_7->ip_id;
 			inner_ip_bits->id.bits_nr = 5;
 			inner_ip_bits->id.p = 3;

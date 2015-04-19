@@ -34,6 +34,7 @@
 #include "protocols/ip_numbers.h"
 #include "protocols/tcp.h"
 #include "schemes/cid.h"
+#include "schemes/ip_id_offset.h"
 #include "schemes/rfc4996.h"
 #include "sdvl.h"
 #include "crc.h"
@@ -70,8 +71,10 @@ struct tcp_tmp_variables
 	/** The minimal number of bits required to encode the MSN value */
 	size_t nr_msn_bits;
 
+	/** Whether the TCP window changed or not */
+	size_t tcp_window_changed;
 	/** The minimal number of bits required to encode the TCP window */
-	size_t nr_window_bits;
+	size_t nr_window_bits_16383;
 
 	/** Whether the TCP sequence number changed or not */
 	bool tcp_seq_num_changed;
@@ -378,6 +381,8 @@ struct sc_tcp_context
 {
 	/// The number of times the sequence number field was added to the compressed header
 	int tcp_seq_num_change_count;
+	/** The number of times the window field was added to the compressed header */
+	size_t tcp_window_change_count;
 
 	// Explicit Congestion Notification used
 	uint8_t ecn_used;
@@ -786,7 +791,8 @@ static tcp_ip_id_behavior_t tcp_detect_ip_id_behavior(const uint16_t last_ip_id,
 
 static void tcp_field_descr_change(const struct rohc_comp_ctxt *const context,
                                    const char *const name,
-                                   const bool changed)
+                                   const bool changed,
+                                   const size_t nr_trans)
 	__attribute__((nonnull(1, 2)));
 
 static void tcp_field_descr_present(const struct rohc_comp_ctxt *const context,
@@ -955,6 +961,7 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 	}
 
 	tcp_context->tcp_seq_num_change_count = 0;
+	tcp_context->tcp_window_change_count = 0;
 	tcp_context->tcp_last_seq_num = -1;
 
 	/* TCP header begins just after the IP headers */
@@ -5073,7 +5080,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 	                tcp_context->ack_stride);
 
 	/* window */
-	ret = c_static_or_irreg16(tcp->window, !!(tcp_context->tmp.nr_window_bits == 0),
+	ret = c_static_or_irreg16(tcp->window, !tcp_context->tmp.tcp_window_changed,
 	                          mptr.uint8, &indicator);
 	if(ret < 0)
 	{
@@ -6548,7 +6555,7 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	tcp_context->tmp.ip_ttl_changed =
 		(tcp_context->tmp.ttl_irregular_chain_flag != 0);
 	tcp_field_descr_change(context, "one or more outer TTL values",
-	                       tcp_context->tmp.ip_ttl_changed);
+	                       tcp_context->tmp.ip_ttl_changed, 0);
 
 	if(inner_ip_hdr.ipvx->version == IPV4)
 	{
@@ -6558,7 +6565,7 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		tcp_context->tmp.ip_id_behavior_changed =
 			(inner_ip_ctxt->ctxt.v4.last_ip_id_behavior != inner_ip_ctxt->ctxt.v4.ip_id_behavior);
 		tcp_field_descr_change(context, "IP-ID behavior",
-		                       tcp_context->tmp.ip_id_behavior_changed);
+		                       tcp_context->tmp.ip_id_behavior_changed, 0);
 
 		/* compute the new IP-ID / SN delta */
 		if(inner_ip_ctxt->ctxt.v4.ip_id_behavior == IP_ID_BEHAVIOR_SEQ)
@@ -6627,11 +6634,11 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 
 		tcp_context->tmp.ip_df_changed =
 			(inner_ip_hdr.ipv4->df != inner_ip_ctxt->ctxt.v4.df);
-		tcp_field_descr_change(context, "DF", tcp_context->tmp.ip_df_changed);
+		tcp_field_descr_change(context, "DF", tcp_context->tmp.ip_df_changed, 0);
 
 		tcp_context->tmp.dscp_changed =
 			(inner_ip_hdr.ipv4->dscp != inner_ip_ctxt->ctxt.v4.dscp);
-		tcp_field_descr_change(context, "DSCP", tcp_context->tmp.dscp_changed);
+		tcp_field_descr_change(context, "DSCP", tcp_context->tmp.dscp_changed, 0);
 
 		tcp_context->tmp.ttl_hopl = inner_ip_hdr.ipv4->ttl_hopl;
 
@@ -6650,7 +6657,7 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 
 		tcp_context->tmp.dscp_changed =
 			(DSCP_V6(inner_ip_hdr.ipv6) != inner_ip_ctxt->ctxt.v6.dscp);
-		tcp_field_descr_change(context, "DSCP", tcp_context->tmp.dscp_changed);
+		tcp_field_descr_change(context, "DSCP", tcp_context->tmp.dscp_changed, 0);
 
 		tcp_context->tmp.ttl_hopl = inner_ip_hdr.ipv6->ttl_hopl;
 
@@ -6679,24 +6686,24 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	tcp_context->tmp.tcp_res_flag_changed =
 		(tcp->res_flags != tcp_context->old_tcphdr.res_flags);
 	tcp_field_descr_change(context, "RES flags",
-	                       tcp_context->tmp.tcp_res_flag_changed);
+	                       tcp_context->tmp.tcp_res_flag_changed, 0);
 	tcp_context->tmp.tcp_ack_flag_changed =
 		(tcp->ack_flag != tcp_context->old_tcphdr.ack_flag);
 	tcp_field_descr_change(context, "ACK flag",
-	                       tcp_context->tmp.tcp_ack_flag_changed);
+	                       tcp_context->tmp.tcp_ack_flag_changed, 0);
 	tcp_context->tmp.tcp_urg_flag_present = (tcp->urg_flag != 0);
 	tcp_field_descr_present(context, "URG flag",
 	                        tcp_context->tmp.tcp_urg_flag_present);
 	tcp_context->tmp.tcp_urg_flag_changed =
 		(tcp->urg_flag != tcp_context->old_tcphdr.urg_flag);
 	tcp_field_descr_change(context, "URG flag",
-	                       tcp_context->tmp.tcp_urg_flag_changed);
+	                       tcp_context->tmp.tcp_urg_flag_changed, 0);
 	tcp_context->tmp.ecn_used = (tcp_context->ecn_used != 0);
 	tcp_field_descr_present(context, "ECN flag", tcp_context->tmp.ecn_used);
 	tcp_context->tmp.tcp_ecn_flag_changed =
 		(tcp->ecn_flags != tcp_context->old_tcphdr.ecn_flags);
 	tcp_field_descr_change(context, "ECN flag",
-	                       tcp_context->tmp.tcp_ecn_flag_changed);
+	                       tcp_context->tmp.tcp_ecn_flag_changed, 0);
 	if(tcp_context->tmp.tcp_ecn_flag_changed)
 	{
 		tcp_context->ecn_used = 1;
@@ -6704,30 +6711,47 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	tcp_context->tmp.tcp_rsf_flag_changed =
 		(tcp->rsf_flags != tcp_context->old_tcphdr.rsf_flags);
 	tcp_field_descr_change(context, "RSF flag",
-	                       tcp_context->tmp.tcp_rsf_flag_changed);
+	                       tcp_context->tmp.tcp_rsf_flag_changed, 0);
 
 	/* how many bits are required to encode the new TCP window? */
 	if(context->state == ROHC_COMP_STATE_IR)
 	{
 		/* send all bits in IR state */
-		tcp_context->tmp.nr_window_bits = 16;
+		tcp_context->tmp.nr_window_bits_16383 = 16;
 		rohc_comp_debug(context, "IR state: force using 16 bits to encode "
 		                "new TCP window");
 	}
 	else
 	{
 		/* send only required bits in FO or SO states */
+		if(tcp->window != tcp_context->old_tcphdr.window)
+		{
+			tcp_context->tmp.tcp_window_changed = true;
+			tcp_context->tcp_window_change_count = 0;
+		}
+		else if(tcp_context->tcp_window_change_count < MAX_FO_COUNT)
+		{
+			tcp_context->tmp.tcp_window_changed = true;
+			tcp_context->tcp_window_change_count++;
+		}
+		else
+		{
+			tcp_context->tmp.tcp_window_changed = false;
+		}
+		tcp_field_descr_change(context, "TCP window",
+		                       tcp_context->tmp.tcp_window_changed,
+		                       tcp_context->tcp_window_change_count);
 		if(!wlsb_get_kp_16bits(tcp_context->window_wlsb, rohc_ntoh16(tcp->window),
 		                       ROHC_LSB_SHIFT_TCP_WINDOW,
-		                       &tcp_context->tmp.nr_window_bits))
+		                       &tcp_context->tmp.nr_window_bits_16383))
 		{
 			rohc_comp_warn(context, "failed to find the minimal number of bits "
 			               "required for TCP window 0x%04x", rohc_ntoh16(tcp->window));
 			goto error;
 		}
 		rohc_comp_debug(context, "%zu bits are required to encode new TCP window "
-		                "0x%04x", tcp_context->tmp.nr_window_bits,
-		                rohc_ntoh16(tcp->window));
+		                "0x%04x with p = %d", tcp_context->tmp.nr_window_bits_16383,
+		                rohc_ntoh16(tcp->window), ROHC_LSB_SHIFT_TCP_WINDOW);
 	}
 	/* TODO: move this after successful packet compression */
 	c_add_wlsb(tcp_context->window_wlsb, tcp_context->msn, rohc_ntoh16(tcp->window));
@@ -7142,7 +7166,6 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
                                           const tcphdr_t *const tcp)
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
-
 	rohc_packet_t packet_type;
 
 	if(!sdvl_can_length_be_encoded(tcp_context->tmp.nr_opt_ts_req_bits_0x40000) ||
@@ -7186,7 +7209,7 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 		if(ip_inner_context->ctxt.vx.ip_id_behavior <= IP_ID_BEHAVIOR_SEQ_SWAP &&
 		   tcp_context->tmp.nr_seq_bits_8191 <= 14 &&
 		   tcp_context->tmp.nr_ack_bits_8191 <= 15 &&
-		   tcp_context->tmp.nr_window_bits == 0)
+		   !tcp_context->tmp.tcp_window_changed)
 		{
 			/* IP_ID_BEHAVIOR_SEQ or IP_ID_BEHAVIOR_SEQ_SWAP */
 			TRACE_GOTO_CHOICE;
@@ -7194,7 +7217,7 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 		}
 		else if(tcp_context->tmp.nr_seq_bits_65535 <= 16 &&
 		        tcp_context->tmp.nr_ack_bits_16383 <= 16 &&
-		        tcp_context->tmp.nr_window_bits == 0)
+		        !tcp_context->tmp.tcp_window_changed)
 		{
 			TRACE_GOTO_CHOICE;
 			packet_type = ROHC_PACKET_TCP_RND_8;
@@ -7222,9 +7245,8 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 			 *  - at most 15 LSB of the TCP ACK number are required,
 			 *  - at most 4 LSBs of IP-ID must be transmitted
 			 * otherwise use co_common packet */
-			if(tcp_context->tmp.nr_window_bits == 0 &&
+			if(!tcp_context->tmp.tcp_window_changed &&
 			   tcp_context->tmp.nr_ip_id_bits_3 <= 4 &&
-			   true /* TODO: list changed */ &&
 			   true /* TODO: no more than 3 bits of TTL */ &&
 			   tcp_context->tmp.nr_seq_bits_8191 <= 14 &&
 			   tcp_context->tmp.nr_ack_bits_8191 <= 15)
@@ -7239,13 +7261,13 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 				packet_type = ROHC_PACKET_TCP_CO_COMMON;
 			}
 		}
-		else if(tcp_context->tmp.nr_window_bits > 0)
+		else if(tcp_context->tmp.tcp_window_changed)
 		{
 			/* seq_7 or co_common */
-			if(/* TODO: no more than 15 bits of TCP window */
+			if(tcp_context->tmp.nr_window_bits_16383 <= 15 &&
 			   tcp_context->tmp.nr_ip_id_bits_3 <= 5 &&
 			   tcp_context->tmp.nr_ack_bits_32767 <= 16 &&
-			   tcp_context->tmp.tcp_rsf_flag_changed)
+			   !tcp_context->tmp.tcp_seq_num_changed)
 			{
 				/* seq_7 is possible */
 				TRACE_GOTO_CHOICE;
@@ -7283,9 +7305,7 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 				packet_type = ROHC_PACKET_TCP_CO_COMMON;
 			}
 		}
-		else if(tcp_context->tmp.nr_seq_bits_65535 == 0 &&
-		        tcp_context->tmp.nr_seq_bits_32767 == 0 &&
-		        tcp_context->tmp.nr_seq_bits_8191 == 0)
+		else if(!tcp_context->tmp.tcp_seq_num_changed)
 		{
 			/* seq_3, seq_4, or co_common */
 			if(tcp_context->tmp.nr_ip_id_bits_3 <= 4 &&
@@ -7328,7 +7348,6 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 				packet_type = ROHC_PACKET_TCP_SEQ_6;
 			}
 			else if(tcp_context->tmp.nr_ip_id_bits_3 <= 4 &&
-			        true /* TODO: list changed */ &&
 			        true /* TODO: no more than 3 bits of TTL */ &&
 			        tcp_context->tmp.nr_ack_bits_8191 <= 15 &&
 			        tcp_context->tmp.nr_seq_bits_8191 <= 14)
@@ -7357,7 +7376,7 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 		if(tcp_context->tmp.is_tcp_opts_list_struct_changed ||
 		   tcp_context->tmp.is_tcp_opts_list_static_changed)
 		{
-			if(tcp_context->tmp.nr_window_bits == 0 &&
+			if(!tcp_context->tmp.tcp_window_changed &&
 			   tcp_context->tmp.nr_seq_bits_65535 <= 16 &&
 			   tcp_context->tmp.nr_ack_bits_16383 <= 16)
 			{
@@ -7374,7 +7393,7 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 		{
 			if(tcp_context->tmp.tcp_rsf_flag_changed)
 			{
-				if(tcp_context->tmp.nr_window_bits == 0 &&
+				if(!tcp_context->tmp.tcp_window_changed &&
 				   tcp_context->tmp.nr_ack_bits_16383 <= 16 &&
 				   tcp_context->tmp.nr_seq_bits_65535 <= 16)
 				{
@@ -7393,10 +7412,11 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 				TRACE_GOTO_CHOICE;
 				packet_type = ROHC_PACKET_TCP_CO_COMMON;
 			}
-			else if(tcp_context->tmp.nr_window_bits > 0)
+			else if(tcp_context->tmp.tcp_window_changed)
 			{
 				if(!tcp_context->tmp.tcp_seq_num_changed &&
-				   tcp_context->tmp.nr_ack_bits_65535 <= 18)
+				   tcp_context->tmp.nr_ack_bits_65535 <= 18 &&
+				   !tcp_context->tmp.tcp_seq_num_changed)
 				{
 					/* rnd_7 is possible */
 					TRACE_GOTO_CHOICE;
@@ -7413,30 +7433,38 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 			{
 				/* ACK number not present */
 				if(tcp_context->tmp.payload_len > 0 &&
-				   tcp_context->ack_stride != 0)
+				   tcp_context->ack_stride != 0 &&
+				   !tcp_context->tmp.tcp_seq_num_changed)
 				{
 					/* rnd_4 is possible */
 					TRACE_GOTO_CHOICE;
 					packet_type = ROHC_PACKET_TCP_RND_4;
 				}
-				else
+				else if(tcp_context->tmp.nr_seq_bits_65535 <= 18)
 				{
 					/* rnd_1 is possible */
 					TRACE_GOTO_CHOICE;
 					packet_type = ROHC_PACKET_TCP_RND_1;
+				}
+				else
+				{
+					TRACE_GOTO_CHOICE;
+					packet_type = ROHC_PACKET_TCP_CO_COMMON;
 				}
 			}
 			else if(tcp->ack_flag != 0 && !tcp_context->tmp.tcp_seq_num_changed)
 			{
 				/* ACK number present */
 				if(tcp_context->tmp.nr_ack_scaled_bits <= 4 &&
-				   tcp_context->ack_stride != 0)
+				   tcp_context->ack_stride != 0 &&
+				   !tcp_context->tmp.tcp_seq_num_changed)
 				{
 					/* rnd_4 is possible */
 					TRACE_GOTO_CHOICE;
 					packet_type = ROHC_PACKET_TCP_RND_4;
 				}
-				else if(tcp_context->tmp.nr_ack_bits_8191 <= 15)
+				else if(tcp_context->tmp.nr_ack_bits_8191 <= 15 &&
+				        !tcp_context->tmp.tcp_seq_num_changed)
 				{
 					/* rnd_3 is possible */
 					TRACE_GOTO_CHOICE;
@@ -7534,15 +7562,15 @@ static tcp_ip_id_behavior_t tcp_detect_ip_id_behavior(const uint16_t last_ip_id,
 {
 	tcp_ip_id_behavior_t behavior;
 
-	if((last_ip_id + 1) == new_ip_id)
+	if(is_ip_id_increasing(last_ip_id, new_ip_id))
 	{
 		behavior = IP_ID_BEHAVIOR_SEQ;
 	}
 	else
 	{
-		const uint16_t swapped_ip_id = swab16(last_ip_id);
+		const uint16_t swapped_last_ip_id = swab16(last_ip_id);
 
-		if((swapped_ip_id + 1) == swab16(new_ip_id))
+		if(is_ip_id_increasing(swapped_last_ip_id, new_ip_id))
 		{
 			behavior = IP_ID_BEHAVIOR_SEQ_SWAP;
 		}
@@ -7566,12 +7594,26 @@ static tcp_ip_id_behavior_t tcp_detect_ip_id_behavior(const uint16_t last_ip_id,
  * @param context  The compression context
  * @param name     The name of the field
  * @param changed  Whether the field changed or not
+ * @param nr_trans The number of times the field was transmitted since
+ *                 the last change
  */
 static void tcp_field_descr_change(const struct rohc_comp_ctxt *const context,
                                    const char *const name,
-                                   const bool changed)
+                                   const bool changed,
+                                   const size_t nr_trans)
 {
-	rohc_comp_debug(context, "%s did%s change", name, changed ? "" : " not");
+	if(!changed)
+	{
+		rohc_comp_debug(context, "%s did not change", name);
+	}
+	else if(nr_trans == 0)
+	{
+		rohc_comp_debug(context, "%s did change with the current packet", name);
+	}
+	else
+	{
+		rohc_comp_debug(context, "%s did change %zu packets before", name, nr_trans);
+	}
 }
 
 

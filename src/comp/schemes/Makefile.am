@@ -17,6 +17,7 @@ noinst_LTLIBRARIES = librohc_comp_schemes.la
 librohc_comp_schemes_la_SOURCES = \
 	cid.c \
 	comp_wlsb.c \
+	ip_id_offset.c \
 	comp_scaled_rtp_ts.c \
 	comp_list.c \
 	comp_list_ipv6.c \
@@ -39,6 +40,7 @@ librohc_comp_schemes_la_CPPFLAGS = \
 noinst_HEADERS = \
 	cid.h \
 	comp_wlsb.h \
+	ip_id_offset.h \
 	comp_scaled_rtp_ts.h \
 	comp_list.h \
 	comp_list_ipv6.h \

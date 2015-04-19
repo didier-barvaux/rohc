@@ -36,6 +36,7 @@
 #include "rohc_packets.h"
 #include "rohc_utils.h"
 #include "schemes/cid.h"
+#include "schemes/ip_id_offset.h"
 #include "schemes/comp_list_ipv6.h"
 #include "sdvl.h"
 #include "crc.h"
@@ -309,8 +310,6 @@ static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
                                    struct ip_header_info *const header_info,
                                    const struct ip_packet *const ip)
 	__attribute__((nonnull(1, 2, 3)));
-static bool is_ip_id_increasing(const uint16_t old_id, const uint16_t new_id)
-	__attribute__((warn_unused_result));
 
 static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
                                  const struct net_pkt *const uncomp_pkt)
@@ -6230,46 +6229,6 @@ static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
 
 error:
 	;
-}
-
-
-/**
- * @brief Whether the new IP-ID is increasing
- *
- * The new IP-ID is considered as increasing if the new value is greater by a
- * small delta then the previous IP-ID. Wraparound shall be taken into
- * account.
- *
- * @param old_id  The IP-ID of the previous IPv4 header
- * @param new_id  The IP-ID of the current IPv4 header
- * @return        Whether the IP-ID is increasing
- */
-static bool is_ip_id_increasing(const uint16_t old_id, const uint16_t new_id)
-{
-	/* The maximal delta accepted between two consecutive IPv4 ID so that it
-	 * can be considered as increasing */
-	const uint16_t max_id_delta = 20;
-	bool is_increasing;
-
-	/* the new IP-ID is increasing if it belongs to:
-	 *  - interval ]old_id ; old_id + IPID_MAX_DELTA[ (no wraparound)
-	 *  - intervals ]old_id ; 0xffff] or
-	 *    [0 ; (old_id + IPID_MAX_DELTA) % 0xffff[ (wraparound) */
-	if(new_id > old_id && (new_id - old_id) < max_id_delta)
-	{
-		is_increasing = true;
-	}
-	else if(old_id > (0xffff - max_id_delta) &&
-	        (new_id > old_id || new_id < (max_id_delta - (0xffff - old_id))))
-	{
-		is_increasing = true;
-	}
-	else
-	{
-		is_increasing = false;
-	}
-
-	return is_increasing;
 }
 
 
