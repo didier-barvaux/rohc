@@ -1137,6 +1137,7 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 			inner_ip_bits->ttl_hl.bits_nr = 3;
 			bits->ecn_used_bits = rnd_8->ecn_used;
 			bits->ecn_used_bits_nr = 1;
+			rohc_decomp_debug(context, "packet ecn_used = %d", bits->ecn_used_bits);
 			bits->seq.bits = rohc_ntoh16(rnd_8->seq_num);
 			bits->seq.bits_nr = 16;
 			bits->seq.p = 65535;
@@ -1426,6 +1427,7 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 			inner_ip_bits->ttl_hl.bits_nr = 3;
 			bits->ecn_used_bits = seq_8->ecn_used;
 			bits->ecn_used_bits_nr = 1;
+			rohc_decomp_debug(context, "packet ecn_used = %d", bits->ecn_used_bits);
 			bits->ack.bits = (seq_8->ack_num1 << 8) | seq_8->ack_num2;
 			bits->ack.bits_nr = 15;
 			bits->ack.p = 8191;
@@ -1597,6 +1599,7 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 			/* ECN */
 			bits->ecn_used_bits = co_common->ecn_used;
 			bits->ecn_used_bits_nr = 1;
+			rohc_decomp_debug(context, "packet ecn_used = %d", bits->ecn_used_bits);
 
 			/* DSCP */
 			if(co_common->dscp_present == 1)
@@ -2329,10 +2332,14 @@ static bool d_tcp_decode_bits(const struct rohc_decomp_ctxt *const context,
 	{
 		assert(bits->ecn_used_bits_nr == 1);
 		decoded->ecn_used = !!bits->ecn_used_bits;
+		rohc_decomp_debug(context, "ecn_used = %d taken from packet",
+		                  GET_REAL(decoded->ecn_used));
 	}
 	else
 	{
 		decoded->ecn_used = tcp_context->ecn_used;
+		rohc_decomp_debug(context, "ecn_used = %d taken from context",
+		                  GET_REAL(decoded->ecn_used));
 	}
 	if(bits->urg_flag_bits_nr > 0)
 	{
@@ -3277,6 +3284,7 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 	tcp_context->ack_flag = rohc_b2u(decoded->ack_flag);
 	/* PSH flag is sent every time, nothing to update in context */
 	tcp_context->rsf_flags = decoded->rsf_flags;
+	tcp_context->ecn_used = decoded->ecn_used;
 
 	/* TCP window */
 	rohc_lsb_set_ref(tcp_context->window_lsb_ctxt, decoded->window, false);

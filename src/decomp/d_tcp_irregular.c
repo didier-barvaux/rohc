@@ -108,6 +108,9 @@ bool tcp_parse_irreg_chain(const struct rohc_decomp_ctxt *const context,
 
 	(*parsed_len) = 0;
 
+	rohc_decomp_debug(context, "parse the irregular chain with ecn_used = %d",
+	                  d_tcp_is_ecn_used(*tcp_context, *bits));
+
 	/* parse irregular IP part (IPv4/IPv6 headers and extension headers) */
 	for(ip_contexts_nr = 0; ip_contexts_nr < tcp_context->ip_contexts_nr;
 	    ip_contexts_nr++)
