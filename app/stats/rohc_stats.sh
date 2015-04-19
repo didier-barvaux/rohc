@@ -111,7 +111,7 @@ echo -e "set terminal png\n" \
         "set output '${output_dir}/packet_types.png'\n" \
         "set title 'ROHC packet types for ${capture_name}'\n" \
         "set xlabel 'packet number in capture'\n" \
-        "plot [] [-1:14] '${RAW_OUTPUT}' using 2:7:yticlabels(8) title columnhead(7)" \
+        "plot [] [-1:31] '${RAW_OUTPUT}' using 2:7:yticlabels(8) title columnhead(7)" \
 	| ${GNUPLOT} 2>/dev/null \
 	|| exit 1
 [ "${verbose}" = "verbose" ] && echo "done"
@@ -169,11 +169,17 @@ for PACKET_TYPE in "IR" "IR-DYN" \
                    "UO-1" "UO-1-ID" "UO-1-TS" "UO-1-RTP" \
                    "UOR-2" "UOR-2-RTP" "UOR-2-ID" "UOR-2-TS" \
                    "CCE" "CCE(off)" \
-                   "Normal"
+                   "Normal" \
+                   "unknown" \
+                   "TCP/co_common" \
+                   "TCP/rnd_1" "TCP/rnd_2" "TCP/rnd_3" "TCP/rnd_4" \
+						 "TCP/rnd_5" "TCP/rnd_6" "TCP/rnd_7" "TCP/rnd_8" \
+                   "TCP/seq_1" "TCP/seq_2" "TCP/seq_3" "TCP/seq_4" \
+						 "TCP/seq_5" "TCP/seq_6" "TCP/seq_7" "TCP/seq_8"
 do
 	${AWK} "\$8 == \"${PACKET_TYPE}\" { print \$11 }" \
 	       "${RAW_OUTPUT}" \
-		| wc -l > ${output_dir}/packet_type_${PACKET_TYPE}.count \
+		| wc -l > "${output_dir}/packet_type_$( echo "${PACKET_TYPE}" | sed -e 's|/|_|g' ).count" \
 		|| exit 1
 done
 [ "${verbose}" = "verbose" ] && echo "done"
@@ -254,10 +260,10 @@ echo -e "\t\t\t<th colspan=\"2\">&nbsp;</th>" >> ${HTML_OUTPUT}
 echo -e "\t\t<tr>" >> ${HTML_OUTPUT}
 echo -e "\t\t</tr>" >> ${HTML_OUTPUT}
 echo -e "\t\t<tr>" >> ${HTML_OUTPUT}
-echo -e "\t\t\t<th rowspan=\"15\">Packet types</th>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<th rowspan=\"32\">Packet types</th>" >> ${HTML_OUTPUT}
 echo -e "\t\t\t<th colspan=\"2\"><acronym title=\"Initialisation &amp; Refresh\">IR</acronym></th>" >> ${HTML_OUTPUT}
 echo -e "\t\t\t<td><a href=\"./packet_types.png\">$(cat ${output_dir}/packet_type_IR.count)</a></td>" >> ${HTML_OUTPUT}
-echo -e "\t\t\t<th rowspan=\"15\"><img src=\"./packet_types.png\" /></th>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<th rowspan=\"32\"><img src=\"./packet_types.png\" /></th>" >> ${HTML_OUTPUT}
 echo -e "\t\t</tr>" >> ${HTML_OUTPUT}
 echo -e "\t\t<tr>" >> ${HTML_OUTPUT}
 echo -e "\t\t\t<th colspan=\"2\"><acronym title=\"Initialisation &amp; Refresh DYNamic\">IR-DYN</acronym></th>" >> ${HTML_OUTPUT}
@@ -313,8 +319,77 @@ echo -e "\t\t<tr>" >> ${HTML_OUTPUT}
 echo -e "\t\t\t<th colspan=\"2\"><acronym title=\"Normal packet type for Uncompressed profile\">Normal</acronym></th>" >> ${HTML_OUTPUT}
 echo -e "\t\t\t<td><a href=\"./packet_types.png\">$(cat ${output_dir}/packet_type_Normal.count)</a></td>" >> ${HTML_OUTPUT}
 echo -e "\t\t</tr>" >> ${HTML_OUTPUT}
-echo -e "\t\t\t<th colspan=\"2\">&nbsp;</th>" >> ${HTML_OUTPUT}
 echo -e "\t\t<tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<th rowspan=\"17\">TCP</th>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<th><acronym title=\"co_common packet type for TCP profile\">co_common</acronym></th>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<td><a href=\"./packet_types.png\">$(cat ${output_dir}/packet_type_TCP_co_common.count)</a></td>" >> ${HTML_OUTPUT}
+echo -e "\t\t</tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t<tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<th><acronym title=\"rnd_1 packet type for TCP profile\">rnd_1</acronym></th>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<td><a href=\"./packet_types.png\">$(cat ${output_dir}/packet_type_TCP_rnd_1.count)</a></td>" >> ${HTML_OUTPUT}
+echo -e "\t\t</tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t<tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<th><acronym title=\"rnd_2 packet type for TCP profile\">rnd_2</acronym></th>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<td><a href=\"./packet_types.png\">$(cat ${output_dir}/packet_type_TCP_rnd_2.count)</a></td>" >> ${HTML_OUTPUT}
+echo -e "\t\t</tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t<tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<th><acronym title=\"rnd_3 packet type for TCP profile\">rnd_3</acronym></th>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<td><a href=\"./packet_types.png\">$(cat ${output_dir}/packet_type_TCP_rnd_3.count)</a></td>" >> ${HTML_OUTPUT}
+echo -e "\t\t</tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t<tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<th><acronym title=\"rnd_4 packet type for TCP profile\">rnd_4</acronym></th>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<td><a href=\"./packet_types.png\">$(cat ${output_dir}/packet_type_TCP_rnd_4.count)</a></td>" >> ${HTML_OUTPUT}
+echo -e "\t\t</tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t<tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<th><acronym title=\"rnd_5 packet type for TCP profile\">rnd_5</acronym></th>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<td><a href=\"./packet_types.png\">$(cat ${output_dir}/packet_type_TCP_rnd_5.count)</a></td>" >> ${HTML_OUTPUT}
+echo -e "\t\t</tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t<tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<th><acronym title=\"rnd_6 packet type for TCP profile\">rnd_6</acronym></th>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<td><a href=\"./packet_types.png\">$(cat ${output_dir}/packet_type_TCP_rnd_6.count)</a></td>" >> ${HTML_OUTPUT}
+echo -e "\t\t</tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t<tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<th><acronym title=\"rnd_7 packet type for TCP profile\">rnd_7</acronym></th>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<td><a href=\"./packet_types.png\">$(cat ${output_dir}/packet_type_TCP_rnd_7.count)</a></td>" >> ${HTML_OUTPUT}
+echo -e "\t\t</tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t<tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<th><acronym title=\"rnd_8 packet type for TCP profile\">rnd_8</acronym></th>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<td><a href=\"./packet_types.png\">$(cat ${output_dir}/packet_type_TCP_rnd_8.count)</a></td>" >> ${HTML_OUTPUT}
+echo -e "\t\t</tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t<tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<th><acronym title=\"seq_1 packet type for TCP profile\">seq_1</acronym></th>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<td><a href=\"./packet_types.png\">$(cat ${output_dir}/packet_type_TCP_seq_1.count)</a></td>" >> ${HTML_OUTPUT}
+echo -e "\t\t</tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t<tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<th><acronym title=\"seq_2 packet type for TCP profile\">seq_2</acronym></th>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<td><a href=\"./packet_types.png\">$(cat ${output_dir}/packet_type_TCP_seq_2.count)</a></td>" >> ${HTML_OUTPUT}
+echo -e "\t\t</tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t<tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<th><acronym title=\"seq_3 packet type for TCP profile\">seq_3</acronym></th>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<td><a href=\"./packet_types.png\">$(cat ${output_dir}/packet_type_TCP_seq_3.count)</a></td>" >> ${HTML_OUTPUT}
+echo -e "\t\t</tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t<tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<th><acronym title=\"seq_4 packet type for TCP profile\">seq_4</acronym></th>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<td><a href=\"./packet_types.png\">$(cat ${output_dir}/packet_type_TCP_seq_4.count)</a></td>" >> ${HTML_OUTPUT}
+echo -e "\t\t</tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t<tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<th><acronym title=\"seq_5 packet type for TCP profile\">seq_5</acronym></th>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<td><a href=\"./packet_types.png\">$(cat ${output_dir}/packet_type_TCP_seq_5.count)</a></td>" >> ${HTML_OUTPUT}
+echo -e "\t\t</tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t<tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<th><acronym title=\"seq_6 packet type for TCP profile\">seq_6</acronym></th>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<td><a href=\"./packet_types.png\">$(cat ${output_dir}/packet_type_TCP_seq_6.count)</a></td>" >> ${HTML_OUTPUT}
+echo -e "\t\t</tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t<tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<th><acronym title=\"seq_7 packet type for TCP profile\">seq_7</acronym></th>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<td><a href=\"./packet_types.png\">$(cat ${output_dir}/packet_type_TCP_seq_7.count)</a></td>" >> ${HTML_OUTPUT}
+echo -e "\t\t</tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t<tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<th><acronym title=\"seq_8 packet type for TCP profile\">seq_8</acronym></th>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<td><a href=\"./packet_types.png\">$(cat ${output_dir}/packet_type_TCP_seq_8.count)</a></td>" >> ${HTML_OUTPUT}
+echo -e "\t\t</tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t<tr>" >> ${HTML_OUTPUT}
+echo -e "\t\t\t<th colspan=\"2\">&nbsp;</th>" >> ${HTML_OUTPUT}
 echo -e "\t\t</tr>" >> ${HTML_OUTPUT}
 echo -e "\t\t<tr>" >> ${HTML_OUTPUT}
 echo -e "\t\t\t<th rowspan=\"3\">Compression gain</th>" >> ${HTML_OUTPUT}
