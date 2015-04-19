@@ -11,13 +11,6 @@ raw TODO list for improving TCP profile.
 
 ==== compression ====
 
-=> src/comp/schemes/rfc4996.[ch]
-
- - c_lsb(): according to RFC 4997 section 4.11.5, it seems that the
-   'lsb' encoding scheme matches the W-LSB one already defined in
-   src/common/wlsb.c.
- - lsb_masks: I prefer avoiding global variables...
-
 => src/comp/c_tcp.c
 
  - c_tcp_create(): the code that parses IP headers in IP/UDP/RTP

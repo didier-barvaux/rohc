@@ -91,14 +91,6 @@ typedef union
 } multi_ptr_t;
 
 
-
-// RFC4997 page 27
-uint32_t c_lsb(const struct rohc_comp_ctxt *const context,
-               int num_lsbs_param,
-               unsigned int offset_param,
-               unsigned int context_value,
-               unsigned int original_value);
-
 /* static_or_irreg encoding for 8-bit and 16-bit values */
 int c_static_or_irreg8(const uint8_t context_value,
                        const uint8_t packet_value,

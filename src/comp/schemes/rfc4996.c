@@ -38,64 +38,6 @@
 #include <assert.h>
 
 
-/* TODO: to be removed once c_lsb and d_c_lsb are removed */
-/**
- * @brief Table of the mask for lsb()
- */
-static unsigned int lsb_masks[] =
-{
-	0x00000,
-	0x00001, 0x00003, 0x00007, 0x0000F,
-	0x0001F, 0x0003F, 0x0007F, 0x000FF,
-	0x001FF, 0x003FF, 0x007FF, 0x00FFF,
-	0x01FFF, 0x03FFF, 0x07FFF, 0x0FFFF,
-	0x1FFFF, 0x3FFFF, 0x7FFFF, 0xFFFFF
-};
-
-
-/**
- * @brief Compress the lower bits of the given value.
- *
- * See RFC4997 page 27
- *
- * @param context          The compressor context
- * @param num_lsbs_param   The number of bits
- * @param offset_param     The offset
- * @param context_value    The value of the context
- * @param original_value   The value to compress
- * @return                 The compressed value with num_lsbs_param bits
- */
-uint32_t c_lsb(const struct rohc_comp_ctxt *const context,
-               int num_lsbs_param,
-               unsigned int offset_param,
-               unsigned int context_value,
-               unsigned int original_value)
-{
-	unsigned int lower_bound;
-	unsigned int upper_bound;
-	unsigned int value;
-
-	assert(context != NULL);
-
-	rohc_comp_debug(context, "num_lsb = %d, offset_param = %d, "
-	                "context_value = 0x%x, original_value = 0x%x",
-	                num_lsbs_param, offset_param, context_value,
-	                original_value);
-
-	assert( num_lsbs_param > 0 && num_lsbs_param <= 18 );
-
-	lower_bound = context_value - offset_param;
-	upper_bound = context_value + lsb_masks[num_lsbs_param] - offset_param;
-
-	value = original_value & lsb_masks[num_lsbs_param];
-
-	rohc_comp_debug(context, "0x%x < value (0x%x) < 0x%x => return 0x%x",
-	                lower_bound, original_value, upper_bound, value);
-
-	return value;
-}
-
-
 /**
  * @brief Compress the 8 bits given, depending of the context value.
  *

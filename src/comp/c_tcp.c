@@ -160,9 +160,13 @@ struct tcp_tmp_variables
 	 *  with p = 1 */
 	size_t nr_ip_id_bits_1;
 
+	/* innermost IPv4 TTL or IPv6 Hop Limit */
 	uint8_t ttl_hopl;
+	size_t nr_ttl_hopl_bits;
+	bool ttl_hopl_changed;
+	/* outer IPv4 TTLs or IPv6 Hop Limits */
 	int ttl_irregular_chain_flag;
-	bool ip_ttl_changed;
+	bool outer_ip_ttl_changed;
 
 	bool ip_df_changed;
 	bool dscp_changed;
@@ -396,6 +400,9 @@ struct sc_tcp_context
 
 	uint16_t msn;               /**< The Master Sequence Number (MSN) */
 	struct c_wlsb *msn_wlsb;    /**< The W-LSB decoding context for MSN */
+
+	struct c_wlsb *ttl_hopl_wlsb;
+	size_t ttl_hopl_change_count;
 
 	struct c_wlsb *ip_id_wlsb;
 
@@ -971,6 +978,7 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 	}
 
 	tcp_context->tcp_seq_num_change_count = 0;
+	tcp_context->ttl_hopl_change_count = 0;
 	tcp_context->tcp_window_change_count = 0;
 	tcp_context->ecn_used = false;
 	tcp_context->ecn_used_change_count = MAX_FO_COUNT;
@@ -1001,14 +1009,25 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 		goto free_wlsb_msn;
 	}
 
-	/* TCP window offset */
+	/* innermost IPv4 TTL or IPv6 Hop Limit */
+	tcp_context->ttl_hopl_wlsb =
+		c_create_wlsb(8, comp->wlsb_window_width, ROHC_LSB_SHIFT_TCP_TTL);
+	if(tcp_context->ttl_hopl_wlsb == NULL)
+	{
+		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "failed to create W-LSB context for innermost IPv4 TTL or "
+		           "IPv6 Hop Limit");
+		goto free_wlsb_ip_id;
+	}
+
+	/* TCP window */
 	tcp_context->window_wlsb =
 		c_create_wlsb(16, comp->wlsb_window_width, ROHC_LSB_SHIFT_TCP_WINDOW);
 	if(tcp_context->window_wlsb == NULL)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		           "failed to create W-LSB context for TCP window");
-		goto free_wlsb_ip_id;
+		goto free_wlsb_ttl_hopl;
 	}
 
 	/* TCP sequence number */
@@ -1098,10 +1117,12 @@ free_wlsb_seq_scaled:
 	c_destroy_wlsb(tcp_context->seq_scaled_wlsb);
 free_wlsb_seq:
 	c_destroy_wlsb(tcp_context->seq_wlsb);
-free_wlsb_ip_id:
-	c_destroy_wlsb(tcp_context->ip_id_wlsb);
 free_wlsb_window:
 	c_destroy_wlsb(tcp_context->window_wlsb);
+free_wlsb_ttl_hopl:
+	c_destroy_wlsb(tcp_context->ttl_hopl_wlsb);
+free_wlsb_ip_id:
+	c_destroy_wlsb(tcp_context->ip_id_wlsb);
 free_wlsb_msn:
 	c_destroy_wlsb(tcp_context->msn_wlsb);
 free_context:
@@ -1126,8 +1147,9 @@ static void c_tcp_destroy(struct rohc_comp_ctxt *const context)
 	c_destroy_wlsb(tcp_context->ack_wlsb);
 	c_destroy_wlsb(tcp_context->seq_scaled_wlsb);
 	c_destroy_wlsb(tcp_context->seq_wlsb);
-	c_destroy_wlsb(tcp_context->ip_id_wlsb);
 	c_destroy_wlsb(tcp_context->window_wlsb);
+	c_destroy_wlsb(tcp_context->ip_id_wlsb);
+	c_destroy_wlsb(tcp_context->ttl_hopl_wlsb);
 	c_destroy_wlsb(tcp_context->msn_wlsb);
 	free(tcp_context);
 }
@@ -5647,7 +5669,7 @@ static bool c_tcp_build_rnd_8(struct rohc_comp_ctxt *const context,
 		assert(ip_context->ctxt.vx.version == IPV6);
 		ttl_hl = ip.ipv6->ttl_hopl;
 	}
-	rnd8->ttl_hopl = c_lsb(context, 3, 3, ip_context->ctxt.vx.ttl_hopl, ttl_hl);
+	rnd8->ttl_hopl = ttl_hl & 0x7;
 	rnd8->ecn_used = GET_REAL(tcp_context->ecn_used);
 
 	/* sequence number */
@@ -6009,8 +6031,7 @@ static size_t c_tcp_build_seq_7(struct rohc_comp_ctxt *const context,
 	seq7->discriminator = 0x0c; /* '1100' */
 
 	/* window */
-	window = c_lsb(context, 15, 16383, rohc_ntoh16(tcp_context->old_tcphdr.window),
-	               rohc_ntoh16(tcp->window));
+	window = rohc_ntoh16(tcp->window) & 0x7fff;
 	seq7->window1 = (window >> 11) & 0x0f;
 	seq7->window2 = (window >> 3) & 0xff;
 	seq7->window3 = window & 0x07;
@@ -6078,8 +6099,8 @@ static bool c_tcp_build_seq_8(struct rohc_comp_ctxt *const context,
 	seq8->psh_flag = tcp->psh_flag;
 
 	/* TTL/HL */
-	seq8->ttl_hopl = c_lsb(context, 3, 3, ip_context->ctxt.vx.ttl_hopl,
-	                       ip.ipv4->ttl_hopl);
+	seq8->ttl_hopl = ip.ipv4->ttl_hopl & 0x7;
+
 	/* ecn_used */
 	seq8->ecn_used = GET_REAL(tcp_context->ecn_used);
 
@@ -6469,6 +6490,7 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)
 	{
 		const ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
+		const bool is_innermost = (ip_hdr_pos + 1 == tcp_context->ip_contexts_nr);
 		uint8_t ttl_hopl;
 		size_t ip_ext_pos;
 
@@ -6495,7 +6517,7 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 
 				/* irregular chain? */
 				ttl_hopl = base_header.ipv4->ttl_hopl;
-				if(ttl_hopl != ip_context->ctxt.v4.ttl_hopl)
+				if(!is_innermost && ttl_hopl != ip_context->ctxt.v4.ttl_hopl)
 				{
 					tcp_context->tmp.ttl_irregular_chain_flag |= 1;
 					rohc_comp_debug(context, "last ttl_hopl = 0x%02x, ttl_hopl = "
@@ -6522,7 +6544,7 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 
 				/* irregular chain? */
 				ttl_hopl = base_header.ipv6->ttl_hopl;
-				if(ttl_hopl != ip_context->ctxt.v6.ttl_hopl)
+				if(!is_innermost && ttl_hopl != ip_context->ctxt.v6.ttl_hopl)
 				{
 					tcp_context->tmp.ttl_irregular_chain_flag |= 1;
 					rohc_comp_debug(context, "last ttl_hopl = 0x%02x, ttl_hopl = "
@@ -6557,10 +6579,10 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		}
 	}
 
-	tcp_context->tmp.ip_ttl_changed =
+	tcp_context->tmp.outer_ip_ttl_changed =
 		(tcp_context->tmp.ttl_irregular_chain_flag != 0);
 	tcp_field_descr_change(context, "one or more outer TTL values",
-	                       tcp_context->tmp.ip_ttl_changed, 0);
+	                       tcp_context->tmp.outer_ip_ttl_changed, 0);
 
 	if(inner_ip_hdr.ipvx->version == IPV4)
 	{
@@ -6668,6 +6690,48 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 
 		tcp = (tcphdr_t *) (inner_ip_hdr.ipv6 + 1);
 	}
+
+	/* encode innermost IPv4 TTL or IPv6 Hop Limit */
+	if(context->state == ROHC_COMP_STATE_IR)
+	{
+		tcp_context->tmp.nr_ttl_hopl_bits = 8;
+		rohc_comp_debug(context, "IR state: force using 16 bits to encode "
+		                "new TTL/Hop Limit");
+	}
+	else
+	{
+		/* send only required bits in FO or SO states */
+		if(tcp_context->tmp.ttl_hopl != inner_ip_ctxt->ctxt.vx.ttl_hopl)
+		{
+			tcp_context->tmp.ttl_hopl_changed = true;
+			tcp_context->ttl_hopl_change_count = 0;
+		}
+		else if(tcp_context->ttl_hopl_change_count < MAX_FO_COUNT)
+		{
+			tcp_context->tmp.ttl_hopl_changed = true;
+			tcp_context->ttl_hopl_change_count++;
+		}
+		else
+		{
+			tcp_context->tmp.ttl_hopl_changed = false;
+		}
+		if(!wlsb_get_k_8bits(tcp_context->ttl_hopl_wlsb, tcp_context->tmp.ttl_hopl,
+		                     &(tcp_context->tmp.nr_ttl_hopl_bits)))
+		{
+			rohc_comp_warn(context, "failed to find the minimal number of bits "
+			               "required for innermost TTL/Hop Limit 0x%02x and p = 3",
+			                tcp_context->tmp.ttl_hopl);
+			goto error;
+		}
+		rohc_comp_debug(context, "%zu bits are required to encode new innermost "
+		                "TTL/Hop Limit 0x%02x with p = 3",
+		                tcp_context->tmp.nr_ttl_hopl_bits,
+		                tcp_context->tmp.ttl_hopl);
+	}
+	/* add the new TTL/Hop Limit to the W-LSB encoding object */
+	/* TODO: move this after successful packet compression */
+	c_add_wlsb(tcp_context->ttl_hopl_wlsb, tcp_context->msn,
+	           tcp_context->tmp.ttl_hopl);
 
 	seq_num_hbo = rohc_ntoh32(tcp->seq_num);
 	ack_num_hbo = rohc_ntoh32(tcp->ack_num);
@@ -7181,7 +7245,7 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 		                "not compressible");
 		packet_type = ROHC_PACKET_IR_DYN;
 	}
-	else if(tcp_context->tmp.ip_ttl_changed ||
+	else if(tcp_context->tmp.outer_ip_ttl_changed ||
 	        tcp_context->tmp.ip_id_behavior_changed ||
 	        tcp_context->tmp.ip_df_changed ||
 	        tcp_context->tmp.dscp_changed ||
@@ -7193,22 +7257,28 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 		TRACE_GOTO_CHOICE;
 		packet_type = ROHC_PACKET_TCP_CO_COMMON;
 	}
-	else if(tcp_context->tmp.ecn_used_changed)
+	else if(tcp_context->tmp.ecn_used_changed ||
+	        tcp_context->tmp.ttl_hopl_changed)
 	{
 		/* use compressed header with a 7-bit CRC (rnd_8, seq_8 or common):
 		 *  - use common if too many LSB of sequence number are required
+		 *  - use common if too many LSB of sequence number are required
+		 *  - use common if too many LSB of innermost TTL/Hop Limit are required
 		 *  - use common if window changed */
 		if(ip_inner_context->ctxt.vx.ip_id_behavior <= IP_ID_BEHAVIOR_SEQ_SWAP &&
 		   tcp_context->tmp.nr_seq_bits_8191 <= 14 &&
 		   tcp_context->tmp.nr_ack_bits_8191 <= 15 &&
+		   tcp_context->tmp.nr_ttl_hopl_bits <= 3 &&
 		   !tcp_context->tmp.tcp_window_changed)
 		{
 			/* IP_ID_BEHAVIOR_SEQ or IP_ID_BEHAVIOR_SEQ_SWAP */
 			TRACE_GOTO_CHOICE;
 			packet_type = ROHC_PACKET_TCP_SEQ_8;
 		}
-		else if(tcp_context->tmp.nr_seq_bits_65535 <= 16 &&
+		else if(ip_inner_context->ctxt.vx.ip_id_behavior > IP_ID_BEHAVIOR_SEQ_SWAP &&
+		        tcp_context->tmp.nr_seq_bits_65535 <= 16 &&
 		        tcp_context->tmp.nr_ack_bits_16383 <= 16 &&
+		        tcp_context->tmp.nr_ttl_hopl_bits <= 3 &&
 		        !tcp_context->tmp.tcp_window_changed)
 		{
 			TRACE_GOTO_CHOICE;
