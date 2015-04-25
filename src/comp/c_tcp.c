@@ -6313,7 +6313,7 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 	*tcp = base_header.tcphdr;
 	pkt_ecn_vals |= (*tcp)->ecn_flags;
 	base_header.uint8 += sizeof(tcphdr_t);
-	hdrs_len = sizeof(tcphdr_t);
+	hdrs_len += sizeof(tcphdr_t);
 
 	/* what value for ecn_used? */
 	tcp_detect_ecn_used_behavior(context, pkt_ecn_vals, (*tcp)->res_flags);
@@ -6349,6 +6349,8 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 		               "TCP options");
 		goto error;
 	}
+	rohc_comp_debug(context, "%zu bytes of TCP options successfully parsed",
+	                opts_len);
 	base_header.uint8 += opts_len;
 	hdrs_len += opts_len;
 
