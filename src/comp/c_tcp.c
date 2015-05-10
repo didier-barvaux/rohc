@@ -3906,6 +3906,7 @@ static bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
                                        size_t *const opts_len)
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
+	bool indexes_in_use[MAX_TCP_OPTION_INDEX + 1] = { false };
 	uint8_t *opts;
 	size_t opt_pos;
 	size_t opt_len;
@@ -4005,7 +4006,7 @@ static bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 			size_t oldest_idx_age = 0;
 
 			/* find the index that was used for the same option in previous
-			 * packets, or the first unused one */
+			 * packets... */
 			for(opt_idx = TCP_INDEX_GENERIC7;
 			    opt_idx_free < 0 && opt_idx <= MAX_TCP_OPTION_INDEX; opt_idx++)
 			{
@@ -4017,6 +4018,7 @@ static bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 					opt_idx_free = opt_idx;
 				}
 			}
+			/* ... or use the first free index... */
 			for(opt_idx = TCP_INDEX_GENERIC7;
 			    opt_idx_free < 0 && opt_idx <= MAX_TCP_OPTION_INDEX; opt_idx++)
 			{
@@ -4027,11 +4029,13 @@ static bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 					opt_idx_free = opt_idx;
 				}
 			}
+			/* ... or recycle the oldest index (but not already recycled) */
 			if(opt_idx_free < 0)
 			{
 				for(opt_idx = TCP_INDEX_GENERIC7; opt_idx <= MAX_TCP_OPTION_INDEX; opt_idx++)
 				{
-					if(tcp_context->tcp_options_list[opt_idx].used &&
+					if(!indexes_in_use[opt_idx] &&
+					   tcp_context->tcp_options_list[opt_idx].used &&
 					   tcp_context->tcp_options_list[opt_idx].age > oldest_idx_age)
 					{
 					   oldest_idx_age = tcp_context->tcp_options_list[opt_idx].age;
@@ -4045,6 +4049,7 @@ static bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 			}
 			opt_idx = opt_idx_free;
 		}
+		indexes_in_use[opt_idx] = true;
 
 		/* the EOL, MSS, and WS options are 'static options': they cannot be
 		 * transmitted in irregular chain if their value changed, so the compressor
