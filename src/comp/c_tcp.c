@@ -4092,33 +4092,30 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 		{
 			item_needed = false;
 		}
+		else if(tcp_context->tcp_options_list[opt_idx].nr_trans == 0)
+		{
+			/* option has never been transmitted, item must be transmitted */
+			rohc_comp_debug(context, "TCP options list: option '%s' is new",
+			                tcp_opt_get_descr(opt_type));
+			item_needed = true;
+			/* save new length and value in context */
+			c_tcp_opt_record(tcp_context, opt_idx, options, opt_len);
+		}
+		else if(c_tcp_opt_changed(tcp_context, opt_idx, options, opt_len))
+		{
+			/* option was already transmitted but it changed since then,
+			 * item must be transmitted again */
+			rohc_comp_debug(context, "TCP options list: option '%s' changed",
+			                tcp_opt_get_descr(opt_type));
+			item_needed = true;
+			/* save new length and value in context */
+			c_tcp_opt_record(tcp_context, opt_idx, options, opt_len);
+		}
 		else
 		{
-			if(tcp_context->tcp_options_list[opt_idx].nr_trans == 0)
-			{
-				/* option has never been transmitted, item must be transmitted */
-				rohc_comp_debug(context, "TCP options list: option '%s' is new",
-				                tcp_opt_get_descr(opt_type));
-				item_needed = true;
-				/* save new length and value in context */
-				c_tcp_opt_record(tcp_context, opt_idx, options, opt_len);
-			}
-			else if(c_tcp_opt_changed(tcp_context, opt_idx, options, opt_len))
-			{
-				/* option was already transmitted but it changed since then,
-				 * item must be transmitted again */
-				rohc_comp_debug(context, "TCP options list: option '%s' changed",
-				                tcp_opt_get_descr(opt_type));
-				item_needed = true;
-				/* save new length and value in context */
-				c_tcp_opt_record(tcp_context, opt_idx, options, opt_len);
-			}
-			else
-			{
-				/* option was already transmitted and didn't change since then,
-				 * item shall not be transmitted again */
-				item_needed = false;
-			}
+			/* option was already transmitted and didn't change since then,
+			 * item shall not be transmitted again */
+			item_needed = false;
 		}
 		assert(tcp_context->tcp_options_list[opt_idx].used);
 		tcp_context->tcp_options_list[opt_idx].nr_trans++;
