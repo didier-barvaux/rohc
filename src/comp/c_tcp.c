@@ -836,6 +836,18 @@ static void c_tcp_opt_trace(const struct rohc_comp_ctxt *const context,
                             const size_t opt_len)
 	__attribute__((nonnull(1, 3)));
 
+static int c_tcp_opt_compute_ps(const uint8_t idx_max)
+	__attribute__((warn_unused_result, const));
+
+static void c_tcp_opt_write_xi(const struct rohc_comp_ctxt *const context,
+                               uint8_t *const comp_opts,
+                               size_t *const comp_opts_len,
+                               const int ps,
+                               const size_t opt_pos,
+                               const uint8_t opt_idx,
+                               const bool item_needed)
+	__attribute__((nonnull(1, 2, 3)));
+
 static tcp_ip_id_behavior_t tcp_detect_ip_id_behavior(const uint16_t last_ip_id,
 																		const uint16_t new_ip_id)
 	__attribute__((warn_unused_result, const));
@@ -3075,6 +3087,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 	{
 		uint8_t *pBeginList;
 		size_t opt_pos;
+		int ps;
 		int i;
 
 		/* init pointer to TCP options */
@@ -3085,6 +3098,9 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 		              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
 		              "TCP options", options, options_length);
 
+		/* what type of XI fields to use? */
+		ps = c_tcp_opt_compute_ps(tcp_context->tmp.tcp_opts_idx_max);
+
 		/* Save the begin of the list */
 		pBeginList = mptr.uint8++;
 		/* List is empty */
@@ -3094,6 +3110,8 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 		    i > 0 && opt_pos < tcp_context->tmp.tcp_opts_nr;
 		    opt_pos++)
 		{
+			/* TODO: do not include item if value is unchanged for more than N packets */
+			const bool item_needed = true;
 			uint8_t opt_type;
 			uint8_t opt_len;
 			uint8_t opt_idx;
@@ -3135,36 +3153,14 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 			assert(tcp_context->tcp_options_list[opt_idx].used);
 			tcp_context->tcp_options_list[opt_idx].nr_trans++;
 
-			/* TODO: do not include item if value is unchanged for more
-			 * than N packets */
-			if(tcp_context->tmp.tcp_opts_idx_max <= 7)
+			/* write the XI field for the TCP option */
 			{
-				/* use 4-bit XI fields */
-				assert(opt_idx <= 7);
-				if((*pBeginList) & 1) /* number is odd */
-				{
-					*mptr.uint8 |= 0x08 | opt_idx;
-					rohc_comp_debug(context, "  add 4-bit  odd XI field 0x%x",
-					                (*mptr.uint8) & 0xf);
-					mptr.uint8++;
-				}
-				else
-				{
-					*mptr.uint8 = (0x08 | opt_idx) << 4;
-					rohc_comp_debug(context, "  add 4-bit even XI field 0x%x",
-					                ((*mptr.uint8) >> 4) & 0xf);
-				}
+				size_t xi_len = 0;
+				c_tcp_opt_write_xi(context, mptr.uint8, &xi_len, ps,
+				                   opt_pos, opt_idx, item_needed);
+				mptr.uint8 += xi_len;
 			}
-			else
-			{
-				/* 8-bit XI field */
-				assert(tcp_context->tmp.tcp_opts_idx_max <= MAX_TCP_OPTION_INDEX);
-				assert(opt_idx <= MAX_TCP_OPTION_INDEX);
-				*mptr.uint8 = 0x80 | opt_idx;
-				rohc_comp_debug(context, "  add 8-bit XI field 0x%02x",
-				                *mptr.uint8);
-				mptr.uint8++;
-			}
+
 			// One item more
 			++(*pBeginList);
 
@@ -4005,6 +4001,7 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 	uint8_t *ptr_compressed_options;
 	uint8_t *options;
 	int options_length;
+	int ps;
 	uint8_t m;
 	int i;
 
@@ -4019,6 +4016,9 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 	              context->compressor->trace_callback_priv,
 	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
 	              "TCP options", options, options_length);
+
+	/* what type of XI fields to use? */
+	ps = c_tcp_opt_compute_ps(tcp_context->tmp.tcp_opts_idx_max);
 
 	/* number and type of XI fields: will be set after list processing */
 	*comp_opts_len = 0;
@@ -4099,48 +4099,11 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 		assert(tcp_context->tcp_options_list[opt_idx].used);
 		tcp_context->tcp_options_list[opt_idx].nr_trans++;
 
-		/* write index */
-		if(tcp_context->tmp.tcp_opts_idx_max <= 7)
-		{
-			/* use 4-bit XI fields */
-			assert(opt_idx <= 7);
-			rohc_comp_debug(context, "TCP options list: 4-bit XI field #%u: "
-			                "index %u do%s transmit an item", m, opt_idx,
-			                item_needed ? "" : " not");
-			if(m & 1)
-			{
-				comp_opts[*comp_opts_len] |= opt_idx;
-				if(item_needed)
-				{
-					comp_opts[*comp_opts_len] |= 0x08;
-				}
-				(*comp_opts_len)++;
-			}
-			else
-			{
-				comp_opts[(*comp_opts_len)] = opt_idx << 4;
-				if(item_needed)
-				{
-					comp_opts[(*comp_opts_len)] |= 0x08 << 4;
-				}
-			}
-		}
-		else
-		{
-			/* use 8-bit XI fields */
-			assert(tcp_context->tmp.tcp_opts_idx_max <= MAX_TCP_OPTION_INDEX);
-			assert(opt_idx <= MAX_TCP_OPTION_INDEX);
-			rohc_comp_debug(context, "TCP options list: 8-bit XI field #%u: "
-			                "index %u do%s transmit an item", m, opt_idx,
-			                item_needed ? "" : " not");
-			comp_opts[(*comp_opts_len)] = opt_idx;
-			if(item_needed)
-			{
-				comp_opts[(*comp_opts_len)] |= 0x80;
-			}
-			(*comp_opts_len)++;
-		}
+		/* write the XI field for the TCP option */
+		c_tcp_opt_write_xi(context, comp_opts, comp_opts_len, ps,
+		                   m, opt_idx, item_needed);
 
+		/* write the item field for the TCP option if transmission is needed */
 		if(item_needed)
 		{
 			size_t comp_opt_len = 0;
@@ -4233,7 +4196,7 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 	comp_opts[0] |= m & 0x0f;
 
 	/* add padding if odd number 4-bit XI fields */
-	if(tcp_context->tmp.tcp_opts_idx_max <= 7)
+	if(ps == 0)
 	{
 		/* 4-bit XI field: add padding if odd number of items */
 		(*comp_opts_len) += m & 1;
@@ -7506,6 +7469,90 @@ static void c_tcp_opt_trace(const struct rohc_comp_ctxt *const context,
 			rohc_comp_debug(context, "TCP option %s (type %u)", opt_descr, opt_type);
 			break;
 		}
+	}
+}
+
+
+/**
+ * @brief Determine PS for the compressed list of TCP options
+ *
+ * According to RFC6846, §6.3.3, PS indicates size of XI fields:
+ *  \li PS = 0 indicates 4-bit XI fields;
+ *  \li PS = 1 indicates 8-bit XI fields.
+ *
+ * The rational to choose is: use 4-bit XI fields if the largest option index
+ * may fit in 4 bits, otherwise fallback on the 8-bit XI fields
+ *
+ * @param idx_max  The largest option index used in the compressed packet
+ * @return         The PS value
+ */
+static int c_tcp_opt_compute_ps(const uint8_t idx_max)
+{
+	assert(idx_max <= MAX_TCP_OPTION_INDEX);
+	return (idx_max <= 7 ? 0 : 1);
+}
+
+
+/**
+ * @brief Write the XI field for a TCP option
+ *
+ * @param context                The compression context
+ * @param[in,out] comp_opts      The compressed options
+ * @param[in,out] comp_opts_len  The length of the compressed options
+ * @param ps                     0 to use 4-bit XI fields, or 1 to use 8-bit XI fields
+ * @param opt_pos                The position of the TCP option in the list
+ *                               (opt_pos starts at 0)
+ * @param opt_idx                The index of the TCP option
+ * @param item_needed            Whether the TCP option requires its related item
+ *                               to be present or not
+ */
+static void c_tcp_opt_write_xi(const struct rohc_comp_ctxt *const context,
+                               uint8_t *const comp_opts,
+                               size_t *const comp_opts_len,
+                               const int ps,
+                               const size_t opt_pos,
+                               const uint8_t opt_idx,
+                               const bool item_needed)
+{
+	if(ps == 0)
+	{
+		/* use 4-bit XI fields */
+		assert(opt_idx <= 7);
+		rohc_comp_debug(context, "TCP options list: 4-bit XI field #%zu: index %u "
+		                "do%s transmit an item", opt_pos, opt_idx,
+		                item_needed ? "" : " not");
+		if(opt_pos & 1)
+		{
+			comp_opts[*comp_opts_len] |= opt_idx;
+			if(item_needed)
+			{
+				comp_opts[*comp_opts_len] |= 0x08;
+			}
+			(*comp_opts_len)++;
+		}
+		else
+		{
+			comp_opts[*comp_opts_len] = opt_idx << 4;
+			if(item_needed)
+			{
+				comp_opts[*comp_opts_len] |= 0x08 << 4;
+			}
+		}
+	}
+	else
+	{
+		/* use 8-bit XI fields */
+		assert(ps == 1);
+		assert(opt_idx <= MAX_TCP_OPTION_INDEX);
+		rohc_comp_debug(context, "TCP options list: 8-bit XI field #%zu: index %u "
+		                "do%s transmit an item", opt_pos, opt_idx,
+		                item_needed ? "" : " not");
+		comp_opts[*comp_opts_len] = opt_idx;
+		if(item_needed)
+		{
+			comp_opts[*comp_opts_len] |= 0x80;
+		}
+		(*comp_opts_len)++;
 	}
 }
 
