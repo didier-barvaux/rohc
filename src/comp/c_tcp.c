@@ -775,6 +775,17 @@ static bool c_tcp_build_seq_8(struct rohc_comp_ctxt *const context,
 										size_t *const seq8_len)
 	__attribute__((nonnull(1, 2, 3, 5, 7, 8), warn_unused_result));
 
+static bool c_tcp_build_co_common(struct rohc_comp_ctxt *const context,
+                                  const ip_context_t *const ip_context,
+                                  struct sc_tcp_context *const tcp_context,
+                                  const base_header_ip_t ip,
+                                  const tcphdr_t *const tcp,
+                                  const uint8_t crc,
+                                  co_common_t *const co_common,
+                                  size_t *const co_common_len)
+	__attribute__((nonnull(1, 2, 3, 5, 7, 8), warn_unused_result));
+
+
 
 /*
  * Misc functions
@@ -4589,7 +4600,6 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 	multi_ptr_t c_base_header; // compressed
 	int counter;
 	multi_ptr_t mptr;
-	uint8_t *puchar;
 	bool is_ok;
 
 	// Init pointer on rohc compressed buffer
@@ -4693,245 +4703,17 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 		}
 		case ROHC_PACKET_TCP_CO_COMMON:
 		{
-	size_t encoded_seq_len;
-	size_t encoded_ack_len;
-	int ret;
-	int indicator;
+			size_t co_common_len;
 
-	rohc_comp_debug(context, "code common packet");
-	// See RFC4996 page 80:
-	rohc_comp_debug(context, "ttl_irregular_chain_flag = %d",
-	                tcp_context->tmp.ttl_irregular_chain_flag);
-	mptr.uint8 = (uint8_t*)(c_base_header.co_common + 1);
-
-	c_base_header.co_common->discriminator = 0x7D; // '1111101'
-	c_base_header.co_common->ttl_hopl_outer_flag =
-		tcp_context->tmp.ttl_irregular_chain_flag;
-
-	rohc_comp_debug(context, "TCP ack_flag = %d, psh_flag = %d, rsf_flags = %d",
-	                tcp->ack_flag, tcp->psh_flag, tcp->rsf_flags);
-	// =:= irregular(1) [ 1 ];
-	c_base_header.co_common->ack_flag = tcp->ack_flag;
-	// =:= irregular(1) [ 1 ];
-	c_base_header.co_common->psh_flag = tcp->psh_flag;
-	// =:= rsf_index_enc [ 2 ];
-	c_base_header.co_common->rsf_flags = rsf_index_enc(context, tcp->rsf_flags);
-	// =:= lsb(4, 4) [ 4 ];
-	c_base_header.co_common->msn = tcp_context->msn & 0xf;
-	puchar = mptr.uint8;
-
-	/* seq_number */
-	encoded_seq_len =
-		variable_length_32_enc(rohc_ntoh32(tcp_context->old_tcphdr.seq_num),
-		                       rohc_ntoh32(tcp->seq_num),
-		                       tcp_context->tmp.nr_seq_bits_63,
-		                       tcp_context->tmp.nr_seq_bits_16383,
-		                       mptr.uint8, &indicator);
-	c_base_header.co_common->seq_indicator = indicator;
-	mptr.uint8 += encoded_seq_len;
-	rohc_comp_debug(context, "encode sequence number 0x%08x on %zu bytes with "
-	                "indicator %d", rohc_ntoh32(tcp->seq_num),
-	                encoded_seq_len, c_base_header.co_common->seq_indicator);
-
-	/* ack_number */
-	encoded_ack_len =
-		variable_length_32_enc(rohc_ntoh32(tcp_context->old_tcphdr.ack_num),
-		                       rohc_ntoh32(tcp->ack_num),
-		                       tcp_context->tmp.nr_ack_bits_63,
-		                       tcp_context->tmp.nr_ack_bits_16383,
-		                       mptr.uint8, &indicator);
-	c_base_header.co_common->ack_indicator = indicator;
-	mptr.uint8 += encoded_ack_len;
-	rohc_comp_debug(context, "encode ACK number 0x%08x on %zu bytes with "
-	                "indicator %d", rohc_ntoh32(tcp->ack_num),
-	                encoded_ack_len, c_base_header.co_common->ack_indicator);
-
-	/* ack_stride */ /* TODO: comparison with new computed ack_stride? */
-	ret = c_static_or_irreg16(false /* TODO */, rohc_hton16(tcp_context->ack_stride),
-	                          mptr.uint8, &indicator);
-	if(ret < 0)
-	{
-		rohc_comp_warn(context, "failed to encode static_or_irreg(ack_stride)");
-		goto error;
-	}
-	c_base_header.co_common->ack_stride_indicator = indicator;
-	mptr.uint8 += ret;
-	rohc_comp_debug(context, "size = %d, ack_stride_indicator = %d, "
-	                "ack_stride 0x%x", (unsigned)(mptr.uint8 - puchar),
-	                c_base_header.co_common->ack_stride_indicator,
-	                tcp_context->ack_stride);
-
-	/* window */
-	ret = c_static_or_irreg16(tcp->window, !tcp_context->tmp.tcp_window_changed,
-	                          mptr.uint8, &indicator);
-	if(ret < 0)
-	{
-		rohc_comp_warn(context, "failed to encode static_or_irreg(window)");
-		goto error;
-	}
-	c_base_header.co_common->window_indicator = indicator;
-	mptr.uint8 += ret;
-	rohc_comp_debug(context, "size = %d, window_indicator = %d, "
-	                "old_window = 0x%x, window = 0x%x",
-	                (unsigned)(mptr.uint8 - puchar),
-	                c_base_header.co_common->window_indicator,
-	                rohc_ntoh16(tcp_context->old_tcphdr.window),
-	                rohc_ntoh16(tcp->window));
-
-	/* innermost IP-ID */
-	if(base_header.ipvx->version == IPV4)
-	{
-		// =:= irregular(1) [ 1 ];
-		ret = c_optional_ip_id_lsb(context, ip_context->ctxt.v4.ip_id_behavior,
-		                           tcp_context->tmp.ip_id,
-		                           tcp_context->tmp.ip_id_delta,
-		                           tcp_context->tmp.nr_ip_id_bits_3,
-		                           mptr.uint8, &indicator);
-		if(ret < 0)
-		{
-			rohc_comp_warn(context, "failed to encode optional_ip_id_lsb(ip_id)");
-			goto error;
-		}
-		c_base_header.co_common->ip_id_indicator = indicator;
-		mptr.uint8 += ret;
-		// =:= ip_id_behavior_choice(true) [ 2 ];
-		c_base_header.co_common->ip_id_behavior = ip_context->ctxt.v4.ip_id_behavior;
-		rohc_comp_debug(context, "ip_id_indicator = %d, "
-		                "ip_id_behavior = %d (innermost IP-ID encoded on %d bytes)",
-		                c_base_header.co_common->ip_id_indicator,
-		                c_base_header.co_common->ip_id_behavior, ret);
-	}
-	else
-	{
-		// =:= irregular(1) [ 1 ];
-		c_base_header.co_common->ip_id_indicator = 0;
-		// =:= ip_id_behavior_choice(true) [ 2 ];
-		c_base_header.co_common->ip_id_behavior = IP_ID_BEHAVIOR_RAND;
-		rohc_comp_debug(context, "ip_id_indicator = %d, "
-		                "ip_id_behavior = %d (innermost IP-ID encoded on 0 byte)",
-		                c_base_header.co_common->ip_id_indicator,
-		                c_base_header.co_common->ip_id_behavior);
-	}
-
-	// cf RFC3168 and RFC4996 page 20 :
-	// =:= one_bit_choice [ 1 ];
-	c_base_header.co_common->ecn_used = GET_REAL(tcp_context->ecn_used);
-	rohc_comp_debug(context, "ecn_used = %d", GET_REAL(c_base_header.co_common->ecn_used));
-
-	/* urg_flag */
-	c_base_header.co_common->urg_flag = tcp->urg_flag;
-	rohc_comp_debug(context, "urg_flag = %d", c_base_header.co_common->urg_flag);
-	/* urg_ptr */
-	ret = c_static_or_irreg16(tcp->urg_ptr,
-	                          !!(tcp_context->old_tcphdr.urg_ptr == tcp->urg_ptr),
-	                          mptr.uint8, &indicator);
-	if(ret < 0)
-	{
-		rohc_comp_warn(context, "failed to encode static_or_irreg(urg_ptr)");
-		goto error;
-	}
-	c_base_header.co_common->urg_ptr_present = indicator;
-	mptr.uint8 += ret;
-	rohc_comp_debug(context, "urg_ptr_present = %d (URG pointer encoded on %d bytes)",
-	                c_base_header.co_common->urg_ptr_present, ret);
-
-	if(base_header.ipvx->version == IPV4)
-	{
-		/* dscp_present =:= irregular(1) [ 1 ] */
-		c_base_header.co_common->dscp_present =
-			dscp_encode(&mptr, ip_context->ctxt.vx.dscp, base_header.ipv4->dscp);
-		rohc_comp_debug(context, "dscp_present = %d (context = 0x%02x, "
-		                "value = 0x%02x) => length = %u bytes",
-		                c_base_header.co_common->dscp_present,
-		                ip_context->ctxt.vx.dscp, base_header.ipv4->dscp,
-		                (unsigned int) (mptr.uint8 - puchar));
-
-		/* ttl_hopl */
-		ret = c_static_or_irreg8(ip_context->ctxt.vx.ttl_hopl,
-		                         tcp_context->tmp.ttl_hopl, mptr.uint8,
-		                         &indicator);
-		if(ret < 0)
-		{
-			rohc_comp_warn(context, "failed to encode static_or_irreg(ttl_hopl)");
-			goto error;
-		}
-		rohc_comp_debug(context, "TTL = 0x%02x -> 0x%02x",
-		                ip_context->ctxt.vx.ttl_hopl, tcp_context->tmp.ttl_hopl);
-		c_base_header.co_common->ttl_hopl_present = indicator;
-		mptr.uint8 += ret;
-		rohc_comp_debug(context, "ttl_hopl_present = %d (TTL encoded on %d bytes)",
-		                c_base_header.co_common->ttl_hopl_present, ret);
-
-		// =:= dont_fragment(version.UVALUE) [ 1 ];
-		c_base_header.co_common->df = base_header.ipv4->df;
-	}
-	else
-	{
-		/* dscp_present =:= irregular(1) [ 1 ] */
-		c_base_header.co_common->dscp_present =
-			dscp_encode(&mptr, ip_context->ctxt.vx.dscp, DSCP_V6(base_header.ipv6));
-		rohc_comp_debug(context, "dscp_present = %d (context = 0x%02x, "
-		                "value = 0x%02x) => length = %u bytes",
-		                c_base_header.co_common->dscp_present,
-		                ip_context->ctxt.vx.dscp, DSCP_V6(base_header.ipv6),
-		                (unsigned int) (mptr.uint8 - puchar));
-
-		/* ttl_hopl */
-		ret = c_static_or_irreg8(ip_context->ctxt.vx.ttl_hopl,
-		                         tcp_context->tmp.ttl_hopl, mptr.uint8,
-		                         &indicator);
-		if(ret < 0)
-		{
-			rohc_comp_warn(context, "failed to encode static_or_irreg(ttl_hopl)");
-			goto error;
-		}
-		rohc_comp_debug(context, "HOPL = 0x%02x -> 0x%02x",
-		                ip_context->ctxt.vx.ttl_hopl, tcp_context->tmp.ttl_hopl);
-		c_base_header.co_common->ttl_hopl_present = indicator;
-		mptr.uint8 += ret;
-		rohc_comp_debug(context, "ttl_hopl_present = %d (HOPL encoded on %d bytes)",
-		                c_base_header.co_common->ttl_hopl_present, ret);
-
-		// =:= dont_fragment(version.UVALUE) [ 1 ];
-		c_base_header.co_common->df = 0;
-	}
-
-	// =:= compressed_value(1, 0) [ 1 ];
-	c_base_header.co_common->reserved = 0;
-
-	/* include the list of TCP options if the structure of the list changed
-	 * or if some static options changed (irregular chain cannot transmit
-	 * static options) */
-	if(tcp_context->tmp.is_tcp_opts_list_struct_changed ||
-		tcp_context->tmp.is_tcp_opts_list_static_changed)
-	{
-		size_t comp_opts_len;
-
-		/* the structure of the list of TCP options changed or at least one of
-		 * the static option changed, compress them */
-		c_base_header.co_common->list_present = 1;
-		is_ok = tcp_compress_tcp_options(context, tcp, mptr.uint8, &comp_opts_len);
-		if(!is_ok)
-		{
-			rohc_comp_warn(context, "failed to compress TCP options");
-			goto error;
-		}
-		mptr.uint8 += comp_opts_len;
-	}
-	else
-	{
-		/* the structure of the list of TCP options didn't change */
-		rohc_comp_debug(context, "compressed list of TCP options: list not present");
-		c_base_header.co_common->list_present = 0;
-	}
-	rohc_comp_debug(context, "size = %u, list_present = %d, DF = %d",
-	                (unsigned int) (mptr.uint8 - puchar),
-	                c_base_header.co_common->list_present,
-	                c_base_header.co_common->df);
-	// =:= crc7(THIS.UVALUE,THIS.ULENGTH) [ 7 ];
-	c_base_header.co_common->header_crc = crc;
-	rohc_comp_debug(context, "CRC = 0x%x",
-	                c_base_header.co_common->header_crc);
+			is_ok = c_tcp_build_co_common(context, ip_context, tcp_context,
+											      base_header, tcp, crc,
+			                              c_base_header.co_common, &co_common_len);
+			if(!is_ok)
+			{
+				rohc_comp_warn(context, "failed to build co_common packet");
+				goto error;
+			}
+			mptr.uint8 += co_common_len;
 			break;
 		}
 		default:
@@ -5797,6 +5579,298 @@ static bool c_tcp_build_seq_8(struct rohc_comp_ctxt *const context,
 	rohc_comp_debug(context, "CRC = 0x%x", seq8->header_crc);
 
 	*seq8_len = sizeof(seq_8_t) + comp_opts_len;
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Build a TCP co_common packet
+ *
+ * @param context             The compression context
+ * @param ip_context          The specific IP innermost context
+ * @param tcp_context         The specific TCP context
+ * @param ip                  The IPv4 or IPv6 header to compress
+ * @param tcp                 The TCP header to compress
+ * @param crc                 The CRC on the uncompressed headers
+ * @param[out] co_common      The co_common packet to build
+ * @param[out] co_common_len  The length (in bytes) of the co_common packet
+ * @return                    true if the packet is successfully built,
+ *                            false otherwise
+ */
+static bool c_tcp_build_co_common(struct rohc_comp_ctxt *const context,
+                                  const ip_context_t *const ip_context,
+                                  struct sc_tcp_context *const tcp_context,
+                                  const base_header_ip_t ip,
+                                  const tcphdr_t *const tcp,
+                                  const uint8_t crc,
+                                  co_common_t *const co_common,
+                                  size_t *const co_common_len)
+{
+	uint8_t *co_common_opt;
+	size_t co_common_opt_len;
+	size_t encoded_seq_len;
+	size_t encoded_ack_len;
+	int indicator;
+	bool is_ok;
+	int ret;
+
+	rohc_comp_debug(context, "code common packet");
+
+	rohc_comp_debug(context, "ttl_irregular_chain_flag = %d",
+	                tcp_context->tmp.ttl_irregular_chain_flag);
+
+	/* determine the start of the optional part */
+	co_common_opt = (uint8_t *) (co_common + 1);
+	co_common_opt_len = 0;
+
+	co_common->discriminator = 0x7D; // '1111101'
+	co_common->ttl_hopl_outer_flag =
+		tcp_context->tmp.ttl_irregular_chain_flag;
+
+	rohc_comp_debug(context, "TCP ack_flag = %d, psh_flag = %d, rsf_flags = %d",
+	                tcp->ack_flag, tcp->psh_flag, tcp->rsf_flags);
+	// =:= irregular(1) [ 1 ];
+	co_common->ack_flag = tcp->ack_flag;
+	// =:= irregular(1) [ 1 ];
+	co_common->psh_flag = tcp->psh_flag;
+	// =:= rsf_index_enc [ 2 ];
+	co_common->rsf_flags = rsf_index_enc(context, tcp->rsf_flags);
+	// =:= lsb(4, 4) [ 4 ];
+	co_common->msn = tcp_context->msn & 0xf;
+
+	/* seq_number */
+	encoded_seq_len =
+		variable_length_32_enc(rohc_ntoh32(tcp_context->old_tcphdr.seq_num),
+		                       rohc_ntoh32(tcp->seq_num),
+		                       tcp_context->tmp.nr_seq_bits_63,
+		                       tcp_context->tmp.nr_seq_bits_16383,
+		                       co_common_opt, &indicator);
+	co_common->seq_indicator = indicator;
+	co_common_opt += encoded_seq_len;
+	co_common_opt_len += encoded_seq_len;
+	rohc_comp_debug(context, "encode sequence number 0x%08x on %zu bytes with "
+	                "indicator %d", rohc_ntoh32(tcp->seq_num),
+	                encoded_seq_len, co_common->seq_indicator);
+
+	/* ack_number */
+	encoded_ack_len =
+		variable_length_32_enc(rohc_ntoh32(tcp_context->old_tcphdr.ack_num),
+		                       rohc_ntoh32(tcp->ack_num),
+		                       tcp_context->tmp.nr_ack_bits_63,
+		                       tcp_context->tmp.nr_ack_bits_16383,
+		                       co_common_opt, &indicator);
+	co_common->ack_indicator = indicator;
+	co_common_opt += encoded_ack_len;
+	co_common_opt_len += encoded_ack_len;
+	rohc_comp_debug(context, "encode ACK number 0x%08x on %zu bytes with "
+	                "indicator %d", rohc_ntoh32(tcp->ack_num),
+	                encoded_ack_len, co_common->ack_indicator);
+
+	/* ack_stride */ /* TODO: comparison with new computed ack_stride? */
+	ret = c_static_or_irreg16(false /* TODO */, rohc_hton16(tcp_context->ack_stride),
+	                          co_common_opt, &indicator);
+	if(ret < 0)
+	{
+		rohc_comp_warn(context, "failed to encode static_or_irreg(ack_stride)");
+		goto error;
+	}
+	co_common->ack_stride_indicator = indicator;
+	co_common_opt += ret;
+	co_common_opt_len += ret;
+	rohc_comp_debug(context, "ack_stride_indicator = %d, ack_stride 0x%x on "
+	                "%d bytes", co_common->ack_stride_indicator,
+	                tcp_context->ack_stride, ret);
+
+	/* window */
+	ret = c_static_or_irreg16(tcp->window, !tcp_context->tmp.tcp_window_changed,
+	                          co_common_opt, &indicator);
+	if(ret < 0)
+	{
+		rohc_comp_warn(context, "failed to encode static_or_irreg(window)");
+		goto error;
+	}
+	co_common->window_indicator = indicator;
+	co_common_opt += ret;
+	co_common_opt_len += ret;
+	rohc_comp_debug(context, "window_indicator = %d, window = 0x%x on %d bytes",
+	                co_common->window_indicator, rohc_ntoh16(tcp->window), ret);
+
+	/* innermost IP-ID */
+	if(ip.ipvx->version == IPV4)
+	{
+		// =:= irregular(1) [ 1 ];
+		ret = c_optional_ip_id_lsb(context, ip_context->ctxt.v4.ip_id_behavior,
+		                           tcp_context->tmp.ip_id,
+		                           tcp_context->tmp.ip_id_delta,
+		                           tcp_context->tmp.nr_ip_id_bits_3,
+		                           co_common_opt, &indicator);
+		if(ret < 0)
+		{
+			rohc_comp_warn(context, "failed to encode optional_ip_id_lsb(ip_id)");
+			goto error;
+		}
+		co_common->ip_id_indicator = indicator;
+		co_common_opt += ret;
+		co_common_opt_len += ret;
+		// =:= ip_id_behavior_choice(true) [ 2 ];
+		co_common->ip_id_behavior = ip_context->ctxt.v4.ip_id_behavior;
+		rohc_comp_debug(context, "ip_id_indicator = %d, "
+		                "ip_id_behavior = %d (innermost IP-ID encoded on %d bytes)",
+		                co_common->ip_id_indicator, co_common->ip_id_behavior, ret);
+	}
+	else
+	{
+		// =:= irregular(1) [ 1 ];
+		co_common->ip_id_indicator = 0;
+		// =:= ip_id_behavior_choice(true) [ 2 ];
+		co_common->ip_id_behavior = IP_ID_BEHAVIOR_RAND;
+		rohc_comp_debug(context, "ip_id_indicator = %d, "
+		                "ip_id_behavior = %d (innermost IP-ID encoded on 0 byte)",
+		                co_common->ip_id_indicator, co_common->ip_id_behavior);
+	}
+
+	// cf RFC3168 and RFC4996 page 20 :
+	// =:= one_bit_choice [ 1 ];
+	co_common->ecn_used = GET_REAL(tcp_context->ecn_used);
+	rohc_comp_debug(context, "ecn_used = %d", GET_REAL(co_common->ecn_used));
+
+	/* urg_flag */
+	co_common->urg_flag = tcp->urg_flag;
+	rohc_comp_debug(context, "urg_flag = %d", co_common->urg_flag);
+	/* urg_ptr */
+	ret = c_static_or_irreg16(tcp->urg_ptr,
+	                          !!(tcp_context->old_tcphdr.urg_ptr == tcp->urg_ptr),
+	                          co_common_opt, &indicator);
+	if(ret < 0)
+	{
+		rohc_comp_warn(context, "failed to encode static_or_irreg(urg_ptr)");
+		goto error;
+	}
+	co_common->urg_ptr_present = indicator;
+	co_common_opt += ret;
+	co_common_opt_len += ret;
+	rohc_comp_debug(context, "urg_ptr_present = %d (URG pointer encoded on %d bytes)",
+	                co_common->urg_ptr_present, ret);
+
+	if(ip.ipvx->version == IPV4)
+	{
+		/* dscp_present =:= irregular(1) [ 1 ] */
+		ret = dscp_encode(ip_context->ctxt.vx.dscp, ip.ipv4->dscp,
+		                  co_common_opt, &indicator);
+		if(ret < 0)
+		{
+			rohc_comp_warn(context, "failed to encode dscp_encode(dscp)");
+			goto error;
+		}
+		co_common->dscp_present = indicator;
+		co_common_opt += ret;
+		co_common_opt_len += ret;
+		rohc_comp_debug(context, "dscp_present = %d (context = 0x%02x, "
+		                "value = 0x%02x) => length = %d bytes",
+		                co_common->dscp_present, ip_context->ctxt.vx.dscp,
+		                ip.ipv4->dscp, ret);
+
+		/* ttl_hopl */
+		ret = c_static_or_irreg8(ip_context->ctxt.vx.ttl_hopl,
+		                         tcp_context->tmp.ttl_hopl, co_common_opt,
+		                         &indicator);
+		if(ret < 0)
+		{
+			rohc_comp_warn(context, "failed to encode static_or_irreg(ttl_hopl)");
+			goto error;
+		}
+		rohc_comp_debug(context, "TTL = 0x%02x -> 0x%02x",
+		                ip_context->ctxt.vx.ttl_hopl, tcp_context->tmp.ttl_hopl);
+		co_common->ttl_hopl_present = indicator;
+		co_common_opt += ret;
+		co_common_opt_len += ret;
+		rohc_comp_debug(context, "ttl_hopl_present = %d (TTL encoded on %d bytes)",
+		                co_common->ttl_hopl_present, ret);
+
+		// =:= dont_fragment(version.UVALUE) [ 1 ];
+		co_common->df = ip.ipv4->df;
+	}
+	else
+	{
+		/* dscp_present =:= irregular(1) [ 1 ] */
+		ret = dscp_encode(ip_context->ctxt.vx.dscp, DSCP_V6(ip.ipv6),
+		                  co_common_opt, &indicator);
+		if(ret < 0)
+		{
+			rohc_comp_warn(context, "failed to encode dscp_encode(dscp)");
+			goto error;
+		}
+		co_common->dscp_present = indicator;
+		co_common_opt += ret;
+		co_common_opt_len += ret;
+		rohc_comp_debug(context, "dscp_present = %d (context = 0x%02x, "
+		                "value = 0x%02x) => length = %d bytes",
+		                co_common->dscp_present, ip_context->ctxt.vx.dscp,
+		                DSCP_V6(ip.ipv6), ret);
+
+		/* ttl_hopl */
+		ret = c_static_or_irreg8(ip_context->ctxt.vx.ttl_hopl,
+		                         tcp_context->tmp.ttl_hopl, co_common_opt,
+		                         &indicator);
+		if(ret < 0)
+		{
+			rohc_comp_warn(context, "failed to encode static_or_irreg(ttl_hopl)");
+			goto error;
+		}
+		rohc_comp_debug(context, "HOPL = 0x%02x -> 0x%02x",
+		                ip_context->ctxt.vx.ttl_hopl, tcp_context->tmp.ttl_hopl);
+		co_common->ttl_hopl_present = indicator;
+		co_common_opt += ret;
+		co_common_opt_len += ret;
+		rohc_comp_debug(context, "ttl_hopl_present = %d (HOPL encoded on %d bytes)",
+		                co_common->ttl_hopl_present, ret);
+
+		// =:= dont_fragment(version.UVALUE) [ 1 ];
+		co_common->df = 0;
+	}
+	rohc_comp_debug(context, "DF = %d", co_common->df);
+
+	// =:= compressed_value(1, 0) [ 1 ];
+	co_common->reserved = 0;
+
+	/* include the list of TCP options if the structure of the list changed
+	 * or if some static options changed (irregular chain cannot transmit
+	 * static options) */
+	if(tcp_context->tmp.is_tcp_opts_list_struct_changed ||
+		tcp_context->tmp.is_tcp_opts_list_static_changed)
+	{
+		size_t comp_opts_len;
+
+		/* the structure of the list of TCP options changed or at least one of
+		 * the static option changed, compress them */
+		co_common->list_present = 1;
+		is_ok = tcp_compress_tcp_options(context, tcp, co_common_opt, &comp_opts_len);
+		if(!is_ok)
+		{
+			rohc_comp_warn(context, "failed to compress TCP options");
+			goto error;
+		}
+		co_common_opt += comp_opts_len;
+		co_common_opt_len += comp_opts_len;
+		rohc_comp_debug(context, "compressed list of TCP options: %zu-byte list "
+		                "present", comp_opts_len);
+	}
+	else
+	{
+		/* the structure of the list of TCP options didn't change */
+		rohc_comp_debug(context, "compressed list of TCP options: list not present");
+		co_common->list_present = 0;
+	}
+
+	// =:= crc7(THIS.UVALUE,THIS.ULENGTH) [ 7 ];
+	co_common->header_crc = crc;
+	rohc_comp_debug(context, "CRC = 0x%x", co_common->header_crc);
+
+	*co_common_len = sizeof(co_common_t) + co_common_opt_len;
 
 	return true;
 

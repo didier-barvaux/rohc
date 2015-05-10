@@ -162,10 +162,11 @@ int c_optional_ip_id_lsb(const struct rohc_comp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 6, 7)));
 
 // RFC4996 page 75
-unsigned int dscp_encode(multi_ptr_t *pmptr,
-                         const uint8_t context_value,
-                         const uint8_t value)
-	__attribute__((warn_unused_result, nonnull(1)));
+int dscp_encode(const uint8_t context_value,
+                const uint8_t packet_value,
+                uint8_t *const rohc_data,
+                int *const indicator)
+	__attribute__((warn_unused_result, nonnull(3, 4)));
 
 #endif /* ROHC_COMP_RFC4996_ENCODING_H */
 

@@ -483,24 +483,33 @@ int c_optional_ip_id_lsb(const struct rohc_comp_ctxt *const context,
  *
  * See RFC4996 page 75
  *
- * @param pmptr            The destination for the compressed value
  * @param context_value    The DSCP value in the compression context
  * @param packet_value     The DSCP value in the packet to compress
- * @return                 Indicator 1 if value compressed, 0 otherwise
+ * @param[out] rohc_data   The compressed value
+ * @param[out] indicator   The indicator: 1 if present, 1 if not
+ * @return                 The number of ROHC bytes written,
+ *                         -1 if a problem occurs
  */
-unsigned int dscp_encode(multi_ptr_t *pmptr,
-                         const uint8_t context_value,
-                         const uint8_t packet_value)
+int dscp_encode(const uint8_t context_value,
+                const uint8_t packet_value,
+                uint8_t *const rohc_data,
+                int *const indicator)
 {
+	size_t len;
+
 	if(packet_value == context_value)
 	{
-		return 0;
+		*indicator = 0;
+		len = 0;
 	}
 	else
 	{
 		/* 6 bits + 2 bits padding */
-		*(pmptr->uint8)++ = ((packet_value & 0x3F) << 2);
-		return 1;
+		rohc_data[0] = ((packet_value & 0x3F) << 2);
+		*indicator = 1;
+		len = 1;
 	}
+
+	return len;
 }
 
