@@ -1,0 +1,5 @@
+language: c
+compiler:
+   - clang
+   - gcc
+script: ./autogen.sh --disable-linux-kernel-module --disable-doc && make clean && make all && make check && make distcheck
