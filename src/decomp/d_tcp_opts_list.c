@@ -1402,7 +1402,7 @@ bool d_tcp_build_tcp_opts(const struct rohc_decomp_ctxt *const context,
 		size_t opt_len;
 
 		assert(tcp_opt->used);
-		if(!decoded->tcp_opts.found)
+		if(!decoded->tcp_opts.found[i])
 		{
 			rohc_decomp_warn(context, "failed to build TCP option #%zu: no "
 			                 "information was transmitted for that option", i + 1);
