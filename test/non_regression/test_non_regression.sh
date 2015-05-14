@@ -55,7 +55,7 @@ SCRIPT="$0"
 VERBOSE="$1"
 if [ "x$MAKELEVEL" != "x" ] ; then
 	BASEDIR="${srcdir}"
-	APP="./test_non_regression${KERNEL_SUFFIX}${CROSS_COMPILATION_EXEEXT}"
+	APP="../test_non_regression${KERNEL_SUFFIX}${CROSS_COMPILATION_EXEEXT}"
 else
 	BASEDIR=$( dirname "${SCRIPT}" )
 	APP="${BASEDIR}/test_non_regression${KERNEL_SUFFIX}${CROSS_COMPILATION_EXEEXT}"
@@ -131,7 +131,7 @@ else
 fi
 
 # source valgrind-related functions
-. ${BASEDIR}/../valgrind.sh
+. ${BASEDIR}/../../valgrind.sh
 
 # do not run tests with large CIDs in the Linux kernel to save some time
 [ -n "${KERNEL_SUFFIX}" ] && [ "${CID_TYPE}" = "largecid" ] && exit 77

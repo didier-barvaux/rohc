@@ -862,6 +862,8 @@ AC_CONFIG_FILES([ \
 	test/robustness/piggybacking_feedback/Makefile \
 	test/robustness/malformed_rohc_packets/Makefile \
 	test/non_regression/Makefile \
+	test/non_regression/rfc3095/Makefile \
+	test/non_regression/rfc6846/Makefile \
 	test/interop/Makefile \
 	examples/Makefile \
 	linux/Makefile \

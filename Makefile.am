@@ -70,7 +70,8 @@ EXTRA_DIST = \
 
 # other extra files for releases
 dist-hook:
-	find $(distdir)/test/non_regression/inputs \
+	find $(distdir)/test/non_regression/rfc3095/inputs \
+	     $(distdir)/test/non_regression/rfc6846/inputs \
 		-type f -and \
 		-not -name source.pcap -and \
 		-not -name rohc_maxcontexts0_wlsb4_smallcid.pcap -and \
