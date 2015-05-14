@@ -829,7 +829,6 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 	const uint8_t et = 1; /* list encoding type 1 */
 	uint8_t gp;
 	uint8_t mask[ROHC_LIST_ITEMS_MAX] = { 0 };
-	size_t mask_size;
 	size_t m; /* the number of elements in current list = number of XIs */
 	size_t k; /* the index of the current element in current list */
 	size_t ref_k; /* the index of the current element in reference list */
@@ -901,7 +900,6 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 		mask[k] = bit;
 		dest[counter] |= bit << (6 - k);
 	}
-	mask_size = 1;
 	rc_list_debug(comp, "insertion mask = 0x%02x", dest[counter]);
 	counter++;
 
@@ -933,7 +931,6 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 			mask[k] = bit;
 			dest[counter] |= bit << (7 - (k - 7));
 		}
-		mask_size = 2;
 		rc_list_debug(comp, "insertion mask (2nd byte) = 0x%02x", dest[counter]);
 		counter++;
 	}
@@ -1044,25 +1041,26 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 				/* set the X bit if item is not already known */
 				if(!item->known)
 				{
-					dest[counter - (3 + mask_size)] |= 1 << 3;
+					dest[ps_pos] |= 1 << 3;
 				}
 				/* 3-bit Index */
 				assert((index_table & 0x07) == index_table);
-				dest[counter - (3 + mask_size)] |= index_table & 0x07;
+				dest[ps_pos] |= index_table & 0x07;
 
 				rc_list_debug(comp, "add 4-bit XI #%zu in part 1 = 0x%x", k,
-				              (dest[counter - (3 + mask_size)] & 0x0f) >> 4);
+				              dest[ps_pos] & 0x0f);
 			}
 			else
 			{
-				/* next XIs goes in part 5 */
-				dest[counter] = 0;
+				/* next XIs go in part 5 */
 
 				/* odd or even 4-bit XI ? */
 				if((xi_index % 2) == 0)
 				{
 					/* use MSB part of the byte */
 
+					/* first 4-bit XI, so clear the byte */
+					dest[counter] = 0;
 					/* set the X bit if item is not already known */
 					if(!item->known)
 					{
@@ -1089,7 +1087,7 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 					dest[counter] |= (index_table & 0x07) << 0;
 
 					rc_list_debug(comp, "add 4-bit XI #%zu = 0x%x in LSB",
-					              k + 1, dest[counter] & 0xf0);
+					              k + 1, dest[counter] & 0x0f);
 
 					/* byte is full, write to next one next time */
 					counter++;
@@ -1413,7 +1411,6 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 	size_t m; /* the number of elements in current list = number of XIs */
 	size_t k; /* the index of the current element in current list */
 	size_t ref_k; /* the index of the current element in reference list */
-	size_t mask_size = 0; /* the cumulative size of insertion/removal masks */
 	size_t ps; /* indicate the size of the indexes */
 	size_t ps_pos; /* the position of the byte that contains the PS bit */
 
@@ -1489,7 +1486,6 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 	rc_list_debug(comp, "removal bit mask (first byte) = 0x%02x",
 	              dest[counter]);
 	counter++;
-	mask_size++;
 
 	/* part 4: removal bit mask (second optional byte) */
 	if(count > 7)
@@ -1520,7 +1516,6 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 		rc_list_debug(comp, "removal bit mask (second byte) = 0x%02x",
 		              dest[counter]);
 		counter++;
-		mask_size++;
 	}
 	else
 	{
@@ -1573,7 +1568,6 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 	rc_list_debug(comp, "insertion bit mask (first byte) = 0x%02x",
 	              dest[counter]);
 	counter++;
-	mask_size++;
 
 	/* part 4: insertion mask (second optional byte) */
 	if(m > 7)
@@ -1615,7 +1609,6 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 		rc_list_debug(comp, "insertion bit mask (second byte) = 0x%02x",
 		              dest[counter]);
 		counter++;
-		mask_size++;
 	}
 	else
 	{
@@ -1729,25 +1722,26 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 				/* set the X bit if item is not already known */
 				if(!item->known)
 				{
-					dest[counter - (3 + mask_size)] |= 1 << 3;
+					dest[ps_pos] |= 1 << 3;
 				}
 				/* 3-bit Index */
 				assert((index_table & 0x07) == index_table);
-				dest[counter - (3 + mask_size)] |= index_table & 0x07;
+				dest[ps_pos] |= index_table & 0x07;
 
 				rc_list_debug(comp, "add 4-bit XI #%zu in part 1 = 0x%x", k,
-				              (dest[counter - (3 + mask_size)] & 0x0f) >> 4);
+				              dest[ps_pos] & 0x0f);
 			}
 			else
 			{
-				/* next XIs goes in part 6 */
-				dest[counter] = 0;
+				/* next XIs go in part 6 */
 
 				/* odd or even 4-bit XI ? */
 				if((xi_index % 2) == 0)
 				{
 					/* use MSB part of the byte */
 
+					/* first 4-bit XI, so clear the byte */
+					dest[counter] = 0;
 					/* set the X bit if item is not already known */
 					if(!item->known)
 					{
@@ -1774,7 +1768,7 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 					dest[counter] |= (index_table & 0x07) << 0;
 
 					rc_list_debug(comp, "add 4-bit XI #%zu in LSB = 0x%x",
-					              k + 1, dest[counter] & 0xf0);
+					              k + 1, dest[counter] & 0x0f);
 
 					/* byte is full, write to next one next time */
 					counter++;
