@@ -31,6 +31,7 @@ rohc_fuzzer_SOURCES = \
 	fuzzer.c
 
 rohc_fuzzer_LDADD = \
+	${configure_fuzzer_ldflags} \
 	-lrohc_comp \
 	-lrohc_decomp \
 	-lrohc_common \
