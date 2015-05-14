@@ -1,3 +1,9 @@
+env:
+  global:
+   # The next declaratioddn is the encrypted COVERITY_SCAN_TOKEN, created
+   #   via the "travis encrypt" command using the project repo's public key
+   - secure: "gx527mA//JOHGAP+QVlh081EzLvG5gAkXLCa89fK+WZhO/Q1ZC7NdWrV2M8AvKyfnH/zcz0N2qvDJ99ATzzFZ/n1StIwnUWPIgjX9QO6L0NWShSR2PdL0LwION3d4OV8zbEY/i+mCQmVng1c9/SfVFn/58Ee1vu8gWnCxBK+o7I="
+
 language: c
 compiler:
    - clang
@@ -9,3 +15,13 @@ before_install:
    - tar -xvf /tmp/cmocka-1.0.1.tar.xz
    - mkdir cmocka-1.0.1/build && cd cmocka-1.0.1/build && cmake -DCMAKE_INSTALL_PREFIX=/usr -DWITH_STATIC_LIB=OFF -DUNIT_TESTING=OFF -DCMAKE_DISABLE_FIND_PACKAGE_Doxygen=ON .. && make && sudo make install && cd -
 script: ./autogen.sh --disable-linux-kernel-module --disable-doc && make clean && make all && make check && make distcheck
+
+addons:
+  coverity_scan:
+    project:
+      name: "didier-barvaux/rohc"
+    notification_email: didier@rohc-lib.org
+    build_command_prepend: ./autogen.sh --disable-app-fuzzer --disable-app-performance --disable-app-sniffer --disable-app-stats --disable-rohc-tests --disable-linux-kernel-module --disable-doc && make clean
+    build_command: make -j 4
+    branch_pattern: coverity_scan
+
