@@ -17,7 +17,7 @@ check_PROGRAMS = \
 test_rtp_callback_SOURCES = test_rtp_callback.c
 test_rtp_callback_LDADD = \
 	-l$(pcap_lib_name) \
-	-lrohc \
+	$(top_builddir)/src/librohc.la \
 	$(additional_platform_libs)
 test_rtp_callback_CFLAGS = \
 	$(configure_cflags) \
@@ -29,7 +29,6 @@ test_rtp_callback_CPPFLAGS = \
 	-I$(top_srcdir)/src/comp \
 	$(libpcap_includes)
 test_rtp_callback_LDFLAGS = \
-	-L$(top_builddir)/src/.libs \
 	$(configure_ldflags)
 
 

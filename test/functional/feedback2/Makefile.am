@@ -29,7 +29,6 @@ test_feedback2_CPPFLAGS = \
 	$(libpcap_includes)
 
 test_feedback2_LDFLAGS = \
-	-L$(top_builddir)/src/.libs \
 	$(configure_ldflags)
 
 test_feedback2_SOURCES = \
@@ -37,7 +36,7 @@ test_feedback2_SOURCES = \
 
 test_feedback2_LDADD = \
 	-l$(pcap_lib_name) \
-	-lrohc \
+	$(top_builddir)/src/librohc.la \
 	$(additional_platform_libs)
 
 EXTRA_DIST = \

@@ -25,14 +25,13 @@ test_decompress_padding_CPPFLAGS = \
 	-I$(top_srcdir)/src/decomp
 
 test_decompress_padding_LDFLAGS = \
-	-L$(top_builddir)/src/.libs \
 	$(configure_ldflags)
 
 test_decompress_padding_SOURCES = \
 	test_decompress_padding.c
 
 test_decompress_padding_LDADD = \
-	-lrohc \
+	$(top_builddir)/src/librohc.la \
 	$(additional_platform_libs)
 
 EXTRA_DIST = \

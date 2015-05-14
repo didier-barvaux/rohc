@@ -69,7 +69,6 @@ test_malformed_rohc_packets_CPPFLAGS = \
 	$(libpcap_includes)
 
 test_malformed_rohc_packets_LDFLAGS = \
-	-L$(top_builddir)/src/.libs \
 	$(configure_ldflags)
 
 test_malformed_rohc_packets_SOURCES = \
@@ -77,7 +76,7 @@ test_malformed_rohc_packets_SOURCES = \
 
 test_malformed_rohc_packets_LDADD = \
 	-l$(pcap_lib_name) \
-	-lrohc \
+	$(top_builddir)/src/librohc.la \
 	$(additional_platform_libs)
 
 EXTRA_DIST = \

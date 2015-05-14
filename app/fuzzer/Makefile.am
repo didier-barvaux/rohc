@@ -29,9 +29,7 @@ rohc_fuzzer_SOURCES = \
 
 rohc_fuzzer_LDADD = \
 	${configure_fuzzer_ldflags} \
-	$(top_builddir)/src/comp/librohc_comp.la \
-	$(top_builddir)/src/decomp/librohc_decomp.la \
-	$(top_builddir)/src/common/librohc_common.la \
+	$(top_builddir)/src/librohc.la \
 	$(additional_platform_libs)
 
 if BUILD_DOC_MAN
@@ -59,9 +57,7 @@ rohc_rtp_fuzzer_SOURCES = \
 	rtp_fuzzer.c
 
 rohc_rtp_fuzzer_LDADD = \
-	$(top_builddir)/src/comp/librohc_comp.la \
-	$(top_builddir)/src/decomp/librohc_decomp.la \
-	$(top_builddir)/src/common/librohc_common.la \
+	$(top_builddir)/src/librohc.la \
 	$(additional_platform_libs)
 
 if BUILD_DOC_MAN

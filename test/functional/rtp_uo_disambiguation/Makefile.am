@@ -191,13 +191,12 @@ test_rtp_uo_disambiguation_CPPFLAGS = \
 	$(libpcap_includes)
 
 test_rtp_uo_disambiguation_LDFLAGS = \
-	-L$(top_builddir)/src/.libs \
 	$(configure_ldflags)
 
 test_rtp_uo_disambiguation_SOURCES = test_rtp_uo_disambiguation.c
 test_rtp_uo_disambiguation_LDADD = \
 	-l$(pcap_lib_name) \
-	-lrohc \
+	$(top_builddir)/src/librohc.la \
 	$(additional_platform_libs)
 
 EXTRA_DIST = \

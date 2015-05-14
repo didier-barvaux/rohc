@@ -28,7 +28,6 @@ test_interop_CPPFLAGS = \
 	$(libpcap_includes)
 
 test_interop_LDFLAGS = \
-	-L$(top_builddir)/src/.libs \
 	$(configure_ldflags)
 
 test_interop_SOURCES = \
@@ -36,7 +35,7 @@ test_interop_SOURCES = \
 
 test_interop_LDADD = \
 	-l$(pcap_lib_name) \
-	-lrohc \
+	$(top_builddir)/src/librohc.la \
 	$(additional_platform_libs)
 
 

@@ -27,7 +27,6 @@ test_piggybacking_feedback_CPPFLAGS = \
 	$(libpcap_includes)
 
 test_piggybacking_feedback_LDFLAGS = \
-	-L$(top_builddir)/src/.libs \
 	$(configure_ldflags)
 
 test_piggybacking_feedback_SOURCES = \
@@ -35,7 +34,7 @@ test_piggybacking_feedback_SOURCES = \
 
 test_piggybacking_feedback_LDADD = \
 	-l$(pcap_lib_name) \
-	-lrohc \
+	$(top_builddir)/src/librohc.la \
 	$(additional_platform_libs)
 
 EXTRA_DIST = \

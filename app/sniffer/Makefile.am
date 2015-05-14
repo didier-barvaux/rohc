@@ -28,9 +28,7 @@ rohc_sniffer_SOURCES = \
 
 rohc_sniffer_LDADD = \
 	-l$(pcap_lib_name) \
-	$(top_builddir)/src/comp/librohc_comp.la \
-	$(top_builddir)/src/decomp/librohc_decomp.la \
-	$(top_builddir)/src/common/librohc_common.la \
+	$(top_builddir)/src/librohc.la \
 	$(additional_platform_libs)
 
 
