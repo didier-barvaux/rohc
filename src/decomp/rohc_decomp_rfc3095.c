@@ -308,10 +308,10 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
                                        const struct ip_id_offset_decode *const ip_id_decode,
                                        const uint32_t decoded_sn,
                                        const rohc_lsb_ref_t lsb_ref_type,
-                                       const struct rohc_extr_ip_bits bits,
+                                       const struct rohc_extr_ip_bits *const bits,
                                        const char *const descr,
                                        struct rohc_decoded_ip_values *const decoded)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 7, 8)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 6, 7, 8)));
 
 
 /*
@@ -5024,7 +5024,7 @@ rohc_status_t rfc3095_decomp_build_hdrs(const struct rohc_decomp *const decomp,
 	if(rfc3095_ctxt->build_next_header != NULL)
 	{
 		/* TODO: check uncomp_hdrs max size */
-		size_t size = rfc3095_ctxt->build_next_header(context, *decoded,
+		size_t size = rfc3095_ctxt->build_next_header(context, decoded,
 		                                              uncomp_hdrs_data, payload_len);
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		uncomp_hdrs_data += size;
@@ -5588,7 +5588,7 @@ bool rfc3095_decomp_decode_bits(const struct rohc_decomp_ctxt *const context,
 	decode_ok = decode_ip_values_from_bits(context, rfc3095_ctxt->outer_ip_changes,
 	                                       rfc3095_ctxt->outer_ip_id_offset_ctxt,
 	                                       decoded->sn, bits->lsb_ref_type,
-	                                       bits->outer_ip, "outer",
+	                                       &bits->outer_ip, "outer",
 	                                       &decoded->outer_ip);
 	if(!decode_ok)
 	{
@@ -5604,7 +5604,7 @@ bool rfc3095_decomp_decode_bits(const struct rohc_decomp_ctxt *const context,
 		                                       rfc3095_ctxt->inner_ip_changes,
 		                                       rfc3095_ctxt->inner_ip_id_offset_ctxt,
 		                                       decoded->sn, bits->lsb_ref_type,
-		                                       bits->inner_ip, "inner",
+		                                       &bits->inner_ip, "inner",
 		                                       &decoded->inner_ip);
 		if(!decode_ok)
 		{
@@ -5617,7 +5617,7 @@ bool rfc3095_decomp_decode_bits(const struct rohc_decomp_ctxt *const context,
 	/* decode fields of next header if required */
 	if(rfc3095_ctxt->decode_values_from_bits != NULL)
 	{
-		decode_ok = rfc3095_ctxt->decode_values_from_bits(context, *bits, decoded);
+		decode_ok = rfc3095_ctxt->decode_values_from_bits(context, bits, decoded);
 		if(!decode_ok)
 		{
 			rohc_decomp_warn(context, "failed to decode fields of the next header");
@@ -5653,7 +5653,7 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
                                        const struct ip_id_offset_decode *const ip_id_decode,
                                        const uint32_t decoded_sn,
                                        const rohc_lsb_ref_t lsb_ref_type,
-                                       const struct rohc_extr_ip_bits bits,
+                                       const struct rohc_extr_ip_bits *const bits,
                                        const char *const descr,
                                        struct rohc_decoded_ip_values *const decoded)
 {
@@ -5661,13 +5661,13 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 	assert(decoded != NULL);
 
 	/* IP version (always present in extracted bits) */
-	decoded->version = bits.version;
+	decoded->version = bits->version;
 
 	/* TOS/TC */
-	if(bits.tos_nr > 0)
+	if(bits->tos_nr > 0)
 	{
 		/* take value from base header */
-		decoded->tos = bits.tos;
+		decoded->tos = bits->tos;
 	}
 	else
 	{
@@ -5677,10 +5677,10 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 	rohc_decomp_debug(context, "decoded %s TOS/TC = %d", descr, decoded->tos);
 
 	/* TTL/HL */
-	if(bits.ttl_nr > 0)
+	if(bits->ttl_nr > 0)
 	{
 		/* take value from base header */
-		decoded->ttl = bits.ttl;
+		decoded->ttl = bits->ttl;
 	}
 	else
 	{
@@ -5690,10 +5690,10 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 	rohc_decomp_debug(context, "decoded %s TTL/HL = %d", descr, decoded->ttl);
 
 	/* protocol/NH */
-	if(bits.proto_nr > 0)
+	if(bits->proto_nr > 0)
 	{
 		/* take value from base header */
-		decoded->proto = bits.proto;
+		decoded->proto = bits->proto;
 	}
 	else
 	{
@@ -5707,10 +5707,10 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 	if(decoded->version == IPV4)
 	{
 		/* NBO flag */
-		if(bits.nbo_nr > 0)
+		if(bits->nbo_nr > 0)
 		{
 			/* take value from base header */
-			decoded->nbo = bits.nbo;
+			decoded->nbo = bits->nbo;
 		}
 		else
 		{
@@ -5720,10 +5720,10 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 		rohc_decomp_debug(context, "decoded %s NBO = %d", descr, decoded->nbo);
 
 		/* RND flag */
-		if(bits.rnd_nr > 0)
+		if(bits->rnd_nr > 0)
 		{
 			/* take value from base header */
-			decoded->rnd = bits.rnd;
+			decoded->rnd = bits->rnd;
 		}
 		else
 		{
@@ -5733,10 +5733,10 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 		rohc_decomp_debug(context, "decoded %s RND = %d", descr, decoded->rnd);
 
 		/* SID flag */
-		if(bits.sid_nr > 0)
+		if(bits->sid_nr > 0)
 		{
 			/* take value from base header */
-			decoded->sid = bits.sid;
+			decoded->sid = bits->sid;
 		}
 		else
 		{
@@ -5746,30 +5746,30 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 		rohc_decomp_debug(context, "decoded %s SID = %d", descr, decoded->sid);
 
 		/* IP-ID */
-		if(!bits.is_id_enc)
+		if(!bits->is_id_enc)
 		{
 			/* IR/IR-DYN packets transmit the IP-ID verbatim, so convert to
 			 * host byte order only if nbo=1 */
-			assert(bits.id_nr == 16);
-			decoded->id = bits.id;
-			if(bits.nbo)
+			assert(bits->id_nr == 16);
+			decoded->id = bits->id;
+			if(bits->nbo)
 			{
-				decoded->id = rohc_ntoh16(bits.id);
+				decoded->id = rohc_ntoh16(bits->id);
 			}
 			else
 			{
 #if WORDS_BIGENDIAN == 1
-				decoded->id = swab16(bits.id);
+				decoded->id = swab16(bits->id);
 #else
-				decoded->id = bits.id;
+				decoded->id = bits->id;
 #endif
 			}
 		}
 		else if(decoded->rnd)
 		{
 			/* take packet value unchanged if random */
-			assert(bits.id_nr == 16);
-			decoded->id = bits.id;
+			assert(bits->id_nr == 16);
+			decoded->id = bits->id;
 
 			if(decoded->sid)
 			{
@@ -5790,25 +5790,25 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 			 * decode its new value with the help of the decoded SN and the
 			 * least-significant IP-ID bits transmitted in the ROHC header */
 			int ret;
-			ret = ip_id_offset_decode(ip_id_decode, lsb_ref_type, bits.id, bits.id_nr,
+			ret = ip_id_offset_decode(ip_id_decode, lsb_ref_type, bits->id, bits->id_nr,
 			                          decoded_sn, &decoded->id);
 			if(ret != 1)
 			{
 				rohc_decomp_warn(context, "failed to decode %zu %s IP-ID bits "
-				                 "0x%x", bits.id_nr, descr, bits.id);
+				                 "0x%x", bits->id_nr, descr, bits->id);
 				goto error;
 			}
 		}
 		rohc_decomp_debug(context, "decoded %s IP-ID = 0x%04x (rnd = %d, "
 		                  "nbo = %d, sid = %d, nr bits = %zd, bits = 0x%x)",
 		                  descr, decoded->id, decoded->rnd, decoded->nbo,
-		                  decoded->sid, bits.id_nr, bits.id);
+		                  decoded->sid, bits->id_nr, bits->id);
 
 		/* DF flag */
-		if(bits.df_nr > 0)
+		if(bits->df_nr > 0)
 		{
 			/* take value from base header */
-			decoded->df = bits.df;
+			decoded->df = bits->df;
 		}
 		else
 		{
@@ -5818,11 +5818,11 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 		rohc_decomp_debug(context, "decoded %s DF = %d", descr, decoded->df);
 
 		/* source address */
-		if(bits.saddr_nr > 0)
+		if(bits->saddr_nr > 0)
 		{
 			/* take value from base header */
-			assert(bits.saddr_nr == 32);
-			memcpy(decoded->saddr, bits.saddr, 4);
+			assert(bits->saddr_nr == 32);
+			memcpy(decoded->saddr, bits->saddr, 4);
 		}
 		else
 		{
@@ -5834,11 +5834,11 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 		                  descr, IPV4_ADDR_RAW(decoded->saddr));
 
 		/* destination address */
-		if(bits.daddr_nr > 0)
+		if(bits->daddr_nr > 0)
 		{
 			/* take value from base header */
-			assert(bits.daddr_nr == 32);
-			memcpy(decoded->daddr, bits.daddr, 4);
+			assert(bits->daddr_nr == 32);
+			memcpy(decoded->daddr, bits->daddr, 4);
 		}
 		else
 		{
@@ -5852,11 +5852,11 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 	else /* IPV6 */
 	{
 		/* flow label */
-		if(bits.flowid_nr > 0)
+		if(bits->flowid_nr > 0)
 		{
 			/* take value from base header */
-			assert(bits.flowid_nr == 20);
-			decoded->flowid = bits.flowid;
+			assert(bits->flowid_nr == 20);
+			decoded->flowid = bits->flowid;
 		}
 		else
 		{
@@ -5867,11 +5867,11 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 		                  decoded->flowid);
 
 		/* source address */
-		if(bits.saddr_nr > 0)
+		if(bits->saddr_nr > 0)
 		{
 			/* take value from base header */
-			assert(bits.saddr_nr == 128);
-			memcpy(decoded->saddr, bits.saddr, 16);
+			assert(bits->saddr_nr == 128);
+			memcpy(decoded->saddr, bits->saddr, 16);
 		}
 		else
 		{
@@ -5883,11 +5883,11 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 		                  descr, IPV6_ADDR_RAW(decoded->saddr));
 
 		/* destination address */
-		if(bits.daddr_nr > 0)
+		if(bits->daddr_nr > 0)
 		{
 			/* take value from base header */
-			assert(bits.daddr_nr == 128);
-			memcpy(decoded->daddr, bits.daddr, 16);
+			assert(bits->daddr_nr == 128);
+			memcpy(decoded->daddr, bits->daddr, 16);
 		}
 		else
 		{
@@ -6099,7 +6099,7 @@ void rfc3095_decomp_update_ctxt(struct rohc_decomp_ctxt *const context,
 	/* update context with decoded fields for next header if required */
 	if(rfc3095_ctxt->update_context != NULL)
 	{
-		rfc3095_ctxt->update_context(context, *decoded);
+		rfc3095_ctxt->update_context(context, decoded);
 	}
 }
 

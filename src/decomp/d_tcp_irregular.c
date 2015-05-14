@@ -72,9 +72,9 @@ static int tcp_parse_irregular_tcp(const struct rohc_decomp_ctxt *const context,
                                    struct rohc_tcp_extr_ip_bits *const ip_inner_bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
 
-static bool d_tcp_is_ecn_used(const struct d_tcp_context tcp_ctxt,
-                              const struct rohc_tcp_extr_bits bits)
-	__attribute__((warn_unused_result, const));
+static inline bool d_tcp_is_ecn_used(const struct d_tcp_context tcp_ctxt,
+                                     const struct rohc_tcp_extr_bits bits)
+	__attribute__((warn_unused_result, const, always_inline));
 
 
 /**
@@ -518,8 +518,8 @@ error:
  * @return           true if the TCP ECN flags are used by the compressed
  *                   TCP packet or not, false if they are not
  */
-static bool d_tcp_is_ecn_used(const struct d_tcp_context tcp_ctxt,
-                              const struct rohc_tcp_extr_bits bits)
+static inline bool d_tcp_is_ecn_used(const struct d_tcp_context tcp_ctxt,
+                                     const struct rohc_tcp_extr_bits bits)
 {
 	return ((bits.ecn_used_bits_nr > 0) ? (!!bits.ecn_used_bits) : tcp_ctxt.ecn_used);
 }

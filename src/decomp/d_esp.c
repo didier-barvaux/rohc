@@ -82,17 +82,18 @@ static int esp_parse_dynamic_esp(const struct rohc_decomp_ctxt *const context,
                                  struct rohc_extr_bits *const bits);
 
 static bool esp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
-                                        const struct rohc_extr_bits bits,
-                                        struct rohc_decoded_values *const decoded);
+                                        const struct rohc_extr_bits *const bits,
+                                        struct rohc_decoded_values *const decoded)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int esp_build_uncomp_esp(const struct rohc_decomp_ctxt *const context,
-                                const struct rohc_decoded_values decoded,
+                                const struct rohc_decoded_values *const decoded,
                                 unsigned char *dest,
                                 const unsigned int payload_len);
 
 static void esp_update_context(struct rohc_decomp_ctxt *const context,
-                               const struct rohc_decoded_values decoded)
-	__attribute__((nonnull(1)));
+                               const struct rohc_decoded_values *const decoded)
+	__attribute__((nonnull(1, 2)));
 
 
 /*
@@ -351,7 +352,7 @@ error:
  * @return         true if decoding is successful, false otherwise
  */
 static bool esp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
-                                        const struct rohc_extr_bits bits,
+                                        const struct rohc_extr_bits *const bits,
                                         struct rohc_decoded_values *const decoded)
 {
 	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
@@ -364,11 +365,11 @@ static bool esp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 	esp = (struct esphdr *) rfc3095_ctxt->outer_ip_changes->next_header;
 
 	/* decode ESP SPI */
-	if(bits.esp_spi_nr > 0)
+	if(bits->esp_spi_nr > 0)
 	{
 		/* take packet value */
-		assert(bits.esp_spi_nr == (spi_length * 8));
-		memcpy(&decoded->esp_spi, &bits.esp_spi, spi_length);
+		assert(bits->esp_spi_nr == (spi_length * 8));
+		memcpy(&decoded->esp_spi, &bits->esp_spi, spi_length);
 	}
 	else
 	{
@@ -394,7 +395,7 @@ static bool esp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
  *                     -1 in case of error
  */
 static int esp_build_uncomp_esp(const struct rohc_decomp_ctxt *const context,
-                                const struct rohc_decoded_values decoded,
+                                const struct rohc_decoded_values *const decoded,
                                 unsigned char *dest,
                                 const unsigned int payload_len __attribute__((unused)))
 {
@@ -402,11 +403,11 @@ static int esp_build_uncomp_esp(const struct rohc_decomp_ctxt *const context,
 	struct esphdr *const esp = (struct esphdr *) dest;
 
 	/* static SPI field */
-	memcpy(&esp->spi, &decoded.esp_spi, spi_length);
+	memcpy(&esp->spi, &decoded->esp_spi, spi_length);
 	rohc_decomp_debug(context, "SPI = 0x%08x", rohc_ntoh32(esp->spi));
 
 	/* dynamic SN field */
-	esp->sn = rohc_hton32(decoded.sn);
+	esp->sn = rohc_hton32(decoded->sn);
 	rohc_decomp_debug(context, "SN = 0x%08x", rohc_ntoh32(esp->sn));
 
 	return sizeof(struct esphdr);
@@ -423,13 +424,13 @@ static int esp_build_uncomp_esp(const struct rohc_decomp_ctxt *const context,
  * @param decoded  The decoded values to update in the context
  */
 static void esp_update_context(struct rohc_decomp_ctxt *const context,
-                               const struct rohc_decoded_values decoded)
+                               const struct rohc_decoded_values *const decoded)
 {
 	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	struct esphdr *const esp =
 		(struct esphdr *) rfc3095_ctxt->outer_ip_changes->next_header;
 
-	memcpy(&esp->spi, &decoded.esp_spi, sizeof(uint32_t));
+	memcpy(&esp->spi, &decoded->esp_spi, sizeof(uint32_t));
 }
 
 

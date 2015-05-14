@@ -123,17 +123,18 @@ static int rtp_parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
                                   struct rohc_extr_bits *const bits);
 
 static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
-                                        const struct rohc_extr_bits bits,
-                                        struct rohc_decoded_values *const decoded);
+                                        const struct rohc_extr_bits *const bits,
+                                        struct rohc_decoded_values *const decoded)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int rtp_build_uncomp_rtp(const struct rohc_decomp_ctxt *const context,
-                                const struct rohc_decoded_values decoded,
+                                const struct rohc_decoded_values *const decoded,
                                 unsigned char *dest,
                                 const unsigned int payload_len);
 
 static void rtp_update_context(struct rohc_decomp_ctxt *const context,
-                               const struct rohc_decoded_values decoded)
-	__attribute__((nonnull(1)));
+                               const struct rohc_decoded_values *const decoded)
+	__attribute__((nonnull(1, 2)));
 
 
 /*
@@ -1498,7 +1499,7 @@ error:
  * @return         true if decoding is successful, false otherwise
  */
 static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
-                                        const struct rohc_extr_bits bits,
+                                        const struct rohc_extr_bits *const bits,
                                         struct rohc_decoded_values *const decoded)
 {
 	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
@@ -1513,11 +1514,11 @@ static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 	rtp = (struct rtphdr *) (udp + 1);
 
 	/* decode UDP source port */
-	if(bits.udp_src_nr > 0)
+	if(bits->udp_src_nr > 0)
 	{
 		/* take packet value */
-		assert(bits.udp_src_nr == 16);
-		decoded->udp_src = bits.udp_src;
+		assert(bits->udp_src_nr == 16);
+		decoded->udp_src = bits->udp_src;
 	}
 	else
 	{
@@ -1528,11 +1529,11 @@ static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 	                  rohc_ntoh16(decoded->udp_src));
 
 	/* decode UDP destination port */
-	if(bits.udp_dst_nr > 0)
+	if(bits->udp_dst_nr > 0)
 	{
 		/* take packet value */
-		assert(bits.udp_dst_nr == 16);
-		decoded->udp_dst = bits.udp_dst;
+		assert(bits->udp_dst_nr == 16);
+		decoded->udp_dst = bits->udp_dst;
 	}
 	else
 	{
@@ -1543,9 +1544,9 @@ static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 	                  rohc_ntoh16(decoded->udp_dst));
 
 	/* take UDP checksum behavior from packet if present, otherwise from context */
-	if(bits.udp_check_present != ROHC_TRISTATE_NONE)
+	if(bits->udp_check_present != ROHC_TRISTATE_NONE)
 	{
-		decoded->udp_check_present = bits.udp_check_present;
+		decoded->udp_check_present = bits->udp_check_present;
 	}
 	else
 	{
@@ -1564,13 +1565,13 @@ static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 	}
 	else if(decoded->udp_check_present == ROHC_TRISTATE_YES)
 	{
-		assert(bits.udp_check_nr == 16);
-		decoded->udp_check = bits.udp_check;
+		assert(bits->udp_check_nr == 16);
+		decoded->udp_check = bits->udp_check;
 	}
 	else
 	{
-		assert(bits.udp_check_nr == 16 || bits.udp_check_nr == 0);
-		assert(bits.udp_check == 0);
+		assert(bits->udp_check_nr == 16 || bits->udp_check_nr == 0);
+		assert(bits->udp_check == 0);
 		decoded->udp_check = 0;
 	}
 	rohc_decomp_debug(context, "decoded UDP checksum = 0x%04x (checksum "
@@ -1578,11 +1579,11 @@ static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 	                  decoded->udp_check_present);
 
 	/* decode version field */
-	if(bits.rtp_version_nr > 0)
+	if(bits->rtp_version_nr > 0)
 	{
 		/* take packet value */
-		assert(bits.rtp_version_nr == 2);
-		decoded->rtp_version = bits.rtp_version;
+		assert(bits->rtp_version_nr == 2);
+		decoded->rtp_version = bits->rtp_version;
 	}
 	else
 	{
@@ -1592,11 +1593,11 @@ static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 	rohc_decomp_debug(context, "decoded RTP version = %u", decoded->rtp_version);
 
 	/* decode RTP Padding (R-P) flag */
-	if(bits.rtp_p_nr > 0)
+	if(bits->rtp_p_nr > 0)
 	{
 		/* take packet value */
-		assert(bits.rtp_p_nr == 1);
-		decoded->rtp_p = bits.rtp_p;
+		assert(bits->rtp_p_nr == 1);
+		decoded->rtp_p = bits->rtp_p;
 	}
 	else
 	{
@@ -1606,11 +1607,11 @@ static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 	rohc_decomp_debug(context, "decoded R-P flag = %u", decoded->rtp_p);
 
 	/* decode RTP eXtension (R-X) flag */
-	if(bits.rtp_x_nr > 0)
+	if(bits->rtp_x_nr > 0)
 	{
 		/* take packet value */
-		assert(bits.rtp_x_nr == 1);
-		decoded->rtp_x = bits.rtp_x;
+		assert(bits->rtp_x_nr == 1);
+		decoded->rtp_x = bits->rtp_x;
 	}
 	else
 	{
@@ -1620,11 +1621,11 @@ static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 	rohc_decomp_debug(context, "decoded R-X flag = %u", decoded->rtp_x);
 
 	/* decode RTP CC */
-	if(bits.rtp_cc_nr > 0)
+	if(bits->rtp_cc_nr > 0)
 	{
 		/* take packet value */
-		assert(bits.rtp_cc_nr == 4);
-		decoded->rtp_cc = bits.rtp_cc;
+		assert(bits->rtp_cc_nr == 4);
+		decoded->rtp_cc = bits->rtp_cc;
 	}
 	else
 	{
@@ -1634,10 +1635,10 @@ static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 	rohc_decomp_debug(context, "decoded CC = %u", decoded->rtp_cc);
 
 	/* decode RTP Marker (M) flag */
-	if(bits.rtp_m_nr > 0)
+	if(bits->rtp_m_nr > 0)
 	{
-		assert(bits.rtp_m_nr == 1);
-		decoded->rtp_m = bits.rtp_m;
+		assert(bits->rtp_m_nr == 1);
+		decoded->rtp_m = bits->rtp_m;
 	}
 	else
 	{
@@ -1650,11 +1651,11 @@ static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 	rohc_decomp_debug(context, "decoded RTP M flag = %u", decoded->rtp_m);
 
 	/* decode RTP Payload Type (R-PT) */
-	if(bits.rtp_pt_nr > 0)
+	if(bits->rtp_pt_nr > 0)
 	{
 		/* take value from base header */
-		assert(bits.rtp_pt_nr == 7);
-		decoded->rtp_pt = bits.rtp_pt;
+		assert(bits->rtp_pt_nr == 7);
+		decoded->rtp_pt = bits->rtp_pt;
 	}
 	else
 	{
@@ -1664,18 +1665,18 @@ static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 	rohc_decomp_debug(context, "decoded R-PT = %u", decoded->rtp_pt);
 
 	/* decode RTP TimeStamp (TS) */
-	rohc_decomp_debug(context, "%zd-bit TS delta = 0x%x", bits.ts_nr, bits.ts);
-	if(!bits.is_ts_scaled)
+	rohc_decomp_debug(context, "%zd-bit TS delta = 0x%x", bits->ts_nr, bits->ts);
+	if(!bits->is_ts_scaled)
 	{
 		/* some LSB bits of the unscaled TS were transmitted */
 
 		bool ts_decode_ok;
 
-		if(bits.ts_nr == 32)
+		if(bits->ts_nr == 32)
 		{
 			rohc_decomp_debug(context, "TS absolute value is transmitted");
 		}
-		else if(bits.ts_nr > 0)
+		else if(bits->ts_nr > 0)
 		{
 			rohc_decomp_debug(context, "TS is not scaled");
 		}
@@ -1685,20 +1686,20 @@ static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 			 *   If a packet with no TS bits is received with Tsc = 0, the
 			 *   decompressor MUST discard the packet. */
 			rohc_decomp_warn(context, "TS not scaled (Tsc = %d) and no TS bit "
-			                 "received, discard the packet", bits.is_ts_scaled);
+			                 "received, discard the packet", bits->is_ts_scaled);
 			goto error;
 		}
 
 		ts_decode_ok = ts_decode_unscaled_bits(rtp_context->ts_scaled_ctxt,
-		                                       bits.ts, bits.ts_nr, &decoded->ts);
+		                                       bits->ts, bits->ts_nr, &decoded->ts);
 		if(!ts_decode_ok)
 		{
 			rohc_decomp_debug(context, "failed to decode %zd-bit unscaled TS "
-			                  "0x%x", bits.ts_nr, bits.ts);
+			                  "0x%x", bits->ts_nr, bits->ts);
 			goto error;
 		}
 	}
-	else if(bits.ts_nr == 0)
+	else if(bits->ts_nr == 0)
 	{
 		/* TS is scaled but no TS_SCALED bits were transmitted */
 		rohc_decomp_debug(context, "TS is deducted from SN");
@@ -1713,25 +1714,25 @@ static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 
 		rohc_decomp_debug(context, "TS is scaled");
 		ts_decode_ok = ts_decode_scaled_bits(rtp_context->ts_scaled_ctxt,
-		                                     bits.ts, bits.ts_nr,
+		                                     bits->ts, bits->ts_nr,
 		                                     &decoded->ts);
 		if(!ts_decode_ok)
 		{
 			rohc_decomp_debug(context, "failed to decode %zd-bit TS_SCALED 0x%x",
-			                  bits.ts_nr, bits.ts);
+			                  bits->ts_nr, bits->ts);
 			goto error;
 		}
 	}
 	rohc_decomp_debug(context, "decoded timestamp = %u / 0x%x (nr bits = %zd, "
 	                  "bits = %u / 0x%x)", decoded->ts, decoded->ts,
-	                  bits.ts_nr, bits.ts, bits.ts);
+	                  bits->ts_nr, bits->ts, bits->ts);
 
 	/* decode RTP SSRC */
-	if(bits.rtp_ssrc_nr > 0)
+	if(bits->rtp_ssrc_nr > 0)
 	{
 		/* take packet value */
-		assert(bits.rtp_ssrc_nr == 32);
-		decoded->rtp_ssrc = bits.rtp_ssrc;
+		assert(bits->rtp_ssrc_nr == 32);
+		decoded->rtp_ssrc = bits->rtp_ssrc;
 	}
 	else
 	{
@@ -1759,7 +1760,7 @@ error:
  *                     -1 in case of error
  */
 static int rtp_build_uncomp_rtp(const struct rohc_decomp_ctxt *const context,
-                                const struct rohc_decoded_values decoded,
+                                const struct rohc_decoded_values *const decoded,
                                 unsigned char *dest,
                                 const unsigned int payload_len)
 {
@@ -1772,11 +1773,11 @@ static int rtp_build_uncomp_rtp(const struct rohc_decomp_ctxt *const context,
 	rtp = (struct rtphdr *) (udp + 1);
 
 	/* UDP static fields */
-	udp->source = decoded.udp_src;
-	udp->dest = decoded.udp_dst;
+	udp->source = decoded->udp_src;
+	udp->dest = decoded->udp_dst;
 
 	/* UDP changing fields */
-	udp->check = decoded.udp_check;
+	udp->check = decoded->udp_check;
 
 	/* UDP interfered fields */
 	udp->len = rohc_hton16(payload_len + sizeof(struct udphdr) +
@@ -1784,16 +1785,16 @@ static int rtp_build_uncomp_rtp(const struct rohc_decomp_ctxt *const context,
 	rohc_decomp_debug(context, "UDP + RTP length = 0x%04x", rohc_ntoh16(udp->len));
 
 	/* RTP fields: version, R-P flag, R-X flag, M flag, R-PT, TS and SN */
-	rtp->version = decoded.rtp_version;
-	rtp->padding = decoded.rtp_p;
-	rtp->extension = decoded.rtp_x;
-	rtp->cc = decoded.rtp_cc;
-	rtp->m = decoded.rtp_m;
-	rtp->pt = decoded.rtp_pt & 0x7f;
-	assert(decoded.sn <= 0xffff);
-	rtp->sn = rohc_hton16((uint16_t) decoded.sn);
-	rtp->timestamp = rohc_hton32(decoded.ts);
-	rtp->ssrc = decoded.rtp_ssrc;
+	rtp->version = decoded->rtp_version;
+	rtp->padding = decoded->rtp_p;
+	rtp->extension = decoded->rtp_x;
+	rtp->cc = decoded->rtp_cc;
+	rtp->m = decoded->rtp_m;
+	rtp->pt = decoded->rtp_pt & 0x7f;
+	assert(decoded->sn <= 0xffff);
+	rtp->sn = rohc_hton16((uint16_t) decoded->sn);
+	rtp->timestamp = rohc_hton32(decoded->ts);
+	rtp->ssrc = decoded->rtp_ssrc;
 
 	return sizeof(struct udphdr) + sizeof(struct rtphdr);
 }
@@ -1812,7 +1813,7 @@ static int rtp_build_uncomp_rtp(const struct rohc_decomp_ctxt *const context,
  * @param decoded  The decoded values to update in the context
  */
 static void rtp_update_context(struct rohc_decomp_ctxt *const context,
-                               const struct rohc_decoded_values decoded)
+                               const struct rohc_decoded_values *const decoded)
 {
 	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
 		context->persist_ctxt;
@@ -1822,24 +1823,24 @@ static void rtp_update_context(struct rohc_decomp_ctxt *const context,
 
 	/* update context for UDP fields */
 	udp = (struct udphdr *) rfc3095_ctxt->outer_ip_changes->next_header;
-	udp->source = decoded.udp_src;
-	udp->dest = decoded.udp_dst;
-	rtp_context->udp_check_present = decoded.udp_check_present;
+	udp->source = decoded->udp_src;
+	udp->dest = decoded->udp_dst;
+	rtp_context->udp_check_present = decoded->udp_check_present;
 
 	/* update context for RTP fields */
 	rtp = (struct rtphdr *) (udp + 1);
-	assert(decoded.sn <= 0xffff);
-	ts_update_context(rtp_context->ts_scaled_ctxt, decoded.ts, decoded.sn);
-	rtp->version = decoded.rtp_version;
-	rtp->padding = decoded.rtp_p;
-	rtp->extension = decoded.rtp_x;
-	rtp->cc = decoded.rtp_cc;
-	rtp->m = decoded.rtp_m;
-	rtp->pt = decoded.rtp_pt;
-	rtp->ssrc = decoded.rtp_ssrc;
+	assert(decoded->sn <= 0xffff);
+	ts_update_context(rtp_context->ts_scaled_ctxt, decoded->ts, decoded->sn);
+	rtp->version = decoded->rtp_version;
+	rtp->padding = decoded->rtp_p;
+	rtp->extension = decoded->rtp_x;
+	rtp->cc = decoded->rtp_cc;
+	rtp->m = decoded->rtp_m;
+	rtp->pt = decoded->rtp_pt;
+	rtp->ssrc = decoded->rtp_ssrc;
 
 	/* record SSRC into the context to be able to detect context re-use */
-	memcpy(&rtp_context->ssrc, &decoded.rtp_ssrc, sizeof(uint32_t));
+	memcpy(&rtp_context->ssrc, &decoded->rtp_ssrc, sizeof(uint32_t));
 }
 
 

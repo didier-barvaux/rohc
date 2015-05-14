@@ -106,17 +106,18 @@ static int udp_lite_parse_uo_remainder(const struct rohc_decomp_ctxt *const cont
                                        struct rohc_extr_bits *const bits);
 
 static bool udp_lite_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
-                                             const struct rohc_extr_bits bits,
-                                             struct rohc_decoded_values *const decoded);
+                                             const struct rohc_extr_bits *const bits,
+                                             struct rohc_decoded_values *const decoded)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int udp_lite_build_uncomp_udp(const struct rohc_decomp_ctxt *const context,
-                                     const struct rohc_decoded_values decoded,
+                                     const struct rohc_decoded_values *const decoded,
                                      unsigned char *dest,
                                      const unsigned int payload_len);
 
-static void udp_lite_update_context(struct rohc_decomp_ctxt *context,
-                                    struct rohc_decoded_values decoded)
-	__attribute__((nonnull(1)));
+static void udp_lite_update_context(struct rohc_decomp_ctxt *const context,
+                                    const struct rohc_decoded_values *const decoded)
+	__attribute__((nonnull(1, 2)));
 
 
 /*
@@ -622,7 +623,7 @@ error:
  * @return         true if decoding is successful, false otherwise
  */
 static bool udp_lite_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
-                                             const struct rohc_extr_bits bits,
+                                             const struct rohc_extr_bits *const bits,
                                              struct rohc_decoded_values *const decoded)
 {
 	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
@@ -634,11 +635,11 @@ static bool udp_lite_decode_values_from_bits(const struct rohc_decomp_ctxt *cont
 	udp_lite = (struct udphdr *) rfc3095_ctxt->outer_ip_changes->next_header;
 
 	/* decode UDP-Lite source port */
-	if(bits.udp_src_nr > 0)
+	if(bits->udp_src_nr > 0)
 	{
 		/* take packet value */
-		assert(bits.udp_src_nr == 16);
-		decoded->udp_src = bits.udp_src;
+		assert(bits->udp_src_nr == 16);
+		decoded->udp_src = bits->udp_src;
 	}
 	else
 	{
@@ -649,11 +650,11 @@ static bool udp_lite_decode_values_from_bits(const struct rohc_decomp_ctxt *cont
 	                  rohc_ntoh16(decoded->udp_src));
 
 	/* decode UDP-Lite destination port */
-	if(bits.udp_dst_nr > 0)
+	if(bits->udp_dst_nr > 0)
 	{
 		/* take packet value */
-		assert(bits.udp_dst_nr == 16);
-		decoded->udp_dst = bits.udp_dst;
+		assert(bits->udp_dst_nr == 16);
+		decoded->udp_dst = bits->udp_dst;
 	}
 	else
 	{
@@ -664,17 +665,17 @@ static bool udp_lite_decode_values_from_bits(const struct rohc_decomp_ctxt *cont
 	                  rohc_ntoh16(decoded->udp_dst));
 
 	/* decode UDP-Lite checksum */
-	assert(bits.udp_check_nr == 16);
-	decoded->udp_check = bits.udp_check;
+	assert(bits->udp_check_nr == 16);
+	decoded->udp_check = bits->udp_check;
 	rohc_decomp_debug(context, "decoded UDP checksum = 0x%04x",
 	                  rohc_ntoh16(decoded->udp_check));
 
 	/* decode UDP-Lite Checksum Coverage (CC) */
-	if(bits.udp_lite_cc_nr > 0)
+	if(bits->udp_lite_cc_nr > 0)
 	{
 		/* take packet value */
-		assert(bits.udp_lite_cc_nr == 16);
-		decoded->udp_lite_cc = bits.udp_lite_cc;
+		assert(bits->udp_lite_cc_nr == 16);
+		decoded->udp_lite_cc = bits->udp_lite_cc;
 	}
 	else
 	{
@@ -683,9 +684,9 @@ static bool udp_lite_decode_values_from_bits(const struct rohc_decomp_ctxt *cont
 	}
 
 	/* CCE packet type and CFP/CFI flags */
-	decoded->cce_pkt = bits.cce_pkt;
-	decoded->cfp = bits.cfp;
-	decoded->cfi = bits.cfi;
+	decoded->cce_pkt = bits->cce_pkt;
+	decoded->cfp = bits->cfp;
+	decoded->cfi = bits->cfi;
 
 	return true;
 }
@@ -704,7 +705,7 @@ static bool udp_lite_decode_values_from_bits(const struct rohc_decomp_ctxt *cont
  *                     -1 in case of error
  */
 static int udp_lite_build_uncomp_udp(const struct rohc_decomp_ctxt *const context,
-                                     const struct rohc_decoded_values decoded,
+                                     const struct rohc_decoded_values *const decoded,
                                      unsigned char *dest,
                                      const unsigned int payload_len)
 {
@@ -714,29 +715,29 @@ static int udp_lite_build_uncomp_udp(const struct rohc_decomp_ctxt *const contex
 	udp_lite = (struct udphdr *) dest;
 
 	/* static fields */
-	udp_lite->source = decoded.udp_src;
-	udp_lite->dest = decoded.udp_dst;
+	udp_lite->source = decoded->udp_src;
+	udp_lite->dest = decoded->udp_dst;
 
 	/* changing fields */
-	udp_lite->check = decoded.udp_check;
+	udp_lite->check = decoded->udp_check;
 	rohc_decomp_debug(context, "checksum = 0x%04x",
 	                  rohc_ntoh16(udp_lite->check));
 
 	/* set checksum coverage if inferred, get from packet otherwise */
-	if(decoded.cfi == ROHC_TRISTATE_YES)
+	if(decoded->cfi == ROHC_TRISTATE_YES)
 	{
 		udp_lite->len = rohc_hton16(payload_len + sizeof(struct udphdr));
 		rohc_decomp_debug(context, "checksum coverage (0x%04x) is inferred",
 		                  udp_lite->len);
 	}
-	else if(decoded.cfi == ROHC_TRISTATE_NONE)
+	else if(decoded->cfi == ROHC_TRISTATE_NONE)
 	{
 		rohc_decomp_warn(context, "CFI not initialized");
 		goto error;
 	}
 	else
 	{
-		udp_lite->len = decoded.udp_lite_cc;
+		udp_lite->len = decoded->udp_lite_cc;
 		rohc_decomp_debug(context, "checksum coverage (0x%04x) is not inferred",
 		                  udp_lite->len);
 	}
@@ -759,7 +760,7 @@ error:
  * @param decoded  The decoded values to update in the context
  */
 static void udp_lite_update_context(struct rohc_decomp_ctxt *const context,
-                                    const struct rohc_decoded_values decoded)
+                                    const struct rohc_decoded_values *const decoded)
 {
 	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	struct d_udp_lite_context *const udp_lite_context = rfc3095_ctxt->specific;
@@ -768,21 +769,21 @@ static void udp_lite_update_context(struct rohc_decomp_ctxt *const context,
 	assert(rfc3095_ctxt->outer_ip_changes != NULL);
 	assert(rfc3095_ctxt->outer_ip_changes->next_header != NULL);
 	udp = (struct udphdr *) rfc3095_ctxt->outer_ip_changes->next_header;
-	udp->source = decoded.udp_src;
-	udp->dest = decoded.udp_dst;
+	udp->source = decoded->udp_src;
+	udp->dest = decoded->udp_dst;
 
-	if(decoded.cce_pkt != ROHC_PACKET_CCE)
+	if(decoded->cce_pkt != ROHC_PACKET_CCE)
 	{
-		rohc_decomp_debug(context, "packet updates CFP to %d", decoded.cfp);
-		udp_lite_context->cfp = decoded.cfp;
+		rohc_decomp_debug(context, "packet updates CFP to %d", decoded->cfp);
+		udp_lite_context->cfp = decoded->cfp;
 	}
-	if(decoded.cce_pkt == ROHC_PACKET_CCE_OTHER ||
-	   decoded.cce_pkt == ROHC_PACKET_CCE_OFF)
+	if(decoded->cce_pkt == ROHC_PACKET_CCE_OTHER ||
+	   decoded->cce_pkt == ROHC_PACKET_CCE_OFF)
 	{
-		rohc_decomp_debug(context, "packet updates CFI to %d", decoded.cfi);
-		udp_lite_context->cfi = decoded.cfi;
-		rohc_decomp_debug(context, "packet updates CC to 0x%04x", decoded.udp_lite_cc);
-		udp_lite_context->cc = decoded.udp_lite_cc;
+		rohc_decomp_debug(context, "packet updates CFI to %d", decoded->cfi);
+		udp_lite_context->cfi = decoded->cfi;
+		rohc_decomp_debug(context, "packet updates CC to 0x%04x", decoded->udp_lite_cc);
+		udp_lite_context->cc = decoded->udp_lite_cc;
 	}
 }
 

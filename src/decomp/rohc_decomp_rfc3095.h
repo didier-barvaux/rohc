@@ -404,12 +404,13 @@ struct rohc_decomp_rfc3095_ctxt
 
 	/** The handler used to decode extracted for next header */
 	bool (*decode_values_from_bits)(const struct rohc_decomp_ctxt *context,
-	                                const struct rohc_extr_bits bits,
-	                                struct rohc_decoded_values *const decoded);
+	                                const struct rohc_extr_bits *const bits,
+	                                struct rohc_decoded_values *const decoded)
+		__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 	/** The handler used to build the uncompressed next header */
 	int (*build_next_header)(const struct rohc_decomp_ctxt *const context,
-	                         const struct rohc_decoded_values decoded,
+	                         const struct rohc_decoded_values *const decoded,
 	                         unsigned char *dest,
 	                         const unsigned int payload_len);
 
@@ -431,7 +432,8 @@ struct rohc_decomp_rfc3095_ctxt
 
 	/** The handler used to update context with decoded next header fields */
 	void (*update_context)(struct rohc_decomp_ctxt *const context,
-	                       const struct rohc_decoded_values decoded);
+	                       const struct rohc_decoded_values *const decoded)
+		__attribute__((nonnull(1, 2)));
 
 	/// Profile-specific data
 	void *specific;
@@ -503,13 +505,13 @@ uint32_t rohc_decomp_rfc3095_get_sn(const struct rohc_decomp_ctxt *const context
 
 
 static inline bool is_ipv4_pkt(const struct rohc_extr_ip_bits bits)
-	__attribute__((warn_unused_result, const));
+	__attribute__((warn_unused_result, const, always_inline));
 
 static inline bool is_ipv4_rnd_pkt(const struct rohc_extr_ip_bits bits)
-	__attribute__((warn_unused_result, const));
+	__attribute__((warn_unused_result, const, always_inline));
 
 static inline bool is_ipv4_non_rnd_pkt(const struct rohc_extr_ip_bits bits)
-	__attribute__((warn_unused_result, const));
+	__attribute__((warn_unused_result, const, always_inline));
 
 
 /**

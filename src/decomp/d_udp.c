@@ -80,16 +80,17 @@ static int udp_parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
                                   struct rohc_extr_bits *const bits);
 
 static bool udp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
-                                        const struct rohc_extr_bits bits,
-                                        struct rohc_decoded_values *const decoded);
+                                        const struct rohc_extr_bits *const bits,
+                                        struct rohc_decoded_values *const decoded)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int udp_build_uncomp_udp(const struct rohc_decomp_ctxt *const context,
-                                const struct rohc_decoded_values decoded,
+                                const struct rohc_decoded_values *const decoded,
                                 unsigned char *dest,
                                 const unsigned int payload_len);
 
-static void udp_update_context(struct rohc_decomp_ctxt *context,
-                               struct rohc_decoded_values decoded)
+static void udp_update_context(struct rohc_decomp_ctxt *const context,
+                               const struct rohc_decoded_values *const decoded)
 	__attribute__((nonnull(1)));
 
 
@@ -437,7 +438,7 @@ error:
  * @return         true if decoding is successful, false otherwise
  */
 static bool udp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
-                                        const struct rohc_extr_bits bits,
+                                        const struct rohc_extr_bits *const bits,
                                         struct rohc_decoded_values *const decoded)
 {
 	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
@@ -452,11 +453,11 @@ static bool udp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 	udp = (struct udphdr *) rfc3095_ctxt->outer_ip_changes->next_header;
 
 	/* decode UDP source port */
-	if(bits.udp_src_nr > 0)
+	if(bits->udp_src_nr > 0)
 	{
 		/* take packet value */
-		assert(bits.udp_src_nr == 16);
-		decoded->udp_src = bits.udp_src;
+		assert(bits->udp_src_nr == 16);
+		decoded->udp_src = bits->udp_src;
 	}
 	else
 	{
@@ -467,11 +468,11 @@ static bool udp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 	                  rohc_ntoh16(decoded->udp_src));
 
 	/* decode UDP destination port */
-	if(bits.udp_dst_nr > 0)
+	if(bits->udp_dst_nr > 0)
 	{
 		/* take packet value */
-		assert(bits.udp_dst_nr == 16);
-		decoded->udp_dst = bits.udp_dst;
+		assert(bits->udp_dst_nr == 16);
+		decoded->udp_dst = bits->udp_dst;
 	}
 	else
 	{
@@ -482,9 +483,9 @@ static bool udp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 	                  rohc_ntoh16(decoded->udp_dst));
 
 	/* take UDP checksum behavior from packet if present, otherwise from context */
-	if(bits.udp_check_present != ROHC_TRISTATE_NONE)
+	if(bits->udp_check_present != ROHC_TRISTATE_NONE)
 	{
-		decoded->udp_check_present = bits.udp_check_present;
+		decoded->udp_check_present = bits->udp_check_present;
 	}
 	else
 	{
@@ -503,13 +504,13 @@ static bool udp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 	}
 	else if(decoded->udp_check_present == ROHC_TRISTATE_YES)
 	{
-		assert(bits.udp_check_nr == 16);
-		decoded->udp_check = bits.udp_check;
+		assert(bits->udp_check_nr == 16);
+		decoded->udp_check = bits->udp_check;
 	}
 	else
 	{
-		assert(bits.udp_check_nr == 16 || bits.udp_check_nr == 0);
-		assert(bits.udp_check == 0);
+		assert(bits->udp_check_nr == 16 || bits->udp_check_nr == 0);
+		assert(bits->udp_check == 0);
 		decoded->udp_check = 0;
 	}
 	rohc_decomp_debug(context, "decoded UDP checksum = 0x%04x (checksum "
@@ -535,7 +536,7 @@ error:
  *                     -1 in case of error
  */
 static int udp_build_uncomp_udp(const struct rohc_decomp_ctxt *const context,
-                                const struct rohc_decoded_values decoded,
+                                const struct rohc_decoded_values *const decoded,
                                 unsigned char *dest,
                                 const unsigned int payload_len)
 {
@@ -546,11 +547,11 @@ static int udp_build_uncomp_udp(const struct rohc_decomp_ctxt *const context,
 	udp = (struct udphdr *) dest;
 
 	/* static fields */
-	udp->source = decoded.udp_src;
-	udp->dest = decoded.udp_dst;
+	udp->source = decoded->udp_src;
+	udp->dest = decoded->udp_dst;
 
 	/* changing fields */
-	udp->check = decoded.udp_check;
+	udp->check = decoded->udp_check;
 	rohc_decomp_debug(context, "UDP checksum = 0x%04x", rohc_ntoh16(udp->check));
 
 	/* interfered fields */
@@ -573,7 +574,7 @@ static int udp_build_uncomp_udp(const struct rohc_decomp_ctxt *const context,
  * @param decoded  The decoded values to update in the context
  */
 static void udp_update_context(struct rohc_decomp_ctxt *const context,
-                               const struct rohc_decoded_values decoded)
+                               const struct rohc_decoded_values *const decoded)
 {
 	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
 		context->persist_ctxt;
@@ -583,16 +584,16 @@ static void udp_update_context(struct rohc_decomp_ctxt *const context,
 	assert(rfc3095_ctxt->outer_ip_changes != NULL);
 	assert(rfc3095_ctxt->outer_ip_changes->next_header != NULL);
 	udp = (struct udphdr *) rfc3095_ctxt->outer_ip_changes->next_header;
-	udp->source = decoded.udp_src;
-	udp->dest = decoded.udp_dst;
+	udp->source = decoded->udp_src;
+	udp->dest = decoded->udp_dst;
 
 	/* determine whether the UDP checksum will be present in UO packets */
-	udp_context->udp_check_present = decoded.udp_check_present;
+	udp_context->udp_check_present = decoded->udp_check_present;
 
 	/* record source & destination ports into the context to be able to detect
 	 * context re-use */
-	udp_context->sport = decoded.udp_src;
-	udp_context->dport = decoded.udp_dst;
+	udp_context->sport = decoded->udp_src;
+	udp_context->dport = decoded->udp_dst;
 }
 
 
