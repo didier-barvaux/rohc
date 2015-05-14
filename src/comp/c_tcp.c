@@ -1528,12 +1528,6 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 				 * the TCP profile with malformed TCP packets */
 				switch(opt_type)
 				{
-					case TCP_OPT_EOL:
-						assert(opt_len >= 1); /* by definition */
-						break;
-					case TCP_OPT_NOP:
-						assert(opt_len == 1); /* by definition */
-						break;
 					case TCP_OPT_MSS:
 						if(opt_len != TCP_OLEN_MSS)
 						{
@@ -2174,6 +2168,7 @@ static int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
 		else if(base_header.ipvx->version == IPV6)
 		{
 			uint8_t protocol = base_header.ipv6->next_header;
+
 			base_header.ipv6++;
 			for(ip_ext_pos = 0; ip_ext_pos < ip_context->ctxt.v6.opts_nr; ip_ext_pos++)
 			{
@@ -4088,7 +4083,6 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	uint8_t save_first_byte;
 	size_t payload_size = 0;
 	int ip_inner_ecn = 0;
-	uint8_t protocol;
 	uint8_t crc_computed;
 	int i;
 	int ret;
@@ -4103,7 +4097,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)
 	{
 		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
-		size_t ip_ext_pos;
+		uint8_t protocol;
 
 		rohc_comp_debug(context, "found IPv%d", base_header.ipvx->version);
 
@@ -4135,10 +4129,13 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 		}
 		else /* IPv6 */
 		{
+			size_t ip_ext_pos;
+
 			if(remain_data_len < sizeof(base_header_ip_v6_t) )
 			{
 				goto error;
 			}
+
 			/* get the transport protocol */
 			protocol = base_header.ipv6->next_header;
 			ip_inner_ecn = base_header.ipv6->ip_ecn_flags;
@@ -4157,10 +4154,10 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 				const ipv6_option_context_t *const opt_ctxt =
 					&(ip_context->ctxt.v6.opts[ip_ext_pos]);
 
+				protocol = base_header.ipv6_opt->next_header;
 				rohc_comp_debug(context, "skip %zu-byte IPv6 extension header "
 				                "with Next Header 0x%02x",
 				                opt_ctxt->generic.option_length, protocol);
-				protocol = base_header.ipv6_opt->next_header;
 				base_header.uint8 += opt_ctxt->generic.option_length;
 			}
 		}
@@ -4250,7 +4247,6 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)
 	{
 		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
-		size_t ip_ext_pos;
 
 		rohc_comp_debug(context, "found IPv%d", base_header.ipvx->version);
 
@@ -4264,9 +4260,15 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 		switch(base_header.ipvx->version)
 		{
 			case IPV4:
+			{
 				base_header.uint8 += base_header.ipv4->header_length << 2;
 				break;
+			}
 			case IPV6:
+			{
+				uint8_t protocol;
+				size_t ip_ext_pos;
+
 				/* get the transport protocol */
 				protocol = base_header.ipv6->next_header;
 				++base_header.ipv6;
@@ -4289,6 +4291,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 					base_header.uint8 += opt_ctxt->generic.option_length;
 				}
 				break;
+			}
 			default:
 				goto error;
 		}
