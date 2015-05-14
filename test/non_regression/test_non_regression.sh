@@ -58,7 +58,7 @@ if [ "x$MAKELEVEL" != "x" ] ; then
 	APP="../test_non_regression${KERNEL_SUFFIX}${CROSS_COMPILATION_EXEEXT}"
 else
 	BASEDIR=$( dirname "${SCRIPT}" )
-	APP="${BASEDIR}/test_non_regression${KERNEL_SUFFIX}${CROSS_COMPILATION_EXEEXT}"
+	APP="${BASEDIR}/../test_non_regression${KERNEL_SUFFIX}${CROSS_COMPILATION_EXEEXT}"
 fi
 
 # extract the CID type and capture name from the name of the script
