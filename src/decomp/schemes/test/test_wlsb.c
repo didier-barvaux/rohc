@@ -33,6 +33,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "config.h" /* for HAVE_CMOCKA_RUN(_GROUP)?_TESTS */
+
 
 /** Stub for \ref rohc_f_32bits */
 struct rohc_interval32 __wrap_rohc_f_32bits(const uint32_t v_ref,
@@ -170,10 +172,20 @@ static void test_lsb_decode(void **state)
  */
 int main(int argc, char *argv[])
 {
+#if defined(HAVE_CMOCKA_RUN_GROUP_TESTS) && HAVE_CMOCKA_RUN_GROUP_TESTS == 1
+	const struct CMUnitTest tests[] = {
+		cmocka_unit_test(test_lsb_new),
+		cmocka_unit_test(test_lsb_decode),
+	};
+	return cmocka_run_group_tests(tests, NULL, NULL);
+#elif defined(HAVE_CMOCKA_RUN_TESTS) && HAVE_CMOCKA_RUN_TESTS == 1
 	const UnitTest tests[] = {
 		unit_test(test_lsb_new),
 		unit_test(test_lsb_decode),
 	};
 	return run_tests(tests);
+#else
+#	error "no function found to run cmocka tests"
+#endif
 }
 

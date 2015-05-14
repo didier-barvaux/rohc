@@ -498,6 +498,16 @@ if test "x$enable_rohc_tests" = "xyes" ; then
 		echo "unusual place."
 		exit 1
 	fi
+
+	# check if the _run_tests symbol is provided by cmocka
+	AC_SEARCH_LIBS([_run_tests], [cmocka],
+	               [AC_DEFINE([HAVE_CMOCKA_RUN_TESTS], [1],
+	                          [Whether _run_tests() is provided by the cmocka library])])
+
+	# check if the _cmocka_run_group_tests symbol is provided by cmocka
+	AC_SEARCH_LIBS([_cmocka_run_group_tests], [cmocka],
+	               [AC_DEFINE([HAVE_CMOCKA_RUN_GROUP_TESTS], [1],
+	                          [Whether _cmocka_run_group_tests() is provided by the cmocka library])])
 fi
 
 
