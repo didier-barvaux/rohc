@@ -2,4 +2,7 @@ language: c
 compiler:
    - clang
    - gcc
+before_install:
+   - sudo apt-get update -qq
+   - sudo apt-get install -y libpcap-dev
 script: ./autogen.sh --disable-linux-kernel-module --disable-doc && make clean && make all && make check && make distcheck
