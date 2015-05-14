@@ -931,7 +931,8 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 				ip_context->ctxt.v6.ttl_hopl = base_header.ipv6->ttl_hopl;
 				ip_context->ctxt.v6.flow_label1 = base_header.ipv6->flow_label1;
 				ip_context->ctxt.v6.flow_label2 = base_header.ipv6->flow_label2;
-				memcpy(ip_context->ctxt.v6.src_addr,base_header.ipv6->src_addr,sizeof(uint32_t) * 4 * 2);
+				memcpy(ip_context->ctxt.v6.src_addr, base_header.ipv6->src_addr, sizeof(uint32_t) * 4);
+				memcpy(ip_context->ctxt.v6.dest_addr, base_header.ipv6->dest_addr, sizeof(uint32_t) * 4);
 				++base_header.ipv6;
 				rohc_comp_debug(context, "parse IPv6 extension headers");
 				ip_context->ctxt.v6.opts_nr = 0;
@@ -2436,7 +2437,8 @@ static uint8_t * tcp_code_static_ip_part(struct rohc_comp_ctxt *const context,
 			mptr.ipv6_static1->flow_label_enc_discriminator = 0;
 			mptr.ipv6_static1->reserved2 = 0;
 			mptr.ipv6_static1->next_header = base_header.ipv6->next_header;
-			memcpy(mptr.ipv6_static1->src_addr,base_header.ipv6->src_addr,sizeof(uint32_t) * 4 * 2);
+			memcpy(mptr.ipv6_static1->src_addr, base_header.ipv6->src_addr, sizeof(uint32_t) * 4);
+			memcpy(mptr.ipv6_static1->dst_addr, base_header.ipv6->dest_addr, sizeof(uint32_t) * 4);
 			size = sizeof(ipv6_static1_t);
 		}
 		else
@@ -2447,7 +2449,8 @@ static uint8_t * tcp_code_static_ip_part(struct rohc_comp_ctxt *const context,
 			mptr.ipv6_static2->flow_label1 = base_header.ipv6->flow_label1;
 			mptr.ipv6_static2->flow_label2 = base_header.ipv6->flow_label2;
 			mptr.ipv6_static2->next_header = base_header.ipv6->next_header;
-			memcpy(mptr.ipv6_static2->src_addr,base_header.ipv6->src_addr,sizeof(uint32_t) * 4 * 2);
+			memcpy(mptr.ipv6_static2->src_addr, base_header.ipv6->src_addr, sizeof(uint32_t) * 4);
+			memcpy(mptr.ipv6_static2->dst_addr, base_header.ipv6->dest_addr, sizeof(uint32_t) * 4);
 			size = sizeof(ipv6_static2_t);
 		}
 		rohc_comp_debug(context, "next_header = %d",
