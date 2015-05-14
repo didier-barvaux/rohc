@@ -45,7 +45,7 @@ struct list_comp
 	struct rohc_list_item trans_table[ROHC_LIST_MAX_ITEM];
 
 	/* All the possible named lists, indexed by gen_id */
-	struct rohc_list lists[ROHC_LIST_GEN_ID_MAX + 1];
+	struct rohc_list lists[ROHC_LIST_GEN_ID_MAX + 2];
 
 	/** The temporary packet list (not persistent accross packets) */
 	struct rohc_list pkt_list;

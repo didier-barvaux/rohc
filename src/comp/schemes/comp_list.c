@@ -24,6 +24,7 @@
  */
 
 #include "schemes/comp_list.h"
+#include "rohc_comp_internals.h"
 
 #ifndef __KERNEL__
 #  include <string.h>
@@ -177,50 +178,104 @@ bool detect_ipv6_ext_changes(struct list_comp *const comp,
 	}
 	else
 	{
-		unsigned int matched_existing_list = ROHC_LIST_GEN_ID_NONE;
 		unsigned int gen_id;
+		bool new_list = false;
 
 		/* search for a list that matches the packet one, avoid the reference
 		 * list that we already checked, stop on first unused list */
-		for(gen_id = 0; matched_existing_list == ROHC_LIST_GEN_ID_NONE &&
+		for(gen_id = 0; new_cur_id == ROHC_LIST_GEN_ID_NONE &&
 		                gen_id <= ROHC_LIST_GEN_ID_MAX &&
 		                comp->lists[gen_id].counter > 0; gen_id++)
 		{
 			if(gen_id != comp->ref_id &&
+			   comp->lists[gen_id].counter > 0 &&
 			   rohc_list_equal(&comp->pkt_list, &comp->lists[gen_id]))
 			{
 				rc_list_debug(comp, "current list matches the existing list "
 				              "with gen_id %u", gen_id);
-				matched_existing_list = gen_id;
+				new_cur_id = gen_id;
 			}
 		}
 
-		if(matched_existing_list != ROHC_LIST_GEN_ID_NONE)
+		if(new_cur_id != ROHC_LIST_GEN_ID_NONE)
 		{
-			gen_id = matched_existing_list;
 			rc_list_debug(comp, "send existing context list with gen_id %u "
-			              "(already sent %zu times)", gen_id,
-			              comp->lists[gen_id].counter);
+			              "(already sent %zu times)", new_cur_id,
+			              comp->lists[new_cur_id].counter);
+		}
+		else if(comp->ref_id == ROHC_LIST_GEN_ID_NONE)
+		{
+			/* first list, don't use anonymous list */
+			new_cur_id = 0;
+			new_list = true;
 		}
 		else
 		{
-			/* get the next free gen_id (avoid re-using ref_id) */
-			gen_id &= ROHC_LIST_GEN_ID_MAX;
-			if(gen_id == comp->ref_id)
+			const size_t anon_thres = 2;
+
+			rc_list_debug(comp, "current list matches no list identified with a gen_id");
+			if(comp->lists[ROHC_LIST_GEN_ID_ANON].counter == 0 ||
+			   !rohc_list_equal(&comp->pkt_list, &comp->lists[ROHC_LIST_GEN_ID_ANON]))
 			{
-				gen_id++;
-				gen_id &= ROHC_LIST_GEN_ID_MAX;
+				/* new or changed anonymous list */
+				rc_list_debug(comp, "send current list as anonymous list (transmitted "
+				              "0 / %zu)", anon_thres);
+				new_cur_id = ROHC_LIST_GEN_ID_ANON;
+				new_list = true;
 			}
-			rc_list_debug(comp, "no context list matches the packet list, "
-			              "create a new one with gen_id %u", gen_id);
-			assert(comp->lists[gen_id].id == gen_id);
-			memcpy(comp->lists[gen_id].items, comp->pkt_list.items,
-					 ROHC_LIST_ITEMS_MAX * sizeof(struct rohc_list_item *));
-			comp->lists[gen_id].items_nr = comp->pkt_list.items_nr;
-			comp->lists[gen_id].counter = 0;
+			else if((comp->lists[ROHC_LIST_GEN_ID_ANON].counter + 1) < anon_thres)
+			{
+				/* anonymous list matches, but it's too early to promote it to an
+				 * identified list with a gen_id */
+				rc_list_debug(comp, "send current list as anonymous list (transmitted "
+				              "%zu / %zu)", comp->lists[ROHC_LIST_GEN_ID_ANON].counter,
+				              anon_thres);
+				new_cur_id = ROHC_LIST_GEN_ID_ANON;
+			}
+			else
+			{
+				/* anonymous list matches, promote it to an identified list with
+				 * a gen_id */
+				comp->lists[ROHC_LIST_GEN_ID_ANON].counter = 0;
+
+				/* search for the first unused list */
+				for(gen_id = 0; new_cur_id == ROHC_LIST_GEN_ID_NONE &&
+				                gen_id <= ROHC_LIST_GEN_ID_MAX; gen_id++)
+				{
+					if(gen_id != comp->ref_id && comp->lists[gen_id].counter == 0)
+					{
+						new_cur_id = gen_id;
+					}
+				}
+
+				/* if no unused list was found, get the next free gen_id (avoid
+				 * re-using ref_id) */
+				if(new_cur_id == ROHC_LIST_GEN_ID_NONE)
+				{
+					new_cur_id = gen_id % (ROHC_LIST_GEN_ID_MAX + 1);
+					if(new_cur_id == comp->ref_id)
+					{
+						new_cur_id++;
+						new_cur_id %= (ROHC_LIST_GEN_ID_MAX + 1);
+					}
+				}
+
+				rc_list_debug(comp, "the anonymous list is going to be transmitted for "
+				              "the %zu time, promote it to an identified list with gen_id "
+				              "= %u", comp->lists[ROHC_LIST_GEN_ID_ANON].counter + 1,
+				              new_cur_id);
+				new_list = true;
+			}
 		}
 
-		new_cur_id = gen_id;
+		if(new_list)
+		{
+			assert(comp->lists[new_cur_id].id == new_cur_id);
+			memcpy(comp->lists[new_cur_id].items, comp->pkt_list.items,
+			       ROHC_LIST_ITEMS_MAX * sizeof(struct rohc_list_item *));
+			comp->lists[new_cur_id].items_nr = comp->pkt_list.items_nr;
+			comp->lists[new_cur_id].counter = 0;
+		}
 	}
 
 	/* do we need to send some bits of the compressed list? */
@@ -323,8 +378,16 @@ int rohc_list_encode(struct list_comp *const comp,
 		goto error;
 	}
 
-	rc_list_debug(comp, "send list with generation ID %u for the #%zu time",
-	              comp->cur_id, comp->lists[comp->cur_id].counter + 1);
+	if(comp->cur_id == ROHC_LIST_GEN_ID_ANON)
+	{
+		rc_list_debug(comp, "send anonymous list for the #%zu time",
+		              comp->lists[comp->cur_id].counter + 1);
+	}
+	else
+	{
+		rc_list_debug(comp, "send list with generation ID %u for the #%zu time",
+		              comp->cur_id, comp->lists[comp->cur_id].counter + 1);
+	}
 
 	return counter;
 
@@ -346,9 +409,8 @@ void rohc_list_update_context(struct list_comp *const comp)
 {
 	size_t i;
 
-	/* nothing to do if there is no list or if it is an anonymous list */
-	if(comp->cur_id == ROHC_LIST_GEN_ID_NONE ||
-	   comp->cur_id == ROHC_LIST_GEN_ID_ANON)
+	/* nothing to do if there is no list */
+	if(comp->cur_id == ROHC_LIST_GEN_ID_NONE)
 	{
 		return;
 	}
@@ -371,7 +433,8 @@ void rohc_list_update_context(struct list_comp *const comp)
 	if(comp->cur_id != comp->ref_id)
 	{
 		comp->lists[comp->cur_id].counter++;
-		if(comp->lists[comp->cur_id].counter >= comp->list_trans_nr)
+		if(comp->cur_id != ROHC_LIST_GEN_ID_ANON &&
+		   comp->lists[comp->cur_id].counter >= comp->list_trans_nr)
 		{
 			if(comp->ref_id != ROHC_LIST_GEN_ID_NONE)
 			{
@@ -620,9 +683,9 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 	counter++;
 
 	/* part 2: gen_id (if not anonymous list) */
-	if(comp->cur_id != ROHC_LIST_GEN_ID_ANON)
+	if(gp)
 	{
-		dest[counter] = comp->cur_id & ROHC_LIST_GEN_ID_MAX;
+		dest[counter] = comp->cur_id;
 		rc_list_debug(comp, "gen_id = 0x%02x", dest[counter]);
 		counter++;
 	}
@@ -854,9 +917,9 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 	counter++;
 
 	/* part 2: gen_id (if not anonymous list) */
-	if(comp->cur_id != ROHC_LIST_GEN_ID_ANON)
+	if(gp)
 	{
-		dest[counter] = comp->cur_id & 0xff;
+		dest[counter] = comp->cur_id;
 		rc_list_debug(comp, "gen_id = 0x%02x", dest[counter]);
 		counter++;
 	}
@@ -1219,9 +1282,9 @@ static int rohc_list_encode_type_2(struct list_comp *const comp,
 	counter++;
 
 	/* part 2: gen_id (if not anonymous list) */
-	if(comp->cur_id != ROHC_LIST_GEN_ID_ANON)
+	if(gp)
 	{
-		dest[counter] = comp->cur_id & ROHC_LIST_GEN_ID_MAX;
+		dest[counter] = comp->cur_id;
 		rc_list_debug(comp, "gen_id = 0x%02x", dest[counter]);
 		counter++;
 	}
@@ -1437,9 +1500,9 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 	counter++;
 
 	/* part 2: gen_id (if not anonymous list) */
-	if(comp->cur_id != ROHC_LIST_GEN_ID_ANON)
+	if(gp)
 	{
-		dest[counter] = comp->cur_id & ROHC_LIST_GEN_ID_MAX;
+		dest[counter] = comp->cur_id;
 		rc_list_debug(comp, "gen_id = 0x%02x", dest[counter]);
 		counter++;
 	}

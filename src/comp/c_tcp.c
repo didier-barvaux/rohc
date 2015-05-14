@@ -3527,6 +3527,8 @@ static bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 	size_t opts_nr = 0;
 	uint8_t opt_idx;
 
+	assert(tcp_context->tcp_opts_list_struct_nr <= ROHC_TCP_OPTS_MAX);
+
 	tcp_context->tmp.is_tcp_opts_list_struct_changed = false;
 	tcp_context->tmp.is_tcp_opts_list_static_changed = false;
 	tcp_context->tmp.opt_ts_present = false;

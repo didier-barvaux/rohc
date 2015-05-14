@@ -649,8 +649,16 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 	                                       &decomp->pkt_list);
 	if(ret < 0)
 	{
-		rd_list_warn(decomp, "failed to decompress list with ID %u based on "
-		             "reference list %u: insertion scheme failed", gen_id, ref_id);
+		if(gen_id == ROHC_LIST_GEN_ID_ANON)
+		{
+			rd_list_warn(decomp, "failed to anonymous decompress list based on "
+			             "reference list %u: removal scheme failed", ref_id);
+		}
+		else
+		{
+			rd_list_warn(decomp, "failed to decompress list with ID %u based on "
+			             "reference list %u: insertion scheme failed", gen_id, ref_id);
+		}
 		goto error;
 	}
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
@@ -728,8 +736,16 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 	                                     &(decomp->pkt_list));
 	if(ret < 0)
 	{
-		rd_list_warn(decomp, "failed to decompress list with ID %u based on "
-		             "reference list %u: removal scheme failed", gen_id, ref_id);
+		if(gen_id == ROHC_LIST_GEN_ID_ANON)
+		{
+			rd_list_warn(decomp, "failed to anonymous decompress list based on "
+			             "reference list %u: removal scheme failed", ref_id);
+		}
+		else
+		{
+			rd_list_warn(decomp, "failed to decompress list with ID %u based on "
+			             "reference list %u: removal scheme failed", gen_id, ref_id);
+		}
 		goto error;
 	}
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
@@ -823,8 +839,16 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 	                                     &(decomp->lists[ref_id]), &removal_list);
 	if(ret < 0)
 	{
-		rd_list_warn(decomp, "failed to decompress list with ID %u based on "
-		             "reference list %u: removal scheme failed", gen_id, ref_id);
+		if(gen_id == ROHC_LIST_GEN_ID_ANON)
+		{
+			rd_list_warn(decomp, "failed to anonymous decompress list based on "
+			             "reference list %u: removal scheme failed", ref_id);
+		}
+		else
+		{
+			rd_list_warn(decomp, "failed to decompress list with ID %u based on "
+			             "reference list %u: removal scheme failed", gen_id, ref_id);
+		}
 		goto error;
 	}
 	packet += ret;
@@ -837,8 +861,16 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 	                                       &decomp->pkt_list);
 	if(ret < 0)
 	{
-		rd_list_warn(decomp, "failed to decompress list with ID %u based on "
-		             "reference list %u: insertion scheme failed", gen_id, ref_id);
+		if(gen_id == ROHC_LIST_GEN_ID_ANON)
+		{
+			rd_list_warn(decomp, "failed to anonymous decompress list based on "
+			             "reference list %u: removal scheme failed", ref_id);
+		}
+		else
+		{
+			rd_list_warn(decomp, "failed to decompress list with ID %u based on "
+			             "reference list %u: insertion scheme failed", gen_id, ref_id);
+		}
 		goto error;
 	}
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */

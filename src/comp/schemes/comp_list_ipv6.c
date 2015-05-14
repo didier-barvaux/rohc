@@ -63,7 +63,7 @@ void rohc_comp_list_ipv6_new(struct list_comp *const comp,
 	comp->ref_id = ROHC_LIST_GEN_ID_NONE;
 	comp->cur_id = ROHC_LIST_GEN_ID_NONE;
 
-	for(i = 0; i <= ROHC_LIST_GEN_ID_MAX; i++)
+	for(i = 0; i <= ROHC_LIST_GEN_ID_ANON; i++)
 	{
 		rohc_list_reset(&comp->lists[i]);
 		comp->lists[i].id = i;

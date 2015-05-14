@@ -52,8 +52,8 @@ typedef enum
 
 /** The largest gen_id value */
 #define ROHC_LIST_GEN_ID_MAX   0xffU
-#define ROHC_LIST_GEN_ID_NONE  (ROHC_LIST_GEN_ID_MAX + 1)
-#define ROHC_LIST_GEN_ID_ANON  (ROHC_LIST_GEN_ID_MAX + 2)
+#define ROHC_LIST_GEN_ID_ANON  (ROHC_LIST_GEN_ID_MAX + 1)
+#define ROHC_LIST_GEN_ID_NONE  (ROHC_LIST_GEN_ID_MAX + 2)
 
 
 /**
