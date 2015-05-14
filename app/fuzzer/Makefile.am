@@ -28,6 +28,7 @@ rohc_fuzzer_SOURCES = \
 	fuzzer.c
 
 rohc_fuzzer_LDADD = \
+	${configure_fuzzer_ldflags} \
 	$(top_builddir)/src/comp/librohc_comp.la \
 	$(top_builddir)/src/decomp/librohc_decomp.la \
 	$(top_builddir)/src/common/librohc_common.la \
