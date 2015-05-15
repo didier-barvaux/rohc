@@ -5810,41 +5810,56 @@ static uint16_t c_tcp_get_next_msn(const struct rohc_comp_ctxt *const context)
  */
 static void tcp_decide_state(struct rohc_comp_ctxt *const context)
 {
-	/* TODO: be conform with RFC */
-	/* TODO: use generic function? */
-	switch(context->state)
+	rohc_comp_state_t curr_state = context->state;
+	rohc_comp_state_t next_state;
+
+	if(curr_state == ROHC_COMP_STATE_IR)
 	{
-		case ROHC_COMP_STATE_IR: /* The Initialization and Refresh (IR) state */
-			if(context->ir_count < MAX_IR_COUNT)
-			{
-				rohc_comp_debug(context, "no enough packets transmitted in IR "
-				                "state for the moment (%zu/%d), so stay in IR "
-				                "state", context->ir_count, MAX_IR_COUNT);
-			}
-			else
-			{
-				rohc_comp_change_state(context, ROHC_COMP_STATE_FO);
-			}
-			break;
-		case ROHC_COMP_STATE_FO: /* The First Order (FO) state */
-			if(context->fo_count < MAX_FO_COUNT)
-			{
-				rohc_comp_debug(context, "no enough packets transmitted in FO "
-				                "state for the moment (%zu/%d), so stay in FO "
-				                "state", context->fo_count, MAX_FO_COUNT);
-			}
-			else
-			{
-				rohc_comp_change_state(context, ROHC_COMP_STATE_SO);
-			}
-			break;
-		case ROHC_COMP_STATE_SO: /* The Second Order (SO) state */
-			/* do not change state */
-			break;
-		default:
-			assert(0); /* should never happen */
-			break;
+		if(context->ir_count < MAX_IR_COUNT)
+		{
+			rohc_comp_debug(context, "no enough packets transmitted in IR state "
+			                "for the moment (%zu/%d), so stay in IR state",
+			                context->ir_count, MAX_IR_COUNT);
+			next_state = ROHC_COMP_STATE_IR;
+		}
+		else
+		{
+			rohc_comp_debug(context, "enough packets transmitted in IR state (%zu/%u), "
+			                "go to SO state", context->ir_count, MAX_IR_COUNT);
+			next_state = ROHC_COMP_STATE_SO;
+		}
 	}
+	else if(curr_state == ROHC_COMP_STATE_FO)
+	{
+		if(context->fo_count < MAX_FO_COUNT)
+		{
+			rohc_comp_debug(context, "no enough packets transmitted in FO state "
+			                "for the moment (%zu/%u), so stay in FO state",
+			                context->fo_count, MAX_FO_COUNT);
+			next_state = ROHC_COMP_STATE_FO;
+		}
+		else
+		{
+			rohc_comp_debug(context, "enough packets transmitted in FO state (%zu/%u), "
+			                "go to SO state", context->fo_count, MAX_FO_COUNT);
+			next_state = ROHC_COMP_STATE_SO;
+		}
+	}
+	else if(curr_state == ROHC_COMP_STATE_SO)
+	{
+		/* do not change state */
+		rohc_comp_debug(context, "stay in SO state");
+		next_state = ROHC_COMP_STATE_SO;
+		/* TODO: handle NACK and STATIC-NACK */
+	}
+	else
+	{
+		rohc_comp_warn(context, "unexpected compressor state %d", curr_state);
+		assert(0);
+		return;
+	}
+
+	rohc_comp_change_state(context, next_state);
 
 	/* periodic context refreshes (RFC6846, §5.2.1.2) */
 	if(context->mode == ROHC_U_MODE)
