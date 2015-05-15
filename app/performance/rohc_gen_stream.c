@@ -39,6 +39,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <stdarg.h>
+#include <limits.h>
 
 /* includes for network headers */
 #include <ip.h> /* for IPv4 checksum */
@@ -179,7 +180,18 @@ int main(int argc, char *argv[])
 		else if(max_packets == 0)
 		{
 			/* get the number of packets to put in stream */
-			max_packets = atoi(argv[0]);
+			const int __max_packets = atoi(argv[0]);
+			if(__max_packets < 1)
+			{
+				fprintf(stderr, "MAX shall be at least 1\n");
+				goto error;
+			}
+			max_packets = (unsigned long) __max_packets;
+			if(max_packets >= ULONG_MAX)
+			{
+				fprintf(stderr, "MAX shall be strictly less than %lu\n", ULONG_MAX);
+				goto error;
+			}
 		}
 		else if(filename == NULL)
 		{
