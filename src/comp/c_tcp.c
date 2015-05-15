@@ -66,6 +66,10 @@
  */
 struct tcp_tmp_variables
 {
+	/** Whether at least one of the static part of the IPv6 extensions changed
+	 * in the current packet */
+	bool is_ipv6_exts_list_static_changed;
+
 	/* the length of the TCP payload (headers and options excluded) */
 	size_t payload_len;
 
@@ -5620,14 +5624,14 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 	struct sc_tcp_context *const tcp_context = context->specific;
 	base_header_ip_t base_header_inner;
 	base_header_ip_t base_header;
-#ifdef TODO
-	uint8_t new_context_state;
-#endif
 	size_t ip_hdrs_nr;
 	size_t hdrs_len;
 	uint8_t protocol;
 	size_t opts_len;
 	uint8_t pkt_ecn_vals;
+
+	/* no IPv6 extension got its static part changed at the beginning */
+	tcp_context->tmp.is_ipv6_exts_list_static_changed = false;
 
 	base_header.ipvx = (base_header_ip_vx_t *) uncomp_pkt->outer_ip.data;
 	hdrs_len = 0;
@@ -5682,15 +5686,22 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 							                "and/or content (%u -> %u)", protocol,
 							                opt_ctxt->generic.length,
 							                base_header.ipv6_opt->length);
+
+							/* static chain is required if option length changed */
+							if(base_header.ipv6_opt->length != opt_ctxt->generic.length)
+							{
+								rohc_comp_debug(context, "  IPv6 option %u changed of "
+								                "length, static chain is required", protocol);
+								tcp_context->tmp.is_ipv6_exts_list_static_changed = true;
+							}
+
+							/* record option in context */
 							assert(base_header.ipv6_opt->length < MAX_IPV6_OPTION_LENGTH);
 							opt_ctxt->generic.option_length =
 							   (base_header.ipv6_opt->length + 1) << 3;
 							opt_ctxt->generic.length = base_header.ipv6_opt->length;
 							memcpy(opt_ctxt->generic.data, base_header.ipv6_opt->value,
 							       opt_ctxt->generic.option_length - 2);
-#ifdef TODO
-							new_context_state = ROHC_COMP_STATE_IR;
-#endif
 						}
 						else
 						{
@@ -6660,10 +6671,16 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 	struct sc_tcp_context *const tcp_context = context->specific;
 	rohc_packet_t packet_type;
 
-	if(!sdvl_can_length_be_encoded(tcp_context->tmp.nr_opt_ts_req_bits_0x40000) ||
-	   !sdvl_can_length_be_encoded(tcp_context->tmp.nr_opt_ts_reply_bits_0x40000))
+	if(tcp_context->tmp.is_ipv6_exts_list_static_changed)
 	{
-		rohc_comp_debug(context, "force packet IR-DYN because the TCP option "
+		rohc_comp_debug(context, "force packet IR because at least one IPv6 option "
+		                "changed of length");
+		packet_type = ROHC_PACKET_IR;
+	}
+	else if(!sdvl_can_length_be_encoded(tcp_context->tmp.nr_opt_ts_req_bits_0x40000) ||
+	        !sdvl_can_length_be_encoded(tcp_context->tmp.nr_opt_ts_reply_bits_0x40000))
+	{
+		rohc_comp_debug(context, "force packet IR-DYN because the TCP TS option "
 		                "changed too much");
 		packet_type = ROHC_PACKET_IR_DYN;
 	}
