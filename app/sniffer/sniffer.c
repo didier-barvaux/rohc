@@ -640,6 +640,7 @@ static void sniffer_interrupt(int signum)
 		{
 			SNIFFER_LOG(LOG_NOTICE, "no trace to print");
 			raise(SIGKILL);
+			return;
 		}
 
 		if(last_traces_first <= last_traces_last)
@@ -672,6 +673,7 @@ static void sniffer_interrupt(int signum)
 			action.sa_handler = SIG_DFL;
 			sigaction(SIGSEGV, &action, NULL);
 			raise(signum);
+			return;
 		}
 	}
 }
