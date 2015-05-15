@@ -21,7 +21,7 @@ addons:
     project:
       name: "didier-barvaux/rohc"
     notification_email: didier@rohc-lib.org
-    build_command_prepend: ./autogen.sh --disable-rohc-tests --disable-linux-kernel-module --disable-doc && make clean
-    build_command: make -j 4 all
+    build_command_prepend: ./autogen.sh --disable-linux-kernel-module --disable-doc && make clean
+    build_command: make all check
     branch_pattern: coverity_scan
 
