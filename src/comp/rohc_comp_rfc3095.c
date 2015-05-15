@@ -784,6 +784,10 @@ int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
 	/* decide in which state to go */
 	assert(rfc3095_ctxt->decide_state != NULL);
 	rfc3095_ctxt->decide_state(context);
+	if(context->mode == ROHC_U_MODE)
+	{
+		rohc_comp_periodic_down_transition(context);
+	}
 
 	/* compute how many bits are needed to send header fields */
 	if(!encode_uncomp_fields(context, uncomp_pkt))
@@ -1299,11 +1303,6 @@ void rohc_comp_rfc3095_decide_state(struct rohc_comp_ctxt *const context)
 	}
 
 	rohc_comp_change_state(context, next_state);
-
-	if(context->mode == ROHC_U_MODE)
-	{
-		rohc_comp_periodic_down_transition(context);
-	}
 }
 
 
