@@ -168,10 +168,6 @@ bool run_test(bool be_verbose, const unsigned int incr)
 		real_incr = incr;
 	}
 	value = (0xffffffff - 50 * real_incr);
-	if(value > 0xffffffff)
-	{
-		value = 0;
-	}
 
 	/* encode then decode values from ranges [0xffffffff - 50 * incr, 0xffffffff]
 	 * and [0, 49 * incr] */
