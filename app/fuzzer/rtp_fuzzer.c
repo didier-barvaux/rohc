@@ -542,15 +542,22 @@ static void fuzzer_interrupt(int signum)
 			        logfilename, strerror(errno), errno);
 			fflush(stderr);
 			raise(SIGKILL);
+			return;
 		}
 
 		fprintf(logfile, "a problem occurred\n\n");
 
 		if(last_traces_first == -1 || last_traces_last == -1)
 		{
-			fprintf(stderr, "no trace to record\n");
-			fflush(stderr);
+			fprintf(logfile, "no trace to record\n");
+			ret = fclose(logfile);
+			if(ret != 0)
+			{
+				fprintf(stderr, "failed to close log file '%s': %s (%d)\n",
+				        logfilename, strerror(errno), errno);
+			}
 			raise(SIGKILL);
+			return;
 		}
 
 		if(last_traces_first <= last_traces_last)
@@ -589,6 +596,7 @@ static void fuzzer_interrupt(int signum)
 			action.sa_handler = SIG_DFL;
 			sigaction(SIGSEGV, &action, NULL);
 			raise(signum);
+			return;
 		}
 	}
 }
