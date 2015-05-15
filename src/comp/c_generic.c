@@ -879,6 +879,10 @@ int c_generic_encode(struct rohc_comp_ctxt *const context,
 	/* decide in which state to go */
 	assert(g_context->decide_state != NULL);
 	g_context->decide_state(context);
+	if(context->mode == ROHC_U_MODE)
+	{
+		periodic_down_transition(context);
+	}
 
 	/* compute how many bits are needed to send header fields */
 	if(!encode_uncomp_fields(context, uncomp_pkt))
@@ -1472,11 +1476,6 @@ void decide_state(struct rohc_comp_ctxt *const context)
 	}
 
 	change_state(context, next_state);
-
-	if(context->mode == ROHC_U_MODE)
-	{
-		periodic_down_transition(context);
-	}
 }
 
 
