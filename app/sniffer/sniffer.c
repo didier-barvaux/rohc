@@ -64,6 +64,9 @@
 #include <syslog.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <linux/if.h>
 
 /* include for the PCAP library */
 #if HAVE_PCAP_PCAP_H == 1
@@ -196,6 +199,12 @@ static bool rtp_detect_cb(const unsigned char *const ip,
                           void *const rtp_private)
 	__attribute__((nonnull(1, 2, 3), warn_unused_result));
 
+static bool is_path_correct(const char *const path)
+	__attribute__((warn_unused_result, nonnull(1)));
+
+static bool write_pid_file(const char *const path)
+	__attribute__((warn_unused_result, nonnull(1)));
+
 
 /** Whether the application shall stop or not */
 static bool stop_program;
@@ -258,6 +267,7 @@ int main(int argc, char *argv[])
 	const int do_close_fds = 1;
 	int enabled_profiles[ROHC_PROFILE_UDPLITE + 1];
 	char *pidfilename = NULL;
+	bool pidfile_created = false;
 	char *cid_type_name = NULL;
 	char *device_name = NULL;
 	int max_contexts = ROHC_SMALL_CID_MAX + 1;
@@ -384,7 +394,13 @@ int main(int argc, char *argv[])
 	}
 
 	/* check CID type */
-	if(!strcmp(cid_type_name, "smallcid"))
+	if(cid_type_name == NULL)
+	{
+		SNIFFER_LOG(LOG_WARNING, "missing mandatory CID_TYPE parameter");
+		usage();
+		goto error;
+	}
+	else if(!strcmp(cid_type_name, "smallcid"))
 	{
 		cid_type = ROHC_SMALL_CID;
 
@@ -410,10 +426,16 @@ int main(int argc, char *argv[])
 			goto error;
 		}
 	}
-	else
+	else if(strlen(cid_type_name) <= 100)
 	{
 		SNIFFER_LOG(LOG_WARNING, "invalid CID type '%s', only 'smallcid' and "
 		            "'largecid' expected", cid_type_name);
+		goto error;
+	}
+	else
+	{
+		SNIFFER_LOG(LOG_WARNING, "invalid CID type, only 'smallcid' and "
+		            "'largecid' expected");
 		goto error;
 	}
 
@@ -424,6 +446,12 @@ int main(int argc, char *argv[])
 		usage();
 		goto error;
 	}
+	if(strlen(device_name) >= IFNAMSIZ)
+	{
+		SNIFFER_LOG(LOG_WARNING, "DEVICE name too long, should be strictly less "
+		            "than %u characters", IFNAMSIZ);
+		goto error;
+	}
 
 	/* --pidfile cannot be used in foreground mode */
 	if(pidfilename != NULL && !is_daemon)
@@ -431,6 +459,11 @@ int main(int argc, char *argv[])
 		SNIFFER_LOG(LOG_WARNING, "option --pidfile cannot be used without "
 		            "option --daemon");
 		usage();
+		goto error;
+	}
+	if(pidfilename != NULL && !is_path_correct(pidfilename))
+	{
+		SNIFFER_LOG(LOG_WARNING, "PID file path is not valid");
 		goto error;
 	}
 
@@ -468,38 +501,13 @@ int main(int argc, char *argv[])
 			goto error;
 		}
 
-		if(pidfilename != NULL)
+		if(pidfilename != NULL && !write_pid_file(pidfilename))
 		{
-			FILE *pidfile;
-
-			pidfile = fopen(pidfilename, "w");
-			if(pidfile == NULL)
-			{
-				SNIFFER_LOG(LOG_WARNING, "failed to open PID file '%s': %s (%d)",
-				            pidfilename, strerror(errno), errno);
-				goto error;
-			}
-			ret = fprintf(pidfile, "%d\n", getpid());
-			if(ret <= 0)
-			{
-				SNIFFER_LOG(LOG_WARNING, "failed to write PID in file '%s': "
-				            "%s (%d)", pidfilename, strerror(errno), errno);
-				ret = fclose(pidfile);
-				if(ret != 0)
-				{
-					SNIFFER_LOG(LOG_WARNING, "failed to close PID file '%s': "
-					            "%s (%d)", pidfilename, strerror(errno), errno);
-				}
-				goto error;
-			}
-			ret = fclose(pidfile);
-			if(ret != 0)
-			{
-				SNIFFER_LOG(LOG_WARNING, "failed to close PID file '%s': %s (%d)",
-				            pidfilename, strerror(errno), errno);
-				goto error;
-			}
+			SNIFFER_LOG(LOG_WARNING, "failed to write PID into PID file '%s': "
+			            "%s (%d)", pidfilename, strerror(errno), errno);
+			goto error;
 		}
+		pidfile_created = true;
 	}
 
 	SNIFFER_LOG(LOG_INFO, "starting ROHC sniffer");
@@ -523,7 +531,7 @@ int main(int argc, char *argv[])
 		goto error;
 	}
 
-	if(pidfilename != NULL)
+	if(pidfilename != NULL && pidfile_created)
 	{
 		ret = unlink(pidfilename);
 		if(ret != 0)
@@ -537,7 +545,7 @@ int main(int argc, char *argv[])
 	return 0;
 
 error:
-	if(pidfilename != NULL)
+	if(pidfilename != NULL && pidfile_created)
 	{
 		ret = unlink(pidfilename);
 		if(ret != 0)
@@ -1845,5 +1853,129 @@ static bool rtp_detect_cb(const unsigned char *const ip,
 
 not_rtp:
 	return is_rtp;
+}
+
+
+/**
+ * @brief Check path against max full path length and max filename length
+ *
+ * @param path  The path to check
+ * @return      true if the path is correct, false if it is not
+ */
+static bool is_path_correct(const char *const path)
+{
+	const char *filename;
+
+	if(strlen(path) == 0)
+	{
+		SNIFFER_LOG(LOG_WARNING, "file path too short, should be at least 1 "
+		            "characters");
+		return false;
+	}
+	else if(strlen(path) >= PATH_MAX)
+	{
+		SNIFFER_LOG(LOG_WARNING, "file path too long, should be strictly "
+		            "less than %u characters but it is %zu", PATH_MAX,
+		            strlen(path));
+		return false;
+	}
+
+	filename = strrchr(path, '/');
+	if(filename == NULL)
+	{
+		filename = path;
+	}
+	else
+	{
+		filename++;
+	}
+
+	if(strlen(filename) == 0)
+	{
+		SNIFFER_LOG(LOG_WARNING, "file name too short, should be at least 1 "
+		            "characters");
+		return false;
+	}
+	else if(strlen(filename) >= NAME_MAX)
+	{
+		SNIFFER_LOG(LOG_WARNING, "file name too long, should be strictly "
+		            "less than %u characters but it is %zu", NAME_MAX,
+		            strlen(filename));
+		return false;
+	}
+
+	return true;
+}
+
+
+/**
+ * @brief Write the daemon PID into the given PID file
+ *
+ * @param path  The PID file path
+ * @return      true if the PID was successfully written down,
+ *              false if it was not
+ */
+static bool write_pid_file(const char *const path)
+{
+	const size_t pid_max_size = 64;
+	char pid[pid_max_size];
+	int pidfile;
+	bool is_success = false;
+	int ret;
+
+	/* create file, fails if file already exists */
+	pidfile = open(path, O_CREAT | O_EXCL | O_NOFOLLOW | O_SYNC, S_IRUSR | S_IWUSR);
+	if(pidfile < 0)
+	{
+		SNIFFER_LOG(LOG_WARNING, "failed to create PID file '%s': %s (%d)",
+		            path, strerror(errno), errno);
+		goto error;
+	}
+
+	/* convert PID from integer to string */
+	ret = snprintf(pid, pid_max_size, "%d\n", getpid());
+	if(ret < 0 || ((size_t) ret) >= pid_max_size)
+	{
+		SNIFFER_LOG(LOG_WARNING, "failed to write PID in file '%s': failed to "
+		            "convert PID %d from integer to string", path, getpid());
+		goto close_pidfile;
+	}
+
+	/* write down the PID to the file */
+	ret = write(pidfile, pid, strlen(pid));
+	if(ret < 0)
+	{
+		SNIFFER_LOG(LOG_WARNING, "failed to write PID in file '%s': %s (%d)",
+		            path, strerror(errno), errno);
+		goto close_pidfile;
+	}
+	else if(((size_t) ret) != strlen(pid))
+	{
+		SNIFFER_LOG(LOG_WARNING, "failed to write PID in file '%s': only %d "
+		            "of %zu characters written", path, ret, strlen(pid));
+		goto close_pidfile;
+	}
+
+	is_success = true;
+
+close_pidfile:
+	ret = close(pidfile);
+	if(ret != 0)
+	{
+		SNIFFER_LOG(LOG_WARNING, "failed to close PID file '%s': %s (%d)",
+		            path, strerror(errno), errno);
+		is_success = false;
+	}
+	else if(!is_success)
+	{
+		ret = unlink(path);
+		if(ret != 0)
+		{
+			SNIFFER_LOG(LOG_WARNING, "failed to remove PID file '%s': %s (%d)",
+			            path, strerror(errno), errno);
+		}
+	}
+error:
+	return is_success;
 }
 
