@@ -268,9 +268,6 @@ static uint8_t compute_uo_crc(const struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt,
                               const unsigned char *const crc_table)
 	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
 
-static void periodic_down_transition(struct rohc_comp_ctxt *const context)
-	__attribute__((nonnull(1)));
-
 static void update_context(struct rohc_comp_ctxt *const context,
                            const struct net_pkt *const uncomp_pkt)
 	__attribute__((nonnull(1, 2)));
@@ -497,11 +494,10 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 
 	/* initialize some context variables:
 	 *  1. init the parameters to encode the SN with W-LSB encoding
-	 *  2. init the counters for the periodic transition to lower states
-	 *  3. init the info related to the outer IP header, the info related to the
+	 *  2. init the info related to the outer IP header, the info related to the
 	 *     inner IP header will be initialized later if necessary
-	 *  4. init the temporary variables
-	 *  5. init the profile-specific variables to safe values
+	 *  3. init the temporary variables
+	 *  4. init the profile-specific variables to safe values
 	 */
 
 	/* step 1 */
@@ -515,10 +511,6 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 		           "no memory to allocate W-LSB encoding for SN");
 		goto free_generic_context;
 	}
-
-	/* step 2 */
-	rfc3095_ctxt->go_back_fo_count = 0;
-	rfc3095_ctxt->go_back_ir_count = 0;
 
 	/* step 3 */
 	if(!ip_header_info_new(&rfc3095_ctxt->outer_ip_flags,
@@ -557,7 +549,7 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 	rfc3095_ctxt->specific = NULL;
 	rfc3095_ctxt->next_header_proto = packet->transport->proto;
 	rfc3095_ctxt->next_header_len = 0;
-	rfc3095_ctxt->decide_state = decide_state;
+	rfc3095_ctxt->decide_state = rohc_comp_rfc3095_decide_state;
 	rfc3095_ctxt->decide_FO_packet = NULL;
 	rfc3095_ctxt->decide_SO_packet = NULL;
 	rfc3095_ctxt->decide_extension = NULL;
@@ -1180,53 +1172,6 @@ error:
 
 
 /**
- * @brief Periodically change the context state after a certain number
- *        of packets.
- *
- * @param context The compression context
- */
-static void periodic_down_transition(struct rohc_comp_ctxt *const context)
-{
-	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
-		(struct rohc_comp_rfc3095_ctxt *) context->specific;
-
-	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-	           "CID %zu: timeouts for periodic refreshes: FO = %zu / %zu, "
-	           "IR = %zu / %zu", context->cid, rfc3095_ctxt->go_back_fo_count,
-	           context->compressor->periodic_refreshes_fo_timeout,
-	           rfc3095_ctxt->go_back_ir_count,
-	           context->compressor->periodic_refreshes_ir_timeout);
-
-	if(rfc3095_ctxt->go_back_fo_count >=
-	   context->compressor->periodic_refreshes_fo_timeout)
-	{
-		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		          "CID %zu: periodic change to FO state", context->cid);
-		rfc3095_ctxt->go_back_fo_count = 0;
-		rohc_comp_change_state(context, ROHC_COMP_STATE_FO);
-	}
-	else if(rfc3095_ctxt->go_back_ir_count >=
-	        context->compressor->periodic_refreshes_ir_timeout)
-	{
-		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		          "CID %zu: periodic change to IR state", context->cid);
-		rfc3095_ctxt->go_back_ir_count = 0;
-		rohc_comp_change_state(context, ROHC_COMP_STATE_IR);
-	}
-
-	if(context->state == ROHC_COMP_STATE_SO)
-	{
-		rfc3095_ctxt->go_back_fo_count++;
-	}
-	if(context->state == ROHC_COMP_STATE_SO ||
-	   context->state == ROHC_COMP_STATE_FO)
-	{
-		rfc3095_ctxt->go_back_ir_count++;
-	}
-}
-
-
-/**
  * @brief Decide the state that should be used for the next packet.
  *
  * The three states are:\n
@@ -1236,7 +1181,7 @@ static void periodic_down_transition(struct rohc_comp_ctxt *const context)
  *
  * @param context The compression context
  */
-void decide_state(struct rohc_comp_ctxt *const context)
+void rohc_comp_rfc3095_decide_state(struct rohc_comp_ctxt *const context)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	rohc_comp_state_t curr_state;
@@ -1357,7 +1302,7 @@ void decide_state(struct rohc_comp_ctxt *const context)
 
 	if(context->mode == ROHC_U_MODE)
 	{
-		periodic_down_transition(context);
+		rohc_comp_periodic_down_transition(context);
 	}
 }
 

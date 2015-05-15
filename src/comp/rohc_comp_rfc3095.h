@@ -185,15 +185,6 @@ struct rohc_comp_rfc3095_ctxt
 	/// A window used to encode the SN
 	struct c_wlsb *sn_window;
 
-	/// @brief The number of packet sent while in SO state, used for the periodic
-	///        refreshes of the context
-	/// @see periodic_down_transition
-	size_t go_back_fo_count;
-	/// @brief The number of packet sent while in FO or SO state, used for the
-	///        periodic refreshes of the context
-	/// @see periodic_down_transition
-	size_t go_back_ir_count;
-
 	/** The number of IP headers */
 	size_t ip_hdr_nr;
 	/// Information about the outer IP header
@@ -331,7 +322,8 @@ bool rohc_comp_rfc3095_feedback(struct rohc_comp_ctxt *const context,
                                 const struct c_feedback *const feedback)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-void decide_state(struct rohc_comp_ctxt *const context);
+void rohc_comp_rfc3095_decide_state(struct rohc_comp_ctxt *const context)
+	__attribute__((nonnull(1)));
 
 void rohc_get_ipid_bits(const struct rohc_comp_ctxt *const context,
                         size_t *const nr_innermost_bits,

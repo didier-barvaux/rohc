@@ -338,6 +338,19 @@ struct rohc_comp_ctxt
 	/** The number of packets sent while in Second Order (SO) state */
 	size_t so_count;
 
+	/**
+	 * @brief The number of packet sent while in SO state, used for the periodic
+	 *        refreshes of the context
+	 * @see rohc_comp_periodic_down_transition
+	 */
+	size_t go_back_fo_count;
+	/**
+	 * @brief The number of packet sent while in FO or SO state, used for the
+	 *        periodic refreshes of the context
+	 * @see rohc_comp_periodic_down_transition
+	 */
+	size_t go_back_ir_count;
+
 	/** The average size of the uncompressed packets */
 	int total_uncompressed_size;
 	/** The average size of the compressed packets */
@@ -410,6 +423,9 @@ void rohc_comp_change_mode(struct rohc_comp_ctxt *const context,
 
 void rohc_comp_change_state(struct rohc_comp_ctxt *const context,
                             const rohc_comp_state_t new_state)
+	__attribute__((nonnull(1)));
+
+void rohc_comp_periodic_down_transition(struct rohc_comp_ctxt *const context)
 	__attribute__((nonnull(1)));
 
 bool rohc_comp_reinit_context(struct rohc_comp_ctxt *const context)

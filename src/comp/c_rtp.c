@@ -967,7 +967,7 @@ static void rtp_decide_state(struct rohc_comp_ctxt *const context)
 	else
 	{
 		/* generic function used by the IP-only, UDP and UDP-Lite profiles */
-		decide_state(context);
+		rohc_comp_rfc3095_decide_state(context);
 	}
 
 	/* force initializing TS, TS_STRIDE and TS_SCALED again after

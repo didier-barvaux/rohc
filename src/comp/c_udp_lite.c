@@ -223,7 +223,7 @@ static bool c_udp_lite_create(struct rohc_comp_ctxt *const context,
 
 	/* init the UDP-Lite-specific variables and functions */
 	rfc3095_ctxt->next_header_len = sizeof(struct udphdr);
-	rfc3095_ctxt->decide_state = decide_state;
+	rfc3095_ctxt->decide_state = rohc_comp_rfc3095_decide_state;
 	rfc3095_ctxt->decide_FO_packet = c_ip_decide_FO_packet;
 	rfc3095_ctxt->decide_SO_packet = c_ip_decide_SO_packet;
 	rfc3095_ctxt->decide_extension = decide_extension;

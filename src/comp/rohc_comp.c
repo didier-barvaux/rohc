@@ -2427,6 +2427,8 @@ static struct rohc_comp_ctxt *
 	c->ir_count = 0;
 	c->fo_count = 0;
 	c->so_count = 0;
+	c->go_back_fo_count = 0;
+	c->go_back_ir_count = 0;
 
 	c->total_uncompressed_size = 0;
 	c->total_compressed_size = 0;
@@ -2717,6 +2719,50 @@ void rohc_comp_change_state(struct rohc_comp_ctxt *const context,
 
 		/* change state */
 		context->state = new_state;
+	}
+}
+
+
+/**
+ * @brief Periodically change the context state after a certain number
+ *        of packets.
+ *
+ * @param context The compression context
+ */
+void rohc_comp_periodic_down_transition(struct rohc_comp_ctxt *const context)
+{
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "CID %zu: timeouts for periodic refreshes: FO = %zu / %zu, "
+	           "IR = %zu / %zu", context->cid, context->go_back_fo_count,
+	           context->compressor->periodic_refreshes_fo_timeout,
+	           context->go_back_ir_count,
+	           context->compressor->periodic_refreshes_ir_timeout);
+
+	if(context->go_back_fo_count >=
+	   context->compressor->periodic_refreshes_fo_timeout)
+	{
+		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		          "CID %zu: periodic change to FO state", context->cid);
+		context->go_back_fo_count = 0;
+		rohc_comp_change_state(context, ROHC_COMP_STATE_FO);
+	}
+	else if(context->go_back_ir_count >=
+	        context->compressor->periodic_refreshes_ir_timeout)
+	{
+		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		          "CID %zu: periodic change to IR state", context->cid);
+		context->go_back_ir_count = 0;
+		rohc_comp_change_state(context, ROHC_COMP_STATE_IR);
+	}
+
+	if(context->state == ROHC_COMP_STATE_SO)
+	{
+		context->go_back_fo_count++;
+	}
+	if(context->state == ROHC_COMP_STATE_SO ||
+	   context->state == ROHC_COMP_STATE_FO)
+	{
+		context->go_back_ir_count++;
 	}
 }
 

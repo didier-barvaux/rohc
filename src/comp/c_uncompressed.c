@@ -42,14 +42,7 @@
  */
 struct sc_uncompressed_context
 {
-	/// The number of IR packets sent by the compressor
-	size_t ir_count;
-	/// The number of Normal packets sent by the compressor
-	size_t normal_count;
-	/// @brief The number of packet sent while in non-IR states, used for the
-	///        periodic refreshes of the context
-	/// @see uncompressed_periodic_down_transition
-	size_t go_back_ir_count;
+	/* empty */
 };
 
 
@@ -82,7 +75,7 @@ static int c_uncompressed_encode(struct rohc_comp_ctxt *const context,
                                  rohc_packet_t *const packet_type,
                                  size_t *const payload_offset)
 		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
-static int uncompressed_code_packet(const struct rohc_comp_ctxt *const context,
+static int uncompressed_code_packet(struct rohc_comp_ctxt *const context,
                                     const struct net_pkt *const uncomp_pkt,
                                     unsigned char *const rohc_pkt,
                                     const size_t rohc_pkt_max_len,
@@ -115,11 +108,6 @@ static bool uncomp_feedback_2(struct rohc_comp_ctxt *const context,
 
 /* mode and state transitions */
 static void uncompressed_decide_state(struct rohc_comp_ctxt *const context);
-static void uncompressed_periodic_down_transition(struct rohc_comp_ctxt *const context);
-static void uncompressed_change_mode(struct rohc_comp_ctxt *const context,
-                                     const rohc_mode_t new_mode);
-static void uncompressed_change_state(struct rohc_comp_ctxt *const context,
-                                      const rohc_comp_state_t new_state);
 
 
 
@@ -157,10 +145,6 @@ static bool c_uncompressed_create(struct rohc_comp_ctxt *const context,
 		goto quit;
 	}
 	context->specific = uncomp_context;
-
-	uncomp_context->ir_count = 0;
-	uncomp_context->normal_count = 0;
-	uncomp_context->go_back_ir_count = 0;
 
 	success = true;
 
@@ -279,8 +263,8 @@ static bool c_uncompressed_reinit_context(struct rohc_comp_ctxt *const context)
 	assert(context != NULL);
 
 	/* go back to U-mode and IR state */
-	uncompressed_change_mode(context, ROHC_U_MODE);
-	uncompressed_change_state(context, ROHC_COMP_STATE_IR);
+	rohc_comp_change_mode(context, ROHC_U_MODE);
+	rohc_comp_change_state(context, ROHC_COMP_STATE_IR);
 
 	return true;
 }
@@ -441,7 +425,7 @@ static bool uncomp_feedback_2(struct rohc_comp_ctxt *const context,
 		/* mode can be changed only if feedback is protected by a CRC */
 		if(is_crc_used)
 		{
-			uncompressed_change_mode(context, mode);
+			rohc_comp_change_mode(context, mode);
 		}
 		else
 		{
@@ -460,7 +444,7 @@ static bool uncomp_feedback_2(struct rohc_comp_ctxt *const context,
 			break;
 		case STATIC_NACK:
 			rohc_comp_warn(context, "STATIC-NACK received");
-			uncompressed_change_state(context, ROHC_COMP_STATE_IR);
+			rohc_comp_change_state(context, ROHC_COMP_STATE_IR);
 			break;
 		case RESERVED:
 			rohc_comp_warn(context, "reserved field used");
@@ -486,86 +470,15 @@ error:
  */
 static void uncompressed_decide_state(struct rohc_comp_ctxt *const context)
 {
-	struct sc_uncompressed_context *uncomp_context =
-		(struct sc_uncompressed_context *) context->specific;
-
 	if(context->state == ROHC_COMP_STATE_IR &&
-	   uncomp_context->ir_count >= MAX_IR_COUNT)
+	   context->ir_count >= MAX_IR_COUNT)
 	{
-		uncompressed_change_state(context, ROHC_COMP_STATE_FO);
+		rohc_comp_change_state(context, ROHC_COMP_STATE_FO);
 	}
 
 	if(context->mode == ROHC_U_MODE)
 	{
-		uncompressed_periodic_down_transition(context);
-	}
-}
-
-
-/**
- * @brief Periodically change the context state after a certain number
- *        of packets.
- *
- * @param context The compression context
- */
-static void uncompressed_periodic_down_transition(struct rohc_comp_ctxt *const context)
-{
-	struct sc_uncompressed_context *uncomp_context =
-		(struct sc_uncompressed_context *) context->specific;
-
-	if(uncomp_context->go_back_ir_count >=
-	   context->compressor->periodic_refreshes_ir_timeout)
-	{
-		rohc_comp_debug(context, "periodic change to IR state");
-		uncomp_context->go_back_ir_count = 0;
-		uncompressed_change_state(context, ROHC_COMP_STATE_IR);
-	}
-
-	if(context->state == ROHC_COMP_STATE_FO)
-	{
-		uncomp_context->go_back_ir_count++;
-	}
-}
-
-
-/**
- * @brief Change the mode of the context.
- *
- * @param context  The compression context
- * @param new_mode The new mode the context must enter in
- */
-static void uncompressed_change_mode(struct rohc_comp_ctxt *const context,
-                                     const rohc_mode_t new_mode)
-{
-	if(context->mode != new_mode)
-	{
-		context->mode = new_mode;
-		uncompressed_change_state(context, ROHC_COMP_STATE_IR);
-	}
-}
-
-
-/**
- * @brief Change the state of the context.
- *
- * @param context   The compression context
- * @param new_state The new state the context must enter in
- */
-static void uncompressed_change_state(struct rohc_comp_ctxt *const context,
-                                      const rohc_comp_state_t new_state)
-{
-	struct sc_uncompressed_context *uncomp_context =
-		(struct sc_uncompressed_context *) context->specific;
-
-	/* reset counters only if different state */
-	if(context->state != new_state)
-	{
-		/* reset counters */
-		uncomp_context->ir_count = 0;
-		uncomp_context->normal_count = 0;
-
-		/* change state */
-		context->state = new_state;
+		rohc_comp_periodic_down_transition(context);
 	}
 }
 
@@ -582,7 +495,7 @@ static void uncompressed_change_state(struct rohc_comp_ctxt *const context,
  * @return                  The length of the ROHC packet if successful,
  *                         -1 otherwise
  */
-static int uncompressed_code_packet(const struct rohc_comp_ctxt *context,
+static int uncompressed_code_packet(struct rohc_comp_ctxt *const context,
                                     const struct net_pkt *const uncomp_pkt,
                                     unsigned char *const rohc_pkt,
                                     const size_t rohc_pkt_max_len,
@@ -595,8 +508,6 @@ static int uncompressed_code_packet(const struct rohc_comp_ctxt *context,
 	                   const size_t _rohc_pkt_max_len,
 	                   size_t *const _payload_offset)
 		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
-	struct sc_uncompressed_context *uncomp_context =
-		(struct sc_uncompressed_context *) context->specific;
 	int size;
 
 	/* decide what packet to send depending on state and uncompressed packet */
@@ -632,13 +543,13 @@ static int uncompressed_code_packet(const struct rohc_comp_ctxt *context,
 	if((*packet_type) == ROHC_PACKET_IR)
 	{
 		rohc_comp_debug(context, "build IR packet");
-		uncomp_context->ir_count++;
+		context->ir_count++;
 		code_packet = uncompressed_code_IR_packet;
 	}
 	else /* ROHC_PACKET_NORMAL */
 	{
 		rohc_comp_debug(context, "build normal packet");
-		uncomp_context->normal_count++;
+		context->fo_count++; /* FO is used instead of Normal */
 		code_packet = uncompressed_code_normal_packet;
 	}
 
