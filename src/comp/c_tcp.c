@@ -6139,6 +6139,12 @@ static void tcp_decide_state(struct rohc_comp_ctxt *const context)
 			assert(0); /* should never happen */
 			break;
 	}
+
+	/* periodic context refreshes (RFC6846, §5.2.1.2) */
+	if(context->mode == ROHC_U_MODE)
+	{
+		rohc_comp_periodic_down_transition(context);
+	}
 }
 
 
