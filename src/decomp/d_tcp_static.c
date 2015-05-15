@@ -385,60 +385,10 @@ static int tcp_parse_static_ipv6_option(const struct rohc_decomp_ctxt *const con
 			                  opt_context->generic.option_length);
 			break;
 		}
-		case ROHC_IPPROTO_GRE:
+		case ROHC_IPPROTO_GRE:  /* TODO: GRE not yet supported */
 		{
-			const ip_gre_opt_static_t *const ip_gre_opt_static =
-				(ip_gre_opt_static_t *) ip_opt_static;
-
-			if(rohc_length < sizeof(ip_gre_opt_static_t))
-			{
-				rohc_decomp_warn(context, "malformed ROHC packet: too short for "
-				                 "the static part of the IPv6 GRE option");
-				goto error;
-			}
-#if 0 /* to be clarified */
-			if((opt_context->gre.protocol ==
-			    ip_gre_opt_static->protocol) == 0) // TODO: check that
-			{
-				base_header.ip_gre_opt->protocol = rohc_hton16(0x0800);
-			}
-			else
-			{
-				base_header.ip_gre_opt->protocol = rohc_hton16(0x86DD);
-			}
-#endif
-			opt_context->gre.c_flag = ip_gre_opt_static->c_flag;
-			opt_context->gre.s_flag = ip_gre_opt_static->s_flag;
-			opt_context->gre.k_flag = ip_gre_opt_static->k_flag;
-			size = sizeof(ip_gre_opt_static_t);
-
-#if 0 /* to be moved after parsing */
-			ret = d_optional32(ip_gre_opt_static->k_flag,
-			                   ip_gre_opt_static->options,
-			                   rohc_length - size,
-			                   opt_context->gre.key,
-			                   &(base_header.ip_gre_opt->datas[opt_context->gre.c_flag]));
-			if(ret < 0)
-			{
-				rohc_decomp_warn(context, "ROHC packet too small for optional "
-				                 "key field in GRE static part");
-				goto error;
-			}
-			opt_context->gre.key =
-				base_header.ip_gre_opt->datas[opt_context->gre.c_flag];
-			size += ret;
-#endif
-
-			opt_context->generic.option_length = size << 3;
-
-#if 0 /* to be moved after parsing */
-			if(ip_gre_opt_static->k_flag != 0)
-			{
-				base_header.ip_gre_opt->datas[opt_context->gre.c_flag] =
-				   opt_context->gre.key;
-			}
-#endif
-			break;
+			rohc_decomp_warn(context, "GRE extension header not supported yet");
+			goto error;
 		}
 		case ROHC_IPPROTO_DSTOPTS:  // IPv6 destination options
 		{
@@ -458,45 +408,15 @@ static int tcp_parse_static_ipv6_option(const struct rohc_decomp_ctxt *const con
 			opt_context->generic.length = ip_dest_opt_static->length;
 			break;
 		}
-		case ROHC_IPPROTO_MINE:
+		case ROHC_IPPROTO_MINE:  /* TODO: MINE not yet supported */
 		{
-			const ip_mime_opt_static_t *const ip_mime_opt_static =
-				(ip_mime_opt_static_t *) ip_opt_static;
-			size = sizeof(ip_mime_opt_static_t) -
-			       (ip_mime_opt_static->s_bit * sizeof(uint32_t));
-			if(rohc_length < size)
-			{
-				rohc_decomp_warn(context, "malformed ROHC packet: too short for "
-				                 "the static part of the IPv6 Destination option");
-				goto error;
-			}
-			opt_context->generic.option_length = (2 + ip_mime_opt_static->s_bit) << 3;
-			opt_context->mime.s_bit = ip_mime_opt_static->s_bit;
-			opt_context->mime.res_bits = ip_mime_opt_static->res_bits;
-			opt_context->mime.orig_dest = ip_mime_opt_static->orig_dest;
-			if(opt_context->mime.s_bit != 0)
-			{
-				opt_context->mime.orig_src = ip_mime_opt_static->orig_src;
-			}
-			break;
+			rohc_decomp_warn(context, "GRE extension header not supported yet");
+			goto error;
 		}
-		case ROHC_IPPROTO_AH:
+		case ROHC_IPPROTO_AH:  /* TODO: AH not yet supported */
 		{
-			const ip_ah_opt_static_t *const ip_ah_opt_static =
-				(ip_ah_opt_static_t *) ip_opt_static;
-			size = sizeof(ip_ah_opt_static_t);
-			if(rohc_length < size)
-			{
-				rohc_decomp_warn(context, "malformed ROHC packet: too short for "
-				                 "the static part of the IPv6 Destination option");
-				goto error;
-			}
-			opt_context->generic.option_length =
-				sizeof(ip_ah_opt_t) - sizeof(uint32_t) +
-				(ip_ah_opt_static->length << 4) - sizeof(int32_t);
-			opt_context->ah.length = ip_ah_opt_static->length;
-			opt_context->ah.spi = ip_ah_opt_static->spi;
-			break;
+			rohc_decomp_warn(context, "GRE extension header not supported yet");
+			goto error;
 		}
 		default:
 		{

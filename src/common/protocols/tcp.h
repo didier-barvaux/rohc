@@ -167,140 +167,11 @@ typedef struct __attribute__((packed)) ip_rout_opt_static
 	uint8_t value[1];
 } ip_rout_opt_static_t;
 
-/**
- * @brief Define the IPv6 GRE option header.
- *
- * See RFC5225 page 55
- */
-
-typedef struct __attribute__((packed)) ip_gre_opt
-{
-#if WORDS_BIGENDIAN != 1
-	uint8_t reserved2 : 4;
-	uint8_t s_flag : 1;
-	uint8_t k_flag : 1;
-	uint8_t r_flag : 1;
-	uint8_t c_flag : 1;
-
-	uint8_t version : 3;
-	uint8_t reserved1 : 5;
-#else
-	uint16_t c_flag : 1;
-	uint16_t r_flag : 1;
-	uint16_t k_flag : 1;
-	uint16_t s_flag : 1;
-	uint16_t reserved0 : 9;
-	uint16_t version : 3;
-#endif
-	uint16_t protocol;
-	uint32_t datas[1];
-} ip_gre_opt_t;
-
-/**
- * @brief Define the static part of IPv6 GRE option header.
- *
- */
-
-typedef struct __attribute__((packed)) ip_gre_opt_static
-{
-#if WORDS_BIGENDIAN != 1
-	uint8_t padding : 4;
-	uint8_t s_flag : 1;
-	uint8_t k_flag : 1;
-	uint8_t c_flag : 1;
-	uint8_t protocol : 1;
-#else
-	uint8_t protocol : 1;
-	uint8_t c_flag : 1;
-	uint8_t k_flag : 1;
-	uint8_t s_flag : 1;
-	uint8_t padding : 4;
-#endif
-	uint8_t options[0];     // if k_flag
-} ip_gre_opt_static_t;
-
-/**
- * @brief Define the IPv6 MIME option header.
- *
- */
-
-typedef struct __attribute__((packed)) ip_mime_opt
-{
-	uint8_t next_header;
-#if WORDS_BIGENDIAN != 1
-	uint8_t res_bits : 7;
-	uint8_t s_bit : 1;
-#else
-	uint8_t s_bit : 1;
-	uint8_t res_bits : 7;
-#endif
-	uint16_t checksum;
-	uint32_t orig_dest;
-	uint32_t orig_src;         // if s_bit set
-} ip_mime_opt_t;
-
-/**
- * @brief Define the static part of IPv6 MIME option header.
- *
- */
-
-typedef struct __attribute__((packed)) ip_mime_opt_static
-{
-	uint8_t next_header;
-#if WORDS_BIGENDIAN != 1
-	uint8_t res_bits : 7;
-	uint8_t s_bit : 1;
-#else
-	uint8_t s_bit : 1;
-	uint8_t res_bits : 7;
-#endif
-	uint32_t orig_dest;
-	uint32_t orig_src;         // if s_bit set
-} ip_mime_opt_static_t;
-
-/**
- * @brief Define the IPv6 Authentication option header.
- *
- */
-
-typedef struct __attribute__((packed)) ip_ah_opt
-{
-	uint8_t next_header;
-	uint8_t length;
-	uint16_t res_bits;
-	uint32_t spi;
-	uint32_t sequence_number;
-	uint32_t auth_data[1];
-} ip_ah_opt_t;
-
-/**
- * @brief Define the static part of IPv6 Authentication option header.
- *
- */
-
-typedef struct __attribute__((packed)) ip_ah_opt_static
-{
-	uint8_t next_header;
-	uint8_t length;
-	uint32_t spi;
-} ip_ah_opt_static_t;
-
-/**
- * @brief Define the dynamic part of IPv6 Authentication option header.
- *
- */
-
-typedef struct __attribute__((packed)) ip_ah_opt_dynamic
-{
-	uint32_t sequence_number;
-	uint32_t auth_data[0];
-} ip_ah_opt_dynamic_t;
 
 /**
  * @brief Define the common IP v4/v6 header.
  *
  */
-
 typedef struct __attribute__((packed)) base_header_ip_vx
 {
 #if WORDS_BIGENDIAN != 1
@@ -312,12 +183,12 @@ typedef struct __attribute__((packed)) base_header_ip_vx
 #endif
 } base_header_ip_vx_t;
 
+
 /**
  * @brief Define the IPv4 header.
  *
  * See RFC4996 page 77
  */
-
 typedef struct __attribute__((packed)) base_header_ip_v4
 {
 #if WORDS_BIGENDIAN != 1
@@ -1443,9 +1314,6 @@ typedef union
 	ip_dest_opt_t *ip_dest_opt;
 	ip_hop_opt_t *ip_hop_opt;
 	ip_rout_opt_t *ip_rout_opt;
-	ip_gre_opt_t *ip_gre_opt;
-	ip_mime_opt_t *ip_mime_opt;
-	ip_ah_opt_t *ip_ah_opt;
 	tcphdr_t *tcphdr;
 } base_header_ip_t;
 

@@ -54,10 +54,6 @@ typedef union
 	ip_hop_opt_static_t *ip_hop_opt_static;
 	ip_hop_opt_dynamic_t *ip_hop_opt_dynamic;
 	ip_rout_opt_static_t *ip_rout_opt_static;
-	ip_gre_opt_static_t *ip_gre_opt_static;
-	ip_mime_opt_static_t *ip_mime_opt_static;
-	ip_ah_opt_static_t *ip_ah_opt_static;
-	ip_ah_opt_dynamic_t *ip_ah_opt_dynamic;
 
 	ipv4_static_t *ipv4_static;
 	ipv4_dynamic1_t *ipv4_dynamic1;
@@ -130,12 +126,6 @@ size_t variable_length_32_enc(const uint32_t old_value,
 int c_optional32(const int indicator,
                  const uint32_t packet_value,
                  uint8_t *const rohc_data)
-	__attribute__((warn_unused_result, nonnull(3)));
-
-/* lsb_7_or_31 encoding method */
-int c_lsb_7_or_31(const uint32_t context_value,
-                  const uint32_t packet_value,
-                  uint8_t *const rohc_data)
 	__attribute__((warn_unused_result, nonnull(3)));
 
 /* RFC4996 page 49 */

@@ -297,43 +297,6 @@ int c_optional32(const int indicator,
 
 
 /**
- * @brief Compress a 32 bits value to 7 or 31 bits
- *
- * See RFC4996 page 47
- *
- * @param context_value   The context value
- * @param packet_value    The packet value
- * @param[out] rohc_data  The compressed value
- * @return                The number of ROHC bytes written,
- *                        -1 if a problem occurs
- */
-int c_lsb_7_or_31(const uint32_t context_value,
-                  const uint32_t packet_value,
-                  uint8_t *const rohc_data)
-{
-	size_t length;
-
-	/* TODO: to rework to use wlsb_get_kp_32bits() */
-	if((packet_value & 0xFFFFFF80) == (context_value & 0xFFFFFF80))
-	{
-		/* 1-bit discriminator + 7-bit LSB */
-		rohc_data[0] = packet_value & 0x7f;
-		length = 1;
-	}
-	else
-	{
-		/* 1-bit discriminator + 31-bit LSB */
-		const uint32_t swapped_value = rohc_hton32(packet_value & 0x7fffffff);
-		memcpy(rohc_data, &swapped_value, sizeof(uint32_t));
-		rohc_data[0] |= 0x80;
-		length = sizeof(uint32_t);
-	}
-
-	return length;
-}
-
-
-/**
  * @brief Calculate the scaled and residue values from unscaled value and scaling factor
  *
  * See RFC4996 page 49

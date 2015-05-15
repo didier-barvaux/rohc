@@ -321,67 +321,20 @@ static int tcp_parse_dynamic_ipv6_option(const struct rohc_decomp_ctxt *const co
 		{
 			break;
 		}
-		case ROHC_IPPROTO_GRE:
+		case ROHC_IPPROTO_GRE:  /* TODO: GRE not yet supported */
 		{
-#if 0
-			int ret;
-#endif
 			rohc_decomp_warn(context, "GRE extension header not supported yet");
 			goto error;
-#if 0 /* TODO: handle GRE header */
-			if(opt_context->gre.c_flag != 0)
-			{
-				if(remain_len < sizeof(uint32_t))
-				{
-					rohc_decomp_warn(context, "malformed IPv6 option: malformed "
-					                 "option GRE: %zu bytes available while 4 "
-					                 "bytes required", remain_len);
-					goto error;
-				}
-				memcpy(base_header.ip_gre_opt->datas, rohc_packet + size,
-				       sizeof(uint32_t));
-				size += sizeof(uint32_t);
-				remain_len -= sizeof(uint32_t);
-			}
-			ret = d_optional32(opt_context->gre.s_flag,
-			                   rohc_packet + size, remain_len,
-			                   base_header.ip_gre_opt->datas[opt_context->gre.c_flag],
-			                   &base_header.ip_gre_opt->datas[opt_context->gre.c_flag]);
-			if(ret < 0)
-			{
-				rohc_decomp_warn(context, "malformed IPv6 option: malformed "
-				                 "option GRE");
-				goto error;
-			}
-			size += ret;
-#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
-			remain_len -= ret;
-#endif
-			break;
-#endif
 		}
-		case ROHC_IPPROTO_MINE:
+		case ROHC_IPPROTO_MINE:  /* TODO: MINE not yet supported */
 		{
-			break;
+			rohc_decomp_warn(context, "MINE extension header not supported yet");
+			goto error;
 		}
-		case ROHC_IPPROTO_AH:
+		case ROHC_IPPROTO_AH:  /* TODO: AH not yet supported */
 		{
-			const ip_ah_opt_dynamic_t *const ip_ah_opt_dynamic =
-				(ip_ah_opt_dynamic_t *) rohc_packet;
-
-			size += opt_context->ah.length << 2;
-			if(remain_len < size)
-			{
-				rohc_decomp_warn(context, "malformed IPv6 option: malformed "
-				                 "option AH: %zu bytes available while %zu bytes "
-				                 "required", remain_len, size);
-				goto error;
-			}
-			opt_context->ah.sequence_number =
-			   ip_ah_opt_dynamic->sequence_number;
-			memcpy(opt_context->ah.auth_data,
-			       ip_ah_opt_dynamic->auth_data, size - sizeof(uint32_t));
-			break;
+			rohc_decomp_warn(context, "AH extension header not supported yet");
+			goto error;
 		}
 		default:
 		{

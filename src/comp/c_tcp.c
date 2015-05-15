@@ -203,62 +203,6 @@ typedef struct __attribute__((packed)) ipv6_generic_option_context
 
 
 /**
- * @brief Define the IPv6 GRE option context.
- */
-typedef struct __attribute__((packed)) ipv6_gre_option_context
-{
-	size_t option_length;
-
-	uint8_t next_header;
-
-	uint8_t c_flag : 1;
-	uint8_t k_flag : 1;
-	uint8_t s_flag : 1;
-	uint8_t padding : 5;
-
-	uint16_t protocol;
-
-	uint32_t key;               // if k_flag set
-	uint32_t sequence_number;   // if s_flag set
-
-} ipv6_gre_option_context_t;
-
-
-/**
- * @brief Define the IPv6 MIME option context.
- */
-typedef struct __attribute__((packed)) ipv6_mime_option_context
-{
-	size_t option_length;
-
-	uint8_t next_header;
-
-	uint8_t s_bit : 1;
-	uint8_t res_bits : 7;
-	uint16_t checksum;
-	uint32_t orig_dest;
-	uint32_t orig_src;         // if s_bit set
-
-} ipv6_mime_option_context_t;
-
-
-/**
- * @brief Define the IPv6 AH option context.
- */
-typedef struct __attribute__((packed)) ipv6_ah_option_context
-{
-	size_t option_length;
-
-	uint8_t next_header;
-
-	uint8_t length;
-	uint32_t spi;
-	uint32_t sequence_number;
-	uint32_t auth_data[1];
-} ipv6_ah_option_context_t;
-
-
-/**
  * @brief Define the common IP header context to IPv4 and IPv6.
  */
 typedef struct __attribute__((packed)) ipvx_context
@@ -309,9 +253,9 @@ typedef struct __attribute__((packed)) ipv4_context
 typedef union
 {
 	ipv6_generic_option_context_t generic; /**< IPv6 generic extension header */
-	ipv6_gre_option_context_t gre;         /**< IPv6 GRE extension header */
-	ipv6_mime_option_context_t mime;       /**< IPv6 MIME extension header */
-	ipv6_ah_option_context_t ah;           /**< IPv6 AH extension header */
+	/* TODO: GRE not yet supported */
+	/* TODO: MINE not yet supported */
+	/* TODO: AH not yet supported */
 } ipv6_option_context_t;
 
 
@@ -973,41 +917,10 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 							memcpy(&ipv6_opt->generic.data, &base_header.ipv6_opt->value,
 							       size_option - 2);
 							break;
-						case ROHC_IPPROTO_GRE:
-							size_option = base_header.ip_gre_opt->c_flag +
-							              base_header.ip_gre_opt->k_flag +
-							              base_header.ip_gre_opt->s_flag + 1;
-							size_option <<= 3;
-							ipv6_opt->gre.c_flag = base_header.ip_gre_opt->c_flag;
-							ipv6_opt->gre.k_flag = base_header.ip_gre_opt->k_flag;
-							ipv6_opt->gre.s_flag = base_header.ip_gre_opt->s_flag;
-							ipv6_opt->gre.protocol = base_header.ip_gre_opt->protocol;
-							ipv6_opt->gre.key =
-							   base_header.ip_gre_opt->datas[base_header.ip_gre_opt->c_flag];
-							ipv6_opt->gre.sequence_number =
-							   base_header.ip_gre_opt->datas[base_header.ip_gre_opt->c_flag +
-							                                 base_header.ip_gre_opt->k_flag];
-							break;
-						case ROHC_IPPROTO_MINE:
-							size_option = ( 2 + base_header.ip_mime_opt->s_bit ) << 3;
-							ipv6_opt->mime.next_header = base_header.ipv6_opt->next_header;
-							ipv6_opt->mime.s_bit = base_header.ip_mime_opt->s_bit;
-							ipv6_opt->mime.res_bits = base_header.ip_mime_opt->res_bits;
-							ipv6_opt->mime.checksum = base_header.ip_mime_opt->checksum;
-							ipv6_opt->mime.orig_dest = base_header.ip_mime_opt->orig_dest;
-							ipv6_opt->mime.orig_src = base_header.ip_mime_opt->orig_src;
-							break;
-						case ROHC_IPPROTO_AH:
-							size_option = sizeof(ip_ah_opt_t) - sizeof(uint32_t) +
-							              ( base_header.ip_ah_opt->length << 4 ) - sizeof(int32_t);
-							ipv6_opt->ah.option_length = size_option;
-							ipv6_opt->ah.next_header = base_header.ipv6_opt->next_header;
-							ipv6_opt->ah.length = base_header.ip_ah_opt->length;
-							ipv6_opt->ah.spi = base_header.ip_ah_opt->spi;
-							ipv6_opt->ah.sequence_number =
-							   base_header.ip_ah_opt->sequence_number;
-							break;
 						// case ROHC_IPPROTO_ESP : ???
+						case ROHC_IPPROTO_GRE:  /* TODO: GRE not yet supported */
+						case ROHC_IPPROTO_MINE: /* TODO: MINE not yet supported */
+						case ROHC_IPPROTO_AH:   /* TODO: AH not yet supported */
 						default:
 							goto free_context;
 					}
@@ -1404,67 +1317,10 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 						}
 						break;
 					}
-					case ROHC_IPPROTO_GRE:
-					{
-						const struct ip_gre_opt *const gre_opt =
-							(struct ip_gre_opt *) remain_data;
-						if(remain_len < (sizeof(struct ip_gre_opt) - sizeof(uint32_t)))
-						{
-							rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-							           "packet too short for GRE header");
-							goto bad_profile;
-						}
-						size_option =
-							(gre_opt->c_flag + gre_opt->k_flag + gre_opt->s_flag + 1) << 3;
-						if(remain_len < size_option)
-						{
-							rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-							           "packet too short for GRE header");
-							goto bad_profile;
-						}
-						next_proto = gre_opt->protocol;
-						break;
-					}
-					case ROHC_IPPROTO_MINE:
-					{
-						const struct ip_mime_opt *const mime_opt =
-							(struct ip_mime_opt *) remain_data;
-						if(remain_len < sizeof(struct ip_mime_opt))
-						{
-							rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-							           "packet too short for MIME header");
-							goto bad_profile;
-						}
-						size_option = (2 + mime_opt->s_bit) << 3;
-						if(remain_len < size_option)
-						{
-							rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-							           "packet too short for MIME header");
-							goto bad_profile;
-						}
-						break;
-					}
-					case ROHC_IPPROTO_AH:
-					{
-						const struct ip_ah_opt *const ah_opt =
-							(struct ip_ah_opt *) remain_data;
-						if(remain_len < (sizeof(struct ip_ah_opt) - sizeof(uint32_t)))
-						{
-							rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-							           "packet too short for AH header");
-							goto bad_profile;
-						}
-						size_option = sizeof(ip_ah_opt_t) - sizeof(uint32_t) +
-						              (ah_opt->length << 4) - sizeof(int32_t);
-						if(remain_len < size_option)
-						{
-							rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-							           "packet too short for AH header");
-							goto bad_profile;
-						}
-						break;
-					}
 					// case ROHC_IPPROTO_ESP : ???
+					case ROHC_IPPROTO_GRE:  /* TODO: GRE not yet supported */
+					case ROHC_IPPROTO_MINE: /* TODO: MINE not yet supported */
+					case ROHC_IPPROTO_AH:   /* TODO: AH not yet supported */
 					default:
 						goto bad_profile;
 				}
@@ -2368,7 +2224,6 @@ static uint8_t * tcp_code_static_ipv6_option_part(struct rohc_comp_ctxt *const c
 																  base_header_ip_t base_header)
 {
 	size_t size;
-	int ret;
 
 	assert(context != NULL);
 
@@ -2386,52 +2241,15 @@ static uint8_t * tcp_code_static_ipv6_option_part(struct rohc_comp_ctxt *const c
 			size = (base_header.ipv6_opt->length + 1) << 3;
 			memcpy(mptr.ip_rout_opt_static->value,base_header.ipv6_opt->value,size - 2);
 			break;
-		case ROHC_IPPROTO_GRE:
-			if(rohc_ntoh16(base_header.ip_gre_opt->protocol) == 0x0800)
-			{
-				mptr.ip_gre_opt_static->protocol = 0;
-			}
-			else
-			{
-				assert(rohc_ntoh16(base_header.ip_gre_opt->protocol) == 0x86DD);
-				mptr.ip_gre_opt_static->protocol = 1;
-			}
-			mptr.ip_gre_opt_static->c_flag = base_header.ip_gre_opt->c_flag;
-			mptr.ip_gre_opt_static->s_flag = base_header.ip_gre_opt->s_flag;
-			mptr.ip_gre_opt_static->k_flag = base_header.ip_gre_opt->k_flag;
-			mptr.ip_gre_opt_static->padding = 0;
-			size = sizeof(ip_gre_opt_static_t);
-
-			ret = c_optional32(base_header.ip_gre_opt->k_flag,
-			                   base_header.ip_gre_opt->datas[base_header.ip_gre_opt->c_flag],
-			                   mptr.ip_gre_opt_static->options);
-			if(ret < 0)
-			{
-				rohc_comp_warn(context, "failed to encode optional32(key)");
-				goto error;
-			}
-			size += sizeof(uint32_t);
-			break;
 		case ROHC_IPPROTO_DSTOPTS:  // IPv6 destination options
 			mptr.ip_dest_opt_static->length = base_header.ipv6_opt->length;
 			size = sizeof(ip_dest_opt_static_t);
 			break;
-		case ROHC_IPPROTO_MINE:
-			mptr.ip_mime_opt_static->s_bit = base_header.ip_mime_opt->s_bit;
-			mptr.ip_mime_opt_static->res_bits = base_header.ip_mime_opt->res_bits;
-			mptr.ip_mime_opt_static->orig_dest = base_header.ip_mime_opt->orig_dest;
-			if(base_header.ip_mime_opt->s_bit != 0)
-			{
-				mptr.ip_mime_opt_static->orig_src = base_header.ip_mime_opt->orig_src;
-				size = sizeof(ip_mime_opt_static_t);
-				break;
-			}
-			size = sizeof(ip_mime_opt_static_t) - sizeof(uint32_t);
-			break;
-		case ROHC_IPPROTO_AH:
-			mptr.ip_ah_opt_static->length = base_header.ip_ah_opt->length;
-			mptr.ip_ah_opt_static->spi = base_header.ip_ah_opt->spi;
-			size = sizeof(ip_ah_opt_static_t);
+		case ROHC_IPPROTO_GRE:  /* TODO: GRE not yet supported */
+		case ROHC_IPPROTO_MINE: /* TODO: MINE not yet supported */
+		case ROHC_IPPROTO_AH:   /* TODO: AH not yet supported */
+			assert(0);
+			size = 0;
 			break;
 		default:
 			size = 0;
@@ -2446,9 +2264,6 @@ static uint8_t * tcp_code_static_ipv6_option_part(struct rohc_comp_ctxt *const c
 #endif
 
 	return mptr.uint8 + size;
-
-error:
-	return NULL;
 }
 
 
@@ -2470,7 +2285,6 @@ static uint8_t * tcp_code_dynamic_ipv6_option_part(struct rohc_comp_ctxt *const 
 																	base_header_ip_t base_header)
 {
 	int size;
-	int ret;
 
 	assert(context != NULL);
 
@@ -2485,43 +2299,11 @@ static uint8_t * tcp_code_dynamic_ipv6_option_part(struct rohc_comp_ctxt *const 
 		case ROHC_IPPROTO_ROUTING:  // IPv6 routing header
 			size = 0;
 			break;
-		case ROHC_IPPROTO_GRE:
+		case ROHC_IPPROTO_GRE:  /* TODO: GRE not yet supported */
+		case ROHC_IPPROTO_MINE: /* TODO: MINE not yet supported */
+		case ROHC_IPPROTO_AH:   /* TODO: AH not yet supported */
+			assert(0);
 			size = 0;
-			// checksum_and_res =:= optional_checksum(c_flag.UVALUE)
-			if(base_header.ip_gre_opt->c_flag != 0)
-			{
-				uint8_t *ptr = (uint8_t*) base_header.ip_gre_opt->datas;
-				*(mptr.uint8++) = *ptr++;
-				*(mptr.uint8++) = *ptr;
-				size += sizeof(uint16_t);
-			}
-			// sequence_number =:= optional_32(s_flag.UVALUE)
-			ret = c_optional32(base_header.ip_gre_opt->s_flag,
-			                   base_header.ip_gre_opt->datas[base_header.ip_gre_opt->c_flag],
-			                   mptr.uint8);
-			if(ret < 0)
-			{
-				rohc_comp_warn(context, "optional32(seq_number) failed");
-				goto error;
-			}
-			mptr.uint8 += ret;
-			size += ret;
-			if(base_header.ip_gre_opt->s_flag != 0)
-			{
-				opt_ctxt->gre.sequence_number =
-				   base_header.ip_gre_opt->datas[base_header.ip_gre_opt->c_flag];
-			}
-			mptr.uint8 -= size;
-			break;
-		case ROHC_IPPROTO_MINE:
-			size = 0;
-			break;
-		case ROHC_IPPROTO_AH:
-			mptr.ip_ah_opt_dynamic->sequence_number = base_header.ip_ah_opt->sequence_number;
-			size = (base_header.ip_ah_opt->length - 1) << 2;
-			memcpy(mptr.ip_ah_opt_dynamic->auth_data,base_header.ip_ah_opt->auth_data,
-			       (base_header.ip_ah_opt->length - 1) << 2);
-			size += sizeof(uint32_t);
 			break;
 		default:
 			size = 0;
@@ -2536,9 +2318,6 @@ static uint8_t * tcp_code_dynamic_ipv6_option_part(struct rohc_comp_ctxt *const 
 #endif
 
 	return mptr.uint8 + size;
-
-error:
-	return NULL;
 }
 
 
@@ -2554,60 +2333,23 @@ error:
  *                     NULL if a problem occurs
  */
 static uint8_t * tcp_code_irregular_ipv6_option_part(struct rohc_comp_ctxt *const context,
-																	  ipv6_option_context_t *const opt_ctxt,
+																	  ipv6_option_context_t *const opt_ctxt __attribute__((unused)),
 																	  multi_ptr_t mptr,
 																	  uint8_t protocol,
-																	  base_header_ip_t base_header)
+																	  base_header_ip_t base_header __attribute__((unused)))
 {
 #if ROHC_EXTRA_DEBUG == 1
 	uint8_t *ptr = mptr.uint8;
 #endif
-	uint32_t sequence_number;
-	int size;
-	int ret;
 
 	assert(context != NULL);
 
 	switch(protocol)
 	{
-		case ROHC_IPPROTO_GRE:
-			// checksum_and_res =:= optional_checksum(c_flag.UVALUE)
-			if(base_header.ip_gre_opt->c_flag != 0)
-			{
-				uint8_t *ptr2 = (uint8_t*) base_header.ip_gre_opt->datas;
-				*(mptr.uint8++) = *ptr2++;
-				*(mptr.uint8++) = *ptr2;
-			}
-			// sequence_number =:= optional_lsb_7_or_31(s_flag.UVALUE)
-			if(base_header.ip_gre_opt->s_flag != 0)
-			{
-				sequence_number = rohc_ntoh32(base_header.ip_gre_opt->datas[base_header.ip_gre_opt->c_flag]);
-				ret = c_lsb_7_or_31(opt_ctxt->gre.sequence_number,
-				                    sequence_number, mptr.uint8);
-				if(ret < 0)
-				{
-					rohc_comp_warn(context, "lsb_7_or_31(seq_number)");
-					goto error;
-				}
-				mptr.uint8 += ret;
-				opt_ctxt->gre.sequence_number =
-				   base_header.ip_gre_opt->datas[base_header.ip_gre_opt->c_flag];
-			}
-			break;
-		case ROHC_IPPROTO_AH:
-			sequence_number = rohc_ntoh32(base_header.ip_ah_opt->sequence_number);
-			ret = c_lsb_7_or_31(opt_ctxt->ah.sequence_number,
-			                    sequence_number, mptr.uint8);
-			if(ret < 0)
-			{
-				rohc_comp_warn(context, "lsb_7_or_31(seq_number) failed");
-				goto error;
-			}
-			mptr.uint8 += ret;
-			opt_ctxt->ah.sequence_number = sequence_number;
-			size = (base_header.ip_ah_opt->length - 1) << 3;
-			memcpy(mptr.uint8,base_header.ip_ah_opt->auth_data,size);
-			mptr.uint8 += size;
+		case ROHC_IPPROTO_GRE:  /* TODO: GRE not yet supported */
+		case ROHC_IPPROTO_MINE: /* TODO: MINE not yet supported */
+		case ROHC_IPPROTO_AH:   /* TODO: AH not yet supported */
+			assert(0);
 			break;
 		default:
 			break;
@@ -2621,9 +2363,6 @@ static uint8_t * tcp_code_irregular_ipv6_option_part(struct rohc_comp_ctxt *cons
 #endif
 
 	return mptr.uint8;
-
-error:
-	return NULL;
 }
 
 
@@ -5934,7 +5673,6 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 					case ROHC_IPPROTO_HOPOPTS: // IPv6 Hop-by-Hop options
 					case ROHC_IPPROTO_ROUTING: // IPv6 routing header
 					case ROHC_IPPROTO_DSTOPTS: // IPv6 destination options
-					case ROHC_IPPROTO_AH:
 						if(context->num_sent_packets == 0 ||
 						   base_header.ipv6_opt->length != opt_ctxt->generic.length ||
 						   memcmp(base_header.ipv6_opt->value, opt_ctxt->generic.data,
@@ -5960,42 +5698,10 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 							                protocol);
 						}
 						break;
-					case ROHC_IPPROTO_GRE:
-						if(base_header.ip_gre_opt->c_flag != opt_ctxt->gre.c_flag)
-						{
-							rohc_comp_debug(context, "  IPv6 option %d c_flag changed "
-							                "(%d -> %d)", protocol, opt_ctxt->gre.c_flag,
-							                base_header.ip_gre_opt->c_flag);
-#ifdef TODO
-							new_context_state = ROHC_COMP_STATE_IR;
-#endif
-						}
-						break;
-					case ROHC_IPPROTO_MINE:
-						if(base_header.ip_mime_opt->s_bit != opt_ctxt->mime.s_bit)
-						{
-							rohc_comp_debug(context, "  IPv6 option %d s_bit changed "
-							                "(0x%x -> 0x%x)", protocol,
-							                opt_ctxt->mime.s_bit,
-							                base_header.ip_mime_opt->s_bit);
-							opt_ctxt->mime.option_length =
-							   (2 + base_header.ip_mime_opt->s_bit) << 3;
-#ifdef TODO
-							new_context_state = ROHC_COMP_STATE_IR;
-#endif
-							break;
-						}
-						if(base_header.ip_mime_opt->checksum != opt_ctxt->mime.checksum)
-						{
-							rohc_comp_debug(context, "  IPv6 option %d checksum "
-							                "changed (0x%x -> 0x%x)", protocol,
-							                opt_ctxt->mime.checksum,
-							                base_header.ip_mime_opt->checksum);
-#ifdef TODO
-							new_context_state = ROHC_COMP_STATE_IR;
-#endif
-							break;
-						}
+					case ROHC_IPPROTO_GRE:  /* TODO: GRE not yet supported */
+					case ROHC_IPPROTO_MINE: /* TODO: MINE not yet supported */
+					case ROHC_IPPROTO_AH:   /* TODO: AH not yet supported */
+						assert(0);
 						break;
 				}
 				protocol = base_header.ipv6_opt->next_header;
