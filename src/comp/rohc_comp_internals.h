@@ -390,7 +390,7 @@ struct c_feedback
 	int type;
 
 	/** The feedback data (ie. the packet excluding the first type octet) */
-	unsigned char *data;
+	const uint8_t *data;
 	/** The size of the feedback data */
 	size_t size;
 

@@ -284,7 +284,7 @@ static bool c_uncompressed_reinit_context(struct rohc_comp_ctxt *const context)
 static bool uncomp_feedback(struct rohc_comp_ctxt *const context,
                             const struct c_feedback *const feedback)
 {
-	uint8_t *remain_data;
+	const uint8_t *remain_data;
 	size_t remain_len;
 
 	assert(context->specific != NULL);
@@ -340,10 +340,11 @@ error:
 static bool uncomp_feedback_2(struct rohc_comp_ctxt *const context,
                               const struct c_feedback *const feedback)
 {
-	uint8_t *remain_data = feedback->data + feedback->specific_offset;
+	const uint8_t *remain_data = feedback->data + feedback->specific_offset;
 	size_t remain_len = feedback->specific_size;
 	uint8_t crc_in_packet = 0; /* initialized to avoid a GCC warning */
 	bool is_crc_used = false;
+	size_t crc_pos_from_end;
 	uint8_t mode;
 
 	assert(remain_len >= 2);
@@ -368,10 +369,26 @@ static bool uncomp_feedback_2(struct rohc_comp_ctxt *const context,
 		switch(opt)
 		{
 			case 1: /* CRC */
+			{
+				const size_t crc_opt_exp_len = 2;
+				if(optlen != crc_opt_exp_len)
+				{
+					rohc_comp_warn(context, "malformed FEEDBACK-2: malformed CRC "
+					               "option: %u bytes advertised while %zu bytes "
+					               "expected", optlen, crc_opt_exp_len);
+					goto error;
+				}
+				if(is_crc_used)
+				{
+					rohc_comp_warn(context, "malformed FEEDBACK-2: CRC option "
+					               "specified more than once");
+					goto error;
+				}
 				crc_in_packet = remain_data[1];
 				is_crc_used = true;
-				remain_data[1] = 0; /* set to zero for crc computation */
+				crc_pos_from_end = remain_len - 1;
 				break;
+			}
 			case 2: /* Reject */
 				/* ignore the option */
 				rohc_comp_warn(context, "ignore FEEDBACK-2 Reject option");
@@ -400,11 +417,19 @@ static bool uncomp_feedback_2(struct rohc_comp_ctxt *const context,
 	/* check CRC if present in feedback */
 	if(is_crc_used)
 	{
+		const size_t zeroed_crc_len = 1;
+		const uint8_t zeroed_crc = 0x00;
 		uint8_t crc_computed;
 
-		/* compute the CRC of the feedback packet */
+		/* compute the CRC of the feedback packet (skip CRC byte) */
 		crc_computed = crc_calculate(ROHC_CRC_TYPE_8, feedback->data,
-		                             feedback->size, CRC_INIT_8,
+		                             feedback->size - crc_pos_from_end, CRC_INIT_8,
+		                             context->compressor->crc_table_8);
+		crc_computed = crc_calculate(ROHC_CRC_TYPE_8, &zeroed_crc, zeroed_crc_len,
+		                             crc_computed, context->compressor->crc_table_8);
+		crc_computed = crc_calculate(ROHC_CRC_TYPE_8, feedback->data +
+		                             feedback->size - crc_pos_from_end + 1,
+		                             crc_pos_from_end - 1, crc_computed,
 		                             context->compressor->crc_table_8);
 
 		/* ignore feedback in case of bad CRC */

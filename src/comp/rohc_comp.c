@@ -1929,14 +1929,7 @@ bool __rohc_comp_deliver_feedback(struct rohc_comp *const comp,
 	}
 
 	feedback.specific_offset = p - packet;
-	feedback.data = malloc(feedback.size);
-	if(feedback.data == NULL)
-	{
-		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "no memory for feedback data");
-		goto error;
-	}
-	memcpy(feedback.data, packet, feedback.size);
+	feedback.data = packet;
 
 	/* find context */
 	c = c_get_context(comp, feedback.cid);
@@ -1945,7 +1938,7 @@ bool __rohc_comp_deliver_feedback(struct rohc_comp *const comp,
 		/* context was not found */
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		             "context not found (CID = %zu)", feedback.cid);
-		goto clean;
+		goto error;
 	}
 
 	/* deliver feedback to profile with the context */
@@ -1962,8 +1955,6 @@ bool __rohc_comp_deliver_feedback(struct rohc_comp *const comp,
 		is_success = true;
 	}
 
-clean:
-	zfree(feedback.data);
 error:
 	return is_success;
 
