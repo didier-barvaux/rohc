@@ -204,6 +204,11 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 static void rohc_decomp_reset_stats(struct rohc_decomp *const decomp)
 	__attribute__((nonnull(1)));
 
+static bool rohc_decomp_packet_carry_static_info(const rohc_packet_t packet_type)
+	__attribute__((warn_unused_result, const));
+static bool rohc_decomp_packet_carry_crc_7_or_8(const rohc_packet_t packet_type)
+	__attribute__((warn_unused_result, const));
+
 
 
 /*
@@ -1260,22 +1265,40 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 	rohc_decomp_debug(ddata->active, "decode packet as '%s'",
 	                  rohc_get_packet_descr(*packet_type));
 
-	/* only the IR packet can be received in the No Context state,
-	 * the IR-DYN, UO-0, UO-1 or UOR-2 can not. */
-	if((*packet_type) != ROHC_PACKET_IR &&
-	   ddata->active->state == ROHC_DECOMP_STATE_NC)
+	/* only the IR packet can be received in the No Context state, other cannot */
+	if(ddata->active->state == ROHC_DECOMP_STATE_NC &&
+	   !rohc_decomp_packet_carry_static_info(*packet_type))
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, profile->id,
-		             "non-IR packet (%d) cannot be received in No Context state",
-		             *packet_type);
+		             "packet '%s' (%d) does not carry static information, it cannot "
+		             "be received in No Context state",
+		             rohc_get_packet_descr(*packet_type), *packet_type);
 		if(is_new_context)
 		{
 			context_free(ddata->active);
 			ddata->active = NULL;
 			decomp->last_context = NULL;
 		}
-		goto error_no_context;
+		goto error_malformed;
 	}
+	/* only packets carrying CRC-7 or CRC-8 can be received in the Static Context
+	 * state, other cannot */
+	else if(ddata->active->state == ROHC_DECOMP_STATE_SC &&
+	        !rohc_decomp_packet_carry_crc_7_or_8(*packet_type))
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, profile->id,
+		             "packet '%s' (%d) does not carry 7- or 8-bit CRC, it cannot "
+		             "be received in Static Context state",
+		             rohc_get_packet_descr(*packet_type), *packet_type);
+		if(is_new_context)
+		{
+			context_free(ddata->active);
+			ddata->active = NULL;
+			decomp->last_context = NULL;
+		}
+		goto error_malformed;
+	}
+	/* all packet types are allowed in Full Context state */
 
 	/* only IR packet can create a new context */
 	assert((*packet_type) == ROHC_PACKET_IR || !is_new_context);
@@ -3305,5 +3328,74 @@ static bool rohc_decomp_create_contexts(struct rohc_decomp *const decomp,
 	           "room for %zu decompression contexts created", max_cid + 1);
 
 	return true;
+}
+
+
+/**
+ * @brief Does packet type carry static information?
+ *
+ * @param packet_type  The type of packet
+ * @return             true if packet carries static information,
+ *                     false if it does not
+ */
+static bool rohc_decomp_packet_carry_static_info(const rohc_packet_t packet_type)
+{
+	return (packet_type == ROHC_PACKET_IR);
+}
+
+
+/**
+ * @brief Does packet type carry 7- or 8-bit CRC?
+ *
+ * @param packet_type  The type of packet
+ * @return             true if packet carries 7- or 8-bit CRC,
+ *                     false if it does not
+ */
+static bool rohc_decomp_packet_carry_crc_7_or_8(const rohc_packet_t packet_type)
+{
+	bool carry_crc_7_or_8;
+
+	switch(packet_type)
+	{
+		case ROHC_PACKET_IR:
+		case ROHC_PACKET_IR_DYN:
+		case ROHC_PACKET_UOR_2:
+		case ROHC_PACKET_UOR_2_RTP:
+		case ROHC_PACKET_UOR_2_TS:
+		case ROHC_PACKET_UOR_2_ID:
+		case ROHC_PACKET_TCP_CO_COMMON:
+		case ROHC_PACKET_TCP_SEQ_8:
+		case ROHC_PACKET_TCP_RND_8:
+			carry_crc_7_or_8 = true;
+			break;
+		case ROHC_PACKET_UO_0:
+		case ROHC_PACKET_UO_1:
+		case ROHC_PACKET_UO_1_RTP:
+		case ROHC_PACKET_UO_1_TS:
+		case ROHC_PACKET_UO_1_ID:
+		case ROHC_PACKET_NORMAL:
+		case ROHC_PACKET_TCP_SEQ_1:
+		case ROHC_PACKET_TCP_SEQ_2:
+		case ROHC_PACKET_TCP_SEQ_3:
+		case ROHC_PACKET_TCP_SEQ_4:
+		case ROHC_PACKET_TCP_SEQ_5:
+		case ROHC_PACKET_TCP_SEQ_6:
+		case ROHC_PACKET_TCP_SEQ_7:
+		case ROHC_PACKET_TCP_RND_1:
+		case ROHC_PACKET_TCP_RND_2:
+		case ROHC_PACKET_TCP_RND_3:
+		case ROHC_PACKET_TCP_RND_4:
+		case ROHC_PACKET_TCP_RND_5:
+		case ROHC_PACKET_TCP_RND_6:
+		case ROHC_PACKET_TCP_RND_7:
+			carry_crc_7_or_8 = false;
+			break;
+		default:
+			assert(0);
+			carry_crc_7_or_8 = false;
+			break;
+	}
+
+	return carry_crc_7_or_8;
 }
 

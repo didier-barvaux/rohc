@@ -1447,12 +1447,7 @@ static bool parse_uo0(const struct rohc_decomp_ctxt *const context,
 	reset_extr_bits(rfc3095_ctxt, bits);
 
 	/* check packet usage */
-	if(context->state == ROHC_DECOMP_STATE_SC)
-	{
-		rohc_decomp_warn(context, "UO-0 packets cannot be received in Static "
-		                 "Context state");
-		goto error;
-	}
+	assert(context->state == ROHC_DECOMP_STATE_FC);
 
 	/* check if the ROHC packet is large enough to parse parts 2 and 3 */
 	if(rohc_remain_len < (1 + large_cid_len))
@@ -1645,12 +1640,7 @@ static bool parse_uo1(const struct rohc_decomp_ctxt *const context,
 	}
 
 	/* check packet usage */
-	if(context->state == ROHC_DECOMP_STATE_SC)
-	{
-		rohc_decomp_warn(context, "UO-1 packet cannot be received in Static "
-		                 "Context state");
-		goto error;
-	}
+	assert(context->state == ROHC_DECOMP_STATE_FC);
 	if(context->profile->id == ROHC_PROFILE_RTP)
 	{
 		rohc_decomp_warn(context, "UO-1 packet cannot be used with RTP profile");
@@ -1862,12 +1852,7 @@ static bool parse_uo1rtp(const struct rohc_decomp_ctxt *const context,
 	reset_extr_bits(rfc3095_ctxt, bits);
 
 	/* check packet usage */
-	if(context->state == ROHC_DECOMP_STATE_SC)
-	{
-		rohc_decomp_warn(context, "UO-1-RTP packet cannot be received in "
-		                 "Static Context state");
-		goto error;
-	}
+	assert(context->state == ROHC_DECOMP_STATE_FC);
 	if(context->profile->id != ROHC_PROFILE_RTP)
 	{
 		rohc_decomp_warn(context, "UO-1-RTP packet cannot be used with non-RTP "
@@ -2086,12 +2071,7 @@ static bool parse_uo1id(const struct rohc_decomp_ctxt *const context,
 	}
 
 	/* check packet usage */
-	if(context->state == ROHC_DECOMP_STATE_SC)
-	{
-		rohc_decomp_warn(context, "UO-1-ID packet cannot be received in Static "
-		                 "Context state");
-		goto error;
-	}
+	assert(context->state == ROHC_DECOMP_STATE_FC);
 	if(context->profile->id != ROHC_PROFILE_RTP)
 	{
 		rohc_decomp_warn(context, "UO-1-ID packet cannot be used with non-RTP "
@@ -2393,12 +2373,7 @@ static bool parse_uo1ts(const struct rohc_decomp_ctxt *const context,
 	reset_extr_bits(rfc3095_ctxt, bits);
 
 	/* check packet usage */
-	if(context->state == ROHC_DECOMP_STATE_SC)
-	{
-		rohc_decomp_warn(context, "UO-1-TS packet cannot be received in Static "
-		                 "Context state");
-		goto error;
-	}
+	assert(context->state == ROHC_DECOMP_STATE_FC);
 	if(context->profile->id != ROHC_PROFILE_RTP)
 	{
 		rohc_decomp_warn(context, "UO-1-TS packet cannot be used with non-RTP "
@@ -2608,6 +2583,7 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
 	}
 
 	/* check packet usage */
+	assert(context->state != ROHC_DECOMP_STATE_NC);
 	if(context->profile->id == ROHC_PROFILE_RTP)
 	{
 		rohc_decomp_warn(context, "UOR-2 packet cannot be used with RTP profile");
@@ -2832,6 +2808,7 @@ static bool parse_uor2rtp(const struct rohc_decomp_ctxt *const context,
 
 	assert(packet_type != NULL);
 	assert((*packet_type) == ROHC_PACKET_UOR_2_RTP);
+	assert(context->state != ROHC_DECOMP_STATE_NC);
 	assert(context->profile->id == ROHC_PROFILE_RTP);
 
 	/* for the first parsing, use the context values for the outer/inner RND
@@ -3289,6 +3266,7 @@ static bool parse_uor2id(const struct rohc_decomp_ctxt *const context,
 
 	assert(packet_type != NULL);
 	assert((*packet_type) == ROHC_PACKET_UOR_2_ID);
+	assert(context->state != ROHC_DECOMP_STATE_NC);
 	assert(context->profile->id == ROHC_PROFILE_RTP);
 
 	/* for the first parsing, use the context values for the outer/inner RND
@@ -3748,6 +3726,7 @@ static bool parse_uor2ts(const struct rohc_decomp_ctxt *const context,
 
 	assert(packet_type != NULL);
 	assert((*packet_type) == ROHC_PACKET_UOR_2_TS);
+	assert(context->state != ROHC_DECOMP_STATE_NC);
 	assert(context->profile->id == ROHC_PROFILE_RTP);
 
 	/* for the first parsing, use the context values for the outer/inner RND

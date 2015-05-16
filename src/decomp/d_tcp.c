@@ -731,6 +731,9 @@ static bool d_tcp_parse_irdyn(const struct rohc_decomp_ctxt *const context,
 	remain_data = rohc_packet;
 	remain_len = rohc_length;
 
+	/* check packet usage */
+	assert(context->state != ROHC_DECOMP_STATE_NC);
+
 	/* skip:
 	 * - the first byte of the ROHC packet (field 2)
 	 * - the Profile byte (field 4) */
@@ -888,6 +891,9 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 		{
 			const rnd_1_t *const rnd_1 = (rnd_1_t *) rohc_remain_data;
 
+			/* check packet usage */
+			assert(context->state == ROHC_DECOMP_STATE_FC);
+
 			/* check if the ROHC packet is large enough to parse rnd_1 */
 			if(rohc_remain_len < sizeof(rnd_1_t))
 			{
@@ -918,6 +924,9 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 		{
 			const rnd_2_t *const rnd_2 = (rnd_2_t *) rohc_remain_data;
 
+			/* check packet usage */
+			assert(context->state == ROHC_DECOMP_STATE_FC);
+
 			/* check if the ROHC packet is large enough to parse rnd_2 */
 			if(rohc_remain_len < sizeof(rnd_2_t))
 			{
@@ -946,6 +955,9 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 		case ROHC_PACKET_TCP_RND_3:
 		{
 			const rnd_3_t *const rnd_3 = (rnd_3_t *) rohc_remain_data;
+
+			/* check packet usage */
+			assert(context->state == ROHC_DECOMP_STATE_FC);
 
 			/* check if the ROHC packet is large enough to parse rnd_3 */
 			if(rohc_remain_len < sizeof(rnd_3_t))
@@ -976,6 +988,9 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 		case ROHC_PACKET_TCP_RND_4:
 		{
 			const rnd_4_t *const rnd_4 = (rnd_4_t *) rohc_remain_data;
+
+			/* check packet usage */
+			assert(context->state == ROHC_DECOMP_STATE_FC);
 
 			/* rnd_4 packet cannot be used if ack_stride is zero (it is used as
 			 * divisor to compute the scaled acknowledgment number) */
@@ -1015,6 +1030,9 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 		{
 			const rnd_5_t *const rnd_5 = (rnd_5_t *) rohc_remain_data;
 
+			/* check packet usage */
+			assert(context->state == ROHC_DECOMP_STATE_FC);
+
 			/* check if the ROHC packet is large enough to parse rnd_5 */
 			if(rohc_remain_len < sizeof(rnd_5_t))
 			{
@@ -1050,6 +1068,9 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 		{
 			const rnd_6_t *const rnd_6 = (rnd_6_t *) rohc_remain_data;
 
+			/* check packet usage */
+			assert(context->state == ROHC_DECOMP_STATE_FC);
+
 			/* check if the ROHC packet is large enough to parse rnd_6 */
 			if(rohc_remain_len < sizeof(rnd_6_t))
 			{
@@ -1082,6 +1103,9 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 		{
 			const rnd_7_t *const rnd_7 = (rnd_7_t *) rohc_remain_data;
 
+			/* check packet usage */
+			assert(context->state == ROHC_DECOMP_STATE_FC);
+
 			/* check if the ROHC packet is large enough to parse rnd_7 */
 			if(rohc_remain_len < sizeof(rnd_7_t))
 			{
@@ -1113,6 +1137,9 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 		case ROHC_PACKET_TCP_RND_8:
 		{
 			const rnd_8_t *const rnd_8 = (rnd_8_t *) rohc_remain_data;
+
+			/* check packet usage */
+			assert(context->state != ROHC_DECOMP_STATE_NC);
 
 			/* check if the ROHC packet is large enough to parse rnd_8 */
 			if(rohc_remain_len < sizeof(rnd_8_t))
@@ -1155,6 +1182,9 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 		{
 			const seq_1_t *const seq_1 = (seq_1_t *) rohc_remain_data;
 
+			/* check packet usage */
+			assert(context->state == ROHC_DECOMP_STATE_FC);
+
 			/* check if the ROHC packet is large enough to parse seq_1 */
 			if(rohc_remain_len < sizeof(seq_1_t))
 			{
@@ -1188,6 +1218,9 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 		{
 			const seq_2_t *const seq_2 = (seq_2_t *) rohc_remain_data;
 
+			/* check packet usage */
+			assert(context->state == ROHC_DECOMP_STATE_FC);
+
 			/* check if the ROHC packet is large enough to parse seq_2 */
 			if(rohc_remain_len < sizeof(seq_2_t))
 			{
@@ -1219,6 +1252,9 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 		case ROHC_PACKET_TCP_SEQ_3:
 		{
 			const seq_3_t *const seq_3 = (seq_3_t *) rohc_remain_data;
+
+			/* check packet usage */
+			assert(context->state == ROHC_DECOMP_STATE_FC);
 
 			/* check if the ROHC packet is large enough to parse seq_3 */
 			if(rohc_remain_len < sizeof(seq_3_t))
@@ -1252,6 +1288,9 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 		case ROHC_PACKET_TCP_SEQ_4:
 		{
 			const seq_4_t *const seq_4 = (seq_4_t *) rohc_remain_data;
+
+			/* check packet usage */
+			assert(context->state == ROHC_DECOMP_STATE_FC);
 
 			/* seq_4 packet cannot be used if ack_stride is zero (it is used as
 			 * divisor to compute the scaled acknowledgment number) */
@@ -1294,6 +1333,9 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 		{
 			const seq_5_t *const seq_5 = (seq_5_t *) rohc_remain_data;
 
+			/* check packet usage */
+			assert(context->state == ROHC_DECOMP_STATE_FC);
+
 			/* check if the ROHC packet is large enough to parse seq_5 */
 			if(rohc_remain_len < sizeof(seq_5_t))
 			{
@@ -1329,6 +1371,9 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 		case ROHC_PACKET_TCP_SEQ_6:
 		{
 			const seq_6_t *const seq_6 = (seq_6_t *) rohc_remain_data;
+
+			/* check packet usage */
+			assert(context->state == ROHC_DECOMP_STATE_FC);
 
 			/* check if the ROHC packet is large enough to parse seq_6 */
 			if(rohc_remain_len < sizeof(seq_6_t))
@@ -1366,6 +1411,9 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 		{
 			const seq_7_t *const seq_7 = (seq_7_t *) rohc_remain_data;
 
+			/* check packet usage */
+			assert(context->state == ROHC_DECOMP_STATE_FC);
+
 			/* check if the ROHC packet is large enough to parse seq_7 */
 			if(rohc_remain_len < sizeof(seq_7_t))
 			{
@@ -1402,6 +1450,9 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 		case ROHC_PACKET_TCP_SEQ_8:
 		{
 			const seq_8_t *const seq_8 = (seq_8_t *) rohc_remain_data;
+
+			/* check packet usage */
+			assert(context->state != ROHC_DECOMP_STATE_NC);
 
 			/* check if the ROHC packet is large enough to parse seq_8 */
 			if(rohc_remain_len < sizeof(seq_8_t))
@@ -1447,6 +1498,9 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 		{
 			const co_common_t *const co_common =
 				(co_common_t *) rohc_remain_data;
+
+			/* check packet usage */
+			assert(context->state != ROHC_DECOMP_STATE_NC);
 
 			/* check if the ROHC packet is large enough to parse co_common */
 			if(rohc_remain_len < sizeof(co_common_t))
