@@ -104,7 +104,9 @@ static bool uncomp_feedback(struct rohc_comp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 /* mode and state transitions */
-static void uncompressed_decide_state(struct rohc_comp_ctxt *const context);
+static void uncompressed_decide_state(struct rohc_comp_ctxt *const context,
+                                      const ip_version ip_vers)
+	__attribute__((nonnull(1)));
 
 
 
@@ -235,7 +237,7 @@ static int c_uncompressed_encode(struct rohc_comp_ctxt *const context,
 	int size;
 
 	/* STEP 1: decide state */
-	uncompressed_decide_state(context);
+	uncompressed_decide_state(context, ip_get_version(&uncomp_pkt->outer_ip));
 
 	/* STEP 2: Code packet */
 	size = uncompressed_code_packet(context, uncomp_pkt,
@@ -335,16 +337,31 @@ error:
 /**
  * @brief Decide the state that should be used for the next packet.
  *
- * @param context The compression context
+ * @param context  The compression context
+ * @param ip_vers  The IP version of the packet among IPV4, IPV6, IP_UNKNOWN,
+ *                 IPV4_MALFORMED, or IPV6_MALFORMED.
  */
-static void uncompressed_decide_state(struct rohc_comp_ctxt *const context)
+static void uncompressed_decide_state(struct rohc_comp_ctxt *const context,
+                                      const ip_version ip_vers)
 {
-	if(context->state == ROHC_COMP_STATE_IR &&
-	   context->ir_count >= MAX_IR_COUNT)
+	/* non-IPv4/6 packets cannot be compressed with Normal packets because the
+	 * first byte could be mis-interpreted as ROHC packet types (see note at
+	 * the end of §5.10.2 in RFC 3095) */
+	if(ip_vers != IPV4 && ip_vers != IPV6)
 	{
+		rohc_comp_debug(context, "force IR packet to avoid conflict between "
+		                "first payload byte and ROHC packet types");
+		rohc_comp_change_state(context, ROHC_COMP_STATE_IR);
+	}
+	else if(context->state == ROHC_COMP_STATE_IR &&
+	        context->ir_count >= MAX_IR_COUNT)
+	{
+		/* the compressor got the confidence that the decompressor fully received
+		 * the context: enough IR packets transmitted or positive ACK received */
 		rohc_comp_change_state(context, ROHC_COMP_STATE_FO);
 	}
 
+	/* periodic refreshes in U-mode only */
 	if(context->mode == ROHC_U_MODE)
 	{
 		rohc_comp_periodic_down_transition(context);
@@ -382,24 +399,13 @@ static int uncompressed_code_packet(struct rohc_comp_ctxt *const context,
 	/* decide what packet to send depending on state and uncompressed packet */
 	if(context->state == ROHC_COMP_STATE_IR)
 	{
+		/* RFC3095 §5.10.3: IR state: Only IR packets can be sent */
 		*packet_type = ROHC_PACKET_IR;
 	}
 	else if(context->state == ROHC_COMP_STATE_FO)
 	{
-		/* non-IPv4/6 packets cannot be compressed with Normal packets
-		 * because the first byte could be mis-interpreted as ROHC packet
-		 * types (see note at the end of §5.10.2 in RFC 3095) */
-		if(ip_get_version(&uncomp_pkt->outer_ip) != IPV4 &&
-		   ip_get_version(&uncomp_pkt->outer_ip) != IPV6)
-		{
-			rohc_comp_debug(context, "force IR packet to avoid conflict between "
-			                "first payload byte and ROHC packet types");
-			*packet_type = ROHC_PACKET_IR;
-		}
-		else
-		{
-			*packet_type = ROHC_PACKET_NORMAL;
-		}
+		/* RFC3095 §5.10.3: Normal state: Only Normal packets can be sent */
+		*packet_type = ROHC_PACKET_NORMAL;
 	}
 	else
 	{
