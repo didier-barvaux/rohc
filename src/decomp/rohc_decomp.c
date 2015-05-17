@@ -1884,17 +1884,30 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 	switch(rohc_status)
 	{
 		case ROHC_STATUS_OK:
+		{
+			rohc_feedback_crc_t crc_present;
+
 			/* create an ACK feedback */
-			rohc_debug(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			           "send an ACK feedback");
-			if(!f_feedback2(ROHC_ACK_TYPE_ACK, context->mode,
-			                context->profile->get_sn(context), &sfeedback))
+			if(context->profile->id == ROHC_PROFILE_UNCOMPRESSED)
 			{
-				rohc_decomp_warn(context, "failed to build the ACK feedback");
-				return;
+				rohc_debug(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+				           "send an ACK feedback");
+				f_feedback1(context->profile->get_sn(context), &sfeedback);
+				crc_present = ROHC_FEEDBACK_NO_CRC;
 			}
-			feedback = f_wrap_feedback(&sfeedback, cid, cid_type,
-			                           ROHC_FEEDBACK_WITH_CRC,
+			else
+			{
+				rohc_debug(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+				           "send an ACK(%s) feedback", rohc_get_mode_descr(context->mode));
+				if(!f_feedback2(ROHC_ACK_TYPE_ACK, context->mode,
+				                context->profile->get_sn(context), &sfeedback))
+				{
+					rohc_decomp_warn(context, "failed to build the ACK feedback");
+					return;
+				}
+				crc_present = ROHC_FEEDBACK_WITH_CRC;
+			}
+			feedback = f_wrap_feedback(&sfeedback, cid, cid_type, crc_present,
 			                           decomp->crc_table_8, &feedbacksize);
 			if(feedback == NULL)
 			{
@@ -1924,8 +1937,13 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 			/* destroy the feedback */
 			zfree(feedback);
 			break;
+		}
 
 		case ROHC_STATUS_NO_CONTEXT:
+		{
+			/* Uncompressed profile handles only positive ACKs */
+			assert(context->profile->id != ROHC_PROFILE_UNCOMPRESSED);
+
 			/* create a STATIC NACK feedback */
 			rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			          "send a STATIC-NACK feedback for CID %zu", cid);
@@ -1975,10 +1993,15 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 			/* destroy the feedback */
 			zfree(feedback);
 			break;
+		}
 
 		case ROHC_STATUS_MALFORMED:
 		case ROHC_STATUS_BAD_CRC:
 		case ROHC_STATUS_OUTPUT_TOO_SMALL:
+		{
+			/* Uncompressed profile handles only positive ACKs */
+			assert(context->profile->id != ROHC_PROFILE_UNCOMPRESSED);
+
 			switch(context->state)
 			{
 				case ROHC_DECOMP_STATE_NC:
@@ -2093,6 +2116,7 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 					break;
 			}
 			break;
+		}
 
 		case ROHC_STATUS_SEGMENT:
 			assert(0); /* should never happen */
