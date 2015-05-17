@@ -219,8 +219,13 @@ typedef enum
 	ROHC_PROFILE_ESP          = 0x0003,
 	/** The ROHC IP-only profile (RFC 3843, section 5) */
 	ROHC_PROFILE_IP           = 0x0004,
+	/** The ROHC IP/UDP/RTP Link-Layer Assisted Profile (LLA) profile
+	 *  (RFC 4362, section 6) */
+	ROHC_PROFILE_RTP_LLA      = 0x0005,
 	/** The ROHC TCP profile (RFC 4996) */
 	ROHC_PROFILE_TCP          = 0x0006,
+	/** The ROHC UDP-Lite/RTP profile (RFC 4019, section 7) */
+	ROHC_PROFILE_UDPLITE_RTP  = 0x0007,
 	/** The ROHC UDP-Lite profile (RFC 4019, section 7) */
 	ROHC_PROFILE_UDPLITE      = 0x0008,
 

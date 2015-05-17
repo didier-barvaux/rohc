@@ -162,8 +162,12 @@ const char * rohc_get_profile_descr(const rohc_profile_t profile)
 			return "IP/ESP";
 		case ROHC_PROFILE_IP:
 			return "IP-only";
+		case ROHC_PROFILE_RTP_LLA:
+			return "IP/UDP/RTP (LLA)";
 		case ROHC_PROFILE_TCP:
 			return "IP/TCP";
+		case ROHC_PROFILE_UDPLITE_RTP:
+			return "IP/UDP-Lite/RTP";
 		case ROHC_PROFILE_UDPLITE:
 			return "IP/UDP-Lite";
 		default:
