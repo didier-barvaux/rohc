@@ -1906,6 +1906,7 @@ static inline bool is_inner_ipv4_rnd_ctxt(const struct rohc_decomp_rfc3095_ctxt 
 const struct rohc_decomp_profile d_rtp_profile =
 {
 	.id              = ROHC_PROFILE_RTP, /* profile ID (see 8 in RFC3095) */
+	.msn_max_bits    = 16,
 	.new_context     = (rohc_decomp_new_context_t) d_rtp_create,
 	.free_context    = (rohc_decomp_free_context_t) d_rtp_destroy,
 	.detect_pkt_type = rtp_detect_packet_type,

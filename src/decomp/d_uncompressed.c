@@ -550,6 +550,7 @@ static uint32_t uncomp_get_sn(const struct rohc_decomp_ctxt *const context __att
 const struct rohc_decomp_profile d_uncomp_profile =
 {
 	.id              = ROHC_PROFILE_UNCOMPRESSED, /* profile ID (RFC3095 §8) */
+	.msn_max_bits    = 0, /* no MSN */
 	.new_context     = uncomp_new_context,
 	.free_context    = uncomp_free_context,
 	.detect_pkt_type = uncomp_detect_pkt_type,

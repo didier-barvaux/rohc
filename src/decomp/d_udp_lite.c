@@ -794,6 +794,7 @@ static void udp_lite_update_context(struct rohc_decomp_ctxt *const context,
 const struct rohc_decomp_profile d_udplite_profile =
 {
 	.id              = ROHC_PROFILE_UDPLITE, /* profile ID (RFC 4019, §7) */
+	.msn_max_bits    = 16,
 	.new_context     = (rohc_decomp_new_context_t) d_udp_lite_create,
 	.free_context    = (rohc_decomp_free_context_t) d_udp_lite_destroy,
 	.detect_pkt_type = udp_lite_detect_packet_type,

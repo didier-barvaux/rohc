@@ -135,8 +135,9 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
                                      struct rohc_buf *const uncomp_packet,
                                      struct rohc_buf *const rcvd_feedback,
                                      struct d_decode_data *ddata,
-                                     rohc_packet_t *const packet_type)
-	__attribute__((nonnull(1, 3, 5, 6), warn_unused_result));
+                                     rohc_packet_t *const packet_type,
+                                     struct rohc_decomp_feedback_infos *const feedback_infos)
+	__attribute__((nonnull(1, 3, 5, 6, 7), warn_unused_result));
 
 static bool rohc_decomp_decode_cid(struct rohc_decomp *decomp,
                                    const unsigned char *packet,
@@ -154,9 +155,10 @@ static rohc_status_t rohc_decomp_find_context(struct rohc_decomp *const decomp,
                                               const rohc_cid_type_t cid,
                                               const size_t large_cid_len,
                                               const struct rohc_ts arrival_time,
-                                              bool *const context_created,
-                                              struct rohc_decomp_ctxt **const context)
-	__attribute__((warn_unused_result, nonnull(1, 2, 7, 8)));
+                                              rohc_profile_t *const profile_id,
+                                              struct rohc_decomp_ctxt **const context,
+                                              bool *const context_created)
+	__attribute__((warn_unused_result, nonnull(1, 2, 7, 8, 9)));
 
 static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
                                             struct rohc_decomp_ctxt *const context,
@@ -669,6 +671,7 @@ rohc_status_t rohc_decompress3(struct rohc_decomp *const decomp,
                                struct rohc_buf *const rcvd_feedback,
                                struct rohc_buf *const feedback_send)
 {
+	struct rohc_decomp_feedback_infos feedback_infos;
 	struct d_decode_data ddata = { 0, 0, 0, NULL };
 	rohc_packet_t packet_type;
 	rohc_status_t status = ROHC_STATUS_ERROR; /* error status by default */
@@ -753,7 +756,7 @@ rohc_status_t rohc_decompress3(struct rohc_decomp *const decomp,
 
 	/* decode ROHC header */
 	status = d_decode_header(decomp, rohc_packet, uncomp_packet, rcvd_feedback,
-	                         &ddata, &packet_type);
+	                         &ddata, &packet_type, &feedback_infos);
 	rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 	           "d_decode_header returned code %d", status);
 
@@ -938,12 +941,14 @@ error:
  *                                at the given address
  * @param[out] ddata          Decompression-related data (e.g. the context)
  * @param[out] packet_type    The type of the decompressed ROHC packet
+ * @param[out] feedback_infos The informations required for sending feedback
+ *                            to compressor
  * @return                    Possible return values:
  *                            \li ROHC_STATUS_OK if packet is successfully
  *                                decoded,
  *                            \li ROHC_STATUS_NO_CONTEXT if no matching
  *                                context was found and packet cannot create
- *                                a new context,
+ *                                a new context (or failed to do so),
  *                            \li ROHC_STATUS_MALFORMED if packet is
  *                                malformed,
  *                            \li ROHC_STATUS_BAD_CRC if a CRC error occurs,
@@ -954,19 +959,29 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
                                      struct rohc_buf *const uncomp_packet,
                                      struct rohc_buf *const rcvd_feedback,
                                      struct d_decode_data *ddata,
-                                     rohc_packet_t *const packet_type)
+                                     rohc_packet_t *const packet_type,
+                                     struct rohc_decomp_feedback_infos *const feedback_infos)
 {
-	bool is_new_context = false;
 	const struct rohc_decomp_profile *profile;
+	bool is_new_context = false;
+
 	struct rohc_buf remain_rohc_data = rohc_packet;
 	const uint8_t *walk;
 	size_t remain_len;
+
 	rohc_status_t status;
 
 	assert(decomp != NULL);
 	assert(ddata != NULL);
 	assert(packet_type != NULL);
 
+	/* at the beginning, context is not found yet but channel CID type is known */
+	feedback_infos->profile_id = ROHC_PROFILE_GENERAL;
+	feedback_infos->cid_type = decomp->medium.cid_type;
+	feedback_infos->context_found = false;
+	feedback_infos->sn_bits_nr = 0;
+
+	/* empty ROHC packets are not considered as valid */
 	if(remain_rohc_data.len < 1)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
@@ -1106,6 +1121,7 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 		             "failed to decode small or large CID in packet");
 		goto error_malformed;
 	}
+	feedback_infos->cid = ddata->cid;
 
 	/* check whether the decoded CID is allowed by the decompressor */
 	if(ddata->cid > decomp->medium.max_cid)
@@ -1128,21 +1144,31 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 	 * create it if needed (and possible) */
 	status = rohc_decomp_find_context(decomp, walk, remain_len, ddata->cid,
 	                                  ddata->large_cid_size, rohc_packet.time,
-	                                  &is_new_context, &ddata->active);
+	                                  &feedback_infos->profile_id,
+	                                  &ddata->active, &is_new_context);
 	if(status == ROHC_STATUS_MALFORMED)
 	{
+		/* no additional feedback information to collect */
 		goto error_malformed;
 	}
 	else if(status == ROHC_STATUS_NO_CONTEXT)
 	{
+		/* even if the context was not found/created, the profile ID might be available */
 		goto error_no_context;
 	}
-	else if(status != ROHC_STATUS_OK)
-	{
-		goto error;
-	}
+	assert(status == ROHC_STATUS_OK);
 	profile = ddata->active->profile;
 	decomp->last_context = ddata->active;
+
+	/* collect information for sending feedback to decompressor */
+	feedback_infos->context_found = true;
+	feedback_infos->mode = ddata->active->mode;
+	feedback_infos->state = ddata->active->state;
+	if(!is_new_context)
+	{
+		feedback_infos->sn_bits = ddata->active->profile->get_sn(ddata->active);
+		feedback_infos->sn_bits_nr = ddata->active->profile->msn_max_bits; /* TODO: LSB? */
+	}
 
  	/* detect the type of the ROHC packet */
 	*packet_type = profile->detect_pkt_type(ddata->active, walk, remain_len,
@@ -1162,7 +1188,8 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 	rohc_decomp_debug(ddata->active, "decode packet as '%s'",
 	                  rohc_get_packet_descr(*packet_type));
 
-	/* only the IR packet can be received in the No Context state, other cannot */
+	/* only packets that carry static informations can be received in the
+	 * No Context state, other cannot */
 	if(ddata->active->state == ROHC_DECOMP_STATE_NC &&
 	   !rohc_decomp_packet_carry_static_info(*packet_type))
 	{
@@ -3066,25 +3093,51 @@ static void rohc_decomp_parse_padding(const struct rohc_decomp *const decomp,
 }
 
 
-/** TODO */
+/**
+ * @brief Find the context for the given ROHC packet
+ *
+ * If packet is an IR(-DYN) packet, parse it for the profile ID.
+ * Searche for the context with the given CID.
+ * Create a new context if needed.
+ *
+ * @param decomp                The ROHC decompressor
+ * @param packet                The ROHC packet to parse
+ * @param packet_len            The length (in bytes) of the ROHC packet
+ * @param cid                   The CID that was parsed from ROHC packet
+ * @param large_cid_len         The length (in bytes) of the Large CID that was
+ *                              parsed from ROHC packet
+ * @param arrival_time          The time at which the ROHC packet was received
+ * @param[out] profile_id       The profile ID parsed from the ROHC packet
+ * @param[out] context          The decompression context for the given ROHC packet
+ * @param[out] context_created  Whether the packet has just been created or not
+ * @return                      Possible return values:
+ *                              \li ROHC_STATUS_OK if context was found,
+ *                              \li ROHC_STATUS_NO_CONTEXT if no matching
+ *                                  context was found and packet cannot create
+ *                                  a new context (or failed to do so),
+ *                              \li ROHC_STATUS_MALFORMED if packet is
+ *                                  malformed
+ */
 static rohc_status_t rohc_decomp_find_context(struct rohc_decomp *const decomp,
                                               const uint8_t *const packet,
                                               const size_t packet_len,
                                               const rohc_cid_type_t cid,
                                               const size_t large_cid_len,
                                               const struct rohc_ts arrival_time,
-                                              bool *const context_created,
-                                              struct rohc_decomp_ctxt **const context)
+                                              rohc_profile_t *const profile_id,
+                                              struct rohc_decomp_ctxt **const context,
+                                              bool *const context_created)
 {
 	const uint8_t *remain_data = packet;
 	size_t remain_len = packet_len;
 	bool new_context_needed = false;
-	rohc_profile_t profile_id = ROHC_PROFILE_GENERAL; /* false GCC warning */
 	bool is_packet_ir_dyn;
 	bool is_packet_ir;
 
 	assert(large_cid_len <= 2);
 
+	*profile_id = ROHC_PROFILE_GENERAL;
+	*context = NULL;
 	*context_created = false;
 
 	/* we need at least 1 byte for packet type */
@@ -3123,11 +3176,11 @@ static rohc_status_t rohc_decomp_find_context(struct rohc_decomp *const decomp,
 			goto error_malformed;
 		}
 		pkt_profile_id = remain_data[0];
-		profile_id = pkt_profile_id; /* TODO: ROHCv2 profiles not handled yet */
+		*profile_id = pkt_profile_id; /* TODO: ROHCv2 profiles not handled yet */
 		remain_data++;
 		remain_len--;
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		           "profile ID 0x%04x found in IR(-DYN) packet", profile_id);
+		           "profile ID 0x%04x found in IR(-DYN) packet", *profile_id);
 	}
 
 	/* find the context associated with the CID */
@@ -3158,14 +3211,14 @@ static rohc_status_t rohc_decomp_find_context(struct rohc_decomp *const decomp,
 		/* for IR(-DYN) packets, check whether the packet redefines the profile
 		 * associated with the context */
 		if((is_packet_ir | is_packet_ir_dyn) &&
-		   (*context)->profile->id != profile_id)
+		   (*context)->profile->id != (*profile_id))
 		{
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			           "IR(-DYN) packet redefines the profile associated to the "
 			           "context with CID %u: %s (0x%04x) -> %s (0x%04x)", cid,
 			           rohc_get_profile_descr((*context)->profile->id),
 			           (*context)->profile->id,
-			           rohc_get_profile_descr(profile_id), profile_id);
+			           rohc_get_profile_descr(*profile_id), *profile_id);
 			if(is_packet_ir)
 			{
 				/* IR packet: profile switching is handled by re-creating the
@@ -3189,24 +3242,24 @@ static rohc_status_t rohc_decomp_find_context(struct rohc_decomp *const decomp,
 		const struct rohc_decomp_profile *profile;
 
 		/* find the profile specified in the ROHC packet */
-		profile = find_profile(decomp, profile_id);
+		profile = find_profile(decomp, *profile_id);
 		if(profile == NULL)
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			             "failed to find profile identified by ID 0x%04x",
-			             profile_id);
+			             *profile_id);
 			goto error_no_context;
 		}
 
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		           "create new context with CID %u and profile '%s' (0x%04x)",
-		           cid, rohc_get_profile_descr(profile_id), profile_id);
+		           cid, rohc_get_profile_descr(*profile_id), *profile_id);
 		*context = context_create(decomp, cid, profile, arrival_time);
 		if((*context) == NULL)
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			             "failed to create a new context with CID %u and "
-			             "profile 0x%04x", cid, profile_id);
+			             "profile 0x%04x", cid, *profile_id);
 			goto error_no_context;
 		}
 		*context_created = true;

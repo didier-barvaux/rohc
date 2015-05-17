@@ -3417,6 +3417,7 @@ static uint32_t d_tcp_get_msn(const struct rohc_decomp_ctxt *const context)
 const struct rohc_decomp_profile d_tcp_profile =
 {
 	.id              = ROHC_PROFILE_TCP, /* profile ID (see 8 in RFC3095) */
+	.msn_max_bits    = 16,
 	.new_context     = (rohc_decomp_new_context_t) d_tcp_create,
 	.free_context    = (rohc_decomp_free_context_t) d_tcp_destroy,
 	.detect_pkt_type = tcp_detect_packet_type,

@@ -780,6 +780,7 @@ error:
 const struct rohc_decomp_profile d_ip_profile =
 {
 	.id              = ROHC_PROFILE_IP, /* profile ID (see 5 in RFC 3843) */
+	.msn_max_bits    = 16,
 	.new_context     = (rohc_decomp_new_context_t) d_ip_create,
 	.free_context    = (rohc_decomp_free_context_t) d_ip_destroy,
 	.detect_pkt_type = ip_detect_packet_type,

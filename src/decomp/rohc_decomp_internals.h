@@ -281,6 +281,36 @@ struct rohc_decomp_ctxt
 	bool is_duplicated;
 };
 
+
+/**
+ * @brief The informations required for sending feedback to compressor
+ *
+ * To be able to send some feedback to the compressor, the decompressor shall
+ * (aside the decompression status itself) collect some informations about
+ * the packet being decompressed:
+ *  \li the Context ID (CID) of the packet (even if context was not found)
+ *  \li the CID type of the channel
+ *  \li the ID of the decompression profile
+ *  \li was the decompression context found?
+ *  \li if context was found, the context mode
+ *  \li if context was found, the context state
+ *  \li if context was found, the SN (LSB bits) of the latest successfully
+ *      decompressed packet
+ */
+struct rohc_decomp_feedback_infos
+{
+	rohc_cid_type_t cid_type;  /**< The CID type of the channel */
+	rohc_cid_t cid;            /**< The CID of the packet */
+	rohc_profile_t profile_id; /**< The decompression profile (ROHC_PROFILE_GENERAL
+	                                if not identified) */
+	bool context_found;        /**< Whether the context was found or not */
+	rohc_mode_t mode;          /**< The context mode (if context found) */
+	rohc_decomp_state_t state; /**< The context state (if context found) */
+	uint32_t sn_bits;          /**< The SN LSB bits (if context found) */
+	size_t sn_bits_nr;         /**< The number of SN LSB bits (if context found) */
+};
+
+
 typedef bool (*rohc_decomp_new_context_t)(const struct rohc_decomp_ctxt *const context,
                                           void **const persist_ctxt,
                                           struct rohc_decomp_volat_ctxt *const volat_ctxt)
@@ -347,6 +377,9 @@ struct rohc_decomp_profile
 {
 	/** The profile ID as reserved by IANA */
 	const rohc_profile_t id;
+
+	/** The maximum number of bits of the Master Sequence Number (MSN) */
+	const size_t msn_max_bits;
 
 	/** @brief The handler used to create the profile-specific part of the
 	 *         decompression context */

@@ -440,6 +440,7 @@ static void esp_update_context(struct rohc_decomp_ctxt *const context,
 const struct rohc_decomp_profile d_esp_profile =
 {
 	.id              = ROHC_PROFILE_ESP, /* profile ID (RFC 3095, §8) */
+	.msn_max_bits    = 32,
 	.new_context     = (rohc_decomp_new_context_t) d_esp_create,
 	.free_context    = (rohc_decomp_free_context_t) d_esp_destroy,
 	.detect_pkt_type = ip_detect_packet_type,

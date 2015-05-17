@@ -603,6 +603,7 @@ static void udp_update_context(struct rohc_decomp_ctxt *const context,
 const struct rohc_decomp_profile d_udp_profile =
 {
 	.id              = ROHC_PROFILE_UDP, /* profile ID (see 8 in RFC3095) */
+	.msn_max_bits    = 16,
 	.new_context     = (rohc_decomp_new_context_t) d_udp_create,
 	.free_context    = (rohc_decomp_free_context_t) d_udp_destroy,
 	.detect_pkt_type = ip_detect_packet_type,
