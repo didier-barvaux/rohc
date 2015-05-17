@@ -2678,6 +2678,21 @@ void rohc_comp_change_mode(struct rohc_comp_ctxt *const context,
 {
 	if(context->mode != new_mode)
 	{
+		/* TODO: R-mode is not yet supported */
+		if(new_mode == ROHC_R_MODE)
+		{
+			rohc_comp_warn(context, "ignore change to R-mode because R-mode is "
+			               "not supported yet");
+			return;
+		}
+		/* TODO: downward transition to U-mode is not yet supported */
+		if(new_mode == ROHC_U_MODE)
+		{
+			rohc_comp_warn(context, "ignore change to U-mode because such a "
+			               "transition is not supported yet");
+			return;
+		}
+
 		/* change mode and go back to IR state */
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		          "CID %zu: change from mode %d to mode %d",
