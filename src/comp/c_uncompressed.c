@@ -312,6 +312,19 @@ static bool uncomp_feedback(struct rohc_comp_ctxt *const context,
 #endif
 	}
 
+	/* positive ACK received in U-mode: switch to O-mode */
+	if(context->mode == ROHC_U_MODE)
+	{
+		rohc_comp_change_mode(context, ROHC_O_MODE);
+	}
+
+	/* positive ACK received in IR state: the compressor got the confidence that
+	 * the decompressor fully received the context, so switch to FO state */
+	if(context->state == ROHC_COMP_STATE_IR)
+	{
+		rohc_comp_change_state(context, ROHC_COMP_STATE_FO);
+	}
+
 	return true;
 
 error:
