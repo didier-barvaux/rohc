@@ -85,6 +85,8 @@ struct rohc_comp;
  */
 typedef enum
 {
+	/** Unknown compressor state */
+	ROHC_COMP_STATE_UNKNOWN = 0,
 	/** The Initialization and Refresh (IR) compressor state */
 	ROHC_COMP_STATE_IR = 1,
 	/** The First Order (FO) compressor state */

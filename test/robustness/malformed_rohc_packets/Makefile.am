@@ -11,6 +11,7 @@ TESTS = \
 	test_malformed_rohc_packets_ir_with_list_encoding_type1_1.sh \
 	test_malformed_rohc_packets_truncated_uor2id_14.sh \
 	test_malformed_rohc_packets_tcp_ir_01_1.sh \
+	test_malformed_rohc_packets_uo0_no_context_1.sh \
 	test_malformed_rohc_packets_fuzzer_crash_331_1.sh \
 	test_malformed_rohc_packets_fuzzer_crash_410_1.sh \
 	test_malformed_rohc_packets_fuzzer_crash_916_1.sh \

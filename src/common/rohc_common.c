@@ -83,7 +83,7 @@ const char * rohc_strerror(const rohc_status_t status)
 		case ROHC_STATUS_MALFORMED:
 			return "malformed packet";
 		case ROHC_STATUS_NO_CONTEXT:
-			return "no matching context";
+			return "no matching context and creation was impossible or failed";
 		case ROHC_STATUS_BAD_CRC:
 			return "CRC failure";
 		case ROHC_STATUS_OUTPUT_TOO_SMALL:

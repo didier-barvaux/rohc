@@ -480,9 +480,10 @@ bool rfc3095_decomp_decode_bits(const struct rohc_decomp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
 void rfc3095_decomp_update_ctxt(struct rohc_decomp_ctxt *const context,
-	                             const struct rohc_decoded_values *const decoded,
-	                             const size_t payload_len)
-	__attribute__((nonnull(1, 2)));
+                                const struct rohc_decoded_values *const decoded,
+                                const size_t payload_len,
+                                bool *const do_change_mode)
+	__attribute__((nonnull(1, 2, 4)));
 
 bool rfc3095_decomp_attempt_repair(const struct rohc_decomp *const decomp,
                                    const struct rohc_decomp_ctxt *const context,

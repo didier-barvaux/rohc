@@ -49,6 +49,7 @@
 #include "rohc_utils.h"
 #include "sdvl.h"
 #include "rohc_add_cid.h"
+#include "rohc_bit_ops.h"
 #include "ip.h"
 #include "crc.h"
 #include "protocols/udp.h"
@@ -1894,14 +1895,18 @@ bool __rohc_comp_deliver_feedback(struct rohc_comp *const comp,
 			             "failed to decode SDVL-encoded large CID field");
 			goto error;
 		}
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "decode %zu-byte large CID", large_cid_size);
 		feedback.cid = large_cid;
 		p += large_cid_size;
 	}
 	else
 	{
 		/* decode small CID if present */
-		if(rohc_add_cid_is_present(p))
+		if(size > 1 && GET_BIT_6_7(p) == 0x3)
 		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "decode 1-byte Add-CID");
 			feedback.cid = rohc_add_cid_decode(p);
 			p++;
 		}
@@ -1979,7 +1984,6 @@ ignore:
  */
 bool rohc_comp_deliver_feedback2(struct rohc_comp *const comp,
                                  const struct rohc_buf feedback)
-
 {
 	struct rohc_buf remain_data = feedback;
 	size_t feedbacks_nr = 0;
@@ -2018,7 +2022,7 @@ bool rohc_comp_deliver_feedback2(struct rohc_comp *const comp,
 		feedbacks_nr++;
 
 		if(!rohc_feedback_get_size(remain_data, &feedback_hdr_len,
-		                              &feedback_data_len))
+		                           &feedback_data_len))
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			             "failed to parse a feedback item");

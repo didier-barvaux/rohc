@@ -255,6 +255,7 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 	}
 //! [set compressor MRRU]
 
+//! [create ROHC decompressor]
 	/* create the ROHC decompressor in uni-directional mode */
 	decomp = rohc_decomp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX, ROHC_U_MODE);
 	if(decomp == NULL)
@@ -262,6 +263,7 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 		fprintf(stderr, "failed to create the ROHC decompressor\n");
 		goto destroy_comp;
 	}
+//! [create ROHC decompressor]
 
 	/* set the callback for traces on decompressor */
 	if(!rohc_decomp_set_traces_cb2(decomp, print_rohc_traces, NULL))

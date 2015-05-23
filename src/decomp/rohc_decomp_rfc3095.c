@@ -5914,13 +5914,16 @@ error:
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param context      The decompression context
- * @param decoded      The decoded values to update in the context
- * @param payload_len  The length of the packet payload
+ * @param context              The decompression context
+ * @param decoded              The decoded values to update in the context
+ * @param payload_len          The length of the packet payload
+ * @param[out] do_change_mode  Whether the profile context wants to change
+ *                             its operational mode or not
  */
 void rfc3095_decomp_update_ctxt(struct rohc_decomp_ctxt *const context,
-	                             const struct rohc_decoded_values *const decoded,
-	                             const size_t payload_len __attribute__((unused)))
+                                const struct rohc_decoded_values *const decoded,
+                                const size_t payload_len __attribute__((unused)),
+                                bool *const do_change_mode)
 {
 	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	bool keep_ref_minus_1; /* for action upon CRC failure */
@@ -5948,11 +5951,11 @@ void rfc3095_decomp_update_ctxt(struct rohc_decomp_ctxt *const context,
 	{
 		rohc_decomp_debug(context, "mode different in compressor (%d) and "
 		                  "decompressor (%d)", decoded->mode, context->mode);
-		context->do_change_mode = true;
+		*do_change_mode = true;
 	}
 	else
 	{
-		context->do_change_mode = false;
+		*do_change_mode = false;
 	}
 
 	/* warn if value(SN) is not context(SN) + 1 */

@@ -63,8 +63,8 @@ compressor_num = 2	packet_num = 31	rohc_size = 1387	packet_type = 7
 compressor_num = 1	packet_num = 32	rohc_size = 1387	packet_type = 7
 compressor_num = 2	packet_num = 32	rohc_size = 1387	packet_type = 7
 compressor_num = 1	packet_num = 33	rohc_size = 1387	packet_type = 7
-compressor_num = 2	packet_num = 33	rohc_size = 1387	packet_type = 7
-compressor_num = 1	packet_num = 34	rohc_size = 1389	packet_type = 7
+compressor_num = 2	packet_num = 33	rohc_size = 1390	packet_type = 7
+compressor_num = 1	packet_num = 34	rohc_size = 1392	packet_type = 7
 compressor_num = 2	packet_num = 34	rohc_size = 1389	packet_type = 7
 compressor_num = 1	packet_num = 35	rohc_size = 1389	packet_type = 7
 compressor_num = 2	packet_num = 35	rohc_size = 1389	packet_type = 7

@@ -59,6 +59,7 @@ typedef enum
 	ROHC_ACK_TYPE_ACK         = 0, /**< positive ACKnowledgement (ACK) */
 	ROHC_ACK_TYPE_NACK        = 1, /**< Negative ACKnowledgement (NACK) */
 	ROHC_ACK_TYPE_STATIC_NACK = 2, /**< static Negative ACK (STATIC-NACK) */
+	ROHC_ACK_TYPE_RESERVED    = 3, /**< reserved (MUST NOT be used for parsability) */
 
 } rohc_ack_type_t;
 
@@ -101,14 +102,15 @@ bool rohc_decomp_feedback_size(const struct rohc_buf rohc_data,
                                size_t *const feedback_data_len)
 	__attribute__((warn_unused_result, nonnull(2, 3)));
 
-void f_feedback1(const uint32_t sn, struct d_feedback *const feedback)
+void f_feedback1(const uint32_t sn_bits, struct d_feedback *const feedback)
 	__attribute__((nonnull(2)));
 
 bool f_feedback2(const rohc_ack_type_t ack_type,
                  const rohc_mode_t mode,
-                 const uint32_t sn,
+                 const uint32_t sn_bits,
+                 const size_t sn_bits_nr,
                  struct d_feedback *const feedback)
-	__attribute__((warn_unused_result, nonnull(4)));
+	__attribute__((warn_unused_result, nonnull(5)));
 
 bool f_add_option(struct d_feedback *const feedback,
                   const rohc_feedback_opt_t opt_type,

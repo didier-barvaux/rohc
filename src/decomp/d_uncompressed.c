@@ -118,8 +118,9 @@ static rohc_status_t uncomp_build_hdrs(const struct rohc_decomp *const decomp,
 
 static void uncomp_update_ctxt(struct rohc_decomp_ctxt *const context,
                                const struct rohc_uncomp_decoded *const decoded,
-                               const size_t payload_len)
-	__attribute__((nonnull(1, 2)));
+                               const size_t payload_len,
+                               bool *const do_change_mode)
+	__attribute__((nonnull(1, 2, 4)));
 
 static bool uncomp_attempt_repair(const struct rohc_decomp *const decomp,
                                   const struct rohc_decomp_ctxt *const context,
@@ -487,16 +488,18 @@ error_output_too_small:
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param context      The decompression context
- * @param decoded      The decoded values to update in the context
- * @param payload_len  The length of the packet payload (in bytes)
+ * @param context              The decompression context
+ * @param decoded              The decoded values to update in the context
+ * @param payload_len          The length of the packet payload (in bytes)
+ * @param[out] do_change_mode  Whether the profile context wants to change
+ *                             its operational mode or not
  */
-static void uncomp_update_ctxt(struct rohc_decomp_ctxt *const context,
+static void uncomp_update_ctxt(struct rohc_decomp_ctxt *const context __attribute__((unused)),
                                const struct rohc_uncomp_decoded *const decoded __attribute__((unused)),
-                               const size_t payload_len __attribute__((unused)))
+                               const size_t payload_len __attribute__((unused)),
+                               bool *const do_change_mode __attribute__((unused)))
 {
-	/* mode did not change */
-	context->do_change_mode = false;
+	/* nothing to update */
 }
 
 

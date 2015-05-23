@@ -110,6 +110,8 @@ typedef enum
  */
 typedef enum
 {
+	/** Unknown operational mode */
+	ROHC_UNKNOWN_MODE = 0,
 	/** The Unidirectional mode (U-mode) */
 	ROHC_U_MODE = 1,
 	/** The Bidirectional Optimistic mode (O-mode) */

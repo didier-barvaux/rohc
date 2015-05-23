@@ -1,5 +1,5 @@
 /*
- * Copyright 2012,2013,2014 Didier Barvaux
+ * Copyright 2012,2013,2014,2015 Didier Barvaux
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -217,7 +217,7 @@ static int test_decomp(const char *const filename,
 	}
 
 	/* create the decompressor */
-	decomp = rohc_decomp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX, ROHC_U_MODE);
+	decomp = rohc_decomp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX, ROHC_O_MODE);
 	if(decomp == NULL)
 	{
 		fprintf(stderr, "cannot create the decompressor\n");
@@ -252,8 +252,9 @@ static int test_decomp(const char *const filename,
 		struct rohc_buf ip_packet =
 			rohc_buf_init_empty(ip_buffer, MAX_ROHC_SIZE);
 		uint8_t rcvd_feedback_buf[6];
-		struct rohc_buf rcvd_feedback =
-			rohc_buf_init_empty(rcvd_feedback_buf, 6);
+		struct rohc_buf rcvd_feedback = rohc_buf_init_empty(rcvd_feedback_buf, 6);
+		uint8_t send_feedback_buf[6];
+		struct rohc_buf send_feedback = rohc_buf_init_empty(send_feedback_buf, 6);
 		rohc_status_t status;
 
 		counter++;
@@ -272,7 +273,8 @@ static int test_decomp(const char *const filename,
 		fprintf(stderr, "decompress malformed packet #%u:\n", counter);
 
 		/* decompress the ROHC packet */
-		status = rohc_decompress3(decomp, rohc_packet, &ip_packet, &rcvd_feedback, NULL);
+		status = rohc_decompress3(decomp, rohc_packet, &ip_packet, &rcvd_feedback,
+		                          &send_feedback);
 		fprintf(stderr, "\tdecompression status: %s\n", rohc_strerror(status));
 		if(status == ROHC_STATUS_OK)
 		{
@@ -298,6 +300,9 @@ static int test_decomp(const char *const filename,
 				goto destroy_decomp;
 			}
 		}
+
+		/* be ready to get the next feedback to send */
+		rohc_buf_reset(&send_feedback);
 	}
 
 	is_failure = 0;

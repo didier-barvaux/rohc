@@ -188,6 +188,50 @@ int main(int argc, char *argv[])
 		CHECK(cid_type == ROHC_LARGE_CID);
 	}
 
+	/* rohc_decomp_set_prtt() */
+	CHECK(rohc_decomp_set_prtt(NULL, 10) == false);
+	CHECK(rohc_decomp_set_prtt(decomp, SIZE_MAX / 2) == false);
+	CHECK(rohc_decomp_set_prtt(decomp, 0) == true);
+	CHECK(rohc_decomp_set_prtt(decomp, SIZE_MAX / 2 - 1) == true);
+
+	/* rohc_decomp_get_prtt() */
+	{
+		size_t prtt;
+		CHECK(rohc_decomp_get_prtt(NULL, &prtt) == false);
+		CHECK(rohc_decomp_get_prtt(decomp, NULL) == false);
+		CHECK(rohc_decomp_get_prtt(decomp, &prtt) == true);
+		CHECK(prtt == SIZE_MAX / 2 - 1);
+	}
+
+	/* rohc_decomp_set_rate_limits() */
+	CHECK(rohc_decomp_set_rate_limits(NULL,   30, 100, 31, 101, 32, 102) == false);
+	CHECK(rohc_decomp_set_rate_limits(decomp,  0, 100, 31, 101, 32, 102) == true);
+	CHECK(rohc_decomp_set_rate_limits(decomp, 30,   0, 31, 101, 32, 102) == false);
+	CHECK(rohc_decomp_set_rate_limits(decomp, 30, 100,  0, 101, 32, 102) == true);
+	CHECK(rohc_decomp_set_rate_limits(decomp, 30, 100, 31,   0, 32, 102) == false);
+	CHECK(rohc_decomp_set_rate_limits(decomp, 30, 100, 31, 101,  0, 102) == true);
+	CHECK(rohc_decomp_set_rate_limits(decomp, 30, 100, 31, 101, 32,   0) == false);
+	CHECK(rohc_decomp_set_rate_limits(decomp, 30, 100, 31, 101, 32, 102) == true);
+
+	/* rohc_decomp_get_rate_limits() */
+	{
+		size_t k, n, k_1, n_1, k_2, n_2;
+		CHECK(rohc_decomp_get_rate_limits(NULL,   &k,   &n,   &k_1, &n_1, &k_2, &n_2) == false);
+		CHECK(rohc_decomp_get_rate_limits(decomp, NULL, &n,   &k_1, &n_1, &k_2, &n_2) == false);
+		CHECK(rohc_decomp_get_rate_limits(decomp, &k,   NULL, &k_1, &n_1, &k_2, &n_2) == false);
+		CHECK(rohc_decomp_get_rate_limits(decomp, &k,   &n,   NULL, &n_1, &k_2, &n_2) == false);
+		CHECK(rohc_decomp_get_rate_limits(decomp, &k,   &n,   &k_1, NULL, &k_2, &n_2) == false);
+		CHECK(rohc_decomp_get_rate_limits(decomp, &k,   &n,   &k_1, &n_1, NULL, &n_2) == false);
+		CHECK(rohc_decomp_get_rate_limits(decomp, &k,   &n,   &k_1, &n_1, &k_2, NULL) == false);
+		CHECK(rohc_decomp_get_rate_limits(decomp, &k,   &n,   &k_1, &n_1, &k_2, &n_2) == true);
+		CHECK(k == 30);
+		CHECK(n == 100);
+		CHECK(k_1 == 31);
+		CHECK(n_1 == 101);
+		CHECK(k_2 == 32);
+		CHECK(n_2 == 102);
+	}
+
 	/* rohc_decompress3() */
 	{
 		const struct rohc_ts ts = { .sec = 0, .nsec = 0 };

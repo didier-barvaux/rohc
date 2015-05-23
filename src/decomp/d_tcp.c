@@ -186,8 +186,9 @@ static bool d_tcp_attempt_repair(const struct rohc_decomp *const decomp,
 /* updating context */
 static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
                               const struct rohc_tcp_decoded_values *const decoded,
-                              const size_t payload_len)
-	__attribute__((nonnull(1, 2)));
+                              const size_t payload_len,
+                              bool *const do_change_mode)
+	__attribute__((nonnull(1, 2, 4)));
 
 
 /**
@@ -3231,13 +3232,16 @@ static bool d_tcp_attempt_repair(const struct rohc_decomp *const decomp __attrib
 /**
  * @brief Update the decompression context with the infos of current packet
  *
- * @param context      The decompression context
- * @param decoded      The decoded values to update in the context
- * @param payload_len  The length of the packet payload (in bytes)
+ * @param context              The decompression context
+ * @param decoded              The decoded values to update in the context
+ * @param payload_len          The length of the packet payload (in bytes)
+ * @param[out] do_change_mode  Whether the profile context wants to change
+ *                             its operational mode or not
  */
 static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
                               const struct rohc_tcp_decoded_values *const decoded,
-                              const size_t payload_len)
+                              const size_t payload_len,
+                              bool *const do_change_mode)
 {
 	struct d_tcp_context *const tcp_context = context->persist_ctxt;
 	const uint16_t msn = decoded->msn;
@@ -3245,7 +3249,7 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 	size_t i;
 
 	/* mode did not change */
-	context->do_change_mode = false;
+	*do_change_mode = false;
 
 	/* MSN */
 	rohc_lsb_set_ref(tcp_context->msn_lsb_ctxt, msn, false);

@@ -30,6 +30,7 @@
 #include "rohc_internal.h"
 #include "rohc_decomp.h"
 #include "rohc_traces_internal.h"
+#include "feedback_create.h"
 #include "crc.h"
 
 
@@ -82,6 +83,40 @@ struct d_statistics
 
 
 /**
+ * @brief The user configuration for feedback rate-limiting
+ *
+ * The k and n parameters define a ratio of packets for rate-limiting: an action
+ * is performed only for k packets out of the last n packets.
+ */
+struct rohc_ack_rate_limit
+{
+	size_t k;          /**< The k rate-limit parameter */
+	size_t n;          /**< The n rate-limit parameter */
+	size_t threshold;  /**< The computed k/n ratio */
+};
+
+
+/** The user configuration for feedback rate-limiting */
+struct rohc_ack_rate_limits
+{
+	/** The rate-limit parameters to avoid sending feedback too often */
+	struct rohc_ack_rate_limit speed;
+	/** The rate-limit parameters to avoid sending NACKs too quickly */
+	struct rohc_ack_rate_limit nack;
+	/** The rate-limit parameters to avoid sending STATIC-NACKs too quickly */
+	struct rohc_ack_rate_limit static_nack;
+};
+
+
+/** The statistics collected about the last needed/sent feedbacks */
+struct rohc_ack_stats
+{
+	uint32_t needed;  /**< The needed feedbacks over the last 32 packets */
+	uint32_t sent;    /**< The sent feedbacks over the last 32 packets */
+};
+
+
+/**
  * @brief The ROHC decompressor
  */
 struct rohc_decomp
@@ -95,6 +130,9 @@ struct rohc_decomp
 	/** Which profiles are enabled and with one are not? */
 	bool enabled_profiles[D_NUM_PROFILES];
 
+	/** The operation mode that the contexts shall target */
+	rohc_mode_t target_mode;
+
 	/** The array of decompression contexts that use the decompressor */
 	struct rohc_decomp_ctxt **contexts;
 	/** The number of decompression contexts in use */
@@ -102,21 +140,19 @@ struct rohc_decomp
 	/** The last decompression context used by the decompressor */
 	struct rohc_decomp_ctxt *last_context;
 
-	/**
-	 * @brief The feedback interval limits
-	 *
-	 * maxval can be updated by the user thanks to the user_interactions
-	 * function.
-	 *
-	 * @see user_interactions
-	 */
-	unsigned int maxval;
-	/** Variable related to the feedback interval */
-	unsigned int errval;
-	/** Variable related to the feedback interval */
-	unsigned int okval;
-	/** Variable related to the feedback interval */
-	int curval;
+
+	/* feedback-related variables */
+
+	/** The maximum number of packets sent during one RTT */
+	size_t prtt;
+	/** The minimum number of SN bits to transmit in feedbacks */
+	size_t sn_feedback_min_bits;
+	/** The configuration for feedback rate-limiting */
+	struct rohc_ack_rate_limits ack_rate_limits;
+	/** Whether the last decompressed packets failed or not */
+	uint32_t last_pkts_errors;
+	/** The informations for feedback rate-limiting */
+	struct rohc_ack_stats last_pkt_feedbacks[ROHC_ACK_TYPE_RESERVED];
 
 
 	/* segment-related variables */
@@ -235,16 +271,15 @@ struct rohc_decomp_ctxt
 	/** The operation state in which the context operates */
 	rohc_decomp_state_t state;
 
-	/** Whether the operation modes at compressor and decompressor mismatch */
-	bool do_change_mode;  /** TODO: find another way to ACK(mode) */
-
 	/** Usage timestamp */
 	unsigned int latest_used;
 	/** Usage timestamp */
 	unsigned int first_used;
 
-	/** Variable related to feedback interval */
-	int curval;
+	/** Whether the last decompressed packets failed or not */
+	uint32_t last_pkts_errors;
+	/** The informations for feedback rate-limiting */
+	struct rohc_ack_stats last_pkt_feedbacks[ROHC_ACK_TYPE_RESERVED];
 
 	/** The context for corrections upon CRC failure */
 	struct rohc_decomp_crc_corr_ctxt crc_corr;
@@ -279,35 +314,6 @@ struct rohc_decomp_ctxt
 	unsigned long nr_misordered_packets;
 	/** Is last packet a (possible) duplicated packet? */
 	bool is_duplicated;
-};
-
-
-/**
- * @brief The informations required for sending feedback to compressor
- *
- * To be able to send some feedback to the compressor, the decompressor shall
- * (aside the decompression status itself) collect some informations about
- * the packet being decompressed:
- *  \li the Context ID (CID) of the packet (even if context was not found)
- *  \li the CID type of the channel
- *  \li the ID of the decompression profile
- *  \li was the decompression context found?
- *  \li if context was found, the context mode
- *  \li if context was found, the context state
- *  \li if context was found, the SN (LSB bits) of the latest successfully
- *      decompressed packet
- */
-struct rohc_decomp_feedback_infos
-{
-	rohc_cid_type_t cid_type;  /**< The CID type of the channel */
-	rohc_cid_t cid;            /**< The CID of the packet */
-	rohc_profile_t profile_id; /**< The decompression profile (ROHC_PROFILE_GENERAL
-	                                if not identified) */
-	bool context_found;        /**< Whether the context was found or not */
-	rohc_mode_t mode;          /**< The context mode (if context found) */
-	rohc_decomp_state_t state; /**< The context state (if context found) */
-	uint32_t sn_bits;          /**< The SN LSB bits (if context found) */
-	size_t sn_bits_nr;         /**< The number of SN LSB bits (if context found) */
 };
 
 
@@ -353,8 +359,9 @@ typedef rohc_status_t (*rohc_decomp_build_hdrs_t)(const struct rohc_decomp *cons
 
 typedef void (*rohc_decomp_update_ctxt_t)(struct rohc_decomp_ctxt *const context,
                                           const void *const decoded_values,
-                                          const size_t payload_len)
-	__attribute__((nonnull(1, 2)));
+                                          const size_t payload_len,
+                                          bool *const do_change_mode)
+	__attribute__((nonnull(1, 2, 4)));
 
 typedef bool (*rohc_decomp_attempt_repair_t)(const struct rohc_decomp *const decomp,
                                              const struct rohc_decomp_ctxt *const context,

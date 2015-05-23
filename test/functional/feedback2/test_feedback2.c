@@ -71,6 +71,7 @@ for ./configure ? If yes, check configure output and config.log"
 static void usage(void);
 static int test_comp_and_decomp(const char *filename,
                                 const rohc_cid_type_t cid_type,
+                                const bool disable_prtt,
                                 const char *expected_type,
                                 char **expected_options,
                                 const unsigned short expected_options_nr);
@@ -111,6 +112,7 @@ int main(int argc, char *argv[])
 	char **ack_options = NULL;
 	unsigned short ack_options_nr = 0;
 	rohc_cid_type_t cid_type;
+	bool disable_prtt;
 	int args_read;
 	int status = 1;
 
@@ -184,8 +186,24 @@ int main(int argc, char *argv[])
 		goto error;
 	}
 
+	/* send all SN bits in feedbacks or minimize them? */
+	if(strstr(filename, "smallsn") != NULL)
+	{
+		disable_prtt = false;
+	}
+	else if(strstr(filename, "largesn") != NULL)
+	{
+		disable_prtt = true;
+	}
+	else
+	{
+		fprintf(stderr, "unknown SN type: flow filename '%s' shall contain one "
+		        "keyword among 'smallsn' or 'largesn'\n", filename);
+		goto error;
+	}
+
 	/* test ROHC decompression with the packets from the file */
-	status = test_comp_and_decomp(filename, cid_type, ack_type,
+	status = test_comp_and_decomp(filename, cid_type, disable_prtt, ack_type,
 	                              ack_options, ack_options_nr);
 
 error:
@@ -224,6 +242,7 @@ static void usage(void)
  * @param filename             The name of the PCAP file that contains the
  *                             ROHC packets
  * @param cid_type             The type of CID to use
+ * @param disable_prtt         Whether to disable packets/RTT (pRTT) or not
  * @param expected_type        The type of acknowledgement that shall be
  *                             generated during the decompression of every
  *                             packet of the source capture
@@ -236,6 +255,7 @@ static void usage(void)
  */
 static int test_comp_and_decomp(const char *filename,
                                 const rohc_cid_type_t cid_type,
+                                const bool disable_prtt,
                                 const char *expected_type,
                                 char **expected_options,
                                 const unsigned short expected_options_nr)
@@ -248,7 +268,9 @@ static int test_comp_and_decomp(const char *filename,
 	int link_len;
 
 	struct rohc_comp *comp; /* compressor required only to generate feedback */
+//! [define ROHC decompressor]
 	struct rohc_decomp *decomp;
+//! [define ROHC decompressor]
 
 	struct pcap_pkthdr header;
 	unsigned char *packet;
@@ -327,6 +349,7 @@ static int test_comp_and_decomp(const char *filename,
 	}
 
 
+//! [create ROHC decompressor]
 	/* create the ROHC decompressor in bi-directional mode */
 	decomp = rohc_decomp_new2(cid_type, max_cid, ROHC_O_MODE);
 	if(decomp == NULL)
@@ -334,6 +357,7 @@ static int test_comp_and_decomp(const char *filename,
 		fprintf(stderr, "failed to create the ROHC decompressor\n");
 		goto destroy_comp;
 	}
+//! [create ROHC decompressor]
 
 	/* set the callback for traces on decompressor */
 	if(!rohc_decomp_set_traces_cb2(decomp, print_rohc_traces, NULL))
@@ -350,6 +374,18 @@ static int test_comp_and_decomp(const char *filename,
 	{
 		fprintf(stderr, "failed to enable the decompression profiles\n");
 		goto destroy_decomp;
+	}
+
+	/* if large SNs, send all SN bits in feedbacks */
+	if(disable_prtt)
+	{
+//! [set decompressor pRTT]
+		if(!rohc_decomp_set_prtt(decomp, 0))
+		{
+			fprintf(stderr, "failed to configure decompressor pRTT\n");
+			goto destroy_decomp;
+		}
+//! [set decompressor pRTT]
 	}
 
 	/* for each packet in the dump */

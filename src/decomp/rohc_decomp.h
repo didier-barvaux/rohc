@@ -73,6 +73,8 @@ struct rohc_decomp;
  */
 typedef enum
 {
+	/** Unknown decompressor state */
+	ROHC_DECOMP_STATE_UNKNOWN = 0,
 	/** The No Context state */
 	ROHC_DECOMP_STATE_NC = 1,
 	/** The Static Context state */
@@ -264,6 +266,8 @@ bool ROHC_EXPORT rohc_decomp_get_last_packet_info(const struct rohc_decomp *cons
  * Functions related to user parameters
  */
 
+/* CID */
+
 bool ROHC_EXPORT rohc_decomp_get_cid_type(const struct rohc_decomp *const decomp,
                                           rohc_cid_type_t *const cid_type)
 	__attribute__((warn_unused_result));
@@ -272,6 +276,8 @@ bool ROHC_EXPORT rohc_decomp_get_max_cid(const struct rohc_decomp *const decomp,
                                          size_t *const max_cid)
 	__attribute__((warn_unused_result));
 
+/* MRRU */
+
 bool ROHC_EXPORT rohc_decomp_set_mrru(struct rohc_decomp *const decomp,
                                       const size_t mrru)
 	__attribute__((warn_unused_result));
@@ -279,6 +285,32 @@ bool ROHC_EXPORT rohc_decomp_set_mrru(struct rohc_decomp *const decomp,
 bool ROHC_EXPORT rohc_decomp_get_mrru(const struct rohc_decomp *const decomp,
                                       size_t *const mrru)
 	__attribute__((warn_unused_result));
+
+/* pRTT */
+
+bool ROHC_EXPORT rohc_decomp_set_prtt(struct rohc_decomp *const decomp,
+                                      const size_t prtt)
+	__attribute__((warn_unused_result));
+
+bool ROHC_EXPORT rohc_decomp_get_prtt(const struct rohc_decomp *const decomp,
+                                      size_t *const prtt)
+	__attribute__((warn_unused_result));
+
+/* feedback rate-limiting */
+
+bool ROHC_EXPORT rohc_decomp_set_rate_limits(struct rohc_decomp *const decomp,
+                                             const size_t k, const size_t n,
+                                             const size_t k_1, const size_t n_1,
+                                             const size_t k_2, const size_t n_2)
+	__attribute__((warn_unused_result));
+
+bool ROHC_EXPORT rohc_decomp_get_rate_limits(const struct rohc_decomp *const decomp,
+                                             size_t *const k, size_t *const n,
+                                             size_t *const k_1, size_t *const n_1,
+                                             size_t *const k_2, size_t *const n_2)
+	__attribute__((warn_unused_result));
+
+/* decompression library features */
 
 bool ROHC_EXPORT rohc_decomp_set_features(struct rohc_decomp *const decomp,
                                           const rohc_decomp_features_t features)

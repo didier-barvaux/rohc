@@ -265,7 +265,9 @@ static int test_comp_and_decomp(const char *const filename,
 	int link_len;
 
 	struct rohc_comp *comp;
+//! [define ROHC decompressor]
 	struct rohc_decomp *decomp;
+//! [define ROHC decompressor]
 
 	struct pcap_pkthdr header;
 	unsigned char *packet;
@@ -348,6 +350,7 @@ static int test_comp_and_decomp(const char *const filename,
 		goto destroy_comp;
 	}
 
+//! [create ROHC decompressor]
 	/* create the ROHC decompressor in unidirectional mode */
 	decomp = rohc_decomp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX, ROHC_U_MODE);
 	if(decomp == NULL)
@@ -355,6 +358,7 @@ static int test_comp_and_decomp(const char *const filename,
 		fprintf(stderr, "failed to create the ROHC decompressor\n");
 		goto destroy_comp;
 	}
+//! [create ROHC decompressor]
 
 	/* set the callback for traces on decompressor */
 	if(!rohc_decomp_set_traces_cb2(decomp, print_rohc_traces, NULL))
@@ -372,6 +376,15 @@ static int test_comp_and_decomp(const char *const filename,
 		fprintf(stderr, "failed to enable the decompression profiles\n");
 		goto destroy_decomp;
 	}
+
+//! [set decompressor rate limits]
+	/* increase the default rate limits */
+	if(!rohc_decomp_set_rate_limits(decomp, 4, 100, 20, 100, 20, 100))
+	{
+		fprintf(stderr, "failed to increase the default rate limits\n");
+		goto destroy_decomp;
+	}
+//! [set decompressor rate limits]
 
 	if(do_repair)
 	{

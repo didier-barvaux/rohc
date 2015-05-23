@@ -608,6 +608,8 @@ EXCLUDE_SYMBOLS        =
 
 EXAMPLE_PATH           = @top_srcdir@/examples/ \
                          @top_srcdir@/test/functional/segment/ \
+                         @top_srcdir@/test/functional/feedback2/ \
+                         @top_srcdir@/test/robustness/lost_packet/ \
                          @top_srcdir@/test/non_regression/
 
 # If the value of the EXAMPLE_PATH tag contains directories, you can use the 

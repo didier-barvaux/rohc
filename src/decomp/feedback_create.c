@@ -52,38 +52,40 @@ static bool f_append_cid(struct d_feedback *const feedback,
 /**
  * @brief Build a FEEDBACK-1 packet.
  *
- * @param sn       The Sequence Number (SN) the feedback packet is
- *                 associated with
+ * @param sn_bits  The LSB of the Sequence Number (SN) the feedback packet
+ *                 is associated with
  * @param feedback The feedback packet to build
  */
-void f_feedback1(const uint32_t sn, struct d_feedback *const feedback)
+void f_feedback1(const uint32_t sn_bits, struct d_feedback *const feedback)
 {
 	feedback->type = 1; /* set type for add_option */
 	feedback->size = 1;
-	feedback->data[0] = (sn & 0xff);
+	feedback->data[0] = (sn_bits & 0xff);
 }
 
 
 /**
  * @brief Build a FEEDBACK-2 packet.
  *
- * @param ack_type  The type of acknowledgement:
- *                    \li \ref ROHC_ACK_TYPE_ACK,
- *                    \li \ref ROHC_ACK_TYPE_NACK,
- *                    \li \ref ROHC_ACK_TYPE_STATIC_NACK
- * @param mode      The mode in which ROHC operates:
- *                    \li \ref ROHC_U_MODE,
- *                    \li \ref ROHC_O_MODE,
- *                    \li \ref ROHC_R_MODE
- * @param sn        The Sequence Number (SN) the feedback packet is
- *                  associated with, zero if unknown
- * @param feedback  The feedback packet to build
- * @return          true if the packet is successfully built,
- *                  false otherwise
+ * @param ack_type    The type of acknowledgement:
+ *                      \li \ref ROHC_ACK_TYPE_ACK,
+ *                      \li \ref ROHC_ACK_TYPE_NACK,
+ *                      \li \ref ROHC_ACK_TYPE_STATIC_NACK
+ * @param mode        The mode in which ROHC operates:
+ *                      \li \ref ROHC_U_MODE,
+ *                      \li \ref ROHC_O_MODE,
+ *                      \li \ref ROHC_R_MODE
+ * @param sn_bits     The LSB of the Sequence Number (SN) the feedback packet
+ *                    is associated with
+ * @param sn_bits_nr  The number of SN LSB
+ * @param feedback    The feedback packet to build
+ * @return            true if the packet is successfully built,
+ *                    false otherwise
  */
 bool f_feedback2(const rohc_ack_type_t ack_type,
                  const rohc_mode_t mode,
-                 const uint32_t sn,
+                 const uint32_t sn_bits,
+                 const size_t sn_bits_nr,
                  struct d_feedback *const feedback)
 {
 	bool is_ok;
@@ -96,28 +98,45 @@ bool f_feedback2(const rohc_ack_type_t ack_type,
 	       feedback->data[0], ack_type, mode);
 #endif
 
-	if(sn < (1 << 12)) /* SN may be stored on 12 bits */
+	if(sn_bits_nr == 0) /* SN is not valid */
 	{
-		feedback->data[0] |= (sn >> 8) & 0xf;
-		feedback->data[1] = sn & 0xff;
 #ifdef ROHC_FEEDBACK_DEBUG
-		printf("FEEDBACK-2: transmit SN = 0x%08x on 12 bits\n", sn);
+		printf("FEEDBACK-2: SN-NOT-VALID\n");
+#endif
+		feedback->data[1] = 0;
+
+		/* SN option */
+		is_ok = f_add_option(feedback, ROHC_FEEDBACK_OPT_SN_NOT_VALID, NULL, 0);
+		if(!is_ok)
+		{
+#ifdef ROHC_FEEDBACK_DEBUG
+			printf("failed to add option to the feedback packet\n");
+#endif
+			goto error;
+		}
+	}
+	else if(sn_bits_nr <= 12) /* SN may be stored on 12 bits */
+	{
+		feedback->data[0] |= (sn_bits >> 8) & 0xf;
+		feedback->data[1] = sn_bits & 0xff;
+#ifdef ROHC_FEEDBACK_DEBUG
+		printf("FEEDBACK-2: transmit SN = 0x%08x on 12 bits\n", sn_bits);
 		printf("FEEDBACK-2: 4 bits of SN = 0x%x\n", feedback->data[0] & 0xf);
 		printf("FEEDBACK-2: 8 bits of SN = 0x%02x\n", feedback->data[1] & 0xff);
 #endif
 	}
-	else if(sn < (1 << (12 + 8))) /* SN may be stored on 20 bits */
+	else if(sn_bits_nr <= (12 + 8)) /* SN may be stored on 20 bits */
 	{
-		const uint8_t sn_opt = sn & 0xff;
+		const uint8_t sn_opt = sn_bits & 0xff;
 
 #ifdef ROHC_FEEDBACK_DEBUG
 		printf("FEEDBACK-2: transmit SN = 0x%08x on 20 bits (12 bits in base "
-		       "header, 8 bits in SN option)\n", sn);
+		       "header, 8 bits in SN option)\n", sn_bits);
 #endif
 
 		/* base header */
-		feedback->data[0] |= (sn >> 16) & 0xf;
-		feedback->data[1] = (sn >> 8) & 0xff;
+		feedback->data[0] |= (sn_bits >> 16) & 0xf;
+		feedback->data[1] = (sn_bits >> 8) & 0xff;
 #ifdef ROHC_FEEDBACK_DEBUG
 		printf("FEEDBACK-2: 4 bits of SN = 0x%x\n", feedback->data[0] & 0xf);
 		printf("FEEDBACK-2: 8 bits of SN = 0x%02x\n", feedback->data[1] & 0xff);
@@ -137,19 +156,19 @@ bool f_feedback2(const rohc_ack_type_t ack_type,
 		printf("FEEDBACK-2: 8 bits of SN option = 0x%02x\n", sn_opt);
 #endif
 	}
-	else if(sn < (1 << (12 + 8 + 8))) /* SN may be stored on 28 bits */
+	else if(sn_bits_nr <= (12 + 8 + 8)) /* SN may be stored on 28 bits */
 	{
-		const uint8_t sn_opt1 = (sn >> 8) & 0xff;
-		const uint8_t sn_opt2 = sn & 0xff;
+		const uint8_t sn_opt1 = (sn_bits >> 8) & 0xff;
+		const uint8_t sn_opt2 = sn_bits & 0xff;
 
 #ifdef ROHC_FEEDBACK_DEBUG
 		printf("FEEDBACK-2: transmit SN = 0x%08x on 28 bits (12 bits in base "
-		       "header, 8 bits in SN option, then 8 bits in SN option)\n", sn);
+		       "header, 8 bits in SN option, then 8 bits in SN option)\n", sn_bits);
 #endif
 
 		/* base header */
-		feedback->data[0] |= (sn >> 24) & 0xf;
-		feedback->data[1] = (sn >> 16) & 0xff;
+		feedback->data[0] |= (sn_bits >> 24) & 0xf;
+		feedback->data[1] = (sn_bits >> 16) & 0xff;
 #ifdef ROHC_FEEDBACK_DEBUG
 		printf("FEEDBACK-2: 4 bits of SN = 0x%x\n", feedback->data[0] & 0xf);
 		printf("FEEDBACK-2: 8 bits of SN = 0x%02x\n", feedback->data[1] & 0xff);
@@ -185,19 +204,19 @@ bool f_feedback2(const rohc_ack_type_t ack_type,
 	}
 	else /* SN may be stored on 12 + 8 + 8 + 8 = 36 bits */
 	{
-		const uint8_t sn_opt1 = (sn >> 16) & 0xff;
-		const uint8_t sn_opt2 = (sn >> 8) & 0xff;
-		const uint8_t sn_opt3 = sn & 0xff;
+		const uint8_t sn_opt1 = (sn_bits >> 16) & 0xff;
+		const uint8_t sn_opt2 = (sn_bits >> 8) & 0xff;
+		const uint8_t sn_opt3 = sn_bits & 0xff;
 
 #ifdef ROHC_FEEDBACK_DEBUG
 		printf("FEEDBACK-2: transmit SN = 0x%08x on 36 bits (12 bits in base "
 		       "header, 8 bits in SN option, 8 bits in SN option, then 8 bits "
-		       "in SN option)\n", sn);
+		       "in SN option)\n", sn_bits);
 #endif
 
 		/* base header */
 		feedback->data[0] |= 0;
-		feedback->data[1] = (sn >> 24) & 0xff;
+		feedback->data[1] = (sn_bits >> 24) & 0xff;
 #ifdef ROHC_FEEDBACK_DEBUG
 		printf("FEEDBACK-2: 4 bits of SN = 0x%x\n", feedback->data[0] & 0xf);
 		printf("FEEDBACK-2: 8 bits of SN = 0x%02x\n", feedback->data[1] & 0xff);
@@ -400,6 +419,12 @@ static bool f_append_cid(struct d_feedback *const feedback,
 			feedback->data[0] = (cid & 0xf) | feedback->data[0];
 			feedback->size++;
 		}
+#ifdef ROHC_FEEDBACK_DEBUG
+		else
+		{
+			printf("no need to prepend Add-CID byte to feedback\n");
+		}
+#endif
 	}
 
 	return true;

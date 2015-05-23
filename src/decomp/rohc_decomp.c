@@ -88,22 +88,36 @@ static const struct rohc_decomp_profile *const
  */
 
 /**
- * @brief Decompression-related data.
+ * @brief The stream informations about a decompressed packet
  *
- * This object stores the information related to the decompression of one
- * ROHC packet (CID and context for example). The lifetime of this object is
- * the time needed to decompress one single packet.
+ * To be able to send some feedback to the compressor, the decompressor shall
+ * (aside the decompression status itself) collect some informations about
+ * the packet being decompressed:
+ *  \li the Context ID (CID) of the packet (even if context was not found)
+ *  \li the CID type of the channel
+ *  \li the ID of the decompression profile
+ *  \li if context was found, the context mode
+ *  \li if context was found, the context state
+ *  \li if context was found, the SN (LSB bits) of the latest successfully
+ *      decompressed packet
+ *  \li the packet type if available
  */
-struct d_decode_data
+struct rohc_decomp_stream
 {
-	/// The Context ID of the context to which the packet is related
-	rohc_cid_t cid;
-	/// Whether the ROHC packet uses add-CID or not
-	int addcidUsed;
-	/// The size (in bytes) of the large CID field
-	unsigned int large_cid_size;
-	/// The context to which the packet is related
-	struct rohc_decomp_ctxt *active;
+	rohc_cid_type_t cid_type;  /**< The CID type of the channel */
+	bool cid_found;            /**< Whether the CID of the packet was found or not */
+	rohc_cid_t cid;            /**< The CID of the packet */
+	bool context_found;        /**< Whether the context was found or not */
+	struct rohc_decomp_ctxt *context; /**< The decompression context, if found */
+	rohc_profile_t profile_id; /**< The decompression profile (ROHC_PROFILE_GENERAL
+	                                if not identified) */
+	rohc_mode_t mode;          /**< The context mode (if context found) */
+	bool do_change_mode;       /**< The context mode shall be advertised */
+	rohc_decomp_state_t state; /**< The context state (if context found) */
+	uint32_t sn_bits;          /**< The SN LSB bits (if context found) */
+	size_t sn_bits_nr;         /**< The number of SN LSB bits (if context found) */
+	rohc_packet_t packet_type; /**< The type of the decompressed packet */
+	bool crc_failed;           /**< Whether the packet failed the CRC check or not */
 };
 
 
@@ -134,16 +148,16 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
                                      const struct rohc_buf rohc_packet,
                                      struct rohc_buf *const uncomp_packet,
                                      struct rohc_buf *const rcvd_feedback,
-                                     struct d_decode_data *ddata,
-                                     rohc_packet_t *const packet_type,
-                                     struct rohc_decomp_feedback_infos *const feedback_infos)
-	__attribute__((nonnull(1, 3, 5, 6, 7), warn_unused_result));
+                                     struct rohc_decomp_stream *const stream)
+	__attribute__((nonnull(1, 3, 5), warn_unused_result));
 
 static bool rohc_decomp_decode_cid(struct rohc_decomp *decomp,
                                    const unsigned char *packet,
                                    unsigned int len,
-                                   struct d_decode_data *ddata)
-	__attribute__((warn_unused_result));
+                                   rohc_cid_t *const cid,
+                                   size_t *const add_cid_len,
+                                   size_t *const large_cid_len)
+	__attribute__((nonnull(1, 2, 4, 5, 6), warn_unused_result));
 
 static void rohc_decomp_parse_padding(const struct rohc_decomp *const decomp,
                                       struct rohc_buf *const packet)
@@ -166,8 +180,9 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
                                             const size_t add_cid_len,
                                             const size_t large_cid_len,
                                             struct rohc_buf *const uncomp_packet,
-                                            rohc_packet_t *const packet_type)
-	__attribute__((warn_unused_result, nonnull(1, 2, 6, 7)));
+                                            rohc_packet_t *const packet_type,
+                                            bool *const do_change_mode)
+	__attribute__((warn_unused_result, nonnull(1, 2, 6, 7, 8)));
 
 static bool rohc_decomp_check_ir_crc(const struct rohc_decomp *const decomp,
                                      const struct rohc_decomp_ctxt *const context,
@@ -184,12 +199,13 @@ static void rohc_decomp_stats_add_success(struct rohc_decomp_ctxt *const context
 	__attribute__((nonnull(1)));
 
 static void rohc_decomp_update_context(struct rohc_decomp_ctxt *const context,
-	                                    const void *const decoded_values,
-	                                    const size_t payload_len,
-	                                    const struct rohc_ts pkt_arrival_time)
-	__attribute__((nonnull(1, 2)));
+                                       const void *const decoded_values,
+                                       const size_t payload_len,
+                                       const struct rohc_ts pkt_arrival_time,
+                                       bool *const do_change_mode)
+	__attribute__((nonnull(1, 2, 5)));
 
-/* feedback-related functions */
+/* functions to receive feedbacks for the same-site ROHC compressor */
 static bool rohc_decomp_parse_feedbacks(struct rohc_decomp *const decomp,
                                         struct rohc_buf *const rohc_data,
                                         struct rohc_buf *const feedbacks)
@@ -198,19 +214,16 @@ static bool rohc_decomp_parse_feedback(struct rohc_decomp *const decomp,
                                        struct rohc_buf *const rohc_data,
                                        struct rohc_buf *const feedback)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
-static void d_operation_mode_feedback(struct rohc_decomp *decomp,
-                                      const rohc_status_t rohc_status,
-                                      const uint16_t cid,
-                                      const rohc_cid_type_t cid_type,
-                                      int mode,
-                                      struct rohc_decomp_ctxt *context,
-                                      struct rohc_buf *const feedback_send);
-static void d_optimistic_feedback(struct rohc_decomp *decomp,
-                                  const rohc_status_t rohc_status,
-                                  const rohc_cid_t cid,
-                                  const rohc_cid_type_t cid_type,
-                                  struct rohc_decomp_ctxt *context,
-                                  struct rohc_buf *const feedback_send);
+
+/* function related to the transmission of feedback to the remote ROHC compressor */
+static bool rohc_decomp_feedback_ack(struct rohc_decomp *const decomp,
+                                     const struct rohc_decomp_stream *const stream,
+                                     struct rohc_buf *const feedback)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
+static bool rohc_decomp_feedback_nack(struct rohc_decomp *const decomp,
+                                      const struct rohc_decomp_stream *const stream,
+                                      struct rohc_buf *const feedback)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 /* statistics-related functions */
 static void rohc_decomp_reset_stats(struct rohc_decomp *const decomp)
@@ -286,8 +299,15 @@ static struct rohc_decomp_ctxt * context_create(struct rohc_decomp *decomp,
 	/* initialize mode and state */
 	context->mode = ROHC_U_MODE;
 	context->state = ROHC_DECOMP_STATE_NC;
-	context->do_change_mode = false;
-	context->curval = 0;
+
+	/* counters and thresholds for feedbacks and downward state transitions */
+	context->last_pkts_errors = 0;
+	context->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].needed = 0;
+	context->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].sent = 0;
+	context->last_pkt_feedbacks[ROHC_ACK_TYPE_NACK].needed = 0;
+	context->last_pkt_feedbacks[ROHC_ACK_TYPE_NACK].sent = 0;
+	context->last_pkt_feedbacks[ROHC_ACK_TYPE_STATIC_NACK].needed = 0;
+	context->last_pkt_feedbacks[ROHC_ACK_TYPE_STATIC_NACK].sent = 0;
 
 	/* init the context for packet/context corrections upon CRC failures */
 	/* at the beginning, no attempt to correct CRC failure */
@@ -384,8 +404,7 @@ static void context_free(struct rohc_decomp_ctxt *const context)
  *                        \ref ROHC_SMALL_CID
  *                    \li [0, \ref ROHC_LARGE_CID_MAX] if \e cid_type is
  *                        \ref ROHC_LARGE_CID
- * @param mode      The operational mode that the ROHC decompressor shall
- *                  transit to.\n
+ * @param mode      The operational mode that the ROHC decompressor shall target.\n
  *                  Accepted values are:
  *                    \li \ref ROHC_U_MODE for the Unidirectional mode,
  *                    \li \ref ROHC_O_MODE for the Bidirectional Optimistic
@@ -489,6 +508,9 @@ struct rohc_decomp * rohc_decomp_new2(const rohc_cid_type_t cid_type,
 		decomp->enabled_profiles[i] = false;
 	}
 
+	/* the operational mode the decompressor shall target for all its contexts */
+	decomp->target_mode = mode;
+
 	/* initialize the array of decompression contexts to its minimal value */
 	decomp->contexts = NULL;
 	decomp->num_contexts_used = 0;
@@ -499,10 +521,21 @@ struct rohc_decomp * rohc_decomp_new2(const rohc_cid_type_t cid_type,
 	}
 	decomp->last_context = NULL;
 
-	decomp->maxval = 300;
-	decomp->errval = 100;
-	decomp->okval = 12;
-	decomp->curval = 0;
+	/* counters and thresholds for feedbacks and downward state transitions */
+	{
+		const size_t rtt = 1000U; /* conservative 1-second RTT */
+		const size_t pkt_period = 20U; /* one packet every 20 ms like for VoIP */
+		const size_t prtt = rtt / pkt_period;
+		assert(rohc_decomp_set_prtt(decomp, prtt));
+		assert(rohc_decomp_set_rate_limits(decomp, 1, prtt, 30, 100, 30, 100));
+		decomp->last_pkts_errors = 0;
+		decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].needed = 0;
+		decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].sent = 0;
+		decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_NACK].needed = 0;
+		decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_NACK].sent = 0;
+		decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_STATIC_NACK].needed = 0;
+		decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_STATIC_NACK].sent = 0;
+	}
 
 	/* no Reconstructed Reception Unit (RRU) at the moment */
 	decomp->rru_len = 0;
@@ -671,10 +704,8 @@ rohc_status_t rohc_decompress3(struct rohc_decomp *const decomp,
                                struct rohc_buf *const rcvd_feedback,
                                struct rohc_buf *const feedback_send)
 {
-	struct rohc_decomp_feedback_infos feedback_infos;
-	struct d_decode_data ddata = { 0, 0, 0, NULL };
-	rohc_packet_t packet_type;
 	rohc_status_t status = ROHC_STATUS_ERROR; /* error status by default */
+	struct rohc_decomp_stream stream;
 
 	/* check inputs validity */
 	if(decomp == NULL)
@@ -756,169 +787,137 @@ rohc_status_t rohc_decompress3(struct rohc_decomp *const decomp,
 
 	/* decode ROHC header */
 	status = d_decode_header(decomp, rohc_packet, uncomp_packet, rcvd_feedback,
-	                         &ddata, &packet_type, &feedback_infos);
-	rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-	           "d_decode_header returned code %d", status);
+	                         &stream);
+	assert(status != ROHC_STATUS_SEGMENT);
 
-	/* in case of failure, users shall get an empty decompressed packet */
-	if(status != ROHC_STATUS_OK)
+	/* handle mode transitions if context was found and it is still valid */
+	if(stream.context != NULL)
 	{
-		uncomp_packet->len = 0;
+		if(stream.context->mode == ROHC_U_MODE)
+		{
+			if(decomp->target_mode == ROHC_U_MODE)
+			{
+				rohc_debug(decomp, ROHC_TRACE_DECOMP, stream.profile_id,
+				           "stay in U-mode as requested by user");
+			}
+			else if(decomp->target_mode == ROHC_O_MODE)
+			{
+				rohc_debug(decomp, ROHC_TRACE_DECOMP, stream.profile_id,
+				           "transit from U-mode to O-mode as requested by user");
+				stream.context->mode = ROHC_O_MODE;
+				/* ACK(O), NACK(O) or STATIC-NACK(O) will transmit the mode
+				 * transition to the remote compressor */
+				stream.mode = ROHC_O_MODE;
+				stream.do_change_mode = true;
+			}
+			else /* R-mode */
+			{
+				assert(0); /* TODO: R-mode not supported yet */
+				status = ROHC_STATUS_ERROR;
+				goto error;
+			}
+		}
+		else if(stream.context->mode == ROHC_O_MODE)
+		{
+			if(decomp->target_mode == ROHC_U_MODE)
+			{
+				assert(0); /* TODO: O- to U-mode transition not supported yet */
+				status = ROHC_STATUS_ERROR;
+				goto error;
+			}
+			else if(decomp->target_mode == ROHC_O_MODE)
+			{
+				rohc_debug(decomp, ROHC_TRACE_DECOMP, stream.profile_id,
+				           "stay in O-mode as requested by user");
+			}
+			else /* R-mode */
+			{
+				assert(0); /* TODO: R-mode not supported yet */
+				status = ROHC_STATUS_ERROR;
+				goto error;
+			}
+		}
+		else /* R-mode */
+		{
+			assert(0); /* TODO: R-mode not supported yet */
+			status = ROHC_STATUS_ERROR;
+			goto error;
+		}
 	}
 
 	/* update statistics and send feedback if needed */
-	switch(status)
+	if(status == ROHC_STATUS_OK)
 	{
-		case ROHC_STATUS_MALFORMED:
-		case ROHC_STATUS_OUTPUT_TOO_SMALL:
-		case ROHC_STATUS_ERROR:
+		/* print a trace to report success (the context may be NULL if packet
+		 * was a feedback-only packet) */
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, stream.profile_id,
+		           "packet decompression succeeded");
+
+		/* do not update statistics and build positive feedback for feedback-only
+		 * packets */
+		if(uncomp_packet->len > 0)
 		{
-			if(ddata.active != NULL)
-			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, ddata.active->profile->id,
-				             "packet decompression failed: %s (%d)",
-				             rohc_strerror(status), status);
-			}
-			else
-			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-				             "packet decompression failed: %s (%d)",
-				             rohc_strerror(status), status);
-			}
-
 			/* update statistics */
-			if(ddata.active != NULL)
-			{
-				ddata.active->num_recv_packets++;
-			}
-			decomp->stats.failed_decomp++;
+			rohc_debug(decomp, ROHC_TRACE_DECOMP, stream.profile_id,
+			           "update decompressor and context statistics");
+			assert(stream.context != NULL);
+			stream.context->num_recv_packets++;
+			stream.context->packet_type = stream.packet_type;
+			stream.context->total_uncompressed_size += uncomp_packet->len;
+			stream.context->total_compressed_size += rohc_packet.len;
+			decomp->stats.total_uncompressed_size += uncomp_packet->len;
+			decomp->stats.total_compressed_size += rohc_packet.len;
 
-			/* feedback rate-limiting */
-			if(ddata.active != NULL)
+			/* build positive feedback if asked by user and if needed by decompressor */
+			if(!rohc_decomp_feedback_ack(decomp, &stream, feedback_send))
 			{
-				ddata.active->curval += decomp->errval;
-				if(((unsigned int) ddata.active->curval) >= decomp->maxval)
-				{
-					ddata.active->curval = 0;
-					d_operation_mode_feedback(decomp, ROHC_STATUS_MALFORMED,
-					                          ddata.cid, decomp->medium.cid_type,
-					                          ddata.active->mode, ddata.active,
-					                          feedback_send);
-				}
+				rohc_warning(decomp, ROHC_TRACE_DECOMP, stream.profile_id,
+				             "failed to build positive feedback");
+				status = ROHC_STATUS_ERROR;
+				goto error;
 			}
-			break;
+		}
+	}
+	else /* packet failed to be decompressed */
+	{
+		/* in case of failure, users shall get an empty decompressed packet */
+		uncomp_packet->len = 0;
+
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, stream.profile_id,
+		             "packet decompression failed: %s (%d)",
+		             rohc_strerror(status), status);
+
+		/* update statistics */
+		if(stream.context != NULL)
+		{
+			stream.context->num_recv_packets++;
+		}
+		switch(status)
+		{
+			case ROHC_STATUS_MALFORMED:
+			case ROHC_STATUS_OUTPUT_TOO_SMALL:
+			case ROHC_STATUS_ERROR:
+				decomp->stats.failed_decomp++;
+				break;
+			case ROHC_STATUS_NO_CONTEXT:
+				decomp->stats.failed_no_context++;
+				break;
+			case ROHC_STATUS_BAD_CRC:
+				decomp->stats.failed_crc++;
+				break;
+			default: /* ROHC_STATUS_OK or ROHC_STATUS_SEGMENT shall not happen */
+				assert(0);
+				status = ROHC_STATUS_ERROR;
+				goto error;
 		}
 
-		case ROHC_STATUS_NO_CONTEXT:
+		/* build negative feedback if asked by user and if needed by decompressor */
+		if(!rohc_decomp_feedback_nack(decomp, &stream, feedback_send))
 		{
-			/* the context may not be NULL if a UO* packet packet is received in
-			 * No Context state for example, force it to NULL */
-			ddata.active = NULL;
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			             "no context found for packet decompression");
-
-			/* update statistics */
-			decomp->stats.failed_no_context++;
-
-			/* feedback rate-limiting */
-			decomp->curval += decomp->errval;
-			if(((unsigned int) decomp->curval) >= decomp->maxval)
-			{
-				decomp->curval = 0;
-				d_operation_mode_feedback(decomp, ROHC_STATUS_NO_CONTEXT,
-				                          ddata.cid, decomp->medium.cid_type,
-				                          ROHC_O_MODE, NULL, feedback_send);
-			}
-			break;
-		}
-
-		case ROHC_STATUS_BAD_CRC:
-		{
-			/* active context may be NULL if IR packet created a new context then
-			 * failed CRC check (the context is destroyed) */
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			             "packet decompression failed because of malformed "
-			             "packet or bad CRC");
-
-			/* update statistics */
-			if(ddata.active != NULL)
-			{
-				ddata.active->num_recv_packets++;
-			}
-			decomp->stats.failed_crc++;
-
-			/* feedback rate-limiting */
-			if(ddata.active != NULL)
-			{
-				ddata.active->curval += decomp->errval;
-				rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-				           "feedback curr %d", ddata.active->curval);
-				rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-				           "feedback max %d", decomp->maxval);
-				if(((unsigned int) ddata.active->curval) >= decomp->maxval)
-				{
-					ddata.active->curval = 0;
-					d_operation_mode_feedback(decomp, ROHC_STATUS_BAD_CRC,
-					                          ddata.cid, decomp->medium.cid_type,
-					                          ddata.active->mode, ddata.active,
-					                          feedback_send);
-				}
-			}
-			break;
-		}
-
-		case ROHC_STATUS_OK:
-		{
-			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			           "packet decompression succeeded");
-
-			/* update statistics */
-			if(uncomp_packet->len > 0)
-			{
-				assert(ddata.active != NULL);
-				ddata.active->num_recv_packets++;
-				ddata.active->packet_type = packet_type;
-				ddata.active->total_uncompressed_size += uncomp_packet->len;
-				ddata.active->total_compressed_size += rohc_packet.len;
-				decomp->stats.total_uncompressed_size += uncomp_packet->len;
-				decomp->stats.total_compressed_size += rohc_packet.len;
-
-				/* feedback rate-limiting */
-				decomp->curval -= decomp->okval; /* framework (S-NACK) */
-				ddata.active->curval -= decomp->okval; /* context (NACK) */
-				rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-				           "feedback curr %d", ddata.active->curval);
-				if(decomp->curval < 0)
-				{
-					decomp->curval = 0;
-				}
-				if(ddata.active->curval < 0)
-				{
-					ddata.active->curval = 0;
-				}
-				rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-				           "feedback curr %d", ddata.active->curval);
-				if(ddata.active->mode == ROHC_U_MODE ||
-				   ddata.active->do_change_mode)
-				{
-					if(ddata.active->mode == ROHC_U_MODE)
-					{
-						/* switch active context to O-mode */
-						ddata.active->mode = ROHC_O_MODE;
-					}
-					d_operation_mode_feedback(decomp, ROHC_STATUS_OK, ddata.cid,
-					                          decomp->medium.cid_type,
-					                          ddata.active->mode, ddata.active,
-					                          feedback_send);
-				}
-			}
-			break;
-		}
-
-		default:
-		{
-			assert(0); /* should not happen */
-			break;
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, stream.profile_id,
+			             "failed to build negative feedback");
+			status = ROHC_STATUS_ERROR;
+			goto error;
 		}
 	}
 
@@ -939,10 +938,8 @@ error:
  *                            \li If NULL, ignore the received feedback data
  *                            \li If not NULL, store the received feedback in
  *                                at the given address
- * @param[out] ddata          Decompression-related data (e.g. the context)
- * @param[out] packet_type    The type of the decompressed ROHC packet
- * @param[out] feedback_infos The informations required for sending feedback
- *                            to compressor
+ * @param[out] stream         The informations about the decompressed stream,
+ *                            required for sending feedback to compressor
  * @return                    Possible return values:
  *                            \li ROHC_STATUS_OK if packet is successfully
  *                                decoded,
@@ -958,12 +955,13 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
                                      const struct rohc_buf rohc_packet,
                                      struct rohc_buf *const uncomp_packet,
                                      struct rohc_buf *const rcvd_feedback,
-                                     struct d_decode_data *ddata,
-                                     rohc_packet_t *const packet_type,
-                                     struct rohc_decomp_feedback_infos *const feedback_infos)
+                                     struct rohc_decomp_stream *const stream)
 {
 	const struct rohc_decomp_profile *profile;
 	bool is_new_context = false;
+	size_t sn_feedback_min_bits;
+	size_t add_cid_len;
+	size_t large_cid_len;
 
 	struct rohc_buf remain_rohc_data = rohc_packet;
 	const uint8_t *walk;
@@ -971,15 +969,20 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 
 	rohc_status_t status;
 
-	assert(decomp != NULL);
-	assert(ddata != NULL);
-	assert(packet_type != NULL);
-
 	/* at the beginning, context is not found yet but channel CID type is known */
-	feedback_infos->profile_id = ROHC_PROFILE_GENERAL;
-	feedback_infos->cid_type = decomp->medium.cid_type;
-	feedback_infos->context_found = false;
-	feedback_infos->sn_bits_nr = 0;
+	stream->profile_id = ROHC_PROFILE_GENERAL;
+	stream->cid_type = decomp->medium.cid_type;
+	stream->cid_found = false;
+	stream->cid = SIZE_MAX;
+	stream->context_found = false;
+	stream->context = NULL;
+	stream->mode = ROHC_UNKNOWN_MODE;
+	stream->state = ROHC_DECOMP_STATE_UNKNOWN;
+	stream->do_change_mode = false;
+	stream->sn_bits = 0; /* must be set to 0 until we get some bits */
+	stream->sn_bits_nr = 0;
+	stream->packet_type = ROHC_PACKET_UNKNOWN;
+	stream->crc_failed = false;
 
 	/* empty ROHC packets are not considered as valid */
 	if(remain_rohc_data.len < 1)
@@ -1115,37 +1118,35 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 	}
 
 	/* decode small or large CID */
-	if(!rohc_decomp_decode_cid(decomp, walk, remain_len, ddata))
+	if(!rohc_decomp_decode_cid(decomp, walk, remain_len, &stream->cid,
+	                           &add_cid_len, &large_cid_len))
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		             "failed to decode small or large CID in packet");
 		goto error_malformed;
 	}
-	feedback_infos->cid = ddata->cid;
+	stream->cid_found = true;
 
 	/* check whether the decoded CID is allowed by the decompressor */
-	if(ddata->cid > decomp->medium.max_cid)
+	if(stream->cid > decomp->medium.max_cid)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		             "unexpected CID %zu received: MAX_CID was set to %zu",
-		             ddata->cid, decomp->medium.max_cid);
+		             stream->cid, decomp->medium.max_cid);
 		goto error_no_context;
 	}
 
 	/* skip add-CID if present */
-	if(ddata->addcidUsed)
-	{
-		walk++;
-		remain_len--;
-		rohc_buf_pull(&remain_rohc_data, 1);
-	}
+	walk += add_cid_len;
+	remain_len -= add_cid_len;
+	rohc_buf_pull(&remain_rohc_data, add_cid_len);
 
 	/* find the context according to the CID found in CID,
 	 * create it if needed (and possible) */
-	status = rohc_decomp_find_context(decomp, walk, remain_len, ddata->cid,
-	                                  ddata->large_cid_size, rohc_packet.time,
-	                                  &feedback_infos->profile_id,
-	                                  &ddata->active, &is_new_context);
+	status = rohc_decomp_find_context(decomp, walk, remain_len, stream->cid,
+	                                  large_cid_len, rohc_packet.time,
+	                                  &stream->profile_id, &stream->context,
+	                                  &is_new_context);
 	if(status == ROHC_STATUS_MALFORMED)
 	{
 		/* no additional feedback information to collect */
@@ -1157,67 +1158,75 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 		goto error_no_context;
 	}
 	assert(status == ROHC_STATUS_OK);
-	profile = ddata->active->profile;
-	decomp->last_context = ddata->active;
+	profile = stream->context->profile;
+	decomp->last_context = stream->context;
+	sn_feedback_min_bits = rohc_min(decomp->sn_feedback_min_bits,
+	                                profile->msn_max_bits);
 
 	/* collect information for sending feedback to decompressor */
-	feedback_infos->context_found = true;
-	feedback_infos->mode = ddata->active->mode;
-	feedback_infos->state = ddata->active->state;
+	stream->context_found = true;
+	stream->mode = stream->context->mode;
+	stream->state = stream->context->state;
 	if(!is_new_context)
 	{
-		feedback_infos->sn_bits = ddata->active->profile->get_sn(ddata->active);
-		feedback_infos->sn_bits_nr = ddata->active->profile->msn_max_bits; /* TODO: LSB? */
+		stream->sn_bits = profile->get_sn(stream->context);
+		stream->sn_bits_nr = sn_feedback_min_bits;
+		rohc_decomp_debug(stream->context, "%zu bits required for SN in feedback "
+		                  "(%zu bits required for RTT, %zu max)",
+		                  sn_feedback_min_bits, decomp->sn_feedback_min_bits,
+		                  profile->msn_max_bits);
 	}
 
  	/* detect the type of the ROHC packet */
-	*packet_type = profile->detect_pkt_type(ddata->active, walk, remain_len,
-	                                        ddata->large_cid_size);
-	if((*packet_type) == ROHC_PACKET_UNKNOWN)
+	stream->packet_type =
+		profile->detect_pkt_type(stream->context, walk, remain_len, large_cid_len);
+	if(stream->packet_type == ROHC_PACKET_UNKNOWN)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, profile->id,
 		             "failed to detect ROHC packet type");
 		if(is_new_context)
 		{
-			context_free(ddata->active);
-			ddata->active = NULL;
+			context_free(stream->context);
+			stream->context = NULL;
 			decomp->last_context = NULL;
 		}
 		goto error_malformed;
 	}
-	rohc_decomp_debug(ddata->active, "decode packet as '%s'",
-	                  rohc_get_packet_descr(*packet_type));
+	rohc_decomp_debug(stream->context, "decode packet as '%s'",
+	                  rohc_get_packet_descr(stream->packet_type));
 
 	/* only packets that carry static informations can be received in the
 	 * No Context state, other cannot */
-	if(ddata->active->state == ROHC_DECOMP_STATE_NC &&
-	   !rohc_decomp_packet_carry_static_info(*packet_type))
+	if(stream->state == ROHC_DECOMP_STATE_NC &&
+	   !rohc_decomp_packet_carry_static_info(stream->packet_type))
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, profile->id,
 		             "packet '%s' (%d) does not carry static information, it cannot "
 		             "be received in No Context state",
-		             rohc_get_packet_descr(*packet_type), *packet_type);
+		             rohc_get_packet_descr(stream->packet_type),
+		             stream->packet_type);
 		if(is_new_context)
 		{
-			context_free(ddata->active);
-			ddata->active = NULL;
+			context_free(stream->context);
+			stream->context = NULL;
 			decomp->last_context = NULL;
 		}
 		goto error_malformed;
 	}
 	/* only packets carrying CRC-7 or CRC-8 can be received in the Static Context
 	 * state, other cannot */
-	else if(ddata->active->state == ROHC_DECOMP_STATE_SC &&
-	        !rohc_decomp_packet_carry_crc_7_or_8(*packet_type))
+	else if(stream->state == ROHC_DECOMP_STATE_SC &&
+	        !rohc_decomp_packet_carry_crc_7_or_8(stream->packet_type))
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, profile->id,
 		             "packet '%s' (%d) does not carry 7- or 8-bit CRC, it cannot "
 		             "be received in Static Context state",
-		             rohc_get_packet_descr(*packet_type), *packet_type);
+		             rohc_get_packet_descr(stream->packet_type),
+		             stream->packet_type);
 		if(is_new_context)
 		{
-			context_free(ddata->active);
-			ddata->active = NULL;
+			context_free(stream->context);
+			stream->context = NULL;
 			decomp->last_context = NULL;
 		}
 		goto error_malformed;
@@ -1225,12 +1234,13 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 	/* all packet types are allowed in Full Context state */
 
 	/* only IR packet can create a new context */
-	assert((*packet_type) == ROHC_PACKET_IR || !is_new_context);
+	assert(stream->packet_type == ROHC_PACKET_IR || !is_new_context);
 
-	/* decode the packet thanks to the profile-specific routines */
-	status = rohc_decomp_decode_pkt(decomp, ddata->active, remain_rohc_data,
-	                                ddata->addcidUsed, ddata->large_cid_size,
-	                                uncomp_packet, packet_type);
+	/* decode the packet thanks to the profile-specific routines
+	 * (may change the initial assumption about the packet type) */
+	status = rohc_decomp_decode_pkt(decomp, stream->context, remain_rohc_data,
+	                                add_cid_len, large_cid_len, uncomp_packet,
+	                                &stream->packet_type, &stream->do_change_mode);
 	if(status != ROHC_STATUS_OK)
 	{
 		/* decompression failed, free ressources if necessary */
@@ -1238,8 +1248,8 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 		             "failed to decompress packet (code = %d)", status);
 		if(is_new_context)
 		{
-			context_free(ddata->active);
-			ddata->active = NULL;
+			context_free(stream->context);
+			stream->context = NULL;
 			decomp->last_context = NULL;
 		}
 		goto error;
@@ -1249,21 +1259,31 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 	 * new one if necessary */
 	if(is_new_context)
 	{
-		if(decomp->contexts[ddata->cid] != NULL)
+		if(decomp->contexts[stream->cid] != NULL)
 		{
-			context_free(decomp->contexts[ddata->cid]);
+			context_free(decomp->contexts[stream->cid]);
 		}
-		decomp->contexts[ddata->cid] = ddata->active;
+		decomp->contexts[stream->cid] = stream->context;
 	}
+
+	/* get the SN of the lastest packet successfully decompressed */
+	stream->sn_bits = profile->get_sn(stream->context);
+	stream->sn_bits_nr = sn_feedback_min_bits;
+	rohc_decomp_debug(stream->context, "%zu bits required for SN in feedback "
+	                  "(%zu bits required for RTT, %zu max)",
+	                  sn_feedback_min_bits, decomp->sn_feedback_min_bits,
+	                  profile->msn_max_bits);
 
 skip:
 	return ROHC_STATUS_OK;
 
 error:
+	stream->crc_failed = !!(status == ROHC_STATUS_BAD_CRC);
 	decomp->last_context = NULL;
 	return status;
 
 error_crc:
+	stream->crc_failed = true;
 	decomp->last_context = NULL;
 	return ROHC_STATUS_BAD_CRC;
 
@@ -1300,6 +1320,8 @@ error_no_context:
  * @param[out] uncomp_packet   The uncompressed packet
  * @param[in,out] packet_type  IN:  The type of the ROHC packet to parse
  *                             OUT: The type of the parsed ROHC packet
+ * @param[out] do_change_mode  Whether the profile context wants to change
+ *                             its operational mode or not
  * @return                     ROHC_STATUS_OK if packet is successfully decoded,
  *                             ROHC_STATUS_MALFORMED if packet is malformed,
  *                             ROHC_STATUS_BAD_CRC if a CRC error occurs,
@@ -1311,7 +1333,8 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
                                             const size_t add_cid_len,
                                             const size_t large_cid_len,
                                             struct rohc_buf *const uncomp_packet,
-                                            rohc_packet_t *const packet_type)
+                                            rohc_packet_t *const packet_type,
+                                            bool *const do_change_mode)
 {
 	const struct rohc_decomp_profile *const profile = context->profile;
 	struct rohc_decomp_crc *const extr_crc_bits = &context->volat_ctxt.crc;
@@ -1514,7 +1537,7 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 		{
 			/* update context with decoded values even if we drop the packet */
 			rohc_decomp_update_context(context, decoded_values, payload_len,
-			                           rohc_packet.time);
+			                           rohc_packet.time, do_change_mode);
 
 			context->crc_corr.counter--;
 			rohc_decomp_warn(context, "CID %zu: CRC repair: throw away packet, "
@@ -1597,7 +1620,7 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 
 	/* update context with decoded values */
 	rohc_decomp_update_context(context, decoded_values, payload_len,
-	                           rohc_packet.time);
+	                           rohc_packet.time, do_change_mode);
 
 	/* update statistics */
 	rohc_decomp_stats_add_success(context, rohc_hdr_len, uncomp_hdr_len);
@@ -1693,20 +1716,23 @@ error:
 /**
  * @brief Update context with decoded values
  *
- * @param context            The decompression context
- * @param decoded            The decoded values to update in the context
- * @param payload_len        The length of the packet payload
- * @param pkt_arrival_time   The arrival time of the decoded ROHC packet
+ * @param context              The decompression context
+ * @param decoded              The decoded values to update in the context
+ * @param payload_len          The length of the packet payload
+ * @param pkt_arrival_time     The arrival time of the decoded ROHC packet
+ * @param[out] do_change_mode  Whether the context wants to change its
+ *                             operational mode or not
  */
 static void rohc_decomp_update_context(struct rohc_decomp_ctxt *const context,
-	                                    const void *const decoded,
-	                                    const size_t payload_len,
-	                                    const struct rohc_ts pkt_arrival_time)
+                                       const void *const decoded,
+                                       const size_t payload_len,
+                                       const struct rohc_ts pkt_arrival_time,
+                                       bool *const do_change_mode)
 {
 	struct rohc_decomp_crc_corr_ctxt *const crc_corr = &context->crc_corr;
 
 	/* call the profile-specific callback */
-	context->profile->update_ctxt(context, decoded, payload_len);
+	context->profile->update_ctxt(context, decoded, payload_len, do_change_mode);
 
 	/* update arrival time */
 	crc_corr->arrival_times[crc_corr->arrival_times_index] = pkt_arrival_time;
@@ -1718,387 +1744,584 @@ static void rohc_decomp_update_context(struct rohc_decomp_ctxt *const context,
 
 
 /**
- * @brief Send feedback in Optimistic Mode.
+ * @brief Build a positive ACK feedback
  *
- * @param decomp       The ROHC decompressor
- * @param rohc_status  The type of feedback to send:
- *                      \li ROHC_STATUS_OK = OK (ack),
- *                      \li ROHC_STATUS_NO_CONTEXT = ContextInvalid (S-nack),
- *                      \li ROHC_STATUS_MALFORMED = PackageFailed (Nack)
- * @param cid          The Context ID (CID) to which the feedback is related
- * @param cid_type     The type of CID used for the feedback
- * @param context      The context to which the feedback is related
- * @param[out] feedback_send  The feedback to be transmitted to the remote
- *                            compressor through the feedback channel:
- *                            \li If NULL, the decompression won't generate
- *                                feedback information for its compressor
- *                            \li If not NULL, may store the generated
- *                                feedback at the given address
+ * @param decomp         The ROHC decompressor
+ * @param infos          The information collected on the successfully
+ *                       decompressed packet
+ * @param[out] feedback  The feedback to be transmitted to the remote
+ *                       compressor through the feedback channel
+ * @return               true if the ACK feedback was successfully built
+ *                       (may be 0 byte), false if a problem occurred
  */
-static void d_optimistic_feedback(struct rohc_decomp *decomp,
-                                  const rohc_status_t rohc_status,
-                                  const rohc_cid_t cid,
-                                  const rohc_cid_type_t cid_type,
-                                  struct rohc_decomp_ctxt *context,
-                                  struct rohc_buf *const feedback_send)
+static bool rohc_decomp_feedback_ack(struct rohc_decomp *const decomp,
+                                     const struct rohc_decomp_stream *const infos,
+                                     struct rohc_buf *const feedback)
 {
-	struct d_feedback sfeedback;
-	uint8_t *feedback;
-	size_t feedbacksize;
+	const char mode_short[ROHC_R_MODE + 1] = { '?', 'U', 'O', 'R' };
+	bool do_build_ack = false;
+	size_t k;
 
-	if(context == NULL)
+	assert(infos->cid_found);
+	assert(infos->context_found);
+
+	rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+	           "CID %zu: %s: %s state: %s packet successfully decompressed",
+	           infos->cid, rohc_get_mode_descr(infos->mode),
+	           rohc_decomp_get_state_descr(infos->state),
+	           rohc_get_packet_descr(infos->packet_type));
+
+	/* update all the stats about the feedbacks */
+	decomp->last_pkts_errors <<= 1;
+	decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].needed <<= 1;
+	decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].sent <<= 1;
+	decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_NACK].needed <<= 1;
+	decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_NACK].sent <<= 1;
+	decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_STATIC_NACK].needed <<= 1;
+	decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_STATIC_NACK].sent <<= 1;
+	infos->context->last_pkts_errors <<= 1;
+	infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].needed <<= 1;
+	infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].sent <<= 1;
+	infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_NACK].needed <<= 1;
+	infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_NACK].sent <<= 1;
+	infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_STATIC_NACK].needed <<= 1;
+	infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_STATIC_NACK].sent <<= 1;
+
+	/* force sending an ACK if compressor/decompressor modes mismatch or
+	 * if decompressor just changed its operational mode */
+	if(infos->do_change_mode)
 	{
-		assert(rohc_status == ROHC_STATUS_NO_CONTEXT);
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+		           "force positive ACK because mode changed or compressor "
+		           "reported a different mode");
+		do_build_ack = true;
+	}
+	/* check if the decompressor shall build a positive feedback */
+	else if(infos->mode == ROHC_U_MODE)
+	{
+		/* send ACK(U) with rate-limiting as stated in RFC 3095, §5.3.1.3:
+		 *   To improve performance for the Unidirectional mode over a link that
+		 *   does have a feedback channel, the decompressor MAY send an
+		 *   acknowledgment when decompression succeeds.  Setting the mode
+		 *   parameter in the ACK packet to U indicates that the compressor is to
+		 *   stay in Unidirectional mode. [...] If IR packets continue to arrive,
+		 *   the decompressor MAY repeat the ACK(U), but it SHOULD NOT repeat the
+		 *   ACK(U) continuously.*/
+		do_build_ack = true;
+	}
+	else if(infos->mode == ROHC_O_MODE)
+	{
+		/* feedback logic for O-mode is described in RFC 3095, §5.4.2.2 */
+
+		/* all states: when an IR packet is correctly decompressed, send an ACK(O) */
+		if(infos->packet_type == ROHC_PACKET_IR)
+		{
+			do_build_ack = true;
+		}
+		/* SC state:
+		 *  - when a type 2 or an IR-DYN packet is correctly decompressed,
+		 *    optionally send an ACK(O)
+		 * FC state:
+		 *  - when a type 2 or an IR-DYN packet is correctly decompressed,
+		 *    optionally send an ACK(O)
+		 *  - when a type 0 or 1 packet is correctly decompressed, no
+		 *    feedback is sent */
+		else if(infos->state != ROHC_DECOMP_STATE_NC &&
+		        rohc_decomp_packet_carry_crc_7_or_8(infos->packet_type))
+		{
+			do_build_ack = true;
+		}
+	}
+	else /* R-mode */
+	{
+		assert(0); /* TODO: R-mode not implemented yet */
+		goto error;
 	}
 
-	/* check associated compressor availability */
-	if(context != NULL && context->mode == ROHC_U_MODE)
+	/* stop now if no ACK is required */
+	if(!do_build_ack)
 	{
-		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		           "no associated compressor, do not sent feedback");
-
-		/* only change state if needed */
-		if(rohc_status == ROHC_STATUS_MALFORMED ||
-		   rohc_status == ROHC_STATUS_BAD_CRC)
-		{
-			if(context->state == ROHC_DECOMP_STATE_SC)
-			{
-				rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-				          "U-mode: change from state %d to state %d because "
-				          "of error(s)", context->state, ROHC_DECOMP_STATE_NC);
-				context->state = ROHC_DECOMP_STATE_NC;
-			}
-			else if(context->state == ROHC_DECOMP_STATE_FC)
-			{
-				rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-				          "U-mode: change from state %d to state %d because "
-				          "of error(s)", context->state, ROHC_DECOMP_STATE_SC);
-				context->state = ROHC_DECOMP_STATE_SC;
-			}
-		}
-
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+		           "no need to send a positive ACK");
 		goto skip;
 	}
 
-	/* check CID wrt CID type */
-	if(decomp->medium.cid_type == ROHC_SMALL_CID && cid > ROHC_SMALL_CID_MAX)
+	/* rate-limit the ACKs */
+	decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].needed |= 1;
+	infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].needed |= 1;
+	k = __builtin_popcount(infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].sent) * 100;
+	if(k >= decomp->ack_rate_limits.speed.threshold)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		             "unexpected small CID %zu: not in range [0, %d]", cid,
-		             ROHC_SMALL_CID_MAX);
-		return;
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+		           "do not send a positive ACK because of rate-limiting (%zu of 3200 "
+		           "with threshold %zu)", k, decomp->ack_rate_limits.speed.threshold);
+		goto skip;
 	}
-	else if(cid > ROHC_LARGE_CID_MAX) /* large CID */
-	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		             "unexpected large CID %zu: not in range [0, %d]", cid,
-		             ROHC_LARGE_CID_MAX);
-		return;
-	}
+	rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+	           "should send a positive ACK now (CID = %zu, current mode = %d, "
+	           "target mode = %d, at least %zu bits of SN 0x%x, rate-limiting = "
+	           "%zu of 3200 with threshold %zu)", infos->cid, infos->mode,
+	           decomp->target_mode, infos->sn_bits_nr, infos->sn_bits,
+	           k, decomp->ack_rate_limits.speed.threshold);
+	decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].sent |= 1;
+	infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].sent |= 1;
 
-	/* check CID wrt MAX_CID */
-	if(cid > decomp->medium.max_cid)
+	/* prepare feedback packet if asked by user */
+	if(feedback == NULL)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		             "unexpected CID %zu: not in range [0, %zu]", cid,
-		             decomp->medium.max_cid);
-		return;
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+		           "user choose not to use a feedback channel, do not build any "
+		           "feedback packet");
 	}
-
-	switch(rohc_status)
+	else
 	{
-		case ROHC_STATUS_OK:
+		rohc_feedback_crc_t crc_present;
+		struct d_feedback sfeedback;
+		uint8_t *feedbackp;
+		size_t feedbacksize;
+		size_t feedback_hdr_len;
+
+		/* FEEDBACK-1 or FEEDBACK-2 ? */
+		if(infos->profile_id == ROHC_PROFILE_UNCOMPRESSED ||
+		   (!infos->do_change_mode && infos->sn_bits_nr != 0 && infos->sn_bits_nr <= 8))
 		{
-			rohc_feedback_crc_t crc_present;
-
-			/* create an ACK feedback */
-			if(context->profile->id == ROHC_PROFILE_UNCOMPRESSED)
+			rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+			           "use FEEDBACK-1 as positive feedback");
+			f_feedback1(infos->sn_bits, &sfeedback);
+			crc_present = ROHC_FEEDBACK_NO_CRC;
+		}
+		else
+		{
+			rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+			           "use FEEDBACK-2 as positive ACK(%c) feedback",
+			           mode_short[infos->mode]);
+			if(!f_feedback2(ROHC_ACK_TYPE_ACK, infos->mode, infos->sn_bits,
+			                infos->sn_bits_nr, &sfeedback))
 			{
-				rohc_debug(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-				           "send an ACK feedback");
-				f_feedback1(context->profile->get_sn(context), &sfeedback);
-				crc_present = ROHC_FEEDBACK_NO_CRC;
+				rohc_warning(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+				             "failed to build the ACK feedback");
+				goto error;
+			}
+
+			/* use CRC option if mode change requested */
+			if(infos->do_change_mode)
+			{
+				crc_present = ROHC_FEEDBACK_WITH_CRC;
 			}
 			else
 			{
-				rohc_debug(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-				           "send an ACK(%s) feedback", rohc_get_mode_descr(context->mode));
-				if(!f_feedback2(ROHC_ACK_TYPE_ACK, context->mode,
-				                context->profile->get_sn(context), &sfeedback))
-				{
-					rohc_decomp_warn(context, "failed to build the ACK feedback");
-					return;
-				}
-				crc_present = ROHC_FEEDBACK_WITH_CRC;
+				crc_present = ROHC_FEEDBACK_NO_CRC;
 			}
-			feedback = f_wrap_feedback(&sfeedback, cid, cid_type, crc_present,
-			                           decomp->crc_table_8, &feedbacksize);
-			if(feedback == NULL)
-			{
-				rohc_decomp_warn(context, "failed to wrap the ACK feedback");
-				return;
-			}
-
-			if(feedback_send != NULL)
-			{
-				const size_t hdr_len = 1 + (feedbacksize < 8 ? 0 : 1);
-				if((hdr_len + feedbacksize) <= rohc_buf_avail_len(*feedback_send))
-				{
-					if(feedbacksize < 8)
-					{
-						rohc_buf_byte(*feedback_send) = 0xf0 | feedbacksize;
-					}
-					else
-					{
-						rohc_buf_byte(*feedback_send) = 0xf0;
-						rohc_buf_byte_at(*feedback_send, 1) = feedbacksize;
-					}
-					feedback_send->len += hdr_len;
-					rohc_buf_append(feedback_send, feedback, feedbacksize);
-				}
-			}
-
-			/* destroy the feedback */
-			zfree(feedback);
-			break;
 		}
 
-		case ROHC_STATUS_NO_CONTEXT:
+		/* build the feedback packet */
+		feedbackp = f_wrap_feedback(&sfeedback, infos->cid, infos->cid_type,
+		                            crc_present, decomp->crc_table_8, &feedbacksize);
+		if(feedbackp == NULL)
 		{
-			/* Uncompressed profile handles only positive ACKs */
-			assert(context->profile->id != ROHC_PROFILE_UNCOMPRESSED);
-
-			/* create a STATIC NACK feedback */
-			rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			          "send a STATIC-NACK feedback for CID %zu", cid);
-			if(!f_feedback2(ROHC_ACK_TYPE_STATIC_NACK, ROHC_O_MODE,
-			                0 /* unknown SN */, &sfeedback))
-			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-				             "failed to build the STATIC-NACK feedback");
-				return;
-			}
-			if(!f_add_option(&sfeedback, ROHC_FEEDBACK_OPT_SN_NOT_VALID, NULL, 0))
-			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-				             "failed to add the SN-NOT-VALID option to the "
-				             "STATIC-NACK feedback");
-				return;
-			}
-			feedback = f_wrap_feedback(&sfeedback, cid, cid_type,
-			                           ROHC_FEEDBACK_WITH_CRC,
-			                           decomp->crc_table_8, &feedbacksize);
-			if(feedback == NULL)
-			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-				             "failed to wrap the STATIC-NACK feedback");
-				return;
-			}
-
-			if(feedback_send != NULL)
-			{
-				const size_t hdr_len = 1 + (feedbacksize < 8 ? 0 : 1);
-				if((hdr_len + feedbacksize) <= rohc_buf_avail_len(*feedback_send))
-				{
-					if(feedbacksize < 8)
-					{
-						rohc_buf_byte(*feedback_send) = 0xf0 | feedbacksize;
-					}
-					else
-					{
-						rohc_buf_byte(*feedback_send) = 0xf0;
-						rohc_buf_byte_at(*feedback_send, 1) = feedbacksize;
-					}
-					feedback_send->len += hdr_len;
-					rohc_buf_append(feedback_send, feedback, feedbacksize);
-				}
-			}
-
-			/* destroy the feedback */
-			zfree(feedback);
-			break;
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+			             "failed to wrap the ACK feedback");
+			goto error;
 		}
 
-		case ROHC_STATUS_MALFORMED:
-		case ROHC_STATUS_BAD_CRC:
-		case ROHC_STATUS_OUTPUT_TOO_SMALL:
+		/* copy the feedback to the buffer provided by the user */
+		/* TODO: build feedback directly into the provided buffer */
+		feedback_hdr_len = 1 + (feedbacksize < 8 ? 0 : 1);
+		if((feedback_hdr_len + feedbacksize) <= rohc_buf_avail_len(*feedback))
 		{
-			/* Uncompressed profile handles only positive ACKs */
-			assert(context->profile->id != ROHC_PROFILE_UNCOMPRESSED);
-
-			switch(context->state)
+			if(feedbacksize < 8)
 			{
-				case ROHC_DECOMP_STATE_NC:
-					/* create a STATIC-NACK feedback */
-					rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-					          "send a STATIC-NACK feedback for CID %zu", cid);
-					if(!f_feedback2(ROHC_ACK_TYPE_STATIC_NACK, context->mode,
-					                context->profile->get_sn(context), &sfeedback))
-					{
-						rohc_decomp_warn(context, "failed to build the STATIC-NACK "
-						                 "feedback");
-						return;
-					}
-					feedback = f_wrap_feedback(&sfeedback, cid, cid_type,
-					                           ROHC_FEEDBACK_WITH_CRC,
-					                           decomp->crc_table_8, &feedbacksize);
-					if(feedback == NULL)
-					{
-						rohc_decomp_warn(context, "failed to create a STATIC-NACK "
-						                 "feedback");
-						return;
-					}
-
-					if(feedback_send != NULL)
-					{
-						const size_t hdr_len = 1 + (feedbacksize < 8 ? 0 : 1);
-						if((hdr_len + feedbacksize) <= rohc_buf_avail_len(*feedback_send))
-						{
-							if(feedbacksize < 8)
-							{
-								rohc_buf_byte(*feedback_send) = 0xf0 | feedbacksize;
-							}
-							else
-							{
-								rohc_buf_byte(*feedback_send) = 0xf0;
-								rohc_buf_byte_at(*feedback_send, 1) = feedbacksize;
-							}
-							feedback_send->len += hdr_len;
-							rohc_buf_append(feedback_send, feedback, feedbacksize);
-						}
-					}
-
-					/* destroy the feedback */
-					zfree(feedback);
-					break;
-
-				case ROHC_DECOMP_STATE_SC:
-				case ROHC_DECOMP_STATE_FC:
-					/* create a NACK feedback */
-					rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-					          "send a NACK feedback for CID %zu", cid);
-					if(!f_feedback2(ROHC_ACK_TYPE_NACK, context->mode,
-					                context->profile->get_sn(context), &sfeedback))
-					{
-						rohc_decomp_warn(context, "failed to build the NACK feedback");
-						return;
-					}
-					feedback = f_wrap_feedback(&sfeedback, cid, cid_type,
-					                           ROHC_FEEDBACK_WITH_CRC,
-					                           decomp->crc_table_8, &feedbacksize);
-					if(feedback == NULL)
-					{
-						rohc_decomp_warn(context, "failed to create the NACK feedback");
-						return;
-					}
-
-					if(feedback_send != NULL)
-					{
-						const size_t hdr_len = 1 + (feedbacksize < 8 ? 0 : 1);
-						if((hdr_len + feedbacksize) <= rohc_buf_avail_len(*feedback_send))
-						{
-							if(feedbacksize < 8)
-							{
-								rohc_buf_byte(*feedback_send) = 0xf0 | feedbacksize;
-							}
-							else
-							{
-								rohc_buf_byte(*feedback_send) = 0xf0;
-								rohc_buf_byte_at(*feedback_send, 1) = feedbacksize;
-							}
-							feedback_send->len += hdr_len;
-							rohc_buf_append(feedback_send, feedback, feedbacksize);
-						}
-					}
-
-					/* change state */
-					if(context->state == ROHC_DECOMP_STATE_SC)
-					{
-						rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-						          "change from state %d to state %d because of "
-						          "decompression error(s)", context->state,
-						          ROHC_DECOMP_STATE_NC);
-						context->state = ROHC_DECOMP_STATE_NC;
-					}
-					if(context->state == ROHC_DECOMP_STATE_FC)
-					{
-						rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-						          "change from state %d to state %d because of "
-						          "decompression error(s)", context->state,
-						          ROHC_DECOMP_STATE_SC);
-						context->state = ROHC_DECOMP_STATE_SC;
-					}
-
-					/* destroy the feedback */
-					zfree(feedback);
-					break;
-
-				default:
-					rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-					             "unknown state value (%d), should not happen",
-					             context->state);
-					break;
+				rohc_buf_byte(*feedback) = 0xf0 | feedbacksize;
 			}
-			break;
+			else
+			{
+				rohc_buf_byte(*feedback) = 0xf0;
+				rohc_buf_byte_at(*feedback, 1) = feedbacksize;
+			}
+			feedback->len += feedback_hdr_len;
+			rohc_buf_append(feedback, feedbackp, feedbacksize);
 		}
 
-		case ROHC_STATUS_SEGMENT:
-			assert(0); /* should never happen */
-			break;
+		if(feedback->len > 0)
+		{
+			rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+			           "decompressor built a %zu-byte positive feedback",
+			           feedback->len);
+		}
 
-		case ROHC_STATUS_ERROR:
-			/* TODO: handle this case */
-			break;
+		/* destroy the temporary feedback buffer */
+		free(feedbackp);
 	}
 
 skip:
-	;
+	return true;
+
+error:
+	return false;
 }
 
 
 /**
- * @brief Send feedback depending on the mode: Unidirectional, Optimistic or Reliable.
+ * @brief Build a negative ACK feedback
  *
- * @param decomp       The ROHC decompressor
- * @param rohc_status  The type of feedback to send:
- *                      \li ROHC_STATUS_OK = OK (ack),
- *                      \li ROHC_STATUS_NO_CONTEXT = ContextInvalid (S-nack),
- *                      \li ROHC_STATUS_MALFORMED = PackageFailed (Nack)
- * @param cid          The Context ID (CID) to which the feedback is related
- * @param cid_type     The type of CID used for the feedback
- * @param mode         The mode in which the ROHC decompressor operates:
- *                     ROHC_U_MODE, ROHC_O_MODE or ROHC_R_MODE
- * @param context      The context to which the feedback is related
- * @param[out] feedback_send  The feedback to be transmitted to the remote
- *                            compressor through the feedback channel:
- *                            \li If NULL, the decompression won't generate
- *                                feedback information for its compressor
- *                            \li If not NULL, may store the generated
- *                                feedback at the given address
+ * There are two types of negative feedback: NACK and STATIC-NACK.
+ *
+ * @param decomp         The ROHC decompressor
+ * @param infos          The information collected on the failed
+ *                       decompressed packet
+ * @param[out] feedback  The feedback to be transmitted to the remote
+ *                       compressor through the feedback channel (may be NULL)
+ * @return               true if the ACK feedback was successfully built
+ *                       (may be 0 byte), false if a problem occurred
  */
-static void d_operation_mode_feedback(struct rohc_decomp *decomp,
-                                      const rohc_status_t rohc_status,
-                                      const uint16_t cid,
-                                      const rohc_cid_type_t cid_type,
-                                      int mode,
-                                      struct rohc_decomp_ctxt *context,
-                                      struct rohc_buf *const feedback_send)
+static bool rohc_decomp_feedback_nack(struct rohc_decomp *const decomp,
+                                      const struct rohc_decomp_stream *const infos,
+                                      struct rohc_buf *const feedback)
 {
-	switch(mode)
+	bool do_downward_transition = false;
+	bool do_build_ack = false;
+	rohc_ack_type_t ack_type;
+	size_t threshold_too_quickly;
+	size_t k_too_quickly;
+	size_t k_too_many;
+
+	/* update all the stats about the feedbacks */
+	decomp->last_pkts_errors <<= 1;
+	decomp->last_pkts_errors |= 1;
+	decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].needed <<= 1;
+	decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].sent <<= 1;
+	decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_NACK].needed <<= 1;
+	decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_NACK].sent <<= 1;
+	decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_STATIC_NACK].needed <<= 1;
+	decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_STATIC_NACK].sent <<= 1;
+	if(infos->context != NULL)
 	{
-		case ROHC_U_MODE:
-			/* no feedback needed */
-			//break;
-
-		case ROHC_O_MODE:
-			d_optimistic_feedback(decomp, rohc_status, cid, cid_type, context,
-			                      feedback_send);
-			break;
-
-		case ROHC_R_MODE:
-			/* TODO: send feedback (not implemented) */
-			break;
+		infos->context->last_pkts_errors <<= 1;
+		infos->context->last_pkts_errors |= 1;
+		infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].needed <<= 1;
+		infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].sent <<= 1;
+		infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_NACK].needed <<= 1;
+		infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_NACK].sent <<= 1;
+		infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_STATIC_NACK].needed <<= 1;
+		infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_STATIC_NACK].sent <<= 1;
 	}
+
+	/* the decompressor cannot warn the compressor if the CID is not identified
+	 * (this happens only if packet is malformed) */
+	if(!infos->cid_found)
+	{
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+		           "do not perform downward state transition nor send negative "
+		           "feedback to compressor since CID was not identified");
+		goto skip;
+	}
+
+	if(infos->context_found)
+	{
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+		           "CID %zu: %s: %s state: %s packet %s", infos->cid,
+		           rohc_get_mode_descr(infos->mode),
+		           rohc_decomp_get_state_descr(infos->state),
+		           rohc_get_packet_descr(infos->packet_type),
+		           infos->crc_failed ? "failed the CRC check" : "received");
+	}
+	else
+	{
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+		           "CID %zu: packet failed to be parsed", infos->cid);
+	}
+
+	/* check if the decompressor shall build a negative feedback */
+	if(!infos->context_found)
+	{
+		/* RFC says nothing about negative feedbacks for malformed packets, but
+		 * it seems useful to tell the compressor to got back to lower states
+		 * if a packet failed to be parsed */
+		ack_type = ROHC_ACK_TYPE_STATIC_NACK;
+		do_downward_transition = false; /* impossible w/o context */
+		do_build_ack = !!(decomp->target_mode > ROHC_U_MODE);
+	}
+	else if(infos->profile_id == ROHC_PROFILE_UNCOMPRESSED)
+	{
+		/* the Uncompressed profile does not use negative feedback nor FEEDBACK-2 */
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+		           "do not perform downward state transition nor send negative "
+		           "feedback for the Uncompressed profile");
+		goto skip;
+	}
+	else if(infos->mode == ROHC_U_MODE)
+	{
+		/* U-mode does not use negative feedback */
+		ack_type = ROHC_ACK_TYPE_NACK;
+		do_downward_transition = true;
+		do_build_ack = false;
+	}
+	else if(infos->mode == ROHC_O_MODE)
+	{
+		/* feedback logic for O-mode is described in RFC 3095, §5.4.2.2 */
+
+		/* NC state: when receiving a type 0, 1, 2 or IR-DYN packet, or an IR
+		 * packet has failed the CRC check, send a STATIC-NACK(O), subject to the
+		 * considerations at the beginning of section 5.7.6 */
+		if(infos->state == ROHC_DECOMP_STATE_NC)
+		{
+			ack_type = ROHC_ACK_TYPE_STATIC_NACK;
+			do_downward_transition = true;
+			do_build_ack = true;
+		}
+		/* SC state:
+		 *  - when a type 0 or 1 packet is received, treat it as a mismatching
+		 *    CRC and use the logic of section 5.3.2.2.3 to decide if a NACK(O)
+		 *    should be sent
+		 *  - when decompression of a type 2 packet, an IR-DYN packet or an
+		 *    IR packet has failed, use the logic of section 5.3.2.2.3 to
+		 *    decide if a STATIC-NACK(O) should be sent */
+		else if(infos->state == ROHC_DECOMP_STATE_SC)
+		{
+			if(!rohc_decomp_packet_carry_crc_7_or_8(infos->packet_type))
+			{
+				ack_type = ROHC_ACK_TYPE_NACK;
+				do_downward_transition = true;
+				do_build_ack = true;
+			}
+			else
+			{
+				ack_type = ROHC_ACK_TYPE_STATIC_NACK;
+				do_downward_transition = true;
+				do_build_ack = true;
+			}
+		}
+		/* FC state: when any packet fails the CRC check, use the logic of
+		 * 5.3.2.2.3 to decide if a NACK(O) should be sent */
+		else
+		{
+			ack_type = ROHC_ACK_TYPE_NACK;
+			do_downward_transition = true;
+			do_build_ack = true;
+		}
+	}
+	else /* R-mode */
+	{
+		assert(0); /* TODO: R-mode not implemented yet */
+		goto error;
+	}
+
+	/* stop now if no downward state transition nor NACK is required */
+	if(!do_build_ack && !do_downward_transition)
+	{
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+		           "no need to perform a downward state transition nor send a "
+		           "negative ACK");
+		goto skip;
+	}
+	assert(ack_type == ROHC_ACK_TYPE_NACK || ack_type == ROHC_ACK_TYPE_STATIC_NACK);
+
+	/* rate-limit the downward state transitions and NACKs */
+	if(infos->context != NULL)
+	{
+		decomp->last_pkt_feedbacks[ack_type].needed |= 1;
+		infos->context->last_pkt_feedbacks[ack_type].needed |= 1;
+		k_too_quickly = __builtin_popcount(infos->context->last_pkts_errors) * 100;
+		k_too_many = __builtin_popcount(infos->context->last_pkt_feedbacks[ack_type].sent) * 100;
+	}
+	else
+	{
+		decomp->last_pkt_feedbacks[ack_type].needed |= 1;
+		k_too_quickly = __builtin_popcount(decomp->last_pkts_errors) * 100;
+		k_too_many = __builtin_popcount(decomp->last_pkt_feedbacks[ack_type].sent) * 100;
+	}
+	if(ack_type == ROHC_ACK_TYPE_NACK)
+	{
+		threshold_too_quickly = decomp->ack_rate_limits.nack.threshold;
+	}
+	else
+	{
+		threshold_too_quickly = decomp->ack_rate_limits.static_nack.threshold;
+	}
+	if(k_too_quickly < threshold_too_quickly)
+	{
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+		           "avoid sending feedback too quickly (%zu of 3200 with threshold %zu)",
+		           k_too_quickly, threshold_too_quickly);
+
+		/* force sending a negative ACK if compressor/decompressor modes mismatch
+		 * or if decompressor just changed its operational mode */
+		if(do_build_ack && infos->do_change_mode)
+		{
+			rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+			           "force negative ACK because mode changed or compressor "
+			           "reported a different mode");
+			do_build_ack = true;
+		}
+		else
+		{
+			do_build_ack = false;
+		}
+		do_downward_transition = false;
+	}
+	else if(k_too_quickly >= (threshold_too_quickly + 100) &&
+	        k_too_many >= decomp->ack_rate_limits.speed.threshold)
+	{
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+		           "rate-limiting successive feedbacks (%zu of 3200 with threshold "
+		           "%zu)", k_too_many, decomp->ack_rate_limits.speed.threshold);
+
+		/* force sending a negative ACK if compressor/decompressor modes mismatch
+		 * or if decompressor just changed its operational mode */
+		if(do_build_ack && infos->do_change_mode)
+		{
+			rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+			           "force negative ACK because mode changed or compressor "
+			           "reported a different mode");
+			do_build_ack = true;
+		}
+		else
+		{
+			do_build_ack = false;
+		}
+		do_downward_transition = false;
+	}
+
+	/* update informations if feedback is sent or downward transition taken */
+	if(do_build_ack || do_downward_transition)
+	{
+		decomp->last_pkt_feedbacks[ack_type].sent |= 1;
+		if(infos->context != NULL)
+		{
+			infos->context->last_pkt_feedbacks[ack_type].sent |= 1;
+		}
+	}
+
+	/* prepare feedback packet if needed and asked by user */
+	if(!do_build_ack)
+	{
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+		           "do not send a negative ACK");
+	}
+	else if(feedback == NULL)
+	{
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+		           "user choose not to use a feedback channel, do not build any "
+		           "feedback packet");
+	}
+	else
+	{
+		rohc_feedback_crc_t crc_present;
+		struct d_feedback sfeedback;
+		uint8_t *feedbackp;
+		size_t feedbacksize;
+		size_t feedback_hdr_len;
+
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+		           "should send a negative ACK (CID = %zu, NACK type = %d, current "
+		           "mode = %d, target mode = %d, at least %zu bits of SN 0x%x, "
+		           "rate-limiting = %zu of 3200 with threshold %zu and %zu of 3200 "
+		           "with threshold %zu)", infos->cid, ack_type, infos->mode,
+		           decomp->target_mode, infos->sn_bits_nr, infos->sn_bits,
+		           k_too_quickly, threshold_too_quickly,
+		           k_too_many, decomp->ack_rate_limits.speed.threshold);
+
+		/* prepare FEEDBACK-2 */
+		if(!f_feedback2(ack_type, infos->mode, infos->sn_bits, infos->sn_bits_nr,
+		                &sfeedback))
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+			             "failed to build the (STATIC-)NACK feedback");
+			goto error;
+		}
+
+		/* use CRC option if mode change requested */
+		if(infos->do_change_mode)
+		{
+			crc_present = ROHC_FEEDBACK_WITH_CRC;
+		}
+		else
+		{
+			crc_present = ROHC_FEEDBACK_NO_CRC;
+		}
+
+		/* build the feedback packet */
+		feedbackp = f_wrap_feedback(&sfeedback, infos->cid, infos->cid_type,
+		                           crc_present, decomp->crc_table_8, &feedbacksize);
+		if(feedbackp == NULL)
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+			             "failed to wrap the (STATIC-)NACK feedback");
+			goto error;
+		}
+
+		/* copy the feedback to the buffer provided by the user */
+		/* TODO: build feedback directly into the provided buffer */
+		feedback_hdr_len = 1 + (feedbacksize < 8 ? 0 : 1);
+		if((feedback_hdr_len + feedbacksize) <= rohc_buf_avail_len(*feedback))
+		{
+			if(feedbacksize < 8)
+			{
+				rohc_buf_byte(*feedback) = 0xf0 | feedbacksize;
+			}
+			else
+			{
+				rohc_buf_byte(*feedback) = 0xf0;
+				rohc_buf_byte_at(*feedback, 1) = feedbacksize;
+			}
+			feedback->len += feedback_hdr_len;
+			rohc_buf_append(feedback, feedbackp, feedbacksize);
+		}
+
+		if(feedback->len > 0)
+		{
+			rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+			           "decompressor built a %zu-byte negative feedback",
+			           feedback->len);
+		}
+
+		/* destroy the temporary feedback buffer */
+		free(feedbackp);
+	}
+
+	/* upon decompression failure, perform downward transitions if context is
+	 * still available (new contexts are destroyed upon decompression error) */
+	if(!do_downward_transition || infos->context == NULL)
+	{
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+		           "do not perform a downward state transition");
+	}
+	else
+	{
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+		           "perform a downward state transition now (CID = %zu, NACK "
+		           "type = %d, current mode = %d, target mode = %d, rate-limiting "
+		           "= %zu of 3200 with threshold %zu and %zu of 3200 with "
+		           "threshold %zu)", infos->cid, ack_type, infos->mode,
+		           decomp->target_mode, k_too_quickly, threshold_too_quickly,
+		           k_too_many, decomp->ack_rate_limits.speed.threshold);
+
+		if(infos->state == ROHC_DECOMP_STATE_SC)
+		{
+			rohc_info(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+			          "change from state %d to state %d because of error(s)",
+			          infos->state, ROHC_DECOMP_STATE_NC);
+			infos->context->state = ROHC_DECOMP_STATE_NC;
+		}
+		else if(infos->state == ROHC_DECOMP_STATE_FC)
+		{
+			rohc_info(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+			          "change from state %d to state %d because of error(s)",
+			          infos->state, ROHC_DECOMP_STATE_SC);
+			infos->context->state = ROHC_DECOMP_STATE_SC;
+		}
+		else
+		{
+			rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+			           "stay in state %d because of error(s)", infos->context->state);
+		}
+	}
+
+skip:
+	return true;
+
+error:
+	return false;
 }
 
 
@@ -2426,6 +2649,10 @@ error:
         size_t mrru = 500;
         ...
 \endcode
+ * \snippet test_segment.c create ROHC decompressor
+ * \code
+        ...
+\endcode
  * \snippet test_segment.c set decompressor MRRU
  * \code
         ...
@@ -2507,6 +2734,323 @@ bool rohc_decomp_get_mrru(const struct rohc_decomp *const decomp,
 	}
 
 	*mrru = decomp->mrru;
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Set the number of packets sent during one Round-Trip Time (RTT).
+ *
+ * Set the maximum number of packets sent in worst case by the remote ROHC
+ * compressor for one given stream (ie. one compression/decompression context)
+ * during one Round-Trip Time (RTT).
+ *
+ * The number of packets sent by the remote ROHC compressor is used to estimate
+ * how many SN bits those feedbacks shall transmit to avoid any ambiguity at
+ * compressor about the ROHC packet that is (n)acknowledged by the decompressor.
+ *
+ * The pRTT value must be in range [0 ; SIZE_MAX/2[. If set to 0, all SN bits
+ * are always transmitted.
+ *
+ * The default value is 50 packets / RTT, ie. a RTT of 1 second with one packet
+ * transmitted every 20 milliseconds (classic VoIP stream). If your network
+ * streams and conditions differ, change the default value.
+ *
+ * @param decomp  The ROHC decompressor
+ * @param prtt    The number of packets sent during one RTT
+ * @return        true if the new value was successfully set, false otherwise
+ *
+ * @ingroup rohc_decomp
+ *
+ * \par Example:
+ * \snippet test_feedback2.c define ROHC decompressor
+ * \code
+        rohc_cid_type_t cid_type = ROHC_SMALL_CID;
+        rohc_cid_t max_cid = ROHC_SMALL_CID_MAX;
+        ...
+\endcode
+ * \snippet test_feedback2.c create ROHC decompressor
+ * \code
+        ...
+\endcode
+ * \snippet test_feedback2.c set decompressor pRTT
+ * \code
+        ...
+\endcode
+ *
+ * @see rohc_decomp_get_prtt
+ * @see rohc_decompress3
+ */
+bool rohc_decomp_set_prtt(struct rohc_decomp *const decomp,
+                          const size_t prtt)
+{
+	/* decompressor must be valid */
+	if(decomp == NULL)
+	{
+		/* cannot print a trace without a valid decompressor */
+		goto error;
+	}
+
+	/* new pRTT must be in range [0, SIZE_MAX] */
+	if(prtt >= (SIZE_MAX / 2))
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		             "unexpected pRTT value: must be in range [0, %zu]",
+		             SIZE_MAX);
+		goto error;
+	}
+
+	/* set new pRTT */
+	decomp->prtt = prtt;
+	rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+	           "pRTT is now set to %zu", decomp->prtt);
+
+	/* compute the minimum number of SN bits to transmit to the remote
+	 * compressor in the positive or negative feedbacks in order to avoid
+	 * any ambiguity at compressor about the ROHC packet that is
+	 * (n)acknowledged by the decompressor */
+	decomp->sn_feedback_min_bits = sizeof(uint32_t) * 8;
+	if(decomp->prtt != 0)
+	{
+		decomp->sn_feedback_min_bits -= __builtin_clz(decomp->prtt);
+	}
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Get the number of packets sent during one Round-Trip Time (RTT).
+ *
+ * Get the maximum number of packets sent in worst case by the remote ROHC
+ * compressor for one given stream (ie. one compression/decompression context)
+ * during one Round-Trip Time (RTT).
+ *
+ * The number of packets sent by the remote ROHC compressor is used to estimate
+ * how many SN bits those feedbacks shall transmit to avoid any ambiguity at
+ * compressor about the ROHC packet that is (n)acknowledged by the decompressor.
+ *
+ * The pRTT value must be in range [0 ; SIZE_MAX/2[. If set to 0, all SN bits
+ * are always transmitted.
+ *
+ * The default value is 50 packets / RTT, ie. a RTT of 1 second with one packet
+ * transmitted every 20 milliseconds (classic VoIP stream). If your network
+ * streams and conditions differ, change the default value.
+ *
+ * @param decomp     The ROHC decompressor
+ * @param[out] prtt  The number of packets sent during one RTT
+ * @return           true if pRTT was successfully retrieved, false otherwise
+ *
+ * @ingroup rohc_decomp
+ *
+ * @see rohc_decomp_set_prtt
+ * @see rohc_decompress3
+ */
+bool rohc_decomp_get_prtt(const struct rohc_decomp *const decomp,
+                          size_t *const prtt)
+{
+	if(decomp == NULL || prtt == NULL)
+	{
+		goto error;
+	}
+
+	*prtt = decomp->prtt;
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Set the rate limits for feedbacks
+ *
+ * Set the rate limits for positive feedbacks (ACK) and negative feedbacks (NACK
+ * and STATIC-NACK).
+ *
+ * There are 3 different rate limits:
+ *  \li the rate limit to avoid sending the same type of feedback too often:
+ *      it applies to all feedback types (ACK, NACK, STATIC-NACK) and it is
+ *      specified by the parameters \e k and \e n ;
+ *  \li the rate limit to avoid sending NACKs too quickly after a sporadic CRC
+ *      failure: it is specified by the parameters \e k_1 and \e n_1 ;
+ *  \li the rate limit to avoid sending STATIC-NACKs too quickly after a sporadic
+ *      CRC failure: it is specified by the parameters \e k_2 and \e n_2 ;
+ *
+ * In all 3 cases above, the \e k/k_1/k_2 and \e n/n_1/n_2 parameters define
+ * 3 ratios of packets:
+ *  \li a feedback is sent every \e k packets out of \e n packets that cause
+ *      the same feedback type to be sent ;
+ *  \li a NACK is not sent before \e k_1 packets out of \e n_1 packets failed
+ *      because of a CRC failure in the Full Context state ;
+ *  \li a STATIC-NACK is not sent before \e k_1 packets out of \e n_1 packets
+ *      failed because of a CRC failure in the Static Context state ;
+ *
+ * The default values are:
+ *  \li k   =  1 and n   = default pRTT (see rohc_decomp_set_prtt for details)
+ *  \li k_1 = 30 and n_1 = 100, ie. 30%
+ *  \li k_2 = 30 and n_2 = 100, ie. 30%
+ *
+ * If your network streams and conditions differ, change the default value.
+ *
+ * The n/n_1/n_2 values shall not be zero.
+ *
+ * @param decomp  The ROHC decompressor
+ * @param k       The k rate-limit parameter to avoid sending feedback too often
+ * @param n       The n rate-limit parameter to avoid sending feedback too often
+ * @param k_1     The k_1 rate-limit parameter to avoid sending NACKs too quickly
+ * @param n_1     The n_1 rate-limit parameter to avoid sending NACKs too quickly
+ * @param k_2     The k_2 rate-limit parameter to avoid sending STATIC-NACKs too quickly
+ * @param n_2     The n_2 rate-limit parameter to avoid sending STATIC-NACKs too quickly
+ * @return        true if the new values were successfully set, false otherwise
+ *
+ * @ingroup rohc_decomp
+ *
+ * \par Example:
+ * \snippet test_lost_packet.c define ROHC decompressor
+ * \code
+        ...
+\endcode
+ * \snippet test_lost_packet.c create ROHC decompressor
+ * \code
+        ...
+\endcode
+ * \snippet test_lost_packet.c set decompressor rate limits
+ * \code
+        ...
+\endcode
+ *
+ * @see rohc_decomp_get_rate_limits
+ * @see rohc_decomp_set_prtt
+ * @see rohc_decomp_get_prtt
+ * @see rohc_decompress3
+ */
+bool rohc_decomp_set_rate_limits(struct rohc_decomp *const decomp,
+                                 const size_t k, const size_t n,
+                                 const size_t k_1, const size_t n_1,
+                                 const size_t k_2, const size_t n_2)
+{
+	/* decompressor must be valid */
+	if(decomp == NULL)
+	{
+		/* cannot print a trace without a valid decompressor */
+		goto error;
+	}
+
+	/* n values are used as divisors */
+	if(n == 0 || n_1 == 0 || n_2 == 0)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		             "rate-limits n/n_1/n_2 shall not be 0");
+		goto error;
+	}
+
+	/* set new rate-limits */
+	decomp->ack_rate_limits.speed.k = k;
+	decomp->ack_rate_limits.speed.n = n;
+	decomp->ack_rate_limits.nack.k = k_1;
+	decomp->ack_rate_limits.nack.n = n_1;
+	decomp->ack_rate_limits.static_nack.k = k_2;
+	decomp->ack_rate_limits.static_nack.n = n_2;
+
+	/* compute the rate-limit thresholds */
+	decomp->ack_rate_limits.speed.threshold =
+		decomp->ack_rate_limits.speed.k * 32 * 100 / decomp->ack_rate_limits.speed.n;
+	decomp->ack_rate_limits.nack.threshold =
+		decomp->ack_rate_limits.nack.k * 32 * 100 / decomp->ack_rate_limits.nack.n;
+	decomp->ack_rate_limits.static_nack.threshold =
+		decomp->ack_rate_limits.static_nack.k * 32 * 100 /
+		decomp->ack_rate_limits.static_nack.n;
+
+	rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+	           "rate-limits are now set to: %zu/%zu (all), %zu/%zu (NACK), "
+	           "%zu/%zu (STATIC-NACK)",
+	           decomp->ack_rate_limits.speed.k, decomp->ack_rate_limits.speed.n,
+	           decomp->ack_rate_limits.nack.k, decomp->ack_rate_limits.nack.n,
+	           decomp->ack_rate_limits.static_nack.k,
+	           decomp->ack_rate_limits.static_nack.n);
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Get the rate limits for feedbacks currently configured
+ *
+ * Get the rate limits for positive feedbacks (ACK) and negative feedbacks (NACK
+ * and STATIC-NACK).
+ *
+ * There are 3 different rate limits:
+ *  \li the rate limit to avoid sending the same type of feedback too often:
+ *      it applies to all feedback types (ACK, NACK, STATIC-NACK) and it is
+ *      specified by the parameters \e k and \e n ;
+ *  \li the rate limit to avoid sending NACKs too quickly after a sporadic CRC
+ *      failure: it is specified by the parameters \e k_1 and \e n_1 ;
+ *  \li the rate limit to avoid sending STATIC-NACKs too quickly after a sporadic
+ *      CRC failure: it is specified by the parameters \e k_2 and \e n_2 ;
+ *
+ * In all 3 cases above, the \e k/k_1/k_2 and \e n/n_1/n_2 parameters define
+ * 3 ratios of packets:
+ *  \li a feedback is sent every \e k packets out of \e n packets that cause
+ *      the same feedback type to be sent ;
+ *  \li a NACK is not sent before \e k_1 packets out of \e n_1 packets failed
+ *      because of a CRC failure in the Full Context state ;
+ *  \li a STATIC-NACK is not sent before \e k_1 packets out of \e n_1 packets
+ *      failed because of a CRC failure in the Static Context state ;
+ *
+ * The default values are:
+ *  \li k   =  1 and n   = default pRTT (see rohc_decomp_set_prtt for details)
+ *  \li k_1 = 30 and n_1 = 100, ie. 30%
+ *  \li k_2 = 30 and n_2 = 100, ie. 30%
+ *
+ * If your network streams and conditions differ, change the default value.
+ *
+ * @param decomp    The ROHC decompressor
+ * @param[out] k    The k rate-limit parameter to avoid sending feedback too often
+ * @param[out] n    The n rate-limit parameter to avoid sending feedback too often
+ * @param[out] k_1  The k_1 rate-limit param. to avoid sending NACKs too quickly
+ * @param[out] n_1  The n_1 rate-limit param. to avoid sending NACKs too quickly
+ * @param[out] k_2  The k_2 rate-limit param. to avoid sending STATIC-NACKs too quickly
+ * @param[out] n_2  The n_2 rate-limit param. to avoid sending STATIC-NACKs too quickly
+ * @return          true if rate-limits were successfully retrieved,
+ *                  false otherwise
+ *
+ * @ingroup rohc_decomp
+ *
+ * @see rohc_decomp_set_rate_limits
+ * @see rohc_decomp_set_prtt
+ * @see rohc_decomp_get_prtt
+ * @see rohc_decompress3
+ */
+bool rohc_decomp_get_rate_limits(const struct rohc_decomp *const decomp,
+                                 size_t *const k, size_t *const n,
+                                 size_t *const k_1, size_t *const n_1,
+                                 size_t *const k_2, size_t *const n_2)
+{
+	if(decomp == NULL ||
+	   k == NULL || n == NULL ||
+	   k_1 == NULL || n_1 == NULL ||
+	   k_2 == NULL || n_2 == NULL)
+	{
+		goto error;
+	}
+
+	*k = decomp->ack_rate_limits.speed.k;
+	*n = decomp->ack_rate_limits.speed.n;
+	*k_1 = decomp->ack_rate_limits.nack.k;
+	*n_1 = decomp->ack_rate_limits.nack.n;
+	*n_2 = decomp->ack_rate_limits.static_nack.n;
+	*k_2 = decomp->ack_rate_limits.static_nack.k;
+
 	return true;
 
 error:
@@ -2985,16 +3529,20 @@ static const struct rohc_decomp_profile *
 /**
  * @brief Decode the CID of a packet
  *
- * @param decomp  The ROHC decompressor
- * @param packet  The ROHC packet to extract CID from
- * @param len     The size of the ROHC packet
- * @param ddata   IN/OUT: decompression-related data (e.g. the context)
- * @return        true in case of success, false in case of failure
+ * @param decomp              The ROHC decompressor
+ * @param packet              The ROHC packet to extract CID from
+ * @param len                 The size of the ROHC packet
+ * @param[out] cid            The Context ID (CID) extracted from the ROHC packet
+ * @param[out] add_cid_len    The length of add-CID in ROHC packet
+ * @param[out] large_cid_len  The length of large CID in ROHC packet
+ * @return                    true in case of success, false in case of failure
  */
 static bool rohc_decomp_decode_cid(struct rohc_decomp *decomp,
                                    const unsigned char *packet,
                                    unsigned int len,
-                                   struct d_decode_data *ddata)
+                                   rohc_cid_t *const cid,
+                                   size_t *const add_cid_len,
+                                   size_t *const large_cid_len)
 {
 	/* is feedback data is large enough to read add-CID or first byte
 	   of large CID ? */
@@ -3008,22 +3556,22 @@ static bool rohc_decomp_decode_cid(struct rohc_decomp *decomp,
 	if(decomp->medium.cid_type == ROHC_SMALL_CID)
 	{
 		/* small CID */
-		ddata->large_cid_size = 0;
+		*large_cid_len = 0;
 
 		/* if add-CID is present, extract the CID value */
 		if(rohc_add_cid_is_present(packet))
 		{
-			ddata->addcidUsed = 1;
-			ddata->cid = rohc_add_cid_decode(packet);
+			*add_cid_len = 1;
+			*cid = rohc_add_cid_decode(packet);
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			           "add-CID present (0x%x) contains CID = %zu",
-			           packet[0], ddata->cid);
+			           packet[0], *cid);
 		}
 		else
 		{
 			/* no add-CID, CID defaults to 0 */
-			ddata->addcidUsed = 0;
-			ddata->cid = 0;
+			*add_cid_len = 0;
+			*cid = 0;
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			           "no add-CID found, CID defaults to 0");
 		}
@@ -3034,7 +3582,7 @@ static bool rohc_decomp_decode_cid(struct rohc_decomp *decomp,
 		size_t large_cid_bits_nr;
 
 		/* large CID */
-		ddata->addcidUsed = 0;
+		*add_cid_len = 0;
 
 		/* skip the first byte of packet located just before the large CID */
 		packet++;
@@ -3042,17 +3590,16 @@ static bool rohc_decomp_decode_cid(struct rohc_decomp *decomp,
 
 		/* decode SDVL-encoded large CID
 		 * (only 1-byte and 2-byte SDVL fields are allowed) */
-		ddata->large_cid_size = sdvl_decode(packet, len,
-		                                    &large_cid, &large_cid_bits_nr);
-		if(ddata->large_cid_size != 1 && ddata->large_cid_size != 2)
+		*large_cid_len = sdvl_decode(packet, len, &large_cid, &large_cid_bits_nr);
+		if((*large_cid_len) != 1 && (*large_cid_len) != 2)
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			             "failed to decode SDVL-encoded large CID field");
 			goto error;
 		}
-		ddata->cid = large_cid;
+		*cid = large_cid & 0xffff;
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		           "%u-byte large CID = %zu", ddata->large_cid_size, ddata->cid);
+		           "%zu-byte large CID = %zu", *large_cid_len, *cid);
 	}
 	else
 	{
@@ -3230,7 +3777,6 @@ static rohc_status_t rohc_decomp_find_context(struct rohc_decomp *const decomp,
 				/* IR-DYN packet: TODO: profile switching is not implemented yet,
 				 * send a STATIC-NACK to the compressor so that it fallbacks on
 				 * sending an IR packet instead of the IR-DYN packet */
-				decomp->curval = decomp->maxval;
 				goto error_no_context;
 			}
 		}
