@@ -1054,30 +1054,9 @@ static bool rtp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 			 * state INIT_STRIDE: TS and TS_STRIDE will be send
 			 */
 			rtp_context->tmp.ts_send = get_ts_unscaled(&rtp_context->ts_sc);
-			if(!nb_bits_unscaled(&rtp_context->ts_sc,
-			                     &rtp_context->tmp.nr_ts_bits_less_equal_than_2,
-			                     &rtp_context->tmp.nr_ts_bits_more_than_2))
-			{
-				const uint32_t ts_send = rtp_context->tmp.ts_send;
-				size_t nr_bits;
-				uint32_t mask;
-
-				/* this is the first LSB bits of unscaled TS to be sent, we cannot
-				 * compute them with W-LSB and we must find its size (in bits) */
-				for(nr_bits = 1, mask = 1;
-				    nr_bits <= 32 && (ts_send & mask) != ts_send;
-				    nr_bits++, mask |= (1 << (nr_bits - 1)))
-				{
-				}
-				rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-				            (ts_send & mask) == ts_send, error, "size of unscaled TS "
-				            "(0x%x) not found, this should never happen!", ts_send);
-
-				rohc_comp_debug(context, "first unscaled TS to be sent: ts_send = %u, "
-				                "mask = 0x%x, nr_bits = %zd", ts_send, mask, nr_bits);
-				rtp_context->tmp.nr_ts_bits_less_equal_than_2 = nr_bits;
-				rtp_context->tmp.nr_ts_bits_more_than_2 = nr_bits;
-			}
+			nb_bits_unscaled(&rtp_context->ts_sc,
+			                 &rtp_context->tmp.nr_ts_bits_less_equal_than_2,
+			                 &rtp_context->tmp.nr_ts_bits_more_than_2);
 
 			/* save the new unscaled value */
 			assert(rfc3095_ctxt->sn <= 0xffff);
@@ -1092,30 +1071,9 @@ static bool rtp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	{
 		/* TS_SCALED value will be send */
 		rtp_context->tmp.ts_send = get_ts_scaled(&rtp_context->ts_sc);
-		if(!nb_bits_scaled(&rtp_context->ts_sc,
-		                   &rtp_context->tmp.nr_ts_bits_less_equal_than_2,
-		                   &rtp_context->tmp.nr_ts_bits_more_than_2))
-		{
-			const uint32_t ts_send = rtp_context->tmp.ts_send;
-			size_t nr_bits;
-			uint32_t mask;
-
-			/* this is the first TS scaled to be sent, we cannot code it with
-			 * W-LSB and we must find its size (in bits) */
-			for(nr_bits = 1, mask = 1;
-			    nr_bits <= 32 && (ts_send & mask) != ts_send;
-			    nr_bits++, mask |= (1 << (nr_bits - 1)))
-			{
-			}
-			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            (ts_send & mask) == ts_send, error, "size of TS scaled "
-			            "(0x%x) not found, this should never happen!", ts_send);
-
-			rohc_comp_debug(context, "first TS scaled to be sent: ts_send = %u, "
-			                "mask = 0x%x, nr_bits = %zd", ts_send, mask, nr_bits);
-			rtp_context->tmp.nr_ts_bits_less_equal_than_2 = nr_bits;
-			rtp_context->tmp.nr_ts_bits_more_than_2 = nr_bits;
-		}
+		nb_bits_scaled(&rtp_context->ts_sc,
+		               &rtp_context->tmp.nr_ts_bits_less_equal_than_2,
+		               &rtp_context->tmp.nr_ts_bits_more_than_2);
 
 		/* save the new unscaled and TS_SCALED values */
 		assert(rfc3095_ctxt->sn <= 0xffff);
@@ -1134,9 +1092,6 @@ static bool rtp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	                rtp_context->tmp.nr_ts_bits_more_than_2);
 
 	return true;
-
-error:
-	return false;
 }
 
 

@@ -259,23 +259,8 @@ bool run_test(bool be_verbose, const unsigned int incr)
 				/* get TS_SCALED */
 				value_encoded = get_ts_scaled(&ts_sc_comp);
 				/* determine how many bits of TS_SCALED we need to send */
-				if(!nb_bits_scaled(&ts_sc_comp, &required_bits_less_equal_than_2,
-				                   &required_bits_more_than_2))
-				{
-					size_t nr_bits;
-					uint32_t mask;
-
-					/* this is the first TS scaled to be sent, we cannot code it
-					 * with W-LSB and we must find its size (in bits) */
-					for(nr_bits = 1, mask = 1;
-					    nr_bits <= 32 && (value_encoded & mask) != value_encoded;
-					    nr_bits++, mask |= (1 << (nr_bits - 1)))
-					{
-					}
-					assert((value_encoded & mask) == value_encoded);
-					required_bits_less_equal_than_2 = nr_bits;
-					required_bits_more_than_2 = nr_bits;
-				}
+				nb_bits_scaled(&ts_sc_comp, &required_bits_less_equal_than_2,
+				               &required_bits_more_than_2);
 				assert(required_bits_less_equal_than_2 <= 32);
 				assert(required_bits_more_than_2 <= 32);
 				/* truncate the encoded TS_SCALED to the number of bits we send */

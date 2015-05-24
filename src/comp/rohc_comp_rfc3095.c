@@ -1564,7 +1564,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	nr_of_ip_hdr = uncomp_pkt->ip_hdr_nr;
 
 	assert(uncomp_pkt != NULL);
-	assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 == 16);
+	assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 16);
 	assert((ip_get_version(&uncomp_pkt->outer_ip) == IPV4 &&
 	        rfc3095_ctxt->tmp.nr_ip_id_bits <= 16) ||
 	       (ip_get_version(&uncomp_pkt->outer_ip) != IPV4 &&
@@ -1572,7 +1572,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	assert((nr_of_ip_hdr == 1 && rfc3095_ctxt->tmp.nr_ip_id_bits2 == 0) ||
 	       (nr_of_ip_hdr == 2 &&
 	        ip_get_version(&uncomp_pkt->inner_ip) == IPV4 &&
-	        rfc3095_ctxt->tmp.nr_ip_id_bits2 == 16) ||
+	        rfc3095_ctxt->tmp.nr_ip_id_bits2 <= 16) ||
 	       (nr_of_ip_hdr == 2 && ip_get_version(&uncomp_pkt->inner_ip) != IPV4 &&
 	        rfc3095_ctxt->tmp.nr_ip_id_bits2 == 0));
 
@@ -6217,7 +6217,6 @@ static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
                                  const struct net_pkt *const uncomp_pkt)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	bool wlsb_k_ok;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
@@ -6232,49 +6231,20 @@ static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		                rfc3095_ctxt->sn);
 
 		/* how many bits are required to encode the new SN ? */
-		if(context->state == ROHC_COMP_STATE_IR)
+		if(context->profile->id == ROHC_PROFILE_RTP ||
+		   context->profile->id == ROHC_PROFILE_ESP)
 		{
-			/* send all bits in IR state */
-			rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 = 16;
-			rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 = 16;
-			rohc_comp_debug(context, "IR state: force using 16 bits to encode new SN");
+			rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 =
+				wlsb_get_mink_32bits(rfc3095_ctxt->sn_window, rfc3095_ctxt->sn, 5);
+			rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 =
+				wlsb_get_kp_32bits(rfc3095_ctxt->sn_window, rfc3095_ctxt->sn, 1);
 		}
 		else
 		{
-			/* send only required bits in FO or SO states */
-			if(context->profile->id == ROHC_PROFILE_RTP ||
-			   context->profile->id == ROHC_PROFILE_ESP)
-			{
-				wlsb_k_ok = wlsb_get_mink_32bits(rfc3095_ctxt->sn_window, rfc3095_ctxt->sn, 5,
-				                                 &(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4));
-				if(!wlsb_k_ok)
-				{
-					rohc_comp_warn(context, "failed to find the minimal number of "
-					               "bits required for SN");
-					goto error;
-				}
-				wlsb_k_ok = wlsb_get_kp_32bits(rfc3095_ctxt->sn_window, rfc3095_ctxt->sn, 1,
-				                               &(rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4));
-				if(!wlsb_k_ok)
-				{
-					rohc_comp_warn(context, "failed to find the minimal number of "
-					               "bits required for SN");
-					goto error;
-				}
-			}
-			else
-			{
-				wlsb_k_ok = wlsb_get_k_32bits(rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
-				                              &(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4));
-				if(!wlsb_k_ok)
-				{
-					rohc_comp_warn(context, "failed to find the minimal number of "
-					               "bits required for SN");
-					goto error;
-				}
-				rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 =
-					rfc3095_ctxt->tmp.nr_sn_bits_more_than_4;
-			}
+			rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 =
+				wlsb_get_k_32bits(rfc3095_ctxt->sn_window, rfc3095_ctxt->sn);
+			rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 =
+				rfc3095_ctxt->tmp.nr_sn_bits_more_than_4;
 		}
 		rohc_comp_debug(context, "SN can%s be encoded with %zu bits in a field "
 		                "smaller than or equal to 4 bits",
@@ -6307,14 +6277,7 @@ static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		                rfc3095_ctxt->outer_ip_flags.info.v4.sid);
 
 		/* how many bits are required to encode the new IP-ID / SN delta ? */
-		if(context->state == ROHC_COMP_STATE_IR)
-		{
-			/* send all bits in IR state */
-			rfc3095_ctxt->tmp.nr_ip_id_bits = 16;
-			rohc_comp_debug(context, "IR state: force using %zd bits to encode "
-			                "new outer IP-ID delta", rfc3095_ctxt->tmp.nr_ip_id_bits);
-		}
-		else if(rfc3095_ctxt->outer_ip_flags.info.v4.sid)
+		if(rfc3095_ctxt->outer_ip_flags.info.v4.sid)
 		{
 			/* IP-ID is constant, no IP-ID bit to transmit */
 			rfc3095_ctxt->tmp.nr_ip_id_bits = 0;
@@ -6324,15 +6287,9 @@ static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		else
 		{
 			/* send only required bits in FO or SO states */
-			wlsb_k_ok = wlsb_get_k_16bits(rfc3095_ctxt->outer_ip_flags.info.v4.ip_id_window,
-			                              rfc3095_ctxt->outer_ip_flags.info.v4.id_delta,
-			                              &(rfc3095_ctxt->tmp.nr_ip_id_bits));
-			if(!wlsb_k_ok)
-			{
-				rohc_comp_warn(context, "failed to find the minimal number of "
-				               "bits required for new outer IP-ID delta");
-				goto error;
-			}
+			rfc3095_ctxt->tmp.nr_ip_id_bits =
+				wlsb_get_k_16bits(rfc3095_ctxt->outer_ip_flags.info.v4.ip_id_window,
+				                  rfc3095_ctxt->outer_ip_flags.info.v4.id_delta);
 		}
 		rohc_comp_debug(context, "%zd bits are required to encode new outer "
 		                "IP-ID delta", rfc3095_ctxt->tmp.nr_ip_id_bits);
@@ -6366,14 +6323,7 @@ static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		                rfc3095_ctxt->inner_ip_flags.info.v4.sid);
 
 		/* how many bits are required to encode the new IP-ID / SN delta ? */
-		if(context->state == ROHC_COMP_STATE_IR)
-		{
-			/* send all bits in IR state */
-			rfc3095_ctxt->tmp.nr_ip_id_bits2 = 16;
-			rohc_comp_debug(context, "IR state: force using %zd bits to encode "
-			                "new inner IP-ID delta", rfc3095_ctxt->tmp.nr_ip_id_bits2);
-		}
-		else if(rfc3095_ctxt->inner_ip_flags.info.v4.sid)
+		if(rfc3095_ctxt->inner_ip_flags.info.v4.sid)
 		{
 			/* IP-ID is constant, no IP-ID bit to transmit */
 			rfc3095_ctxt->tmp.nr_ip_id_bits2 = 0;
@@ -6383,15 +6333,9 @@ static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		else
 		{
 			/* send only required bits in FO or SO states */
-			wlsb_k_ok = wlsb_get_k_16bits(rfc3095_ctxt->inner_ip_flags.info.v4.ip_id_window,
-			                              rfc3095_ctxt->inner_ip_flags.info.v4.id_delta,
-			                              &(rfc3095_ctxt->tmp.nr_ip_id_bits2));
-			if(!wlsb_k_ok)
-			{
-				rohc_comp_warn(context, "failed to find the minimal number of "
-				               "bits required for new inner IP-ID delta");
-				goto error;
-			}
+			rfc3095_ctxt->tmp.nr_ip_id_bits2 =
+				wlsb_get_k_16bits(rfc3095_ctxt->inner_ip_flags.info.v4.ip_id_window,
+				                  rfc3095_ctxt->inner_ip_flags.info.v4.id_delta);
 		}
 		rohc_comp_debug(context, "%zd bits are required to encode new inner "
 		                "IP-ID delta", rfc3095_ctxt->tmp.nr_ip_id_bits2);
@@ -6591,14 +6535,14 @@ rohc_ext_t decide_extension(const struct rohc_comp_ctxt *const context)
 
 			/* NO_EXT, EXT_0, EXT_1, EXT_2 and EXT_3 */
 			if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 6 &&
-			   nr_ts_bits == 0 &&
+			   (nr_ts_bits == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
 			   nr_innermost_ip_id_bits <= 5 &&
 			   nr_outermost_ip_id_bits == 0)
 			{
 				ext = ROHC_EXT_NONE;
 			}
 			else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9 &&
-			        nr_ts_bits == 0 &&
+			        (nr_ts_bits == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
 			        nr_innermost_ip_id_bits <= 8 &&
 			        nr_outermost_ip_id_bits == 0)
 			{
@@ -6636,7 +6580,7 @@ rohc_ext_t decide_extension(const struct rohc_comp_ctxt *const context)
 
 			/* NO_EXT, EXT_0, EXT_1, EXT_2 and EXT_3 */
 			if(rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 <= 4 &&
-			   nr_ts_bits == 0 &&
+			   (nr_ts_bits == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
 			   nr_innermost_ip_id_bits <= 5 &&
 			   nr_outermost_ip_id_bits == 0 &&
 			   !rtp_context->tmp.is_marker_bit_set)
@@ -6644,7 +6588,7 @@ rohc_ext_t decide_extension(const struct rohc_comp_ctxt *const context)
 				ext = ROHC_EXT_NONE;
 			}
 			else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 7 &&
-			        nr_ts_bits == 0 &&
+			        (nr_ts_bits == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
 			        nr_innermost_ip_id_bits <= 8 &&
 			        nr_outermost_ip_id_bits == 0 &&
 			        !rtp_context->tmp.is_marker_bit_set)

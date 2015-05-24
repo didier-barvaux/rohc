@@ -530,18 +530,11 @@ static bool test_wlsb_8(struct c_wlsb *const wlsb,
 	size_t required_bits;
 	uint8_t required_bits_mask;
 	uint32_t decoded32;
-	bool wlsb_k_ok;
 	bool lsb_decode_ok;
 
 	/* encode */
 	trace(be_verbose, "\tencode value 0x%02x ...\n", value8);
-	wlsb_k_ok = wlsb_get_k_8bits(wlsb, value8, &required_bits);
-	if(!wlsb_k_ok)
-	{
-		fprintf(stderr, "failed to determine how many bits are required "
-		        "to be sent\n");
-		goto error;
-	}
+	required_bits = wlsb_get_k_8bits(wlsb, value8);
 	assert(required_bits <= 8);
 	if(required_bits == 8)
 	{
@@ -629,18 +622,11 @@ static bool test_wlsb_16(struct c_wlsb *const wlsb,
 	size_t required_bits;
 	uint16_t required_bits_mask;
 	uint32_t decoded32;
-	bool wlsb_k_ok;
 	bool lsb_decode_ok;
 
 	/* encode */
 	trace(be_verbose, "\tencode value 0x%04x ...\n", value16);
-	wlsb_k_ok = wlsb_get_k_16bits(wlsb, value16, &required_bits);
-	if(!wlsb_k_ok)
-	{
-		fprintf(stderr, "failed to determine how many bits are required "
-		        "to be sent\n");
-		goto error;
-	}
+	required_bits = wlsb_get_k_16bits(wlsb, value16);
 	assert(required_bits <= 16);
 	if(required_bits == 16)
 	{
@@ -727,18 +713,11 @@ static bool test_wlsb_32(struct c_wlsb *const wlsb,
 	uint32_t value32_decoded;
 	size_t required_bits;
 	uint32_t required_bits_mask;
-	bool wlsb_k_ok;
 	bool lsb_decode_ok;
 
 	/* encode */
 	trace(be_verbose, "\tencode value 0x%08x ...\n", value32);
-	wlsb_k_ok = wlsb_get_k_32bits(wlsb, value32, &required_bits);
-	if(!wlsb_k_ok)
-	{
-		fprintf(stderr, "failed to determine how many bits are required "
-		        "to be sent\n");
-		goto error;
-	}
+	required_bits = wlsb_get_k_32bits(wlsb, value32);
 	assert(required_bits <= 32);
 	if(required_bits == 32)
 	{

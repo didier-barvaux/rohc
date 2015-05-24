@@ -5921,24 +5921,8 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	size_t ip_hdr_pos;
 
 	/* how many bits are required to encode the new SN ? */
-	if(context->state == ROHC_COMP_STATE_IR)
-	{
-		/* send all bits in IR state */
-		tcp_context->tmp.nr_msn_bits = 16;
-		rohc_comp_debug(context, "IR state: force using %zu bits to encode "
-		                "new SN", tcp_context->tmp.nr_msn_bits);
-	}
-	else
-	{
-		/* send only required bits in FO or SO states */
-		if(!wlsb_get_k_16bits(tcp_context->msn_wlsb, tcp_context->msn,
-		                      &tcp_context->tmp.nr_msn_bits))
-		{
-			rohc_comp_warn(context, "failed to find the minimal number of bits "
-			               "required for MSN 0x%04x", tcp_context->msn);
-			goto error;
-		}
-	}
+	tcp_context->tmp.nr_msn_bits =
+		wlsb_get_k_16bits(tcp_context->msn_wlsb, tcp_context->msn);
 	rohc_comp_debug(context, "%zu bits are required to encode new MSN 0x%04x",
 	                tcp_context->tmp.nr_msn_bits, tcp_context->msn);
 	/* add the new MSN to the W-LSB encoding object */
@@ -6078,39 +6062,28 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		}
 
 		/* how many bits are required to encode the new IP-ID / SN delta ? */
-		if(context->state == ROHC_COMP_STATE_IR ||
-		   (inner_ip_ctxt->ctxt.v4.ip_id_behavior != IP_ID_BEHAVIOR_SEQ &&
-		    inner_ip_ctxt->ctxt.v4.ip_id_behavior != IP_ID_BEHAVIOR_SEQ_SWAP))
+		if(inner_ip_ctxt->ctxt.v4.ip_id_behavior != IP_ID_BEHAVIOR_SEQ &&
+		   inner_ip_ctxt->ctxt.v4.ip_id_behavior != IP_ID_BEHAVIOR_SEQ_SWAP)
 		{
-			/* send all bits in IR state */
+			/* send all bits if IP-ID behavior is not sequential */
 			tcp_context->tmp.nr_ip_id_bits_3 = 16;
 			tcp_context->tmp.nr_ip_id_bits_1 = 16;
-			rohc_comp_debug(context, "IR state: force using 16 bits to encode "
-			                "new IP-ID delta");
+			rohc_comp_debug(context, "force using 16 bits to encode new IP-ID delta "
+			                "(non-sequential)");
 		}
 		else
 		{
 			/* send only required bits in FO or SO states */
-			if(!wlsb_get_kp_16bits(tcp_context->ip_id_wlsb, tcp_context->tmp.ip_id_delta,
-			                       3, &(tcp_context->tmp.nr_ip_id_bits_3)))
-			{
-				rohc_comp_warn(context, "failed to find the minimal number of bits "
-				               "required for innermost IP-ID delta 0x%04x and p = 3",
-				                tcp_context->tmp.ip_id_delta);
-				goto error;
-			}
+			tcp_context->tmp.nr_ip_id_bits_3 =
+				wlsb_get_kp_16bits(tcp_context->ip_id_wlsb,
+				                   tcp_context->tmp.ip_id_delta, 3);
 			rohc_comp_debug(context, "%zu bits are required to encode new innermost "
 			                "IP-ID delta 0x%04x with p = 3",
 			                tcp_context->tmp.nr_ip_id_bits_3,
 			                tcp_context->tmp.ip_id_delta);
-			if(!wlsb_get_kp_16bits(tcp_context->ip_id_wlsb, tcp_context->tmp.ip_id_delta,
-			                       1, &(tcp_context->tmp.nr_ip_id_bits_1)))
-			{
-				rohc_comp_warn(context, "failed to find the minimal number of bits "
-				               "required for innermost IP-ID delta 0x%04x and p = 1",
-				                tcp_context->tmp.ip_id_delta);
-				goto error;
-			}
+			tcp_context->tmp.nr_ip_id_bits_1 =
+				wlsb_get_kp_16bits(tcp_context->ip_id_wlsb,
+				                   tcp_context->tmp.ip_id_delta, 1);
 			rohc_comp_debug(context, "%zu bits are required to encode new innermost "
 			                "IP-ID delta 0x%04x with p = 1",
 			                tcp_context->tmp.nr_ip_id_bits_1,
@@ -6154,42 +6127,26 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	}
 
 	/* encode innermost IPv4 TTL or IPv6 Hop Limit */
-	if(context->state == ROHC_COMP_STATE_IR)
+	if(tcp_context->tmp.ttl_hopl != inner_ip_ctxt->ctxt.vx.ttl_hopl)
 	{
-		tcp_context->tmp.nr_ttl_hopl_bits = 8;
-		rohc_comp_debug(context, "IR state: force using 16 bits to encode "
-		                "new TTL/Hop Limit");
+		tcp_context->tmp.ttl_hopl_changed = true;
+		tcp_context->ttl_hopl_change_count = 0;
+	}
+	else if(tcp_context->ttl_hopl_change_count < MAX_FO_COUNT)
+	{
+		tcp_context->tmp.ttl_hopl_changed = true;
+		tcp_context->ttl_hopl_change_count++;
 	}
 	else
 	{
-		/* send only required bits in FO or SO states */
-		if(tcp_context->tmp.ttl_hopl != inner_ip_ctxt->ctxt.vx.ttl_hopl)
-		{
-			tcp_context->tmp.ttl_hopl_changed = true;
-			tcp_context->ttl_hopl_change_count = 0;
-		}
-		else if(tcp_context->ttl_hopl_change_count < MAX_FO_COUNT)
-		{
-			tcp_context->tmp.ttl_hopl_changed = true;
-			tcp_context->ttl_hopl_change_count++;
-		}
-		else
-		{
-			tcp_context->tmp.ttl_hopl_changed = false;
-		}
-		if(!wlsb_get_k_8bits(tcp_context->ttl_hopl_wlsb, tcp_context->tmp.ttl_hopl,
-		                     &(tcp_context->tmp.nr_ttl_hopl_bits)))
-		{
-			rohc_comp_warn(context, "failed to find the minimal number of bits "
-			               "required for innermost TTL/Hop Limit 0x%02x and p = 3",
-			                tcp_context->tmp.ttl_hopl);
-			goto error;
-		}
-		rohc_comp_debug(context, "%zu bits are required to encode new innermost "
-		                "TTL/Hop Limit 0x%02x with p = 3",
-		                tcp_context->tmp.nr_ttl_hopl_bits,
-		                tcp_context->tmp.ttl_hopl);
+		tcp_context->tmp.ttl_hopl_changed = false;
 	}
+	tcp_context->tmp.nr_ttl_hopl_bits =
+		wlsb_get_k_8bits(tcp_context->ttl_hopl_wlsb, tcp_context->tmp.ttl_hopl);
+	rohc_comp_debug(context, "%zu bits are required to encode new innermost "
+	                "TTL/Hop Limit 0x%02x with p = 3",
+	                tcp_context->tmp.nr_ttl_hopl_bits,
+	                tcp_context->tmp.ttl_hopl);
 	/* add the new TTL/Hop Limit to the W-LSB encoding object */
 	/* TODO: move this after successful packet compression */
 	c_add_wlsb(tcp_context->ttl_hopl_wlsb, tcp_context->msn,
@@ -6201,7 +6158,7 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	                seq_num_hbo, ack_num_hbo);
 	rohc_comp_debug(context, "old TCP seq = 0x%08x, ack_seq = 0x%08x",
 	                rohc_ntoh32(tcp_context->old_tcphdr.seq_num),
-						 rohc_ntoh32(tcp_context->old_tcphdr.ack_num));
+	                rohc_ntoh32(tcp_context->old_tcphdr.ack_num));
 	rohc_comp_debug(context, "TCP begin = 0x%04x, res_flags = %d, "
 	                "data offset = %d, rsf_flags = %d, ecn_flags = %d, "
 	                "URG = %d, ACK = %d, PSH = %d",
@@ -6234,45 +6191,28 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	                       tcp_context->tmp.tcp_rsf_flag_changed, 0);
 
 	/* how many bits are required to encode the new TCP window? */
-	if(context->state == ROHC_COMP_STATE_IR)
+	if(tcp->window != tcp_context->old_tcphdr.window)
 	{
-		/* send all bits in IR state */
-		tcp_context->tmp.nr_window_bits_16383 = 16;
-		rohc_comp_debug(context, "IR state: force using 16 bits to encode "
-		                "new TCP window");
+		tcp_context->tmp.tcp_window_changed = true;
+		tcp_context->tcp_window_change_count = 0;
+	}
+	else if(tcp_context->tcp_window_change_count < MAX_FO_COUNT)
+	{
+		tcp_context->tmp.tcp_window_changed = true;
+		tcp_context->tcp_window_change_count++;
 	}
 	else
 	{
-		/* send only required bits in FO or SO states */
-		if(tcp->window != tcp_context->old_tcphdr.window)
-		{
-			tcp_context->tmp.tcp_window_changed = true;
-			tcp_context->tcp_window_change_count = 0;
-		}
-		else if(tcp_context->tcp_window_change_count < MAX_FO_COUNT)
-		{
-			tcp_context->tmp.tcp_window_changed = true;
-			tcp_context->tcp_window_change_count++;
-		}
-		else
-		{
-			tcp_context->tmp.tcp_window_changed = false;
-		}
-		tcp_field_descr_change(context, "TCP window",
-		                       tcp_context->tmp.tcp_window_changed,
-		                       tcp_context->tcp_window_change_count);
-		if(!wlsb_get_kp_16bits(tcp_context->window_wlsb, rohc_ntoh16(tcp->window),
-		                       ROHC_LSB_SHIFT_TCP_WINDOW,
-		                       &tcp_context->tmp.nr_window_bits_16383))
-		{
-			rohc_comp_warn(context, "failed to find the minimal number of bits "
-			               "required for TCP window 0x%04x", rohc_ntoh16(tcp->window));
-			goto error;
-		}
-		rohc_comp_debug(context, "%zu bits are required to encode new TCP window "
-		                "0x%04x with p = %d", tcp_context->tmp.nr_window_bits_16383,
-		                rohc_ntoh16(tcp->window), ROHC_LSB_SHIFT_TCP_WINDOW);
+		tcp_context->tmp.tcp_window_changed = false;
 	}
+	tcp_field_descr_change(context, "TCP window", tcp_context->tmp.tcp_window_changed,
+	                       tcp_context->tcp_window_change_count);
+	tcp_context->tmp.nr_window_bits_16383 =
+		wlsb_get_kp_16bits(tcp_context->window_wlsb, rohc_ntoh16(tcp->window),
+		                   ROHC_LSB_SHIFT_TCP_WINDOW);
+	rohc_comp_debug(context, "%zu bits are required to encode new TCP window "
+	                "0x%04x with p = %d", tcp_context->tmp.nr_window_bits_16383,
+	                rohc_ntoh16(tcp->window), ROHC_LSB_SHIFT_TCP_WINDOW);
 	/* TODO: move this after successful packet compression */
 	c_add_wlsb(tcp_context->window_wlsb, tcp_context->msn, rohc_ntoh16(tcp->window));
 
@@ -6319,98 +6259,44 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	/* how many bits are required to encode the new sequence number? */
 	tcp_context->tmp.tcp_seq_num_changed =
 		(tcp->seq_num != tcp_context->old_tcphdr.seq_num);
-	if(context->state == ROHC_COMP_STATE_IR)
+	tcp_context->tmp.nr_seq_bits_65535 =
+		wlsb_get_kp_32bits(tcp_context->seq_wlsb, seq_num_hbo, 65535);
+	rohc_comp_debug(context, "%zd bits are required to encode new sequence "
+	                "number 0x%08x with p = 65535",
+	                tcp_context->tmp.nr_seq_bits_65535, seq_num_hbo);
+	tcp_context->tmp.nr_seq_bits_32767 =
+		wlsb_get_kp_32bits(tcp_context->seq_wlsb, seq_num_hbo, 32767);
+	rohc_comp_debug(context, "%zd bits are required to encode new sequence "
+	                "number 0x%08x with p = 32767",
+	                tcp_context->tmp.nr_seq_bits_32767, seq_num_hbo);
+	tcp_context->tmp.nr_seq_bits_16383 =
+		wlsb_get_kp_32bits(tcp_context->seq_wlsb, seq_num_hbo, 16383);
+	rohc_comp_debug(context, "%zd bits are required to encode new sequence "
+	                "number 0x%08x with p = 16383",
+	                tcp_context->tmp.nr_seq_bits_16383, seq_num_hbo);
+	tcp_context->tmp.nr_seq_bits_8191 =
+		wlsb_get_kp_32bits(tcp_context->seq_wlsb, seq_num_hbo, 8191);
+	rohc_comp_debug(context, "%zd bits are required to encode new sequence "
+	                "number 0x%08x with p = 8191",
+	                tcp_context->tmp.nr_seq_bits_8191, seq_num_hbo);
+	tcp_context->tmp.nr_seq_bits_63 =
+		wlsb_get_kp_32bits(tcp_context->seq_wlsb, seq_num_hbo, 63);
+	rohc_comp_debug(context, "%zd bits are required to encode new sequence "
+	                "number 0x%08x with p = 63",
+	                tcp_context->tmp.nr_seq_bits_63, seq_num_hbo);
+	if(tcp_context->seq_num_factor == 0 ||
+	   tcp_context->seq_num_scaling_nr < ROHC_INIT_TS_STRIDE_MIN)
 	{
-		/* send all bits in IR state */
-		tcp_context->tmp.nr_seq_bits_65535 = 32;
-		tcp_context->tmp.nr_seq_bits_32767 = 32;
-		tcp_context->tmp.nr_seq_bits_16383 = 32;
-		tcp_context->tmp.nr_seq_bits_8191 = 32;
-		tcp_context->tmp.nr_seq_bits_63 = 32;
 		tcp_context->tmp.nr_seq_scaled_bits = 32;
-		rohc_comp_debug(context, "IR state: force using 32 bits to encode "
-		                "new sequence number");
 	}
 	else
 	{
-		/* send only required bits in FO or SO states */
-		if(!wlsb_get_kp_32bits(tcp_context->seq_wlsb, seq_num_hbo, 65535,
-		                       &tcp_context->tmp.nr_seq_bits_65535))
-		{
-			rohc_comp_warn(context, "failed to find the minimal number of bits "
-			               "required for sequence number 0x%08x and p = 65535",
-			               seq_num_hbo);
-			goto error;
-		}
-		rohc_comp_debug(context, "%zd bits are required to encode new sequence "
-		                "number 0x%08x with p = 65535",
-		                tcp_context->tmp.nr_seq_bits_65535, seq_num_hbo);
-		if(!wlsb_get_kp_32bits(tcp_context->seq_wlsb, seq_num_hbo, 32767,
-		                       &tcp_context->tmp.nr_seq_bits_32767))
-		{
-			rohc_comp_warn(context, "failed to find the minimal number of bits "
-			               "required for sequence number 0x%08x and p = 32767",
-			               seq_num_hbo);
-			goto error;
-		}
-		rohc_comp_debug(context, "%zd bits are required to encode new sequence "
-		                "number 0x%08x with p = 32767",
-		                tcp_context->tmp.nr_seq_bits_32767, seq_num_hbo);
-		if(!wlsb_get_kp_32bits(tcp_context->seq_wlsb, seq_num_hbo, 16383,
-		                       &tcp_context->tmp.nr_seq_bits_16383))
-		{
-			rohc_comp_warn(context, "failed to find the minimal number of bits "
-			               "required for sequence number 0x%08x and p = 16383",
-			               seq_num_hbo);
-			goto error;
-		}
-		rohc_comp_debug(context, "%zd bits are required to encode new sequence "
-		                "number 0x%08x with p = 16383",
-		                tcp_context->tmp.nr_seq_bits_16383, seq_num_hbo);
-		if(!wlsb_get_kp_32bits(tcp_context->seq_wlsb, seq_num_hbo, 8191,
-		                       &tcp_context->tmp.nr_seq_bits_8191))
-		{
-			rohc_comp_warn(context, "failed to find the minimal number of bits "
-			               "required for sequence number 0x%08x and p = 8191",
-			               seq_num_hbo);
-			goto error;
-		}
-		rohc_comp_debug(context, "%zd bits are required to encode new sequence "
-		                "number 0x%08x with p = 8191",
-		                tcp_context->tmp.nr_seq_bits_8191, seq_num_hbo);
-		if(!wlsb_get_kp_32bits(tcp_context->seq_wlsb, seq_num_hbo, 63,
-		                       &tcp_context->tmp.nr_seq_bits_63))
-		{
-			rohc_comp_warn(context, "failed to find the minimal number of bits "
-			               "required for sequence number 0x%08x and p = 63",
-			               seq_num_hbo);
-			goto error;
-		}
-		rohc_comp_debug(context, "%zd bits are required to encode new sequence "
-		                "number 0x%08x with p = 63",
-		                tcp_context->tmp.nr_seq_bits_63, seq_num_hbo);
-
-		if(tcp_context->seq_num_factor == 0 ||
-		   tcp_context->seq_num_scaling_nr < ROHC_INIT_TS_STRIDE_MIN)
-		{
-			tcp_context->tmp.nr_seq_scaled_bits = 32;
-		}
-		else
-		{
-			if(!wlsb_get_k_32bits(tcp_context->seq_scaled_wlsb,
-			                      tcp_context->seq_num_scaled,
-			                      &tcp_context->tmp.nr_seq_scaled_bits))
-			{
-				rohc_comp_warn(context, "failed to find the minimal number of "
-				               "bits required for scaled sequence number 0x%08x",
-				               tcp_context->seq_num_scaled);
-				goto error;
-			}
-			rohc_comp_debug(context, "%zu bits are required to encode new "
-			                "scaled sequence number 0x%08x",
-			                tcp_context->tmp.nr_seq_scaled_bits,
-			                tcp_context->seq_num_scaled);
-		}
+		tcp_context->tmp.nr_seq_scaled_bits =
+			wlsb_get_k_32bits(tcp_context->seq_scaled_wlsb, tcp_context->seq_num_scaled);
+		rohc_comp_debug(context, "%zu bits are required to encode new scaled "
+		                "sequence number 0x%08x",
+		                tcp_context->tmp.nr_seq_scaled_bits,
+		                tcp_context->seq_num_scaled);
 	}
 	/* TODO: move this after successful packet compression */
 	c_add_wlsb(tcp_context->seq_wlsb, tcp_context->msn, seq_num_hbo);
@@ -6424,90 +6310,36 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	/* how many bits are required to encode the new ACK number? */
 	tcp_context->tmp.tcp_ack_num_changed =
 		(tcp->ack_num != tcp_context->old_tcphdr.ack_num);
-	if(context->state == ROHC_COMP_STATE_IR)
-	{
-		/* send all bits in IR state */
-		tcp_context->tmp.nr_ack_bits_65535 = 32;
-		tcp_context->tmp.nr_ack_bits_32767 = 32;
-		tcp_context->tmp.nr_ack_bits_16383 = 32;
-		tcp_context->tmp.nr_ack_bits_8191 = 32;
-		tcp_context->tmp.nr_ack_bits_63 = 32;
-		tcp_context->tmp.nr_ack_scaled_bits = 32;
-		rohc_comp_debug(context, "IR state: force using 32 bits to encode new "
-		                "ACK number");
-	}
-	else
-	{
-		/* send only required bits in FO or SO states */
-		if(!wlsb_get_kp_32bits(tcp_context->ack_wlsb, ack_num_hbo, 65535,
-		                       &tcp_context->tmp.nr_ack_bits_65535))
-		{
-			rohc_comp_warn(context, "failed to find the minimal number of bits "
-			               "required for ACK number 0x%08x and p = 65535",
-			               ack_num_hbo);
-			goto error;
-		}
-		rohc_comp_debug(context, "%zd bits are required to encode new ACK "
-		                "number 0x%08x with p = 65535",
-		                tcp_context->tmp.nr_ack_bits_65535, ack_num_hbo);
-		if(!wlsb_get_kp_32bits(tcp_context->ack_wlsb, ack_num_hbo, 32767,
-		                       &tcp_context->tmp.nr_ack_bits_32767))
-		{
-			rohc_comp_warn(context, "failed to find the minimal number of bits "
-			               "required for ACK number 0x%08x and p = 32767",
-			               ack_num_hbo);
-			goto error;
-		}
-		rohc_comp_debug(context, "%zd bits are required to encode new ACK "
-		                "number 0x%08x with p = 32767",
-		                tcp_context->tmp.nr_ack_bits_32767, ack_num_hbo);
-		if(!wlsb_get_kp_32bits(tcp_context->ack_wlsb, ack_num_hbo, 16383,
-		                       &tcp_context->tmp.nr_ack_bits_16383))
-		{
-			rohc_comp_warn(context, "failed to find the minimal number of bits "
-			               "required for ACK number 0x%08x and p = 16383",
-			               ack_num_hbo);
-			goto error;
-		}
-		rohc_comp_debug(context, "%zd bits are required to encode new ACK "
-		                "number 0x%08x with p = 16383",
-		                tcp_context->tmp.nr_ack_bits_16383, ack_num_hbo);
-		if(!wlsb_get_kp_32bits(tcp_context->ack_wlsb, ack_num_hbo, 8191,
-		                       &tcp_context->tmp.nr_ack_bits_8191))
-		{
-			rohc_comp_warn(context, "failed to find the minimal number of bits "
-			               "required for ACK number 0x%08x and p = 8191",
-			               ack_num_hbo);
-			goto error;
-		}
-		rohc_comp_debug(context, "%zd bits are required to encode new ACK "
-		                "number 0x%08x with p = 8191",
-		                tcp_context->tmp.nr_ack_bits_8191, ack_num_hbo);
-		if(!wlsb_get_kp_32bits(tcp_context->ack_wlsb, ack_num_hbo, 63,
-		                       &tcp_context->tmp.nr_ack_bits_63))
-		{
-			rohc_comp_warn(context, "failed to find the minimal number of bits "
-			               "required for ACK number 0x%08x and p = 63",
-			               ack_num_hbo);
-			goto error;
-		}
-		rohc_comp_debug(context, "%zd bits are required to encode new ACK "
-		                "number 0x%08x with p = 63",
-		                tcp_context->tmp.nr_ack_bits_63, ack_num_hbo);
-		if(!wlsb_get_k_32bits(tcp_context->ack_scaled_wlsb,
-		                      tcp_context->ack_num_scaled,
-		                      &tcp_context->tmp.nr_ack_scaled_bits))
-		{
-			rohc_comp_warn(context, "failed to find the minimal number of bits "
-			               "required for scaled ACK number 0x%08x",
-			               tcp_context->ack_num_scaled);
-			goto error;
-		}
-		rohc_comp_debug(context, "%zu bits are required to encode new scaled "
-		                "ACK number 0x%08x",
-		                tcp_context->tmp.nr_ack_scaled_bits,
-		                tcp_context->ack_num_scaled);
-	}
+	tcp_context->tmp.nr_ack_bits_65535 =
+		wlsb_get_kp_32bits(tcp_context->ack_wlsb, ack_num_hbo, 65535);
+	rohc_comp_debug(context, "%zd bits are required to encode new ACK "
+	                "number 0x%08x with p = 65535",
+	                tcp_context->tmp.nr_ack_bits_65535, ack_num_hbo);
+	tcp_context->tmp.nr_ack_bits_32767 =
+		wlsb_get_kp_32bits(tcp_context->ack_wlsb, ack_num_hbo, 32767);
+	rohc_comp_debug(context, "%zd bits are required to encode new ACK "
+	                "number 0x%08x with p = 32767",
+	                tcp_context->tmp.nr_ack_bits_32767, ack_num_hbo);
+	tcp_context->tmp.nr_ack_bits_16383 =
+		wlsb_get_kp_32bits(tcp_context->ack_wlsb, ack_num_hbo, 16383);
+	rohc_comp_debug(context, "%zd bits are required to encode new ACK "
+	                "number 0x%08x with p = 16383",
+	                tcp_context->tmp.nr_ack_bits_16383, ack_num_hbo);
+	tcp_context->tmp.nr_ack_bits_8191 =
+		wlsb_get_kp_32bits(tcp_context->ack_wlsb, ack_num_hbo, 8191);
+	rohc_comp_debug(context, "%zd bits are required to encode new ACK "
+	                "number 0x%08x with p = 8191",
+	                tcp_context->tmp.nr_ack_bits_8191, ack_num_hbo);
+	tcp_context->tmp.nr_ack_bits_63 =
+		wlsb_get_kp_32bits(tcp_context->ack_wlsb, ack_num_hbo, 63);
+	rohc_comp_debug(context, "%zd bits are required to encode new ACK "
+	                "number 0x%08x with p = 63",
+	                tcp_context->tmp.nr_ack_bits_63, ack_num_hbo);
+	tcp_context->tmp.nr_ack_scaled_bits =
+		wlsb_get_k_32bits(tcp_context->ack_scaled_wlsb, tcp_context->ack_num_scaled);
+	rohc_comp_debug(context, "%zu bits are required to encode new scaled "
+	                "ACK number 0x%08x", tcp_context->tmp.nr_ack_scaled_bits,
+	                tcp_context->ack_num_scaled);
 	/* TODO: move this after successful packet compression */
 	c_add_wlsb(tcp_context->ack_wlsb, tcp_context->msn, ack_num_hbo);
 	/* TODO: move this after successful packet compression */
@@ -6526,16 +6358,6 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		rohc_comp_debug(context, "no TS option: O bit required to encode the "
 		                "new timestamp echo request/reply numbers");
 	}
-	else if(context->state == ROHC_COMP_STATE_IR)
-	{
-		/* send all bits in IR state */
-		tcp_context->tmp.nr_opt_ts_req_bits_minus_1 = 32;
-		tcp_context->tmp.nr_opt_ts_req_bits_0x40000 = 32;
-		tcp_context->tmp.nr_opt_ts_reply_bits_minus_1 = 32;
-		tcp_context->tmp.nr_opt_ts_reply_bits_0x40000 = 32;
-		rohc_comp_debug(context, "IR state: force using 32 bits to encode "
-		                "new timestamp echo request/reply numbers");
-	}
 	else if(!tcp_context->tcp_option_timestamp_init)
 	{
 		/* send all bits for the first occurrence of the TCP TS option */
@@ -6544,8 +6366,8 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		tcp_context->tmp.nr_opt_ts_reply_bits_minus_1 = 32;
 		tcp_context->tmp.nr_opt_ts_reply_bits_0x40000 = 32;
 		rohc_comp_debug(context, "first occurrence of TCP TS option: force "
-							 "using 32 bits to encode new timestamp echo "
-							 "request/reply numbers");
+		                "using 32 bits to encode new timestamp echo "
+		                "request/reply numbers");
 	}
 	else
 	{
@@ -6553,15 +6375,9 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 
 		/* how many bits are required to encode the timestamp echo request
 		 * with p = -1 ? */
-		if(!wlsb_get_kp_32bits(tcp_context->opt_ts_req_wlsb,
-		                       tcp_context->tmp.ts_req, -1,
-		                       &tcp_context->tmp.nr_opt_ts_req_bits_minus_1))
-		{
-			rohc_comp_warn(context, "failed to find the minimal number of bits "
-			               "required for timestamp echo request 0x%08x and "
-			               "p = -1", tcp_context->tmp.ts_req);
-			goto error;
-		}
+		tcp_context->tmp.nr_opt_ts_req_bits_minus_1 =
+			wlsb_get_kp_32bits(tcp_context->opt_ts_req_wlsb,
+			                   tcp_context->tmp.ts_req, -1);
 		rohc_comp_debug(context, "%zu bits are required to encode new "
 		                "timestamp echo request 0x%08x with p = -1",
 		                tcp_context->tmp.nr_opt_ts_req_bits_minus_1,
@@ -6569,15 +6385,9 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 
 		/* how many bits are required to encode the timestamp echo request
 		 * with p = 0x40000 ? */
-		if(!wlsb_get_kp_32bits(tcp_context->opt_ts_req_wlsb,
-		                       tcp_context->tmp.ts_req, 0x40000,
-		                       &tcp_context->tmp.nr_opt_ts_req_bits_0x40000))
-		{
-			rohc_comp_warn(context, "failed to find the minimal number of bits "
-			               "required for timestamp echo request 0x%08x and "
-			               "p = 0x40000", tcp_context->tmp.ts_req);
-			goto error;
-		}
+		tcp_context->tmp.nr_opt_ts_req_bits_0x40000 =
+			wlsb_get_kp_32bits(tcp_context->opt_ts_req_wlsb,
+			                   tcp_context->tmp.ts_req, 0x40000);
 		rohc_comp_debug(context, "%zu bits are required to encode new "
 		                "timestamp echo request 0x%08x with p = 0x40000",
 		                tcp_context->tmp.nr_opt_ts_req_bits_0x40000,
@@ -6585,15 +6395,9 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 
 		/* how many bits are required to encode the timestamp echo reply
 		 * with p = -1 ? */
-		if(!wlsb_get_kp_32bits(tcp_context->opt_ts_reply_wlsb,
-		                       tcp_context->tmp.ts_reply, -1,
-		                       &tcp_context->tmp.nr_opt_ts_reply_bits_minus_1))
-		{
-			rohc_comp_warn(context, "failed to find the minimal number of bits "
-			               "required for timestamp echo reply 0x%08x and p = -1",
-			               tcp_context->tmp.ts_reply);
-			goto error;
-		}
+		tcp_context->tmp.nr_opt_ts_reply_bits_minus_1 =
+			wlsb_get_kp_32bits(tcp_context->opt_ts_reply_wlsb,
+			                   tcp_context->tmp.ts_reply, -1);
 		rohc_comp_debug(context, "%zu bits are required to encode new "
 		                "timestamp echo reply 0x%08x with p = -1",
 		                tcp_context->tmp.nr_opt_ts_reply_bits_minus_1,
@@ -6601,15 +6405,9 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 
 		/* how many bits are required to encode the timestamp echo reply
 		 * with p = 0x40000 ? */
-		if(!wlsb_get_kp_32bits(tcp_context->opt_ts_reply_wlsb,
-		                       tcp_context->tmp.ts_reply, 0x40000,
-		                       &tcp_context->tmp.nr_opt_ts_reply_bits_0x40000))
-		{
-			rohc_comp_warn(context, "failed to find the minimal number of bits "
-			               "required for timestamp echo reply 0x%08x and "
-			               "p = 0x40000", tcp_context->tmp.ts_reply);
-			goto error;
-		}
+		tcp_context->tmp.nr_opt_ts_reply_bits_0x40000 =
+			wlsb_get_kp_32bits(tcp_context->opt_ts_reply_wlsb,
+			                   tcp_context->tmp.ts_reply, 0x40000);
 		rohc_comp_debug(context, "%zu bits are required to encode new "
 		                "timestamp echo reply 0x%08x with p = 0x40000",
 		                tcp_context->tmp.nr_opt_ts_reply_bits_0x40000,

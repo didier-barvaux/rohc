@@ -242,7 +242,6 @@ static bool run_test8_with_shift_param(bool be_verbose,
 	{
 		size_t required_bits;
 		uint8_t required_bits_mask;
-		bool wlsb_k_ok;
 		bool lsb_decode_ok;
 
 		/* value to encode/decode */
@@ -250,13 +249,7 @@ static bool run_test8_with_shift_param(bool be_verbose,
 
 		/* encode */
 		trace(be_verbose, "\tencode value 0x%02x ...\n", value8);
-		wlsb_k_ok = wlsb_get_k_8bits(wlsb, value8, &required_bits);
-		if(!wlsb_k_ok)
-		{
-			fprintf(stderr, "failed to determine how many bits are required "
-			        "to be sent\n");
-			goto destroy_lsb;
-		}
+		required_bits = wlsb_get_k_8bits(wlsb, value8);
 		assert(required_bits <= 8);
 		if(required_bits == 8)
 		{
@@ -400,7 +393,6 @@ static bool run_test16_with_shift_param(bool be_verbose,
 	{
 		size_t required_bits;
 		uint16_t required_bits_mask;
-		bool wlsb_k_ok;
 		bool lsb_decode_ok;
 
 		/* value to encode/decode */
@@ -408,13 +400,7 @@ static bool run_test16_with_shift_param(bool be_verbose,
 
 		/* encode */
 		trace(be_verbose, "\tencode value 0x%04x ...\n", value16);
-		wlsb_k_ok = wlsb_get_k_16bits(wlsb, value16, &required_bits);
-		if(!wlsb_k_ok)
-		{
-			fprintf(stderr, "failed to determine how many bits are required "
-			        "to be sent\n");
-			goto destroy_lsb;
-		}
+		required_bits = wlsb_get_k_16bits(wlsb, value16);
 		assert(required_bits <= 16);
 		if(required_bits == 16)
 		{
@@ -557,7 +543,6 @@ static bool run_test32_with_shift_param(bool be_verbose,
 	{
 		size_t required_bits;
 		uint32_t required_bits_mask;
-		bool wlsb_k_ok;
 		bool lsb_decode_ok;
 
 		/* value to encode/decode */
@@ -565,13 +550,7 @@ static bool run_test32_with_shift_param(bool be_verbose,
 
 		/* encode */
 		trace(be_verbose, "\tencode value 0x%08x ...\n", value32);
-		wlsb_k_ok = wlsb_get_k_32bits(wlsb, value32, &required_bits);
-		if(!wlsb_k_ok)
-		{
-			fprintf(stderr, "failed to determine how many bits are required "
-			        "to be sent\n");
-			goto destroy_lsb;
-		}
+		required_bits = wlsb_get_k_32bits(wlsb, value32);
 		assert(required_bits <= 32);
 		if(required_bits == 32)
 		{

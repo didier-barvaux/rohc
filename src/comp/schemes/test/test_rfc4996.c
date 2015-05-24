@@ -187,22 +187,8 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 		size_t nr_bits_63;
 
 		/* detect how many bits are required for the value */
-		if(!wlsb_get_kp_32bits(wlsb, inputs[i].uncomp_value, 16383,
-		                       &nr_bits_16383))
-		{
-			trace(be_verbose, "failed to find the minimal number of bits "
-			      "required for value 0x%08x and p = 16383\n",
-			      inputs[i].uncomp_value);
-			goto free_wlsb;
-		}
-		if(!wlsb_get_kp_32bits(wlsb, inputs[i].uncomp_value, 63,
-		                       &nr_bits_63))
-		{
-			trace(be_verbose, "failed to find the minimal number of bits "
-			      "required for value 0x%08x and p = 63\n",
-			      inputs[i].uncomp_value);
-			goto free_wlsb;
-		}
+		nr_bits_16383 = wlsb_get_kp_32bits(wlsb, inputs[i].uncomp_value, 16383);
+		nr_bits_63 = wlsb_get_kp_32bits(wlsb, inputs[i].uncomp_value, 63);
 
 		/* compress the value */
 		trace(be_verbose, "\tvariable_length_32_enc(value = 0x%08x)\n",
