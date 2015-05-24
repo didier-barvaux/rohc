@@ -319,8 +319,12 @@ int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
 
 bool rohc_comp_rfc3095_feedback(struct rohc_comp_ctxt *const context,
-                                const struct c_feedback *const feedback)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+                                const enum rohc_feedback_type feedback_type,
+                                const uint8_t *const packet,
+                                const size_t packet_len,
+                                const uint8_t *const feedback_data,
+                                const size_t feedback_data_len)
+	__attribute__((warn_unused_result, nonnull(1, 3, 5)));
 
 void rohc_comp_rfc3095_decide_state(struct rohc_comp_ctxt *const context)
 	__attribute__((nonnull(1)));

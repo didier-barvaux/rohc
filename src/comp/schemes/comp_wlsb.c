@@ -55,7 +55,7 @@ struct c_window
 struct c_wlsb
 {
 	/// The width of the window
-	size_t window_width;
+	size_t window_width; /* TODO: R-mode needs a non-fixed window width */
 
 	/// The size of the window (power of 2) minus 1
 	size_t window_mask;
@@ -82,8 +82,11 @@ struct c_wlsb
  * Private function prototypes:
  */
 
-static void c_ack_remove(struct c_wlsb *const s, const size_t pos)
-	__attribute__((nonnull(1)));
+static size_t wlsb_get_next_older(const size_t entry, const size_t max)
+	__attribute__((warn_unused_result, const));
+
+static size_t wlsb_ack_remove(struct c_wlsb *const wlsb, const size_t pos)
+	__attribute__((warn_unused_result, nonnull(1)));
 
 static size_t rohc_g_8bits(const uint8_t v_ref,
                            const uint8_t v,
@@ -345,7 +348,6 @@ size_t wlsb_get_minkp_16bits(const struct c_wlsb *const wlsb,
 
 		bits_nr = 0;
 
-
 		/* find the minimal number of bits of the value required to be able
 		 * to recreate it thanks to ANY value in the window */
 		for(i = wlsb->count, entry = wlsb->oldest;
@@ -479,29 +481,45 @@ size_t wlsb_get_minkp_32bits(const struct c_wlsb *const wlsb,
 /**
  * @brief Acknowledge based on the Sequence Number (SN)
  *
- * Removes all entries older than the given SN in the window.
+ * Removes all window entries older (and including) than the one that matches
+ * the given SN bits.
  *
- * @param s  The W-LSB object
- * @param sn The SN to acknowledge
+ * @param wlsb        The W-LSB object
+ * @param sn_bits     The LSB of the SN to acknowledge
+ * @param sn_bits_nr  The number of LSB of the SN to acknowledge
+ * @return            The number of acked window entries
  */
-void c_ack_sn_wlsb(struct c_wlsb *const s, const uint32_t sn)
+size_t wlsb_ack(struct c_wlsb *const wlsb,
+                const uint32_t sn_bits,
+                const size_t sn_bits_nr)
 {
-	size_t entry;
+	size_t entry = wlsb->next;
+	uint32_t sn_mask;
 	size_t i;
 
-	/* search for the window entry that matches the given SN
-	 * starting from the oldest one */
-	for(i = s->count, entry = s->oldest;
-	    i > 0;
-	    i--, entry = (entry + 1) & s->window_mask)
+	if(sn_bits_nr < 32)
 	{
-		if(s->window[s->oldest].sn == sn)
+		sn_mask = (1 << sn_bits_nr) - 1;
+	}
+	else
+	{
+		sn_mask = 0xffffffffUL;
+	}
+	assert((sn_bits & sn_mask) == sn_bits);
+
+	/* search for the window entry that matches the given SN LSB
+	 * starting from the one */
+	for(i = 0; i < wlsb->count; i++)
+	{
+		entry = wlsb_get_next_older(entry, wlsb->window_mask);
+		if((wlsb->window[entry].sn & sn_mask) == sn_bits)
 		{
-			/* remove the window entry if found */
-			c_ack_remove(s, s->oldest);
-			break;
+			/* remove the window entry and all the older ones if found */
+			return wlsb_ack_remove(wlsb, entry);
 		}
 	}
+
+	return 0;
 }
 
 
@@ -509,29 +527,40 @@ void c_ack_sn_wlsb(struct c_wlsb *const s, const uint32_t sn)
  * Private functions
  */
 
+
+/**
+ * @brief Get the next older entry
+ *
+ * @param entry  The entry for which to get the next older entry
+ * @param max    The max entry value
+ * @return       The next older entry
+ */
+static size_t wlsb_get_next_older(const size_t entry, const size_t max)
+{
+	return ((entry == 0) ? max : (entry - 1));
+}
+
+
 /**
  * @brief Removes all W-LSB window entries prior to the given position
  *
- * @param s    The W-LSB object
- * @param pos  The position to set as the oldest
+ * @param wlsb  The W-LSB object
+ * @param pos   The position to set as the oldest
+ * @return      The number of acked window entries
  */
-static void c_ack_remove(struct c_wlsb *const s, const size_t pos)
+static size_t wlsb_ack_remove(struct c_wlsb *const wlsb, const size_t pos)
 {
-	size_t entry;
-	size_t i;
+	size_t acked_nr = 0;
 
-	for(i = s->count, entry = s->oldest;
-	    i > 0;
-	    i--, entry = s->oldest)
+	while(wlsb->oldest != pos)
 	{
 		/* remove the oldest entry */
-		s->count--;
-		s->oldest = (s->oldest + 1) & s->window_mask;
-		if(entry == pos)
-		{
-			break;
-		}
+		wlsb->oldest = (wlsb->oldest + 1) & wlsb->window_mask;
+		wlsb->count--;
+		acked_nr++;
 	}
+
+	return acked_nr;
 }
 
 

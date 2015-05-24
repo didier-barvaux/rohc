@@ -45,8 +45,9 @@
 
 static bool f_append_cid(struct d_feedback *const feedback,
                          const uint16_t cid,
-                         const rohc_cid_type_t cid_type)
-	__attribute__((warn_unused_result, nonnull(1)));
+                         const rohc_cid_type_t cid_type,
+                         size_t *const cid_len)
+	__attribute__((warn_unused_result, nonnull(1, 4)));
 
 
 /**
@@ -67,10 +68,11 @@ void f_feedback1(const uint32_t sn_bits, struct d_feedback *const feedback)
 /**
  * @brief Build a FEEDBACK-2 packet.
  *
+ * @param profile_id  The ID of the decompression profile that builds the feedback
  * @param ack_type    The type of acknowledgement:
- *                      \li \ref ROHC_ACK_TYPE_ACK,
- *                      \li \ref ROHC_ACK_TYPE_NACK,
- *                      \li \ref ROHC_ACK_TYPE_STATIC_NACK
+ *                      \li \ref ROHC_FEEDBACK_ACK,
+ *                      \li \ref ROHC_FEEDBACK_NACK,
+ *                      \li \ref ROHC_FEEDBACK_STATIC_NACK
  * @param mode        The mode in which ROHC operates:
  *                      \li \ref ROHC_U_MODE,
  *                      \li \ref ROHC_O_MODE,
@@ -82,30 +84,129 @@ void f_feedback1(const uint32_t sn_bits, struct d_feedback *const feedback)
  * @return            true if the packet is successfully built,
  *                    false otherwise
  */
-bool f_feedback2(const rohc_ack_type_t ack_type,
+bool f_feedback2(const rohc_profile_t profile_id,
+                 const enum rohc_feedback_ack_type ack_type,
                  const rohc_mode_t mode,
                  const uint32_t sn_bits,
                  const size_t sn_bits_nr,
                  struct d_feedback *const feedback)
 {
+	uint8_t sn_mask_on_first_byte;
+	size_t sn_bits_on_first_byte;
+	const size_t sn_bits_on_2nd_byte = 8;
+	size_t needed_sn_opts_nr;
+	size_t sn_bits_to_send;
+	size_t sn_bits_shift;
+	size_t sn_opt_nr;
 	bool is_ok;
 
 	feedback->type = 2; /* set type for add_option */
-	feedback->size = 2; /* size of FEEDBACK-2 header */
-	feedback->data[0] = ((ack_type & 0x3) << 6) | ((mode & 0x3) << 4);
-#ifdef ROHC_FEEDBACK_DEBUG
-	printf("FEEDBACK-2: first 4 bits = 0x%02x (ACK type = %d, mode = %d)\n",
-	       feedback->data[0], ack_type, mode);
-#endif
+	feedback->size = 0; /* set size for add_option */
 
-	if(sn_bits_nr == 0) /* SN is not valid */
+	/* if SN is not valid, it shall be zero */
+	if(sn_bits_nr == 0)
 	{
-#ifdef ROHC_FEEDBACK_DEBUG
-		printf("FEEDBACK-2: SN-NOT-VALID\n");
-#endif
-		feedback->data[1] = 0;
+		assert(sn_bits == 0);
+	}
 
-		/* SN option */
+	if(profile_id == ROHC_PROFILE_UNCOMPRESSED)
+	{
+		/* FEEDBACK-2 is not supported by the Uncompressed profile */
+		assert(0);
+		goto error;
+	}
+	else if(profile_id == ROHC_PROFILE_TCP)
+	{
+		feedback->data[feedback->size] = (ack_type & 0x3) << 6;
+		sn_bits_on_first_byte = 6;
+		sn_mask_on_first_byte = 0x3f;
+#ifdef ROHC_FEEDBACK_DEBUG
+		printf("FEEDBACK-2: first 2 bits = 0x%02x (ACK type = %d)\n",
+		       feedback->data[feedback->size], ack_type);
+#endif
+	}
+	else /* other profiles */
+	{
+		feedback->data[feedback->size] = ((ack_type & 0x3) << 6) | ((mode & 0x3) << 4);
+		sn_bits_on_first_byte = 4;
+		sn_mask_on_first_byte = 0x0f;
+#ifdef ROHC_FEEDBACK_DEBUG
+		printf("FEEDBACK-2: first 4 bits = 0x%02x (ACK type = %d, mode = %d)\n",
+		       feedback->data[feedback->size], ack_type, mode);
+#endif
+	}
+
+	/* how many SN options are required to store the full SN on the base header
+	 * and those SN options? */
+	for(needed_sn_opts_nr = 0; needed_sn_opts_nr <= 3 &&
+	    sn_bits_nr > (sn_bits_on_first_byte + sn_bits_on_2nd_byte + needed_sn_opts_nr * 8);
+	    needed_sn_opts_nr++)
+	{
+	}
+	assert(needed_sn_opts_nr <= 3); /* should never happen: SN is not larger than 32 bits */
+	sn_bits_to_send = sn_bits_on_first_byte + sn_bits_on_2nd_byte + needed_sn_opts_nr * 8;
+	assert(sn_bits_to_send >= sn_bits_nr);
+#ifdef ROHC_FEEDBACK_DEBUG
+	printf("FEEDBACK-2: transmit SN = 0x%08x on %zu bits\n", sn_bits, sn_bits_to_send);
+#endif
+	sn_bits_shift = sn_bits_to_send;
+
+	/* base header: variable SN bits in first byte */ /* TODO: clear MSB */
+	sn_bits_shift -= sn_bits_on_first_byte;
+	if(sn_bits_shift < 32)
+	{
+		feedback->data[feedback->size] |= (sn_bits >> sn_bits_shift) & sn_mask_on_first_byte;
+	}
+#ifdef ROHC_FEEDBACK_DEBUG
+	printf("FEEDBACK-2: %zu bits of SN = 0x%x\n", sn_bits_on_first_byte,
+	       feedback->data[feedback->size] & sn_mask_on_first_byte);
+#endif
+	feedback->size++;
+
+	/* base header: 8 additional SN bits */ /* TOOD: clear MSB */
+	sn_bits_shift -= sn_bits_on_2nd_byte;
+	feedback->data[feedback->size] = (sn_bits >> sn_bits_shift) & 0xff;
+#ifdef ROHC_FEEDBACK_DEBUG
+	printf("FEEDBACK-2: %zu bits of SN = 0x%02x\n", sn_bits_on_2nd_byte,
+	       feedback->data[feedback->size] & 0xff);
+#endif
+	feedback->size++;
+
+	/* base header: CRC for TCP profile */
+	if(profile_id == ROHC_PROFILE_TCP)
+	{
+		feedback->data[feedback->size] = 0x00; /* zeroed for computation */
+		feedback->size++;
+	}
+
+	/* add feedback options */
+	if(sn_bits_nr > 0)
+	{
+		/* add SN option(s) */
+		for(sn_opt_nr = 0; sn_opt_nr < needed_sn_opts_nr; sn_opt_nr++)
+		{
+			sn_bits_shift -= 8;
+			const uint8_t sn_opt = (sn_bits >> sn_bits_shift) & 0xff;
+
+			is_ok = f_add_option(feedback, ROHC_FEEDBACK_OPT_SN, &sn_opt,
+			                     sizeof(sn_opt));
+			if(!is_ok)
+			{
+#ifdef ROHC_FEEDBACK_DEBUG
+				printf("failed to add SN option #%zu to the feedback packet\n",
+				       sn_opt_nr + 1);
+#endif
+				goto error;
+			}
+#ifdef ROHC_FEEDBACK_DEBUG
+			printf("FEEDBACK-2: 8 bits of SN = 0x%02x (SN option #%zu)\n",
+			       sn_opt, sn_opt_nr + 1);
+#endif
+		}
+	}
+	else
+	{
+		/* SN-NOT-VALID option */
 		is_ok = f_add_option(feedback, ROHC_FEEDBACK_OPT_SN_NOT_VALID, NULL, 0);
 		if(!is_ok)
 		{
@@ -114,155 +215,6 @@ bool f_feedback2(const rohc_ack_type_t ack_type,
 #endif
 			goto error;
 		}
-	}
-	else if(sn_bits_nr <= 12) /* SN may be stored on 12 bits */
-	{
-		feedback->data[0] |= (sn_bits >> 8) & 0xf;
-		feedback->data[1] = sn_bits & 0xff;
-#ifdef ROHC_FEEDBACK_DEBUG
-		printf("FEEDBACK-2: transmit SN = 0x%08x on 12 bits\n", sn_bits);
-		printf("FEEDBACK-2: 4 bits of SN = 0x%x\n", feedback->data[0] & 0xf);
-		printf("FEEDBACK-2: 8 bits of SN = 0x%02x\n", feedback->data[1] & 0xff);
-#endif
-	}
-	else if(sn_bits_nr <= (12 + 8)) /* SN may be stored on 20 bits */
-	{
-		const uint8_t sn_opt = sn_bits & 0xff;
-
-#ifdef ROHC_FEEDBACK_DEBUG
-		printf("FEEDBACK-2: transmit SN = 0x%08x on 20 bits (12 bits in base "
-		       "header, 8 bits in SN option)\n", sn_bits);
-#endif
-
-		/* base header */
-		feedback->data[0] |= (sn_bits >> 16) & 0xf;
-		feedback->data[1] = (sn_bits >> 8) & 0xff;
-#ifdef ROHC_FEEDBACK_DEBUG
-		printf("FEEDBACK-2: 4 bits of SN = 0x%x\n", feedback->data[0] & 0xf);
-		printf("FEEDBACK-2: 8 bits of SN = 0x%02x\n", feedback->data[1] & 0xff);
-#endif
-
-		/* SN option */
-		is_ok = f_add_option(feedback, ROHC_FEEDBACK_OPT_SN, &sn_opt,
-		                     sizeof(sn_opt));
-		if(!is_ok)
-		{
-#ifdef ROHC_FEEDBACK_DEBUG
-			printf("failed to add option to the feedback packet\n");
-#endif
-			goto error;
-		}
-#ifdef ROHC_FEEDBACK_DEBUG
-		printf("FEEDBACK-2: 8 bits of SN option = 0x%02x\n", sn_opt);
-#endif
-	}
-	else if(sn_bits_nr <= (12 + 8 + 8)) /* SN may be stored on 28 bits */
-	{
-		const uint8_t sn_opt1 = (sn_bits >> 8) & 0xff;
-		const uint8_t sn_opt2 = sn_bits & 0xff;
-
-#ifdef ROHC_FEEDBACK_DEBUG
-		printf("FEEDBACK-2: transmit SN = 0x%08x on 28 bits (12 bits in base "
-		       "header, 8 bits in SN option, then 8 bits in SN option)\n", sn_bits);
-#endif
-
-		/* base header */
-		feedback->data[0] |= (sn_bits >> 24) & 0xf;
-		feedback->data[1] = (sn_bits >> 16) & 0xff;
-#ifdef ROHC_FEEDBACK_DEBUG
-		printf("FEEDBACK-2: 4 bits of SN = 0x%x\n", feedback->data[0] & 0xf);
-		printf("FEEDBACK-2: 8 bits of SN = 0x%02x\n", feedback->data[1] & 0xff);
-#endif
-
-		/* first SN option */
-		is_ok = f_add_option(feedback, ROHC_FEEDBACK_OPT_SN, &sn_opt1,
-		                     sizeof(sn_opt1));
-		if(!is_ok)
-		{
-#ifdef ROHC_FEEDBACK_DEBUG
-			printf("failed to add option to the feedback packet\n");
-#endif
-			goto error;
-		}
-#ifdef ROHC_FEEDBACK_DEBUG
-		printf("FEEDBACK-2: 8 bits of SN option = 0x%02x\n", sn_opt1);
-#endif
-
-		/* second SN option */
-		is_ok = f_add_option(feedback, ROHC_FEEDBACK_OPT_SN, &sn_opt2,
-		                     sizeof(sn_opt2));
-		if(!is_ok)
-		{
-#ifdef ROHC_FEEDBACK_DEBUG
-			printf("failed to add option to the feedback packet\n");
-#endif
-			goto error;
-		}
-#ifdef ROHC_FEEDBACK_DEBUG
-		printf("FEEDBACK-2: 8 bits of SN option = 0x%02x\n", sn_opt2);
-#endif
-	}
-	else /* SN may be stored on 12 + 8 + 8 + 8 = 36 bits */
-	{
-		const uint8_t sn_opt1 = (sn_bits >> 16) & 0xff;
-		const uint8_t sn_opt2 = (sn_bits >> 8) & 0xff;
-		const uint8_t sn_opt3 = sn_bits & 0xff;
-
-#ifdef ROHC_FEEDBACK_DEBUG
-		printf("FEEDBACK-2: transmit SN = 0x%08x on 36 bits (12 bits in base "
-		       "header, 8 bits in SN option, 8 bits in SN option, then 8 bits "
-		       "in SN option)\n", sn_bits);
-#endif
-
-		/* base header */
-		feedback->data[0] |= 0;
-		feedback->data[1] = (sn_bits >> 24) & 0xff;
-#ifdef ROHC_FEEDBACK_DEBUG
-		printf("FEEDBACK-2: 4 bits of SN = 0x%x\n", feedback->data[0] & 0xf);
-		printf("FEEDBACK-2: 8 bits of SN = 0x%02x\n", feedback->data[1] & 0xff);
-#endif
-
-		/* first SN option */
-		is_ok = f_add_option(feedback, ROHC_FEEDBACK_OPT_SN, &sn_opt1,
-		                     sizeof(sn_opt1));
-		if(!is_ok)
-		{
-#ifdef ROHC_FEEDBACK_DEBUG
-			printf("failed to add option to the feedback packet\n");
-#endif
-			goto error;
-		}
-#ifdef ROHC_FEEDBACK_DEBUG
-		printf("FEEDBACK-2: 8 bits of SN option = 0x%02x\n", sn_opt1);
-#endif
-
-		/* second SN option */
-		is_ok = f_add_option(feedback, ROHC_FEEDBACK_OPT_SN, &sn_opt2,
-		                     sizeof(sn_opt2));
-		if(!is_ok)
-		{
-#ifdef ROHC_FEEDBACK_DEBUG
-			printf("failed to add option to the feedback packet\n");
-#endif
-			goto error;
-		}
-#ifdef ROHC_FEEDBACK_DEBUG
-		printf("FEEDBACK-2: 8 bits of SN option = 0x%02x\n", sn_opt2);
-#endif
-
-		/* third SN option */
-		is_ok = f_add_option(feedback, ROHC_FEEDBACK_OPT_SN, &sn_opt3,
-		                     sizeof(sn_opt3));
-		if(!is_ok)
-		{
-#ifdef ROHC_FEEDBACK_DEBUG
-			printf("failed to add option to the feedback packet\n");
-#endif
-			goto error;
-		}
-#ifdef ROHC_FEEDBACK_DEBUG
-		printf("FEEDBACK-2: 8 bits of SN option = 0x%02x\n", sn_opt3);
-#endif
 	}
 
 	return true;
@@ -282,7 +234,7 @@ error:
  * @return         true if the option is successfully added, false otherwise
  */
 bool f_add_option(struct d_feedback *const feedback,
-                  const rohc_feedback_opt_t opt_type,
+                  const enum rohc_feedback_opt opt_type,
                   const unsigned char *const data,
                   const size_t data_len)
 {
@@ -337,25 +289,24 @@ error:
  * @param feedback     The feedback packet to which the CID must be appended
  * @param cid          The Context ID (CID) to append
  * @param cid_type     The type of CID used for the feedback
+ * @param[out] cid_len The length of the add-CID or large CID field
  * @return             Whether the CID is successfully appended or not
  */
 static bool f_append_cid(struct d_feedback *const feedback,
                          const uint16_t cid,
-                         const rohc_cid_type_t cid_type)
+                         const rohc_cid_type_t cid_type,
+                         size_t *const cid_len)
 {
 	size_t i;
 
 	if(cid_type == ROHC_LARGE_CID)
 	{
-		size_t largecidsize;
-
 		/* large CIDs are used */
 		assert(cid <= ROHC_LARGE_CID_MAX);
 
 		/* determine the number of bits required for the SDVL-encoded large CID */
-		largecidsize = sdvl_get_encoded_len(cid);
-		assert(largecidsize > 0 && largecidsize <= 5);
-		if(largecidsize <= 0 || largecidsize > 4)
+		*cid_len = sdvl_get_encoded_len(cid);
+		if((*cid_len) != 1 && (*cid_len) != 2)
 		{
 #ifdef ROHC_FEEDBACK_DEBUG
 			printf("failed to determine the number of bits required to "
@@ -365,7 +316,7 @@ static bool f_append_cid(struct d_feedback *const feedback,
 		}
 
 		/* check if the feedback packet can contain a SDVL-encoded large CID */
-		if((feedback->size + largecidsize) > FEEDBACK_DATA_MAX_LEN)
+		if((feedback->size + (*cid_len)) > FEEDBACK_DATA_MAX_LEN)
 		{
 #ifdef ROHC_FEEDBACK_DEBUG
 			printf("feedback packet is too small for large CID\n");
@@ -374,18 +325,18 @@ static bool f_append_cid(struct d_feedback *const feedback,
 		}
 
 #ifdef ROHC_FEEDBACK_DEBUG
-		printf("add %zd bytes for large CID to feedback\n", largecidsize);
+		printf("add %zu bytes for large CID to feedback\n", *cid_len);
 #endif
 
 		/* move feedback data to make space for the SDVL-encoded large CID */
 		assert(feedback->size >= 1);
 		for(i = feedback->size; i > 0; i--)
 		{
-			feedback->data[i - 1 + largecidsize] = feedback->data[i - 1];
+			feedback->data[i - 1 + (*cid_len)] = feedback->data[i - 1];
 		}
 
 		/* SDVL-encode the large CID */
-		if(!sdvl_encode_full(feedback->data, 4U /* TODO */, &largecidsize, cid))
+		if(!sdvl_encode_full(feedback->data, 4U /* TODO */, cid_len, cid))
 		{
 #ifdef ROHC_FEEDBACK_DEBUG
 			printf("failed to SDVL-encoded large CID %u, should never "
@@ -393,7 +344,7 @@ static bool f_append_cid(struct d_feedback *const feedback,
 #endif
 			return false;
 		}
-		feedback->size += largecidsize;
+		feedback->size += (*cid_len);
 	}
 	else /* small CID */
 	{
@@ -418,11 +369,13 @@ static bool f_append_cid(struct d_feedback *const feedback,
 			feedback->data[0] = 0xe0;
 			feedback->data[0] = (cid & 0xf) | feedback->data[0];
 			feedback->size++;
+			*cid_len = 1;
 		}
 #ifdef ROHC_FEEDBACK_DEBUG
 		else
 		{
 			printf("no need to prepend Add-CID byte to feedback\n");
+			*cid_len = 0;
 		}
 #endif
 	}
@@ -454,17 +407,19 @@ uint8_t * f_wrap_feedback(struct d_feedback *const feedback,
                           size_t *const final_size)
 {
 	uint8_t *feedback_packet;
+	size_t feedback_cid_len = 0;
+	size_t crc_pos = 0;
 	uint8_t crc;
 
 	/* append the CID to the feedback packet */
-	if(!f_append_cid(feedback, cid, cid_type))
+	if(!f_append_cid(feedback, cid, cid_type, &feedback_cid_len))
 	{
-		feedback->size = 0;
-		return NULL;
+		goto error;
 	}
+	assert(feedback_cid_len <= 2);
 
 	/* add the CRC option if specified */
-	if(protect_with_crc)
+	if(protect_with_crc == ROHC_FEEDBACK_WITH_CRC_OPT)
 	{
 #ifdef ROHC_FEEDBACK_DEBUG
 		printf("add CRC option to feedback\n");
@@ -474,33 +429,49 @@ uint8_t * f_wrap_feedback(struct d_feedback *const feedback,
 #ifdef ROHC_FEEDBACK_DEBUG
 			printf("failed to add CRC option to the feedback packet\n");
 #endif
-			feedback->size = 0;
-			return NULL;
+			goto error;
 		}
+		/* CRC goes in the last byte of the feedback (CRC option is the last one) */
+		crc_pos = feedback->size - 1;
+	}
+	else if(protect_with_crc == ROHC_FEEDBACK_WITH_CRC_BASE)
+	{
+		/* CRC goes in the last byte of the base header */
+		const size_t feedback_type_len = 1;
+		const size_t feedback_base_hdr_len = 2;
+		crc_pos = feedback_type_len + feedback_cid_len + feedback_base_hdr_len - 1;
+	}
+	else if(protect_with_crc != ROHC_FEEDBACK_WITH_NO_CRC)
+	{
+		assert(0);
+		goto error;
 	}
 
 	/* allocate memory for the feedback packet */
 	feedback_packet = (uint8_t *) malloc(feedback->size);
 	if(feedback_packet == NULL)
 	{
-		feedback->size = 0;
-		return NULL;
+		goto error;
 	}
 
 	/* duplicate the feedback packet */
 	memcpy(feedback_packet, feedback->data, feedback->size);
 
 	/* compute the CRC and store it in the feedback packet if specified */
-	if(protect_with_crc)
+	if(protect_with_crc != ROHC_FEEDBACK_WITH_NO_CRC)
 	{
 		crc = crc_calculate(ROHC_CRC_TYPE_8, feedback_packet, feedback->size,
 		                    CRC_INIT_8, crc_table);
-		feedback_packet[feedback->size - 1] = crc & 0xff;
+		feedback_packet[crc_pos] = crc & 0xff;
 	}
 
 	*final_size = feedback->size;
 	feedback->size = 0;
 
 	return feedback_packet;
+
+error:
+	feedback->size = 0;
+	return NULL;
 }
 

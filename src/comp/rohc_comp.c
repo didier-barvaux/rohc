@@ -139,6 +139,17 @@ static struct rohc_comp_ctxt *
 	__attribute__((nonnull(1), warn_unused_result));
 
 
+/*
+ * Prototypes of private functions related to ROHC feedback
+ */
+
+static bool rohc_comp_feedback_parse_cid(const struct rohc_comp *const comp,
+                                         const uint8_t *const feedback,
+                                         const size_t feedback_len,
+                                         rohc_cid_t *const cid,
+                                         size_t *const cid_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
+
 
 /*
  * Definitions of public functions
@@ -1847,124 +1858,86 @@ bool __rohc_comp_deliver_feedback(struct rohc_comp *const comp,
                                   const uint8_t *const packet,
                                   const size_t size)
 {
-	struct rohc_comp_ctxt *c;
-	struct c_feedback feedback;
-	const uint8_t *p;
-	bool is_success = false;
-
-	/* if decompressor is not associated with a compressor, we cannot deliver
-	 * feedback */
-	if(comp == NULL)
-	{
-		goto ignore;
-	}
+	struct rohc_comp_ctxt *context;
+	const uint8_t *remain_data = packet;
+	size_t remain_len = size;
+	enum rohc_feedback_type feedback_type;
+	rohc_cid_t cid;
+	size_t cid_len;
 
 	/* sanity check */
+	if(comp == NULL)
+	{
+		goto error;
+	}
 	if(packet == NULL)
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		             "failed to deliver feedback: packet is NULL");
 		goto error;
 	}
-	if(size <= 0)
-	{
-		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		             "failed to deliver feedback: size is %zu", size);
-		goto error;
-	}
-
-	p = packet;
 
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	           "deliver %zu byte(s) of feedback to the right context", size);
 
-	feedback.size = size;
-
-	/* decode CID */
-	if(comp->medium.cid_type == ROHC_LARGE_CID)
+	/* extract the CID from feedback */
+	if(!rohc_comp_feedback_parse_cid(comp, remain_data, remain_len, &cid, &cid_len))
 	{
-		size_t large_cid_size;
-		size_t large_cid_bits_nr;
-		uint32_t large_cid;
-
-		/* decode SDVL-encoded large CID field */
-		large_cid_size = sdvl_decode(p, size, &large_cid, &large_cid_bits_nr);
-		if(large_cid_size != 1 && large_cid_size != 2)
-		{
-			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			             "failed to decode SDVL-encoded large CID field");
-			goto error;
-		}
-		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "decode %zu-byte large CID", large_cid_size);
-		feedback.cid = large_cid;
-		p += large_cid_size;
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "failed to deliver feedback: failed to extract CID from "
+		             "feedback");
+		goto error;
 	}
-	else
-	{
-		/* decode small CID if present */
-		if(size > 1 && GET_BIT_6_7(p) == 0x3)
-		{
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "decode 1-byte Add-CID");
-			feedback.cid = rohc_add_cid_decode(p);
-			p++;
-		}
-		else
-		{
-			feedback.cid = 0;
-		}
-	}
-
-	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "feedback CID = %zu", feedback.cid);
-
-	feedback.specific_size = size - (p - packet);
-	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "feedback size = %d", feedback.specific_size);
-
-	if(feedback.specific_size == 1)
-	{
-		feedback.type = 1; /* FEEDBACK-1 */
-	}
-	else
-	{
-		feedback.type = 2; /* FEEDBACK-2 */
-		feedback.acktype = (p[0] >> 6) & 0x3;
-	}
-
-	feedback.specific_offset = p - packet;
-	feedback.data = packet;
+	remain_data += cid_len;
+	remain_len -= cid_len;
 
 	/* find context */
-	c = c_get_context(comp, feedback.cid);
-	if(c == NULL)
+	context = c_get_context(comp, cid);
+	if(context == NULL)
 	{
 		/* context was not found */
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		             "context not found (CID = %zu)", feedback.cid);
+		             "failed to deliver feedback: context with CID = %zu not found",
+		             cid);
 		goto error;
 	}
+	assert(context->cid == cid);
+	assert(context->used == 1);
 
-	/* deliver feedback to profile with the context */
-	if(!c->profile->feedback(c, &feedback))
+	/* FEEDBACK-1 or FEEDBACK-2 ? */
+	if(remain_len == 0)
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		             "failed to handle FEEDBACK-%d data", feedback.type);
+		             "failed to deliver feedback: empty feedback data");
+		goto error;
+	}
+	else if(remain_len == 1)
+	{
+		feedback_type = ROHC_FEEDBACK_1;
 	}
 	else
 	{
-		/* everything went fine */
-		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "FEEDBACK-%d data successfully handled", feedback.type);
-		is_success = true;
+		feedback_type = ROHC_FEEDBACK_2;
 	}
 
-error:
-	return is_success;
+	/* deliver feedback to profile with the context */
+	if(!context->profile->feedback(context, feedback_type, packet, size,
+	                               remain_data, remain_len))
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "failed to deliver feedback: failed to handle FEEDBACK-%d",
+		             feedback_type);
+		goto error;
+	}
 
-ignore:
+	/* everything went fine */
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "FEEDBACK-%d data successfully handled", feedback_type);
+
 	return true;
+
+error:
+	return false;
 }
 
 
@@ -2811,6 +2784,324 @@ bool rohc_comp_reinit_context(struct rohc_comp_ctxt *const context)
 bool rohc_comp_use_udp_port(const struct rohc_comp_ctxt *const context __attribute__((unused)),
                             const unsigned int port __attribute__((unused)))
 {
+	return false;
+}
+
+
+/**
+ * @brief Parse ROHC feedback CID
+ *
+ * @param comp          The ROHC compressor
+ * @param feedback      The ROHC feedback data to parse
+ * @param feedback_len  The length of the ROHC feedback data
+ * @param[out] cid      The CID of the ROHC feedback
+ * @param[out] cid_len  The length of the CID of the ROHC feedback
+ * @return              true if feedback CID was successfully parsed,
+ *                      false if feedback CID is malformed
+ */
+static bool rohc_comp_feedback_parse_cid(const struct rohc_comp *const comp,
+                                         const uint8_t *const feedback,
+                                         const size_t feedback_len,
+                                         rohc_cid_t *const cid,
+                                         size_t *const cid_len)
+{
+	/* decode CID */
+	if(comp->medium.cid_type == ROHC_LARGE_CID)
+	{
+		size_t large_cid_size;
+		size_t large_cid_bits_nr;
+		uint32_t large_cid;
+
+		/* decode SDVL-encoded large CID field */
+		large_cid_size = sdvl_decode(feedback, feedback_len, &large_cid,
+		                             &large_cid_bits_nr);
+		if(large_cid_size != 1 && large_cid_size != 2)
+		{
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "failed to parse feedback: failed to decode SDVL-encoded "
+			             "large CID field");
+			goto error;
+		}
+		*cid = large_cid;
+		*cid_len = large_cid_size;
+	}
+	else
+	{
+		/* decode small CID if present */
+		if(feedback_len > 1 && GET_BIT_6_7(feedback) == 0x3)
+		{
+			*cid = rohc_add_cid_decode(feedback);
+			*cid_len = 1;
+		}
+		else
+		{
+			*cid = 0;
+			*cid_len = 0;
+		}
+	}
+
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "feedback CID = %zu", *cid);
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Parse FEEDBACK-2 options
+ *
+ * @param context            The ROHC decompression context
+ * @param packet             The whole feedback packet with CID bits
+ * @param packet_len         The length of the whole feedback packet with CID bits
+ * @param feedback_data      The feedback data without the CID bits
+ * @param feedback_data_len  The length of the feedback data without the CID bits
+ * @param[out] opts_present  Whether options are present or not
+ * @param[out] sn_bits       in: the SN bits collected in base header
+ *                           out: the SN bits collected in base header and options
+ * @param[out] sn_bits_nr    in: the number of SN bits collected in base header
+ *                           out: the number of SN bits collected in base header
+ *                                and options
+ * @param crc_in_packet      The CRC of the feedback packet
+ * @param crc_pos_from_end   The position of the CRC byte from the end of the
+ *                           feedback packet
+ * @return                   true if feedback options were successfully parsed,
+ *                           false if feedback options were malformed or CRC is wrong
+ */
+bool rohc_comp_feedback_parse_opts(const struct rohc_comp_ctxt *const context,
+                                   const uint8_t *const packet,
+                                   const size_t packet_len,
+                                   const uint8_t *const feedback_data,
+                                   const size_t feedback_data_len,
+                                   size_t opts_present[ROHC_FEEDBACK_OPT_MAX],
+                                   uint32_t *const sn_bits,
+                                   size_t *const sn_bits_nr,
+                                   uint8_t crc_in_packet,
+                                   size_t crc_pos_from_end)
+{
+	const uint8_t *remain_data = feedback_data;
+	size_t remain_len = feedback_data_len;
+	uint8_t opt_type;
+
+	/* parse options */
+	while(remain_len > 0)
+	{
+		opt_type = (remain_data[0] >> 4) & 0x0f;
+		const uint8_t opt_len = (remain_data[0] & 0x0f) + 1;
+		const char *const opt_name = rohc_feedback_opt_charac[opt_type].name;
+		const size_t opt_unknown = rohc_feedback_opt_charac[opt_type].unknown;
+		const size_t opt_supported = rohc_feedback_opt_charac[opt_type].supported;
+		const size_t opt_exp_len = rohc_feedback_opt_charac[opt_type].expected_len;
+
+		rohc_comp_debug(context, "FEEDBACK-2: %s option (%u) found",
+		                opt_name, opt_type);
+
+		/* check min length */
+		if(remain_len < opt_len)
+		{
+			rohc_comp_warn(context, "malformed FEEDBACK-2: packet too short for "
+			               "%u-byte option %u, only %zu bytes remaning", opt_len,
+			               opt_type, remain_len);
+			goto error;
+		}
+
+		if(opt_unknown)
+		{
+			/* unknown options must be ignored (see RFC3095, §5.7.6.10) */
+			rohc_comp_warn(context, "FEEDBACK-2: %s option (%d) is not unknown, "
+			               "ignore it", opt_name, opt_type);
+		}
+		else if(!opt_supported)
+		{
+			/* unknown options must be ignored (see RFC3095, §5.7.6.10) */
+			rohc_comp_warn(context, "FEEDBACK-2: %s option (%d) is not supported "
+			               "yet, ignore it", opt_name, opt_type);
+		}
+		else if(opt_len != opt_exp_len) /* check real length against the expected one */
+		{
+			rohc_comp_warn(context, "malformed FEEDBACK-2: malformed %s option "
+			               "(%u) %u bytes advertised while %zu bytes expected",
+			               opt_name, opt_type, opt_len, opt_exp_len);
+			goto error;
+		}
+		else if(opt_type == ROHC_FEEDBACK_OPT_CRC)
+		{
+			if(opts_present[opt_type] == 0)
+			{
+				/* first CRC option */
+				crc_in_packet = remain_data[1];
+			}
+			else if(crc_in_packet != remain_data[1])
+			{
+				/* multiple CRC options are allowed, but they must be identical
+				 * (see RFC4815, §8.6) */
+				rohc_comp_warn(context, "malformed FEEDBACK-2: duplicate CRC option "
+				               "#%zu specifies a CRC value 0x%02x instead of CRC "
+				               "0x%02x specified in the first CRC option",
+				               opts_present[opt_type], remain_data[1], crc_in_packet);
+				goto error;
+			}
+			crc_pos_from_end = remain_len - 1; /* TODO: handle multiple CRC options */
+		}
+      else if(opt_type == ROHC_FEEDBACK_OPT_SN)
+		{
+			if(context->profile->id == ROHC_PROFILE_TCP)
+			{
+				if(((*sn_bits) & 0xffffc000) != 0)
+				{
+					rohc_comp_warn(context, "malformed FEEDBACK-2: more than 16 bits "
+					               "used for SN of the TCP profile");
+#ifndef ROHC_RFC_STRICT_DECOMPRESSOR
+					rohc_comp_warn(context, "malformed FEEDBACK-2: truncate the MSB "
+					               "of the unexpected SN value");
+					(*sn_bits) &= 0x00003fff;
+#else
+					goto error;
+#endif
+				}
+				(*sn_bits) = ((*sn_bits) << 2) + ((remain_data[1] >> 6) & 0x03);
+				(*sn_bits_nr) += 2;
+			}
+			else if(context->profile->id == ROHC_PROFILE_ESP)
+			{
+				if(((*sn_bits) & 0xff000000) != 0)
+				{
+					rohc_comp_warn(context, "malformed FEEDBACK-2: more than 32 bits "
+					               "used for SN of the ESP profile");
+#ifndef ROHC_RFC_STRICT_DECOMPRESSOR
+					rohc_comp_warn(context, "malformed FEEDBACK-2: truncate the MSB "
+					               "of the unexpected SN value");
+					(*sn_bits) &= 0x00ffffff;
+#else
+					goto error;
+#endif
+				}
+				(*sn_bits) = ((*sn_bits) << 8) + (remain_data[1] & 0xff);
+				(*sn_bits_nr) += 8;
+			}
+			else /* non-TCP and non-ESP profiles */
+			{
+				if(((*sn_bits) & 0xffffff00) != 0)
+				{
+					rohc_comp_warn(context, "malformed FEEDBACK-2: more than 16 bits "
+					               "used for SN of the non-ESP profile");
+#ifndef ROHC_RFC_STRICT_DECOMPRESSOR
+					rohc_comp_warn(context, "malformed FEEDBACK-2: truncate the MSB "
+					               "of the unexpected SN value");
+					(*sn_bits) &= 0x000000ff;
+#else
+					goto error;
+#endif
+				}
+				(*sn_bits) = ((*sn_bits) << 8) + (remain_data[1] & 0xff);
+				(*sn_bits_nr) += 8;
+			}
+		}
+
+		/* one more occurrence of the option */
+		opts_present[opt_type]++;
+
+		/* skip option */
+		remain_data += opt_len;
+		remain_len -= opt_len;
+	}
+
+	/* sanity checks:
+	 *  - some profiles do not support all options
+	 *  - some options cannot be specified multiple times
+	 *  - some options cannot be specified without CRC */
+	for(opt_type = 0; opt_type < ROHC_FEEDBACK_OPT_MAX; opt_type++)
+	{
+		if(opts_present[opt_type] > 0 &&
+		   !rohc_feedback_opt_charac[opt_type].unknown &&
+		   rohc_feedback_opt_charac[opt_type].supported)
+		{
+			const size_t max_occurs =
+				rohc_feedback_opt_charac[opt_type].max_occurs[context->profile->id];
+
+			/* is the option supported by the current compression profile? */
+			if(max_occurs == 0)
+			{
+				rohc_comp_warn(context, "malformed FEEDBACK-2: %s option (%u) is "
+				               "not defined for the compression profile '%s' (%d)",
+				               rohc_feedback_opt_charac[opt_type].name, opt_type,
+				               rohc_get_profile_descr(context->profile->id),
+				               context->profile->id);
+#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
+				goto error;
+#endif
+			}
+			/* warn about multiple options */
+			else if(opts_present[opt_type] > max_occurs)
+			{
+				rohc_comp_warn(context, "malformed FEEDBACK-2: %s option (%u) is "
+				               "specified %zu times while compression profile '%s' "
+				               "(%d) allows only %zu times",
+				               rohc_feedback_opt_charac[opt_type].name, opt_type,
+				               opts_present[opt_type],
+				               rohc_get_profile_descr(context->profile->id),
+				               context->profile->id, max_occurs);
+				goto error;
+			}
+
+			/* some options cannot be specified without CRC */
+			if(opts_present[ROHC_FEEDBACK_OPT_CRC] == 0)
+			{
+			   switch(rohc_feedback_opt_charac[opt_type].crc_req)
+				{
+					case ROHC_FEEDBACK_OPT_CRC_REQUIRED:
+						rohc_comp_warn(context, "malformed FEEDBACK-2: %s option (%u) "
+						               "must be specified along with a CRC option",
+						               rohc_feedback_opt_charac[opt_type].name, opt_type);
+						goto error;
+					case ROHC_FEEDBACK_OPT_CRC_SUGGESTED:
+						rohc_comp_warn(context, "malformed FEEDBACK-2: %s option (%u) "
+						               "should be specified along with a CRC option",
+						               rohc_feedback_opt_charac[opt_type].name, opt_type);
+#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
+						goto error;
+#else
+						break;
+#endif
+					case ROHC_FEEDBACK_OPT_CRC_NOT_REQUIRED:
+						break;
+				}
+			}
+		}
+	}
+
+	/* check CRC if present in feedback */
+	if(opts_present[ROHC_FEEDBACK_OPT_CRC] > 0)
+	{
+		const size_t zeroed_crc_len = 1;
+		const uint8_t zeroed_crc = 0x00;
+		uint8_t crc_computed;
+
+		/* compute the CRC of the feedback packet (skip CRC byte) */
+		crc_computed = crc_calculate(ROHC_CRC_TYPE_8, packet,
+		                             packet_len - crc_pos_from_end, CRC_INIT_8,
+		                             context->compressor->crc_table_8);
+		crc_computed = crc_calculate(ROHC_CRC_TYPE_8, &zeroed_crc, zeroed_crc_len,
+		                             crc_computed, context->compressor->crc_table_8);
+		crc_computed = crc_calculate(ROHC_CRC_TYPE_8, packet + packet_len -
+		                             crc_pos_from_end + 1, crc_pos_from_end - 1,
+		                             crc_computed, context->compressor->crc_table_8);
+
+		/* ignore feedback in case of bad CRC */
+		if(crc_in_packet != crc_computed)
+		{
+			rohc_comp_warn(context, "CRC check failed: CRC computed on %zu bytes "
+			               "(0x%02x) does not match packet CRC (0x%02x)",
+			               packet_len, crc_computed, crc_in_packet);
+			goto error;
+		}
+	}
+
+	return true;
+
+error:
 	return false;
 }
 

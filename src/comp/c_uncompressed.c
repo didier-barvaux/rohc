@@ -100,8 +100,12 @@ static bool c_uncompressed_reinit_context(struct rohc_comp_ctxt *const context);
 
 /* deliver feedbacks */
 static bool uncomp_feedback(struct rohc_comp_ctxt *const context,
-                            const struct c_feedback *const feedback)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+                            const enum rohc_feedback_type feedback_type,
+                            const uint8_t *const packet,
+                            const size_t packet_len,
+                            const uint8_t *const feedback_data,
+                            const size_t feedback_data_len)
+	__attribute__((warn_unused_result, nonnull(1, 3, 5)));
 
 /* mode and state transitions */
 static void uncompressed_decide_state(struct rohc_comp_ctxt *const context,
@@ -275,29 +279,29 @@ static bool c_uncompressed_reinit_context(struct rohc_comp_ctxt *const context)
  * This function is one of the functions that must exist in one profile for
  * the framework to work.
  *
- * @param context  The compression context
- * @param feedback The feedback information
- * @return         true if the feedback was successfully handled,
- *                 false if the feedback could not be taken into account
+ * @param context            The compression context
+ * @param feedback_type      The feedback type among ROHC_FEEDBACK_1 and ROHC_FEEDBACK_2
+ * @param packet             The whole feedback packet with CID bits
+ * @param packet_len         The length of the whole feedback packet with CID bits
+ * @param feedback_data      The feedback data without the CID bits
+ * @param feedback_data_len  The length of the feedback data without the CID bits
+ * @return                   true if the feedback was successfully handled,
+ *                           false if the feedback could not be taken into account
  */
 static bool uncomp_feedback(struct rohc_comp_ctxt *const context,
-                            const struct c_feedback *const feedback)
+                            const enum rohc_feedback_type feedback_type,
+                            const uint8_t *const packet __attribute__((unused)),
+                            const size_t packet_len __attribute__((unused)),
+                            const uint8_t *const feedback_data,
+                            const size_t feedback_data_len)
 {
-	const uint8_t *remain_data;
-	size_t remain_len;
+	const uint8_t *remain_data = feedback_data;
+	size_t remain_len = feedback_data_len;
 
-	assert(context->specific != NULL);
-	assert(context->used == 1);
-	assert(feedback->cid == context->cid);
-	assert(feedback->data != NULL);
-
-	remain_data = feedback->data + feedback->specific_offset;
-	remain_len = feedback->specific_size;
-
-	/* only FEEDBACK-1 is supported by the Uncompressed profile */
-	if(feedback->type != 1)
+	/* only FEEDBACK-1 is support by the Uncompressed profile */
+	if(feedback_type != ROHC_FEEDBACK_1)
 	{
-		rohc_comp_warn(context, "feedback type not handled (%d)", feedback->type);
+		rohc_comp_warn(context, "feedback type not handled (%d)", feedback_type);
 		goto error;
 	}
 

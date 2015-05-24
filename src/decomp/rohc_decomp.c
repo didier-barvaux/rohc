@@ -302,12 +302,12 @@ static struct rohc_decomp_ctxt * context_create(struct rohc_decomp *decomp,
 
 	/* counters and thresholds for feedbacks and downward state transitions */
 	context->last_pkts_errors = 0;
-	context->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].needed = 0;
-	context->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].sent = 0;
-	context->last_pkt_feedbacks[ROHC_ACK_TYPE_NACK].needed = 0;
-	context->last_pkt_feedbacks[ROHC_ACK_TYPE_NACK].sent = 0;
-	context->last_pkt_feedbacks[ROHC_ACK_TYPE_STATIC_NACK].needed = 0;
-	context->last_pkt_feedbacks[ROHC_ACK_TYPE_STATIC_NACK].sent = 0;
+	context->last_pkt_feedbacks[ROHC_FEEDBACK_ACK].needed = 0;
+	context->last_pkt_feedbacks[ROHC_FEEDBACK_ACK].sent = 0;
+	context->last_pkt_feedbacks[ROHC_FEEDBACK_NACK].needed = 0;
+	context->last_pkt_feedbacks[ROHC_FEEDBACK_NACK].sent = 0;
+	context->last_pkt_feedbacks[ROHC_FEEDBACK_STATIC_NACK].needed = 0;
+	context->last_pkt_feedbacks[ROHC_FEEDBACK_STATIC_NACK].sent = 0;
 
 	/* init the context for packet/context corrections upon CRC failures */
 	/* at the beginning, no attempt to correct CRC failure */
@@ -529,12 +529,12 @@ struct rohc_decomp * rohc_decomp_new2(const rohc_cid_type_t cid_type,
 		assert(rohc_decomp_set_prtt(decomp, prtt));
 		assert(rohc_decomp_set_rate_limits(decomp, 1, prtt, 30, 100, 30, 100));
 		decomp->last_pkts_errors = 0;
-		decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].needed = 0;
-		decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].sent = 0;
-		decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_NACK].needed = 0;
-		decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_NACK].sent = 0;
-		decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_STATIC_NACK].needed = 0;
-		decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_STATIC_NACK].sent = 0;
+		decomp->last_pkt_feedbacks[ROHC_FEEDBACK_ACK].needed = 0;
+		decomp->last_pkt_feedbacks[ROHC_FEEDBACK_ACK].sent = 0;
+		decomp->last_pkt_feedbacks[ROHC_FEEDBACK_NACK].needed = 0;
+		decomp->last_pkt_feedbacks[ROHC_FEEDBACK_NACK].sent = 0;
+		decomp->last_pkt_feedbacks[ROHC_FEEDBACK_STATIC_NACK].needed = 0;
+		decomp->last_pkt_feedbacks[ROHC_FEEDBACK_STATIC_NACK].sent = 0;
 	}
 
 	/* no Reconstructed Reception Unit (RRU) at the moment */
@@ -1266,7 +1266,7 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 		decomp->contexts[stream->cid] = stream->context;
 	}
 
-	/* get the SN of the lastest packet successfully decompressed */
+	/* get the SN of the latest packet successfully decompressed */
 	stream->sn_bits = profile->get_sn(stream->context);
 	stream->sn_bits_nr = sn_feedback_min_bits;
 	rohc_decomp_debug(stream->context, "%zu bits required for SN in feedback "
@@ -1773,19 +1773,19 @@ static bool rohc_decomp_feedback_ack(struct rohc_decomp *const decomp,
 
 	/* update all the stats about the feedbacks */
 	decomp->last_pkts_errors <<= 1;
-	decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].needed <<= 1;
-	decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].sent <<= 1;
-	decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_NACK].needed <<= 1;
-	decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_NACK].sent <<= 1;
-	decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_STATIC_NACK].needed <<= 1;
-	decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_STATIC_NACK].sent <<= 1;
+	decomp->last_pkt_feedbacks[ROHC_FEEDBACK_ACK].needed <<= 1;
+	decomp->last_pkt_feedbacks[ROHC_FEEDBACK_ACK].sent <<= 1;
+	decomp->last_pkt_feedbacks[ROHC_FEEDBACK_NACK].needed <<= 1;
+	decomp->last_pkt_feedbacks[ROHC_FEEDBACK_NACK].sent <<= 1;
+	decomp->last_pkt_feedbacks[ROHC_FEEDBACK_STATIC_NACK].needed <<= 1;
+	decomp->last_pkt_feedbacks[ROHC_FEEDBACK_STATIC_NACK].sent <<= 1;
 	infos->context->last_pkts_errors <<= 1;
-	infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].needed <<= 1;
-	infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].sent <<= 1;
-	infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_NACK].needed <<= 1;
-	infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_NACK].sent <<= 1;
-	infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_STATIC_NACK].needed <<= 1;
-	infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_STATIC_NACK].sent <<= 1;
+	infos->context->last_pkt_feedbacks[ROHC_FEEDBACK_ACK].needed <<= 1;
+	infos->context->last_pkt_feedbacks[ROHC_FEEDBACK_ACK].sent <<= 1;
+	infos->context->last_pkt_feedbacks[ROHC_FEEDBACK_NACK].needed <<= 1;
+	infos->context->last_pkt_feedbacks[ROHC_FEEDBACK_NACK].sent <<= 1;
+	infos->context->last_pkt_feedbacks[ROHC_FEEDBACK_STATIC_NACK].needed <<= 1;
+	infos->context->last_pkt_feedbacks[ROHC_FEEDBACK_STATIC_NACK].sent <<= 1;
 
 	/* force sending an ACK if compressor/decompressor modes mismatch or
 	 * if decompressor just changed its operational mode */
@@ -1847,9 +1847,9 @@ static bool rohc_decomp_feedback_ack(struct rohc_decomp *const decomp,
 	}
 
 	/* rate-limit the ACKs */
-	decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].needed |= 1;
-	infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].needed |= 1;
-	k = __builtin_popcount(infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].sent) * 100;
+	decomp->last_pkt_feedbacks[ROHC_FEEDBACK_ACK].needed |= 1;
+	infos->context->last_pkt_feedbacks[ROHC_FEEDBACK_ACK].needed |= 1;
+	k = __builtin_popcount(infos->context->last_pkt_feedbacks[ROHC_FEEDBACK_ACK].sent) * 100;
 	if(k >= decomp->ack_rate_limits.speed.threshold)
 	{
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
@@ -1863,8 +1863,8 @@ static bool rohc_decomp_feedback_ack(struct rohc_decomp *const decomp,
 	           "%zu of 3200 with threshold %zu)", infos->cid, infos->mode,
 	           decomp->target_mode, infos->sn_bits_nr, infos->sn_bits,
 	           k, decomp->ack_rate_limits.speed.threshold);
-	decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].sent |= 1;
-	infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].sent |= 1;
+	decomp->last_pkt_feedbacks[ROHC_FEEDBACK_ACK].sent |= 1;
+	infos->context->last_pkt_feedbacks[ROHC_FEEDBACK_ACK].sent |= 1;
 
 	/* prepare feedback packet if asked by user */
 	if(feedback == NULL)
@@ -1888,15 +1888,15 @@ static bool rohc_decomp_feedback_ack(struct rohc_decomp *const decomp,
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
 			           "use FEEDBACK-1 as positive feedback");
 			f_feedback1(infos->sn_bits, &sfeedback);
-			crc_present = ROHC_FEEDBACK_NO_CRC;
+			crc_present = ROHC_FEEDBACK_WITH_NO_CRC;
 		}
 		else
 		{
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
 			           "use FEEDBACK-2 as positive ACK(%c) feedback",
 			           mode_short[infos->mode]);
-			if(!f_feedback2(ROHC_ACK_TYPE_ACK, infos->mode, infos->sn_bits,
-			                infos->sn_bits_nr, &sfeedback))
+			if(!f_feedback2(infos->profile_id, ROHC_FEEDBACK_ACK, infos->mode,
+			                infos->sn_bits, infos->sn_bits_nr, &sfeedback))
 			{
 				rohc_warning(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
 				             "failed to build the ACK feedback");
@@ -1904,13 +1904,17 @@ static bool rohc_decomp_feedback_ack(struct rohc_decomp *const decomp,
 			}
 
 			/* use CRC option if mode change requested */
-			if(infos->do_change_mode)
+			if(infos->profile_id == ROHC_PROFILE_TCP)
 			{
-				crc_present = ROHC_FEEDBACK_WITH_CRC;
+				crc_present = ROHC_FEEDBACK_WITH_CRC_BASE;
+			}
+			else if(infos->do_change_mode)
+			{
+				crc_present = ROHC_FEEDBACK_WITH_CRC_OPT;
 			}
 			else
 			{
-				crc_present = ROHC_FEEDBACK_NO_CRC;
+				crc_present = ROHC_FEEDBACK_WITH_NO_CRC;
 			}
 		}
 
@@ -1980,7 +1984,7 @@ static bool rohc_decomp_feedback_nack(struct rohc_decomp *const decomp,
 {
 	bool do_downward_transition = false;
 	bool do_build_ack = false;
-	rohc_ack_type_t ack_type;
+	enum rohc_feedback_ack_type ack_type;
 	size_t threshold_too_quickly;
 	size_t k_too_quickly;
 	size_t k_too_many;
@@ -1988,22 +1992,22 @@ static bool rohc_decomp_feedback_nack(struct rohc_decomp *const decomp,
 	/* update all the stats about the feedbacks */
 	decomp->last_pkts_errors <<= 1;
 	decomp->last_pkts_errors |= 1;
-	decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].needed <<= 1;
-	decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].sent <<= 1;
-	decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_NACK].needed <<= 1;
-	decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_NACK].sent <<= 1;
-	decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_STATIC_NACK].needed <<= 1;
-	decomp->last_pkt_feedbacks[ROHC_ACK_TYPE_STATIC_NACK].sent <<= 1;
+	decomp->last_pkt_feedbacks[ROHC_FEEDBACK_ACK].needed <<= 1;
+	decomp->last_pkt_feedbacks[ROHC_FEEDBACK_ACK].sent <<= 1;
+	decomp->last_pkt_feedbacks[ROHC_FEEDBACK_NACK].needed <<= 1;
+	decomp->last_pkt_feedbacks[ROHC_FEEDBACK_NACK].sent <<= 1;
+	decomp->last_pkt_feedbacks[ROHC_FEEDBACK_STATIC_NACK].needed <<= 1;
+	decomp->last_pkt_feedbacks[ROHC_FEEDBACK_STATIC_NACK].sent <<= 1;
 	if(infos->context != NULL)
 	{
 		infos->context->last_pkts_errors <<= 1;
 		infos->context->last_pkts_errors |= 1;
-		infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].needed <<= 1;
-		infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_ACK].sent <<= 1;
-		infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_NACK].needed <<= 1;
-		infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_NACK].sent <<= 1;
-		infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_STATIC_NACK].needed <<= 1;
-		infos->context->last_pkt_feedbacks[ROHC_ACK_TYPE_STATIC_NACK].sent <<= 1;
+		infos->context->last_pkt_feedbacks[ROHC_FEEDBACK_ACK].needed <<= 1;
+		infos->context->last_pkt_feedbacks[ROHC_FEEDBACK_ACK].sent <<= 1;
+		infos->context->last_pkt_feedbacks[ROHC_FEEDBACK_NACK].needed <<= 1;
+		infos->context->last_pkt_feedbacks[ROHC_FEEDBACK_NACK].sent <<= 1;
+		infos->context->last_pkt_feedbacks[ROHC_FEEDBACK_STATIC_NACK].needed <<= 1;
+		infos->context->last_pkt_feedbacks[ROHC_FEEDBACK_STATIC_NACK].sent <<= 1;
 	}
 
 	/* the decompressor cannot warn the compressor if the CID is not identified
@@ -2037,7 +2041,7 @@ static bool rohc_decomp_feedback_nack(struct rohc_decomp *const decomp,
 		/* RFC says nothing about negative feedbacks for malformed packets, but
 		 * it seems useful to tell the compressor to got back to lower states
 		 * if a packet failed to be parsed */
-		ack_type = ROHC_ACK_TYPE_STATIC_NACK;
+		ack_type = ROHC_FEEDBACK_STATIC_NACK;
 		do_downward_transition = false; /* impossible w/o context */
 		do_build_ack = !!(decomp->target_mode > ROHC_U_MODE);
 	}
@@ -2052,7 +2056,7 @@ static bool rohc_decomp_feedback_nack(struct rohc_decomp *const decomp,
 	else if(infos->mode == ROHC_U_MODE)
 	{
 		/* U-mode does not use negative feedback */
-		ack_type = ROHC_ACK_TYPE_NACK;
+		ack_type = ROHC_FEEDBACK_NACK;
 		do_downward_transition = true;
 		do_build_ack = false;
 	}
@@ -2065,7 +2069,7 @@ static bool rohc_decomp_feedback_nack(struct rohc_decomp *const decomp,
 		 * considerations at the beginning of section 5.7.6 */
 		if(infos->state == ROHC_DECOMP_STATE_NC)
 		{
-			ack_type = ROHC_ACK_TYPE_STATIC_NACK;
+			ack_type = ROHC_FEEDBACK_STATIC_NACK;
 			do_downward_transition = true;
 			do_build_ack = true;
 		}
@@ -2080,13 +2084,13 @@ static bool rohc_decomp_feedback_nack(struct rohc_decomp *const decomp,
 		{
 			if(!rohc_decomp_packet_carry_crc_7_or_8(infos->packet_type))
 			{
-				ack_type = ROHC_ACK_TYPE_NACK;
+				ack_type = ROHC_FEEDBACK_NACK;
 				do_downward_transition = true;
 				do_build_ack = true;
 			}
 			else
 			{
-				ack_type = ROHC_ACK_TYPE_STATIC_NACK;
+				ack_type = ROHC_FEEDBACK_STATIC_NACK;
 				do_downward_transition = true;
 				do_build_ack = true;
 			}
@@ -2095,7 +2099,7 @@ static bool rohc_decomp_feedback_nack(struct rohc_decomp *const decomp,
 		 * 5.3.2.2.3 to decide if a NACK(O) should be sent */
 		else
 		{
-			ack_type = ROHC_ACK_TYPE_NACK;
+			ack_type = ROHC_FEEDBACK_NACK;
 			do_downward_transition = true;
 			do_build_ack = true;
 		}
@@ -2114,7 +2118,7 @@ static bool rohc_decomp_feedback_nack(struct rohc_decomp *const decomp,
 		           "negative ACK");
 		goto skip;
 	}
-	assert(ack_type == ROHC_ACK_TYPE_NACK || ack_type == ROHC_ACK_TYPE_STATIC_NACK);
+	assert(ack_type == ROHC_FEEDBACK_NACK || ack_type == ROHC_FEEDBACK_STATIC_NACK);
 
 	/* rate-limit the downward state transitions and NACKs */
 	if(infos->context != NULL)
@@ -2130,7 +2134,7 @@ static bool rohc_decomp_feedback_nack(struct rohc_decomp *const decomp,
 		k_too_quickly = __builtin_popcount(decomp->last_pkts_errors) * 100;
 		k_too_many = __builtin_popcount(decomp->last_pkt_feedbacks[ack_type].sent) * 100;
 	}
-	if(ack_type == ROHC_ACK_TYPE_NACK)
+	if(ack_type == ROHC_FEEDBACK_NACK)
 	{
 		threshold_too_quickly = decomp->ack_rate_limits.nack.threshold;
 	}
@@ -2222,8 +2226,8 @@ static bool rohc_decomp_feedback_nack(struct rohc_decomp *const decomp,
 		           k_too_many, decomp->ack_rate_limits.speed.threshold);
 
 		/* prepare FEEDBACK-2 */
-		if(!f_feedback2(ack_type, infos->mode, infos->sn_bits, infos->sn_bits_nr,
-		                &sfeedback))
+		if(!f_feedback2(infos->profile_id, ack_type, infos->mode, infos->sn_bits,
+		                infos->sn_bits_nr, &sfeedback))
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
 			             "failed to build the (STATIC-)NACK feedback");
@@ -2231,18 +2235,22 @@ static bool rohc_decomp_feedback_nack(struct rohc_decomp *const decomp,
 		}
 
 		/* use CRC option if mode change requested */
-		if(infos->do_change_mode)
+		if(infos->profile_id == ROHC_PROFILE_TCP)
 		{
-			crc_present = ROHC_FEEDBACK_WITH_CRC;
+			crc_present = ROHC_FEEDBACK_WITH_CRC_BASE;
+		}
+		else if(infos->do_change_mode)
+		{
+			crc_present = ROHC_FEEDBACK_WITH_CRC_OPT;
 		}
 		else
 		{
-			crc_present = ROHC_FEEDBACK_NO_CRC;
+			crc_present = ROHC_FEEDBACK_WITH_NO_CRC;
 		}
 
 		/* build the feedback packet */
 		feedbackp = f_wrap_feedback(&sfeedback, infos->cid, infos->cid_type,
-		                           crc_present, decomp->crc_table_8, &feedbacksize);
+		                            crc_present, decomp->crc_table_8, &feedbacksize);
 		if(feedbackp == NULL)
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, infos->profile_id,

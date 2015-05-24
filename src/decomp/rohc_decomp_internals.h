@@ -152,7 +152,7 @@ struct rohc_decomp
 	/** Whether the last decompressed packets failed or not */
 	uint32_t last_pkts_errors;
 	/** The informations for feedback rate-limiting */
-	struct rohc_ack_stats last_pkt_feedbacks[ROHC_ACK_TYPE_RESERVED];
+	struct rohc_ack_stats last_pkt_feedbacks[ROHC_FEEDBACK_RESERVED];
 
 
 	/* segment-related variables */
@@ -279,7 +279,7 @@ struct rohc_decomp_ctxt
 	/** Whether the last decompressed packets failed or not */
 	uint32_t last_pkts_errors;
 	/** The informations for feedback rate-limiting */
-	struct rohc_ack_stats last_pkt_feedbacks[ROHC_ACK_TYPE_RESERVED];
+	struct rohc_ack_stats last_pkt_feedbacks[ROHC_FEEDBACK_RESERVED];
 
 	/** The context for corrections upon CRC failure */
 	struct rohc_decomp_crc_corr_ctxt crc_corr;

@@ -35,6 +35,7 @@
 #include "rohc_debug.h"
 #include "rohc_packets.h"
 #include "rohc_utils.h"
+#include "rohc_bit_ops.h"
 #include "schemes/cid.h"
 #include "schemes/ip_id_offset.h"
 #include "schemes/comp_list_ipv6.h"
@@ -319,8 +320,17 @@ static void rohc_get_innermost_ipv4_non_rnd(const struct rohc_comp_ctxt *const c
 	__attribute__((nonnull(1, 2, 3, 4)));
 
 static bool rohc_comp_rfc3095_feedback_2(struct rohc_comp_ctxt *const context,
-                                         const struct c_feedback *const feedback)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+                                         const uint8_t *const packet,
+                                         const size_t packet_len,
+                                         const uint8_t *const feedback_data,
+                                         const size_t feedback_data_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
+
+static void rohc_comp_rfc3095_feedback_ack(struct rohc_comp_ctxt *const context,
+                                           const uint32_t sn_bits,
+                                           const size_t sn_bits_nr,
+                                           const bool sn_not_valid)
+	__attribute__((nonnull(1)));
 
 
 
@@ -830,67 +840,59 @@ error:
  * This function is one of the functions that must exist in one profile for
  * the framework to work.
  *
- * @param context  The compression context
- * @param feedback The feedback information
- * @return         true if the feedback was successfully handled,
- *                 false if the feedback could not be taken into account
+ * @param context            The compression context
+ * @param feedback_type      The feedback type
+ * @param packet             The whole feedback packet with CID bits
+ * @param packet_len         The length of the whole feedback packet with CID bits
+ * @param feedback_data      The feedback data without the CID bits
+ * @param feedback_data_len  The length of the feedback data without the CID bits
+ * @return                   true if the feedback was successfully handled,
+ *                           false if the feedback could not be taken into account
  */
 bool rohc_comp_rfc3095_feedback(struct rohc_comp_ctxt *const context,
-                                const struct c_feedback *const feedback)
+                                const enum rohc_feedback_type feedback_type,
+                                const uint8_t *const packet,
+                                const size_t packet_len,
+                                const uint8_t *const feedback_data,
+                                const size_t feedback_data_len)
 {
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	const uint8_t *remain_data; /* pointer to the profile-specific data
-	                               in the feedback packet */
-	size_t remain_len;
-	uint32_t sn;
+	const uint8_t *remain_data = feedback_data;
+	size_t remain_len = feedback_data_len;
 
-	assert(context->specific != NULL);
-	assert(context->used == 1);
-	assert(feedback->cid == context->cid);
-	assert(feedback->data != NULL);
-
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-	remain_data = feedback->data + feedback->specific_offset;
-	remain_len = feedback->specific_size;
-
-	switch(feedback->type)
+	if(feedback_type == ROHC_FEEDBACK_1)
 	{
-		case 1: /* FEEDBACK-1 */
-			rohc_comp_debug(context, "FEEDBACK-1 received");
-			assert(remain_len == 1);
-			sn = remain_data[0] & 0xff;
+		const bool sn_not_valid = false;
+		uint32_t sn_bits;
+		size_t sn_bits_nr;
 
-			/* according to RFC 3095, §4.5.2, ack W-LSB values only in R-mode */
-			if(context->mode == ROHC_R_MODE)
-			{
-				/* ack outer/inner IP-ID only if IPv4, but always ack SN */
-				if(rfc3095_ctxt->outer_ip_flags.version == IPV4)
-				{
-					c_ack_sn_wlsb(rfc3095_ctxt->outer_ip_flags.info.v4.ip_id_window, sn);
-				}
-				if(rfc3095_ctxt->ip_hdr_nr > 1 &&
-				   rfc3095_ctxt->inner_ip_flags.version == IPV4)
-				{
-					c_ack_sn_wlsb(rfc3095_ctxt->inner_ip_flags.info.v4.ip_id_window, sn);
-				}
-				c_ack_sn_wlsb(rfc3095_ctxt->sn_window, sn);
-			}
-			break;
+		rohc_comp_debug(context, "FEEDBACK-1 received");
+		assert(remain_len == 1);
 
-		case 2: /* FEEDBACK-2 */
-			rohc_comp_debug(context, "FEEDBACK-2 received");
-			assert(remain_len >= 2);
-			if(!rohc_comp_rfc3095_feedback_2(context, feedback))
-			{
-				rohc_comp_warn(context, "failed to handle FEEDBACK-2");
-				goto error;
-			}
-			break;
+		/* get the 8 LSB bits of the acknowledged SN */
+		sn_bits = remain_data[0] & 0xff;
+		sn_bits_nr = 8;
 
-		default: /* not FEEDBACK-1 nor FEEDBACK-2 */
-			rohc_comp_warn(context, "feedback type not implemented (%d)",
-			               feedback->type);
+		rohc_comp_debug(context, "ACK received (CID = %zu, %zu-bit SN = 0x%02x)",
+		                context->cid, sn_bits_nr, sn_bits);
+
+		/* the compressor received a positive ACK */
+		rohc_comp_rfc3095_feedback_ack(context, sn_bits, sn_bits_nr, sn_not_valid);
+	}
+	else if(feedback_type == ROHC_FEEDBACK_2)
+	{
+		rohc_comp_debug(context, "FEEDBACK-2 received");
+
+		if(!rohc_comp_rfc3095_feedback_2(context, packet, packet_len,
+		                                 feedback_data, feedback_data_len))
+		{
+			rohc_comp_warn(context, "failed to handle FEEDBACK-2");
 			goto error;
+		}
+	}
+	else /* not FEEDBACK-1 nor FEEDBACK-2 */
+	{
+		rohc_comp_warn(context, "feedback type not implemented (%d)", feedback_type);
+		goto error;
 	}
 
 	return true;
@@ -903,204 +905,132 @@ error:
 /**
  * @brief Update the profile when FEEDBACK-2 is received
  *
- * @param context  The compression context
- * @param feedback The feedback information
- * @return         true if the feedback was successfully handled,
- *                 false if the feedback could not be taken into account
+ * @param context            The compression context
+ * @param packet             The whole feedback packet with CID bits
+ * @param packet_len         The length of the whole feedback packet with CID bits
+ * @param feedback_data      The feedback data without the CID bits
+ * @param feedback_data_len  The length of the feedback data without the CID bits
+ * @return                   true if the feedback was successfully handled,
+ *                           false if the feedback could not be taken into account
  */
 static bool rohc_comp_rfc3095_feedback_2(struct rohc_comp_ctxt *const context,
-                                         const struct c_feedback *const feedback)
+                                         const uint8_t *const packet,
+                                         const size_t packet_len,
+                                         const uint8_t *const feedback_data,
+                                         const size_t feedback_data_len)
 {
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	const uint8_t *remain_data; /* pointer to the profile-specific data
-	                               in the feedback packet */
-	size_t remain_len;
-	unsigned int crc_in_packet = 0; /* initialized to avoid a GCC warning */
-	bool is_crc_used = false;
-	bool sn_not_valid = false;
-	size_t crc_pos_from_end;
-	uint32_t sn;
-	uint8_t mode;
+	const uint8_t *remain_data = feedback_data;
+	size_t remain_len = feedback_data_len;
+	const struct rohc_feedback_2_rfc3095 *feedback2;
 
-	assert(context->specific != NULL);
-	assert(context->used == 1);
-	assert(feedback->type == 2);
-	assert(feedback->cid == context->cid);
-	assert(feedback->data != NULL);
+	size_t opts_present[ROHC_FEEDBACK_OPT_MAX] = { 0 };
 
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-	remain_data = feedback->data + feedback->specific_offset;
-	remain_len = feedback->specific_size;
+	uint32_t sn_bits;
+	size_t sn_bits_nr;
+
 	assert(remain_len >= 2);
 
-	/* retrieve new mode and acked SN */
-	mode = (remain_data[0] >> 4) & 3;
-	sn = ((remain_data[0] & 0x0f) << 8) + (remain_data[1] & 0xff);
-	assert((sn & 0x0fff) == sn);
+	/* retrieve requested mode acked SN */
+	feedback2 = (const struct rohc_feedback_2_rfc3095 *) remain_data;
+	sn_bits = (feedback2->sn1 << 8) | feedback2->sn2;
+	sn_bits_nr = 4 + 8;
 	remain_data += 2;
 	remain_len -= 2;
 
 	/* parse FEEDBACK-2 options */
-	while(remain_len > 0)
+	if(!rohc_comp_feedback_parse_opts(context, packet, packet_len,
+	                                  remain_data, remain_len, opts_present,
+	                                  &sn_bits, &sn_bits_nr, 0, 0))
 	{
-		const uint8_t opt = (remain_data[0] >> 4) & 0x0f;
-		const uint8_t optlen = (remain_data[0] & 0x0f) + 1;
-
-		/* check min length */
-		if(remain_len < optlen)
-		{
-			rohc_comp_warn(context, "%zu-byte FEEDBACK-2 is too short for "
-			               "%u-byte option %u", remain_len, optlen, opt);
-			goto error;
-		}
-
-		switch(opt)
-		{
-			case 1: /* CRC */
-			{
-				const size_t crc_opt_exp_len = 2;
-				if(optlen != crc_opt_exp_len)
-				{
-					rohc_comp_warn(context, "malformed FEEDBACK-2: malformed CRC "
-					               "option: %u bytes advertised while %zu bytes "
-					               "expected", optlen, crc_opt_exp_len);
-					goto error;
-				}
-				if(is_crc_used)
-				{
-					rohc_comp_warn(context, "malformed FEEDBACK-2: CRC option "
-					               "specified more than once");
-					goto error;
-				}
-				crc_in_packet = remain_data[1];
-				is_crc_used = true;
-				crc_pos_from_end = remain_len - 1;
-				break;
-			}
-			case 3: /* SN-Not-Valid */
-				sn_not_valid = true;
-				break;
-			case 4: /* SN */
-				if((sn & 0xff000000) != 0)
-				{
-					rohc_comp_warn(context, "more than 32 bits used for feedback "
-					               "SN, truncate unexpected value");
-					sn &= 0x00ffffff;
-				}
-				sn = (sn << 8) + (remain_data[1] & 0xff);
-				break;
-			case 2: /* Reject */
-			case 7: /* Loss */
-			default:
-				rohc_comp_warn(context, "unknown feedback option %u", opt);
-				break;
-		}
-
-		remain_data += optlen;
-		remain_len -= optlen;
-	}
-
-	/* check CRC if present in feedback */
-	if(is_crc_used)
-	{
-		const size_t zeroed_crc_len = 1;
-		const uint8_t zeroed_crc = 0x00;
-		uint8_t crc_computed;
-
-		/* compute the CRC of the feedback packet (skip CRC byte) */
-		crc_computed = crc_calculate(ROHC_CRC_TYPE_8, feedback->data,
-		                             feedback->size - crc_pos_from_end, CRC_INIT_8,
-		                             context->compressor->crc_table_8);
-		crc_computed = crc_calculate(ROHC_CRC_TYPE_8, &zeroed_crc, zeroed_crc_len,
-		                             crc_computed, context->compressor->crc_table_8);
-		crc_computed = crc_calculate(ROHC_CRC_TYPE_8, feedback->data +
-		                             feedback->size - crc_pos_from_end + 1,
-		                             crc_pos_from_end - 1, crc_computed,
-		                             context->compressor->crc_table_8);
-
-		/* ignore feedback in case of bad CRC */
-		if(crc_in_packet != crc_computed)
-		{
-			rohc_comp_debug(context, "CRC check failed (size = %zu)",
-			                feedback->size);
-			goto error;
-		}
+		rohc_comp_warn(context, "malformed FEEDBACK-2: failed to parse options");
+		goto error;
 	}
 
 	/* change mode if present in feedback */
-	if(mode != 0 && mode != context->mode)
+	if(feedback2->mode != 0)
 	{
-		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		          "mode change (%d -> %d) requested by feedback for CID %zu",
-		          context->mode, mode, context->cid);
+		rohc_comp_debug(context, "FEEDBACK-2: decompressor asks for %s (%d)",
+		                rohc_get_mode_descr(feedback2->mode), feedback2->mode);
 
-		/* mode can be changed only if feedback is protected by a CRC */
-		if(is_crc_used)
+		if(feedback2->mode != context->mode)
 		{
-			rohc_comp_change_mode(context, mode);
-		}
-		else
-		{
-			rohc_comp_warn(context, "mode change requested without CRC");
+			/* TODO: implement transition restrictions:
+			 *  - RFC 3095, §5.6.3: transition from O-mode to R-mode
+			 *  - RFC 3095, §5.6.4: transition from U-mode to R-mode
+			 *  - RFC 3095, §5.6.5: transition from R-mode to O-mode
+			 *  - RFC 3095, §5.6.5: transition to U-mode
+			 */
+			rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			          "mode change (%d -> %d) requested by feedback for CID %zu",
+			          context->mode, feedback2->mode, context->cid);
+
+			/* RFC 3095, §5.6.1: mode can be changed only if feedback is protected
+			 * by a CRC */
+			if(opts_present[ROHC_FEEDBACK_OPT_CRC] > 0)
+			{
+				rohc_comp_change_mode(context, feedback2->mode);
+			}
+			else
+			{
+				rohc_comp_warn(context, "mode change requested without CRC");
+#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
+				goto error;
+#endif
+			}
 		}
 	}
 
 	/* act according to the type of feedback */
-	switch(feedback->acktype)
+	switch(feedback2->ack_type)
 	{
-		case ACK:
+		case ROHC_FEEDBACK_ACK:
 		{
-			rohc_comp_debug(context, "ACK received (CID = %zu, SN = 0x%08x, "
-			                "SN-not-valid = %d)", feedback->cid, sn,
-			                sn_not_valid ? 1 : 0);
-			/* according to RFC 3095, §4.5.2, ack W-LSB values only in R-mode */
-			/* acknowledge IP-ID and SN only if SN is considered as valid */
-			if(context->mode == ROHC_R_MODE && !sn_not_valid)
-			{
-				/* ack outer/inner IP-ID only if IPv4, but always ack SN */
-				if(rfc3095_ctxt->outer_ip_flags.version == IPV4)
-				{
-					c_ack_sn_wlsb(rfc3095_ctxt->outer_ip_flags.info.v4.ip_id_window, sn);
-				}
-				if(rfc3095_ctxt->ip_hdr_nr > 1 &&
-				   rfc3095_ctxt->inner_ip_flags.version == IPV4)
-				{
-					c_ack_sn_wlsb(rfc3095_ctxt->inner_ip_flags.info.v4.ip_id_window, sn);
-				}
-				c_ack_sn_wlsb(rfc3095_ctxt->sn_window, sn);
-			}
+			const bool sn_not_valid = !!(opts_present[ROHC_FEEDBACK_OPT_SN_NOT_VALID] > 0);
+
+			rohc_comp_debug(context, "ACK received (CID = %zu, %zu-bit SN = 0x%x, "
+			                "SN-not-valid = %d)", context->cid, sn_bits_nr, sn_bits,
+			                GET_REAL(sn_not_valid));
+
+			/* the compressor received a positive ACK */
+			rohc_comp_rfc3095_feedback_ack(context, sn_bits, sn_bits_nr, sn_not_valid);
 			break;
 		}
-
-		case NACK:
+		case ROHC_FEEDBACK_NACK:
 		{
+			/* RFC3095 §5.4.1.1.1: NACKs, downward transition */
 			rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			          "NACK received for CID %zu", feedback->cid);
+			          "NACK received for CID %zu", context->cid);
+			/* the compressor transits back to the FO state */
 			if(context->state == ROHC_COMP_STATE_SO)
 			{
 				rohc_comp_change_state(context, ROHC_COMP_STATE_FO);
 			}
+			/* TODO: use the SN field to determine the latest packet successfully
+			 * decompressed and then determine what fields need to be updated */
 			break;
 		}
-
-		case STATIC_NACK:
+		case ROHC_FEEDBACK_STATIC_NACK:
 		{
+			/* RFC3095 §5.4.1.1.1: NACKs, downward transition */
 			rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			          "STATIC-NACK received for CID %zu", feedback->cid);
+			          "STATIC-NACK received for CID %zu", context->cid);
+			/* the compressor transits back to the IR state */
 			rohc_comp_change_state(context, ROHC_COMP_STATE_IR);
+			/* TODO: use the SN field to determine the latest packet successfully
+			 * decompressed and then determine what fields need to be updated */
 			break;
 		}
-
-		case RESERVED:
+		case ROHC_FEEDBACK_RESERVED:
 		{
-			rohc_comp_warn(context, "reserved field used");
+			/* RFC3095 §5.7.6.1: reserved (MUST NOT be used for parseability) */
+			rohc_comp_warn(context, "malformed FEEDBACK-2: reserved ACK type used");
 			goto error;
 		}
-
 		default:
 		{
 			/* impossible value */
-			rohc_comp_warn(context, "unknown ACK type %d", feedback->acktype);
+			rohc_comp_warn(context, "malformed FEEDBACK-2: unknown ACK type %u",
+			               feedback2->ack_type);
 			goto error;
 		}
 	}
@@ -1109,6 +1039,129 @@ static bool rohc_comp_rfc3095_feedback_2(struct rohc_comp_ctxt *const context,
 
 error:
 	return false;
+}
+
+
+/**
+ * @brief Perform the required actions after the reception of a positive ACK
+ *
+ * @param context       The compression context that received a positive ACK
+ * @param sn_bits       The LSB bits of the acknowledged SN
+ * @param sn_bits_nr    The number of LSB bits of the acknowledged SN
+ * @param sn_not_valid  Whether the received SN may be considered as valid or not
+ */
+static void rohc_comp_rfc3095_feedback_ack(struct rohc_comp_ctxt *const context,
+                                           const uint32_t sn_bits,
+                                           const size_t sn_bits_nr,
+                                           const bool sn_not_valid)
+{
+	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
+
+	if(context->mode == ROHC_U_MODE)
+	{
+		/* RFC 3095, §5.3.1.3 and §5.3.2.3: ACK(U) may disable or increase the
+		 * interval between periodic IR refreshes */
+		/* TODO: reducing IR refreshes is not implemented yet */
+		rohc_comp_debug(context, "ACK(U) received, but not supported, so periodic "
+							 "IR refreshes are unchanged");
+	}
+	else if(context->mode == ROHC_O_MODE && context->state == ROHC_COMP_STATE_FO)
+	{
+		/* RFC 3095, §5.4.1.1.2: positive ACKs may be used to acknowledge updates
+		 * transmitted by UOR-2 packets (ie. transit back to SO state more quickly) */
+		/* TODO: not implemented yet, use the SN field to determine if it acknowledges
+		 * one of the UOR-2 packets that was transmitted since the downward transition
+		 * from SO to FO state */
+		rohc_comp_debug(context, "ACK(O) received, but not supported, so do not "
+		                "transit to SO state more quickly");
+	}
+	else if(context->mode == ROHC_R_MODE)
+	{
+		/* RFC 3095, §5.5.1.2:
+		 *  - valid positive ACKs of IR packets causes transition from IR to FO
+		 *    state
+		 *  - valid positive ACKs of packets transmitted after a string was
+		 *    determined by the compressor causes transition to SO state (direct
+		 *    transition from IR to SO is possible) */
+		/* TODO: not implemented yet, determine the packet acknowledged by the SN
+		 * field and whether it is one IR packet ; if yes, transit upward */
+		rohc_comp_debug(context, "ACK(R) received, but not fully supported, so "
+		                "do not transit to SO state more quickly");
+
+		/* RFC 3095, §4.5.2: ack W-LSB values only in R-mode since U/O-mode uses
+		 * a sliding window with a limited maximum width */
+		/* acknowledge IP-ID and SN only if SN is considered as valid */
+		if(!sn_not_valid)
+		{
+			size_t acked_nr;
+
+			/* ack outer IP-ID only if IPv4 */
+			if(rfc3095_ctxt->outer_ip_flags.version == IPV4)
+			{
+				acked_nr = wlsb_ack(rfc3095_ctxt->outer_ip_flags.info.v4.ip_id_window,
+				                    sn_bits, sn_bits_nr);
+				rohc_comp_debug(context, "FEEDBACK-2: positive ACK removed %zu "
+				                "values from inner IP-ID W-LSB", acked_nr);
+			}
+			/* inner IP-ID only if present and if IPv4 */
+			if(rfc3095_ctxt->ip_hdr_nr > 1 &&
+			   rfc3095_ctxt->inner_ip_flags.version == IPV4)
+			{
+				acked_nr = wlsb_ack(rfc3095_ctxt->inner_ip_flags.info.v4.ip_id_window,
+				                    sn_bits, sn_bits_nr);
+				rohc_comp_debug(context, "FEEDBACK-2: positive ACK removed %zu "
+				                "values from outer IP-ID W-LSB", acked_nr);
+			}
+			/* always ack SN */
+			acked_nr = wlsb_ack(rfc3095_ctxt->sn_window, sn_bits, sn_bits_nr);
+			rohc_comp_debug(context, "FEEDBACK-2: positive ACK removed %zu values "
+			                "from SN W-LSB", acked_nr);
+		}
+	}
+
+	/* RFC 3095, §5.8.2.1:
+	 *   Normally, Gen_id must have been repeated in at least L headers before
+	 *   the list can be used as a ref_list. However, some acknowledgments may
+	 *   be sent in O-mode (and also in U-mode), and whenever an acknowledgment
+	 *   for a header is received, the list of that header is considered known
+	 *   and need not be repeated further.
+	 *   [...]
+	 *
+	 *   a) In the IR state, the compressor sends Generic lists (see 5.8.5)
+	 *      containing all items of the current list in order to establish or
+	 *      refresh the context of the decompressor.
+	 *      - In R-mode, such Generic lists are sent until a header is
+	 *        acknowledged. The list of that header can be used as a reference
+	 *        list to compress subsequent lists.
+	 *      - In U/O-mode, the compressor sends generation identifiers with the
+	 *        Generic lists until
+	 *        1) a generation identifier has been repeated L times, or
+	 *        2) an acknowledgment for a header carrying a generation identifier
+	 *           has been received.
+	 *      The repeated (1) or acknowledged (2) list can be used as a reference
+	 *      list to compress subsequent lists and is kept together with its
+	 *      generation identifier.
+	 *
+	 *    b) When not in the IR state, the compressor moves to the FO state when
+	 *       it observes a difference between curr_list and the previous list. It
+	 *       sends compressed lists based on ref_list to update the context of
+	 *       the decompressor. (However, see d).)
+	 *       - In R-mode, the compressor keeps sending compressed lists using the
+	 *         same reference until it receives an acknowledgment for a packet
+	 *         containing the newest list.  The compressor may then move to the
+	 *         SO state with regard to the list.
+	 *       - In U/O-mode, the compressor keeps sending compressed lists with
+	 *         generation identifiers until
+	 *         1) a generation identifier has been repeated L times, or
+	 *         2) an acknowledgment for a header carrying the latest generation
+	 *            identifier has been received.
+	 *       The repeated or acknowledged list is used as the future reference
+	 *       list.  The compressor may move to the SO state with regard to the
+	 *       list.
+	 */
+	/* TODO: ack the compressed lists */
+	rohc_comp_debug(context, "ACK received, but not fully supported, so do not "
+	                "acknowledge compressed list more quickly");
 }
 
 

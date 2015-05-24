@@ -47,6 +47,7 @@ private_headers = \
 	ip.h \
 	net_pkt.h \
 	rohc_list.h \
+	feedback.h \
 	feedback_parse.h
 
 librohc_common_la_SOURCES = $(sources)

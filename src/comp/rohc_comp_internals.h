@@ -33,6 +33,7 @@
 #include "rohc_comp.h"
 #include "schemes/comp_wlsb.h"
 #include "net_pkt.h"
+#include "feedback.h"
 
 #ifdef __KERNEL__
 #	include <linux/types.h>
@@ -98,7 +99,6 @@
  * file but used by other structures at the beginning of the file.
  */
 
-struct c_feedback;
 struct rohc_comp_ctxt;
 
 
@@ -283,8 +283,12 @@ struct rohc_comp_profile
 	 *        context about the arrival of feedback data
 	 */
 	bool (*feedback)(struct rohc_comp_ctxt *const context,
-	                 const struct c_feedback *const feedback)
-		__attribute__((warn_unused_result, nonnull(1, 2)));
+	                 const enum rohc_feedback_type feedback_type,
+	                 const uint8_t *const packet,
+	                 const size_t packet_len,
+	                 const uint8_t *const feedback_data,
+	                 const size_t feedback_data_len)
+		__attribute__((warn_unused_result, nonnull(1, 3, 5)));
 
 	/**
 	 * @brief The handler used to detect if a UDP port is used by the profile
@@ -374,49 +378,6 @@ struct rohc_comp_ctxt
 };
 
 
-/**
- * @brief The feedback packet
- */
-struct c_feedback
-{
-	/** The Context ID to which the feedback packet is related */
-	rohc_cid_t cid;
-
-	/**
-	 * @brief The type of feedback packet
-	 *
-	 * A value of 1 means FEEDBACK-1, value 2 means FEEDBACK-2.
-	 */
-	int type;
-
-	/** The feedback data (ie. the packet excluding the first type octet) */
-	const uint8_t *data;
-	/** The size of the feedback data */
-	size_t size;
-
-	/**
-	 * @brief The offset that indicates the beginning of the profile-specific
-	 *        data in the feedback data
-	 */
-	int specific_offset;
-	/** The size of the profile-specific data */
-	int specific_size;
-
-	/** The type of acknowledgement (FEEDBACK-2 only) */
-	enum
-	{
-		/** The classical ACKnowledgement */
-		ACK,
-		/** The Negative ACKnowledgement */
-		NACK,
-		/** The Negative STATIC ACKnowledgement */
-		STATIC_NACK,
-		/** Currently unused acknowledgement type */
-		RESERVED
-	} acktype;
-};
-
-
 void rohc_comp_change_mode(struct rohc_comp_ctxt *const context,
                            const rohc_mode_t new_mode)
 	__attribute__((nonnull(1)));
@@ -434,6 +395,18 @@ bool rohc_comp_reinit_context(struct rohc_comp_ctxt *const context)
 bool rohc_comp_use_udp_port(const struct rohc_comp_ctxt *const context,
                             const unsigned int port)
 	__attribute__((warn_unused_result, nonnull(1)));
+
+bool rohc_comp_feedback_parse_opts(const struct rohc_comp_ctxt *const context,
+                                   const uint8_t *const packet,
+                                   const size_t packet_len,
+                                   const uint8_t *const feedback_data,
+                                   const size_t feedback_data_len,
+                                   size_t opts_present[ROHC_FEEDBACK_OPT_MAX],
+                                   uint32_t *const sn_bits,
+                                   size_t *const sn_bits_nr,
+                                   uint8_t crc_in_packet,
+                                   size_t crc_pos_from_end)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 6, 7, 8)));
 
 #endif
 
