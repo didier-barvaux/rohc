@@ -625,8 +625,8 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 	/* parse ref_id */
 	ref_id = GET_BIT_0_7(packet);
 	packet++;
-	packet_read_len++;
 	packet_len--;
+	packet_read_len++;
 	rd_list_debug(decomp, "ref_id = 0x%02x", ref_id);
 	/* reference list must be known */
 	if(!rohc_list_is_gen_id_known(decomp, ref_id))
@@ -653,9 +653,11 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 		             "reference list %u: insertion scheme failed", gen_id, ref_id);
 		goto error;
 	}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	packet += ret;
-	packet_read_len += ret;
 	packet_len -= ret;
+#endif
+	packet_read_len += ret;
 
 	return packet_read_len;
 
@@ -702,8 +704,8 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 	/* parse ref_id */
 	ref_id = GET_BIT_0_7(packet);
 	packet++;
-	packet_read_len++;
 	packet_len--;
+	packet_read_len++;
 	rd_list_debug(decomp, "ref_id = 0x%02x", ref_id);
 	/* reference list must be known */
 	if(!rohc_list_is_gen_id_known(decomp, ref_id))
@@ -730,9 +732,11 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 		             "reference list %u: removal scheme failed", gen_id, ref_id);
 		goto error;
 	}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	packet += ret;
-	packet_read_len += ret;
 	packet_len -= ret;
+#endif
+	packet_read_len += ret;
 
 	return packet_read_len;
 
@@ -795,8 +799,8 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 	/* parse ref_id */
 	ref_id = GET_BIT_0_7(packet);
 	packet++;
-	packet_read_len++;
 	packet_len--;
+	packet_read_len++;
 	rd_list_debug(decomp, "ref_id = 0x%02x", ref_id);
 	/* reference list must be known */
 	if(!rohc_list_is_gen_id_known(decomp, ref_id))
@@ -824,8 +828,8 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 		goto error;
 	}
 	packet += ret;
-	packet_read_len += ret;
 	packet_len -= ret;
+	packet_read_len += ret;
 
 	/* insertion scheme */
 	ret = rohc_list_parse_insertion_scheme(decomp, packet, packet_len, ps, xi_1,
@@ -837,9 +841,11 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 		             "reference list %u: insertion scheme failed", gen_id, ref_id);
 		goto error;
 	}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	packet += ret;
-	packet_read_len += ret;
 	packet_len -= ret;
+#endif
+	packet_read_len += ret;
 
 	return packet_read_len;
 
@@ -1128,9 +1134,11 @@ static int rohc_list_parse_removal_scheme(struct list_decomp *const decomp,
 		rd_list_warn(decomp, "failed to parse the removal bit mask");
 		goto error;
 	}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	packet += ret;
-	packet_read_len += ret;
 	packet_len -= ret;
+#endif
+	packet_read_len += ret;
 
 	/* copy non-removed items from reference list */
 	for(i = 0; i < mask_len; i++)

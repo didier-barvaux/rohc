@@ -4987,7 +4987,9 @@ rohc_status_t rfc3095_decomp_build_hdrs(const struct rohc_decomp *const decomp,
 		inner_ip_hdr = uncomp_hdrs_data;
 		uncomp_hdrs_data += inner_ip_hdr_len;
 		*uncomp_hdrs_len += inner_ip_hdr_len;
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		uncomp_hdrs_max_len -= inner_ip_hdr_len;
+#endif
 		uncomp_hdrs->len += inner_ip_hdr_len;
 	}
 	else
@@ -5011,7 +5013,9 @@ rohc_status_t rfc3095_decomp_build_hdrs(const struct rohc_decomp *const decomp,
 		inner_ip_hdr = NULL;
 		uncomp_hdrs_data += ip_hdr_len;
 		*uncomp_hdrs_len += ip_hdr_len;
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		uncomp_hdrs_max_len -= ip_hdr_len;
+#endif
 		uncomp_hdrs->len += ip_hdr_len;
 	}
 

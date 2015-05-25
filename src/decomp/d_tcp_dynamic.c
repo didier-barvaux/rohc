@@ -547,7 +547,9 @@ static int tcp_parse_dynamic_tcp(const struct rohc_decomp_ctxt *const context,
 		goto error;
 	}
 	rohc_decomp_debug(context, "compressed list of TCP options = %d bytes", ret);
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	remain_data += ret;
+#endif
 	remain_len -= ret;
 
 	assert(remain_len <= rohc_length);

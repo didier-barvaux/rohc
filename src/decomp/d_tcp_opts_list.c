@@ -396,7 +396,9 @@ int d_tcp_parse_tcp_opts_dyn(const struct rohc_decomp_ctxt *const context,
 		                 "items for the compressed list of TCP options");
 		goto error;
 	}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	remain_data += ret;
+#endif
 	remain_len -= ret;
 
 skip:
@@ -663,7 +665,9 @@ static int d_tcp_opt_list_parse_item(const struct rohc_decomp_ctxt *const contex
 		                  is_dynamic_chain ? "dynamic chain" : "optional list");
 		goto error;
 	}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	remain_data += ret;
+#endif
 	remain_len -= ret;
 
 	rohc_decomp_debug(context, "    %d bytes of TCP option of type 0x%02x (%u)",

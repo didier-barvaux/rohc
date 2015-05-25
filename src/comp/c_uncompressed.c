@@ -34,18 +34,6 @@
 #include <assert.h>
 
 
-/**
- * @brief The Uncompressed context
- *
- * The object defines the Uncompressed context that manages all kinds of
- * packets and headers.
- */
-struct sc_uncompressed_context
-{
-	/* empty */
-};
-
-
 /*
  * Prototypes of private functions
  */
@@ -133,26 +121,13 @@ static void uncompressed_decide_state(struct rohc_comp_ctxt *const context,
 static bool c_uncompressed_create(struct rohc_comp_ctxt *const context,
                                   const struct net_pkt *const packet)
 {
-	struct sc_uncompressed_context *uncomp_context;
-	bool success = false;
-
 	assert(context != NULL);
 	assert(context->profile != NULL);
 	assert(packet != NULL);
 
-	uncomp_context = malloc(sizeof(struct sc_uncompressed_context));
-	if(uncomp_context == NULL)
-	{
-		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		           "no memory for the uncompressed context");
-		goto quit;
-	}
-	context->specific = uncomp_context;
+	context->specific = NULL;
 
-	success = true;
-
-quit:
-	return success;
+	return true;
 }
 
 

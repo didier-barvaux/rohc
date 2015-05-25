@@ -490,7 +490,9 @@ static int tcp_parse_irregular_tcp(const struct rohc_decomp_ctxt *const context,
 		goto error;
 	}
 	rohc_decomp_debug(context, "compressed list of TCP options = %d bytes", ret);
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	remain_data += ret;
+#endif
 	remain_len -= ret;
 
 	rohc_dump_buf(context->decompressor->trace_callback,

@@ -2143,10 +2143,12 @@ static int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
 	base_header_ip_t inner_ip_hdr = { .ipvx = NULL };
 	multi_ptr_t mptr;
 	size_t ip_hdr_pos;
-	uint8_t protocol;
 
 	base_header.ipvx = (base_header_ip_vx_t *) ip->data;
 	mptr.uint8 = rohc_pkt;
+
+	/* there is at least one IP header otherwise it won't be the IP/TCP profile */
+	assert(tcp_context->ip_contexts_nr > 0);
 
 	/* add dynamic chain for both IR and IR-DYN packet */
 	for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)
@@ -2166,13 +2168,11 @@ static int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
 
 		if(base_header.ipvx->version == IPV4)
 		{
-			/* get the transport protocol */
-			protocol = base_header.ipv4->protocol;
 			base_header.ipv4++;
 		}
 		else if(base_header.ipvx->version == IPV6)
 		{
-			protocol = base_header.ipv6->next_header;
+			uint8_t protocol = base_header.ipv6->next_header;
 			base_header.ipv6++;
 			for(ip_ext_pos = 0; ip_ext_pos < ip_context->ctxt.v6.opts_nr; ip_ext_pos++)
 			{
@@ -4261,8 +4261,6 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 		switch(base_header.ipvx->version)
 		{
 			case IPV4:
-				/* get the transport protocol */
-				protocol = base_header.ipv4->protocol;
 				base_header.uint8 += base_header.ipv4->header_length << 2;
 				break;
 			case IPV6:
@@ -5612,7 +5610,9 @@ static bool c_tcp_build_co_common(struct rohc_comp_ctxt *const context,
 			rohc_comp_warn(context, "failed to compress TCP options");
 			goto error;
 		}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		co_common_opt += comp_opts_len;
+#endif
 		co_common_opt_len += comp_opts_len;
 		rohc_comp_debug(context, "compressed list of TCP options: %zu-byte list "
 		                "present", comp_opts_len);
@@ -5933,6 +5933,9 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	uint32_t seq_num_hbo;
 	uint32_t ack_num_hbo;
 	size_t ip_hdr_pos;
+
+	/* there is at least one IP header otherwise it won't be the IP/TCP profile */
+	assert(tcp_context->ip_contexts_nr > 0);
 
 	/* how many bits are required to encode the new SN ? */
 	tcp_context->tmp.nr_msn_bits =
