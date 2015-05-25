@@ -337,32 +337,6 @@ typedef struct __attribute__((packed)) ipv4_dynamic2
 	uint16_t ip_id;
 } ipv4_dynamic2_t;
 
-/**
- * @brief Define the IP v4 replicate part.
- *
- * See RFC4996 page 63
- */
-
-typedef struct __attribute__((packed)) ipv4_replicate
-{
-#if WORDS_BIGENDIAN != 1
-	uint8_t df : 1;
-	uint8_t ttl_flag : 1;
-	uint8_t ip_id_behavior : 2;
-	uint8_t reserved : 4;
-	uint8_t ip_ecn_flags : 2;
-	uint8_t dscp : 6;
-#else
-	uint8_t reserved : 4;
-	uint8_t ip_id_behavior : 2;
-	uint8_t ttl_flag : 1;
-	uint8_t df : 1;
-	uint8_t dscp : 6;
-	uint8_t ip_ecn_flags : 2;
-#endif
-//  uint16_t	ip_id;
-//  uint8_t	ttl_hopl;
-} ipv4_replicate_t;
 
 /**
  * @brief Define the IP v6 static part, null flow_label encoded with 1 bit
@@ -431,48 +405,6 @@ typedef struct __attribute__((packed)) ipv6_dynamic
 	uint8_t ttl_hopl;
 } ipv6_dynamic_t;
 
-/**
- * @brief Define the IP v6 replicate part, flow_label encoded with 5 bits
- *
- * See RFC4996 page 59
- */
-
-typedef struct __attribute__((packed)) ipv6_replicate1
-{
-#if WORDS_BIGENDIAN != 1
-	uint8_t ip_ecn_flags : 2;
-	uint8_t dscp : 6;
-	uint8_t flow_label : 5;
-	uint8_t reserved : 3;
-#else
-	uint8_t dscp : 6;
-	uint8_t ip_ecn_flags : 2;
-	uint8_t reserved : 3;
-	uint8_t flow_label : 5;
-#endif
-} ipv6_replicate1_t;
-
-/**
- * @brief Define the IP v6 replicate part, flow_label encoded with 21 bits
- *
- * See RFC4996 page 59
- */
-
-typedef struct __attribute__((packed)) ipv6_replicate2
-{
-#if WORDS_BIGENDIAN != 1
-	uint8_t ip_ecn_flags : 2;
-	uint8_t dscp : 6;
-	uint8_t flow_label1 : 5;
-	uint8_t reserved : 3;
-#else
-	uint8_t dscp : 6;
-	uint8_t ip_ecn_flags : 2;
-	uint8_t reserved : 3;
-	uint8_t flow_label1 : 5;
-#endif
-	uint16_t flow_label2;
-} ipv6_replicate2_t;
 
 /**
  * @brief Define the IP v6 extension
@@ -641,66 +573,6 @@ typedef struct __attribute__((packed)) tcp_dynamic
 //	uint16_t	ack_stride;          // =:= static_or_irreg(ack_stride_flag.CVALUE, 16) [ 0, 16 ];
 //	options                          // =:= list_tcp_options                            [ VARIABLE ];
 } tcp_dynamic_t;
-
-/**
- * @brief Define the TCP replicate part.
- *
- * See RFC4996 page 74/75
- */
-
-typedef struct __attribute__((packed)) tcp_replicate
-{
-#if WORDS_BIGENDIAN != 1
-
-	uint8_t dst_port_presence : 2; // =:= irregular(2)                                [ 2 ];
-	uint8_t src_port_presence : 2; // =:= irregular(2)                                [ 2 ];
-	uint8_t list_present : 1;      // =:= irregular(1)                                [ 1 ];
-	uint8_t window_presence : 1;   // =:= irregular(1)                                [ 1 ];
-	uint8_t reserved : 1;          // =:= irregular(1)                                [ 1 ];
-
-	uint8_t ecn_used : 1;          // =:= one_bit_choice                              [ 1 ];
-	uint8_t rsf_flags : 2;         // =:= rsf_index_enc                               [ 2 ];
-	uint8_t psh_flag : 1;          // =:= irregular(1)                                [ 1 ];
-	uint8_t ack_flag : 1;          // =:= irregular(1)                                [ 1 ];
-	uint8_t urg_flag : 1;          // =:= irregular(1)                                [ 1 ];
-	uint8_t urp_presence : 1;      // =:= irregular(1)                                [ 1 ];
-	uint8_t ack_presence : 1;      // =:= irregular(1)                                [ 1 ];
-	uint8_t ack_stride_flag : 1;   // =:= irregular(1)                                [ 1 ];
-
-#else
-
-	uint8_t reserved : 1;          // =:= irregular(1)                                [ 1 ];
-	uint8_t window_presence : 1;   // =:= irregular(1)                                [ 1 ];
-	uint8_t list_present : 1;      // =:= irregular(1)                                [ 1 ];
-	uint8_t src_port_presence : 2; // =:= irregular(2)                                [ 2 ];
-	uint8_t dst_port_presence : 2; // =:= irregular(2)                                [ 2 ];
-
-	uint8_t ack_stride_flag : 1;   // =:= irregular(1)                                [ 1 ];
-	uint8_t ack_presence : 1;      // =:= irregular(1)                                [ 1 ];
-	uint8_t urp_presence : 1;      // =:= irregular(1)                                [ 1 ];
-	uint8_t urg_flag : 1;          // =:= irregular(1)                                [ 1 ];
-	uint8_t ack_flag : 1;          // =:= irregular(1)                                [ 1 ];
-	uint8_t psh_flag : 1;          // =:= irregular(1)                                [ 1 ];
-	uint8_t rsf_flags : 2;         // =:= rsf_index_enc                               [ 2 ];
-	uint8_t ecn_used : 1;          // =:= one_bit_choice                              [ 1 ];
-
-#endif
-
-	uint16_t msn;                 // =:= irregular(16)                               [ 16 ];
-	uint32_t seq_num;             // =:= irregular(32)                               [ 32 ];
-//	uint16_t	src_port;            // =:= port_replicate(src_port_presence)           [ 0, 8, 16 ];
-//	uint16_t	dst_port;            // =:= port_replicate(dst_port_presence)           [ 0, 8, 16 ];
-//	uint16_t	window;              // =:= static_or_irreg(window_presence, 16)        [ 0, 16 ];
-//	uint16_t	urg_point;           // =:= static_or_irreg(urp_presence, 16)           [ 0, 16 ];
-//	uint32_t	ack_num;             // =:= static_or_irreg(ack_presence, 32)           [ 0, 32 ];
-//	uint8_t		ecn_padding:2;       // =:= optional_2bit_padding(ecn_used.CVALUE)      [ 0, 2 ];
-//	uint8_t		tcp_res_flags:4;     // =:= static_or_irreg(ecn_used.CVALUE, 4)         [ 0, 4 ];
-//	uint8_t		tcp_ecn_flags:2;     // =:= static_or_irreg(ecn_used.CVALUE, 2)         [ 0, 2 ];
-//	uint16_t	checksum;            // =:= irregular(16)                               [ 16 ];
-//	uint16_t	ack_stride;          // =:= static_or_irreg(ack_stride_flag.CVALUE, 16) [ 0, 16 ];
-//	options                          // =:= tcp_list_presence_enc(list_present.CVALUE)  [ VARIABLE ];
-
-} tcp_replicate_t;
 
 
 /** The different TCP options */

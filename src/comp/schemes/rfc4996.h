@@ -58,15 +58,11 @@ typedef union
 	ipv4_static_t *ipv4_static;
 	ipv4_dynamic1_t *ipv4_dynamic1;
 	ipv4_dynamic2_t *ipv4_dynamic2;
-	ipv4_replicate_t *ipv4_replicate;
 	ipv6_static1_t *ipv6_static1;
 	ipv6_static2_t *ipv6_static2;
 	ipv6_dynamic_t *ipv6_dynamic;
-	ipv6_replicate1_t *ipv6_replicate1;
-	ipv6_replicate2_t *ipv6_replicate2;
 	tcp_static_t *tcp_static;
 	tcp_dynamic_t *tcp_dynamic;
-	tcp_replicate_t *tcp_replicate;
 	co_common_t *co_common;
 	rnd_1_t *rnd1;
 	rnd_2_t *rnd2;
