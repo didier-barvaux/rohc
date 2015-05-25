@@ -149,5 +149,5 @@ run_test_without_valgrind ${CMD2} || exit $?
 [ -n "${KERNEL_SUFFIX}" ] && exit 0
 
 # run with valgrind in verbose mode or quiet mode
-run_test_with_valgrind ${BASEDIR}/../valgrind.xsl ${CMD} || exit $?
+run_test_with_valgrind ${BASEDIR}/../../valgrind.xsl ${CMD} || exit $?
 
