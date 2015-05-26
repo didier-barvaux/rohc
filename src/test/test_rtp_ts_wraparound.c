@@ -220,7 +220,7 @@ bool run_test(bool be_verbose, const unsigned int incr)
 				/* decode received unscaled TS */
 				if(!ts_decode_unscaled_bits(ts_sc_decomp, value_encoded,
 				                            required_bits_more_than_2,
-				                            &value_decoded, false))
+				                            &value_decoded))
 				{
 					trace(be_verbose, "failed to decode received absolute unscaled TS\n");
 					goto destroy_ts_sc_decomp;
@@ -245,7 +245,7 @@ bool run_test(bool be_verbose, const unsigned int incr)
 				/* decode received unscaled TS */
 				if(!ts_decode_unscaled_bits(ts_sc_decomp, value_encoded,
 				                            required_bits_more_than_2,
-				                            &value_decoded, false))
+				                            &value_decoded))
 				{
 					trace(be_verbose, "failed to decode received unscaled TS\n");
 					goto destroy_ts_sc_decomp;

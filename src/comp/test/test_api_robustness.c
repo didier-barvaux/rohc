@@ -333,6 +333,11 @@ int main(int argc, char *argv[])
 	/* rohc_comp_force_contexts_reinit() with some contexts init'ed */
 	CHECK(rohc_comp_force_contexts_reinit(comp) == true);
 
+	/* rohc_comp_set_features */
+	CHECK(rohc_comp_set_features(comp, ROHC_COMP_FEATURE_COMPAT_1_6_x) == false);
+	CHECK(rohc_comp_set_features(comp, ROHC_COMP_FEATURE_NO_IP_CHECKSUMS) == true);
+	CHECK(rohc_comp_set_features(comp, ROHC_COMP_FEATURE_NONE) == true);
+
 	/* rohc_comp_deliver_feedback2() */
 	{
 		const struct rohc_ts ts = { .sec = 0, .nsec = 0 };

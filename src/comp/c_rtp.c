@@ -1040,28 +1040,18 @@ static bool rtp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	if(rtp_context->ts_sc.state == INIT_TS ||
 	   rtp_context->ts_sc.state == INIT_STRIDE)
 	{
-		if((context->compressor->features & ROHC_COMP_FEATURE_COMPAT_1_6_x) != 0)
-		{
-			/* keep compatibility with previous versions */
-			rtp_context->tmp.ts_send = rohc_ntoh32(rtp->timestamp);
-			rtp_context->tmp.nr_ts_bits_less_equal_than_2 = 32;
-			rtp_context->tmp.nr_ts_bits_more_than_2 = 32;
-		}
-		else
-		{
-			/* state INIT_TS: TS_STRIDE cannot be computed yet (first packet or TS
-			 *                is constant), so send TS only
-			 * state INIT_STRIDE: TS and TS_STRIDE will be send
-			 */
-			rtp_context->tmp.ts_send = get_ts_unscaled(&rtp_context->ts_sc);
-			nb_bits_unscaled(&rtp_context->ts_sc,
-			                 &rtp_context->tmp.nr_ts_bits_less_equal_than_2,
-			                 &rtp_context->tmp.nr_ts_bits_more_than_2);
+		/* state INIT_TS: TS_STRIDE cannot be computed yet (first packet or TS
+		 *                is constant), so send TS only
+		 * state INIT_STRIDE: TS and TS_STRIDE will be send
+		 */
+		rtp_context->tmp.ts_send = get_ts_unscaled(&rtp_context->ts_sc);
+		nb_bits_unscaled(&rtp_context->ts_sc,
+		                 &rtp_context->tmp.nr_ts_bits_less_equal_than_2,
+		                 &rtp_context->tmp.nr_ts_bits_more_than_2);
 
-			/* save the new unscaled value */
-			assert(rfc3095_ctxt->sn <= 0xffff);
-			add_unscaled(&rtp_context->ts_sc, rfc3095_ctxt->sn);
-		}
+		/* save the new unscaled value */
+		assert(rfc3095_ctxt->sn <= 0xffff);
+		add_unscaled(&rtp_context->ts_sc, rfc3095_ctxt->sn);
 		rohc_comp_debug(context, "unscaled TS = %u on %zu/2 bits or %zu/32 bits",
 		                rtp_context->tmp.ts_send,
 		                rtp_context->tmp.nr_ts_bits_less_equal_than_2,

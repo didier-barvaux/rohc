@@ -232,6 +232,11 @@ int main(int argc, char *argv[])
 		CHECK(n_2 == 102);
 	}
 
+	/* rohc_decomp_set_features */
+	CHECK(rohc_decomp_set_features(decomp, ROHC_DECOMP_FEATURE_COMPAT_1_6_x) == false);
+	CHECK(rohc_decomp_set_features(decomp, ROHC_DECOMP_FEATURE_CRC_REPAIR) == true);
+	CHECK(rohc_decomp_set_features(decomp, ROHC_DECOMP_FEATURE_NONE) == true);
+
 	/* rohc_decompress3() */
 	{
 		const struct rohc_ts ts = { .sec = 0, .nsec = 0 };
@@ -312,7 +317,6 @@ int main(int argc, char *argv[])
 		info.version_minor = 0;
 		CHECK(rohc_decomp_get_general_info(decomp, &info) == true);
 	}
-
 
 	/* rohc_decomp_get_state_descr() */
 	CHECK(strcmp(rohc_decomp_get_state_descr(ROHC_DECOMP_STATE_NC), "No Context") == 0);

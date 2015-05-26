@@ -104,7 +104,6 @@ if [ ${MAX_CONTEXTS} -eq 0 ] ; then
 fi
 
 CMD="${CROSS_COMPILATION_EMULATOR} ${APP}"
-CMD2="${CROSS_COMPILATION_EMULATOR} ${APP}"
 if [ -n "${KERNEL_SUFFIX}" ] ; then
 	# normal mode for kernel: compare with existing ROHC output captures
 	CMD="${CMD} -c ${CAPTURE_COMPARE} ${CAPTURE_SOURCE}"
@@ -118,16 +117,11 @@ else
 	# normal mode: compare with existing ROHC output captures
 	CMD="${CMD} -c ${CAPTURE_COMPARE}"
 	CMD="${CMD} --wlsb-width ${WLSB_WIDTH}"
-	CMD2="${CMD2} --wlsb-width ${WLSB_WIDTH}"
 	CMD="${CMD} --max-contexts ${MAX_CONTEXTS}"
-	CMD2="${CMD2} --max-contexts ${MAX_CONTEXTS}"
 	CMD="${CMD} ${CID_TYPE} ${CAPTURE_SOURCE}"
-	CMD2="${CMD2} ${CID_TYPE} ${CAPTURE_SOURCE}"
 	if [ "${VERBOSE}" = "verbose" ] ; then
 		CMD="${CMD} --verbose"
-		CMD2="${CMD2} --verbose"
 	fi
-	CMD2="${CMD2} --compat-1-6-x"
 fi
 
 # source valgrind-related functions
@@ -138,9 +132,6 @@ fi
 
 # run without valgrind
 run_test_without_valgrind ${CMD} || exit $?
-
-# run without valgrind
-run_test_without_valgrind ${CMD2} || exit $?
 
 # skip Valgrind tests if they are not enabled
 [ "${USE_VALGRIND}" != "yes" ] && exit 0

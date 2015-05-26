@@ -256,14 +256,12 @@ void d_record_ts_stride(struct ts_sc_decomp *const ts_sc,
  * @param ts_unscaled_bits     The W-LSB-encoded TS value
  * @param ts_unscaled_bits_nr  The number of bits of TS_SCALED (W-LSB)
  * @param decoded_ts           OUT: The decoded TS
- * @param compat_1_6_x         Keep the behaviour of <= 1.6.x versions
  * @return                     true in case of success, false otherwise
  */
 bool ts_decode_unscaled_bits(struct ts_sc_decomp *const ts_sc,
                              const uint32_t ts_unscaled_bits,
                              const size_t ts_unscaled_bits_nr,
-                             uint32_t *const decoded_ts,
-                             const bool compat_1_6_x)
+                             uint32_t *const decoded_ts)
 {
 	uint32_t effective_ts_stride;
 	uint32_t new_ts_offset;
@@ -290,13 +288,7 @@ bool ts_decode_unscaled_bits(struct ts_sc_decomp *const ts_sc,
 	}
 
 	/* update unscaled TS in context */
-	if(compat_1_6_x)
-	{
-		*decoded_ts = ts_unscaled_bits;
-		ts_debug(ts_sc, "compat_1_6_x: unscaled TS decoded = %u / 0x%x",
-		         *decoded_ts, *decoded_ts);
-	}
-	else if(ts_unscaled_bits_nr == 32)
+	if(ts_unscaled_bits_nr == 32)
 	{
 		*decoded_ts = ts_unscaled_bits;
 		ts_debug(ts_sc, "absolute unscaled TS decoded = %u / 0x%x",

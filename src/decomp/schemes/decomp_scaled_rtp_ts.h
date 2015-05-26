@@ -64,8 +64,7 @@ void d_record_ts_stride(struct ts_sc_decomp *const ts_sc,
 bool ts_decode_unscaled_bits(struct ts_sc_decomp *const ts_sc,
                              const uint32_t ts_unscaled_bits,
                              const size_t ts_unscaled_bits_nr,
-                             uint32_t *const decoded_ts,
-                             const bool compat_1_6_x)
+                             uint32_t *const decoded_ts)
 	__attribute__((warn_unused_result));
 
 bool ts_decode_scaled_bits(struct ts_sc_decomp *const ts_sc,
