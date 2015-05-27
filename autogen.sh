@@ -59,7 +59,6 @@ $( dirname $0 )/configure \
 	--enable-rohc-debug \
 	--enable-fail-on-warning \
 	--enable-fortify-sources \
-	--enable-app-fuzzer \
 	--enable-app-performance \
 	--enable-app-sniffer \
 	--enable-app-stats \

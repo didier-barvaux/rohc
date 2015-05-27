@@ -16,12 +16,6 @@ else
 APP_SNIFFER_DIR =
 endif
 
-if APP_FUZZER
-APP_FUZZER_DIR = fuzzer
-else
-APP_FUZZER_DIR =
-endif
-
 if APP_STATS
 APP_STATS_DIR = stats
 else
@@ -31,6 +25,5 @@ endif
 SUBDIRS = \
 	$(APP_PERF_DIR) \
 	$(APP_SNIFFER_DIR) \
-	$(APP_FUZZER_DIR) \
 	$(APP_STATS_DIR)
 

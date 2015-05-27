@@ -54,7 +54,6 @@ distdir = $(PACKAGE)-$(VERSION)$(PACKAGE_REVNO)
 DISTCHECK_CONFIGURE_FLAGS = \
 	--enable-fail-on-warning \
 	--enable-fortify-sources \
-	--enable-app-fuzzer \
 	--enable-app-performance \
 	--enable-app-sniffer \
 	--enable-app-tunnel \

@@ -93,7 +93,6 @@ configure_cflags="-g -Wall -Wstrict-prototypes -Wextra -Wunreachable-code"
 configure_cflags="${configure_cflags} -Wunused-function -Wunused-variable"
 configure_cflags="${configure_cflags} -Wshadow"
 configure_ldflags=""
-configure_fuzzer_ldflags=""
 
 # Checks for programs.
 AC_PROG_CC
@@ -269,15 +268,6 @@ AC_ARG_ENABLE(rohc_tests_valgrind,
               enable_rohc_tests_valgrind=$enableval,
               enable_rohc_tests_valgrind=no)
 AM_CONDITIONAL([ROHC_TESTS_VALGRIND], [test x$enable_rohc_tests_valgrind = xyes])
-
-
-# check if ROHC fuzzer (located in the app/fuzzer/ subdir) is enabled
-AC_ARG_ENABLE(app_fuzzer,
-              AS_HELP_STRING([--enable-app-fuzzer],
-                             [enable ROHC fuzzer tool [default=no]]),
-              enable_app_fuzzer=$enableval,
-              enable_app_fuzzer=no)
-AM_CONDITIONAL([APP_FUZZER], [test x$enable_app_fuzzer = xyes])
 
 
 # check if ROHC performance tool (located in the app/performance/ subdir)
@@ -590,23 +580,6 @@ if test "x$enable_rohc_tests_valgrind" = "xyes" ; then
 fi
 
 
-# check whether -lrt is required for clock_gettime(2) if ROHC sniffer is enabled
-if test "x$enable_app_sniffer" = "xyes" ; then
-
-	LIBS_SAVED=$LIBS
-	AC_SEARCH_LIBS([clock_gettime], [rt])
-	if test "x$ac_cv_search_clock_gettime" = "xnone required" ; then
-		:
-	elif test "x$ac_cv_search_clock_gettime" = "xno" ; then
-		AC_MSG_ERROR([clock_gettime(2) requires some flags during linking,
-		              but we failed to determine which ones])
-	else
-		configure_fuzzer_ldflags="${configure_fuzzer_ldflags} $ac_cv_search_clock_gettime"
-	fi
-	LIBS=$LIBS_SAVED
-fi
-
-
 # gnuplot, grep, sort, and tr are mandatory if ROHC statistics are enabled
 if test "x$enable_app_stats" = "xyes" ; then
 
@@ -830,7 +803,6 @@ AC_SUBST([TESTS_ENVIRONMENT], [$tests_environment])
 AC_SUBST([libpcap_includes], [$libpcap_includes])
 AC_SUBST([configure_cflags], [$configure_cflags])
 AC_SUBST([configure_ldflags], [$configure_ldflags])
-AC_SUBST([configure_fuzzer_ldflags], [$configure_fuzzer_ldflags])
 
 AM_DEP_TRACK
 
@@ -874,7 +846,6 @@ AC_CONFIG_FILES([ \
 	app/Makefile \
 	app/performance/Makefile \
 	app/sniffer/Makefile \
-	app/fuzzer/Makefile \
 	app/stats/Makefile \
 	doc/Makefile \
 	doc/doxygen.conf \
