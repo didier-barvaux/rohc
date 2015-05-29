@@ -18,7 +18,7 @@
 #
 
 #
-# Create a report of code coverage with the help of zcov.
+# Create a report of code coverage with the help of lcov.
 #
 # Do not use this script directly, run configure with --enable-code-coverage,
 # build the library, then run the tests:
@@ -30,16 +30,24 @@
 # note: LANG=C and LC_ALL=C are required for zcov to work correctly
 #
 
+LCOV_FILE="coverage.info"
+LCOV_FILTERED="coverage.info.filtered"
+
 echo "" >&2
 
 # scan for gcov output files, create the output.zcov report file
 echo -n "Collect information about code coverage... " >&2
-LANG=C LC_ALL=C zcov-scan output.zcov . || exit 1
+LANG=C LC_ALL=C lcov --capture --directory . --output-file "${LCOV_FILE}" || exit 1
+echo "done." >&2
+
+echo -n "Filter information about system headers... " >&2
+LANG=C LC_ALL=C lcov -r "${LCOV_FILE}" /usr/include/\* --output-file "${LCOV_FILTERED}" || exit 1
 echo "done." >&2
 
 # generate one HTML report from the collected data
 echo -n "Generate HTML report about code coverage... " >&2
-LANG=C LC_ALL=C zcov-genhtml --root="${PWD}" output.zcov coverage-report/ || exit 1
+LANG=C LC_ALL=C genhtml --show-details -f "${LCOV_FILTERED}" \
+	--output-directory coverage-report/ || exit 1
 echo "done." >&2
 
 echo "" >&2

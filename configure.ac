@@ -202,27 +202,28 @@ AC_ARG_ENABLE(code_coverage,
               code_coverage=no)
 if test "x$code_coverage" != "xno"; then
 	configure_cflags="${configure_cflags} -fprofile-arcs -ftest-coverage"
+	configure_ldflags="${configure_ldflags} --coverage"
 
 	# check for the zcov-scan and zcov-genhtml binaries
 	# and abort if they are not found
-	AC_CHECK_PROG(is_zcov_scan_found, zcov-scan, "yes", "no")
-	AC_CHECK_PROG(is_zcov_genhtml_found, zcov-genthml, "yes", "no")
-	if test "x$is_zcov_scan_found" != "xyes" || \
-	   test "x$is_zcov_scan_found" != "xyes" ; then
+	AC_CHECK_PROG(is_lcov_found, lcov, "yes", "no")
+	AC_CHECK_PROG(is_lcov_genhtml_found, genhtml, "yes", "no")
+	if test "x$is_lcov_found" != "xyes" || \
+	   test "x$is_lcov_genhtml_found" != "xyes" ; then
 		echo
-		if test "x$is_zcov_scan_found" != "xyes" ; then
-			echo "ERROR: zcov-scan binary not found"
+		if test "x$is_lcov_found" != "xyes" ; then
+			echo "ERROR: lcov binary not found"
 		fi
-		if test "x$is_zcov_genhtml_found" != "xyes" ; then
-			echo "ERROR: zcov-genhtml binary not found"
+		if test "x$is_lcov_genhtml_found" != "xyes" ; then
+			echo "ERROR: genhtml binary not found"
 		fi
 		echo
-		echo "zcov is required in order to report code coverage."
+		echo "lcov is required in order to report code coverage."
 		echo
 		echo "Either disable the feature with the --disable-code-coverage option, "
-		echo "or install zcov to solve the problem. You may get Zcov from "
-		echo "http://minormatter.com/zcov/ or use your package manager to install "
-		echo "it on your system."
+		echo "or install lcov to solve the problem. You may get Zcov from "
+		echo "http://ltp.sourceforge.net/coverage/lcov.php or use your package "
+		echo "manager to install it on your system."
 		exit 1
 	fi
 fi

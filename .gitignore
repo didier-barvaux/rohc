@@ -34,7 +34,8 @@ missing
 mkinstalldirs
 stamp-h1
 rohc.pc
-output.zcov
+coverage.info
+coverage.info.filtered
 coverage-report
 test/report_code_coverage.sh.log
 test/report_code_coverage.sh.trs
