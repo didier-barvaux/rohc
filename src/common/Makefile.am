@@ -5,8 +5,13 @@
 # Description: create the ROHC common library
 ################################################################################
 
+if ROHC_TESTS
+COMMON_TESTS_DIR = test
+else
+COMMON_TESTS_DIR =
+endif
 
-SUBDIRS = protocols .
+SUBDIRS = protocols . $(COMMON_TESTS_DIR)
 
 
 noinst_LTLIBRARIES = librohc_common.la
