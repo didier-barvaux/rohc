@@ -962,6 +962,7 @@ AC_CONFIG_FILES([ \
 	src/test/Makefile \
 	src/common/Makefile \
 	src/common/protocols/Makefile \
+	src/common/test/Makefile \
 	src/comp/Makefile \
 	src/comp/test/Makefile \
 	src/comp/schemes/Makefile \
