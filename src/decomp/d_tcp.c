@@ -2433,7 +2433,7 @@ static bool d_tcp_decode_bits(const struct rohc_decomp_ctxt *const context,
 	else
 	{
 		assert(bits->rsf_flags_bits_nr == 0);
-		decoded->rsf_flags = tcp_context->rsf_flags;
+		decoded->rsf_flags = 0; /* RSF defaults to 0 if no bit was transmitted */
 	}
 	rohc_decomp_debug(context, "  TCP flags: RES = 0x%x, ECN = 0x%x, URG = %u, "
 	                  "ACK = %u, PSH = %u, RSF = 0x%x", decoded->res_flags,

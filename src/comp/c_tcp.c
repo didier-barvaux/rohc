@@ -179,7 +179,6 @@ struct tcp_tmp_variables
 	bool tcp_ack_flag_changed;
 	bool tcp_urg_flag_present;
 	bool tcp_urg_flag_changed;
-	bool tcp_rsf_flag_changed;
 
 	/** Whether the ecn_used flag changed or not */
 	bool ecn_used_changed;
@@ -6210,10 +6209,10 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	tcp_field_descr_change(context, "ECN flag",
 	                       tcp_context->tmp.ecn_used_changed,
 	                       tcp_context->ecn_used_change_count);
-	tcp_context->tmp.tcp_rsf_flag_changed =
-		(tcp->rsf_flags != tcp_context->old_tcphdr.rsf_flags);
-	tcp_field_descr_change(context, "RSF flag",
-	                       tcp_context->tmp.tcp_rsf_flag_changed, 0);
+	if(tcp->rsf_flags != 0)
+	{
+		rohc_comp_debug(context, "RSF flags is set in current packet");
+	}
 
 	/* how many bits are required to encode the new TCP window? */
 	if(tcp->window != tcp_context->old_tcphdr.window)
@@ -6674,7 +6673,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 	struct sc_tcp_context *const tcp_context = context->specific;
 	rohc_packet_t packet_type;
 
-	if(tcp_context->tmp.tcp_rsf_flag_changed ||
+	if(tcp->rsf_flags != 0 ||
 	   tcp_context->tmp.is_tcp_opts_list_struct_changed ||
 	   tcp_context->tmp.is_tcp_opts_list_static_changed)
 	{
@@ -6837,7 +6836,8 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 	struct sc_tcp_context *const tcp_context = context->specific;
 	rohc_packet_t packet_type;
 
-	if(tcp_context->tmp.is_tcp_opts_list_struct_changed ||
+	if(tcp->rsf_flags != 0 ||
+	   tcp_context->tmp.is_tcp_opts_list_struct_changed ||
 	   tcp_context->tmp.is_tcp_opts_list_static_changed)
 	{
 		if(!tcp_context->tmp.tcp_window_changed &&
@@ -6855,7 +6855,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 	}
 	else /* unchanged structure of the list of TCP options */
 	{
-		if(tcp_context->tmp.tcp_rsf_flag_changed)
+		if(tcp->rsf_flags != 0)
 		{
 			if(!tcp_context->tmp.tcp_window_changed &&
 			   tcp_context->tmp.nr_ack_bits_16383 <= 16 &&
