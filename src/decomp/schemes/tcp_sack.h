@@ -19,7 +19,7 @@
  */
 
 /**
- * @file   decomp/schemes/rfc4996.h
+ * @file   decomp/schemes/tcp_sack.h
  * @brief  Library of decoding methods from RFC4997 and RFC4996
  * @author FWX <rohc_team@dialine.fr>
  * @author Didier Barvaux <didier@barvaux.org>
@@ -40,12 +40,6 @@ struct d_tcp_opt_sack
 	sack_block_t blocks[TCP_SACK_BLOCKS_MAX_NR]; /**< The SACK blocks */
 	size_t blocks_nr;                            /**< The number of SACK blocks */
 };
-
-int d_tcp_sack_size(const struct rohc_decomp_ctxt *const context,
-                    const uint8_t *const rohc_data,
-                    const size_t rohc_length,
-                    uint16_t *const uncomp_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
 int d_tcp_sack_parse(const struct rohc_decomp_ctxt *const context,
                      const uint8_t *const data,
