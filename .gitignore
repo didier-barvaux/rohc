@@ -61,6 +61,9 @@ src/decomp/schemes/test/test_wlsb.log
 src/decomp/schemes/test/test_tcp_ts_opt
 src/decomp/schemes/test/test_tcp_ts_opt.exe
 src/decomp/schemes/test/test_tcp_ts_opt.log
+src/decomp/schemes/test/test_tcp_sack_opt
+src/decomp/schemes/test/test_tcp_sack_opt.exe
+src/decomp/schemes/test/test_tcp_sack_opt.log
 src/decomp/test/test_api_robustness
 src/decomp/test/test_api_robustness.exe
 src/decomp/test/test_api_robustness.log
