@@ -3962,51 +3962,23 @@ error:
  * The maximum size of the array is \ref ROHC_LARGE_CID_MAX + 1.
  *
  * @param decomp   The ROHC decompressor
- * @param max_cid  The MAX_CID value to used (may be different from the one
- *                 in decompressor if the MAX_CID value is being changed)
+ * @param max_cid  The MAX_CID value to used
  * @return         true if the contexts were created, false otherwise
  */
 static bool rohc_decomp_create_contexts(struct rohc_decomp *const decomp,
                                         const rohc_cid_t max_cid)
 {
-	struct rohc_decomp_ctxt **new_contexts;
-
 	assert(decomp != NULL);
 	assert(max_cid <= ROHC_LARGE_CID_MAX);
 
 	/* allocate memory for the new context array */
-	new_contexts = calloc(max_cid + 1, sizeof(struct rohc_decomp_ctxt *));
-	if(new_contexts == NULL)
+	decomp->contexts = calloc(max_cid + 1, sizeof(struct rohc_decomp_ctxt *));
+	if(decomp->contexts == NULL)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		             "cannot allocate memory for the contexts");
 		return false;
 	}
-
-	/* move as many existing contexts as possible if needed */
-	if(decomp->contexts != NULL)
-	{
-		size_t i;
-
-		/* move existing contexts in range [0, new MAX_CID] */
-		memcpy(new_contexts, decomp->contexts,
-		       (rohc_min(decomp->medium.max_cid, max_cid) + 1) *
-		       sizeof(struct rohc_decomp_ctxt *));
-
-		/* free existing contexts in range ]new MAX_CID, old MAX_CID] */
-		for(i = max_cid + 1; i <= decomp->medium.max_cid; i++)
-		{
-			if(decomp->contexts[i] != NULL)
-			{
-				context_free(decomp->contexts[i]);
-			}
-		}
-		assert(decomp->num_contexts_used <= (max_cid + 1));
-
-		zfree(decomp->contexts);
-	}
-	decomp->contexts = new_contexts;
-
 	rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 	           "room for %zu decompression contexts created", max_cid + 1);
 
