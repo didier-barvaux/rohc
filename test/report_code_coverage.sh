@@ -33,21 +33,37 @@
 LCOV_FILE="coverage.info"
 LCOV_FILTERED="coverage.info.filtered"
 
+export LANG=C
+export LC_ALL=C
+
 echo "" >&2
+
+rm -f "${LCOV_FILE}" "${LCOV_FILTERED}"
 
 # scan for gcov output files, create the output.zcov report file
 echo -n "Collect information about code coverage... " >&2
-LANG=C LC_ALL=C lcov --capture --directory . --output-file "${LCOV_FILE}" || exit 1
+lcov --capture --directory . --output-file "${LCOV_FILE}" || exit 1
 echo "done." >&2
 
 echo -n "Filter information about system headers... " >&2
-LANG=C LC_ALL=C lcov -r "${LCOV_FILE}" /usr/include/\* --output-file "${LCOV_FILTERED}" || exit 1
+lcov -r "${LCOV_FILE}" /usr/include/\* --output-file "${LCOV_FILTERED}" || exit 1
+lcov -r "${LCOV_FILTERED}" src/comp/test/\* --output-file "${LCOV_FILTERED}.new" || exit 1
+mv -f "${LCOV_FILTERED}.new" "${LCOV_FILTERED}" || exit 1
+lcov -r "${LCOV_FILTERED}" src/comp/schemes/test/\* --output-file "${LCOV_FILTERED}.new" || exit 1
+mv -f "${LCOV_FILTERED}.new" "${LCOV_FILTERED}" || exit 1
+lcov -r "${LCOV_FILTERED}" src/decomp/test/\* --output-file "${LCOV_FILTERED}.new" || exit 1
+mv -f "${LCOV_FILTERED}.new" "${LCOV_FILTERED}" || exit 1
+lcov -r "${LCOV_FILTERED}" src/decomp/schemes/test/\* --output-file "${LCOV_FILTERED}.new" || exit 1
+mv -f "${LCOV_FILTERED}.new" "${LCOV_FILTERED}" || exit 1
+lcov -r "${LCOV_FILTERED}" src/test/\* --output-file "${LCOV_FILTERED}.new" || exit 1
+mv -f "${LCOV_FILTERED}.new" "${LCOV_FILTERED}" || exit 1
+lcov -r "${LCOV_FILTERED}" test/\* --output-file "${LCOV_FILTERED}.new" || exit 1
+mv -f "${LCOV_FILTERED}.new" "${LCOV_FILTERED}" || exit 1
 echo "done." >&2
 
 # generate one HTML report from the collected data
 echo -n "Generate HTML report about code coverage... " >&2
-LANG=C LC_ALL=C genhtml --show-details -f "${LCOV_FILTERED}" \
-	--output-directory coverage-report/ || exit 1
+genhtml --show-details -f "${LCOV_FILTERED}" --output-directory coverage-report/ || exit 1
 echo "done." >&2
 
 echo "" >&2
