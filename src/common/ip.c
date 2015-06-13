@@ -478,40 +478,6 @@ unsigned int ip_get_hdrlen(const struct ip_packet *const ip)
 
 
 /**
- * @brief Get the length of an IPv4/IPv6 payload
- *
- * The function does not handle \ref ip_packet whose \ref ip_packet::version
- * is \ref IP_UNKNOWN.
- *
- * @param ip The IPv4/IPv6 packet to analyze
- * @return   The length of the IPv4/IPv6 payload if successful, 0 otherwise
- */
-unsigned int ip_get_plen(const struct ip_packet *const ip)
-{
-	unsigned int len;
-
-	if(ip->version == IPV4)
-	{
-		len = rohc_ntoh16(ip->header.v4.tot_len) - ip->header.v4.ihl * 4;
-	}
-	else if(ip->version == IPV6)
-	{
-		len = ip->nl.len;
-	}
-	else
-	{
-		/* function does not handle non-IPv4/IPv6 packets */
-#if defined(NDEBUG) || defined(__KERNEL__) || defined(ENABLE_DEAD_CODE)
-		len = 0;
-#endif
-		assert(0);
-	}
-
-	return len;
-}
-
-
-/**
  * @brief Get the IP version of an IP packet
  *
  * The function handles \ref ip_packet whose \ref ip_packet::version is

@@ -424,8 +424,6 @@ unsigned int ip_get_totlen(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1)));
 unsigned int ip_get_hdrlen(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1)));
-unsigned int ip_get_plen(const struct ip_packet *const ip)
-	__attribute__((warn_unused_result, nonnull(1)));
 
 bool ip_is_fragment(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));
