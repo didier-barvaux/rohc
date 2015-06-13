@@ -200,7 +200,7 @@ int main(int argc, char *argv[])
 	CHECK(rohc_comp_set_periodic_refreshes(comp, 0, 700) == false);
 	CHECK(rohc_comp_set_periodic_refreshes(comp, 1700, 0) == false);
 	CHECK(rohc_comp_set_periodic_refreshes(comp, 5, 10) == false);
-	CHECK(rohc_comp_set_periodic_refreshes(comp, 5, 10) == false);
+	CHECK(rohc_comp_set_periodic_refreshes(comp, 10, 5) == true);
 
 	/* rohc_comp_set_list_trans_nr() */
 	CHECK(rohc_comp_set_list_trans_nr(NULL, 5) == false);
@@ -249,6 +249,15 @@ int main(int argc, char *argv[])
 		CHECK(rohc_comp_get_cid_type(comp, NULL) == false);
 		CHECK(rohc_comp_get_cid_type(comp, &cid_type) == true);
 		CHECK(cid_type == ROHC_SMALL_CID);
+	}
+
+	/* rohc_comp_get_last_packet_info2() before any compressed packet */
+	{
+		rohc_comp_last_packet_info2_t info;
+		memset(&info, 0, sizeof(rohc_comp_last_packet_info2_t));
+		info.version_major = 0;
+		info.version_minor = 0;
+		CHECK(rohc_comp_get_last_packet_info2(comp, &info) == false);
 	}
 
 	/* rohc_compress4() */
@@ -329,6 +338,7 @@ int main(int argc, char *argv[])
 	CHECK(strcmp(rohc_comp_get_state_descr(ROHC_COMP_STATE_IR), "IR") == 0);
 	CHECK(strcmp(rohc_comp_get_state_descr(ROHC_COMP_STATE_FO), "FO") == 0);
 	CHECK(strcmp(rohc_comp_get_state_descr(ROHC_COMP_STATE_SO), "SO") == 0);
+	CHECK(strcmp(rohc_comp_get_state_descr(ROHC_COMP_STATE_SO + 1), "no description") == 0);
 
 	/* rohc_comp_force_contexts_reinit() with some contexts init'ed */
 	CHECK(rohc_comp_force_contexts_reinit(comp) == true);
@@ -351,6 +361,18 @@ int main(int argc, char *argv[])
 		pkt.len = 3; CHECK(rohc_comp_deliver_feedback2(comp, pkt) == false);
 		pkt.len = 4; CHECK(rohc_comp_deliver_feedback2(comp, pkt) == false);
 		pkt.len = 5; CHECK(rohc_comp_deliver_feedback2(comp, pkt) == true);
+	}
+
+	/* several functions with some packets already compressed */
+	{
+		rohc_trace_callback2_t fct = (rohc_trace_callback2_t) NULL;
+		CHECK(rohc_comp_set_traces_cb2(comp, fct, comp) == false);
+
+		CHECK(rohc_comp_set_wlsb_window_width(comp, 16) == false);
+
+		CHECK(rohc_comp_set_periodic_refreshes(comp, 10, 5) == false);
+
+		CHECK(rohc_comp_set_list_trans_nr(comp, 5) == false);
 	}
 
 	/* rohc_comp_free() */

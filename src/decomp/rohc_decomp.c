@@ -2392,10 +2392,7 @@ const char * rohc_decomp_get_state_descr(const rohc_decomp_state_t state)
 		case ROHC_DECOMP_STATE_FC:
 			return "Full Context";
 		default:
-			assert(0);
-#if defined(__KERNEL__) || defined(ENABLE_DEAD_CODE)
 			return "no description";
-#endif
 	}
 }
 
