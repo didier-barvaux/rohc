@@ -6968,6 +6968,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 			packet_type = ROHC_PACKET_TCP_RND_5;
 		}
 		else if(tcp->ack_flag == 0 &&
+		        !tcp_context->tmp.tcp_ack_num_changed &&
 		        tcp_context->tmp.nr_seq_bits_65535 <= 18)
 		{
 			/* ACK number absent */

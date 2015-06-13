@@ -392,10 +392,11 @@ static int tcp_parse_dynamic_tcp(const struct rohc_decomp_ctxt *const context,
 	remain_len -= sizeof(tcp_dynamic_t);
 
 	rohc_decomp_debug(context, "TCP res_flags = %d, ecn_flags = %d, "
-	                  "rsf_flags = %d, URG = %d, ACK = %d, PSH = %d",
+	                  "rsf_flags = %d, URG = %d, ACK = %d, PSH = %d, ack_zero = %u",
 	                  tcp_dynamic->tcp_res_flags, tcp_dynamic->tcp_ecn_flags,
 	                  tcp_dynamic->rsf_flags, tcp_dynamic->urg_flag,
-	                  tcp_dynamic->ack_flag, tcp_dynamic->psh_flag);
+	                  tcp_dynamic->ack_flag, tcp_dynamic->psh_flag,
+	                  tcp_dynamic->ack_zero);
 
 	/* retrieve the TCP flags from the ROHC packet */
 	bits->ecn_used_bits = tcp_dynamic->ecn_used;
@@ -416,11 +417,14 @@ static int tcp_parse_dynamic_tcp(const struct rohc_decomp_ctxt *const context,
 	/* retrieve the TCP sequence number from the ROHC packet */
 	bits->seq.bits = rohc_ntoh32(tcp_dynamic->seq_num);
 	bits->seq.bits_nr = 32;
+	rohc_decomp_debug(context, "%zu bits of TCP sequence number 0x%08x",
+	                  bits->seq.bits_nr, bits->seq.bits);
 
 	/* retrieve the MSN from the ROHC packet */
 	bits->msn.bits = rohc_ntoh16(tcp_dynamic->msn);
 	bits->msn.bits_nr = 16;
-	rohc_decomp_debug(context, "MSN = 0x%04x", bits->msn.bits);
+	rohc_decomp_debug(context, "%zu bits of MSN 0x%04x",
+	                  bits->msn.bits_nr, bits->msn.bits);
 
 	/* optional ACK number */
 	if(tcp_dynamic->ack_zero == 1)
