@@ -72,7 +72,7 @@ int d_tcp_ts_lsb_parse(const struct rohc_decomp_ctxt *const context,
 		rohc_decomp_debug(context, "TCP TS option: TS field is 1-byte long");
 		ts_field->bits = remain_data[0];
 		ts_field->bits_nr = 7;
-		ts_field->p = -1;
+		ts_field->p = ROHC_LSB_SHIFT_TCP_TS_1B;
 		remain_len--;
 	}
 	else if((remain_data[0] & 0x40) == 0)
@@ -89,7 +89,7 @@ int d_tcp_ts_lsb_parse(const struct rohc_decomp_ctxt *const context,
 		ts_field->bits = (remain_data[0] & 0x3f) << 8;
 		ts_field->bits |= remain_data[1];
 		ts_field->bits_nr = 14;
-		ts_field->p = -1;
+		ts_field->p = ROHC_LSB_SHIFT_TCP_TS_2B;
 		remain_len -= 2;
 	}
 	else if((remain_data[0] & 0x20) == 0)
@@ -107,7 +107,7 @@ int d_tcp_ts_lsb_parse(const struct rohc_decomp_ctxt *const context,
 		ts_field->bits |= remain_data[1] << 8;
 		ts_field->bits |= remain_data[2];
 		ts_field->bits_nr = 21;
-		ts_field->p = 0x40000;
+		ts_field->p = ROHC_LSB_SHIFT_TCP_TS_3B;
 		remain_len -= 3;
 	}
 	else
@@ -126,7 +126,7 @@ int d_tcp_ts_lsb_parse(const struct rohc_decomp_ctxt *const context,
 		ts_field->bits |= remain_data[2] << 8;
 		ts_field->bits |= remain_data[3];
 		ts_field->bits_nr = 29;
-		ts_field->p = 0x40000;
+		ts_field->p = ROHC_LSB_SHIFT_TCP_TS_4B;
 		remain_len -= 4;
 	}
 

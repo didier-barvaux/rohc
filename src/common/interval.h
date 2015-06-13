@@ -41,6 +41,8 @@
 typedef enum
 {
 	ROHC_LSB_SHIFT_SN         = -1,      /**< real value for non-RTP SN */
+#define ROHC_LSB_SHIFT_TCP_TS_1B  ROHC_LSB_SHIFT_SN /**< real value for TCP TS */
+#define ROHC_LSB_SHIFT_TCP_TS_2B  ROHC_LSB_SHIFT_SN /**< real value for TCP TS */
 	ROHC_LSB_SHIFT_IP_ID      =  0,      /**< real value for IP-ID */
 	ROHC_LSB_SHIFT_TCP_TTL    =  3,      /**< real value for TCP TTL/HL */
 #define ROHC_LSB_SHIFT_TCP_ACK_SCALED  ROHC_LSB_SHIFT_TCP_TTL
@@ -51,6 +53,8 @@ typedef enum
 	ROHC_LSB_SHIFT_ESP_SN     =  102,    /**< need to compute real value for ESP SN */
 	ROHC_LSB_SHIFT_VAR        =  103,    /**< real value is variable */
 	ROHC_LSB_SHIFT_TCP_WINDOW = 16383,   /**< real value for TCP window */
+	ROHC_LSB_SHIFT_TCP_TS_3B  = 0x00040000, /**< real value for TCP TS */
+	ROHC_LSB_SHIFT_TCP_TS_4B  = 0x04000000, /**< real value for TCP TS */
 } rohc_lsb_shift_t;
 
 
