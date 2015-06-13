@@ -3175,9 +3175,9 @@ static bool d_tcp_check_uncomp_crc(const struct rohc_decomp *const decomp,
 			crc_table = decomp->crc_table_7;
 			break;
 		case ROHC_CRC_TYPE_8:
-			crc_computed = CRC_INIT_8;
-			crc_table = decomp->crc_table_8;
-			break;
+			rohc_decomp_warn(context, "unexpected CRC type %d", crc_type);
+			assert(0);
+			goto error;
 		default:
 			rohc_decomp_warn(context, "unknown CRC type %d", crc_type);
 			assert(0);
