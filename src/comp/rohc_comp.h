@@ -274,13 +274,13 @@ typedef bool (*rohc_rtp_detection_callback_t)(const unsigned char *const ip,
  * Number (SN) of contexts using the IP-only, IP/UDP, and IP/UDP-Lite profiles.
  *
  * The user-defined function is set by calling the function
- * \ref rohc_comp_set_random_cb
+ * \ref rohc_comp_new2
  *
  * @param comp          The ROHC compressor
  * @param user_context  The context given by the user when he/she called the
- *                      rohc_comp_set_random_cb function, may be NULL.
+ *                      \ref rohc_comp_new2 function, may be NULL.
  *
- * @see rohc_comp_set_random_cb
+ * @see rohc_comp_new2
  * @ingroup rohc_comp
  */
 typedef int (*rohc_comp_random_cb_t) (const struct rohc_comp *const comp,
