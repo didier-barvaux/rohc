@@ -60,8 +60,6 @@ static void c_rtp_destroy(struct rohc_comp_ctxt *const context)
 static bool c_rtp_check_profile(const struct rohc_comp *const comp,
                                 const struct net_pkt *const packet)
 		__attribute__((warn_unused_result, nonnull(1, 2)));
-static bool c_rtp_use_udp_port(const struct rohc_comp_ctxt *const context,
-                               const unsigned int port);
 
 static bool c_rtp_check_context(const struct rohc_comp_ctxt *const context,
                                 const struct net_pkt *const packet)
@@ -1510,29 +1508,6 @@ static int rtp_changed_rtp_dynamic(const struct rohc_comp_ctxt *const context,
 
 
 /**
- * @brief Tells if the selected profile uses the RTP port
- *
- * This function is one of the functions that must exist in one profile for the
- * framework to work.
- *
- * @param context The compression context
- * @param port    The port number to check
- * @return        true if the profile uses this port, false otherwise
- */
-static bool c_rtp_use_udp_port(const struct rohc_comp_ctxt *const context,
-                                    const unsigned int port)
-{
-	const struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	const struct sc_rtp_context *rtp_context;
-
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-	rtp_context = (struct sc_rtp_context *) rfc3095_ctxt->specific;
-
-	return (rtp_context->old_udp.dest == port);
-}
-
-
-/**
  * @brief Define the compression part of the RTP profile as described
  *        in the RFC 3095.
  */
@@ -1547,6 +1522,5 @@ const struct rohc_comp_profile c_rtp_profile =
 	.encode         = c_rtp_encode,
 	.reinit_context = rohc_comp_reinit_context,
 	.feedback       = rohc_comp_rfc3095_feedback,
-	.use_udp_port   = c_rtp_use_udp_port,
 };
 

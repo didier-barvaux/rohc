@@ -47,8 +47,6 @@ static void c_uncompressed_destroy(struct rohc_comp_ctxt *const context)
 static bool c_uncompressed_check_profile(const struct rohc_comp *const comp,
                                          const struct net_pkt *const packet)
 		__attribute__((warn_unused_result, nonnull(1, 2)));
-bool c_uncompressed_use_udp_port(const struct rohc_comp_ctxt *const context,
-                                 const unsigned int port);
 
 /* check whether a packet belongs to a context */
 static bool c_uncompressed_check_context(const struct rohc_comp_ctxt *const context,
@@ -602,24 +600,6 @@ error:
 
 
 /**
- * @brief Whether the profile uses the given UDP port
- *
- * This function is one of the functions that must exist in one profile for the
- * framework to work.
- *
- * @param context The compression context
- * @param port    The port number to check
- * @return        Always return false because the Uncompressed profile does not
- *                use UDP port
- */
-bool c_uncompressed_use_udp_port(const struct rohc_comp_ctxt *const context __attribute__((unused)),
-                                 const unsigned int port __attribute__((unused)))
-{
-	return false;
-}
-
-
-/**
  * @brief Define the compression part of the Uncompressed profile as described
  *        in the RFC 3095.
  */
@@ -634,6 +614,5 @@ const struct rohc_comp_profile c_uncompressed_profile =
 	.encode         = c_uncompressed_encode,
 	.reinit_context = c_uncompressed_reinit_context,
 	.feedback       = uncomp_feedback,
-	.use_udp_port   = c_uncompressed_use_udp_port,
 };
 

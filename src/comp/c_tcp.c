@@ -7718,6 +7718,5 @@ const struct rohc_comp_profile c_tcp_profile =
 	.encode         = c_tcp_encode,
 	.reinit_context = rohc_comp_reinit_context,
 	.feedback       = c_tcp_feedback,
-	.use_udp_port   = rohc_comp_use_udp_port,
 };
 

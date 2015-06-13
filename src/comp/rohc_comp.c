@@ -2771,23 +2771,6 @@ bool rohc_comp_reinit_context(struct rohc_comp_ctxt *const context)
 
 
 /**
- * @brief Whether the profile uses the given UDP port
- *
- * This function is one of the functions that must exist in one profile for the
- * framework to work.
- *
- * @param context  The compression context
- * @param port     The UDP port number to check
- * @return         always return true, it is used by non-RTP profiles
- */
-bool rohc_comp_use_udp_port(const struct rohc_comp_ctxt *const context __attribute__((unused)),
-                            const unsigned int port __attribute__((unused)))
-{
-	return false;
-}
-
-
-/**
  * @brief Parse ROHC feedback CID
  *
  * @param comp          The ROHC compressor

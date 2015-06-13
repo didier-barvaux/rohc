@@ -535,6 +535,5 @@ const struct rohc_comp_profile c_ip_profile =
 	.encode         = rohc_comp_rfc3095_encode,
 	.reinit_context = rohc_comp_reinit_context,
 	.feedback       = rohc_comp_rfc3095_feedback,
-	.use_udp_port   = rohc_comp_use_udp_port,
 };
 

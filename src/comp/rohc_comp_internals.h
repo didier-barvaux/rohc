@@ -286,12 +286,6 @@ struct rohc_comp_profile
 	                 const uint8_t *const feedback_data,
 	                 const size_t feedback_data_len)
 		__attribute__((warn_unused_result, nonnull(1, 3, 5)));
-
-	/**
-	 * @brief The handler used to detect if a UDP port is used by the profile
-	 */
-	bool (*use_udp_port)(const struct rohc_comp_ctxt *const context,
-	                     const unsigned int port);
 };
 
 
@@ -387,10 +381,6 @@ void rohc_comp_periodic_down_transition(struct rohc_comp_ctxt *const context)
 	__attribute__((nonnull(1)));
 
 bool rohc_comp_reinit_context(struct rohc_comp_ctxt *const context)
-	__attribute__((warn_unused_result, nonnull(1)));
-
-bool rohc_comp_use_udp_port(const struct rohc_comp_ctxt *const context,
-                            const unsigned int port)
 	__attribute__((warn_unused_result, nonnull(1)));
 
 bool rohc_comp_feedback_parse_opts(const struct rohc_comp_ctxt *const context,
