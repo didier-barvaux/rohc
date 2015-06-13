@@ -256,6 +256,25 @@ int main(int argc, char *argv[])
 		pkt2.len = 0;
 		CHECK(rohc_decompress3(decomp, pkt, &pkt2, NULL, NULL) == ROHC_STATUS_OK);
 		CHECK(pkt2.len > 0);
+
+		{
+			unsigned char buf_full[100];
+			struct rohc_buf pkt_full = rohc_buf_init_full(buf_full, 100, ts);
+			unsigned char buf_malformed[100];
+			struct rohc_buf pkt_malformed = rohc_buf_init_full(buf_malformed, 0, ts);
+			unsigned char buf_empty[100];
+			struct rohc_buf pkt_empty = rohc_buf_init_empty(buf_empty, 100);
+
+			rohc_buf_reset(&pkt2);
+			CHECK(rohc_decompress3(decomp, pkt_malformed, &pkt2, NULL, NULL) == ROHC_STATUS_ERROR);
+			CHECK(rohc_decompress3(decomp, pkt_empty, &pkt2, NULL, NULL) == ROHC_STATUS_ERROR);
+			CHECK(rohc_decompress3(decomp, pkt, &pkt_malformed, NULL, NULL) == ROHC_STATUS_ERROR);
+			CHECK(rohc_decompress3(decomp, pkt, &pkt_full, NULL, NULL) == ROHC_STATUS_ERROR);
+			CHECK(rohc_decompress3(decomp, pkt, &pkt2, &pkt_malformed, NULL) == ROHC_STATUS_ERROR);
+			CHECK(rohc_decompress3(decomp, pkt, &pkt2, &pkt_full, NULL) == ROHC_STATUS_ERROR);
+			CHECK(rohc_decompress3(decomp, pkt, &pkt2, NULL, &pkt_malformed) == ROHC_STATUS_ERROR);
+			CHECK(rohc_decompress3(decomp, pkt, &pkt2, NULL, &pkt_full) == ROHC_STATUS_ERROR);
+		}
 	}
 
 	/* rohc_decomp_get_last_packet_info() */
@@ -293,6 +312,13 @@ int main(int argc, char *argv[])
 	CHECK(strcmp(rohc_decomp_get_state_descr(ROHC_DECOMP_STATE_NC), "No Context") == 0);
 	CHECK(strcmp(rohc_decomp_get_state_descr(ROHC_DECOMP_STATE_SC), "Static Context") == 0);
 	CHECK(strcmp(rohc_decomp_get_state_descr(ROHC_DECOMP_STATE_FC), "Full Context") == 0);
+	CHECK(strcmp(rohc_decomp_get_state_descr(ROHC_DECOMP_STATE_FC + 1), "no description") == 0);
+
+	/* several functions with some packets already compressed */
+	{
+		rohc_trace_callback2_t fct = (rohc_trace_callback2_t) NULL;
+		CHECK(rohc_decomp_set_traces_cb2(decomp, fct, decomp) == false);
+	}
 
 	/* rohc_decomp_free() */
 	rohc_decomp_free(NULL);
