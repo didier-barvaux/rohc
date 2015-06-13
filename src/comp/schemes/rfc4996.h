@@ -95,11 +95,7 @@ int c_static_or_irreg16(const uint16_t packet_value,
                         int *const indicator)
 	__attribute__((warn_unused_result, nonnull(3, 4)));
 
-/* zero_or_irreg encoding for 8-bit, 16-bit and 32-bit values */
-int c_zero_or_irreg8(const uint8_t packet_value,
-                     uint8_t *const rohc_data,
-                     int *const indicator)
-	__attribute__((warn_unused_result, nonnull(2, 3)));
+/* zero_or_irreg encoding for 16-bit and 32-bit values */
 int c_zero_or_irreg16(const uint16_t packet_value,
                       uint8_t *const rohc_data,
                       int *const indicator)
@@ -117,12 +113,6 @@ size_t variable_length_32_enc(const uint32_t old_value,
                               uint8_t *const rohc_data,
                               int *const indicator)
 	__attribute__((nonnull(5, 6), warn_unused_result));
-
-/* optional32 encoding method */
-int c_optional32(const int indicator,
-                 const uint32_t packet_value,
-                 uint8_t *const rohc_data)
-	__attribute__((warn_unused_result, nonnull(3)));
 
 /* RFC4996 page 49 */
 void c_field_scaling(uint32_t *const scaled_value,

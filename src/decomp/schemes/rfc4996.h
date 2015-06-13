@@ -53,13 +53,6 @@ int variable_length_32_dec(const uint8_t *const rohc_data,
                            struct rohc_lsb_field32 *const lsb)
 	__attribute__((warn_unused_result, nonnull(1, 4)));
 
-int d_optional32(const int flag,
-                 const uint8_t *const data,
-                 const size_t data_len,
-                 uint32_t context_value,
-                 uint32_t *const decoded_value)
-	__attribute__((warn_unused_result, nonnull(2, 5)));
-
 // RFC4996 page 71
 unsigned int rsf_index_dec(const unsigned int rsf_index)
 	__attribute__((warn_unused_result, const));

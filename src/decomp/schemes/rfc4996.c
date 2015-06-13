@@ -183,67 +183,6 @@ error:
 
 
 /**
- * @brief Decode the 32 bits value, according to the indicator
- *
- * See RFC4996 page 47
- *
- * @param flag                Flag of compression
- * @param data                The remaining part of the ROHC packet
- * @param data_len            The length of the remaining part of the packet
- * @param context_value       The context value
- * @param[out] decoded_value  The uncompressed value
- * @return                    The number of ROHC bytes parsed,
- *                            -1 if packet is malformed
- */
-int d_optional32(const int flag,
-                 const uint8_t *const data,
-                 const size_t data_len,
-                 uint32_t context_value,
-                 uint32_t *const decoded_value)
-{
-	size_t length;
-
-	if(flag == 1)
-	{
-		if(data_len < sizeof(uint32_t))
-		{
-			goto error;
-		}
-		memcpy(decoded_value, data, sizeof(uint32_t));
-		length = sizeof(uint32_t);
-	}
-	else
-	{
-		*decoded_value = context_value;
-		length = 0;
-	}
-
-	return length;
-
-error:
-	return -1;
-}
-
-
-/**
- * @brief Calculate the value from the scaling factor, scaled value and residue
- *
- * See RFC4996 page 49
- *
- * @param scaling_factor   The scaling factor
- * @param scaled_value     The scaled value
- * @param residue_field    The residue value
- * @return                 The unscaled value
- */
-uint32_t d_field_scaling(const uint32_t scaling_factor,
-                         const uint32_t scaled_value,
-                         const uint32_t residue_field)
-{
-	return ((scaled_value * scaling_factor) + residue_field);
-}
-
-
-/**
  * @brief Calculate the rsf flags from the rsf index
  *
  * See RFC4996 page 71
