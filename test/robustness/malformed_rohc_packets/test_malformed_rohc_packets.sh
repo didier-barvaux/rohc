@@ -79,7 +79,7 @@ CMD="${CROSS_COMPILATION_EMULATOR} ${APP} ${CAPTURE_SOURCE} ${FAILURE_START}"
 # run without valgrind in verbose mode or quiet mode
 if [ "${VERBOSE}" = "verbose" ] ; then
 	if [ "${VERY_VERBOSE}" = "verbose" ] ; then
-		run_test_without_valgrind ${CMD} || exit $?
+		run_test_without_valgrind ${CMD} -v || exit $?
 	else
 		run_test_without_valgrind ${CMD} >/dev/null || exit $?
 	fi

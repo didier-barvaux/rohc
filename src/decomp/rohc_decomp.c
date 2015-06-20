@@ -1416,7 +1416,9 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 			              rohc_buf_data(rohc_packet) - add_cid_len,
 			              rohc_hdr_len + add_cid_len);
 #endif
+#ifndef ROHC_NO_IR_CRC_CHECK
 			goto error_crc;
+#endif
 		}
 
 		/* reset the correction attempt */
