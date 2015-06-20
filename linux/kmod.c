@@ -115,6 +115,10 @@ EXPORT_SYMBOL_GPL(rohc_decomp_get_cid_type);
 EXPORT_SYMBOL_GPL(rohc_decomp_get_max_cid);
 EXPORT_SYMBOL_GPL(rohc_decomp_set_mrru);
 EXPORT_SYMBOL_GPL(rohc_decomp_get_mrru);
+EXPORT_SYMBOL_GPL(rohc_decomp_set_rate_limits);
+EXPORT_SYMBOL_GPL(rohc_decomp_get_rate_limits);
+EXPORT_SYMBOL_GPL(rohc_decomp_set_prtt);
+EXPORT_SYMBOL_GPL(rohc_decomp_get_prtt);
 EXPORT_SYMBOL_GPL(rohc_decomp_set_traces_cb2);
 EXPORT_SYMBOL_GPL(rohc_decomp_set_features);
 
