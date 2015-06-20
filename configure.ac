@@ -99,6 +99,19 @@ AC_PROG_CC
 AC_PROG_INSTALL
 AC_PROG_LIBTOOL
 
+# check some newer CFLAGS
+AC_MSG_CHECKING([whether compiler understands -Wmisleading-indentation])
+old_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS -Werror -Wunknown-warning-option -Wmisleading-indentation"
+AC_TRY_COMPILE([], [], [misleading_indentation=yes], [misleading_indentation=no])
+if test "x${misleading_indentation}" = "xyes" ; then
+	AC_MSG_RESULT(yes)
+	configure_cflags="${configure_cflags} -Wmisleading-indentation"
+else
+	AC_MSG_RESULT(no)
+fi
+CFLAGS="$old_CFLAGS"
+
 # Checks for header files.
 AC_CHECK_HEADERS([stdio.h stdlib.h string.h strings.h])
 AC_CHECK_HEADERS([time.h sys/time.h])
