@@ -278,7 +278,6 @@ int ip_parse_ext3(const struct rohc_decomp_ctxt *const context,
                   const rohc_packet_t packet_type,
                   struct rohc_extr_bits *const bits)
 {
-	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	const uint8_t *ip_flags_pos = NULL;
 	const uint8_t *ip2_flags_pos = NULL;
 	uint8_t S, I, ip, ip2;
@@ -342,7 +341,7 @@ int ip_parse_ext3(const struct rohc_decomp_ctxt *const context,
 	{
 		rohc_decomp_debug(context, "inner IP header flags field is present in "
 		                  "EXT-3 = 0x%02x", GET_BIT_0_7(rohc_remain_data));
-		if(rfc3095_ctxt->multiple_ip)
+		if(bits->multiple_ip)
 		{
 			ip2_flags_pos = rohc_remain_data;
 		}
@@ -376,7 +375,7 @@ int ip_parse_ext3(const struct rohc_decomp_ctxt *const context,
 	 * inner IP header flags (pointed by ip(2)_flags_pos) if present */
 	if(ip)
 	{
-		if(rfc3095_ctxt->multiple_ip)
+		if(bits->multiple_ip)
 		{
 			size = parse_inner_header_flags(context, ip2_flags_pos,
 			                                rohc_remain_data, rohc_remain_len,
@@ -445,7 +444,7 @@ int ip_parse_ext3(const struct rohc_decomp_ctxt *const context,
 	{
 		/* determine which IP header is the innermost IPv4 header with
 		 * non-random IP-ID */
-		if(rfc3095_ctxt->multiple_ip && is_ipv4_non_rnd_pkt(&bits->inner_ip))
+		if(bits->multiple_ip && is_ipv4_non_rnd_pkt(&bits->inner_ip))
 		{
 			/* inner IP header is IPv4 with non-random IP-ID */
 			if(bits->inner_ip.id_nr > 0 && bits->inner_ip.id != 0)

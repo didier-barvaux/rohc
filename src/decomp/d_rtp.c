@@ -929,7 +929,7 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
 	rohc_remain_data = rohc_data;
 	rohc_remain_len = rohc_data_len;
 
-	if(rfc3095_ctxt->multiple_ip)
+	if(bits->multiple_ip)
 	{
 		inner_ip = &bits->inner_ip;
 		inner_ip_changes = rfc3095_ctxt->inner_ip_changes;
@@ -1058,7 +1058,7 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
 		rohc_remain_data += size;
 		rohc_remain_len -= size;
 
-		/* outer RND changed? */
+		/* inner RND changed? */
 		if(inner_ip->rnd_nr > 0)
 		{
 			are_all_ipv4_rnd &= inner_ip->rnd;
@@ -1109,7 +1109,7 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
 	 * flags if present */
 	if(ip2)
 	{
-		if(!rfc3095_ctxt->multiple_ip)
+		if(!bits->multiple_ip)
 		{
 			rohc_decomp_warn(context, "malformed extension 3: there is only one "
 			                 "single IP header in current IP packet, the ip2 flag "
@@ -1148,7 +1148,7 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
 			are_all_ipv4_rnd &= outer_ip_changes->rnd;
 		}
 	}
-	else if(rfc3095_ctxt->multiple_ip)
+	else if(bits->multiple_ip)
 	{
 		assert(outer_ip != NULL);
 		assert(outer_ip_changes != NULL);
@@ -1201,7 +1201,7 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
 	{
 		/* determine which IP header is the innermost IPv4 header with
 		 * non-random IP-ID */
-		if(rfc3095_ctxt->multiple_ip && is_ipv4_non_rnd_pkt(&bits->inner_ip))
+		if(bits->multiple_ip && is_ipv4_non_rnd_pkt(&bits->inner_ip))
 		{
 			/* inner IP header is IPv4 with non-random IP-ID */
 			if(bits->inner_ip.id_nr > 0 && bits->inner_ip.id != 0)
