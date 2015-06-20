@@ -698,6 +698,7 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 	size_t rohc_remain_len;
 
 	/* helper variables for values returned by functions */
+	uint8_t packet_type_x_field;
 	bool dynamic_present;
 	int size;
 
@@ -726,7 +727,30 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 	}
 
 	/* is the dynamic flag set ? */
-	dynamic_present = !!GET_BIT_0(rohc_remain_data);
+	packet_type_x_field = GET_BIT_0(rohc_remain_data);
+	if(context->profile->id == ROHC_PROFILE_RTP)
+	{
+		/* dynamic chain is optional for RTP profile */
+		dynamic_present = !!packet_type_x_field;
+	}
+	else
+	{
+		/* dynamic chain is not optional for other profiles */
+		dynamic_present = true;
+
+		/* the x bit of the packet type byte is reserved and shall be 0 */
+		if(packet_type_x_field != 0)
+		{
+			rohc_decomp_warn(context, "sender does not conform to ROHC standards: "
+			                 "the reserved bit in the packet type byte of the IR "
+			                 "packet shall be set to 0, but it is not");
+#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
+			goto error;
+#endif
+		}
+	}
+	rohc_decomp_debug(context, "dynamic chain is%s present after static chain",
+	                  dynamic_present ? "" : " not");
 
 	/* skip the IR type, optional large CID bytes, and Profile ID */
 	rohc_remain_data += large_cid_len + 2;
