@@ -50,7 +50,9 @@ for ./configure ? If yes, check configure output and config.log"
 /* prototypes of private functions */
 static void usage(void);
 static int test_decomp(const char *const filename,
-                       const size_t failure_start);
+                       const size_t failure_start,
+                       const bool ignore_malformed)
+	__attribute__((warn_unused_result, nonnull(1)));
 
 static void print_rohc_traces(void *const priv_ctxt,
                               const rohc_trace_level_t level,
@@ -80,6 +82,7 @@ int main(int argc, char *argv[])
 	char *filename = NULL;
 	int status = 1;
 	int args_used;
+	bool ignore_malformed = false;
 	int failure_start = -1;
 
 	/* parse program arguments, print the help message in case of failure */
@@ -104,6 +107,11 @@ int main(int argc, char *argv[])
 			/* be more verbose */
 			is_verbose = true;
 		}
+		else if(!strcmp(*argv, "--ignore-malformed"))
+		{
+			/* do not exit with error code if malformed packets are found */
+			ignore_malformed = true;
+		}
 		else if(filename == NULL)
 		{
 			/* get the name of the file that contains the packets to
@@ -113,7 +121,7 @@ int main(int argc, char *argv[])
 		else if(failure_start == -1)
 		{
 			failure_start = atoi(argv[0]);
-			if(failure_start <= 0)
+			if(failure_start < 0)
 			{
 				fprintf(stderr, "invalid start for failed packets\n");
 				goto error;
@@ -134,14 +142,14 @@ int main(int argc, char *argv[])
 		goto error;
 	}
 	/* the failure start is mandatory */
-	if(failure_start <= 0)
+	if(failure_start < 0)
 	{
 		usage();
 		goto error;
 	}
 
 	/* test ROHC decompression with the packets from the file */
-	status = test_decomp(filename, failure_start);
+	status = test_decomp(filename, failure_start, ignore_malformed);
 
 error:
 	return status;
@@ -158,20 +166,37 @@ static void usage(void)
 	        "                         of malformed ROHC packets\n"
 	        "\n"
 	        "usage: test_malformed_rohc_packets -h\n"
-	        "       test_malformed_rohc_packets [-v] FLOW FAILURE_START\n");
+	        "       test_malformed_rohc_packets [-v] FLOW FAILURE_START\n"
+	        "\n"
+	        "with:\n"
+	        "  FLOW                The flow of Ethernet/ROHC frames to\n"
+	        "                      decompress (in PCAP format)\n"
+	        "  FAILURE_START       The first packet that is malformed ;\n"
+	        "                      If set to 0, no success/failure check\n"
+	        "                      is performed. This is useful for fuzzing\n"
+	        "                      tests.\n"
+	        "\n"
+	        "options:\n"
+	        "  -v                  Print version information and exit\n"
+	        "  -h                  Print this usage and exit\n"
+	        "  --ignore-malformed  Ignore malformed packets for test\n");
 }
 
 
 /**
  * @brief Test the ROHC library with a flow of ROHC packets
  *
- * @param filename       The name of the PCAP file that contains the ROHC packets
- * @param failure_start  The first packet that shall fail to be decompressed
- * @return               0 in case of success,
- *                       1 in case of failure
+ * @param filename          The name of the PCAP file that contains the ROHC packets
+ * @param failure_start     The first packet that shall fail to be decompressed,
+ *                          or 0 if no success/failure check shall be performed
+ * @param ignore_malformed  do not exit with error code if malformed packets
+ *                          are found
+ * @return                  0 in case of success,
+ *                          1 in case of failure
  */
 static int test_decomp(const char *const filename,
-                       const size_t failure_start)
+                       const size_t failure_start,
+                       const bool ignore_malformed)
 {
 	char errbuf[PCAP_ERRBUF_SIZE];
 	pcap_t *handle;
@@ -258,24 +283,31 @@ static int test_decomp(const char *const filename,
 
 		counter++;
 
+		fprintf(stderr, "decompress malformed packet #%u:\n", counter);
+
 		/* check Ethernet frame length */
 		if(header.len < link_len || header.len != header.caplen)
 		{
 			fprintf(stderr, "bad PCAP packet (len = %u, caplen = %u)\n",
 			        header.len, header.caplen);
-			goto destroy_decomp;
+			if(ignore_malformed)
+			{
+				continue;
+			}
+			else
+			{
+				goto destroy_decomp;
+			}
 		}
 
 		/* skip the link layer header */
 		rohc_buf_pull(&rohc_packet, link_len);
 
-		fprintf(stderr, "decompress malformed packet #%u:\n", counter);
-
 		/* decompress the ROHC packet */
 		status = rohc_decompress3(decomp, rohc_packet, &ip_packet, &rcvd_feedback,
 		                          &send_feedback);
 		fprintf(stderr, "\tdecompression status: %s\n", rohc_strerror(status));
-		if(status == ROHC_STATUS_OK)
+		if(failure_start > 0 && status == ROHC_STATUS_OK)
 		{
 			if(counter >= failure_start)
 			{
@@ -287,7 +319,7 @@ static int test_decomp(const char *const filename,
 				fprintf(stderr, "\texpected successful decompression\n");
 			}
 		}
-		else
+		else if(failure_start > 0)
 		{
 			if(counter >= failure_start)
 			{
@@ -300,6 +332,8 @@ static int test_decomp(const char *const filename,
 			}
 		}
 
+		/* be ready to get the next received feedback */
+		rohc_buf_reset(&rcvd_feedback);
 		/* be ready to get the next feedback to send */
 		rohc_buf_reset(&send_feedback);
 	}
