@@ -5618,9 +5618,24 @@ bool rfc3095_decomp_decode_bits(const struct rohc_decomp_ctxt *const context,
 	/* decode SN */
 	if(!bits->is_sn_enc)
 	{
-		/* take packet value unchanged */
-		assert(bits->sn_nr == 16 || bits->sn_nr == 32);
-		decoded->sn = bits->sn;
+		/* SN is not encoded: either take the value unchanged or deduce it */
+		if(bits->sn_nr == 16 || bits->sn_nr == 32)
+		{
+			decoded->sn = bits->sn; /* take packet value unchanged */
+		}
+		else if(bits->sn_nr == 0)
+		{
+			decoded->sn = context->profile->get_sn(context) + 1; /* deduction */
+			if(context->profile->id != ROHC_PROFILE_ESP)
+			{
+				decoded->sn &= 0xffff;
+			}
+		}
+		else
+		{
+			assert(0);
+			goto error;
+		}
 	}
 	else
 	{
