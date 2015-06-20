@@ -150,6 +150,10 @@ static bool rohc_comp_feedback_parse_cid(const struct rohc_comp *const comp,
                                          size_t *const cid_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
+static bool rohc_comp_feedback_check_opts(const struct rohc_comp_ctxt *const context,
+                                          const size_t opts_present[ROHC_FEEDBACK_OPT_MAX])
+	__attribute__((warn_unused_result, nonnull(1, 2)));
+
 
 /*
  * Definitions of public functions
@@ -2792,12 +2796,11 @@ bool rohc_comp_feedback_parse_opts(const struct rohc_comp_ctxt *const context,
 {
 	const uint8_t *remain_data = feedback_data;
 	size_t remain_len = feedback_data_len;
-	uint8_t opt_type;
 
 	/* parse options */
 	while(remain_len > 0)
 	{
-		opt_type = (remain_data[0] >> 4) & 0x0f;
+		const uint8_t opt_type = (remain_data[0] >> 4) & 0x0f;
 		const uint8_t opt_len = (remain_data[0] & 0x0f) + 1;
 		const char *const opt_name = rohc_feedback_opt_charac[opt_type].name;
 		const size_t opt_unknown = rohc_feedback_opt_charac[opt_type].unknown;
@@ -2921,6 +2924,64 @@ bool rohc_comp_feedback_parse_opts(const struct rohc_comp_ctxt *const context,
 	 *  - some profiles do not support all options
 	 *  - some options cannot be specified multiple times
 	 *  - some options cannot be specified without CRC */
+	if(!rohc_comp_feedback_check_opts(context, opts_present))
+	{
+		rohc_comp_warn(context, "malformed FEEDBACK-2: malformed or unexpected options");
+		goto error;
+	}
+
+	/* check CRC if present in feedback */
+	if(opts_present[ROHC_FEEDBACK_OPT_CRC] > 0)
+	{
+		const size_t zeroed_crc_len = 1;
+		const uint8_t zeroed_crc = 0x00;
+		uint8_t crc_computed;
+
+		/* compute the CRC of the feedback packet (skip CRC byte) */
+		crc_computed = crc_calculate(ROHC_CRC_TYPE_8, packet,
+		                             packet_len - crc_pos_from_end, CRC_INIT_8,
+		                             context->compressor->crc_table_8);
+		crc_computed = crc_calculate(ROHC_CRC_TYPE_8, &zeroed_crc, zeroed_crc_len,
+		                             crc_computed, context->compressor->crc_table_8);
+		crc_computed = crc_calculate(ROHC_CRC_TYPE_8, packet + packet_len -
+		                             crc_pos_from_end + 1, crc_pos_from_end - 1,
+		                             crc_computed, context->compressor->crc_table_8);
+
+		/* ignore feedback in case of bad CRC */
+		if(crc_in_packet != crc_computed)
+		{
+			rohc_comp_warn(context, "CRC check failed: CRC computed on %zu bytes "
+			               "(0x%02x) does not match packet CRC (0x%02x)",
+			               packet_len, crc_computed, crc_in_packet);
+			goto error;
+		}
+	}
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Check FEEDBACK-2 options
+ *
+ * sanity checks:
+ *  - some profiles do not support all options
+ *  - some options cannot be specified multiple times
+ *  - some options cannot be specified without CRC
+ *
+ * @param context       The ROHC decompression context
+ * @param opts_present  Whether options are present or not
+ * @return              true if feedback options are valid,
+ *                      false if feedback options are not valid
+ */
+static bool rohc_comp_feedback_check_opts(const struct rohc_comp_ctxt *const context,
+                                          const size_t opts_present[ROHC_FEEDBACK_OPT_MAX])
+{
+	uint8_t opt_type;
+
 	for(opt_type = 0; opt_type < ROHC_FEEDBACK_OPT_MAX; opt_type++)
 	{
 		if(opts_present[opt_type] > 0 &&
@@ -2978,33 +3039,6 @@ bool rohc_comp_feedback_parse_opts(const struct rohc_comp_ctxt *const context,
 						break;
 				}
 			}
-		}
-	}
-
-	/* check CRC if present in feedback */
-	if(opts_present[ROHC_FEEDBACK_OPT_CRC] > 0)
-	{
-		const size_t zeroed_crc_len = 1;
-		const uint8_t zeroed_crc = 0x00;
-		uint8_t crc_computed;
-
-		/* compute the CRC of the feedback packet (skip CRC byte) */
-		crc_computed = crc_calculate(ROHC_CRC_TYPE_8, packet,
-		                             packet_len - crc_pos_from_end, CRC_INIT_8,
-		                             context->compressor->crc_table_8);
-		crc_computed = crc_calculate(ROHC_CRC_TYPE_8, &zeroed_crc, zeroed_crc_len,
-		                             crc_computed, context->compressor->crc_table_8);
-		crc_computed = crc_calculate(ROHC_CRC_TYPE_8, packet + packet_len -
-		                             crc_pos_from_end + 1, crc_pos_from_end - 1,
-		                             crc_computed, context->compressor->crc_table_8);
-
-		/* ignore feedback in case of bad CRC */
-		if(crc_in_packet != crc_computed)
-		{
-			rohc_comp_warn(context, "CRC check failed: CRC computed on %zu bytes "
-			               "(0x%02x) does not match packet CRC (0x%02x)",
-			               packet_len, crc_computed, crc_in_packet);
-			goto error;
 		}
 	}
 
