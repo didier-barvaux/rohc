@@ -52,7 +52,8 @@ TESTS = \
 	test_malformed_rohc_packets_fuzzer_crash_28743_1.sh \
 	test_malformed_rohc_packets_fuzzer_crash_28753_1.sh \
 	test_malformed_rohc_packets_fuzzer_crash_28799_1.sh \
-	test_malformed_rohc_packets_afl00_from_1_to_2_ip_headers_0.sh
+	test_malformed_rohc_packets_afl00_from_1_to_2_ip_headers_0.sh \
+	test_malformed_rohc_packets_afl01_tcp_seq_scaled_not_initialized_0.sh
 
 
 check_PROGRAMS = \

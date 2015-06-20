@@ -2954,6 +2954,13 @@ static bool d_tcp_decode_bits_tcp_hdr(const struct rohc_decomp_ctxt *const conte
 	if(bits->seq_scaled.bits_nr > 0)
 	{
 		/* decode scaled sequence number from packet bits and context */
+		if(!rohc_lsb_is_ready(tcp_context->seq_scaled_lsb_ctxt))
+		{
+			rohc_decomp_warn(context, "failed to decode %zu scaled sequence number "
+			                 "bits 0x%x: scaled sequence number not initialized yet",
+			                 bits->seq_scaled.bits_nr, bits->seq_scaled.bits);
+			goto error;
+		}
 		if(!rohc_lsb_decode(tcp_context->seq_scaled_lsb_ctxt, ROHC_LSB_REF_0, 0,
 		                    bits->seq_scaled.bits, bits->seq_scaled.bits_nr,
 		                    bits->seq_scaled.p, &decoded->seq_num_scaled))
