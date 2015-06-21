@@ -97,13 +97,13 @@ static struct rohc_couple couples[2];
 
 
 /**
- * @brief Are the couples of ROHC compressor/decompressor initialized ?
+ * @brief References on the couples of ROHC compressor/decompressor
  *
- * This boolean value is used to create (or not create) the couples when
+ * This number of references is used to create (or not create) the couples when
  * one of the /proc files is opened. The couples are created only when the
  * first /proc file is opened.
  */
-static int couples_initialized = 0;
+static unsigned int couples_ref_nr = 0;
 
 
 /**
@@ -425,7 +425,7 @@ static int rohc_proc_open(struct inode *inode, struct file *file)
 
 	/* initialize the ROHC couples only if this is the first /proc file opened
 	   since the last close() */
-	if(!couples_initialized)
+	if(couples_ref_nr == 0)
 	{
 		int ret;
 
@@ -461,9 +461,8 @@ static int rohc_proc_open(struct inode *inode, struct file *file)
 			pr_err("[%s] failed to init ROHC couple #2 (phase 2)\n", THIS_MODULE->name);
 			goto free_couple2;
 		}
-
-		couples_initialized = 1;
 	}
+	couples_ref_nr++;
 
 	/* give the right couple object as private data for next file operations */
 	if(!strcmp(file->f_path.dentry->d_name.name, "rohc_comp1_in") ||
@@ -509,6 +508,8 @@ ssize_t rohc_proc_comp_write(struct file *file,
 	size_t ip_chunk_size;
 	rohc_status_t status;
 	int err = -ENOMEM;
+
+	WARN_ON(couples_ref_nr == 0);
 
 	/* do we receive data of a new packet or
 	   a chunk of a yet-partially-received packet ? */
@@ -631,6 +632,8 @@ ssize_t rohc_proc_decomp_write(struct file *file,
 	int status;
 	int err = -ENOMEM;
 
+	WARN_ON(couples_ref_nr == 0);
+
 	/* do we receive data of a new packet or
 	   a chunk of a yet-partially-received packet ? */
 	if(couple->rohc_size_total_in == 0)
@@ -751,6 +754,8 @@ ssize_t rohc_proc_comp_read(struct file *file,
 	struct rohc_couple *couple = file->private_data;
 	int err = -EFAULT;
 
+	WARN_ON(couples_ref_nr == 0);
+
 	/* if one reads a packet when none is available, return an error */
 	if(couple->rohc_size_out <= 0)
 	{
@@ -804,6 +809,8 @@ ssize_t rohc_proc_decomp_read(struct file *file,
 	struct rohc_couple *couple = file->private_data;
 	int err = -EFAULT;
 
+	WARN_ON(couples_ref_nr == 0);
+
 	/* if one reads a packet when none is available, return an error */
 	if(couple->ip_size_out <= 0)
 	{
@@ -852,11 +859,13 @@ error:
  */
 static int rohc_proc_close(struct inode *inode, struct file *file)
 {
-	if(couples_initialized)
+	WARN_ON(couples_ref_nr == 0);
+	couples_ref_nr--;
+
+	if(couples_ref_nr == 0)
 	{
 		rohc_couple_release(&couples[0], 0);
 		rohc_couple_release(&couples[1], 1);
-		couples_initialized = 0;
 	}
 
 	return 0;
