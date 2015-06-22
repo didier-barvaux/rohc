@@ -25,6 +25,17 @@ EXTRA_DIST = \
 all:
 	$(MAKE) -C $(linux_kernel_src) M=$(abs_srcdir)/kmod
 
+clean-local:
+	if test -d $(linux_kernel_src) ; then $(MAKE) -C $(linux_kernel_src) M=$(abs_srcdir)/kmod clean ; fi
+	$(RM) *.o .*.o.cmd
+	$(RM) $(srcdir)/../src/common/protocols/.*.o.cmd
+	$(RM) $(srcdir)/../src/common/schemes/.*.o.cmd
+	$(RM) $(srcdir)/../src/common/.*.o.cmd
+	$(RM) $(srcdir)/../src/comp/schemes/.*.o.cmd
+	$(RM) $(srcdir)/../src/comp/.*.o.cmd
+	$(RM) $(srcdir)/../src/decomp/schemes/.*.o.cmd
+	$(RM) $(srcdir)/../src/decomp/.*.o.cmd
+
 install:
 	$(INSTALL) -d $(DESTDIR)/$(rohc_moddir)
 	$(INSTALL) -m 644 $(builddir)/kmod/$(rohc_mod) $(DESTDIR)/$(rohc_moddir)/$(rohc_mod)

@@ -185,8 +185,10 @@ bool f_feedback2(const rohc_profile_t profile_id,
 		/* add SN option(s) */
 		for(sn_opt_nr = 0; sn_opt_nr < needed_sn_opts_nr; sn_opt_nr++)
 		{
+			uint8_t sn_opt;
+
 			sn_bits_shift -= 8;
-			const uint8_t sn_opt = (sn_bits >> sn_bits_shift) & 0xff;
+			sn_opt = (sn_bits >> sn_bits_shift) & 0xff;
 
 			is_ok = f_add_option(feedback, ROHC_FEEDBACK_OPT_SN, &sn_opt,
 			                     sizeof(sn_opt));

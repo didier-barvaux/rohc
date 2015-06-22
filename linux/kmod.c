@@ -16,11 +16,11 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 /**
- * @file   linux/include/assert.h
+ * @file   kmod.c
  * @brief  Export the ROHC library to the Linux kernel
  * @author Mikhail Gruzdev <michail.gruzdev@gmail.com>
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
@@ -37,7 +37,8 @@
 MODULE_VERSION(PACKAGE_VERSION);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Didier Barvaux, Mikhail Gruzdev, Thales Communications, Viveris Technologies");
-MODULE_DESCRIPTION(PACKAGE_NAME ", version " PACKAGE_VERSION " (" PACKAGE_URL ")");
+MODULE_DESCRIPTION(PACKAGE_NAME
+	", version " PACKAGE_VERSION " (" PACKAGE_URL ")");
 
 
 /*
@@ -115,6 +116,10 @@ EXPORT_SYMBOL_GPL(rohc_decomp_get_cid_type);
 EXPORT_SYMBOL_GPL(rohc_decomp_get_max_cid);
 EXPORT_SYMBOL_GPL(rohc_decomp_set_mrru);
 EXPORT_SYMBOL_GPL(rohc_decomp_get_mrru);
+EXPORT_SYMBOL_GPL(rohc_decomp_set_rate_limits);
+EXPORT_SYMBOL_GPL(rohc_decomp_get_rate_limits);
+EXPORT_SYMBOL_GPL(rohc_decomp_set_prtt);
+EXPORT_SYMBOL_GPL(rohc_decomp_get_prtt);
 EXPORT_SYMBOL_GPL(rohc_decomp_set_traces_cb2);
 EXPORT_SYMBOL_GPL(rohc_decomp_set_features);
 

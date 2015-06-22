@@ -29,6 +29,7 @@ rohc_common_sources = \
 
 rohc_comp_sources = \
 	../../src/comp/schemes/cid.c \
+	../../src/comp/schemes/ip_id_offset.c \
 	../../src/comp/schemes/comp_wlsb.c \
 	../../src/comp/schemes/comp_scaled_rtp_ts.c \
 	../../src/comp/schemes/comp_list.c \

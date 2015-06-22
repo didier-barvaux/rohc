@@ -29,6 +29,7 @@
 
 #ifdef __KERNEL__
 #	include <endian.h>
+#	include <bitops.h>
 #else
 #	include "config.h" /* for WORDS_BIGENDIAN */
 #endif
