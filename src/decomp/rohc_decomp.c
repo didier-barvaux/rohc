@@ -211,8 +211,9 @@ static bool rohc_decomp_parse_feedbacks(struct rohc_decomp *const decomp,
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 static bool rohc_decomp_parse_feedback(struct rohc_decomp *const decomp,
                                        struct rohc_buf *const rohc_data,
-                                       struct rohc_buf *const feedback)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+                                       struct rohc_buf *const feedback,
+                                       size_t *const feedback_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
 /* function related to the transmission of feedback to the remote ROHC compressor */
 static bool rohc_decomp_feedback_ack(struct rohc_decomp *const decomp,
@@ -3844,7 +3845,8 @@ static bool rohc_decomp_parse_feedbacks(struct rohc_decomp *const decomp,
                                         struct rohc_buf *const feedbacks)
 {
 	size_t feedbacks_nr = 0;
-	size_t feedbacks_len = 0;
+	size_t feedbacks_full_len = 0; /* full feedbacks length */
+	size_t feedbacks_len = 0;      /* maybe truncated feedbacks length */
 
 	/* no feedback parsed for the moment */
 	assert(feedbacks == NULL || rohc_buf_is_empty(*feedbacks));
@@ -3853,19 +3855,22 @@ static bool rohc_decomp_parse_feedbacks(struct rohc_decomp *const decomp,
 	while(rohc_data->len > 0 &&
 	      rohc_packet_is_feedback(rohc_buf_byte(*rohc_data)))
 	{
+		size_t feedback_len = 0;
+
 		feedbacks_nr++;
 
 		/* decode one feedback packet */
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		           "parse feedback item #%zu at offset %zu in ROHC packet",
-		           feedbacks_nr, feedbacks_len);
-		if(!rohc_decomp_parse_feedback(decomp, rohc_data, feedbacks))
+		           feedbacks_nr, feedbacks_full_len);
+		if(!rohc_decomp_parse_feedback(decomp, rohc_data, feedbacks, &feedback_len))
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			             "failed to parse feedback item #%zu at offset %zu in "
-			             "ROHC packet", feedbacks_nr, feedbacks_len);
+			             "ROHC packet", feedbacks_nr, feedbacks_full_len);
 			goto error;
 		}
+		feedbacks_full_len += feedback_len;
 
 		/* hide the feedback */
 		if(feedbacks != NULL)
@@ -3891,21 +3896,23 @@ error:
 /**
  * @brief Parse a feedback item from the given ROHC data
  *
- * @param decomp         The ROHC decompressor
- * @param rohc_data      The ROHC data to parse for one feedback item
- * @param[out] feedback  The retrieved feedback (header and data included),
- *                       may be NULL if one don't want to retrieve the
- *                       feedback item
- * @return               true if feedback parsing was successful,
- *                       false if feedback is malformed
+ * @param decomp             The ROHC decompressor
+ * @param rohc_data          The ROHC data to parse for one feedback item
+ * @param[out] feedback      The retrieved feedback (header and data included),
+ *                           may be NULL if one don't want to retrieve the
+ *                           feedback item
+ * @param[out] feedback_len  The length of the parsed feedback (maybe be different
+ *                           from feedback->len if feedback was NULL or full)
+ * @return                   true if feedback parsing was successful,
+ *                           false if feedback is malformed
  */
 static bool rohc_decomp_parse_feedback(struct rohc_decomp *const decomp,
                                        struct rohc_buf *const rohc_data,
-                                       struct rohc_buf *const feedback)
+                                       struct rohc_buf *const feedback,
+                                       size_t *const feedback_len)
 {
 	size_t feedback_hdr_len;
 	size_t feedback_data_len;
-	size_t feedback_len;
 	bool is_ok;
 
 	/* compute the length of the feedback item */
@@ -3917,38 +3924,38 @@ static bool rohc_decomp_parse_feedback(struct rohc_decomp *const decomp,
 		             "failed to parse a feedback item");
 		goto error;
 	}
-	feedback_len = feedback_hdr_len + feedback_data_len;
+	*feedback_len = feedback_hdr_len + feedback_data_len;
 	rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 	           "feedback found (header = %zu bytes, data = %zu bytes)",
 	           feedback_hdr_len, feedback_data_len);
 
 	/* reject feedback item if it doesn't fit in the available ROHC data */
-	if(feedback_len > rohc_data->len)
+	if((*feedback_len) > rohc_data->len)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		             "the %zu-byte feedback is too large for the %zu-byte "
-		             "remaining ROHC data", feedback_len, rohc_data->len);
+		             "remaining ROHC data", *feedback_len, rohc_data->len);
 		goto error;
 	}
 
 	/* copy the feedback item in order to return it user if he/she asked for */
 	if(feedback != NULL)
 	{
-		if((feedback->len + feedback_len) > rohc_buf_avail_len(*feedback))
+		if((feedback->len + (*feedback_len)) > rohc_buf_avail_len(*feedback))
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			             "failed to store %zu-byte feedback into the buffer given "
 			             "by the user, only %zu bytes still available: ignore "
-			             "feedback", feedback_len, rohc_buf_avail_len(*feedback));
+			             "feedback", *feedback_len, rohc_buf_avail_len(*feedback));
 		}
 		else
 		{
-			rohc_buf_append(feedback, rohc_buf_data(*rohc_data), feedback_len);
+			rohc_buf_append(feedback, rohc_buf_data(*rohc_data), *feedback_len);
 		}
 	}
 
 	/* skip the feedback item in the ROHC packet */
-	rohc_buf_pull(rohc_data, feedback_len);
+	rohc_buf_pull(rohc_data, *feedback_len);
 
 	return true;
 
