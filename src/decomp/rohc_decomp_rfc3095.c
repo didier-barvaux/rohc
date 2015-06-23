@@ -5735,6 +5735,10 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 {
 	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	const bool new_inner_ip_hdr = !!(ip_hdr_pos == 2 && !rfc3095_ctxt->multiple_ip);
+	const bool ip_6to4_switch =
+		!!(ip_get_version(&ctxt->ip) == IPV6 && bits->version == IPV4);
+	const bool ip_4to6_switch =
+		!!(ip_get_version(&ctxt->ip) == IPV4 && bits->version == IPV6);
 
 	assert(ctxt != NULL);
 	assert(decoded != NULL);
@@ -5811,7 +5815,7 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 			/* take value from base header */
 			decoded->nbo = bits->nbo;
 		}
-		else if(new_inner_ip_hdr)
+		else if(new_inner_ip_hdr || ip_6to4_switch)
 		{
 			rohc_decomp_warn(context, "failed to decode inner IP header: no "
 			                 "information in context and no NBO bit in packet");
@@ -5830,7 +5834,7 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 			/* take value from base header */
 			decoded->rnd = bits->rnd;
 		}
-		else if(new_inner_ip_hdr)
+		else if(new_inner_ip_hdr || ip_6to4_switch)
 		{
 			rohc_decomp_warn(context, "failed to decode inner IP header: no "
 			                 "information in context and no RND bit in packet");
@@ -5849,7 +5853,7 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 			/* take value from base header */
 			decoded->sid = bits->sid;
 		}
-		else if(new_inner_ip_hdr)
+		else if(new_inner_ip_hdr || ip_6to4_switch)
 		{
 			rohc_decomp_warn(context, "failed to decode inner IP header: no "
 			                 "information in context and no SID bit in packet");
@@ -5906,7 +5910,7 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 			}
 			decoded->id = bits->id;
 		}
-		else if(new_inner_ip_hdr)
+		else if(new_inner_ip_hdr || ip_6to4_switch)
 		{
 			rohc_decomp_warn(context, "failed to decode inner IP header: no "
 			                 "information in context and no IP-ID bit in packet");
@@ -5944,7 +5948,7 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 			/* take value from base header */
 			decoded->df = bits->df;
 		}
-		else if(new_inner_ip_hdr)
+		else if(new_inner_ip_hdr || ip_6to4_switch)
 		{
 			rohc_decomp_warn(context, "failed to decode inner IP header: no "
 			                 "information in context and no DF bit in packet");
@@ -6012,7 +6016,7 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 			assert(bits->flowid_nr == 20);
 			decoded->flowid = bits->flowid;
 		}
-		else if(new_inner_ip_hdr)
+		else if(new_inner_ip_hdr || ip_4to6_switch)
 		{
 			rohc_decomp_warn(context, "failed to decode inner IP header: no "
 			                 "information in context and no flow ID bit in packet");
