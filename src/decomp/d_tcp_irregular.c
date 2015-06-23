@@ -277,6 +277,7 @@ static int tcp_parse_irregular_ipv4(const struct rohc_decomp_ctxt *const context
 		}
 		memcpy(&ip_id, remain_data, sizeof(uint16_t));
 		remain_data += sizeof(uint16_t);
+		remain_len -= sizeof(uint16_t);
 		rohc_decomp_debug(context, "read ip_id = 0x%04x (ip_id_behavior = %d)",
 		                  ip_id, ip_id_behavior);
 		ip_bits->id.bits = rohc_ntoh16(ip_id);
@@ -307,6 +308,7 @@ static int tcp_parse_irregular_ipv4(const struct rohc_decomp_ctxt *const context
 		ip_bits->ecn_flags_bits = (remain_data[0] & 0x03);
 		ip_bits->ecn_flags_bits_nr = 2;
 		remain_data++;
+		remain_len--;
 		rohc_decomp_debug(context, "read DSCP = 0x%x, ip_ecn_flags = %d",
 		                  ip_bits->dscp_bits, ip_bits->ecn_flags_bits);
 	}
@@ -323,6 +325,7 @@ static int tcp_parse_irregular_ipv4(const struct rohc_decomp_ctxt *const context
 		ip_bits->ttl_hl.bits = remain_data[0];
 		ip_bits->ttl_hl.bits_nr = 8;
 		remain_data++;
+		remain_len--;
 		rohc_decomp_debug(context, "ttl_hopl = 0x%02x", ip_bits->ttl_hl.bits);
 	}
 
@@ -385,6 +388,7 @@ static int tcp_parse_irregular_ipv6(const struct rohc_decomp_ctxt *const context
 		ip_bits->ecn_flags_bits = (remain_data[0] & 0x03);
 		ip_bits->ecn_flags_bits_nr = 2;
 		remain_data++;
+		remain_len--;
 		rohc_decomp_debug(context, "read DSCP = 0x%x, ip_ecn_flags = %d",
 		                  ip_bits->dscp_bits, ip_bits->ecn_flags_bits);
 	}
@@ -401,6 +405,7 @@ static int tcp_parse_irregular_ipv6(const struct rohc_decomp_ctxt *const context
 		ip_bits->ttl_hl.bits = remain_data[0];
 		ip_bits->ttl_hl.bits_nr = 8;
 		remain_data++;
+		remain_len--;
 		rohc_decomp_debug(context, "ttl_hopl = 0x%02x", ip_bits->ttl_hl.bits);
 	}
 
