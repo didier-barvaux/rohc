@@ -1613,7 +1613,13 @@ static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 	}
 	else if(decoded->udp_check_present == ROHC_TRISTATE_YES)
 	{
-		assert(bits->udp_check_nr == 16);
+		if(bits->udp_check_nr != 16)
+		{
+			assert(bits->udp_check_nr == 0);
+			rohc_decomp_warn(context, "unexpected or malformed packet: UDP checksum "
+			                 "expected in packet but not transmitted");
+			goto error;
+		}
 		decoded->udp_check = bits->udp_check;
 	}
 	else

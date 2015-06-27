@@ -57,9 +57,6 @@ TESTS = \
 	test_malformed_rohc_packets_afl02_rtp_profile_ir_without_dynamic_chain_0.sh \
 	test_malformed_rohc_packets_afl08_rtp_profile_ir_without_dynamic_chain_sn_0xffff_0.sh
 
-XFAIL_TESTS = \
-	test_malformed_rohc_packets_afl02_rtp_profile_ir_without_dynamic_chain_0.sh
-
 
 check_PROGRAMS = \
 	test_malformed_rohc_packets
