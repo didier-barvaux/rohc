@@ -310,8 +310,9 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
                                        const rohc_lsb_ref_t lsb_ref_type,
                                        const struct rohc_extr_ip_bits *const bits,
                                        const char *const descr,
+                                       const size_t ip_hdr_pos,
                                        struct rohc_decoded_ip_values *const decoded)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 6, 7, 8)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 6, 7, 9)));
 
 
 /*
@@ -5661,7 +5662,7 @@ bool rfc3095_decomp_decode_bits(const struct rohc_decomp_ctxt *const context,
 	decode_ok = decode_ip_values_from_bits(context, rfc3095_ctxt->outer_ip_changes,
 	                                       rfc3095_ctxt->outer_ip_id_offset_ctxt,
 	                                       decoded->sn, bits->lsb_ref_type,
-	                                       &bits->outer_ip, "outer",
+	                                       &bits->outer_ip, "outer", 1,
 	                                       &decoded->outer_ip);
 	if(!decode_ok)
 	{
@@ -5677,7 +5678,7 @@ bool rfc3095_decomp_decode_bits(const struct rohc_decomp_ctxt *const context,
 		                                       rfc3095_ctxt->inner_ip_changes,
 		                                       rfc3095_ctxt->inner_ip_id_offset_ctxt,
 		                                       decoded->sn, bits->lsb_ref_type,
-		                                       &bits->inner_ip, "inner",
+		                                       &bits->inner_ip, "inner", 2,
 		                                       &decoded->inner_ip);
 		if(!decode_ok)
 		{
@@ -5718,6 +5719,7 @@ error:
  *                      included: static/dynamic chains, UO* base header,
  *                      UO* extension header, UO* remainder header)
  * @param descr         The description of the IP header
+ * @param ip_hdr_pos    The position of the IP header (1 = outer, 2 = inner)
  * @param decoded       OUT: The corresponding decoded IP values
  * @return              true if decoding is successful, false otherwise
  */
@@ -5728,8 +5730,12 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
                                        const rohc_lsb_ref_t lsb_ref_type,
                                        const struct rohc_extr_ip_bits *const bits,
                                        const char *const descr,
+                                       const size_t ip_hdr_pos,
                                        struct rohc_decoded_ip_values *const decoded)
 {
+	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
+	const bool new_inner_ip_hdr = !!(ip_hdr_pos == 2 && !rfc3095_ctxt->multiple_ip);
+
 	assert(ctxt != NULL);
 	assert(decoded != NULL);
 
@@ -5744,6 +5750,12 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 		/* take value from base header */
 		decoded->tos = bits->tos;
 	}
+	else if(new_inner_ip_hdr)
+	{
+		rohc_decomp_warn(context, "failed to decode inner IP header: no information "
+		                 "in context and no TOS/TC bit in packet");
+		goto error;
+	}
 	else
 	{
 		/* keep context value */
@@ -5757,6 +5769,12 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 		/* take value from base header */
 		decoded->ttl = bits->ttl;
 	}
+	else if(new_inner_ip_hdr)
+	{
+		rohc_decomp_warn(context, "failed to decode inner IP header: no information "
+		                 "in context and no TTL/HL bit in packet");
+		goto error;
+	}
 	else
 	{
 		/* keep context value */
@@ -5769,6 +5787,12 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 	{
 		/* take value from base header */
 		decoded->proto = bits->proto;
+	}
+	else if(new_inner_ip_hdr)
+	{
+		rohc_decomp_warn(context, "failed to decode inner IP header: no information "
+		                 "in context and no protocol/NH bit in packet");
+		goto error;
 	}
 	else
 	{
@@ -5787,6 +5811,12 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 			/* take value from base header */
 			decoded->nbo = bits->nbo;
 		}
+		else if(new_inner_ip_hdr)
+		{
+			rohc_decomp_warn(context, "failed to decode inner IP header: no "
+			                 "information in context and no NBO bit in packet");
+			goto error;
+		}
 		else
 		{
 			/* keep context value */
@@ -5799,6 +5829,12 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 		{
 			/* take value from base header */
 			decoded->rnd = bits->rnd;
+		}
+		else if(new_inner_ip_hdr)
+		{
+			rohc_decomp_warn(context, "failed to decode inner IP header: no "
+			                 "information in context and no RND bit in packet");
+			goto error;
 		}
 		else
 		{
@@ -5813,6 +5849,12 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 			/* take value from base header */
 			decoded->sid = bits->sid;
 		}
+		else if(new_inner_ip_hdr)
+		{
+			rohc_decomp_warn(context, "failed to decode inner IP header: no "
+			                 "information in context and no SID bit in packet");
+			goto error;
+		}
 		else
 		{
 			/* keep context value */
@@ -5825,7 +5867,13 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 		{
 			/* IR/IR-DYN packets transmit the IP-ID verbatim, so convert to
 			 * host byte order only if nbo=1 */
-			assert(bits->id_nr == 16);
+			if(bits->id_nr != 16)
+			{
+				rohc_decomp_warn(context, "%s IP-ID is not encoded, but the packet "
+				                 "does not provide 16 bits (only %zu bits provided)",
+				                 descr, bits->id_nr);
+				goto error;
+			}
 			decoded->id = bits->id;
 			if(bits->nbo)
 			{
@@ -5843,15 +5891,26 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 		else if(decoded->rnd)
 		{
 			/* take packet value unchanged if random */
-			assert(bits->id_nr == 16);
-			decoded->id = bits->id;
-
 			if(decoded->sid)
 			{
 				rohc_decomp_warn(context, "%s IP-ID got both RND and SID flags!",
 				                 descr);
 				goto error;
 			}
+			if(bits->id_nr != 16)
+			{
+				rohc_decomp_warn(context, "%s IP-ID is random, but the packet does "
+				                 "not provide 16 bits (only %zu bits provided)",
+				                 descr, bits->id_nr);
+				goto error;
+			}
+			decoded->id = bits->id;
+		}
+		else if(new_inner_ip_hdr)
+		{
+			rohc_decomp_warn(context, "failed to decode inner IP header: no "
+			                 "information in context and no IP-ID bit in packet");
+			goto error;
 		}
 		else if(decoded->sid)
 		{
@@ -5885,6 +5944,12 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 			/* take value from base header */
 			decoded->df = bits->df;
 		}
+		else if(new_inner_ip_hdr)
+		{
+			rohc_decomp_warn(context, "failed to decode inner IP header: no "
+			                 "information in context and no DF bit in packet");
+			goto error;
+		}
 		else
 		{
 			/* keep context value */
@@ -5898,6 +5963,13 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 			/* take value from base header */
 			assert(bits->saddr_nr == 32);
 			memcpy(decoded->saddr, bits->saddr, 4);
+		}
+		else if(new_inner_ip_hdr)
+		{
+			rohc_decomp_warn(context, "failed to decode inner IP header: no "
+			                 "information in context and no source address bit "
+			                 "in packet");
+			goto error;
 		}
 		else
 		{
@@ -5914,6 +5986,13 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 			/* take value from base header */
 			assert(bits->daddr_nr == 32);
 			memcpy(decoded->daddr, bits->daddr, 4);
+		}
+		else if(new_inner_ip_hdr)
+		{
+			rohc_decomp_warn(context, "failed to decode inner IP header: no "
+			                 "information in context and no destination address "
+			                 "bit in packet");
+			goto error;
 		}
 		else
 		{
@@ -5933,6 +6012,12 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 			assert(bits->flowid_nr == 20);
 			decoded->flowid = bits->flowid;
 		}
+		else if(new_inner_ip_hdr)
+		{
+			rohc_decomp_warn(context, "failed to decode inner IP header: no "
+			                 "information in context and no flow ID bit in packet");
+			goto error;
+		}
 		else
 		{
 			/* keep context value */
@@ -5947,6 +6032,13 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 			/* take value from base header */
 			assert(bits->saddr_nr == 128);
 			memcpy(decoded->saddr, bits->saddr, 16);
+		}
+		else if(new_inner_ip_hdr)
+		{
+			rohc_decomp_warn(context, "failed to decode inner IP header: no "
+			                 "information in context and no source address bit "
+			                 "in packet");
+			goto error;
 		}
 		else
 		{
@@ -5963,6 +6055,13 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 			/* take value from base header */
 			assert(bits->daddr_nr == 128);
 			memcpy(decoded->daddr, bits->daddr, 16);
+		}
+		else if(new_inner_ip_hdr)
+		{
+			rohc_decomp_warn(context, "failed to decode inner IP header: no "
+			                 "information in context and no destination address "
+			                 "bit in packet");
+			goto error;
 		}
 		else
 		{

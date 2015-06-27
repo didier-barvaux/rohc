@@ -55,6 +55,8 @@ TESTS = \
 	test_malformed_rohc_packets_afl00_from_1_to_2_ip_headers_0.sh \
 	test_malformed_rohc_packets_afl01_tcp_seq_scaled_not_initialized_0.sh \
 	test_malformed_rohc_packets_afl02_rtp_profile_ir_without_dynamic_chain_0.sh \
+	test_malformed_rohc_packets_afl03_from_1_to_2_ip_headers_other_0.sh \
+	test_malformed_rohc_packets_afl04_from_1_to_2_ip_headers_other_0.sh \
 	test_malformed_rohc_packets_afl08_rtp_profile_ir_without_dynamic_chain_sn_0xffff_0.sh
 
 
