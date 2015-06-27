@@ -964,7 +964,7 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
 	if(ip)
 	{
 		/* check the minimal length to decode the ip2 flag */
-		if(rohc_remain_len < 1)
+		if(rohc_remain_len < 2)
 		{
 			rohc_decomp_warn(context, "ROHC packet too small (len = %zu)",
 			                 rohc_remain_len);

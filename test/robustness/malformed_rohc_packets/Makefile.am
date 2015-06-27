@@ -60,7 +60,8 @@ TESTS = \
 	test_malformed_rohc_packets_afl05_malformed_feedback_header_0.sh \
 	test_malformed_rohc_packets_afl06_from_ipv6_to_ipv4_0.sh \
 	test_malformed_rohc_packets_afl07_short_irregular_chain_0.sh \
-	test_malformed_rohc_packets_afl08_rtp_profile_ir_without_dynamic_chain_sn_0xffff_0.sh
+	test_malformed_rohc_packets_afl08_rtp_profile_ir_without_dynamic_chain_sn_0xffff_0.sh \
+	test_malformed_rohc_packets_afl09_rtp_uor2ts_ext3_too_short_0.sh
 
 
 check_PROGRAMS = \
