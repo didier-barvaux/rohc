@@ -4056,7 +4056,6 @@ static bool rohc_decomp_packet_carry_crc_7_or_8(const rohc_packet_t packet_type)
 		case ROHC_PACKET_UNKNOWN:
 		case ROHC_PACKET_MAX:
 		default:
-			assert(0);
 			carry_crc_7_or_8 = false;
 			break;
 	}
