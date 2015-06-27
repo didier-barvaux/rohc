@@ -2042,7 +2042,15 @@ static bool rohc_decomp_feedback_nack(struct rohc_decomp *const decomp,
 	}
 
 	/* check if the decompressor shall build a negative feedback */
-	if(!infos->context_found)
+	if(infos->profile_id == ROHC_PROFILE_UNCOMPRESSED)
+	{
+		/* the Uncompressed profile does not use negative feedback nor FEEDBACK-2 */
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+		           "do not perform downward state transition nor send negative "
+		           "feedback for the Uncompressed profile");
+		goto skip;
+	}
+	else if(!infos->context_found)
 	{
 		/* RFC says nothing about negative feedbacks for malformed packets, but
 		 * it seems useful to tell the compressor to got back to lower states
@@ -2050,14 +2058,6 @@ static bool rohc_decomp_feedback_nack(struct rohc_decomp *const decomp,
 		ack_type = ROHC_FEEDBACK_STATIC_NACK;
 		do_downward_transition = false; /* impossible w/o context */
 		do_build_ack = !!(decomp->target_mode > ROHC_U_MODE);
-	}
-	else if(infos->profile_id == ROHC_PROFILE_UNCOMPRESSED)
-	{
-		/* the Uncompressed profile does not use negative feedback nor FEEDBACK-2 */
-		rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
-		           "do not perform downward state transition nor send negative "
-		           "feedback for the Uncompressed profile");
-		goto skip;
 	}
 	else if(infos->mode == ROHC_U_MODE)
 	{
