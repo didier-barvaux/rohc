@@ -41,6 +41,12 @@
 static int rohc_list_decide_type(struct list_comp *const comp)
 	__attribute__((warn_unused_result, nonnull(1)));
 
+static uint8_t rohc_list_compute_ps(const struct list_comp *const comp,
+                                    const struct rohc_list *const list,
+                                    const uint8_t mask[ROHC_LIST_ITEMS_MAX],
+                                    const size_t m)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
+
 static int rohc_list_encode_type_0(struct list_comp *const comp,
                                    unsigned char *const dest,
                                    int counter)
@@ -650,27 +656,15 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 	assert(m <= ROHC_LIST_ITEMS_MAX);
 
 	/* determine whether we should use 4-bit or 8-bit indexes */
-	ps = 0; /* 4-bit indexes by default */
-	for(k = 0; k < m && ps == 0; k++)
 	{
-		const struct rohc_list_item *const item =
-			comp->lists[comp->cur_id].items[k];
-		int index_table;
-		ext_types_count[item->type]++;
-		index_table = comp->get_index_table(item->type, ext_types_count[item->type]);
-		if(index_table < 0 || ((size_t) index_table) >= ROHC_LIST_MAX_ITEM)
+		uint8_t ins_mask[ROHC_LIST_ITEMS_MAX] = { 1 };
+
+		ps = rohc_list_compute_ps(comp, &(comp->lists[comp->cur_id]), ins_mask, m);
+		if(ps != 0 && ps != 1)
 		{
-			rohc_comp_list_warn(comp, "failed to handle unknown IPv6 extension "
-			                    "header of type 0x%02x", item->type);
 			goto error;
 		}
-		if(index_table > 0x07)
-		{
-			ps = 1; /* 8-bit indexes are required */
-		}
 	}
-	/* the count of extensions is wrong, since we were maybe interrupted */
-	memset(ext_types_count, 0, (ROHC_IPPROTO_MAX + 1) * sizeof(size_t));
 
 	/* part 1: ET, GP, PS, CC */
 	gp = (comp->cur_id != ROHC_LIST_GEN_ID_ANON);
@@ -1000,29 +994,11 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 	}
 
 	/* determine whether we should use 4-bit or 8-bit indexes */
-	ps = 0; /* 4-bit indexes by default */
-	for(k = 0; k < m && ps == 0; k++)
+	ps = rohc_list_compute_ps(comp, &(comp->lists[comp->cur_id]), mask, m);
+	if(ps != 0 && ps != 1)
 	{
-		const struct rohc_list_item *const item =
-			comp->lists[comp->cur_id].items[k];
-		int index_table;
-		ext_types_count[item->type]++;
-		index_table = comp->get_index_table(item->type, ext_types_count[item->type]);
-		if(index_table < 0 || ((size_t) index_table) >= ROHC_LIST_MAX_ITEM)
-		{
-			rohc_comp_list_warn(comp, "failed to handle unknown IPv6 extension "
-			                    "header of type 0x%02x", item->type);
-			goto error;
-		}
-		if((mask[k] != 0 || !item->known) && index_table > 0x07)
-		{
-			ps = 1; /* 8-bit indexes are required */
-		}
+		goto error;
 	}
-	rc_list_debug(comp, "PS = %zu", ps);
-	dest[ps_pos] |= (ps & 0x01) << 4;
-	/* the count of extensions is wrong, since we were maybe interrupted */
-	memset(ext_types_count, 0, (ROHC_IPPROTO_MAX + 1) * sizeof(size_t));
 
 	/* part 5: k XI (= X + Indexes) */
 	if(ps)
@@ -1680,29 +1656,11 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 	}
 
 	/* determine whether we should use 4-bit or 8-bit indexes */
-	ps = 0; /* 4-bit indexes by default */
-	for(k = 0; k < m && ps == 0; k++)
+	ps = rohc_list_compute_ps(comp, &(comp->lists[comp->cur_id]), ins_mask, m);
+	if(ps != 0 && ps != 1)
 	{
-		const struct rohc_list_item *const item =
-			comp->lists[comp->cur_id].items[k];
-		int index_table;
-		ext_types_count[item->type]++;
-		index_table = comp->get_index_table(item->type, ext_types_count[item->type]);
-		if(index_table < 0 || ((size_t) index_table) >= ROHC_LIST_MAX_ITEM)
-		{
-			rohc_comp_list_warn(comp, "failed to handle unknown IPv6 extension "
-			                    "header of type 0x%02x", item->type);
-			goto error;
-		}
-		if((ins_mask[k] != 0 || !item->known) && index_table > 0x07)
-		{
-			ps = 1; /* 8-bit indexes are required */
-		}
+		goto error;
 	}
-	rc_list_debug(comp, "PS = %zu", ps);
-	dest[ps_pos] |= (ps & 0x01) << 4;
-	/* the count of extensions is wrong, since we were maybe interrupted */
-	memset(ext_types_count, 0, (ROHC_IPPROTO_MAX + 1) * sizeof(size_t));
 
 	/* part 6: k XI (= X + Indexes) */
 	/* next bytes: indexes */
@@ -1882,5 +1840,56 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 
 error:
 	return -1;
+}
+
+
+/**
+ * @brief Determine whether we should use 4-bit or 8-bit indexes
+ *
+ * @param comp  The list compressor
+ * @param list  The list to get the indexes size for
+ * @param mask  The insertion mask for the list
+ * @param m     The number of elements in current list
+ * @return      0 for 4-bit indexes,
+ *              1 for 8-bit indexes,
+ *              2 for error
+ */
+static uint8_t rohc_list_compute_ps(const struct list_comp *const comp,
+                                    const struct rohc_list *const list,
+                                    const uint8_t mask[ROHC_LIST_ITEMS_MAX],
+                                    const size_t m)
+{
+	size_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
+	uint8_t ps = 0; /* 4-bit indexes by default */
+	size_t k;
+
+	for(k = 0; k < m && ps == 0; k++)
+	{
+		const struct rohc_list_item *const item = list->items[k];
+		int index_table;
+
+		/* one more occurrence of this item */
+		ext_types_count[item->type]++;
+
+		/* get the index corresponding to the item type and the number of
+		 * occurrences */
+		index_table = comp->get_index_table(item->type, ext_types_count[item->type]);
+		if(index_table < 0 || ((size_t) index_table) >= ROHC_LIST_MAX_ITEM)
+		{
+			rohc_comp_list_warn(comp, "failed to handle unknown IPv6 extension "
+			                    "header of type 0x%02x", item->type);
+			goto error;
+		}
+
+		if((mask[k] != 0 || !item->known) && index_table > 0x07)
+		{
+			ps = 1; /* 8-bit indexes are required */
+		}
+	}
+
+	return ps;
+
+error:
+	return 2;
 }
 
