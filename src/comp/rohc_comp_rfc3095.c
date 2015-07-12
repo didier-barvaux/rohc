@@ -5267,7 +5267,7 @@ static int code_EXT3_rtp_packet(struct rohc_comp_ctxt *const context,
 
 	/* ip bit (force ip=1 if ip2=1 and RTP profile, otherwise ip2 is not send) */
 	rohc_comp_debug(context, "check for changed fields in the innermost IP header");
-	if((is_rtp && nr_of_ip_hdr > 1) /* TODO */ || ip2 ||
+	if(ip2 ||
 	   changed_dynamic_one_hdr(context, inner_ip_changed_fields & 0x01FF,
 	                           inner_ip_flags, inner_ip) ||
 	   changed_static_one_hdr(context, inner_ip_changed_fields, inner_ip_flags))
