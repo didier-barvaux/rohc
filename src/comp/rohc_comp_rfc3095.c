@@ -176,10 +176,25 @@ static int code_UO0_packet(struct rohc_comp_ctxt *const context,
                            const size_t rohc_pkt_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static int code_UO1_packet(struct rohc_comp_ctxt *const context,
-                           const struct net_pkt *const uncomp_pkt,
-                           unsigned char *const rohc_pkt,
-                           const size_t rohc_pkt_max_len)
+static int rohc_comp_rfc3095_build_uo1_pkt(struct rohc_comp_ctxt *const context,
+                                           const struct net_pkt *const uncomp_pkt,
+                                           uint8_t *const rohc_pkt,
+                                           const size_t rohc_pkt_max_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+static int rohc_comp_rfc3095_build_uo1rtp_pkt(struct rohc_comp_ctxt *const context,
+                                              const struct net_pkt *const uncomp_pkt,
+                                              uint8_t *const rohc_pkt,
+                                              const size_t rohc_pkt_max_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+static int rohc_comp_rfc3095_build_uo1ts_pkt(struct rohc_comp_ctxt *const context,
+                                             const struct net_pkt *const uncomp_pkt,
+                                             uint8_t *const rohc_pkt,
+                                             const size_t rohc_pkt_max_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const context,
+                                             const struct net_pkt *const uncomp_pkt,
+                                             uint8_t *const rohc_pkt,
+                                             const size_t rohc_pkt_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int code_UO2_packet(struct rohc_comp_ctxt *const context,
@@ -1526,10 +1541,16 @@ int code_packet(struct rohc_comp_ctxt *const context,
 			break;
 
 		case ROHC_PACKET_UO_1:
+			code_packet_type = rohc_comp_rfc3095_build_uo1_pkt;
+			break;
 		case ROHC_PACKET_UO_1_RTP:
+			code_packet_type = rohc_comp_rfc3095_build_uo1rtp_pkt;
+			break;
 		case ROHC_PACKET_UO_1_TS:
+			code_packet_type = rohc_comp_rfc3095_build_uo1ts_pkt;
+			break;
 		case ROHC_PACKET_UO_1_ID:
-			code_packet_type = code_UO1_packet;
+			code_packet_type = rohc_comp_rfc3095_build_uo1id_pkt;
 			break;
 
 		case ROHC_PACKET_UOR_2:
@@ -2614,12 +2635,10 @@ error:
 
 
 /**
- * @brief Build the UO-1 packet.
+ * @brief Build the UO-1 packet for the non-RTP profiles
  *
- * UO-1 and UO-1-ID cannot be used if there is no IPv4 header in the context or
- * if value(RND) and value(RND2) are both 1.
- *
- * @todo Handle extension (X bit) for UO-1-ID packet
+ * The UO-1 packet type cannot be used if there is no IPv4 header in the context
+ * or if value(RND) and value(RND2) are both 1.
  *
  * \verbatim
 
@@ -2643,62 +2662,24 @@ error:
  4  |        SN         |    CRC    |
     +---+---+---+---+---+---+---+---+
 
- UO-1-RTP (5.7.3):
-
-      0   1   2   3   4   5   6   7
-    +---+---+---+---+---+---+---+---+
- 2  | 1   0 |          TS           |
-    +===+===+===+===+===+===+===+===+
- 4  | M |      SN       |    CRC    |
-    +---+---+---+---+---+---+---+---+
-
- UO-1-ID (5.7.3):
-
-      0   1   2   3   4   5   6   7
-    +---+---+---+---+---+---+---+---+
- 2  | 1   0 |T=0|      IP-ID        |
-    +===+===+===+===+===+===+===+===+
- 4  | X |      SN       |    CRC    |
-    +---+---+---+---+---+---+---+---+
-
- UO-1-TS (5.7.3):
-
-      0   1   2   3   4   5   6   7
-    +---+---+---+---+---+---+---+---+
- 2  | 1   0 |T=1|        TS         |
-    +===+===+===+===+===+===+===+===+
- 4  | M |      SN       |    CRC    |
-    +---+---+---+---+---+---+---+---+
-
- X: X = 0 indicates that no extension is present;
-    X = 1 indicates that an extension is present.
-
- T: T = 0 indicates format UO-1-ID;
-    T = 1 indicates format UO-1-TS.
-
 \endverbatim
  *
  * @param context           The compression context
  * @param uncomp_pkt        The uncompressed packet to encode
- * @param rohc_pkt          OUT: The ROHC packet
+ * @param[out] rohc_pkt     The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
-static int code_UO1_packet(struct rohc_comp_ctxt *const context,
-                           const struct net_pkt *const uncomp_pkt,
-                           unsigned char *const rohc_pkt,
-                           const size_t rohc_pkt_max_len)
+static int rohc_comp_rfc3095_build_uo1_pkt(struct rohc_comp_ctxt *const context,
+                                           const struct net_pkt *const uncomp_pkt,
+                                           uint8_t *const rohc_pkt,
+                                           const size_t rohc_pkt_max_len)
 {
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	size_t counter;
 	size_t first_position;
-	unsigned char f_byte;
-	unsigned char s_byte;
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	rohc_packet_t packet_type;
-	rohc_ext_t extension;
 	int is_rtp;
-	struct sc_rtp_context *rtp_context;
 	uint8_t crc;
 	int ret;
 
@@ -2708,9 +2689,13 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 	uint16_t innermost_ip_id_delta;
 
 	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-	packet_type = rfc3095_ctxt->tmp.packet_type;
 	is_rtp = context->profile->id == ROHC_PROFILE_RTP;
-	rtp_context = (struct sc_rtp_context *) rfc3095_ctxt->specific;
+
+	rohc_comp_debug(context, "code UO-1 packet (CID = %zu)", context->cid);
+
+	assert(rfc3095_ctxt->tmp.packet_type == ROHC_PACKET_UO_1);
+	rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	            !is_rtp, error, "UO-1 packet is for non-RTP profiles");
 
 	/* determine the number of IP-ID bits and the IP-ID offset of the
 	 * innermost IPv4 header with non-random IP-ID */
@@ -2719,56 +2704,29 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 	                                &innermost_ip_id_delta);
 
 	/* RFC 3095, section 5.7.5.1 says:
+	 *   When no IPv4 header is present in the static context, or the RND
+	 *   flags for all IPv4 headers in the context have been established to be
+	 *   1, the packet types R-1-ID, R-1-TS, UO-1-ID, and UO-1-TS MUST NOT be
+	 *   used.
+	 * (UO-1 for non-RTP profile is similar to UO-1-ID for RTP profiles) */
+	rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	            innermost_ip_hdr != ROHC_IP_HDR_NONE, error,
+	            "UO-1 packet is for IPv4 only");
+
+	/* RFC 3095, section 5.7.5.1 says:
 	 *   While in the transient state in which an RND flag is being
 	 *   established, the packet types R-1-ID, R-1-TS, UO-1-ID, and UO-1-TS
-	 *   MUST NOT be used. */
+	 *   MUST NOT be used.
+	 * (UO-1 for non-RTP profile is similar to UO-1-ID for RTP profiles) */
 	assert(rfc3095_ctxt->outer_ip_flags.version != IPV4 ||
 	       rfc3095_ctxt->outer_ip_flags.info.v4.rnd_count >= MAX_FO_COUNT);
 	assert(uncomp_pkt->ip_hdr_nr <= 1 ||
 	       rfc3095_ctxt->inner_ip_flags.version != IPV4 ||
 	       rfc3095_ctxt->inner_ip_flags.info.v4.rnd_count >= MAX_FO_COUNT);
 
-	switch(packet_type)
-	{
-		case ROHC_PACKET_UO_1:
-			rohc_comp_debug(context, "code UO-1 packet (CID = %zu)", context->cid);
-			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            innermost_ip_hdr != ROHC_IP_HDR_NONE, error,
-			            "UO-1 packet is for IPv4 only");
-			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            !is_rtp, error, "UO-1 packet is for non-RTP profiles");
-			break;
-		case ROHC_PACKET_UO_1_RTP:
-			rohc_comp_debug(context, "code UO-1-RTP packet (CID = %zu)",
-			                context->cid);
-			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            is_rtp, error, "UO-1-RTP packet is for RTP profile only");
-			break;
-		case ROHC_PACKET_UO_1_ID:
-			rohc_comp_debug(context, "code UO-1-ID packet (CID = %zu)",
-			                context->cid);
-			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            innermost_ip_hdr != ROHC_IP_HDR_NONE, error,
-			            "UO-1-ID packet is for IPv4 only");
-			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            is_rtp, error, "UO-1-ID packet is for RTP profile only");
-			break;
-		case ROHC_PACKET_UO_1_TS:
-			rohc_comp_debug(context, "code UO-1-TS packet (CID = %zu)",
-			                context->cid);
-			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            is_rtp, error, "UO-1-TS packet is for RTP profile only");
-			break;
-		default:
-			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            false, error, "bad packet type (%d)", packet_type);
-			goto error;
-	}
-
 	/* parts 1 and 3:
 	 *  - part 2 will be placed at 'first_position'
-	 *  - part 4 will start at 'counter'
-	 */
+	 *  - part 4 will start at 'counter' */
 	ret = code_cid_values(context->compressor->medium.cid_type, context->cid,
 	                      rohc_pkt, rohc_pkt_max_len, &first_position);
 	if(ret < 1)
@@ -2791,165 +2749,567 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 		                                         rohc_pkt, counter, &first_position);
 	}
 
-	/* part 5: decide which extension to use (UO-1-ID only) */
-	if(packet_type == ROHC_PACKET_UO_1_ID)
+	/* part 2 */
+	rohc_pkt[first_position] = 0x80 | (innermost_ip_id_delta & 0x3f);
+	rohc_comp_debug(context, "1 0 + IP-ID = 0x%02x", rohc_pkt[first_position]);
+
+	/* part 4: SN + CRC
+	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
+	 * if the CRC-STATIC fields did not change */
+	if((rohc_pkt_max_len - counter) < 1)
 	{
-		extension = rfc3095_ctxt->decide_extension(context);
-		if(extension == ROHC_EXT_UNKNOWN)
-		{
-			rohc_comp_warn(context, "failed to determine the extension to code");
-			goto error;
-		}
-		rohc_comp_debug(context, "extension '%s' chosen",
-		                rohc_get_ext_descr(extension));
-
-		/* UO-1-ID packet without extension or with extension 0, 1 or 2
-		 * cannot change the RTP Marker (M) flag */
-		rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		            (extension == ROHC_EXT_3 ||
-		             !rtp_context->tmp.is_marker_bit_set), error,
-		            "UO-1-ID packet without extension 3 does not contain room "
-		            "for the RTP Marker (M) flag");
-
+		rohc_comp_warn(context, "ROHC packet is too small for SN/CRC byte");
+		goto error;
 	}
-	else
+	crc = compute_uo_crc(rfc3095_ctxt, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3,
+	                     context->compressor->crc_table_3);
+	rohc_pkt[counter] = ((rfc3095_ctxt->sn & 0x1f) << 3) | (crc & 0x07);
+	rohc_comp_debug(context, "SN (%d) + CRC (%x) = 0x%02x",
+	                rfc3095_ctxt->sn, crc, rohc_pkt[counter]);
+	counter++;
+
+	/* part 5: no extension */
+
+	/* build the UO tail */
+	counter = code_uo_remainder(context, uncomp_pkt, rohc_pkt, counter);
+
+	return counter;
+
+error:
+	return -1;
+}
+
+
+/**
+ * @brief Build the UO-1 packet for the RTP profiles
+ *
+ * The UO-1 packet type cannot be used if there is no IPv4 header in the context
+ * or if value(RND) and value(RND2) are both 1.
+ *
+ * \verbatim
+
+      0   1   2   3   4   5   6   7
+     --- --- --- --- --- --- --- ---
+ 1  :         Add-CID octet         :
+    +---+---+---+---+---+---+---+---+
+ 2  |   first octet of base header  |
+    +---+---+---+---+---+---+---+---+
+    :                               :
+ 3  /   0, 1, or 2 octets of CID    /
+    :                               :
+    +---+---+---+---+---+---+---+---+
+
+ UO-1 (5.7.3):
+
+      0   1   2   3   4   5   6   7
+    +---+---+---+---+---+---+---+---+
+ 2  | 1   0 |          TS           |
+    +===+===+===+===+===+===+===+===+
+ 4  | M |      SN       |    CRC    |
+    +---+---+---+---+---+---+---+---+
+
+\endverbatim
+ *
+ * @param context           The compression context
+ * @param uncomp_pkt        The uncompressed packet to encode
+ * @param[out] rohc_pkt     The ROHC packet
+ * @param rohc_pkt_max_len  The maximum length of the ROHC packet
+ * @return                  The length of the ROHC packet if successful,
+ *                          -1 otherwise
+ */
+static int rohc_comp_rfc3095_build_uo1rtp_pkt(struct rohc_comp_ctxt *const context,
+                                              const struct net_pkt *const uncomp_pkt,
+                                              uint8_t *const rohc_pkt,
+                                              const size_t rohc_pkt_max_len)
+{
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
+	size_t counter;
+	size_t first_position;
+	int is_rtp;
+	struct sc_rtp_context *rtp_context;
+	uint8_t crc;
+	int ret;
+
+	/* number of IP-ID bits and IP-ID offset to transmit  */
+	ip_header_pos_t innermost_ip_hdr;
+	size_t nr_innermost_ip_id_bits;
+	uint16_t innermost_ip_id_delta;
+
+	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
+	is_rtp = context->profile->id == ROHC_PROFILE_RTP;
+	rtp_context = (struct sc_rtp_context *) rfc3095_ctxt->specific;
+
+	rohc_comp_debug(context, "code UO-1-RTP packet (CID = %zu)", context->cid);
+
+	assert(rfc3095_ctxt->tmp.packet_type == ROHC_PACKET_UO_1_RTP);
+	rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	            is_rtp, error, "UO-1-RTP packet is for RTP profile only");
+
+	/* determine the number of IP-ID bits and the IP-ID offset of the
+	 * innermost IPv4 header with non-random IP-ID */
+	rohc_get_innermost_ipv4_non_rnd(context, &innermost_ip_hdr,
+	                                &nr_innermost_ip_id_bits,
+	                                &innermost_ip_id_delta);
+
+	/* RFC 3095, section 5.7.5.1 says:
+	 *   When an IPv4 header for which the corresponding RND flag has not been
+	 *   established to be 1 is present in the static context, the packet
+	 *   types R-1 and UO-1 MUST NOT be used. */
+	rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	            innermost_ip_hdr == ROHC_IP_HDR_NONE, error,
+	            "UO-1-RTP packet is for IPv6 or IPv4 with non-random IP-ID only");
+
+	/* parts 1 and 3:
+	 *  - part 2 will be placed at 'first_position'
+	 *  - part 4 will start at 'counter' */
+	ret = code_cid_values(context->compressor->medium.cid_type, context->cid,
+	                      rohc_pkt, rohc_pkt_max_len, &first_position);
+	if(ret < 1)
 	{
-		extension = ROHC_EXT_NONE;
+		rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the "
+		               "%zu-byte ROHC buffer is too small",
+		               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
+		               "small" : "large", context->cid, rohc_pkt_max_len);
+		goto error;
+	}
+	counter = ret;
+	rohc_comp_debug(context, "%s CID %zu encoded on %zu byte(s)",
+	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
+	                "small" : "large", context->cid, counter - 1);
+
+	/* build the UO head if necessary */
+	if(rfc3095_ctxt->code_UO_packet_head != NULL && uncomp_pkt->transport->data != NULL)
+	{
+		counter = rfc3095_ctxt->code_UO_packet_head(context, uncomp_pkt->transport->data,
+		                                         rohc_pkt, counter, &first_position);
 	}
 
 	/* part 2 */
-	switch(packet_type)
+	rohc_pkt[first_position] = 0x80 | (rtp_context->tmp.ts_send & 0x3f);
+	rohc_comp_debug(context, "1 0 + TS = 0x%02x", rohc_pkt[first_position]);
+
+	/* part 4: M + SN + CRC
+	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
+	 * if the CRC-STATIC fields did not change */
+	if((rohc_pkt_max_len - counter) < 1)
 	{
-		case ROHC_PACKET_UO_1:
-			f_byte = innermost_ip_id_delta & 0x3f;
-			break;
-		case ROHC_PACKET_UO_1_RTP:
-			f_byte = rtp_context->tmp.ts_send & 0x3f;
-			break;
-		case ROHC_PACKET_UO_1_ID:
+		rohc_comp_warn(context, "ROHC packet is too small for SN/CRC byte");
+		goto error;
+	}
+	rohc_pkt[counter] = ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 7;
+	rohc_pkt[counter] |= (rfc3095_ctxt->sn & 0x0f) << 3;
+	crc = compute_uo_crc(rfc3095_ctxt, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3,
+	                     context->compressor->crc_table_3);
+	rohc_pkt[counter] |= crc & 0x07;
+	rohc_comp_debug(context, "M (%d) + SN (%d) + CRC (%x) = 0x%02x",
+	                !!rtp_context->tmp.is_marker_bit_set,
+	                rfc3095_ctxt->sn & 0x0f, crc, rohc_pkt[counter]);
+	counter++;
+
+	/* part 5: no extension */
+
+	/* build the UO tail */
+	counter = code_uo_remainder(context, uncomp_pkt, rohc_pkt, counter);
+
+	return counter;
+
+error:
+	return -1;
+}
+
+
+/**
+ * @brief Build the UO-1-TS packet
+ *
+ * \verbatim
+
+      0   1   2   3   4   5   6   7
+     --- --- --- --- --- --- --- ---
+ 1  :         Add-CID octet         :
+    +---+---+---+---+---+---+---+---+
+ 2  |   first octet of base header  |
+    +---+---+---+---+---+---+---+---+
+    :                               :
+ 3  /   0, 1, or 2 octets of CID    /
+    :                               :
+    +---+---+---+---+---+---+---+---+
+
+ UO-1-TS (5.7.3):
+
+      0   1   2   3   4   5   6   7
+    +---+---+---+---+---+---+---+---+
+ 2  | 1   0 |T=1|        TS         |
+    +===+===+===+===+===+===+===+===+
+ 4  | M |      SN       |    CRC    |
+    +---+---+---+---+---+---+---+---+
+
+ T: T = 0 indicates format UO-1-ID;
+    T = 1 indicates format UO-1-TS.
+
+\endverbatim
+ *
+ * @param context           The compression context
+ * @param uncomp_pkt        The uncompressed packet to encode
+ * @param[out] rohc_pkt     The ROHC packet
+ * @param rohc_pkt_max_len  The maximum length of the ROHC packet
+ * @return                  The length of the ROHC packet if successful,
+ *                          -1 otherwise
+ */
+static int rohc_comp_rfc3095_build_uo1ts_pkt(struct rohc_comp_ctxt *const context,
+                                             const struct net_pkt *const uncomp_pkt,
+                                             uint8_t *const rohc_pkt,
+                                             const size_t rohc_pkt_max_len)
+{
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
+	size_t counter;
+	size_t first_position;
+	int is_rtp;
+	struct sc_rtp_context *rtp_context;
+	uint8_t crc;
+	int ret;
+
+	/* number of IP-ID bits and IP-ID offset to transmit  */
+	ip_header_pos_t innermost_ip_hdr;
+	size_t nr_innermost_ip_id_bits;
+	uint16_t innermost_ip_id_delta;
+
+	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
+	is_rtp = context->profile->id == ROHC_PROFILE_RTP;
+	rtp_context = (struct sc_rtp_context *) rfc3095_ctxt->specific;
+
+	rohc_comp_debug(context, "code UO-1-TS packet (CID = %zu)", context->cid);
+
+	assert(rfc3095_ctxt->tmp.packet_type == ROHC_PACKET_UO_1_TS);
+	rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	            is_rtp, error, "UO-1-TS packet is for RTP profiles");
+
+	/* determine the number of IP-ID bits and the IP-ID offset of the
+	 * innermost IPv4 header with non-random IP-ID */
+	rohc_get_innermost_ipv4_non_rnd(context, &innermost_ip_hdr,
+	                                &nr_innermost_ip_id_bits,
+	                                &innermost_ip_id_delta);
+
+	/* RFC 3095, section 5.7.5.1 says:
+	 *   When no IPv4 header is present in the static context, or the RND
+	 *   flags for all IPv4 headers in the context have been established to be
+	 *   1, the packet types R-1-ID, R-1-TS, UO-1-ID, and UO-1-TS MUST NOT be
+	 *   used. */
+	rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	            innermost_ip_hdr != ROHC_IP_HDR_NONE, error,
+	            "UO-1-TS packet is for IPv4 only");
+
+	/* RFC 3095, section 5.7.5.1 says:
+	 *   While in the transient state in which an RND flag is being
+	 *   established, the packet types R-1-ID, R-1-TS, UO-1-ID, and UO-1-TS
+	 *   MUST NOT be used. */
+	assert(rfc3095_ctxt->outer_ip_flags.version != IPV4 ||
+	       rfc3095_ctxt->outer_ip_flags.info.v4.rnd_count >= MAX_FO_COUNT);
+	assert(uncomp_pkt->ip_hdr_nr <= 1 ||
+	       rfc3095_ctxt->inner_ip_flags.version != IPV4 ||
+	       rfc3095_ctxt->inner_ip_flags.info.v4.rnd_count >= MAX_FO_COUNT);
+
+	/* parts 1 and 3:
+	 *  - part 2 will be placed at 'first_position'
+	 *  - part 4 will start at 'counter' */
+	ret = code_cid_values(context->compressor->medium.cid_type, context->cid,
+	                      rohc_pkt, rohc_pkt_max_len, &first_position);
+	if(ret < 1)
+	{
+		rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the "
+		               "%zu-byte ROHC buffer is too small",
+		               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
+		               "small" : "large", context->cid, rohc_pkt_max_len);
+		goto error;
+	}
+	counter = ret;
+	rohc_comp_debug(context, "%s CID %zu encoded on %zu byte(s)",
+	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
+	                "small" : "large", context->cid, counter - 1);
+
+	/* build the UO head if necessary */
+	if(rfc3095_ctxt->code_UO_packet_head != NULL && uncomp_pkt->transport->data != NULL)
+	{
+		counter = rfc3095_ctxt->code_UO_packet_head(context, uncomp_pkt->transport->data,
+		                                         rohc_pkt, counter, &first_position);
+	}
+
+	/* part 2 */
+	rohc_pkt[first_position] = 0x80 | 0x20 | (rtp_context->tmp.ts_send & 0x1f);
+	rohc_comp_debug(context, "1 0 + T = 1 + TS/IP-ID = 0x%02x",
+	                rohc_pkt[first_position]);
+
+	/* part 4: M + SN + CRC
+	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
+	 * if the CRC-STATIC fields did not change */
+	if((rohc_pkt_max_len - counter) < 1)
+	{
+		rohc_comp_warn(context, "ROHC packet is too small for SN/CRC byte");
+		goto error;
+	}
+	crc = compute_uo_crc(rfc3095_ctxt, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3,
+	                     context->compressor->crc_table_3);
+	rohc_pkt[counter] = ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 7;
+	rohc_pkt[counter] |= (rfc3095_ctxt->sn & 0x0f) << 3;
+	rohc_pkt[counter] |= crc & 0x07;
+	rohc_comp_debug(context, "M (%d) + SN (%d) + CRC (%x) = 0x%02x",
+	                !!rtp_context->tmp.is_marker_bit_set,
+	                rfc3095_ctxt->sn & 0x0f, crc, rohc_pkt[counter]);
+	counter++;
+
+	/* part 5: no extension */
+
+	/* build the UO tail */
+	counter = code_uo_remainder(context, uncomp_pkt, rohc_pkt, counter);
+
+	return counter;
+
+error:
+	return -1;
+}
+
+
+/**
+ * @brief Build the UO-1-ID packet
+ *
+ * The UO-1-ID packet type cannot be used if there is no IPv4 header in the
+ * context or if value(RND) and value(RND2) are both 1.
+ *
+ * \verbatim
+
+      0   1   2   3   4   5   6   7
+     --- --- --- --- --- --- --- ---
+ 1  :         Add-CID octet         :
+    +---+---+---+---+---+---+---+---+
+ 2  |   first octet of base header  |
+    +---+---+---+---+---+---+---+---+
+    :                               :
+ 3  /   0, 1, or 2 octets of CID    /
+    :                               :
+    +---+---+---+---+---+---+---+---+
+
+ UO-1-ID (5.7.3):
+
+      0   1   2   3   4   5   6   7
+    +---+---+---+---+---+---+---+---+
+ 2  | 1   0 |T=0|      IP-ID        |
+    +===+===+===+===+===+===+===+===+
+ 4  | X |      SN       |    CRC    |
+    +---+---+---+---+---+---+---+---+
+
+ X: X = 0 indicates that no extension is present;
+    X = 1 indicates that an extension is present.
+
+ T: T = 0 indicates format UO-1-ID;
+    T = 1 indicates format UO-1-TS.
+
+\endverbatim
+ *
+ * @param context           The compression context
+ * @param uncomp_pkt        The uncompressed packet to encode
+ * @param[out] rohc_pkt     The ROHC packet
+ * @param rohc_pkt_max_len  The maximum length of the ROHC packet
+ * @return                  The length of the ROHC packet if successful,
+ *                          -1 otherwise
+ */
+static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const context,
+                                             const struct net_pkt *const uncomp_pkt,
+                                             uint8_t *const rohc_pkt,
+                                             const size_t rohc_pkt_max_len)
+{
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
+	size_t counter;
+	size_t first_position;
+	uint8_t ip_id_bits;
+	uint8_t s_byte;
+	rohc_ext_t extension;
+	int is_rtp;
+	struct sc_rtp_context *rtp_context;
+	uint8_t crc;
+	int ret;
+
+	/* number of IP-ID bits and IP-ID offset to transmit  */
+	ip_header_pos_t innermost_ip_hdr;
+	size_t nr_innermost_ip_id_bits;
+	uint16_t innermost_ip_id_delta;
+
+	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
+	is_rtp = context->profile->id == ROHC_PROFILE_RTP;
+	rtp_context = (struct sc_rtp_context *) rfc3095_ctxt->specific;
+
+	rohc_comp_debug(context, "code UO-1-ID packet (CID = %zu)", context->cid);
+
+	assert(rfc3095_ctxt->tmp.packet_type == ROHC_PACKET_UO_1_ID);
+	rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	            is_rtp, error, "UO-1-ID packet is for RTP profile only");
+
+	/* determine the number of IP-ID bits and the IP-ID offset of the
+	 * innermost IPv4 header with non-random IP-ID */
+	rohc_get_innermost_ipv4_non_rnd(context, &innermost_ip_hdr,
+	                                &nr_innermost_ip_id_bits,
+	                                &innermost_ip_id_delta);
+
+	/* RFC 3095, section 5.7.5.1 says:
+	 *   When no IPv4 header is present in the static context, or the RND
+	 *   flags for all IPv4 headers in the context have been established to be
+	 *   1, the packet types R-1-ID, R-1-TS, UO-1-ID, and UO-1-TS MUST NOT be
+	 *   used. */
+	rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	            innermost_ip_hdr != ROHC_IP_HDR_NONE, error,
+	            "UO-1 packet is for IPv4 only");
+
+	/* RFC 3095, section 5.7.5.1 says:
+	 *   While in the transient state in which an RND flag is being
+	 *   established, the packet types R-1-ID, R-1-TS, UO-1-ID, and UO-1-TS
+	 *   MUST NOT be used. */
+	assert(rfc3095_ctxt->outer_ip_flags.version != IPV4 ||
+	       rfc3095_ctxt->outer_ip_flags.info.v4.rnd_count >= MAX_FO_COUNT);
+	assert(uncomp_pkt->ip_hdr_nr <= 1 ||
+	       rfc3095_ctxt->inner_ip_flags.version != IPV4 ||
+	       rfc3095_ctxt->inner_ip_flags.info.v4.rnd_count >= MAX_FO_COUNT);
+
+	/* parts 1 and 3:
+	 *  - part 2 will be placed at 'first_position'
+	 *  - part 4 will start at 'counter' */
+	ret = code_cid_values(context->compressor->medium.cid_type, context->cid,
+	                      rohc_pkt, rohc_pkt_max_len, &first_position);
+	if(ret < 1)
+	{
+		rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the "
+		               "%zu-byte ROHC buffer is too small",
+		               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
+		               "small" : "large", context->cid, rohc_pkt_max_len);
+		goto error;
+	}
+	counter = ret;
+	rohc_comp_debug(context, "%s CID %zu encoded on %zu byte(s)",
+	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
+	                "small" : "large", context->cid, counter - 1);
+
+	/* build the UO head if necessary */
+	if(rfc3095_ctxt->code_UO_packet_head != NULL && uncomp_pkt->transport->data != NULL)
+	{
+		counter = rfc3095_ctxt->code_UO_packet_head(context, uncomp_pkt->transport->data,
+		                                         rohc_pkt, counter, &first_position);
+	}
+
+	/* part 5: decide which extension to use */
+	extension = rfc3095_ctxt->decide_extension(context);
+	if(extension == ROHC_EXT_UNKNOWN)
+	{
+		rohc_comp_warn(context, "failed to determine the extension to code");
+		goto error;
+	}
+	rohc_comp_debug(context, "extension '%s' chosen", rohc_get_ext_descr(extension));
+
+	/* UO-1-ID packet without extension or with extension 0, 1 or 2
+	 * cannot change the RTP Marker (M) flag */
+	rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	            (extension == ROHC_EXT_3 || !rtp_context->tmp.is_marker_bit_set),
+	            error, "UO-1-ID packet without extension 3 does not contain "
+	            "room for the RTP Marker (M) flag");
+
+	/* part 2 */
+	switch(extension)
+	{
+		case ROHC_EXT_NONE:
 		{
-			switch(extension)
-			{
-				case ROHC_EXT_NONE:
-				{
-					/* part 2: 5 bits of 5-bit innermost IP-ID with non-random
-					 *         IP-ID */
-					f_byte = innermost_ip_id_delta & 0x1f;
-					rohc_comp_debug(context, "5 bits of 5-bit innermost "
-					                "non-random IP-ID = 0x%x", f_byte & 0x1f);
-					break;
-				}
-				case ROHC_EXT_0:
-				{
-					/* part 2: 5 bits of 8-bit innermost IP-ID with non-random
-					 *         IP-ID */
-					f_byte = (innermost_ip_id_delta >> 3) & 0x1f;
-					rohc_comp_debug(context, "5 bits of 8-bit innermost "
-					                "non-random IP-ID = 0x%x", f_byte & 0x1f);
-					break;
-				}
-				case ROHC_EXT_1:
-				{
-					/* part 2: 5 bits of 8-bit innermost IP-ID with non-random
-					 *         IP-ID */
-					f_byte = (innermost_ip_id_delta >> 3) & 0x1f;
-					rohc_comp_debug(context, "5 bits of 8-bit innermost "
-					                "non-random IP-ID = 0x%x", f_byte & 0x1f);
-					break;
-				}
-				case ROHC_EXT_2:
-				{
-					/* part 2: 5 bits of 16-bit innermost IP-ID with non-random
-					 *         IP-ID */
-					f_byte = (innermost_ip_id_delta >> 11) & 0x1f;
-					rohc_comp_debug(context, "5 bits of 16-bit innermost "
-					                "non-random IP-ID = 0x%x", f_byte & 0x1f);
-					break;
-				}
-				case ROHC_EXT_3:
-				{
-					size_t innermost_ip_id_rnd_count;
-
-					rohc_comp_debug(context, "code UO-1-ID packet with extension 3");
-
-					if(innermost_ip_hdr == ROHC_IP_HDR_FIRST)
-					{
-						innermost_ip_id_rnd_count = rfc3095_ctxt->outer_ip_flags.info.v4.rnd_count;
-					}
-					else /* ROHC_IP_HDR_SECOND */
-					{
-						innermost_ip_id_rnd_count = rfc3095_ctxt->inner_ip_flags.info.v4.rnd_count;
-					}
-
-					/* part 2: 5 bits of innermost IP-ID with non-random IP-ID */
-					if(innermost_ip_id_rnd_count < MAX_FO_COUNT)
-					{
-						/* RND changed in the last few packets, so use the 16-bit
-						 * field in the EXT3 header and fill the 5-bit field of
-						 * UO-1-ID with zeroes */
-						f_byte = 0;
-						rohc_comp_debug(context, "5 zero bits of innermost "
-						                "non-random IP-ID with changed RND = 0x%x",
-						                f_byte & 0x1f);
-					}
-					else if(nr_innermost_ip_id_bits <= 5)
-					{
-						/* transmit <= 5 bits of IP-ID, so use the 5-bit field in
-						 * the UO-1-ID field and do not use the 16-bit field in the
-						 * EXT3 header */
-						f_byte = innermost_ip_id_delta & 0x1f;
-						rohc_comp_debug(context, "5 bits of less-than-5-bit "
-						                "innermost non-random IP-ID = 0x%x",
-						                f_byte & 0x1f);
-					}
-					else
-					{
-						/* transmitting > 16 bits of IP-ID is not possible */
-						assert(nr_innermost_ip_id_bits <= 16);
-
-						/* transmit > 5 bits of IP-ID, so use the 16-bit field in
-						 * the EXT3 header and fill the 5-bit field of UOR-2-ID
-						 * with zeroes */
-						f_byte = 0;
-						rohc_comp_debug(context, "5 zero bits of more-than-5-bit "
-						                "innermost non-random IP-ID = 0x%x",
-						                f_byte & 0x1f);
-					}
-
-					/* transmit all TS bits in extension 3 */
-					rtp_context->tmp.nr_ts_bits_ext3 =
-						sdvl_get_min_len(rtp_context->tmp.nr_ts_bits_more_than_2, 0);
-					assert(rtp_context->tmp.nr_ts_bits_ext3 < 32);
-					rtp_context->tmp.ts_send &=
-						(1 << rtp_context->tmp.nr_ts_bits_ext3) - 1;
-					rohc_comp_debug(context, "%zu bits of TS (0 in header, "
-					                "%zu in EXT3)", rtp_context->tmp.nr_ts_bits_more_than_2,
-					                rtp_context->tmp.nr_ts_bits_ext3);
-
-					break;
-				}
-				default:
-				{
-					rohc_assert(context->compressor, ROHC_TRACE_COMP,
-					            context->profile->id, false, error,
-					            "unknown extension (%d)", extension);
-				}
-			}
+			/* part 2: 5 bits of 5-bit innermost IP-ID with non-random IP-ID */
+			ip_id_bits = innermost_ip_id_delta & 0x1f;
+			rohc_comp_debug(context, "5 bits of 5-bit innermost non-random "
+			                "IP-ID = 0x%x", ip_id_bits & 0x1f);
 			break;
 		}
-		case ROHC_PACKET_UO_1_TS:
-			f_byte = rtp_context->tmp.ts_send & 0x1f;
-			f_byte |= 0x20;
+		case ROHC_EXT_0:
+		{
+			/* part 2: 5 bits of 8-bit innermost IP-ID with non-random IP-ID */
+			ip_id_bits = (innermost_ip_id_delta >> 3) & 0x1f;
+			rohc_comp_debug(context, "5 bits of 8-bit innermost non-random "
+			                "IP-ID = 0x%x", ip_id_bits & 0x1f);
 			break;
-		default:
-			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            false, error, "bad packet type (%d)", packet_type);
-	}
-	f_byte |= 0x80;
-	rohc_pkt[first_position] = f_byte;
-	rohc_comp_debug(context, "1 0 + T + TS/IP-ID = 0x%02x", f_byte);
+		}
+		case ROHC_EXT_1:
+		{
+			/* part 2: 5 bits of 8-bit innermost IP-ID with non-random IP-ID */
+			ip_id_bits = (innermost_ip_id_delta >> 3) & 0x1f;
+			rohc_comp_debug(context, "5 bits of 8-bit innermost non-random "
+			                "IP-ID = 0x%x", ip_id_bits & 0x1f);
+			break;
+		}
+		case ROHC_EXT_2:
+		{
+			/* part 2: 5 bits of 16-bit innermost IP-ID with non-random IP-ID */
+			ip_id_bits = (innermost_ip_id_delta >> 11) & 0x1f;
+			rohc_comp_debug(context, "5 bits of 16-bit innermost non-random "
+			                "IP-ID = 0x%x", ip_id_bits & 0x1f);
+			break;
+		}
+		case ROHC_EXT_3:
+		{
+			size_t innermost_ip_id_rnd_count;
 
-	/* part 4: (M / X +) SN + CRC
+			rohc_comp_debug(context, "code UO-1-ID packet with extension 3");
+
+			if(innermost_ip_hdr == ROHC_IP_HDR_FIRST)
+			{
+				innermost_ip_id_rnd_count = rfc3095_ctxt->outer_ip_flags.info.v4.rnd_count;
+			}
+			else /* ROHC_IP_HDR_SECOND */
+			{
+				innermost_ip_id_rnd_count = rfc3095_ctxt->inner_ip_flags.info.v4.rnd_count;
+			}
+
+			/* part 2: 5 bits of innermost IP-ID with non-random IP-ID */
+			if(innermost_ip_id_rnd_count < MAX_FO_COUNT)
+			{
+				/* RND changed in the last few packets, so use the 16-bit field in
+				 * the EXT3 header and fill the 5-bit field of UO-1-ID with zeroes */
+				ip_id_bits = 0;
+				rohc_comp_debug(context, "5 zero bits of innermost non-random "
+				                "IP-ID with changed RND = 0x%x", ip_id_bits & 0x1f);
+			}
+			else if(nr_innermost_ip_id_bits <= 5)
+			{
+				/* transmit <= 5 bits of IP-ID, so use the 5-bit field in the UO-1-ID
+				 * field and do not use the 16-bit field in the EXT3 header */
+				ip_id_bits = innermost_ip_id_delta & 0x1f;
+				rohc_comp_debug(context, "5 bits of less-than-5-bit innermost "
+				                "non-random IP-ID = 0x%x", ip_id_bits & 0x1f);
+			}
+			else
+			{
+				/* transmitting > 16 bits of IP-ID is not possible */
+				assert(nr_innermost_ip_id_bits <= 16);
+
+				/* transmit > 5 bits of IP-ID, so use the 16-bit field in the EXT3
+				 * header and fill the 5-bit field of UOR-2-ID with zeroes */
+				ip_id_bits = 0;
+				rohc_comp_debug(context, "5 zero bits of more-than-5-bit innermost "
+				                "non-random IP-ID = 0x%x", ip_id_bits & 0x1f);
+			}
+
+			/* transmit all TS bits in extension 3 */
+			rtp_context->tmp.nr_ts_bits_ext3 =
+				sdvl_get_min_len(rtp_context->tmp.nr_ts_bits_more_than_2, 0);
+			assert(rtp_context->tmp.nr_ts_bits_ext3 < 32);
+			rtp_context->tmp.ts_send &=
+				(1 << rtp_context->tmp.nr_ts_bits_ext3) - 1;
+			rohc_comp_debug(context, "%zu bits of TS (0 in header, %zu in EXT3)",
+			                rtp_context->tmp.nr_ts_bits_more_than_2,
+			                rtp_context->tmp.nr_ts_bits_ext3);
+
+			break;
+		}
+		default:
+		{
+			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			            false, error, "unknown extension (%d)", extension);
+		}
+	}
+	rohc_pkt[first_position] = 0x80 | ip_id_bits;
+	rohc_comp_debug(context, "1 0 + T = 0 + TS/IP-ID = 0x%02x",
+	                rohc_pkt[first_position]);
+
+	/* part 4: X + SN + CRC
 	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
 	 * if the CRC-STATIC fields did not change */
 	if((rohc_pkt_max_len - counter) < 1)
@@ -2960,98 +3320,71 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 	crc = compute_uo_crc(rfc3095_ctxt, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3,
 	                     context->compressor->crc_table_3);
 	s_byte = crc & 0x07;
-	switch(packet_type)
+	switch(extension)
 	{
-		case ROHC_PACKET_UO_1:
-			/* SN + CRC (CRC was added before) */
-			s_byte |= (rfc3095_ctxt->sn & 0x1f) << 3;
-			rohc_comp_debug(context, "SN (%d) + CRC (%x) = 0x%02x",
-			                rfc3095_ctxt->sn, crc, s_byte);
-			break;
-		case ROHC_PACKET_UO_1_RTP:
-		case ROHC_PACKET_UO_1_TS:
-			/* M + SN + CRC (CRC was added before) */
-			s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 7;
-			s_byte |= (rfc3095_ctxt->sn & 0x0f) << 3;
-			rohc_comp_debug(context, "M (%d) + SN (%d) + CRC (%x) = 0x%02x",
-			                !!rtp_context->tmp.is_marker_bit_set,
-			                rfc3095_ctxt->sn & 0x0f, crc, s_byte);
-			break;
-		case ROHC_PACKET_UO_1_ID:
+		case ROHC_EXT_NONE:
 		{
-			/* X + SN + CRC (CRC was added before) */
-			switch(extension)
+			s_byte &= ~0x80;
+			assert(rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 <= 4);
+			s_byte |= (rfc3095_ctxt->sn & 0x0f) << 3;
+			rohc_comp_debug(context, "4 bits of 4-bit SN = 0x%x",
+			                (s_byte >> 3) & 0x0f);
+			break;
+		}
+		case ROHC_EXT_0:
+		{
+			s_byte |= 0x80;
+			assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 7);
+			s_byte |= ((rfc3095_ctxt->sn >> 3) & 0x0f) << 3;
+			rohc_comp_debug(context, "4 bits of 7-bit SN = 0x%x",
+			                (s_byte >> 3) & 0x0f);
+			break;
+		}
+		case ROHC_EXT_1:
+		{
+			s_byte |= 0x80;
+			assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 7);
+			s_byte |= ((rfc3095_ctxt->sn >> 3) & 0x0f) << 3;
+			rohc_comp_debug(context, "4 bits of 7-bit SN = 0x%x",
+			                (s_byte >> 3) & 0x0f);
+			break;
+		}
+		case ROHC_EXT_2:
+		{
+			s_byte |= 0x80;
+			assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 7);
+			s_byte |= ((rfc3095_ctxt->sn >> 3) & 0x0f) << 3;
+			rohc_comp_debug(context, "4 bits of 7-bit SN = 0x%x",
+			                (s_byte >> 3) & 0x0f);
+			break;
+		}
+		case ROHC_EXT_3:
+		{
+			s_byte |= 0x80;
+			if(rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 <= 4)
 			{
-				case ROHC_EXT_NONE:
-				{
-					s_byte &= ~0x80;
-					assert(rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 <= 4);
-					s_byte |= (rfc3095_ctxt->sn & 0x0f) << 3;
-					rohc_comp_debug(context, "4 bits of 4-bit SN = 0x%x",
-					                (s_byte >> 3) & 0x0f);
-					break;
-				}
-				case ROHC_EXT_0:
-				{
-					s_byte |= 0x80;
-					assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 7);
-					s_byte |= ((rfc3095_ctxt->sn >> 3) & 0x0f) << 3;
-					rohc_comp_debug(context, "4 bits of 7-bit SN = 0x%x",
-					                (s_byte >> 3) & 0x0f);
-					break;
-				}
-				case ROHC_EXT_1:
-				{
-					s_byte |= 0x80;
-					assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 7);
-					s_byte |= ((rfc3095_ctxt->sn >> 3) & 0x0f) << 3;
-					rohc_comp_debug(context, "4 bits of 7-bit SN = 0x%x",
-					                (s_byte >> 3) & 0x0f);
-					break;
-				}
-				case ROHC_EXT_2:
-				{
-					s_byte |= 0x80;
-					assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 7);
-					s_byte |= ((rfc3095_ctxt->sn >> 3) & 0x0f) << 3;
-					rohc_comp_debug(context, "4 bits of 7-bit SN = 0x%x",
-					                (s_byte >> 3) & 0x0f);
-					break;
-				}
-				case ROHC_EXT_3:
-				{
-					s_byte |= 0x80;
-					if(rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 <= 4)
-					{
-						s_byte |= (rfc3095_ctxt->sn & 0x0f) << 3;
-						rohc_comp_debug(context, "4 bits of 4-bit SN = 0x%x",
-						                (s_byte >> 3) & 0x0f);
-					}
-					else
-					{
-						assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 12);
-						s_byte |= ((rfc3095_ctxt->sn >> 8) & 0x0f) << 3;
-						rohc_comp_debug(context, "4 bits of 12-bit SN = 0x%x",
-						                (s_byte >> 3) & 0x0f);
-					}
-					break;
-				}
-				default:
-				{
-					rohc_assert(context->compressor, ROHC_TRACE_COMP,
-					            context->profile->id, false, error,
-					            "unknown extension (%d)", extension);
-				}
+				s_byte |= (rfc3095_ctxt->sn & 0x0f) << 3;
+				rohc_comp_debug(context, "4 bits of 4-bit SN = 0x%x",
+				                (s_byte >> 3) & 0x0f);
 			}
-			rohc_comp_debug(context, "X (%u) + SN (%u) + CRC (0x%x) = "
-			                "0x%02x", !!(extension != ROHC_EXT_NONE),
-			                (s_byte >> 3) & 0x0f, crc, s_byte);
+			else
+			{
+				assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 12);
+				s_byte |= ((rfc3095_ctxt->sn >> 8) & 0x0f) << 3;
+				rohc_comp_debug(context, "4 bits of 12-bit SN = 0x%x",
+				                (s_byte >> 3) & 0x0f);
+			}
 			break;
 		}
 		default:
+		{
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            false, error, "bad packet type (%d)", packet_type);
+			            false, error, "unknown extension (%d)", extension);
+		}
 	}
+	rohc_comp_debug(context, "X (%u) + SN (%u) + CRC (0x%x) = "
+	                "0x%02x", !!(extension != ROHC_EXT_NONE),
+	                (s_byte >> 3) & 0x0f, crc, s_byte);
 	rohc_pkt[counter] = s_byte;
 	counter++;
 
