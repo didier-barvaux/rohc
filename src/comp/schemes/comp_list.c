@@ -44,12 +44,19 @@ static int rohc_list_decide_type(struct list_comp *const comp)
 static size_t rohc_list_compute_ins_mask(const struct list_comp *const comp,
                                          const struct rohc_list *const ref_list,
                                          const struct rohc_list *const cur_list,
-                                         const size_t m,
                                          const uint8_t rem_mask[ROHC_LIST_ITEMS_MAX],
                                          uint8_t ins_mask[ROHC_LIST_ITEMS_MAX],
                                          uint8_t *const rohc_data,
                                          const size_t rohc_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 7)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 6)));
+
+static size_t rohc_list_compute_rem_mask(const struct list_comp *const comp,
+                                         const struct rohc_list *const ref_list,
+                                         const struct rohc_list *const cur_list,
+                                         uint8_t rem_mask[ROHC_LIST_ITEMS_MAX],
+                                         uint8_t *const rohc_data,
+                                         const size_t rohc_max_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
 static uint8_t rohc_list_compute_ps(const struct list_comp *const comp,
                                     const struct rohc_list *const list,
@@ -644,7 +651,8 @@ static int rohc_list_decide_type(struct list_comp *const comp)
  * @param comp     The list compressor
  * @param dest     The ROHC packet under build
  * @param counter  The current position in the rohc-packet-under-build buffer
- * @return         The new position in the rohc-packet-under-build buffer
+ * @return         The new position in the rohc-packet-under-build buffer,
+ *                 -1 in case of error
  */
 static int rohc_list_encode_type_0(struct list_comp *const comp,
                                    unsigned char *const dest,
@@ -887,7 +895,8 @@ error:
  * @param comp     The list compressor
  * @param dest     The ROHC packet under build
  * @param counter  The current position in the rohc-packet-under-build buffer
- * @return         The new position in the rohc-packet-under-build buffer
+ * @return         The new position in the rohc-packet-under-build buffer,
+ *                 -1 in case of error
  */
 static int rohc_list_encode_type_1(struct list_comp *const comp,
                                    unsigned char *const dest,
@@ -939,7 +948,7 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 	ins_mask_len =
 		rohc_list_compute_ins_mask(comp, &(comp->lists[comp->ref_id]),
 		                           &(comp->lists[comp->cur_id]),
-		                           m, rem_mask, ins_mask,
+		                           rem_mask, ins_mask,
 		                           dest + counter, 2 /* TODO */);
 	if(ins_mask_len != 1 && ins_mask_len != 2)
 	{
@@ -1183,7 +1192,8 @@ error:
  * @param comp     The list compressor
  * @param dest     The ROHC packet under build
  * @param counter  The current position in the rohc-packet-under-build buffer
- * @return         The new position in the rohc-packet-under-build buffer
+ * @return         The new position in the rohc-packet-under-build buffer,
+ *                 -1 in case of error
  */
 static int rohc_list_encode_type_2(struct list_comp *const comp,
                                    unsigned char *const dest,
@@ -1191,9 +1201,9 @@ static int rohc_list_encode_type_2(struct list_comp *const comp,
 {
 	const uint8_t et = 2; /* list encoding type 2 */
 	uint8_t gp;
+	uint8_t rem_mask[ROHC_LIST_ITEMS_MAX] = { 0 };
+	size_t rem_mask_len;
 	size_t count; /* size of reference list */
-	size_t k; /* the index of the current element in current list */
-	size_t ref_k; /* the index of the current element in reference list */
 
 	assert(comp != NULL);
 	assert(comp->ref_id != ROHC_LIST_GEN_ID_NONE);
@@ -1226,76 +1236,22 @@ static int rohc_list_encode_type_2(struct list_comp *const comp,
 	rc_list_debug(comp, "ref_id = 0x%02x", dest[counter]);
 	counter++;
 
-	/* part 4: removal bit mask (first byte) */
-	dest[counter] = 0xff;
-	if(count <= 7)
+	/* part 4: removal mask */
+	rem_mask_len =
+		rohc_list_compute_rem_mask(comp, &(comp->lists[comp->ref_id]),
+		                           &(comp->lists[comp->cur_id]),
+		                           rem_mask, dest + counter, 2 /* TODO */);
+	if(rem_mask_len != 1 && rem_mask_len != 2)
 	{
-		/* 7-bit mask is enough, so set first bit to 0 */
-		dest[counter] &= ~(1 << 7);
+		rohc_comp_list_warn(comp, "ROHC buffer is too short for the removal mask");
+		goto error;
 	}
-	else
-	{
-		/* 15-bit mask is required, so set first bit to 1 */
-		dest[counter] |= 1 << 7;
-	}
-	for(k = 0, ref_k = 0; ref_k < count && ref_k < 7; ref_k++)
-	{
-		if(k < comp->lists[comp->cur_id].items_nr &&
-		   comp->lists[comp->ref_id].items[ref_k] ==
-		   comp->lists[comp->cur_id].items[k])
-		{
-			/* item shall not be removed, clear its corresponding bit in the
-			   removal bit mask */
-			rc_list_debug(comp, "mark element #%zu of reference list as "
-			              "'not to remove'", ref_k);
-			dest[counter] &= ~(1 << (6 - ref_k));
-			k++;
-		}
-		else
-		{
-			/* item shall be removed, keep its corresponding bit set */
-			rc_list_debug(comp, "mark element #%zu of reference list as "
-			              "'to remove'", ref_k);
-		}
-	}
-	rc_list_debug(comp, "removal bit mask (first byte) = 0x%02x",
-	              dest[counter]);
-	counter++;
-
-	/* part 4: removal bit mask (second optional byte) */
-	if(count > 7)
-	{
-		dest[counter] = 0xff;
-		for(ref_k = 7; ref_k < count && ref_k < 15; ref_k++)
-		{
-			if(k < comp->lists[comp->cur_id].items_nr &&
-			   comp->lists[comp->ref_id].items[ref_k] ==
-			   comp->lists[comp->cur_id].items[k])
-			{
-				/* item shall not be removed, clear its corresponding bit in the
-				   removal bit mask */
-				rc_list_debug(comp, "mark element #%zu of reference list as "
-				              "'not to remove'", ref_k);
-				dest[counter] &= ~(1 << (7 - (ref_k - 7)));
-				k++;
-			}
-			else
-			{
-				/* item shall be removed, keep its corresponding bit set */
-				rc_list_debug(comp, "mark element #%zu of reference list as "
-				              "'to remove'", ref_k);
-			}
-		}
-		rc_list_debug(comp, "removal bit mask (second byte) = 0x%02x",
-		              dest[counter]);
-		counter++;
-	}
-	else
-	{
-		rc_list_debug(comp, "no second byte of removal bit mask");
-	}
+	counter += rem_mask_len;
 
 	return counter;
+
+error:
+	return -1;
 }
 
 
@@ -1391,7 +1347,8 @@ static int rohc_list_encode_type_2(struct list_comp *const comp,
  * @param comp     The list compressor
  * @param dest     The ROHC packet under build
  * @param counter  The current position in the rohc-packet-under-build buffer
- * @return         The new position in the rohc-packet-under-build buffer
+ * @return         The new position in the rohc-packet-under-build buffer,
+ *                 -1 in case of error
  */
 static int rohc_list_encode_type_3(struct list_comp *const comp,
                                    unsigned char *const dest,
@@ -1402,11 +1359,11 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 	uint8_t gp;
 	uint8_t rem_mask[ROHC_LIST_ITEMS_MAX] = { 0 };
 	uint8_t ins_mask[ROHC_LIST_ITEMS_MAX] = { 0 };
+	size_t rem_mask_len;
 	size_t ins_mask_len;
 	size_t count; /* size of reference list */
 	size_t m; /* the number of elements in current list = number of XIs */
 	size_t k; /* the index of the current element in current list */
-	size_t ref_k; /* the index of the current element in reference list */
 	size_t ps; /* indicate the size of the indexes */
 	size_t ps_pos; /* the position of the byte that contains the PS bit */
 
@@ -1445,84 +1402,23 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 	rc_list_debug(comp, "ref_id = 0x%02x", dest[counter]);
 	counter++;
 
-	/* part 4: removal bit mask (first byte) */
-	dest[counter] = 0xff;
-	if(count <= 7)
+	/* part 4: removal mask */
+	rem_mask_len =
+		rohc_list_compute_rem_mask(comp, &(comp->lists[comp->ref_id]),
+		                           &(comp->lists[comp->cur_id]),
+		                           rem_mask, dest + counter, 2 /* TODO */);
+	if(rem_mask_len != 1 && rem_mask_len != 2)
 	{
-		/* 7-bit mask is enough, so set first bit to 0 */
-		dest[counter] &= ~(1 << 7);
+		rohc_comp_list_warn(comp, "ROHC buffer is too short for the removal mask");
+		goto error;
 	}
-	else
-	{
-		/* 15-bit mask is required, so set first bit to 1 */
-		dest[counter] |= 1 << 7;
-	}
-	for(k = 0, ref_k = 0; ref_k < count && ref_k < 7; ref_k++)
-	{
-		if(k < comp->lists[comp->cur_id].items_nr &&
-		   comp->lists[comp->ref_id].items[ref_k] ==
-		   comp->lists[comp->cur_id].items[k])
-		{
-			/* item shall not be removed, clear its corresponding bit in the
-			   removal bit mask */
-			rc_list_debug(comp, "mark element #%zu of reference list as "
-			              "'not to remove'", ref_k);
-			dest[counter] &= ~(1 << (6 - ref_k));
-			rem_mask[ref_k] = 0;
-			k++;
-		}
-		else
-		{
-			/* item shall be removed, keep its corresponding bit set */
-			rc_list_debug(comp, "mark element #%zu of reference list as "
-			              "'to remove'", ref_k);
-			rem_mask[ref_k] = 1;
-		}
-	}
-	rc_list_debug(comp, "removal bit mask (first byte) = 0x%02x",
-	              dest[counter]);
-	counter++;
-
-	/* part 4: removal bit mask (second optional byte) */
-	if(count > 7)
-	{
-		dest[counter] = 0xff;
-		for(ref_k = 7; ref_k < count && ref_k < 15; ref_k++)
-		{
-			if(k < comp->lists[comp->cur_id].items_nr &&
-			   comp->lists[comp->ref_id].items[ref_k] ==
-			   comp->lists[comp->cur_id].items[k])
-			{
-				/* item shall not be removed, clear its corresponding bit in the
-				   removal bit mask */
-				rc_list_debug(comp, "mark element #%zu of reference list as "
-				              "'not to remove'", ref_k);
-				dest[counter] &= ~(1 << (7 - (ref_k - 7)));
-				rem_mask[ref_k] = 0;
-				k++;
-			}
-			else
-			{
-				/* item shall be removed, keep its corresponding bit set */
-				rc_list_debug(comp, "mark element #%zu of reference list as "
-				              "'to remove'", ref_k);
-				rem_mask[ref_k] = 1;
-			}
-		}
-		rc_list_debug(comp, "removal bit mask (second byte) = 0x%02x",
-		              dest[counter]);
-		counter++;
-	}
-	else
-	{
-		rc_list_debug(comp, "no second byte of removal bit mask");
-	}
+	counter += rem_mask_len;
 
 	/* part 5: insertion mask */
 	ins_mask_len =
 		rohc_list_compute_ins_mask(comp, &(comp->lists[comp->ref_id]),
 		                           &(comp->lists[comp->cur_id]),
-		                           m, rem_mask, ins_mask,
+		                           rem_mask, ins_mask,
 		                           dest + counter, 2 /* TODO */);
 	if(ins_mask_len != 1 && ins_mask_len != 2)
 	{
@@ -1725,7 +1621,6 @@ error:
  * @param comp           The list compressor
  * @param ref_list       The reference list
  * @param cur_list       The current list to create the insertion mask for
- * @param m              The number of elements in current list
  * @param rem_mask       The removal mask for the list
  * @param[out] ins_mask  The insertion mask for the list
  * @param rohc_data      The ROHC packet being built
@@ -1736,12 +1631,13 @@ error:
 static size_t rohc_list_compute_ins_mask(const struct list_comp *const comp,
                                          const struct rohc_list *const ref_list,
                                          const struct rohc_list *const cur_list,
-                                         const size_t m,
                                          const uint8_t rem_mask[ROHC_LIST_ITEMS_MAX],
                                          uint8_t ins_mask[ROHC_LIST_ITEMS_MAX],
                                          uint8_t *const rohc_data,
                                          const size_t rohc_max_len)
 {
+	const size_t ref_m = ref_list->items_nr;
+	const size_t m = cur_list->items_nr;
 	size_t ins_mask_len;
 	size_t ref_k; /* the index of the current element in reference list */
 	size_t k; /* the index of the current element in current list */
@@ -1753,6 +1649,7 @@ static size_t rohc_list_compute_ins_mask(const struct list_comp *const comp,
 	}
 
 	/* 1- or 2-byte insertion mask? */
+	rohc_data[0] = 0;
 	if(m <= 7)
 	{
 		/* 7-bit mask is enough, so set first bit to 0 */
@@ -1773,7 +1670,6 @@ static size_t rohc_list_compute_ins_mask(const struct list_comp *const comp,
 	}
 
 	/* first byte of the insertion mask */
-	rohc_data[0] = 0;
 	for(k = 0, ref_k = 0; k < m && k < 7; )
 	{
 		uint8_t bit;
@@ -1788,8 +1684,7 @@ static size_t rohc_list_compute_ins_mask(const struct list_comp *const comp,
 
 		/* set bit to 1 in the insertion mask if the list item is not present
 		   in the reference list */
-		if(ref_k >= ref_list->items_nr ||
-		   cur_list->items[k] != ref_list->items[ref_k])
+		if(ref_k >= ref_m || cur_list->items[k] != ref_list->items[ref_k])
 		{
 			/* item is new, so put 1 in mask */
 			bit = 1;
@@ -1829,8 +1724,7 @@ static size_t rohc_list_compute_ins_mask(const struct list_comp *const comp,
 
 			/* set bit to 1 in the insertion mask if the list item is not present
 			   in the reference list */
-			if(ref_k >= ref_list->items_nr ||
-			   cur_list->items[k] != ref_list->items[ref_k])
+			if(ref_k >= ref_m || cur_list->items[k] != ref_list->items[ref_k])
 			{
 				/* item is new, so put 1 in mask */
 				bit = 1;
@@ -1850,6 +1744,121 @@ static size_t rohc_list_compute_ins_mask(const struct list_comp *const comp,
 	}
 
 	return ins_mask_len;
+
+error:
+	return 0;
+}
+
+
+/**
+ * @brief Determine the removal bit mask
+ *
+ * @param comp           The list compressor
+ * @param ref_list       The reference list
+ * @param cur_list       The current list to create the removal mask for
+ * @param[out] rem_mask  The removal mask for the list
+ * @param rohc_data      The ROHC packet being built
+ * @param rohc_max_len   The max remaining length in the ROHC buffer
+ * @return               The length of the removal mask in case of success,
+ *                       0 in case of failure
+ */
+static size_t rohc_list_compute_rem_mask(const struct list_comp *const comp,
+                                         const struct rohc_list *const ref_list,
+                                         const struct rohc_list *const cur_list,
+                                         uint8_t rem_mask[ROHC_LIST_ITEMS_MAX],
+                                         uint8_t *const rohc_data,
+                                         const size_t rohc_max_len)
+{
+	const size_t ref_m = ref_list->items_nr;
+	const size_t m = cur_list->items_nr;
+	size_t rem_mask_len;
+	size_t ref_k; /* the index of the current element in reference list */
+	size_t k; /* the index of the current element in current list */
+
+	if(rohc_max_len <= 0)
+	{
+		rohc_comp_list_warn(comp, "ROHC buffer is too short for the removal mask");
+		goto error;
+	}
+
+	/* 1- or 2-byte removal mask? */
+	rohc_data[0] = 0xff;
+	if(ref_m <= 7)
+	{
+		/* 7-bit mask is enough, so set first bit to 0 */
+		rohc_data[0] &= ~(1 << 7);
+		rem_mask_len = 1;
+	}
+	else
+	{
+		/* 15-bit mask is required, so set first bit to 1 */
+		rohc_data[0] |= 1 << 7;
+		rem_mask_len = 2;
+	}
+	if(rohc_max_len < rem_mask_len)
+	{
+		rohc_comp_list_warn(comp, "ROHC buffer is too short for the %zu-byte "
+		                    "removal mask", rem_mask_len);
+		goto error;
+	}
+
+	/* first byte of the removal mask */
+	for(k = 0, ref_k = 0; ref_k < ref_m && ref_k < 8; ref_k++)
+	{
+		if(k < m && ref_list->items[ref_k] == cur_list->items[k])
+		{
+			/* item shall not be removed, clear its corresponding bit in the
+			   removal bit mask */
+			rc_list_debug(comp, "mark element #%zu of reference list as "
+			              "'not to remove'", ref_k);
+			rohc_data[0] &= ~(1 << (6 - ref_k));
+			rem_mask[ref_k] = 0;
+			k++;
+		}
+		else
+		{
+			/* item shall be removed, keep its corresponding bit set */
+			rc_list_debug(comp, "mark element #%zu of reference list as "
+			              "'to remove'", ref_k);
+			rem_mask[ref_k] = 1;
+		}
+	}
+	rc_list_debug(comp, "removal bit mask (first byte) = 0x%02x",
+	              rohc_data[0]);
+
+	/* second optional byte of the insertion mask */
+	if(ref_m <= 7)
+	{
+		rc_list_debug(comp, "no second byte of removal bit mask");
+	}
+	else
+	{
+		rohc_data[1] = 0xff;
+		for(ref_k = 7; ref_k < ref_m && ref_k < 15; ref_k++)
+		{
+			if(k < m && ref_list->items[ref_k] == cur_list->items[k])
+			{
+				/* item shall not be removed, clear its corresponding bit in the
+				   removal bit mask */
+				rc_list_debug(comp, "mark element #%zu of reference list as "
+				              "'not to remove'", ref_k);
+				rohc_data[1] &= ~(1 << (7 - (ref_k - 7)));
+				rem_mask[ref_k] = 0;
+				k++;
+			}
+			else
+			{
+				/* item shall be removed, keep its corresponding bit set */
+				rc_list_debug(comp, "mark element #%zu of reference list as "
+				              "'to remove'", ref_k);
+				rem_mask[ref_k] = 1;
+			}
+		}
+		rc_list_debug(comp, "removal bit mask (second byte) = 0x%02x",
+		              rohc_data[1]);
+	}
+
+	return rem_mask_len;
 
 error:
 	return 0;
