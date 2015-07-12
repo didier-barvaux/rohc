@@ -64,6 +64,30 @@ static uint8_t rohc_list_compute_ps(const struct list_comp *const comp,
                                     const size_t m)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
+static int rohc_list_build_XIs(const struct list_comp *const comp,
+                               const struct rohc_list *const list,
+                               const uint8_t mask[ROHC_LIST_ITEMS_MAX],
+                               const size_t ps,
+                               uint8_t *const rohc_data,
+                               const size_t rohc_max_len,
+                               uint8_t *const first_4b_xi)
+	__attribute__((warn_unused_result, nonnull(1, 2, 5, 7)));
+
+static int rohc_list_build_XIs_8(const struct list_comp *const comp,
+                                 const struct rohc_list *const list,
+                                 const uint8_t mask[ROHC_LIST_ITEMS_MAX],
+                                 uint8_t *const rohc_data,
+                                 const size_t rohc_max_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
+
+static int rohc_list_build_XIs_4(const struct list_comp *const comp,
+                                 const struct rohc_list *const list,
+                                 const uint8_t mask[ROHC_LIST_ITEMS_MAX],
+                                 uint8_t *const rohc_data,
+                                 const size_t rohc_max_len,
+                                 uint8_t *const first_4b_xi)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 6)));
+
 static int rohc_list_encode_type_0(struct list_comp *const comp,
                                    unsigned char *const dest,
                                    int counter)
@@ -902,7 +926,6 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
                                    unsigned char *const dest,
                                    int counter)
 {
-	size_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
 	const uint8_t et = 1; /* list encoding type 1 */
 	uint8_t gp;
 	const uint8_t rem_mask[ROHC_LIST_ITEMS_MAX] = { 0 }; /* empty removal mask */
@@ -912,6 +935,7 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 	size_t k; /* the index of the current element in current list */
 	size_t ps; /* indicate the size of the indexes */
 	size_t ps_pos; /* the position of the byte that contains the PS bit */
+	int ret;
 
 	assert(comp != NULL);
 	assert(comp->ref_id != ROHC_LIST_GEN_ID_NONE);
@@ -965,150 +989,22 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 	}
 
 	/* part 5: k XI (= X + Indexes) */
-	if(ps)
 	{
-		size_t xi_index = 0;
+		uint8_t first_4b_xi;
 
-		/* each XI item is stored on 8 bits */
-		rc_list_debug(comp, "use 8-bit format for the %zu XIs", m);
-
-		for(k = 0; k < m; k++)
+		ret = rohc_list_build_XIs(comp, &(comp->lists[comp->cur_id]), ins_mask, ps,
+		                          dest + counter, m /* TODO */, &first_4b_xi);
+		if(ret < 0)
 		{
-			const struct rohc_list_item *const item =
-				comp->lists[comp->cur_id].items[k];
-			int index_table;
-			ext_types_count[item->type]++;
-			index_table = comp->get_index_table(item->type, ext_types_count[item->type]);
-			assert(index_table >= 0);
-			assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);
-
-			/* skip element if it present in the reference list and compressor
-			 * is confident that item is known by decompressor */
-			if(ins_mask[k] == 0 && item->known)
-			{
-				rc_list_debug(comp, "ignore element #%zu because it is present "
-				              "in the reference list and already known", k);
-				continue;
-			}
-
-			xi_index++;
-
-			dest[counter] = 0;
-
-			/* set the X bit if item is not already known */
-			if(!item->known)
-			{
-				dest[counter] |= 1 << 7;
-			}
-			/* 7-bit Index */
-			assert((index_table & 0x7f) == index_table);
-			dest[counter] |= index_table & 0x7f;
-
-			rc_list_debug(comp, "add 8-bit XI #%zu = 0x%x", k, dest[counter]);
-
-			/* byte is full, write to next one next time */
-			counter++;
+			rohc_comp_list_warn(comp, "ROHC buffer is too short for the XI items");
+			goto error;
 		}
-	}
-	else
-	{
-		size_t xi_index = 0;
-
-		/* each XI item is stored on 4 bits */
-		rc_list_debug(comp, "use 4-bit format for the %zu XIs", m);
-
-		for(k = 0; k < m; k++)
+		if(ps == 0)
 		{
-			const struct rohc_list_item *const item =
-				comp->lists[comp->cur_id].items[k];
-			int index_table;
-			ext_types_count[item->type]++;
-			index_table = comp->get_index_table(item->type, ext_types_count[item->type]);
-			assert(index_table >= 0);
-			assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);
-
-			/* skip element if it present in the reference list and compressor
-			 * is confident that item is known by decompressor */
-			if(ins_mask[k] == 0 && item->known)
-			{
-				rc_list_debug(comp, "ignore element #%zu because it is present "
-				              "in the reference list and already known", k);
-				continue;
-			}
-
-			xi_index++;
-
-			if(xi_index == 1)
-			{
-				/* first XI goes in part 1 */
-
-				/* set the X bit if item is not already known */
-				if(!item->known)
-				{
-					dest[ps_pos] |= 1 << 3;
-				}
-				/* 3-bit Index */
-				assert((index_table & 0x07) == index_table);
-				dest[ps_pos] |= index_table & 0x07;
-
-				rc_list_debug(comp, "add 4-bit XI #%zu in part 1 = 0x%x", k,
-				              dest[ps_pos] & 0x0f);
-			}
-			else
-			{
-				/* next XIs go in part 5 */
-
-				/* odd or even 4-bit XI ? */
-				if((xi_index % 2) == 0)
-				{
-					/* use MSB part of the byte */
-
-					/* first 4-bit XI, so clear the byte */
-					dest[counter] = 0;
-					/* set the X bit if item is not already known */
-					if(!item->known)
-					{
-						dest[counter] |= 1 << 7;
-					}
-					/* 3-bit Index */
-					assert((index_table & 0x07) == index_table);
-					dest[counter] |= (index_table & 0x07) << 4;
-
-					rc_list_debug(comp, "add 4-bit XI #%zu in MSB = 0x%x", k,
-					              (dest[counter] & 0xf0) >> 4);
-				}
-				else
-				{
-					/* use LSB part of the byte */
-
-					/* set the X bit if item is not already known */
-					if(!item->known)
-					{
-						dest[counter] |= 1 << 3;
-					}
-					/* 3-bit Index */
-					assert((index_table & 0x07) == index_table);
-					dest[counter] |= (index_table & 0x07) << 0;
-
-					rc_list_debug(comp, "add 4-bit XI #%zu = 0x%x in LSB",
-					              k + 1, dest[counter] & 0x0f);
-
-					/* byte is full, write to next one next time */
-					counter++;
-				}
-			}
+			assert((first_4b_xi & 0x0f) == first_4b_xi);
+			dest[ps_pos] |= first_4b_xi;
 		}
-
-		/* is padding required? */
-		if(xi_index > 1 && (xi_index % 2) == 0)
-		{
-			/* zero the padding bits */
-			rc_list_debug(comp, "add 4-bit padding in LSB");
-			dest[counter] &= 0xf0;
-
-			/* byte is full, write to next one next time */
-			counter++;
-		}
+		counter += ret;
 	}
 
 	/* part 6: n items (only unknown items) */
@@ -1354,7 +1250,6 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
                                    unsigned char *const dest,
                                    int counter)
 {
-	size_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
 	const uint8_t et = 3; /* list encoding type 3 */
 	uint8_t gp;
 	uint8_t rem_mask[ROHC_LIST_ITEMS_MAX] = { 0 };
@@ -1366,6 +1261,7 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 	size_t k; /* the index of the current element in current list */
 	size_t ps; /* indicate the size of the indexes */
 	size_t ps_pos; /* the position of the byte that contains the PS bit */
+	int ret;
 
 	assert(comp != NULL);
 	assert(comp->ref_id != ROHC_LIST_GEN_ID_NONE);
@@ -1435,151 +1331,22 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 	}
 
 	/* part 6: k XI (= X + Indexes) */
-	/* next bytes: indexes */
-	if(ps)
 	{
-		size_t xi_index = 0;
+		uint8_t first_4b_xi;
 
-		/* each XI item is stored on 8 bits */
-		rc_list_debug(comp, "use 8-bit format for the %zu XIs", m);
-
-		for(k = 0; k < m; k++)
+		ret = rohc_list_build_XIs(comp, &(comp->lists[comp->cur_id]), ins_mask, ps,
+		                          dest + counter, m /* TODO */, &first_4b_xi);
+		if(ret < 0)
 		{
-			const struct rohc_list_item *const item =
-				comp->lists[comp->cur_id].items[k];
-			int index_table;
-			ext_types_count[item->type]++;
-			index_table = comp->get_index_table(item->type, ext_types_count[item->type]);
-			assert(index_table >= 0);
-			assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);
-
-			/* skip element if it present in the reference list and compressor
-			 * is confident that item is known by decompressor */
-			if(ins_mask[k] == 0 && item->known)
-			{
-				rc_list_debug(comp, "ignore element #%zu because it is present "
-				              "in the reference list and already known", k);
-				continue;
-			}
-
-			xi_index++;
-
-			dest[counter] = 0;
-
-			/* set the X bit if item is not already known */
-			if(!item->known)
-			{
-				dest[counter] |= 1 << 7;
-			}
-			/* 7-bit Index */
-			assert((index_table & 0x7f) == index_table);
-			dest[counter] |= (index_table & 0x7f);
-
-			rc_list_debug(comp, "add 8-bit XI #%zu = 0x%x", k, dest[counter]);
-
-			/* byte is full, write to next one next time */
-			counter++;
+			rohc_comp_list_warn(comp, "ROHC buffer is too short for the XI items");
+			goto error;
 		}
-	}
-	else
-	{
-		size_t xi_index = 0;
-
-		/* each XI item is stored on 4 bits */
-		rc_list_debug(comp, "use 4-bit format for the %zu XIs", m);
-
-		for(k = 0; k < m; k++)
+		if(ps == 0)
 		{
-			const struct rohc_list_item *const item =
-				comp->lists[comp->cur_id].items[k];
-			int index_table;
-			ext_types_count[item->type]++;
-			index_table = comp->get_index_table(item->type, ext_types_count[item->type]);
-			assert(index_table >= 0);
-			assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);
-
-			/* skip element if it present in the reference list and compressor
-			 * is confident that item is known by decompressor */
-			if(ins_mask[k] == 0 && item->known)
-			{
-				rc_list_debug(comp, "ignore element #%zu because it is present "
-				              "in the reference list and already known", k);
-				continue;
-			}
-
-			xi_index++;
-
-			if(xi_index == 1)
-			{
-				/* first XI goes in part 1 */
-
-				/* set the X bit if item is not already known */
-				if(!item->known)
-				{
-					dest[ps_pos] |= 1 << 3;
-				}
-				/* 3-bit Index */
-				assert((index_table & 0x07) == index_table);
-				dest[ps_pos] |= index_table & 0x07;
-
-				rc_list_debug(comp, "add 4-bit XI #%zu in part 1 = 0x%x", k,
-				              dest[ps_pos] & 0x0f);
-			}
-			else
-			{
-				/* next XIs go in part 6 */
-
-				/* odd or even 4-bit XI ? */
-				if((xi_index % 2) == 0)
-				{
-					/* use MSB part of the byte */
-
-					/* first 4-bit XI, so clear the byte */
-					dest[counter] = 0;
-					/* set the X bit if item is not already known */
-					if(!item->known)
-					{
-						dest[counter] |= 1 << 7;
-					}
-					/* 3-bit Index */
-					assert((index_table & 0x07) == index_table);
-					dest[counter] |= (index_table & 0x07) << 4;
-
-					rc_list_debug(comp, "add 4-bit XI #%zu in MSB = 0x%x", k,
-					              (dest[counter] & 0xf0) >> 4);
-				}
-				else
-				{
-					/* use LSB part of the byte */
-
-					/* set the X bit if item is not already known */
-					if(!item->known)
-					{
-						dest[counter] |= 1 << 3;
-					}
-					/* 3-bit Index */
-					assert((index_table & 0x07) == index_table);
-					dest[counter] |= (index_table & 0x07) << 0;
-
-					rc_list_debug(comp, "add 4-bit XI #%zu in LSB = 0x%x",
-					              k + 1, dest[counter] & 0x0f);
-
-					/* byte is full, write to next one next time */
-					counter++;
-				}
-			}
+			assert((first_4b_xi & 0x0f) == first_4b_xi);
+			dest[ps_pos] |= first_4b_xi;
 		}
-
-		/* is padding required? */
-		if(xi_index > 1 && (xi_index % 2) == 0)
-		{
-			/* zero the padding bits */
-			rc_list_debug(comp, "add 4-bit padding in LSB");
-			dest[counter] &= 0xf0;
-
-			/* byte is full, write to next one next time */
-			counter++;
-		}
+		counter += ret;
 	}
 
 	/* part 7: n items (only unknown items) */
@@ -1913,5 +1680,242 @@ static uint8_t rohc_list_compute_ps(const struct list_comp *const comp,
 
 error:
 	return 2;
+}
+
+
+/**
+ * @brief Build the list of indexes (XI)
+ *
+ * @param comp          The list compressor
+ * @param list          The current list to get the indexes size for
+ * @param mask          The insertion mask for the current list
+ * @param ps            The size of the indexes: 1 for 8-bit XI, 0 for 4-bit XI
+ * @param rohc_data     The ROHC packet being built
+ * @param rohc_max_len  The max remaining length in the ROHC buffer
+ * @param first_4b_xi   The first 4-bit XI item
+ * @return              The length of the XI items in case of success,
+ *                      -1 in case of failure
+ */
+static int rohc_list_build_XIs(const struct list_comp *const comp,
+                               const struct rohc_list *const list,
+                               const uint8_t mask[ROHC_LIST_ITEMS_MAX],
+                               const size_t ps,
+                               uint8_t *const rohc_data,
+                               const size_t rohc_max_len,
+                               uint8_t *const first_4b_xi)
+{
+	if(ps)
+	{
+		return rohc_list_build_XIs_8(comp, list, mask, rohc_data, rohc_max_len);
+	}
+	else
+	{
+		return rohc_list_build_XIs_4(comp, list, mask, rohc_data, rohc_max_len,
+		                             first_4b_xi);
+	}
+}
+
+
+/**
+ * @brief Build the list of 8-bit indexes (XI)
+ *
+ * @param comp          The list compressor
+ * @param list          The current list to get the indexes size for
+ * @param mask          The insertion mask for the current list
+ * @param rohc_data     The ROHC packet being built
+ * @param rohc_max_len  The max remaining length in the ROHC buffer
+ * @return              The length of the XI items in case of success,
+ *                      -1 in case of failure
+ */
+static int rohc_list_build_XIs_8(const struct list_comp *const comp,
+                                 const struct rohc_list *const list,
+                                 const uint8_t mask[ROHC_LIST_ITEMS_MAX],
+                                 uint8_t *const rohc_data,
+                                 const size_t rohc_max_len)
+{
+	size_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
+	const size_t m = list->items_nr;
+	size_t xi_len = 0;
+	size_t k;
+
+	/* write the m XI items, each XI item is stored on 8 bits */
+	rc_list_debug(comp, "use 8-bit format for the %zu XIs", m);
+	for(k = 0; k < m; k++)
+	{
+		const struct rohc_list_item *const item = list->items[k];
+		int index_table;
+
+		ext_types_count[item->type]++;
+		index_table = comp->get_index_table(item->type, ext_types_count[item->type]);
+		assert(index_table >= 0);
+		assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);
+
+		/* skip element if it present in the reference list and compressor
+		 * is confident that item is known by decompressor */
+		if(mask[k] == 0 && item->known)
+		{
+			rc_list_debug(comp, "ignore element #%zu because it is present "
+			              "in the reference list and already known", k);
+			continue;
+		}
+
+		/* enough free room for the new XI item? */
+		if(xi_len >= rohc_max_len)
+		{
+			rohc_comp_list_warn(comp, "ROHC buffer is too short for the XI items");
+			goto error;
+		}
+		rohc_data[xi_len] = 0;
+
+		/* set the X bit if item is not already known */
+		if(!item->known)
+		{
+			rohc_data[xi_len] |= 1 << 7;
+		}
+		/* 7-bit Index */
+		assert((index_table & 0x7f) == index_table);
+		rohc_data[xi_len] |= (index_table & 0x7f);
+
+		rc_list_debug(comp, "add 8-bit XI #%zu = 0x%x", k, rohc_data[xi_len]);
+
+		/* byte is full, write to next one next time */
+		xi_len++;
+	}
+
+	return xi_len;
+
+error:
+	return -1;
+}
+
+
+/**
+ * @brief Build the list of 4-bit indexes (XI)
+ *
+ * @param comp          The list compressor
+ * @param list          The current list to get the indexes size for
+ * @param mask          The insertion mask for the current list
+ * @param rohc_data     The ROHC packet being built
+ * @param rohc_max_len  The max remaining length in the ROHC buffer
+ * @param first_4b_xi   The first 4-bit XI item
+ * @return              The length of the XI items in case of success,
+ *                      -1 in case of failure
+ */
+static int rohc_list_build_XIs_4(const struct list_comp *const comp,
+                                 const struct rohc_list *const list,
+                                 const uint8_t mask[ROHC_LIST_ITEMS_MAX],
+                                 uint8_t *const rohc_data,
+                                 const size_t rohc_max_len,
+                                 uint8_t *const first_4b_xi)
+{
+	size_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
+	const size_t m = list->items_nr;
+	size_t xi_index = 0;
+	size_t xi_len = 0;
+	size_t k;
+
+	/* write the m XI items, each XI item is stored on 4 bits */
+	rc_list_debug(comp, "use 4-bit format for the %zu XIs", m);
+	for(k = 0; k < m; k++)
+	{
+		const struct rohc_list_item *const item = list->items[k];
+		int index_table;
+
+		ext_types_count[item->type]++;
+		index_table = comp->get_index_table(item->type, ext_types_count[item->type]);
+		assert(index_table >= 0);
+		assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);
+
+		/* skip element if it present in the reference list and compressor
+		 * is confident that item is known by decompressor */
+		if(mask[k] == 0 && item->known)
+		{
+			rc_list_debug(comp, "ignore element #%zu because it is present "
+			              "in the reference list and already known", k);
+			continue;
+		}
+
+		xi_index++;
+
+		if(xi_index == 1)
+		{
+			/* first XI goes in the very first byte of the list
+			 * along with the PS bit */
+			(*first_4b_xi) = 0;
+
+			/* set the X bit if item is not already known */
+			if(!item->known)
+			{
+				(*first_4b_xi) |= 1 << 3;
+			}
+			/* 3-bit Index */
+			assert((index_table & 0x07) == index_table);
+			(*first_4b_xi) |= index_table & 0x07;
+
+			rc_list_debug(comp, "add 4-bit XI #%zu in part 1 = 0x%x", k,
+			              (*first_4b_xi) & 0x0f);
+		}
+		/* next XIs go after the insertion/removal masks: odd or even 4-bit XI? */
+		else if((xi_index % 2) == 0)
+		{
+			/* even: use MSB part of the byte */
+
+			/* enough free room for the new XI item? */
+			if(xi_len >= rohc_max_len)
+			{
+				rohc_comp_list_warn(comp, "ROHC buffer is too short for the XI items");
+				goto error;
+			}
+
+			/* first 4-bit XI, so clear the byte */
+			rohc_data[xi_len] = 0;
+			/* set the X bit if item is not already known */
+			if(!item->known)
+			{
+				rohc_data[xi_len] |= 1 << 7;
+			}
+			/* 3-bit Index */
+			assert((index_table & 0x07) == index_table);
+			rohc_data[xi_len] |= (index_table & 0x07) << 4;
+
+			rc_list_debug(comp, "add 4-bit XI #%zu in MSB = 0x%x", k,
+			              (rohc_data[xi_len] & 0xf0) >> 4);
+		}
+		else
+		{
+			/* odd: use LSB part of the byte */
+
+			/* set the X bit if item is not already known */
+			if(!item->known)
+			{
+				rohc_data[xi_len] |= 1 << 3;
+			}
+			/* 3-bit Index */
+			assert((index_table & 0x07) == index_table);
+			rohc_data[xi_len] |= (index_table & 0x07) << 0;
+
+			rc_list_debug(comp, "add 4-bit XI #%zu in LSB = 0x%x",
+			              k + 1, rohc_data[xi_len] & 0x0f);
+
+			/* byte is full, write to next one next time */
+			xi_len++;
+		}
+	}
+
+	/* is padding required? */
+	if(xi_index > 1 && (xi_index % 2) == 0)
+	{
+		/* zero the padding bits */
+		rc_list_debug(comp, "add 4-bit padding in LSB");
+		rohc_data[xi_len] &= 0xf0;
+
+		/* byte is full, write to next one next time */
+		xi_len++;
+	}
+
+	return xi_len;
+
+error:
+	return -1;
 }
 
