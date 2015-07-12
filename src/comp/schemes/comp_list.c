@@ -38,8 +38,38 @@
 
 
 
+static bool build_ipv6_ext_pkt_list(struct list_comp *const comp,
+                                    const struct ip_packet *const ip,
+                                    struct rohc_list *const pkt_list)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+
+static unsigned int rohc_list_get_nearest_list(const struct list_comp *const comp,
+                                               const struct rohc_list *const pkt_list,
+                                               bool *const is_new_list)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+
 static int rohc_list_decide_type(struct list_comp *const comp)
 	__attribute__((warn_unused_result, nonnull(1)));
+
+static int rohc_list_encode_type_0(struct list_comp *const comp,
+                                   unsigned char *const dest,
+                                   int counter)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
+
+static int rohc_list_encode_type_1(struct list_comp *const comp,
+                                   unsigned char *const dest,
+                                   int counter)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
+
+static int rohc_list_encode_type_2(struct list_comp *const comp,
+                                   unsigned char *const dest,
+                                   int counter)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
+
+static int rohc_list_encode_type_3(struct list_comp *const comp,
+                                   unsigned char *const dest,
+                                   int counter)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static size_t rohc_list_compute_ins_mask(const struct list_comp *const comp,
                                          const struct rohc_list *const ref_list,
@@ -88,30 +118,10 @@ static int rohc_list_build_XIs_4(const struct list_comp *const comp,
                                  uint8_t *const first_4b_xi)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 6)));
 
-static int rohc_list_encode_type_0(struct list_comp *const comp,
-                                   unsigned char *const dest,
-                                   int counter)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
-
-static int rohc_list_encode_type_1(struct list_comp *const comp,
-                                   unsigned char *const dest,
-                                   int counter)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
-
-static int rohc_list_encode_type_2(struct list_comp *const comp,
-                                   unsigned char *const dest,
-                                   int counter)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
-
-static int rohc_list_encode_type_3(struct list_comp *const comp,
-                                   unsigned char *const dest,
-                                   int counter)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
-
 
 
 /**
-* @brief Detect changes withint the list of IPv6 extension headers
+ * @brief Detect changes within the list of IPv6 extension headers
  *
  * @param comp                       The list compressor
  * @param ip                         The IP packet to compress
@@ -125,204 +135,32 @@ bool detect_ipv6_ext_changes(struct list_comp *const comp,
                              bool *const list_struct_changed,
                              bool *const list_content_changed)
 {
-	/* TODO: don't mess with the context except for tmp, save in update_context only in case of success */
 	unsigned int new_cur_id = ROHC_LIST_GEN_ID_NONE;
-	unsigned char *ext;
-	uint8_t ext_type;
-	int ret;
+	struct rohc_list pkt_list;
+	bool is_new_list = false;
 
-	/* reset the list of the current packet */
-	rohc_list_reset(&comp->pkt_list);
-
-	/* get the next known IP extension in packet */
-	ext = ip_get_next_ext_from_ip(ip, &ext_type);
-	if(ext == NULL)
+	/* parse all extension headers:
+	 *  - update the related entries in the translation table,
+	 *  - create the list for the packet */
+	if(!build_ipv6_ext_pkt_list(comp, ip, &pkt_list))
 	{
-		/* there is no list of IPv6 extension headers in the current packet */
-		rc_list_debug(comp, "there is no IPv6 extension in packet");
-	}
-	else
-	{
-		size_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
-
-		/* there is one extension or more */
-		rc_list_debug(comp, "there is at least one IPv6 extension in packet");
-
-		/* parse all extension headers:
-		 *  - update the related entries in the translation table,
-		 *  - create the list for the packet */
-		do
-		{
-			int index_table;
-			bool entry_changed = false;
-
-			ext_types_count[ext_type]++;
-
-			/* find the best item to encode the extension in translation table */
-			index_table = comp->get_index_table(ext_type, ext_types_count[ext_type]);
-			if(index_table < 0 || ((size_t) index_table) >= ROHC_LIST_MAX_ITEM)
-			{
-				rohc_comp_list_warn(comp, "failed to handle unknown IPv6 "
-				                    "extension header of type 0x%02x", ext_type);
-				goto error;
-			}
-
-			/* update item in translation table if it changed */
-			ret = rohc_list_item_update_if_changed(comp->cmp_item,
-			                                       &(comp->trans_table[index_table]),
-			                                       ext_type, ext, comp->get_size(ext));
-			if(ret < 0)
-			{
-				rohc_comp_list_warn(comp, "failed to update entry #%d in translation "
-				                    "table with %u-byte extension", index_table,
-				                    comp->get_size(ext));
-				goto error;
-			}
-			else if(ret == 1)
-			{
-				rc_list_debug(comp, "  entry #%d updated in translation table",
-				              index_table);
-				entry_changed = true;
-			}
-
-			/* update current list in context */
-			comp->pkt_list.items[comp->pkt_list.items_nr] =
-				&(comp->trans_table[index_table]);
-			comp->pkt_list.items_nr++;
-
-			rc_list_debug(comp, "  extension #%zu: extension type "
-			              "%u uses %s entry #%d in translation table (%s entry "
-			              "sent %zu/%zu times)", comp->pkt_list.items_nr,
-			              ext_type, (entry_changed ? "updated" : "existing"),
-			              index_table, comp->trans_table[index_table].known ?
-			              "known" : "not-yet-known",
-			              comp->trans_table[index_table].counter,
-			              comp->list_trans_nr);
-		}
-		while((ext = ip_get_next_ext_from_ext(ext, &ext_type)) != NULL &&
-		      comp->pkt_list.items_nr < ROHC_LIST_ITEMS_MAX);
-
-		/* too many extensions in packet? */
-		if(ext != NULL)
-		{
-			rc_list_debug(comp, "list of IPv6 extension headers too large for "
-			              "compressor internal limits");
-			goto error;
-		}
+		rohc_comp_list_warn(comp, "failed to build the list of extension headers "
+		                    "for the current packet");
+		goto error;
 	}
 
 	/* now that translation table is updated and packet list is generated,
-	 * search for a context list with the same structure:
-	 *  - check the reference list first as it is probably the correct one,
-	 *  - then check the other lists */
-	if(comp->ref_id != ROHC_LIST_GEN_ID_NONE &&
-	   rohc_list_equal(&comp->pkt_list, &comp->lists[comp->ref_id]))
+	 * search for a context list with the same structure or use an anonymous
+	 * list */
+	new_cur_id = rohc_list_get_nearest_list(comp, &pkt_list, &is_new_list);
+	if(is_new_list)
 	{
-		/* reference list matches, no need for a new list */
-		rc_list_debug(comp, "send reference list with gen_id = %u",
-		              comp->ref_id);
-		new_cur_id = comp->ref_id;
-	}
-	else
-	{
-		unsigned int gen_id;
-		bool new_list = false;
-
-		/* search for a list that matches the packet one, avoid the reference
-		 * list that we already checked, stop on first unused list */
-		for(gen_id = 0; new_cur_id == ROHC_LIST_GEN_ID_NONE &&
-		                gen_id <= ROHC_LIST_GEN_ID_MAX &&
-		                comp->lists[gen_id].counter > 0; gen_id++)
-		{
-			if(gen_id != comp->ref_id &&
-			   comp->lists[gen_id].counter > 0 &&
-			   rohc_list_equal(&comp->pkt_list, &comp->lists[gen_id]))
-			{
-				rc_list_debug(comp, "current list matches the existing list "
-				              "with gen_id %u", gen_id);
-				new_cur_id = gen_id;
-			}
-		}
-
-		if(new_cur_id != ROHC_LIST_GEN_ID_NONE)
-		{
-			rc_list_debug(comp, "send existing context list with gen_id %u "
-			              "(already sent %zu times)", new_cur_id,
-			              comp->lists[new_cur_id].counter);
-		}
-		else if(comp->ref_id == ROHC_LIST_GEN_ID_NONE)
-		{
-			/* first list, don't use anonymous list */
-			new_cur_id = 0;
-			new_list = true;
-		}
-		else
-		{
-			const size_t anon_thres = 2;
-
-			rc_list_debug(comp, "current list matches no list identified with a gen_id");
-			if(comp->lists[ROHC_LIST_GEN_ID_ANON].counter == 0 ||
-			   !rohc_list_equal(&comp->pkt_list, &comp->lists[ROHC_LIST_GEN_ID_ANON]))
-			{
-				/* new or changed anonymous list */
-				rc_list_debug(comp, "send current list as anonymous list (transmitted "
-				              "0 / %zu)", anon_thres);
-				new_cur_id = ROHC_LIST_GEN_ID_ANON;
-				new_list = true;
-			}
-			else if((comp->lists[ROHC_LIST_GEN_ID_ANON].counter + 1) < anon_thres)
-			{
-				/* anonymous list matches, but it's too early to promote it to an
-				 * identified list with a gen_id */
-				rc_list_debug(comp, "send current list as anonymous list (transmitted "
-				              "%zu / %zu)", comp->lists[ROHC_LIST_GEN_ID_ANON].counter,
-				              anon_thres);
-				new_cur_id = ROHC_LIST_GEN_ID_ANON;
-			}
-			else
-			{
-				/* anonymous list matches, promote it to an identified list with
-				 * a gen_id */
-				comp->lists[ROHC_LIST_GEN_ID_ANON].counter = 0;
-
-				/* search for the first unused list */
-				for(gen_id = 0; new_cur_id == ROHC_LIST_GEN_ID_NONE &&
-				                gen_id <= ROHC_LIST_GEN_ID_MAX; gen_id++)
-				{
-					if(gen_id != comp->ref_id && comp->lists[gen_id].counter == 0)
-					{
-						new_cur_id = gen_id;
-					}
-				}
-
-				/* if no unused list was found, get the next free gen_id (avoid
-				 * re-using ref_id) */
-				if(new_cur_id == ROHC_LIST_GEN_ID_NONE)
-				{
-					new_cur_id = gen_id % (ROHC_LIST_GEN_ID_MAX + 1);
-					if(new_cur_id == comp->ref_id)
-					{
-						new_cur_id++;
-						new_cur_id %= (ROHC_LIST_GEN_ID_MAX + 1);
-					}
-				}
-
-				rc_list_debug(comp, "the anonymous list is going to be transmitted for "
-				              "the %zu time, promote it to an identified list with gen_id "
-				              "= %u", comp->lists[ROHC_LIST_GEN_ID_ANON].counter + 1,
-				              new_cur_id);
-				new_list = true;
-			}
-		}
-
-		if(new_list)
-		{
-			assert(comp->lists[new_cur_id].id == new_cur_id);
-			memcpy(comp->lists[new_cur_id].items, comp->pkt_list.items,
-			       ROHC_LIST_ITEMS_MAX * sizeof(struct rohc_list_item *));
-			comp->lists[new_cur_id].items_nr = comp->pkt_list.items_nr;
-			comp->lists[new_cur_id].counter = 0;
-		}
+		/* TODO: context should not be overwritten until compression is fully OK */
+		assert(comp->lists[new_cur_id].id == new_cur_id);
+		memcpy(comp->lists[new_cur_id].items, pkt_list.items,
+		       ROHC_LIST_ITEMS_MAX * sizeof(struct rohc_list_item *));
+		comp->lists[new_cur_id].items_nr = pkt_list.items_nr;
+		comp->lists[new_cur_id].counter = 0;
 	}
 
 	/* do we need to send some bits of the compressed list? */
@@ -363,10 +201,116 @@ bool detect_ipv6_ext_changes(struct list_comp *const comp,
 		}
 	}
 
+	/* TODO: should not be overwritten until compression is fully OK */
 	comp->cur_id = new_cur_id;
 
 	return true;
 
+error:
+	return false;
+}
+
+
+/**
+ * @brief Compute the list of extension headers for the current packet
+ *
+ * Parse all extension headers:
+ *  \li update the related entries in the translation table,
+ *  \li create the list for the packet
+ *
+ * @param comp           The list compressor
+ * @param ip             The IP packet to compress
+ * @param[out] pkt_list  The list of extension headers for the current packet
+ * @return               true if no error occurred,
+ *                       false if one error occurred
+ */
+static bool build_ipv6_ext_pkt_list(struct list_comp *const comp,
+                                    const struct ip_packet *const ip,
+                                    struct rohc_list *const pkt_list)
+{
+	size_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
+	const uint8_t *ext;
+	uint8_t ext_type;
+
+	/* reset the list of the current packet */
+	rohc_list_reset(pkt_list);
+
+	/* get the next known IP extension in packet */
+	ext = ip_get_next_ext_from_ip(ip, &ext_type);
+	if(ext == NULL)
+	{
+		/* there is no list of IPv6 extension headers in the current packet */
+		rc_list_debug(comp, "there is no IPv6 extension in packet");
+		goto skip;
+	}
+
+	/* there is one extension or more */
+	rc_list_debug(comp, "there is at least one IPv6 extension in packet");
+
+	/* parse all extension headers:
+	 *  - update the related entries in the translation table,
+	 *  - create the list for the packet */
+	do
+	{
+		bool entry_changed = false;
+		int index_table;
+		int ret;
+
+		ext_types_count[ext_type]++;
+
+		/* find the best item to encode the extension in translation table */
+		index_table = comp->get_index_table(ext_type, ext_types_count[ext_type]);
+		if(index_table < 0 || ((size_t) index_table) >= ROHC_LIST_MAX_ITEM)
+		{
+			rohc_comp_list_warn(comp, "failed to handle unknown IPv6 "
+			                    "extension header of type 0x%02x", ext_type);
+			goto error;
+		}
+
+		/* update item in translation table if it changed */
+		/* TODO: context should not be overwritten until compression is fully OK */
+		/* TODO: put comp const in params once context is not overwritten any more */
+		ret = rohc_list_item_update_if_changed(comp->cmp_item,
+		                                       &(comp->trans_table[index_table]),
+		                                       ext_type, ext, comp->get_size(ext));
+		if(ret < 0)
+		{
+			rohc_comp_list_warn(comp, "failed to update entry #%d in translation "
+			                    "table with %u-byte extension", index_table,
+			                    comp->get_size(ext));
+			goto error;
+		}
+		else if(ret == 1)
+		{
+			rc_list_debug(comp, "  entry #%d updated in translation table",
+			              index_table);
+			entry_changed = true;
+		}
+
+		/* update current list in context */
+		pkt_list->items[pkt_list->items_nr] = &(comp->trans_table[index_table]);
+		pkt_list->items_nr++;
+
+		rc_list_debug(comp, "  extension #%zu: extension type %u uses %s entry #%d "
+		              "in translation table (%s entry sent %zu/%zu times)",
+		              pkt_list->items_nr, ext_type,
+		              (entry_changed ? "updated" : "existing"), index_table,
+		              comp->trans_table[index_table].known ? "known" : "not-yet-known",
+		              comp->trans_table[index_table].counter, comp->list_trans_nr);
+	}
+	while((ext = ip_get_next_ext_from_ext(ext, &ext_type)) != NULL &&
+	      pkt_list->items_nr < ROHC_LIST_ITEMS_MAX);
+
+	/* too many extensions in packet? */
+	if(ext != NULL)
+	{
+		rc_list_debug(comp, "list of IPv6 extension headers too large for "
+		              "compressor internal limits");
+		goto error;
+	}
+
+skip:
+	return true;
 error:
 	return false;
 }
@@ -378,21 +322,18 @@ error:
  * @param comp     The list compressor
  * @param dest     The ROHC packet under build
  * @param counter  The current position in the rohc-packet-under-build buffer
- * @param size     The number of element in current list
  * @return         The new position in the rohc-packet-under-build buffer,
  *                 -1 in case of error
  */
 int rohc_list_encode(struct list_comp *const comp,
                      unsigned char *const dest,
-                     int counter,
-                     const int size)
+                     int counter)
 {
 	int encoding_type;
 
 	/* sanity checks */
 	assert(comp != NULL);
 	assert(dest != NULL);
-	assert(size >= 0);
 
 	/* determine which encoding type is required for the current list ? */
 	encoding_type = rohc_list_decide_type(comp);
@@ -502,6 +443,134 @@ void rohc_list_update_context(struct list_comp *const comp)
 			comp->ref_id = comp->cur_id;
 		}
 	}
+}
+
+
+/**
+ * @brief Search the nearest list for the packet list
+ *
+ * Search for a context list with the same structure:
+ *  \li check the reference list first as it is probably the correct one,
+ *  \li then check the other identified lists,
+ *  \li finally, use an anonymous list or promote the repeated anonymous
+ *      list to an identified list.
+ *
+ * @param comp              The list compressor
+ * @param pkt_list          The list of extension headers for the current packet
+ * @param[out] is_new_list  Whether the list is new or not
+ * @return                  The list to use as a base to transmit the packet list
+ */
+static unsigned int rohc_list_get_nearest_list(const struct list_comp *const comp,
+                                               const struct rohc_list *const pkt_list,
+                                               bool *const is_new_list)
+{
+	const size_t anon_thres = 2;
+	unsigned int new_cur_id = ROHC_LIST_GEN_ID_NONE;
+	unsigned int gen_id;
+
+	/* check the reference list first as it is probably the correct one */
+	if(comp->ref_id != ROHC_LIST_GEN_ID_NONE &&
+	   rohc_list_equal(pkt_list, &comp->lists[comp->ref_id]))
+	{
+		/* reference list matches, no need for a new list */
+		rc_list_debug(comp, "send reference list with gen_id = %u", comp->ref_id);
+		*is_new_list = false;
+		return comp->ref_id;
+	}
+	rc_list_debug(comp, "current list do not match reference list with gen_id %u",
+	              comp->ref_id);
+
+	/* search for an identified list that matches the packet one, avoid the
+	 * reference list that we already checked, stop on first unused list */
+	for(gen_id = 0; new_cur_id == ROHC_LIST_GEN_ID_NONE &&
+	                gen_id <= ROHC_LIST_GEN_ID_MAX &&
+	                comp->lists[gen_id].counter > 0; gen_id++)
+	{
+		if(gen_id != comp->ref_id &&
+		   comp->lists[gen_id].counter > 0 &&
+		   rohc_list_equal(pkt_list, &comp->lists[gen_id]))
+		{
+			rc_list_debug(comp, "current list matches the existing list "
+			              "with gen_id %u", gen_id);
+			new_cur_id = gen_id;
+		}
+	}
+
+	/* if an identified list matches the structure of the packet list,
+	 * let's use it as a base for the transmission */
+	if(new_cur_id != ROHC_LIST_GEN_ID_NONE)
+	{
+		rc_list_debug(comp, "send existing context list with gen_id %u "
+		              "(already sent %zu times)", new_cur_id,
+		              comp->lists[new_cur_id].counter);
+		*is_new_list = false;
+		return new_cur_id;
+	}
+	rc_list_debug(comp, "current list matches no list identified with a gen_id");
+
+	/* no idenfied list matches, the variation might be temporary for one packet,
+	 * so let's use if possible an anonymous list to transmit the packet list
+	 * without defining an idenfied list */
+
+	/* if no reference list was established, anonymous list is not allowed,
+	 * so still create a new identified list */
+	if(comp->ref_id == ROHC_LIST_GEN_ID_NONE)
+	{
+		rc_list_debug(comp, "no list was ever sent");
+		*is_new_list = true;
+		return 0;
+	}
+
+	/* try to use an anonymous list */
+	if(comp->lists[ROHC_LIST_GEN_ID_ANON].counter == 0 ||
+	   !rohc_list_equal(pkt_list, &comp->lists[ROHC_LIST_GEN_ID_ANON]))
+	{
+		/* new or changed anonymous list */
+		rc_list_debug(comp, "send current list as anonymous list (transmitted "
+		              "0 / %zu)", anon_thres);
+		*is_new_list = true;
+		return ROHC_LIST_GEN_ID_ANON;
+	}
+	rc_list_debug(comp, "current list matches last anonymous list");
+
+	/* anonymous list matches, either use it as an anonymous list another time
+	 * or promote it an identified list */
+	if((comp->lists[ROHC_LIST_GEN_ID_ANON].counter + 1) < anon_thres)
+	{
+		/* too early to promote anonymous list to an identified list with a gen_id */
+		rc_list_debug(comp, "send current list as anonymous list (transmitted "
+		              "%zu / %zu)", comp->lists[ROHC_LIST_GEN_ID_ANON].counter,
+		              anon_thres);
+		*is_new_list = false;
+		return ROHC_LIST_GEN_ID_ANON;
+	}
+
+	/* promote anonymous list to an identified list with a gen_id:
+	 *  - search for the first unused list,
+	 *  - if no unused list was found, get the next free gen_id
+	 *  - in all cases, avoid re-using ref_id */
+	for(gen_id = 0; new_cur_id == ROHC_LIST_GEN_ID_NONE &&
+	                gen_id <= ROHC_LIST_GEN_ID_MAX; gen_id++)
+	{
+		if(gen_id != comp->ref_id && comp->lists[gen_id].counter == 0)
+		{
+			new_cur_id = gen_id;
+		}
+	}
+	if(new_cur_id == ROHC_LIST_GEN_ID_NONE)
+	{
+		new_cur_id = gen_id % (ROHC_LIST_GEN_ID_MAX + 1);
+		if(new_cur_id == comp->ref_id)
+		{
+			new_cur_id++;
+			new_cur_id %= (ROHC_LIST_GEN_ID_MAX + 1);
+		}
+	}
+	rc_list_debug(comp, "the anonymous list is going to be transmitted for the "
+	              "%zu time, promote it to an identified list with gen_id = %u",
+	              comp->lists[ROHC_LIST_GEN_ID_ANON].counter + 1, new_cur_id);
+	*is_new_list = true;
+	return new_cur_id;
 }
 
 

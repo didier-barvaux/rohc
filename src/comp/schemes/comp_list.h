@@ -47,9 +47,6 @@ struct list_comp
 	/* All the possible named lists, indexed by gen_id */
 	struct rohc_list lists[ROHC_LIST_GEN_ID_MAX + 2];
 
-	/** The temporary packet list (not persistent accross packets) */
-	struct rohc_list pkt_list;
-
 	/** The ID of the reference list */
 	unsigned int ref_id;
 	/** The ID of the current list */
@@ -90,8 +87,7 @@ bool detect_ipv6_ext_changes(struct list_comp *const comp,
 
 int rohc_list_encode(struct list_comp *const comp,
                      unsigned char *const dest,
-                     int counter,
-                     const int size)
+                     int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 void rohc_list_update_context(struct list_comp *const comp)
