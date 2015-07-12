@@ -2379,9 +2379,7 @@ static int code_ipv6_dynamic_part(const struct rohc_comp_ctxt *const context,
 		if(do_send_ipv6_ext)
 		{
 			rohc_comp_debug(context, "extension header list: send some bits");
-			counter = rohc_list_encode(&header_info->info.v6.ext_comp, dest,
-			                           counter,
-			                           header_info->info.v6.ext_comp.pkt_list.items_nr);
+			counter = rohc_list_encode(&header_info->info.v6.ext_comp, dest, counter);
 			if(counter < 0)
 			{
 				rohc_comp_warn(context, "failed to encode list");
