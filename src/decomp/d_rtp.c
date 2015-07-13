@@ -117,6 +117,12 @@ static inline bool is_uor2_reparse_required(const rohc_packet_t packet_type,
                                             const int are_all_ipv4_rnd)
 	__attribute__((warn_unused_result, const));
 
+static int rtp_parse_rtp_hdr_fields(const struct rohc_decomp_ctxt *const context,
+                                    const uint8_t *const rohc_data,
+                                    const size_t rohc_data_len,
+                                    struct rohc_extr_bits *const bits)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
+
 static int rtp_parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
                                   const unsigned char *packet,
                                   unsigned int length,
@@ -1255,132 +1261,16 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
 	/* decode RTP header flags & fields if present */
 	if(rtp)
 	{
-		uint8_t rpt, csrc, tss, tis;
-		uint8_t rtp_m_ext; /* the RTP Marker (M) flag in extension header */
-		size_t rtp_hdr_fields_len;
-
-		/* check the minimal length to decode RTP header flags */
-		if(rohc_remain_len < 1)
+		size = rtp_parse_rtp_hdr_fields(context, rohc_remain_data,
+		                                rohc_remain_len, bits);
+		if(size < 0)
 		{
-			rohc_decomp_warn(context, "ROHC packet too small (len = %zu)",
-			                 rohc_remain_len);
+			rohc_decomp_warn(context, "failed to parse RTP header and fields from "
+			                 "extension 3");
 			goto error;
 		}
-
-		/* decode RTP header flags */
-		bits->mode = GET_BIT_6_7(rohc_remain_data);
-		bits->mode_nr = 2;
-		if(bits->mode == 0)
-		{
-			rohc_decomp_debug(context, "malformed ROHC packet: unexpected value zero "
-			                  "for Mode bits in extension 3, value zero is reserved "
-			                  "for future usage according to RFC3095");
-#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
-			goto error;
-#endif
-		}
-		rpt = GET_REAL(GET_BIT_5(rohc_remain_data));
-		rtp_m_ext = GET_REAL(GET_BIT_4(rohc_remain_data));
-		/* check that the RTP Marker (M) value found in the extension is the
-		 * same as the one we previously found in UO* base header. RFC 4815 at
-		 * §8.4 says:
-		 *   The RTP header part of Extension 3, as defined by RFC 3095
-		 *   Section 5.7.5, includes a one-bit field for the RTP Marker bit.
-		 *   This field is also present in all compressed base header formats
-		 *   except for UO-1-ID; meaning, there may be two occurrences of the
-		 *   field within one single compressed header. In such cases, the
-		 *   two M fields must have the same value.
-		 */
-		if(bits->rtp_m_nr > 0 && bits->rtp_m != rtp_m_ext)
-		{
-			assert(bits->rtp_m_nr == 1);
-			rohc_decomp_warn(context, "RTP Marker flag mismatch (base header = "
-			                 "%u, extension 3 = %u)", bits->rtp_m, rtp_m_ext);
-			goto error;
-		}
-		else
-		{
-			/* set RTP M flag */
-			bits->rtp_m = rtp_m_ext;
-			bits->rtp_m_nr = 1;
-		}
-		rohc_decomp_debug(context, "%zd-bit RTP Marker (M) = %u",
-		                  bits->rtp_m_nr, bits->rtp_m);
-		bits->rtp_x = GET_REAL(GET_BIT_3(rohc_remain_data));
-		bits->rtp_x_nr = 1;
-		rohc_decomp_debug(context, "%zd-bit RTP eXtension (R-X) = %u",
-		                  bits->rtp_x_nr, bits->rtp_x);
-		csrc = GET_REAL(GET_BIT_2(rohc_remain_data));
-		tss = GET_REAL(GET_BIT_1(rohc_remain_data));
-		tis = GET_REAL(GET_BIT_0(rohc_remain_data));
-		rtp_hdr_fields_len = rpt + csrc + tss + tis;
-		rohc_remain_data++;
-		rohc_remain_len--;
-
-		/* check the minimal length to decode RTP header fields */
-		if(rohc_remain_len < rtp_hdr_fields_len)
-		{
-			rohc_decomp_warn(context, "ROHC packet too small (len = %zu)",
-			                 rohc_remain_len);
-			goto error;
-		}
-
-		/* decode RTP header fields */
-		if(rpt)
-		{
-			bits->rtp_p = GET_REAL(GET_BIT_7(rohc_remain_data));
-			bits->rtp_p_nr = 1;
-			rohc_decomp_debug(context, "%zd-bit RTP Padding (R-P) = 0x%x",
-			                  bits->rtp_p_nr, bits->rtp_p);
-			bits->rtp_pt = GET_BIT_0_6(rohc_remain_data);
-			bits->rtp_pt_nr = 7;
-			rohc_decomp_debug(context, "%zd-bit RTP Payload Type (R-PT) = 0x%x",
-			                  bits->rtp_pt_nr, bits->rtp_pt);
-			rohc_remain_data++;
-			rohc_remain_len--;
-		}
-
-		if(csrc)
-		{
-			/* TODO: Compressed CSRC list */
-			rohc_decomp_warn(context, "compressed CSRC list not supported yet");
-			goto error;
-		}
-
-		if(tss)
-		{
-			const struct d_rtp_context *const rtp_context = rfc3095_ctxt->specific;
-			uint32_t ts_stride;
-			size_t ts_stride_bits_nr;
-			size_t ts_stride_size;
-
-			/* decode SDVL-encoded TS value */
-			ts_stride_size = sdvl_decode(rohc_remain_data, rohc_remain_len,
-			                             &ts_stride, &ts_stride_bits_nr);
-			if(ts_stride_size <= 0)
-			{
-				rohc_decomp_warn(context, "failed to decode SDVL-encoded "
-				                 "TS_STRIDE field");
-				goto error;
-			}
-			rohc_decomp_debug(context, "decoded TS_STRIDE = %u / 0x%x",
-			                  ts_stride, ts_stride);
-
-#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
-			rohc_remain_data += ts_stride_size;
-#endif
-			rohc_remain_len -= ts_stride_size;
-
-			/* temporarily store the decoded TS_STRIDE in context */
-			d_record_ts_stride(rtp_context->ts_scaled_ctxt, ts_stride);
-		}
-
-		if(tis)
-		{
-			/* TODO: TIME_STRIDE */
-			rohc_decomp_warn(context, "TIME_STRIDE not supported yet");
-			goto error;
-		}
+		rohc_remain_data += size;
+		rohc_remain_len -= size;
 	}
 
 	return (rohc_data_len - rohc_remain_len);
@@ -1415,6 +1305,181 @@ static inline bool is_uor2_reparse_required(const rohc_packet_t packet_type,
 	return ((packet_type == ROHC_PACKET_UOR_2_RTP && !are_all_ipv4_rnd) ||
 	        (packet_type == ROHC_PACKET_UOR_2_ID && are_all_ipv4_rnd) ||
 	        (packet_type == ROHC_PACKET_UOR_2_TS && are_all_ipv4_rnd));
+}
+
+
+/**
+ * @brief Parse the RTP header flags and fields of extension 3
+ *
+ * \verbatim
+
+ RTP header flags and fields
+
+       0     1     2     3     4     5     6     7
+     ..... ..... ..... ..... ..... ..... ..... .....
+ 1  |   Mode    |R-PT |  M  | R-X |CSRC | TSS | TIS |  if rtp = 1
+     ..... ..... ..... ..... ..... ..... ..... .....
+ 2  | R-P |             RTP PT                      |  if R-PT = 1
+     ..... ..... ..... ..... ..... ..... ..... .....
+ 3  /           Compressed CSRC list                /  if CSRC = 1
+     ..... ..... ..... ..... ..... ..... ..... .....
+ 4  /                  TS_STRIDE                    /  1-4 oct if TSS = 1
+     ..... ..... ..... ..... ..... ..... ..... ....
+ 5  /           TIME_STRIDE (milliseconds)          /  1-4 oct if TIS = 1
+     ..... ..... ..... ..... ..... ..... ..... .....
+
+\endverbatim
+ *
+ * @param context           The decompression context
+ * @param rohc_data         The ROHC data to parse
+ * @param rohc_data_len     The length of the ROHC data to parse
+ * @param bits              IN: the bits already found in base header
+ *                          OUT: the bits found in the extension header 3
+ * @return                  The data length read from the ROHC packet,
+ *                          -1 in case of error
+ */
+static int rtp_parse_rtp_hdr_fields(const struct rohc_decomp_ctxt *const context,
+                                    const uint8_t *const rohc_data,
+                                    const size_t rohc_data_len,
+                                    struct rohc_extr_bits *const bits)
+{
+	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
+		context->persist_ctxt;
+
+	const uint8_t *rohc_remain_data = rohc_data;
+	size_t rohc_remain_len = rohc_data_len;
+
+	uint8_t rpt, csrc, tss, tis;
+	uint8_t rtp_m_ext; /* the RTP Marker (M) flag in extension header */
+	size_t rtp_hdr_fields_len;
+
+	/* check the minimal length to decode RTP header flags */
+	if(rohc_remain_len < 1)
+	{
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)",
+		                 rohc_remain_len);
+		goto error;
+	}
+
+	/* decode RTP header flags */
+	bits->mode = GET_BIT_6_7(rohc_remain_data);
+	bits->mode_nr = 2;
+	if(bits->mode == 0)
+	{
+		rohc_decomp_debug(context, "malformed ROHC packet: unexpected value zero "
+		                  "for Mode bits in extension 3, value zero is reserved "
+		                  "for future usage according to RFC3095");
+#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
+		goto error;
+#endif
+	}
+	rpt = GET_REAL(GET_BIT_5(rohc_remain_data));
+	rtp_m_ext = GET_REAL(GET_BIT_4(rohc_remain_data));
+	/* check that the RTP Marker (M) value found in the extension is the
+	 * same as the one we previously found in UO* base header. RFC 4815 at
+	 * §8.4 says:
+	 *   The RTP header part of Extension 3, as defined by RFC 3095
+	 *   Section 5.7.5, includes a one-bit field for the RTP Marker bit.
+	 *   This field is also present in all compressed base header formats
+	 *   except for UO-1-ID; meaning, there may be two occurrences of the
+	 *   field within one single compressed header. In such cases, the
+	 *   two M fields must have the same value.
+	 */
+	if(bits->rtp_m_nr > 0 && bits->rtp_m != rtp_m_ext)
+	{
+		assert(bits->rtp_m_nr == 1);
+		rohc_decomp_warn(context, "RTP Marker flag mismatch (base header = "
+		                 "%u, extension 3 = %u)", bits->rtp_m, rtp_m_ext);
+		goto error;
+	}
+	else
+	{
+		/* set RTP M flag */
+		bits->rtp_m = rtp_m_ext;
+		bits->rtp_m_nr = 1;
+	}
+	rohc_decomp_debug(context, "%zd-bit RTP Marker (M) = %u",
+	                  bits->rtp_m_nr, bits->rtp_m);
+	bits->rtp_x = GET_REAL(GET_BIT_3(rohc_remain_data));
+	bits->rtp_x_nr = 1;
+	rohc_decomp_debug(context, "%zd-bit RTP eXtension (R-X) = %u",
+	                  bits->rtp_x_nr, bits->rtp_x);
+	csrc = GET_REAL(GET_BIT_2(rohc_remain_data));
+	tss = GET_REAL(GET_BIT_1(rohc_remain_data));
+	tis = GET_REAL(GET_BIT_0(rohc_remain_data));
+	rtp_hdr_fields_len = rpt + csrc + tss + tis;
+	rohc_remain_data++;
+	rohc_remain_len--;
+
+	/* check the minimal length to decode RTP header fields */
+	if(rohc_remain_len < rtp_hdr_fields_len)
+	{
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)",
+		                 rohc_remain_len);
+		goto error;
+	}
+
+	/* decode RTP header fields */
+	if(rpt)
+	{
+		bits->rtp_p = GET_REAL(GET_BIT_7(rohc_remain_data));
+		bits->rtp_p_nr = 1;
+		rohc_decomp_debug(context, "%zd-bit RTP Padding (R-P) = 0x%x",
+		                  bits->rtp_p_nr, bits->rtp_p);
+		bits->rtp_pt = GET_BIT_0_6(rohc_remain_data);
+		bits->rtp_pt_nr = 7;
+		rohc_decomp_debug(context, "%zd-bit RTP Payload Type (R-PT) = 0x%x",
+		                  bits->rtp_pt_nr, bits->rtp_pt);
+		rohc_remain_data++;
+		rohc_remain_len--;
+	}
+
+	if(csrc)
+	{
+		/* TODO: Compressed CSRC list */
+		rohc_decomp_warn(context, "compressed CSRC list not supported yet");
+		goto error;
+	}
+
+	if(tss)
+	{
+		const struct d_rtp_context *const rtp_context = rfc3095_ctxt->specific;
+		uint32_t ts_stride;
+		size_t ts_stride_bits_nr;
+		size_t ts_stride_size;
+
+		/* decode SDVL-encoded TS value */
+		ts_stride_size = sdvl_decode(rohc_remain_data, rohc_remain_len,
+		                             &ts_stride, &ts_stride_bits_nr);
+		if(ts_stride_size <= 0)
+		{
+			rohc_decomp_warn(context, "failed to decode SDVL-encoded "
+			                 "TS_STRIDE field");
+			goto error;
+		}
+		rohc_decomp_debug(context, "decoded TS_STRIDE = %u / 0x%x",
+		                  ts_stride, ts_stride);
+
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
+		rohc_remain_data += ts_stride_size;
+#endif
+		rohc_remain_len -= ts_stride_size;
+
+		/* temporarily store the decoded TS_STRIDE in context */
+		d_record_ts_stride(rtp_context->ts_scaled_ctxt, ts_stride);
+	}
+
+	if(tis)
+	{
+		/* TODO: TIME_STRIDE */
+		rohc_decomp_warn(context, "TIME_STRIDE not supported yet");
+		goto error;
+	}
+
+	return (rohc_data_len - rohc_remain_len);
+
+error:
+	return -1;
 }
 
 
