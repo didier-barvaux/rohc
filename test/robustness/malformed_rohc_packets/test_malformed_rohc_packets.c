@@ -51,6 +51,8 @@ for ./configure ? If yes, check configure output and config.log"
 static void usage(void);
 static int test_decomp(const char *const filename,
                        const size_t failure_start,
+                       const rohc_cid_type_t cid_type,
+                       const rohc_cid_t cid_max,
                        const bool ignore_malformed)
 	__attribute__((warn_unused_result, nonnull(1)));
 
@@ -83,6 +85,11 @@ int main(int argc, char *argv[])
 	int status = 1;
 	int args_used;
 	bool ignore_malformed = false;
+	const char *cid_type_str = NULL;
+	rohc_cid_type_t cid_type;
+	const char *cid_max_str = NULL;
+	rohc_cid_t cid_very_max;
+	rohc_cid_t cid_max;
 	int failure_start = -1;
 
 	/* parse program arguments, print the help message in case of failure */
@@ -111,6 +118,31 @@ int main(int argc, char *argv[])
 		{
 			/* do not exit with error code if malformed packets are found */
 			ignore_malformed = true;
+		}
+		else if(!strcmp(*argv, "--cid-type"))
+		{
+			/* the CID type */
+			if(argc <= 1)
+			{
+				fprintf(stderr, "the --cid-type option requires a value among "
+				        "'small' and 'large'\n");
+				usage();
+				goto error;
+			}
+			cid_type_str = argv[1];
+			args_used++;
+		}
+		else if(!strcmp(*argv, "--cid-max"))
+		{
+			/* the MAX_CID value */
+			if(argc <= 1)
+			{
+				fprintf(stderr, "the --cid-max option requires a numeric value\n");
+				usage();
+				goto error;
+			}
+			cid_max_str = argv[1];
+			args_used++;
 		}
 		else if(filename == NULL)
 		{
@@ -141,6 +173,44 @@ int main(int argc, char *argv[])
 		usage();
 		goto error;
 	}
+
+	/* CID type shall be small or large, nothing else */
+	if(cid_type_str == NULL || strcmp(cid_type_str, "small") == 0)
+	{
+		cid_type = ROHC_SMALL_CID;
+		cid_very_max = ROHC_SMALL_CID_MAX;
+	}
+	else if(strcmp(cid_type_str, "large") == 0)
+	{
+		cid_type = ROHC_LARGE_CID;
+		cid_very_max = ROHC_LARGE_CID_MAX;
+	}
+	else
+	{
+		fprintf(stderr, "the --cid-type option requires a value among "
+		        "'small' and 'large'\n");
+		usage();
+		goto error;
+	}
+
+	/* CID_MAX value */
+	if(cid_max_str == NULL)
+	{
+		cid_max = ROHC_SMALL_CID_MAX;
+	}
+	else
+	{
+		const int cid_max_int = atoi(cid_max_str);
+		if(cid_max_int < 0 || cid_max_int > cid_very_max)
+		{
+			fprintf(stderr, "the --cid-max option requires a value in range "
+			        "[0;%zu]\n", cid_very_max);
+			usage();
+			goto error;
+		}
+		cid_max = cid_max_int;
+	}
+
 	/* the failure start is mandatory */
 	if(failure_start < 0)
 	{
@@ -149,7 +219,8 @@ int main(int argc, char *argv[])
 	}
 
 	/* test ROHC decompression with the packets from the file */
-	status = test_decomp(filename, failure_start, ignore_malformed);
+	status = test_decomp(filename, failure_start, cid_type, cid_max,
+	                     ignore_malformed);
 
 error:
 	return status;
@@ -179,7 +250,11 @@ static void usage(void)
 	        "options:\n"
 	        "  -v                  Print version information and exit\n"
 	        "  -h                  Print this usage and exit\n"
-	        "  --ignore-malformed  Ignore malformed packets for test\n");
+	        "  --ignore-malformed  Ignore malformed packets for test\n"
+	        "  --cid-type TYPE     The type of CID among 'small' and 'large'\n"
+	        "                      (default: small)\n"
+	        "  --cid-max MAX_CID   The MAX_CID value\n"
+	        "                      (default: 15)\n");
 }
 
 
@@ -189,6 +264,8 @@ static void usage(void)
  * @param filename          The name of the PCAP file that contains the ROHC packets
  * @param failure_start     The first packet that shall fail to be decompressed,
  *                          or 0 if no success/failure check shall be performed
+ * @param cid_type          The CID type among ROHC_SMALL_CID and ROHC_LARGE_CID
+ * @param cid_max           The CID_MAX value
  * @param ignore_malformed  do not exit with error code if malformed packets
  *                          are found
  * @return                  0 in case of success,
@@ -196,6 +273,8 @@ static void usage(void)
  */
 static int test_decomp(const char *const filename,
                        const size_t failure_start,
+                       const rohc_cid_type_t cid_type,
+                       const rohc_cid_t cid_max,
                        const bool ignore_malformed)
 {
 	char errbuf[PCAP_ERRBUF_SIZE];
@@ -242,7 +321,7 @@ static int test_decomp(const char *const filename,
 	}
 
 	/* create the decompressor */
-	decomp = rohc_decomp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX, ROHC_O_MODE);
+	decomp = rohc_decomp_new2(cid_type, cid_max, ROHC_O_MODE);
 	if(decomp == NULL)
 	{
 		fprintf(stderr, "cannot create the decompressor\n");
