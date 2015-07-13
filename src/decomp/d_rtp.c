@@ -900,12 +900,18 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
 {
 	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
 		context->persist_ctxt;
-	const unsigned char *ip_flags_pos = NULL;
-	const unsigned char *ip2_flags_pos = NULL;
 	uint8_t S, rts, I, ip, rtp, ip2;
 	uint16_t I_bits;
 	size_t inner_outer_flags_len;
 	int size;
+
+	const uint8_t *inner_ip_flags_pos = NULL;
+	struct rohc_extr_ip_bits *inner_ip;
+	struct rohc_decomp_rfc3095_changes *inner_ip_changes;
+
+	const uint8_t *outer_ip_flags_pos = NULL;
+	struct rohc_extr_ip_bits *outer_ip;
+	struct rohc_decomp_rfc3095_changes *outer_ip_changes;
 
 	/* remaining ROHC data */
 	const unsigned char *rohc_remain_data;
@@ -927,6 +933,21 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
 
 	rohc_remain_data = rohc_data;
 	rohc_remain_len = rohc_data_len;
+
+	if(rfc3095_ctxt->multiple_ip)
+	{
+		inner_ip = &bits->inner_ip;
+		inner_ip_changes = rfc3095_ctxt->inner_ip_changes;
+		outer_ip = &bits->outer_ip;
+		outer_ip_changes = rfc3095_ctxt->outer_ip_changes;
+	}
+	else
+	{
+		inner_ip = &bits->outer_ip;
+		inner_ip_changes = rfc3095_ctxt->outer_ip_changes;
+		outer_ip = NULL;
+		outer_ip_changes = NULL;
+	}
 
 	/* check the minimal length to decode the flags */
 	if(rohc_remain_len < 1)
@@ -982,14 +1003,7 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
 	{
 		rohc_decomp_debug(context, "inner IP header flags field is present in "
 		                  "EXT-3 = 0x%02x", GET_BIT_0_7(rohc_remain_data));
-		if(rfc3095_ctxt->multiple_ip)
-		{
-			ip2_flags_pos = rohc_remain_data;
-		}
-		else
-		{
-			ip_flags_pos = rohc_remain_data;
-		}
+		inner_ip_flags_pos = rohc_remain_data;
 		rohc_remain_data++;
 		rohc_remain_len--;
 	}
@@ -999,7 +1013,7 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
 	{
 		rohc_decomp_debug(context, "outer IP header flags field is present in "
 		                  "EXT-3 = 0x%02x", GET_BIT_0_7(rohc_remain_data));
-		ip_flags_pos = rohc_remain_data;
+		outer_ip_flags_pos = rohc_remain_data;
 		rohc_remain_data++;
 		rohc_remain_len--;
 	}
@@ -1033,83 +1047,42 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
 		rohc_remain_len -= ts_sdvl_size;
 	}
 
-	/* decode the inner IP header fields (pointed by packet) according to the
-	 * inner IP header flags (pointed by ip(2)_flags_pos) if present */
+	/* decode the inner IP header fields according to the inner IP header flags
+	 * if present */
 	if(ip)
 	{
-		if(rfc3095_ctxt->multiple_ip)
-		{
-			size = parse_inner_header_flags(context, ip2_flags_pos,
-			                                rohc_remain_data, rohc_remain_len,
-			                                &bits->inner_ip);
-
-			/* inner RND changed? */
-			if(bits->inner_ip.rnd_nr > 0)
-			{
-				are_all_ipv4_rnd &= bits->inner_ip.rnd;
-				if(bits->inner_ip.rnd != rfc3095_ctxt->inner_ip_changes->rnd)
-				{
-					rohc_decomp_debug(context, "RND changed for inner IP header "
-					                  "(%u -> %u)", rfc3095_ctxt->inner_ip_changes->rnd,
-					                  bits->inner_ip.rnd);
-					rnd_changed = true;
-				}
-			}
-			else if(bits->inner_ip.version == IPV4)
-			{
-				are_all_ipv4_rnd &= rfc3095_ctxt->inner_ip_changes->rnd;
-			}
-		}
-		else
-		{
-			size = parse_inner_header_flags(context, ip_flags_pos,
-			                                rohc_remain_data, rohc_remain_len,
-			                                &bits->outer_ip);
-
-			/* outer RND changed? */
-			if(bits->outer_ip.rnd_nr > 0)
-			{
-				are_all_ipv4_rnd &= bits->outer_ip.rnd;
-				if(bits->outer_ip.rnd != rfc3095_ctxt->outer_ip_changes->rnd)
-				{
-					rohc_decomp_debug(context, "RND changed for outer IP header "
-					                  "(%u -> %u)", rfc3095_ctxt->outer_ip_changes->rnd,
-					                  bits->outer_ip.rnd);
-					rnd_changed = true;
-				}
-			}
-			else if(bits->outer_ip.version == IPV4)
-			{
-				are_all_ipv4_rnd &= rfc3095_ctxt->outer_ip_changes->rnd;
-			}
-		}
+		size = parse_inner_header_flags(context, inner_ip_flags_pos,
+		                                rohc_remain_data, rohc_remain_len,
+		                                inner_ip);
 		if(size < 0)
 		{
-			rohc_decomp_warn(context, "cannot decode the inner IP header flags "
-			                 "& fields");
+			rohc_decomp_warn(context, "cannot decode the innermost IP header "
+			                 "flags & fields");
 			goto error;
 		}
-
 		rohc_remain_data += size;
 		rohc_remain_len -= size;
+
+		/* outer RND changed? */
+		if(inner_ip->rnd_nr > 0)
+		{
+			are_all_ipv4_rnd &= inner_ip->rnd;
+			if(inner_ip->rnd != inner_ip_changes->rnd)
+			{
+				rohc_decomp_debug(context, "RND changed for innermost IP header "
+				                  "(%u -> %u)", inner_ip_changes->rnd, inner_ip->rnd);
+				rnd_changed = true;
+			}
+		}
+		else if(inner_ip->version == IPV4)
+		{
+			are_all_ipv4_rnd &= inner_ip_changes->rnd;
+		}
 	}
-	else
+	else if(inner_ip->version == IPV4)
 	{
 		/* no inner IP header flags, so get context(RND) */
-		if(rfc3095_ctxt->multiple_ip)
-		{
-			if(bits->inner_ip.version == IPV4)
-			{
-				are_all_ipv4_rnd &= rfc3095_ctxt->inner_ip_changes->rnd;
-			}
-		}
-		else
-		{
-			if(bits->outer_ip.version == IPV4)
-			{
-				are_all_ipv4_rnd &= rfc3095_ctxt->outer_ip_changes->rnd;
-			}
-		}
+		are_all_ipv4_rnd &= inner_ip_changes->rnd;
 	}
 
 	/* skip the IP-ID if present, it will be parsed later once all RND bits
@@ -1141,39 +1114,46 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
 	 * flags if present */
 	if(ip2)
 	{
-		size = parse_outer_header_flags(context, ip_flags_pos, rohc_remain_data,
-		                                rohc_remain_len, &bits->outer_ip);
-		if(size == -1)
+		if(!rfc3095_ctxt->multiple_ip)
 		{
-			rohc_decomp_warn(context, "cannot decode the outer IP header flags "
-			                 "& fields");
+			rohc_decomp_warn(context, "malformed extension 3: there is only one "
+			                 "single IP header in current IP packet, the ip2 flag "
+			                 "should not be 1");
 			goto error;
 		}
+		size = parse_outer_header_flags(context, outer_ip_flags_pos,
+		                                rohc_remain_data, rohc_remain_len,
+		                                outer_ip);
+		if(size == -1)
+		{
+			rohc_decomp_warn(context, "cannot decode the outermost IP header "
+			                 "flags & fields");
+			goto error;
+		}
+		rohc_remain_data += size;
+		rohc_remain_len -= size;
 
 		/* outer RND changed? */
-		if(bits->outer_ip.rnd_nr > 0)
+		if(outer_ip->rnd_nr > 0)
 		{
-			are_all_ipv4_rnd &= bits->outer_ip.rnd;
-			if(bits->outer_ip.rnd != rfc3095_ctxt->outer_ip_changes->rnd)
+			are_all_ipv4_rnd &= outer_ip->rnd;
+			if(outer_ip->rnd != outer_ip_changes->rnd)
 			{
-				rohc_decomp_debug(context, "RND changed for outer IP header "
-				                  "(%u -> %u)", rfc3095_ctxt->outer_ip_changes->rnd,
-				                  bits->outer_ip.rnd);
+				rohc_decomp_debug(context, "RND changed for outermost IP header "
+				                  "(%u -> %u)", outer_ip_changes->rnd,
+				                  outer_ip->rnd);
 				rnd_changed = true;
 			}
 		}
-		else if(bits->outer_ip.version == IPV4)
+		else if(outer_ip->version == IPV4)
 		{
-			are_all_ipv4_rnd &= rfc3095_ctxt->outer_ip_changes->rnd;
+			are_all_ipv4_rnd &= outer_ip_changes->rnd;
 		}
-
-		rohc_remain_data += size;
-		rohc_remain_len -= size;
 	}
-	else if(rfc3095_ctxt->multiple_ip && bits->outer_ip.version == IPV4)
+	else if(rfc3095_ctxt->multiple_ip && outer_ip->version == IPV4)
 	{
 		/* no outer IP header flags, so get context(RND) */
-		are_all_ipv4_rnd &= rfc3095_ctxt->outer_ip_changes->rnd;
+		are_all_ipv4_rnd &= outer_ip_changes->rnd;
 	}
 
 	/* if RND changed while parsing UO-1-ID, UOR-2-RTP, UOR-2-ID, or UOR-2-TS,
