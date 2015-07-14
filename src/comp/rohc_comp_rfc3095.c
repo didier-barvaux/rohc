@@ -90,6 +90,27 @@ static void c_init_tmp_variables(struct generic_tmp_vars *const tmp_vars);
 static rohc_packet_t decide_packet(struct rohc_comp_ctxt *const context)
 	__attribute__((warn_unused_result, nonnull(1)));
 
+static rohc_ext_t decide_extension_uor2(const struct rohc_comp_ctxt *const context,
+                                        const size_t nr_innermost_ip_id_bits,
+                                        const size_t nr_outermost_ip_id_bits)
+	__attribute__((warn_unused_result, nonnull(1)));
+static rohc_ext_t decide_extension_uor2rtp(const struct rohc_comp_ctxt *const context,
+                                           const size_t nr_innermost_ip_id_bits,
+                                           const size_t nr_outermost_ip_id_bits)
+	__attribute__((warn_unused_result, nonnull(1)));
+static rohc_ext_t decide_extension_uor2ts(const struct rohc_comp_ctxt *const context,
+                                          const size_t nr_innermost_ip_id_bits,
+                                          const size_t nr_outermost_ip_id_bits)
+	__attribute__((warn_unused_result, nonnull(1)));
+static rohc_ext_t decide_extension_uor2id(const struct rohc_comp_ctxt *const context,
+                                          const size_t nr_innermost_ip_id_bits,
+                                          const size_t nr_outermost_ip_id_bits)
+	__attribute__((warn_unused_result, nonnull(1)));
+static rohc_ext_t decide_extension_uo1id(const struct rohc_comp_ctxt *const context,
+                                         const size_t nr_innermost_ip_id_bits,
+                                         const size_t nr_outermost_ip_id_bits)
+	__attribute__((warn_unused_result, nonnull(1)));
+
 static int code_packet(struct rohc_comp_ctxt *const context,
                        const struct net_pkt *const uncomp_pkt,
                        unsigned char *const rohc_pkt,
@@ -6774,12 +6795,10 @@ error:
  */
 rohc_ext_t decide_extension(const struct rohc_comp_ctxt *const context)
 {
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
+	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 	size_t nr_innermost_ip_id_bits;
 	size_t nr_outermost_ip_id_bits;
 	rohc_ext_t ext;
-
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
 
 	/* force extension type 3 if at least one static or dynamic field changed */
 	if(rfc3095_ctxt->tmp.send_static > 0 || rfc3095_ctxt->tmp.send_dynamic > 0)
@@ -6787,248 +6806,351 @@ rohc_ext_t decide_extension(const struct rohc_comp_ctxt *const context)
 		rohc_comp_debug(context, "force EXT-3 because at least one static or "
 		                "dynamic field changed");
 		ext = ROHC_EXT_3;
-		goto skip;
 	}
-
-	/* determine the number of IP-ID bits and the IP-ID offset of the
-	 * innermost IPv4 header with non-random IP-ID */
-	rohc_get_ipid_bits(context, &nr_innermost_ip_id_bits,
-	                   &nr_outermost_ip_id_bits);
-
-	switch(rfc3095_ctxt->tmp.packet_type)
+	else
 	{
-		case ROHC_PACKET_UOR_2:
+		/* determine the number of IP-ID bits and the IP-ID offset of the
+		 * innermost IPv4 header with non-random IP-ID */
+		rohc_get_ipid_bits(context, &nr_innermost_ip_id_bits,
+		                   &nr_outermost_ip_id_bits);
+
+		switch(rfc3095_ctxt->tmp.packet_type)
 		{
-			if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 5 &&
-			   nr_innermost_ip_id_bits == 0 &&
-			   nr_outermost_ip_id_bits == 0)
-			{
-				ext = ROHC_EXT_NONE;
-			}
-			else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 8 &&
-			        nr_innermost_ip_id_bits != 0 && nr_innermost_ip_id_bits <= 3 &&
-			        nr_outermost_ip_id_bits == 0)
-			{
-				ext = ROHC_EXT_0;
-			}
-			else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 8 &&
-			        nr_innermost_ip_id_bits != 0 && nr_innermost_ip_id_bits <= 11 &&
-			        nr_outermost_ip_id_bits == 0)
-			{
-				ext = ROHC_EXT_1;
-			}
-			else if(rfc3095_ctxt->ip_hdr_nr > 1 &&
-			        rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 8 &&
-			        nr_innermost_ip_id_bits != 0 && nr_innermost_ip_id_bits <= 8 &&
-			        nr_outermost_ip_id_bits <= 11)
-			{
-				ext = ROHC_EXT_2;
-			}
-			else
-			{
-				ext = ROHC_EXT_3;
-			}
-
-			break;
-		}
-
-		case ROHC_PACKET_UOR_2_RTP:
-		{
-			const struct sc_rtp_context *rtp_context;
-			size_t nr_ts_bits;
-
-			rtp_context = (struct sc_rtp_context *) rfc3095_ctxt->specific;
-			nr_ts_bits = rtp_context->tmp.nr_ts_bits_more_than_2;
-
-			/* NO_EXT, EXT_0, EXT_1, EXT_2 and EXT_3 */
-			if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 6 &&
-			   nr_ts_bits <= 6 &&
-			   nr_innermost_ip_id_bits == 0 &&
-			   nr_outermost_ip_id_bits == 0)
-			{
-				ext = ROHC_EXT_NONE;
-			}
-			else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9 &&
-			        nr_ts_bits <= 9 &&
-			        nr_innermost_ip_id_bits == 0 &&
-			        nr_outermost_ip_id_bits == 0)
-			{
-				ext = ROHC_EXT_0;
-			}
-			else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9 &&
-			        nr_ts_bits <= 17 &&
-			        nr_innermost_ip_id_bits == 0 &&
-			        nr_outermost_ip_id_bits == 0)
-			{
-				ext = ROHC_EXT_1;
-			}
-			else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9 &&
-			        nr_ts_bits <= 25 &&
-			        nr_innermost_ip_id_bits == 0 &&
-			        nr_outermost_ip_id_bits == 0)
-			{
-				ext = ROHC_EXT_2;
-			}
-			else
-			{
-				ext = ROHC_EXT_3;
-			}
-
-			break;
-		}
-
-		case ROHC_PACKET_UOR_2_TS:
-		{
-			const struct sc_rtp_context *rtp_context;
-			size_t nr_ts_bits;
-
-			rtp_context = (struct sc_rtp_context *) rfc3095_ctxt->specific;
-			nr_ts_bits = rtp_context->tmp.nr_ts_bits_more_than_2;
-
-			/* NO_EXT, EXT_0, EXT_1, EXT_2 and EXT_3 */
-			if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 6 &&
-			   nr_ts_bits <= 5 &&
-			   nr_innermost_ip_id_bits == 0 &&
-			   nr_outermost_ip_id_bits == 0)
-			{
-				ext = ROHC_EXT_NONE;
-			}
-			else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9 &&
-			        nr_ts_bits <= 8 &&
-			        nr_innermost_ip_id_bits == 0 &&
-			        nr_outermost_ip_id_bits == 0)
-			{
-				ext = ROHC_EXT_0;
-			}
-			else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9 &&
-			        nr_ts_bits <= 8 &&
-			        nr_innermost_ip_id_bits <= 8 &&
-			        nr_outermost_ip_id_bits == 0)
-			{
-				ext = ROHC_EXT_1;
-			}
-			else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9 &&
-			        nr_ts_bits <= 16 &&
-			        nr_innermost_ip_id_bits <= 8 &&
-			        nr_outermost_ip_id_bits == 0)
-			{
-				ext = ROHC_EXT_2;
-			}
-			else
-			{
-				ext = ROHC_EXT_3;
-			}
-
-			break;
-		}
-
-		case ROHC_PACKET_UOR_2_ID:
-		{
-			const struct sc_rtp_context *rtp_context;
-			size_t nr_ts_bits;
-
-			rtp_context = (struct sc_rtp_context *) rfc3095_ctxt->specific;
-			nr_ts_bits = rtp_context->tmp.nr_ts_bits_more_than_2;
-
-			/* NO_EXT, EXT_0, EXT_1, EXT_2 and EXT_3 */
-			if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 6 &&
-			   (nr_ts_bits == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
-			   nr_innermost_ip_id_bits <= 5 &&
-			   nr_outermost_ip_id_bits == 0)
-			{
-				ext = ROHC_EXT_NONE;
-			}
-			else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9 &&
-			        (nr_ts_bits == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
-			        nr_innermost_ip_id_bits <= 8 &&
-			        nr_outermost_ip_id_bits == 0)
-			{
-				ext = ROHC_EXT_0;
-			}
-			else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9 &&
-			        nr_ts_bits <= 8 &&
-			        nr_innermost_ip_id_bits <= 8 &&
-			        nr_outermost_ip_id_bits == 0)
-			{
-				ext = ROHC_EXT_1;
-			}
-			else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9 &&
-			        nr_ts_bits <= 8 &&
-			        nr_innermost_ip_id_bits <= 16 &&
-			        nr_outermost_ip_id_bits == 0)
-			{
-				ext = ROHC_EXT_2;
-			}
-			else
-			{
-				ext = ROHC_EXT_3;
-			}
-
-			break;
-		}
-
-		case ROHC_PACKET_UO_1_ID:
-		{
-			const struct sc_rtp_context *rtp_context;
-			size_t nr_ts_bits;
-
-			rtp_context = (struct sc_rtp_context *) rfc3095_ctxt->specific;
-			nr_ts_bits = rtp_context->tmp.nr_ts_bits_more_than_2;
-
-			/* NO_EXT, EXT_0, EXT_1, EXT_2 and EXT_3 */
-			if(rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 <= 4 &&
-			   (nr_ts_bits == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
-			   nr_innermost_ip_id_bits <= 5 &&
-			   nr_outermost_ip_id_bits == 0 &&
-			   !rtp_context->tmp.is_marker_bit_set)
-			{
-				ext = ROHC_EXT_NONE;
-			}
-			else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 7 &&
-			        (nr_ts_bits == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
-			        nr_innermost_ip_id_bits <= 8 &&
-			        nr_outermost_ip_id_bits == 0 &&
-			        !rtp_context->tmp.is_marker_bit_set)
-			{
-				ext = ROHC_EXT_0;
-			}
-			else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 7 &&
-			        nr_ts_bits <= 8 &&
-			        nr_innermost_ip_id_bits <= 8 &&
-			        nr_outermost_ip_id_bits == 0 &&
-			        !rtp_context->tmp.is_marker_bit_set)
-			{
-				ext = ROHC_EXT_1;
-			}
-			else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 7 &&
-			        nr_ts_bits <= 8 &&
-			        nr_innermost_ip_id_bits <= 16 &&
-			        nr_outermost_ip_id_bits == 0 &&
-			        !rtp_context->tmp.is_marker_bit_set)
-			{
-				ext = ROHC_EXT_2;
-			}
-			else
-			{
-				ext = ROHC_EXT_3;
-			}
-
-			break;
-		}
-
-		default:
-		{
-			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            false, error, "bad packet type (%d)",
-			            rfc3095_ctxt->tmp.packet_type);
+			case ROHC_PACKET_UOR_2:
+				ext = decide_extension_uor2(context, nr_innermost_ip_id_bits,
+				                            nr_outermost_ip_id_bits);
+				break;
+			case ROHC_PACKET_UOR_2_RTP:
+				ext = decide_extension_uor2rtp(context, nr_innermost_ip_id_bits,
+				                               nr_outermost_ip_id_bits);
+				break;
+			case ROHC_PACKET_UOR_2_TS:
+				ext = decide_extension_uor2ts(context, nr_innermost_ip_id_bits,
+				                              nr_outermost_ip_id_bits);
+				break;
+			case ROHC_PACKET_UOR_2_ID:
+				ext = decide_extension_uor2id(context, nr_innermost_ip_id_bits,
+				                              nr_outermost_ip_id_bits);
+				break;
+			case ROHC_PACKET_UO_1_ID:
+				ext = decide_extension_uo1id(context, nr_innermost_ip_id_bits,
+				                             nr_outermost_ip_id_bits);
+				break;
+			default:
+				rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+				            false, error, "bad packet type (%d)",
+				            rfc3095_ctxt->tmp.packet_type);
 		}
 	}
 
-skip:
 	return ext;
 
 error:
 	return ROHC_EXT_UNKNOWN;
+}
+
+
+/**
+ * @brief Decide what extension shall be used in the UOR-2 packet (non-RTP).
+ *
+ * Extensions 0, 1 & 2 are IPv4 only because of the IP-ID.
+ *
+ * @param context                  The compression context
+ * @param nr_innermost_ip_id_bits  The number of IP-ID bits of the innermost
+ *                                 IPv4 header
+ * @param nr_outermost_ip_id_bits  The number of IP-ID bits of the outermost
+ *                                 IPv4 header
+ * @return                         The extension code among ROHC_EXT_NONE,
+ *                                 ROHC_EXT_0, ROHC_EXT_1 and ROHC_EXT_3
+ */
+static rohc_ext_t decide_extension_uor2(const struct rohc_comp_ctxt *const context,
+                                        const size_t nr_innermost_ip_id_bits,
+                                        const size_t nr_outermost_ip_id_bits)
+{
+	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
+	rohc_ext_t ext;
+
+	assert(rfc3095_ctxt->tmp.packet_type == ROHC_PACKET_UOR_2);
+
+	if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 5 &&
+	   nr_innermost_ip_id_bits == 0 &&
+	   nr_outermost_ip_id_bits == 0)
+	{
+		ext = ROHC_EXT_NONE;
+	}
+	else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 8 &&
+	        nr_innermost_ip_id_bits != 0 && nr_innermost_ip_id_bits <= 3 &&
+	        nr_outermost_ip_id_bits == 0)
+	{
+		ext = ROHC_EXT_0;
+	}
+	else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 8 &&
+	        nr_innermost_ip_id_bits != 0 && nr_innermost_ip_id_bits <= 11 &&
+	        nr_outermost_ip_id_bits == 0)
+	{
+		ext = ROHC_EXT_1;
+	}
+	else if(rfc3095_ctxt->ip_hdr_nr > 1 &&
+	        rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 8 &&
+	        nr_innermost_ip_id_bits != 0 && nr_innermost_ip_id_bits <= 8 &&
+	        nr_outermost_ip_id_bits <= 11)
+	{
+		ext = ROHC_EXT_2;
+	}
+	else
+	{
+		ext = ROHC_EXT_3;
+	}
+
+	return ext;
+}
+
+
+/**
+ * @brief Decide what extension shall be used in the UOR-2 packet (RTP).
+ *
+ * Extensions 0, 1 & 2 are IPv4 only because of the IP-ID.
+ *
+ * @param context                  The compression context
+ * @param nr_innermost_ip_id_bits  The number of IP-ID bits of the innermost
+ *                                 IPv4 header
+ * @param nr_outermost_ip_id_bits  The number of IP-ID bits of the outermost
+ *                                 IPv4 header
+ * @return                         The extension code among ROHC_EXT_NONE,
+ *                                 ROHC_EXT_0, ROHC_EXT_1 and ROHC_EXT_3
+ */
+static rohc_ext_t decide_extension_uor2rtp(const struct rohc_comp_ctxt *const context,
+                                           const size_t nr_innermost_ip_id_bits,
+                                           const size_t nr_outermost_ip_id_bits)
+{
+	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
+	const struct sc_rtp_context *const rtp_context = rfc3095_ctxt->specific;
+	const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits_more_than_2;
+	rohc_ext_t ext;
+
+	assert(rfc3095_ctxt->tmp.packet_type == ROHC_PACKET_UOR_2_RTP);
+
+	if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 6 &&
+	   nr_ts_bits <= 6 &&
+	   nr_innermost_ip_id_bits == 0 &&
+	   nr_outermost_ip_id_bits == 0)
+	{
+		ext = ROHC_EXT_NONE;
+	}
+	else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9 &&
+	        nr_ts_bits <= 9 &&
+	        nr_innermost_ip_id_bits == 0 &&
+	        nr_outermost_ip_id_bits == 0)
+	{
+		ext = ROHC_EXT_0;
+	}
+	else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9 &&
+	        nr_ts_bits <= 17 &&
+	        nr_innermost_ip_id_bits == 0 &&
+	        nr_outermost_ip_id_bits == 0)
+	{
+		ext = ROHC_EXT_1;
+	}
+	else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9 &&
+	        nr_ts_bits <= 25 &&
+	        nr_innermost_ip_id_bits == 0 &&
+	        nr_outermost_ip_id_bits == 0)
+	{
+		ext = ROHC_EXT_2;
+	}
+	else
+	{
+		ext = ROHC_EXT_3;
+	}
+
+	return ext;
+}
+
+
+/**
+ * @brief Decide what extension shall be used in the UO-1-ID/UOR-2 packet.
+ *
+ * Extensions 0, 1 & 2 are IPv4 only because of the IP-ID.
+ *
+ * @param context                  The compression context
+ * @param nr_innermost_ip_id_bits  The number of IP-ID bits of the innermost
+ *                                 IPv4 header
+ * @param nr_outermost_ip_id_bits  The number of IP-ID bits of the outermost
+ *                                 IPv4 header
+ * @return                         The extension code among ROHC_EXT_NONE,
+ *                                 ROHC_EXT_0, ROHC_EXT_1 and ROHC_EXT_3
+ */
+static rohc_ext_t decide_extension_uor2ts(const struct rohc_comp_ctxt *const context,
+                                          const size_t nr_innermost_ip_id_bits,
+                                          const size_t nr_outermost_ip_id_bits)
+{
+	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
+	const struct sc_rtp_context *const rtp_context = rfc3095_ctxt->specific;
+	const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits_more_than_2;
+	rohc_ext_t ext;
+
+	assert(rfc3095_ctxt->tmp.packet_type == ROHC_PACKET_UOR_2_TS);
+
+	if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 6 &&
+	   nr_ts_bits <= 5 &&
+	   nr_innermost_ip_id_bits == 0 &&
+	   nr_outermost_ip_id_bits == 0)
+	{
+		ext = ROHC_EXT_NONE;
+	}
+	else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9 &&
+	        nr_ts_bits <= 8 &&
+	        nr_innermost_ip_id_bits == 0 &&
+	        nr_outermost_ip_id_bits == 0)
+	{
+		ext = ROHC_EXT_0;
+	}
+	else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9 &&
+	        nr_ts_bits <= 8 &&
+	        nr_innermost_ip_id_bits <= 8 &&
+	        nr_outermost_ip_id_bits == 0)
+	{
+		ext = ROHC_EXT_1;
+	}
+	else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9 &&
+	        nr_ts_bits <= 16 &&
+	        nr_innermost_ip_id_bits <= 8 &&
+	        nr_outermost_ip_id_bits == 0)
+	{
+		ext = ROHC_EXT_2;
+	}
+	else
+	{
+		ext = ROHC_EXT_3;
+	}
+
+	return ext;
+}
+
+
+/**
+ * @brief Decide what extension shall be used in the UOR-2-ID packet.
+ *
+ * Extensions 0, 1 & 2 are IPv4 only because of the IP-ID.
+ *
+ * @param context                  The compression context
+ * @param nr_innermost_ip_id_bits  The number of IP-ID bits of the innermost
+ *                                 IPv4 header
+ * @param nr_outermost_ip_id_bits  The number of IP-ID bits of the outermost
+ *                                 IPv4 header
+ * @return                         The extension code among ROHC_EXT_NONE,
+ *                                 ROHC_EXT_0, ROHC_EXT_1 and ROHC_EXT_3
+ */
+static rohc_ext_t decide_extension_uor2id(const struct rohc_comp_ctxt *const context,
+                                          const size_t nr_innermost_ip_id_bits,
+                                          const size_t nr_outermost_ip_id_bits)
+{
+	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
+	const struct sc_rtp_context *const rtp_context = rfc3095_ctxt->specific;
+	const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits_more_than_2;
+	rohc_ext_t ext;
+
+	assert(rfc3095_ctxt->tmp.packet_type == ROHC_PACKET_UOR_2_ID);
+
+	if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 6 &&
+	   (nr_ts_bits == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
+	   nr_innermost_ip_id_bits <= 5 &&
+	   nr_outermost_ip_id_bits == 0)
+	{
+		ext = ROHC_EXT_NONE;
+	}
+	else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9 &&
+	        (nr_ts_bits == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
+	        nr_innermost_ip_id_bits <= 8 &&
+	        nr_outermost_ip_id_bits == 0)
+	{
+		ext = ROHC_EXT_0;
+	}
+	else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9 &&
+	        nr_ts_bits <= 8 &&
+	        nr_innermost_ip_id_bits <= 8 &&
+	        nr_outermost_ip_id_bits == 0)
+	{
+		ext = ROHC_EXT_1;
+	}
+	else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9 &&
+	        nr_ts_bits <= 8 &&
+	        nr_innermost_ip_id_bits <= 16 &&
+	        nr_outermost_ip_id_bits == 0)
+	{
+		ext = ROHC_EXT_2;
+	}
+	else
+	{
+		ext = ROHC_EXT_3;
+	}
+
+	return ext;
+}
+
+
+/**
+ * @brief Decide what extension shall be used in the UO-1-ID packet.
+ *
+ * Extensions 0, 1 & 2 are IPv4 only because of the IP-ID.
+ *
+ * @param context                  The compression context
+ * @param nr_innermost_ip_id_bits  The number of IP-ID bits of the innermost
+ *                                 IPv4 header
+ * @param nr_outermost_ip_id_bits  The number of IP-ID bits of the outermost
+ *                                 IPv4 header
+ * @return                         The extension code among ROHC_EXT_NONE,
+ *                                 ROHC_EXT_0, ROHC_EXT_1 and ROHC_EXT_3
+ */
+static rohc_ext_t decide_extension_uo1id(const struct rohc_comp_ctxt *const context,
+                                         const size_t nr_innermost_ip_id_bits,
+                                         const size_t nr_outermost_ip_id_bits)
+{
+	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
+	const struct sc_rtp_context *const rtp_context = rfc3095_ctxt->specific;
+	const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits_more_than_2;
+	rohc_ext_t ext;
+
+	assert(rfc3095_ctxt->tmp.packet_type == ROHC_PACKET_UO_1_ID);
+
+	if(rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 <= 4 &&
+	   (nr_ts_bits == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
+	   nr_innermost_ip_id_bits <= 5 &&
+	   nr_outermost_ip_id_bits == 0 &&
+	   !rtp_context->tmp.is_marker_bit_set)
+	{
+		ext = ROHC_EXT_NONE;
+	}
+	else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 7 &&
+	        (nr_ts_bits == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
+	        nr_innermost_ip_id_bits <= 8 &&
+	        nr_outermost_ip_id_bits == 0 &&
+	        !rtp_context->tmp.is_marker_bit_set)
+	{
+		ext = ROHC_EXT_0;
+	}
+	else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 7 &&
+	        nr_ts_bits <= 8 &&
+	        nr_innermost_ip_id_bits <= 8 &&
+	        nr_outermost_ip_id_bits == 0 &&
+	        !rtp_context->tmp.is_marker_bit_set)
+	{
+		ext = ROHC_EXT_1;
+	}
+	else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 7 &&
+	        nr_ts_bits <= 8 &&
+	        nr_innermost_ip_id_bits <= 16 &&
+	        nr_outermost_ip_id_bits == 0 &&
+	        !rtp_context->tmp.is_marker_bit_set)
+	{
+		ext = ROHC_EXT_2;
+	}
+	else
+	{
+		ext = ROHC_EXT_3;
+	}
+
+	return ext;
 }
 
 
