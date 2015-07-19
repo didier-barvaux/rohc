@@ -946,6 +946,7 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 			is_ok = c_tcp_ts_lsb_code(context, rohc_ntoh32(opt_ts->ts),
 			                          opts_ctxt->tmp.nr_opt_ts_req_bits_minus_1,
 			                          opts_ctxt->tmp.nr_opt_ts_req_bits_0x40000,
+			                          opts_ctxt->tmp.nr_opt_ts_req_bits_0x4000000,
 			                          rohc_remain_data, rohc_remain_len,
 			                          &encoded_ts_lsb_len);
 			if(!is_ok)
@@ -962,6 +963,7 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 			is_ok = c_tcp_ts_lsb_code(context, rohc_ntoh32(opt_ts->ts_reply),
 			                          opts_ctxt->tmp.nr_opt_ts_reply_bits_minus_1,
 			                          opts_ctxt->tmp.nr_opt_ts_reply_bits_0x40000,
+			                          opts_ctxt->tmp.nr_opt_ts_reply_bits_0x4000000,
 			                          rohc_remain_data, rohc_remain_len,
 			                          &encoded_ts_lsb_len);
 			if(!is_ok)

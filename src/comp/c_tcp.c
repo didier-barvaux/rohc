@@ -6073,8 +6073,10 @@ static bool tcp_encode_uncomp_tcp_fields(struct rohc_comp_ctxt *const context,
 		/* no bit to send */
 		tcp_context->tcp_opts.tmp.nr_opt_ts_req_bits_minus_1 = 0;
 		tcp_context->tcp_opts.tmp.nr_opt_ts_req_bits_0x40000 = 0;
+		tcp_context->tcp_opts.tmp.nr_opt_ts_req_bits_0x4000000 = 0;
 		tcp_context->tcp_opts.tmp.nr_opt_ts_reply_bits_minus_1 = 0;
 		tcp_context->tcp_opts.tmp.nr_opt_ts_reply_bits_0x40000 = 0;
+		tcp_context->tcp_opts.tmp.nr_opt_ts_reply_bits_0x4000000 = 0;
 		rohc_comp_debug(context, "no TS option: 0 bit required to encode the "
 		                "new timestamp echo request/reply numbers");
 	}
@@ -6083,8 +6085,10 @@ static bool tcp_encode_uncomp_tcp_fields(struct rohc_comp_ctxt *const context,
 		/* send all bits for the first occurrence of the TCP TS option */
 		tcp_context->tcp_opts.tmp.nr_opt_ts_req_bits_minus_1 = 32;
 		tcp_context->tcp_opts.tmp.nr_opt_ts_req_bits_0x40000 = 32;
+		tcp_context->tcp_opts.tmp.nr_opt_ts_req_bits_0x4000000 = 32;
 		tcp_context->tcp_opts.tmp.nr_opt_ts_reply_bits_minus_1 = 32;
 		tcp_context->tcp_opts.tmp.nr_opt_ts_reply_bits_0x40000 = 32;
+		tcp_context->tcp_opts.tmp.nr_opt_ts_reply_bits_0x4000000 = 32;
 		rohc_comp_debug(context, "first occurrence of TCP TS option: force "
 		                "using 32 bits to encode new timestamp echo "
 		                "request/reply numbers");
@@ -6097,41 +6101,67 @@ static bool tcp_encode_uncomp_tcp_fields(struct rohc_comp_ctxt *const context,
 		 * with p = -1 ? */
 		tcp_context->tcp_opts.tmp.nr_opt_ts_req_bits_minus_1 =
 			wlsb_get_kp_32bits(tcp_context->tcp_opts.ts_req_wlsb,
-			                   tcp_context->tcp_opts.tmp.ts_req, -1);
+			                   tcp_context->tcp_opts.tmp.ts_req,
+			                   ROHC_LSB_SHIFT_TCP_TS_1B);
 		rohc_comp_debug(context, "%zu bits are required to encode new "
-		                "timestamp echo request 0x%08x with p = -1",
+		                "timestamp echo request 0x%08x with p = %d",
 		                tcp_context->tcp_opts.tmp.nr_opt_ts_req_bits_minus_1,
-		                tcp_context->tcp_opts.tmp.ts_req);
+		                tcp_context->tcp_opts.tmp.ts_req, ROHC_LSB_SHIFT_TCP_TS_1B);
 
 		/* how many bits are required to encode the timestamp echo request
 		 * with p = 0x40000 ? */
 		tcp_context->tcp_opts.tmp.nr_opt_ts_req_bits_0x40000 =
 			wlsb_get_kp_32bits(tcp_context->tcp_opts.ts_req_wlsb,
-			                   tcp_context->tcp_opts.tmp.ts_req, 0x40000);
+			                   tcp_context->tcp_opts.tmp.ts_req,
+			                   ROHC_LSB_SHIFT_TCP_TS_3B);
 		rohc_comp_debug(context, "%zu bits are required to encode new "
-		                "timestamp echo request 0x%08x with p = 0x40000",
+		                "timestamp echo request 0x%08x with p = 0x%x",
 		                tcp_context->tcp_opts.tmp.nr_opt_ts_req_bits_0x40000,
-		                tcp_context->tcp_opts.tmp.ts_req);
+		                tcp_context->tcp_opts.tmp.ts_req, ROHC_LSB_SHIFT_TCP_TS_3B);
+
+		/* how many bits are required to encode the timestamp echo reply
+		 * with p = 0x4000000 ? */
+		tcp_context->tcp_opts.tmp.nr_opt_ts_req_bits_0x4000000 =
+			wlsb_get_kp_32bits(tcp_context->tcp_opts.ts_req_wlsb,
+			                   tcp_context->tcp_opts.tmp.ts_req,
+			                   ROHC_LSB_SHIFT_TCP_TS_4B);
+		rohc_comp_debug(context, "%zu bits are required to encode new "
+		                "timestamp echo request 0x%08x with p = 0x%x",
+		                tcp_context->tcp_opts.tmp.nr_opt_ts_req_bits_0x4000000,
+		                tcp_context->tcp_opts.tmp.ts_req, ROHC_LSB_SHIFT_TCP_TS_4B);
 
 		/* how many bits are required to encode the timestamp echo reply
 		 * with p = -1 ? */
 		tcp_context->tcp_opts.tmp.nr_opt_ts_reply_bits_minus_1 =
 			wlsb_get_kp_32bits(tcp_context->tcp_opts.ts_reply_wlsb,
-			                   tcp_context->tcp_opts.tmp.ts_reply, -1);
+			                   tcp_context->tcp_opts.tmp.ts_reply,
+			                   ROHC_LSB_SHIFT_TCP_TS_1B);
 		rohc_comp_debug(context, "%zu bits are required to encode new "
-		                "timestamp echo reply 0x%08x with p = -1",
+		                "timestamp echo reply 0x%08x with p = %d",
 		                tcp_context->tcp_opts.tmp.nr_opt_ts_reply_bits_minus_1,
-		                tcp_context->tcp_opts.tmp.ts_reply);
+		                tcp_context->tcp_opts.tmp.ts_reply, ROHC_LSB_SHIFT_TCP_TS_1B);
 
 		/* how many bits are required to encode the timestamp echo reply
 		 * with p = 0x40000 ? */
 		tcp_context->tcp_opts.tmp.nr_opt_ts_reply_bits_0x40000 =
 			wlsb_get_kp_32bits(tcp_context->tcp_opts.ts_reply_wlsb,
-			                   tcp_context->tcp_opts.tmp.ts_reply, 0x40000);
+			                   tcp_context->tcp_opts.tmp.ts_reply,
+			                   ROHC_LSB_SHIFT_TCP_TS_3B);
 		rohc_comp_debug(context, "%zu bits are required to encode new "
-		                "timestamp echo reply 0x%08x with p = 0x40000",
+		                "timestamp echo reply 0x%08x with p = 0x%x",
 		                tcp_context->tcp_opts.tmp.nr_opt_ts_reply_bits_0x40000,
-		                tcp_context->tcp_opts.tmp.ts_reply);
+		                tcp_context->tcp_opts.tmp.ts_reply, ROHC_LSB_SHIFT_TCP_TS_3B);
+
+		/* how many bits are required to encode the timestamp echo reply
+		 * with p = 0x4000000 ? */
+		tcp_context->tcp_opts.tmp.nr_opt_ts_reply_bits_0x4000000 =
+			wlsb_get_kp_32bits(tcp_context->tcp_opts.ts_reply_wlsb,
+			                   tcp_context->tcp_opts.tmp.ts_reply,
+			                   ROHC_LSB_SHIFT_TCP_TS_4B);
+		rohc_comp_debug(context, "%zu bits are required to encode new "
+		                "timestamp echo reply 0x%08x with p = 0x%x",
+		                tcp_context->tcp_opts.tmp.nr_opt_ts_reply_bits_0x4000000,
+		                tcp_context->tcp_opts.tmp.ts_reply, ROHC_LSB_SHIFT_TCP_TS_4B);
 	}
 
 	return true;
@@ -6254,8 +6284,12 @@ static rohc_packet_t tcp_decide_FO_SO_packet(const struct rohc_comp_ctxt *const 
 		                "changed of length");
 		packet_type = ROHC_PACKET_IR;
 	}
-	else if(!sdvl_can_length_be_encoded(tcp_context->tcp_opts.tmp.nr_opt_ts_req_bits_0x40000) ||
-	        !sdvl_can_length_be_encoded(tcp_context->tcp_opts.tmp.nr_opt_ts_reply_bits_0x40000))
+	else if((tcp_context->tcp_opts.tmp.nr_opt_ts_req_bits_minus_1 > ROHC_SDVL_MAX_BITS_IN_2_BYTES &&
+	         tcp_context->tcp_opts.tmp.nr_opt_ts_req_bits_0x40000 > ROHC_SDVL_MAX_BITS_IN_3_BYTES &&
+	         tcp_context->tcp_opts.tmp.nr_opt_ts_req_bits_0x4000000 > ROHC_SDVL_MAX_BITS_IN_4_BYTES) ||
+	        (tcp_context->tcp_opts.tmp.nr_opt_ts_reply_bits_minus_1 > ROHC_SDVL_MAX_BITS_IN_2_BYTES &&
+	         tcp_context->tcp_opts.tmp.nr_opt_ts_reply_bits_0x40000 > ROHC_SDVL_MAX_BITS_IN_3_BYTES &&
+	         tcp_context->tcp_opts.tmp.nr_opt_ts_reply_bits_0x4000000 > ROHC_SDVL_MAX_BITS_IN_4_BYTES))
 	{
 		rohc_comp_debug(context, "force packet IR-DYN because the TCP TS option "
 		                "changed too much");

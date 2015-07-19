@@ -34,19 +34,21 @@
  *
  * See RFC4996 page 65
  *
- * @param context          The compression context
- * @param timestamp        The timestamp value to compress
- * @param nr_bits_minus_1  The minimal number of required bits for p = -1
- * @param nr_bits_0x40000  The minimal number of required bits for p = 0x40000
- * @param[out] rohc_data   The ROHC packet being built
- * @param rohc_max_len     The max remaining length in the ROHC buffer
- * @param[out] rohc_len    The length appended in the ROHC buffer
- * @return                 true if compression was successful, false otherwise
+ * @param context            The compression context
+ * @param timestamp          The timestamp value to compress
+ * @param nr_bits_minus_1    The minimal number of required bits for p = -1
+ * @param nr_bits_0x40000    The minimal number of required bits for p = 0x40000
+ * @param nr_bits_0x4000000  The minimal number of required bits for p = 0x4000000
+ * @param[out] rohc_data     The ROHC packet being built
+ * @param rohc_max_len       The max remaining length in the ROHC buffer
+ * @param[out] rohc_len      The length appended in the ROHC buffer
+ * @return                   true if compression was successful, false otherwise
  */
 bool c_tcp_ts_lsb_code(const struct rohc_comp_ctxt *const context,
                        const uint32_t timestamp,
                        const size_t nr_bits_minus_1,
                        const size_t nr_bits_0x40000,
+                       const size_t nr_bits_0x4000000,
                        uint8_t *const rohc_data,
                        const size_t rohc_max_len,
                        size_t *const rohc_len)
@@ -102,7 +104,7 @@ bool c_tcp_ts_lsb_code(const struct rohc_comp_ctxt *const context,
 		                "0x%02x 0x%02x", timestamp, rohc_data[0], rohc_data[1],
 		                rohc_data[2]);
 	}
-	else if(nr_bits_0x40000 <= 29)
+	else if(nr_bits_0x4000000 <= 29)
 	{
 		/* encoding on 4 bytes with discriminator '111' */
 		encoded_len = 4;
