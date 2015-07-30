@@ -231,6 +231,8 @@ typedef enum
 	/** The ROHC UDP-Lite profile (RFC 4019, section 7) */
 	ROHC_PROFILE_UDPLITE      = 0x0008,
 
+	ROHC_PROFILE_MAX          = 0x0009,
+
 } rohc_profile_t;
 
 
