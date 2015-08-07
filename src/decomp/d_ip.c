@@ -273,21 +273,21 @@ error:
  *                          -1 in case of error
  */
 int ip_parse_ext3(const struct rohc_decomp_ctxt *const context,
-                  const unsigned char *const rohc_data,
+                  const uint8_t *const rohc_data,
                   const size_t rohc_data_len,
                   const rohc_packet_t packet_type,
                   struct rohc_extr_bits *const bits)
 {
 	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
 		context->persist_ctxt;
-	const unsigned char *ip_flags_pos = NULL;
-	const unsigned char *ip2_flags_pos = NULL;
+	const uint8_t *ip_flags_pos = NULL;
+	const uint8_t *ip2_flags_pos = NULL;
 	uint8_t S, I, ip, ip2;
 	uint16_t I_bits;
 	int size;
 
 	/* remaining ROHC data */
-	const unsigned char *rohc_remain_data;
+	const uint8_t *rohc_remain_data;
 	size_t rohc_remain_len;
 
 	/* sanity checks */
@@ -533,8 +533,8 @@ error:
  *                    -1 in case of error
  */
 int parse_inner_header_flags(const struct rohc_decomp_ctxt *const context,
-                             const unsigned char *const flags,
-                             const unsigned char *fields,
+                             const uint8_t *const flags,
+                             const uint8_t *fields,
                              const size_t length,
                              struct rohc_extr_ip_bits *const bits)
 {
@@ -698,8 +698,8 @@ error:
  *                            -1 in case of error
  */
 int parse_outer_header_flags(const struct rohc_decomp_ctxt *const context,
-                             const unsigned char *const flags,
-                             const unsigned char *fields,
+                             const uint8_t *const flags,
+                             const uint8_t *fields,
                              const size_t length,
                              struct rohc_extr_ip_bits *const bits)
 {

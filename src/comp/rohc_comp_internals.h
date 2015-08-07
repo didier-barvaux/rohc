@@ -127,11 +127,11 @@ struct rohc_comp
 	/* CRC-related variables: */
 
 	/** The table to enable fast CRC-3 computation */
-	unsigned char crc_table_3[256];
+	uint8_t crc_table_3[256];
 	/** The table to enable fast CRC-7 computation */
-	unsigned char crc_table_7[256];
+	uint8_t crc_table_7[256];
 	/** The table to enable fast CRC-8 computation */
-	unsigned char crc_table_8[256];
+	uint8_t crc_table_8[256];
 
 
 	/* segment-related variables */
@@ -140,7 +140,7 @@ struct rohc_comp
 #define ROHC_MAX_MRRU 65535
 	/** The remaining bytes of the Reconstructed Reception Unit (RRU) waiting
 	 *  to be split into segments */
-	unsigned char rru[ROHC_MAX_MRRU];
+	uint8_t rru[ROHC_MAX_MRRU];
 	/** The offset of the remaining bytes in the RRU buffer */
 	size_t rru_off;
 	/** The number of the remaining bytes in the RRU buffer */
@@ -263,7 +263,7 @@ struct rohc_comp_profile
 	 */
 	int (*encode)(struct rohc_comp_ctxt *const context,
 	              const struct net_pkt *const uncomp_pkt,
-	              unsigned char *const rohc_pkt,
+	              uint8_t *const rohc_pkt,
 	              const size_t rohc_pkt_max_len,
 	              rohc_packet_t *const packet_type,
 	              size_t *const payload_offset)

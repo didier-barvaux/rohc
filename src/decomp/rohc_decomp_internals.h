@@ -160,7 +160,7 @@ struct rohc_decomp
 /** The maximal value for MRRU */
 #define ROHC_MAX_MRRU 65535
 	/** The Reconstructed Reception Unit */
-	unsigned char rru[ROHC_MAX_MRRU];
+	uint8_t rru[ROHC_MAX_MRRU];
 	/** The length (in bytes) of the Reconstructed Reception Unit */
 	size_t rru_len;
 	/** The Maximum Reconstructed Reception Unit (MRRU) */
@@ -170,11 +170,11 @@ struct rohc_decomp
 	/* CRC-related variables: */
 
 	/** The table to enable fast CRC-3 computation */
-	unsigned char crc_table_3[256];
+	uint8_t crc_table_3[256];
 	/** The table to enable fast CRC-7 computation */
-	unsigned char crc_table_7[256];
+	uint8_t crc_table_7[256];
 	/** The table to enable fast CRC-8 computation */
-	unsigned char crc_table_8[256];
+	uint8_t crc_table_8[256];
 
 
 	/** Some statistics about the decompression processes */

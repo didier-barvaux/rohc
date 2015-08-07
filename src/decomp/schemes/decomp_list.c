@@ -36,7 +36,7 @@
 /* decode the generic part of the compressed list */
 
 static int rohc_list_decode(struct list_decomp *decomp,
-                            const unsigned char *packet,
+                            const uint8_t *packet,
                             size_t packet_len)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
@@ -44,7 +44,7 @@ static int rohc_list_decode(struct list_decomp *decomp,
 /* decode the 4 types of compressed lists */
 
 static int rohc_list_decode_type_0(struct list_decomp *const decomp,
-                                   const unsigned char *const packet,
+                                   const uint8_t *const packet,
                                    const size_t packet_len,
                                    const unsigned int gen_id,
                                    const int ps,
@@ -52,7 +52,7 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int rohc_list_decode_type_1(struct list_decomp *const decomp,
-                                   const unsigned char *const packet,
+                                   const uint8_t *const packet,
                                    const size_t packet_len,
                                    const unsigned int gen_id,
                                    const int ps,
@@ -60,13 +60,13 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int rohc_list_decode_type_2(struct list_decomp *const decomp,
-                                   const unsigned char *const packet,
+                                   const uint8_t *const packet,
                                    const size_t packet_len,
                                    const unsigned int gen_id)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int rohc_list_decode_type_3(struct list_decomp *const decomp,
-                                   const unsigned char *const packet,
+                                   const uint8_t *const packet,
                                    const size_t packet_len,
                                    const unsigned int gen_id,
                                    const int ps,
@@ -113,7 +113,7 @@ static size_t rohc_list_get_xi_len(const size_t xi_nr,
                                    const int ps)
 	__attribute__((warn_unused_result, const));
 
-static uint8_t rohc_get_bit(const unsigned char byte, const size_t pos)
+static uint8_t rohc_get_bit(const uint8_t byte, const size_t pos)
 	__attribute__((warn_unused_result, const));
 
 
@@ -128,7 +128,7 @@ static uint8_t rohc_get_bit(const unsigned char byte, const size_t pos)
  *                    success, -1 in case of failure
  */
 int rohc_list_decode_maybe(struct list_decomp *decomp,
-                           const unsigned char *packet,
+                           const uint8_t *packet,
                            size_t packet_len)
 {
 	size_t read_length = 0;
@@ -185,7 +185,7 @@ error:
  *                    success, -1 in case of failure
  */
 static int rohc_list_decode(struct list_decomp *decomp,
-                            const unsigned char *packet,
+                            const uint8_t *packet,
                             size_t packet_len)
 {
 	size_t read_length = 0;
@@ -408,7 +408,7 @@ error:
  *                    \li -1 in case of failure
  */
 static int rohc_list_decode_type_0(struct list_decomp *const decomp,
-                                   const unsigned char *packet,
+                                   const uint8_t *packet,
                                    size_t packet_len,
                                    const unsigned int gen_id,
                                    const int ps,
@@ -587,7 +587,7 @@ error:
  *                    \li -1 in case of failure
  */
 static int rohc_list_decode_type_1(struct list_decomp *const decomp,
-                                   const unsigned char *packet,
+                                   const uint8_t *packet,
                                    size_t packet_len,
                                    const unsigned int gen_id,
                                    const int ps,
@@ -687,7 +687,7 @@ error:
  *                    \li -1 in case of failure
  */
 static int rohc_list_decode_type_2(struct list_decomp *const decomp,
-                                   const unsigned char *packet,
+                                   const uint8_t *packet,
                                    size_t packet_len,
                                    const unsigned int gen_id)
 {
@@ -776,7 +776,7 @@ error:
  *                    \li -1 in case of failure
  */
 static int rohc_list_decode_type_3(struct list_decomp *const decomp,
-                                   const unsigned char *packet,
+                                   const uint8_t *packet,
                                    size_t packet_len,
                                    const unsigned int gen_id,
                                    const int ps,
@@ -1368,7 +1368,7 @@ static size_t rohc_list_get_xi_len(const size_t xi_nr,
  * @param pos    The position between 0 and 7
  * @return       The requested bit
  */
-static uint8_t rohc_get_bit(const unsigned char byte, const size_t pos)
+static uint8_t rohc_get_bit(const uint8_t byte, const size_t pos)
 {
 	uint8_t bit;
 

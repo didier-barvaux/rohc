@@ -48,22 +48,22 @@ int ip_parse_dynamic_ip(const struct rohc_decomp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
 int ip_parse_ext3(const struct rohc_decomp_ctxt *const context,
-                  const unsigned char *const rohc_data,
+                  const uint8_t *const rohc_data,
                   const size_t rohc_data_len,
                   const rohc_packet_t packet_type,
                   struct rohc_extr_bits *const bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
 
 int parse_outer_header_flags(const struct rohc_decomp_ctxt *const context,
-                             const unsigned char *const flags,
-                             const unsigned char *fields,
+                             const uint8_t *const flags,
+                             const uint8_t *fields,
                              const size_t length,
                              struct rohc_extr_ip_bits *const bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
 int parse_inner_header_flags(const struct rohc_decomp_ctxt *const context,
-                             const unsigned char *const flags,
-                             const unsigned char *fields,
+                             const uint8_t *const flags,
+                             const uint8_t *fields,
                              const size_t length,
                              struct rohc_extr_ip_bits *const bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));

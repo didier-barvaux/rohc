@@ -67,13 +67,13 @@ struct list_decomp
 	                   const size_t index_table);
 
 	/** The handler used to get the size of a list item */
-	int (*get_item_size)(const unsigned char *data, const size_t data_len);
+	int (*get_item_size)(const uint8_t *data, const size_t data_len);
 
 	/** The handler used to compare two items */
 	rohc_list_item_cmp cmp_item;
 
 	/** The handler used to create a list item */
-	bool (*create_item)(const unsigned char *const data,
+	bool (*create_item)(const uint8_t *const data,
 	                    const size_t length,
 	                    const size_t index_table,
 	                    struct list_decomp *const decomp);
@@ -81,7 +81,7 @@ struct list_decomp
 	/** The handler used to add the extension to IP packet */
 	size_t (*build_uncomp_item)(const struct list_decomp *const decomp,
 	                            const uint8_t ip_nh_type,
-	                            unsigned char *const dest);
+	                            uint8_t *const dest);
 
 
 	/* Traces */
@@ -101,7 +101,7 @@ struct list_decomp
  */
 
 int rohc_list_decode_maybe(struct list_decomp *const decomp,
-                           const unsigned char *const packet,
+                           const uint8_t *const packet,
                            const size_t packet_len)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 

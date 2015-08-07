@@ -67,7 +67,7 @@ static bool c_rtp_check_context(const struct rohc_comp_ctxt *const context,
 
 static int c_rtp_encode(struct rohc_comp_ctxt *const context,
                         const struct net_pkt *const uncomp_pkt,
-                        unsigned char *const rohc_pkt,
+                        uint8_t *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
                         rohc_packet_t *const packet_type,
                         size_t *const payload_offset)
@@ -88,14 +88,14 @@ static bool rtp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static size_t rtp_code_static_rtp_part(const struct rohc_comp_ctxt *const context,
-                                       const unsigned char *const next_header,
-                                       unsigned char *const dest,
+                                       const uint8_t *const next_header,
+                                       uint8_t *const dest,
                                        const size_t counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static size_t rtp_code_dynamic_rtp_part(const struct rohc_comp_ctxt *const context,
-                                        const unsigned char *const next_header,
-                                        unsigned char *const dest,
+                                        const uint8_t *const next_header,
+                                        uint8_t *const dest,
                                         const size_t counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
@@ -269,7 +269,7 @@ static bool c_rtp_check_profile(const struct rohc_comp *const comp,
                                 const struct net_pkt *const packet)
 {
 	const struct udphdr *udp_header;
-	const unsigned char *udp_payload;
+	const uint8_t *udp_payload;
 	unsigned int udp_payload_size;
 	bool udp_check;
 
@@ -290,7 +290,7 @@ static bool c_rtp_check_profile(const struct rohc_comp *const comp,
 	assert(packet->transport->proto == ROHC_IPPROTO_UDP);
 	assert(packet->transport->data != NULL);
 	udp_header = (const struct udphdr *) packet->transport->data;
-	udp_payload = (unsigned char *) (udp_header + 1);
+	udp_payload = (uint8_t *) (udp_header + 1);
 	udp_payload_size = packet->transport->len - sizeof(struct udphdr);
 
 	/* UDP payload shall be large enough for RTP header  */
@@ -322,7 +322,7 @@ static bool c_rtp_check_profile(const struct rohc_comp *const comp,
 		}
 
 		is_rtp_packet = comp->rtp_callback(innermost_ip_hdr->data,
-		                                   (unsigned char *) udp_header,
+		                                   (uint8_t *) udp_header,
 		                                   udp_payload, udp_payload_size,
 		                                   comp->rtp_private);
 		if(!is_rtp_packet)
@@ -872,7 +872,7 @@ static rohc_ext_t c_rtp_decide_extension(const struct rohc_comp_ctxt *context)
  */
 static int c_rtp_encode(struct rohc_comp_ctxt *const context,
                         const struct net_pkt *const uncomp_pkt,
-                        unsigned char *const rohc_pkt,
+                        uint8_t *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
                         rohc_packet_t *const packet_type,
                         size_t *const payload_offset)
@@ -1116,8 +1116,8 @@ static bool rtp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
  * @see udp_code_static_udp_part
  */
 static size_t rtp_code_static_rtp_part(const struct rohc_comp_ctxt *const context,
-                                       const unsigned char *const next_header,
-                                       unsigned char *const dest,
+                                       const uint8_t *const next_header,
+                                       uint8_t *const dest,
                                        const size_t counter)
 {
 	const struct udphdr *const udp = (struct udphdr *) next_header;
@@ -1179,15 +1179,15 @@ static size_t rtp_code_static_rtp_part(const struct rohc_comp_ctxt *const contex
  * @return            The new position in the rohc-packet-under-build buffer
  */
 static size_t rtp_code_dynamic_rtp_part(const struct rohc_comp_ctxt *const context,
-                                        const unsigned char *const next_header,
-                                        unsigned char *const dest,
+                                        const uint8_t *const next_header,
+                                        uint8_t *const dest,
                                         const size_t counter)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	struct sc_rtp_context *rtp_context;
 	const struct udphdr *udp = (struct udphdr *) next_header;
 	const struct rtphdr *rtp = (struct rtphdr *) (udp + 1);
-	unsigned char byte;
+	uint8_t byte;
 	unsigned int rx_byte = 0;
 	size_t nr_written;
 

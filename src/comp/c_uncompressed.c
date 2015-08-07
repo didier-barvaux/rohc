@@ -56,27 +56,27 @@ static bool c_uncompressed_check_context(const struct rohc_comp_ctxt *const cont
 /* encode uncompressed packets */
 static int c_uncompressed_encode(struct rohc_comp_ctxt *const context,
                                  const struct net_pkt *const uncomp_pkt,
-                                 unsigned char *const rohc_pkt,
+                                 uint8_t *const rohc_pkt,
                                  const size_t rohc_pkt_max_len,
                                  rohc_packet_t *const packet_type,
                                  size_t *const payload_offset)
 		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
 static int uncompressed_code_packet(struct rohc_comp_ctxt *const context,
                                     const struct net_pkt *const uncomp_pkt,
-                                    unsigned char *const rohc_pkt,
+                                    uint8_t *const rohc_pkt,
                                     const size_t rohc_pkt_max_len,
                                     rohc_packet_t *const packet_type,
                                     size_t *const payload_offset)
 		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
 static int uncompressed_code_IR_packet(const struct rohc_comp_ctxt *const context,
                                        const struct net_pkt *const uncomp_pkt,
-                                       unsigned char *const rohc_pkt,
+                                       uint8_t *const rohc_pkt,
                                        const size_t rohc_pkt_max_len,
                                        size_t *const payload_offset)
 		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 static int uncompressed_code_normal_packet(const struct rohc_comp_ctxt *const context,
                                            const struct net_pkt *const uncomp_pkt,
-                                           unsigned char *const rohc_pkt,
+                                           uint8_t *const rohc_pkt,
                                            const size_t rohc_pkt_max_len,
                                            size_t *const payload_offset)
 		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
@@ -206,7 +206,7 @@ static bool c_uncompressed_check_context(const struct rohc_comp_ctxt *const cont
  */
 static int c_uncompressed_encode(struct rohc_comp_ctxt *const context,
                                  const struct net_pkt *const uncomp_pkt,
-                                 unsigned char *const rohc_pkt,
+                                 uint8_t *const rohc_pkt,
                                  const size_t rohc_pkt_max_len,
                                  rohc_packet_t *const packet_type,
                                  size_t *const payload_offset)
@@ -360,14 +360,14 @@ static void uncompressed_decide_state(struct rohc_comp_ctxt *const context,
  */
 static int uncompressed_code_packet(struct rohc_comp_ctxt *const context,
                                     const struct net_pkt *const uncomp_pkt,
-                                    unsigned char *const rohc_pkt,
+                                    uint8_t *const rohc_pkt,
                                     const size_t rohc_pkt_max_len,
                                     rohc_packet_t *const packet_type,
                                     size_t *const payload_offset)
 {
 	int (*code_packet)(const struct rohc_comp_ctxt *const _context,
 	                   const struct net_pkt *const _uncomp_pkt,
-	                   unsigned char *const _rohc_pkt,
+	                   uint8_t *const _rohc_pkt,
 	                   const size_t _rohc_pkt_max_len,
 	                   size_t *const _payload_offset)
 		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
@@ -456,7 +456,7 @@ error:
  */
 static int uncompressed_code_IR_packet(const struct rohc_comp_ctxt *context,
                                        const struct net_pkt *const uncomp_pkt __attribute__((unused)),
-                                       unsigned char *const rohc_pkt,
+                                       uint8_t *const rohc_pkt,
                                        const size_t rohc_pkt_max_len,
                                        size_t *const payload_offset)
 {
@@ -556,7 +556,7 @@ error:
  */
 static int uncompressed_code_normal_packet(const struct rohc_comp_ctxt *context,
                                            const struct net_pkt *const uncomp_pkt,
-                                           unsigned char *const rohc_pkt,
+                                           uint8_t *const rohc_pkt,
                                            const size_t rohc_pkt_max_len,
                                            size_t *const payload_offset)
 {

@@ -92,15 +92,15 @@ static void udp_decide_state(struct rohc_comp_ctxt *const context);
 
 static int c_udp_encode(struct rohc_comp_ctxt *const context,
                         const struct net_pkt *const uncomp_pkt,
-                        unsigned char *const rohc_pkt,
+                        uint8_t *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
                         rohc_packet_t *const packet_type,
                         size_t *const payload_offset)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
 
 static size_t udp_code_dynamic_udp_part(const struct rohc_comp_ctxt *const context,
-                                        const unsigned char *const next_header,
-                                        unsigned char *const dest,
+                                        const uint8_t *const next_header,
+                                        uint8_t *const dest,
                                         const size_t counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
@@ -331,7 +331,7 @@ bad_context:
  */
 static int c_udp_encode(struct rohc_comp_ctxt *const context,
                         const struct net_pkt *const uncomp_pkt,
-                        unsigned char *const rohc_pkt,
+                        uint8_t *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
                         rohc_packet_t *const packet_type,
                         size_t *const payload_offset)
@@ -438,8 +438,8 @@ static void udp_decide_state(struct rohc_comp_ctxt *const context)
  * @return            The new position in the rohc-packet-under-build buffer
  */
 size_t udp_code_uo_remainder(const struct rohc_comp_ctxt *const context,
-                             const unsigned char *const next_header,
-                             unsigned char *const dest,
+                             const uint8_t *const next_header,
+                             uint8_t *const dest,
                              const size_t counter)
 {
 	const struct udphdr *const udp = (struct udphdr *) next_header;
@@ -479,8 +479,8 @@ size_t udp_code_uo_remainder(const struct rohc_comp_ctxt *const context,
  * @return            The new position in the rohc-packet-under-build buffer
  */
 size_t udp_code_static_udp_part(const struct rohc_comp_ctxt *const context,
-                                const unsigned char *const next_header,
-                                unsigned char *const dest,
+                                const uint8_t *const next_header,
+                                uint8_t *const dest,
                                 const size_t counter)
 {
 	const struct udphdr *const udp = (struct udphdr *) next_header;
@@ -520,8 +520,8 @@ size_t udp_code_static_udp_part(const struct rohc_comp_ctxt *const context,
  * @return            The new position in the rohc-packet-under-build buffer
  */
 static size_t udp_code_dynamic_udp_part(const struct rohc_comp_ctxt *const context,
-                                        const unsigned char *const next_header,
-                                        unsigned char *const dest,
+                                        const uint8_t *const next_header,
+                                        uint8_t *const dest,
                                         const size_t counter)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;

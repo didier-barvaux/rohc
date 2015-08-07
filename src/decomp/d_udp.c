@@ -75,7 +75,7 @@ static int udp_parse_dynamic_udp(const struct rohc_decomp_ctxt *const context,
                                  struct rohc_extr_bits *const bits);
 
 static int udp_parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
-                                  const unsigned char *packet,
+                                  const uint8_t *packet,
                                   unsigned int length,
                                   struct rohc_extr_bits *const bits);
 
@@ -86,7 +86,7 @@ static bool udp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 
 static int udp_build_uncomp_udp(const struct rohc_decomp_ctxt *const context,
                                 const struct rohc_decoded_values *const decoded,
-                                unsigned char *dest,
+                                uint8_t *const dest,
                                 const unsigned int payload_len);
 
 static void udp_update_context(struct rohc_decomp_ctxt *const context,
@@ -244,7 +244,7 @@ static void d_udp_destroy(struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt,
  *                -1 in case of failure
  */
 int udp_parse_static_udp(const struct rohc_decomp_ctxt *const context,
-                         const unsigned char *packet,
+                         const uint8_t *packet,
                          size_t length,
                          struct rohc_extr_bits *const bits)
 {
@@ -372,7 +372,7 @@ error:
  *                     -1 in case of failure
  */
 static int udp_parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
-                                  const unsigned char *packet,
+                                  const uint8_t *packet,
                                   unsigned int length,
                                   struct rohc_extr_bits *const bits)
 {
@@ -537,7 +537,7 @@ error:
  */
 static int udp_build_uncomp_udp(const struct rohc_decomp_ctxt *const context,
                                 const struct rohc_decoded_values *const decoded,
-                                unsigned char *dest,
+                                uint8_t *const dest,
                                 const unsigned int payload_len)
 {
 	struct udphdr *udp;

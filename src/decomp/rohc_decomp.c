@@ -152,7 +152,7 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 	__attribute__((nonnull(1, 3, 5), warn_unused_result));
 
 static bool rohc_decomp_decode_cid(struct rohc_decomp *decomp,
-                                   const unsigned char *packet,
+                                   const uint8_t *packet,
                                    unsigned int len,
                                    rohc_cid_t *const cid,
                                    size_t *const add_cid_len,
@@ -186,7 +186,7 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 
 static bool rohc_decomp_check_ir_crc(const struct rohc_decomp *const decomp,
                                      const struct rohc_decomp_ctxt *const context,
-                                     const unsigned char *const rohc_hdr,
+                                     const uint8_t *const rohc_hdr,
                                      const size_t rohc_hdr_len,
                                      const size_t add_cid_len,
                                      const size_t large_cid_len,
@@ -1656,16 +1656,16 @@ error_malformed:
  */
 static bool rohc_decomp_check_ir_crc(const struct rohc_decomp *const decomp,
                                      const struct rohc_decomp_ctxt *const context,
-                                     const unsigned char *const rohc_hdr,
+                                     const uint8_t *const rohc_hdr,
                                      const size_t rohc_hdr_len,
                                      const size_t add_cid_len,
                                      const size_t large_cid_len,
                                      const uint8_t crc_packet)
 {
 	const size_t rohc_hdr_full_len = add_cid_len + large_cid_len + rohc_hdr_len;
-	const unsigned char *crc_table;
+	const uint8_t *crc_table;
 	const rohc_crc_type_t crc_type = ROHC_CRC_TYPE_8;
-	const unsigned char crc_zero[] = { 0x00 };
+	const uint8_t crc_zero[] = { 0x00 };
 	unsigned int crc_comp; /* computed CRC */
 
 	assert(decomp != NULL);
@@ -3542,7 +3542,7 @@ static const struct rohc_decomp_profile *
  * @return                    true in case of success, false in case of failure
  */
 static bool rohc_decomp_decode_cid(struct rohc_decomp *decomp,
-                                   const unsigned char *packet,
+                                   const uint8_t *packet,
                                    unsigned int len,
                                    rohc_cid_t *const cid,
                                    size_t *const add_cid_len,

@@ -104,15 +104,17 @@ void rohc_dump_packet(const rohc_trace_callback2_t trace_cb,
                       const rohc_trace_entity_t trace_entity,
                       const rohc_trace_level_t trace_level,
                       const char *const descr,
-                      const struct rohc_buf packet);
+                      const struct rohc_buf packet)
+	__attribute__((nonnull(5)));
 
 void rohc_dump_buf(const rohc_trace_callback2_t trace_cb,
                    void *const trace_cb_priv,
                    const rohc_trace_entity_t trace_entity,
                    const rohc_trace_level_t trace_level,
                    const char *const descr,
-                   const unsigned char *const packet,
-                   const size_t length);
+                   const uint8_t *const packet,
+                   const size_t length)
+	__attribute__((nonnull(5, 6)));
 
 #endif
 

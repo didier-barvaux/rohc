@@ -88,7 +88,7 @@ static bool d_tcp_parse_packet(const struct rohc_decomp_ctxt *const context,
                                size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 4, 5, 6, 7)));
 static bool d_tcp_parse_ir(const struct rohc_decomp_ctxt *const context,
-                           const unsigned char *const rohc_packet,
+                           const uint8_t *const rohc_packet,
                            const size_t rohc_length,
                            const size_t large_cid_len,
                            struct rohc_decomp_crc *const extr_crc,
@@ -96,7 +96,7 @@ static bool d_tcp_parse_ir(const struct rohc_decomp_ctxt *const context,
                            size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6, 7)));
 static bool d_tcp_parse_irdyn(const struct rohc_decomp_ctxt *const context,
-                              const unsigned char *const rohc_packet,
+                              const uint8_t *const rohc_packet,
                               const size_t rohc_length,
                               const size_t large_cid_len,
                               struct rohc_decomp_crc *const extr_crc,
@@ -104,7 +104,7 @@ static bool d_tcp_parse_irdyn(const struct rohc_decomp_ctxt *const context,
                               size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6, 7)));
 static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
-                           const unsigned char *const rohc_packet,
+                           const uint8_t *const rohc_packet,
                            const size_t rohc_length,
                            const size_t large_cid_len,
                            const rohc_packet_t packet_type,
@@ -635,7 +635,7 @@ static bool d_tcp_parse_packet(const struct rohc_decomp_ctxt *const context,
  *                           false if packet was malformed
  */
 static bool d_tcp_parse_ir(const struct rohc_decomp_ctxt *const context,
-                           const unsigned char *const rohc_packet,
+                           const uint8_t *const rohc_packet,
                            const size_t rohc_length,
                            const size_t large_cid_len,
                            struct rohc_decomp_crc *const extr_crc,
@@ -718,7 +718,7 @@ error:
  *                           false if packet was malformed
  */
 static bool d_tcp_parse_irdyn(const struct rohc_decomp_ctxt *const context,
-                              const unsigned char *const rohc_packet,
+                              const uint8_t *const rohc_packet,
                               const size_t rohc_length,
                               const size_t large_cid_len,
                               struct rohc_decomp_crc *const extr_crc,
@@ -821,7 +821,7 @@ error:
  *                           false if packet was malformed
  */
 static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
-                           const unsigned char *const rohc_packet,
+                           const uint8_t *const rohc_packet,
                            const size_t rohc_length,
                            const size_t large_cid_len,
                            const rohc_packet_t packet_type,
@@ -830,12 +830,12 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
                            size_t *const rohc_hdr_len)
 {
 	const size_t packed_rohc_packet_max_len = 0xffff + 100;
-	unsigned char *packed_rohc_packet = malloc(packed_rohc_packet_max_len); // TODO: change that
+	uint8_t *packed_rohc_packet = malloc(packed_rohc_packet_max_len); // TODO: change that
 	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
 	int ret;
 
 	/* remaining ROHC data not parsed yet */
-	const unsigned char *rohc_remain_data;
+	const uint8_t *rohc_remain_data;
 	size_t rohc_remain_len;
 
 	const ip_context_t *ip_inner_context;
@@ -850,7 +850,7 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 	assert(packet_type != ROHC_PACKET_UNKNOWN);
 
 #ifndef __clang_analyzer__ /* silent warning about value never read */
-	rohc_remain_data = (unsigned char *) rohc_packet;
+	rohc_remain_data = (uint8_t *) rohc_packet;
 #endif
 	rohc_remain_len = rohc_length;
 
@@ -3160,8 +3160,8 @@ static bool d_tcp_check_uncomp_crc(const struct rohc_decomp *const decomp,
                                    const rohc_crc_type_t crc_type,
                                    const uint8_t crc_packet)
 {
-	const unsigned char *crc_table;
-	unsigned int crc_computed;
+	const uint8_t *crc_table;
+	uint8_t crc_computed;
 
 	/* determine the initial value and the pre-computed table for the CRC */
 	switch(crc_type)

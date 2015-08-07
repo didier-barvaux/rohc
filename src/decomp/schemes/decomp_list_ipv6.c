@@ -36,7 +36,7 @@ static bool check_ip6_item(const struct list_decomp *const decomp,
                            const size_t index_table)
 	__attribute__((warn_unused_result, nonnull(1)));
 
-static int get_ip6_ext_size(const unsigned char *const data,
+static int get_ip6_ext_size(const uint8_t *const data,
                             const size_t data_len)
 	__attribute__((warn_unused_result, nonnull(1)));
 
@@ -46,7 +46,7 @@ static bool cmp_ipv6_ext(const struct rohc_list_item *const item,
                          const size_t ext_len)
 	__attribute__((warn_unused_result, nonnull(1, 3)));
 
-static bool create_ip6_item(const unsigned char *const data,
+static bool create_ip6_item(const uint8_t *const data,
                             const size_t length,
                             const size_t index_table,
                             struct list_decomp *const decomp)
@@ -54,7 +54,7 @@ static bool create_ip6_item(const unsigned char *const data,
 
 static size_t rohc_build_ip6_extension(const struct list_decomp *const decomp,
                                        const uint8_t ip_nh_type,
-                                       unsigned char *const dest)
+                                       uint8_t *const dest)
 	__attribute__((warn_unused_result, nonnull(1, 3)));
 
 
@@ -131,7 +131,7 @@ error:
  * @return          The size of the extension in case of success,
  *                  -1 otherwise
  */
-static int get_ip6_ext_size(const unsigned char *data, const size_t data_len)
+static int get_ip6_ext_size(const uint8_t *data, const size_t data_len)
 {
 	if(data_len < 2)
 	{
@@ -182,7 +182,7 @@ static bool cmp_ipv6_ext(const struct rohc_list_item *const item,
  * @param decomp       The list decompressor
  * @return             true in case of success, false otherwise
  */
-static bool create_ip6_item(const unsigned char *const data,
+static bool create_ip6_item(const uint8_t *const data,
                             const size_t length,
                             const size_t index_table,
                             struct list_decomp *const decomp)
@@ -232,7 +232,7 @@ error:
  */
 static size_t rohc_build_ip6_extension(const struct list_decomp *const decomp,
                                        const uint8_t ip_nh_type,
-                                       unsigned char *const dest)
+                                       uint8_t *const dest)
 {
 	size_t size = 0;
 	size_t i;

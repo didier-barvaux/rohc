@@ -461,7 +461,7 @@ static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
 
 static int c_tcp_encode(struct rohc_comp_ctxt *const context,
                         const struct net_pkt *const uncomp_pkt,
-                        unsigned char *const rohc_pkt,
+                        uint8_t *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
                         rohc_packet_t *const packet_type,
                         size_t *const payload_offset)
@@ -517,13 +517,13 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 static int tcp_code_static_part(struct rohc_comp_ctxt *const context,
                                 const struct ip_packet *const ip,
                                 const int packet_size __attribute__((unused)),
-                                unsigned char *const rohc_pkt,
+                                uint8_t *const rohc_pkt,
                                 const size_t rohc_pkt_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 static int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
                              const struct ip_packet *const ip,
                              const int packet_size __attribute__((unused)),
-                             unsigned char *const rohc_pkt,
+                             uint8_t *const rohc_pkt,
                              const size_t rohc_pkt_max_len __attribute__((unused)),
                              size_t *const parsed_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 6)));
@@ -563,7 +563,7 @@ static uint8_t * tcp_code_static_tcp_part(const struct rohc_comp_ctxt *context,
                                            const tcphdr_t *tcp,
                                            multi_ptr_t mptr);
 static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
-                                            const unsigned char *next_header,
+                                            const uint8_t *next_header,
                                             multi_ptr_t mptr);
 static uint8_t * tcp_code_irregular_tcp_part(struct rohc_comp_ctxt *const context,
                                              tcphdr_t *tcp,
@@ -573,7 +573,7 @@ static uint8_t * tcp_code_irregular_tcp_part(struct rohc_comp_ctxt *const contex
 static int code_IR_packet(struct rohc_comp_ctxt *const context,
                           const struct ip_packet *const ip,
                           const int packet_size,
-                          unsigned char *const rohc_pkt,
+                          uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
                           const rohc_packet_t packet_type,
                           size_t *const payload_offset)
@@ -582,7 +582,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 static int code_CO_packet(struct rohc_comp_ctxt *const context,
                           const struct ip_packet *ip,
                           const int packet_size,
-                          unsigned char *const rohc_pkt,
+                          uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
                           const rohc_packet_t packet_type,
                           size_t *const payload_offset);
@@ -590,7 +590,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
                          struct sc_tcp_context *const tcp_context,
                          ip_context_t *const ip_inner_context,
                          base_header_ip_t base_header,
-                         unsigned char *const rohc_pkt,
+                         uint8_t *const rohc_pkt,
                          const size_t rohc_pkt_max_len,
                          const rohc_packet_t packet_type,
                          const tcphdr_t *const tcp,
@@ -1794,7 +1794,7 @@ bad_context:
  */
 static int c_tcp_encode(struct rohc_comp_ctxt *const context,
                         const struct net_pkt *const uncomp_pkt,
-                        unsigned char *const rohc_pkt,
+                        uint8_t *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
                         rohc_packet_t *const packet_type,
                         size_t *const payload_offset)
@@ -1916,7 +1916,7 @@ error:
 static int code_IR_packet(struct rohc_comp_ctxt *const context,
                           const struct ip_packet *const ip,
                           const int packet_size __attribute__((unused)),
-                          unsigned char *const rohc_pkt,
+                          uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
                           const rohc_packet_t packet_type,
                           size_t *const payload_offset)
@@ -2039,7 +2039,7 @@ error:
 static int tcp_code_static_part(struct rohc_comp_ctxt *const context,
                                 const struct ip_packet *const ip,
                                 const int packet_size __attribute__((unused)),
-                                unsigned char *const rohc_pkt,
+                                uint8_t *const rohc_pkt,
                                 const size_t rohc_pkt_max_len __attribute__((unused)))
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
@@ -2127,7 +2127,7 @@ error:
 static int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
                              const struct ip_packet *const ip,
                              const int packet_size __attribute__((unused)),
-                             unsigned char *const rohc_pkt,
+                             uint8_t *const rohc_pkt,
                              const size_t rohc_pkt_max_len __attribute__((unused)),
                              size_t *const parsed_len)
 {
@@ -2716,7 +2716,7 @@ static uint8_t * tcp_code_static_tcp_part(const struct rohc_comp_ctxt *context,
 	rohc_dump_buf(context->compressor->trace_callback,
 	              context->compressor->trace_callback_priv,
 	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
-	              "TCP header", (unsigned char *) tcp, sizeof(tcphdr_t));
+	              "TCP header", (uint8_t *) tcp, sizeof(tcphdr_t));
 
 	mptr.tcp_static->src_port = tcp->src_port;
 	rohc_comp_debug(context, "TCP source port = %d (0x%04x)",
@@ -2752,7 +2752,7 @@ TODO
  * @return            The new pointer in the rohc-packet-under-build buffer
  */
 static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
-                                           const unsigned char *next_header,
+                                           const uint8_t *next_header,
                                            multi_ptr_t mptr)
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
@@ -2772,7 +2772,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 	rohc_comp_debug(context, "TCP begin = 0x%04x, res_flags = %d, "
 	                "data offset = %d, rsf_flags = %d, ecn_flags = %d, "
 	                "URG = %d, ACK = %d, PSH = %d",
-	                *(uint16_t*)(((unsigned char*)tcp) + 12),
+	                *(uint16_t*)(((uint8_t*)tcp) + 12),
 	                tcp->res_flags, tcp->data_offset, tcp->rsf_flags,
 	                tcp->ecn_flags, tcp->urg_flag, tcp->ack_flag,
 	                tcp->psh_flag);
@@ -2870,7 +2870,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 	rohc_dump_buf(context->compressor->trace_callback,
 	              context->compressor->trace_callback_priv,
 	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG, "TCP dynamic part",
-	              (unsigned char *) tcp_dynamic,
+	              (uint8_t *) tcp_dynamic,
 	              mptr.uint8 - (uint8_t *) tcp_dynamic);
 
 	return mptr.uint8;
@@ -3003,7 +3003,7 @@ static uint8_t * tcp_code_dynamic_tcp_part_opts(const struct rohc_comp_ctxt *con
 
 	/* encode items */
 	rohc_comp_debug(context, "list items:");
-	options = ((unsigned char *) tcp) + sizeof(tcphdr_t);
+	options = ((uint8_t *) tcp) + sizeof(tcphdr_t);
 	for(i = options_length; i > 0; )
 	{
 		uint8_t opt_type;
@@ -3442,7 +3442,7 @@ static uint8_t * c_tcp_opt_sack(const struct rohc_comp_ctxt *const context,
 	rohc_dump_buf(context->compressor->trace_callback,
 	              context->compressor->trace_callback_priv,
 	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG, "TCP option SACK",
-	              (unsigned char *) sack_block, length - 2);
+	              (uint8_t *) sack_block, length - 2);
 
 	// Calculate number of sack_block
 	i = (length - 2) >> 3;
@@ -4067,7 +4067,7 @@ error:
 static int code_CO_packet(struct rohc_comp_ctxt *const context,
                           const struct ip_packet *ip,
                           const int packet_size __attribute__((unused)),
-                          unsigned char *const rohc_pkt,
+                          uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
                           const rohc_packet_t packet_type,
                           size_t *const payload_offset)
@@ -4354,7 +4354,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 								 struct sc_tcp_context *const tcp_context,
 								 ip_context_t *const ip_context,
 								 base_header_ip_t base_header,
-								 unsigned char *const rohc_pkt,
+								 uint8_t *const rohc_pkt,
 								 const size_t rohc_pkt_max_len __attribute__((unused)), /* TODO */
                          const rohc_packet_t packet_type,
                          const tcphdr_t *const tcp,
@@ -6186,7 +6186,7 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	rohc_comp_debug(context, "TCP begin = 0x%04x, res_flags = %d, "
 	                "data offset = %d, rsf_flags = %d, ecn_flags = %d, "
 	                "URG = %d, ACK = %d, PSH = %d",
-	                *(uint16_t *)(((unsigned char *) tcp) + 12),
+	                *(uint16_t *)(((uint8_t *) tcp) + 12),
 	                tcp->res_flags, tcp->data_offset, tcp->rsf_flags,
 	                tcp->ecn_flags, tcp->urg_flag, tcp->ack_flag,
 	                tcp->psh_flag);

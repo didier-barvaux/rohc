@@ -46,14 +46,14 @@ bool c_udp_check_context(const struct rohc_comp_ctxt *context,
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 size_t udp_code_uo_remainder(const struct rohc_comp_ctxt *context,
-                             const unsigned char *next_header,
-                             unsigned char *const dest,
+                             const uint8_t *next_header,
+                             uint8_t *const dest,
                              const size_t counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 size_t udp_code_static_udp_part(const struct rohc_comp_ctxt *const context,
-                                const unsigned char *const next_header,
-                                unsigned char *const dest,
+                                const uint8_t *const next_header,
+                                uint8_t *const dest,
                                 const size_t counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 

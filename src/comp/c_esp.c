@@ -80,7 +80,7 @@ static bool c_esp_check_context(const struct rohc_comp_ctxt *const context,
 
 static int c_esp_encode(struct rohc_comp_ctxt *const context,
                         const struct net_pkt *const packet,
-                        unsigned char *const rohc_pkt,
+                        uint8_t *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
                         rohc_packet_t *const packet_type,
                         size_t *const payload_offset)
@@ -91,14 +91,14 @@ static uint32_t c_esp_get_next_sn(const struct rohc_comp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static size_t esp_code_static_esp_part(const struct rohc_comp_ctxt *const context,
-                                       const unsigned char *const next_header,
-                                       unsigned char *const dest,
+                                       const uint8_t *const next_header,
+                                       uint8_t *const dest,
                                        const size_t counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static size_t esp_code_dynamic_esp_part(const struct rohc_comp_ctxt *const context,
-                                        const unsigned char *const next_header,
-                                        unsigned char *const dest,
+                                        const uint8_t *const next_header,
+                                        uint8_t *const dest,
                                         const size_t counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
@@ -320,7 +320,7 @@ bad_context:
  */
 static int c_esp_encode(struct rohc_comp_ctxt *const context,
                         const struct net_pkt *const uncomp_pkt,
-                        unsigned char *const rohc_pkt,
+                        uint8_t *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
                         rohc_packet_t *const packet_type,
                         size_t *const payload_offset)
@@ -405,8 +405,8 @@ static uint32_t c_esp_get_next_sn(const struct rohc_comp_ctxt *const context __a
  * @return            The new position in the rohc-packet-under-build buffer
  */
 static size_t esp_code_static_esp_part(const struct rohc_comp_ctxt *const context,
-                                       const unsigned char *const next_header,
-                                       unsigned char *const dest,
+                                       const uint8_t *const next_header,
+                                       uint8_t *const dest,
                                        const size_t counter)
 {
 	const struct esphdr *const esp = (struct esphdr *) next_header;
@@ -441,8 +441,8 @@ static size_t esp_code_static_esp_part(const struct rohc_comp_ctxt *const contex
  * @return            The new position in the rohc-packet-under-build buffer
  */
 static size_t esp_code_dynamic_esp_part(const struct rohc_comp_ctxt *const context,
-                                        const unsigned char *const next_header,
-                                        unsigned char *const dest,
+                                        const uint8_t *const next_header,
+                                        uint8_t *const dest,
                                         const size_t counter)
 {
 	const struct esphdr *const esp = (struct esphdr *) next_header;

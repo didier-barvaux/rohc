@@ -143,6 +143,11 @@ static struct rohc_comp_ctxt *
  * Prototypes of private functions related to ROHC feedback
  */
 
+static bool __rohc_comp_deliver_feedback(struct rohc_comp *const comp,
+                                         const uint8_t *const packet,
+                                         const size_t size)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
+
 static bool rohc_comp_feedback_parse_cid(const struct rohc_comp *const comp,
                                          const uint8_t *const feedback,
                                          const size_t feedback_len,
@@ -1794,9 +1799,9 @@ error:
  * @return       true if the feedback was successfully taken into account,
  *               false if the feedback could not be taken into account
  */
-bool __rohc_comp_deliver_feedback(struct rohc_comp *const comp,
-                                  const uint8_t *const packet,
-                                  const size_t size)
+static bool __rohc_comp_deliver_feedback(struct rohc_comp *const comp,
+                                         const uint8_t *const packet,
+                                         const size_t size)
 {
 	struct rohc_comp_ctxt *context;
 	const uint8_t *remain_data = packet;

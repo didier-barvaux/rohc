@@ -37,7 +37,7 @@
 
 int code_cid_values(const rohc_cid_type_t cid_type,
                     const int cid,
-                    unsigned char *const dest,
+                    uint8_t *const dest,
                     const size_t dest_size,
                     size_t *const first_position)
 	__attribute__((warn_unused_result, nonnull(3, 5)));

@@ -486,7 +486,7 @@ uint32_t c_ip_get_next_sn(const struct rohc_comp_ctxt *const context,
  *                      -1 in case of failure
  */
 int c_ip_code_ir_remainder(const struct rohc_comp_ctxt *const context,
-                           unsigned char *const dest,
+                           uint8_t *const dest,
                            const size_t dest_max_len,
                            const size_t counter)
 {

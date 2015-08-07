@@ -113,52 +113,52 @@ static rohc_ext_t decide_extension_uo1id(const struct rohc_comp_ctxt *const cont
 
 static int code_packet(struct rohc_comp_ctxt *const context,
                        const struct net_pkt *const uncomp_pkt,
-                       unsigned char *const rohc_pkt,
+                       uint8_t *const rohc_pkt,
                        const size_t rohc_pkt_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int code_IR_packet(struct rohc_comp_ctxt *const context,
                           const struct net_pkt *const uncomp_pkt,
-                          unsigned char *const rohc_pkt,
+                          uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int code_IR_DYN_packet(struct rohc_comp_ctxt *const context,
                               const struct net_pkt *const uncomp_pkt,
-                              unsigned char *const rohc_pkt,
+                              uint8_t *const rohc_pkt,
                               const size_t rohc_pkt_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int rohc_code_static_part(const struct rohc_comp_ctxt *const context,
                                  const struct net_pkt *const uncomp_pkt,
-                                 unsigned char *const rohc_pkt,
+                                 uint8_t *const rohc_pkt,
                                  int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int rohc_code_static_ip_part(const struct rohc_comp_ctxt *const context,
                                     struct ip_header_info *const header_info,
                                     const struct ip_packet *const ip,
-                                    unsigned char *const dest,
+                                    uint8_t *const dest,
                                     int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 
 static int code_ipv4_static_part(const struct rohc_comp_ctxt *const context,
                                  struct ip_header_info *const header_info,
                                  const struct ip_packet *const ip,
-                                 unsigned char *const dest,
+                                 uint8_t *const dest,
                                  int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 
 static int code_ipv6_static_part(const struct rohc_comp_ctxt *const context,
                                  struct ip_header_info *const header_info,
                                  const struct ip_packet *const ip,
-                                 unsigned char *const dest,
+                                 uint8_t *const dest,
                                  int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 
 static int rohc_code_dynamic_part(const struct rohc_comp_ctxt *const context,
                                   const struct net_pkt *const uncomp_pkt,
-                                  unsigned char *const rohc_pkt,
+                                  uint8_t *const rohc_pkt,
                                   int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
@@ -166,14 +166,14 @@ static int rohc_code_dynamic_ip_part(const struct rohc_comp_ctxt *const context,
                                      const unsigned int hdr_pos,
                                      struct ip_header_info *const header_info,
                                      const struct ip_packet *const ip,
-                                     unsigned char *const dest,
+                                     uint8_t *const dest,
                                      int counter)
 	__attribute__((warn_unused_result, nonnull(1, 3, 4, 5)));
 
 static int code_ipv4_dynamic_part(const struct rohc_comp_ctxt *const context,
                                   struct ip_header_info *const header_info,
                                   const struct ip_packet *const ip,
-                                  unsigned char *const dest,
+                                  uint8_t *const dest,
                                   int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 
@@ -181,19 +181,19 @@ static int code_ipv6_dynamic_part(const struct rohc_comp_ctxt *const context,
                                   const unsigned int hdr_pos,
                                   struct ip_header_info *const header_info,
                                   const struct ip_packet *const ip,
-                                  unsigned char *const dest,
+                                  uint8_t *const dest,
                                   int counter)
 	__attribute__((warn_unused_result, nonnull(1, 3, 4, 5)));
 
 static int code_uo_remainder(struct rohc_comp_ctxt *const context,
                              const struct net_pkt *const uncomp_pkt,
-                             unsigned char *const dest,
+                             uint8_t *const dest,
                              int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int code_UO0_packet(struct rohc_comp_ctxt *const context,
                            const struct net_pkt *const uncomp_pkt,
-                           unsigned char *const rohc_pkt,
+                           uint8_t *const rohc_pkt,
                            const size_t rohc_pkt_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
@@ -220,72 +220,72 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 
 static int code_UO2_packet(struct rohc_comp_ctxt *const context,
                            const struct net_pkt *const uncomp_pkt,
-                           unsigned char *const rohc_pkt,
+                           uint8_t *const rohc_pkt,
                            const size_t rohc_pkt_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int code_UOR2_bytes(const struct rohc_comp_ctxt *const context,
                            const rohc_ext_t extension,
-                           unsigned char *const f_byte,
-                           unsigned char *const s_byte,
-                           unsigned char *const t_byte)
+                           uint8_t *const f_byte,
+                           uint8_t *const s_byte,
+                           uint8_t *const t_byte)
 	__attribute__((warn_unused_result, nonnull(1, 3, 4, 5)));
 
 static int code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
                                const rohc_ext_t extension,
-                               unsigned char *const f_byte,
-                               unsigned char *const s_byte,
-                               unsigned char *const t_byte)
+                               uint8_t *const f_byte,
+                               uint8_t *const s_byte,
+                               uint8_t *const t_byte)
 	__attribute__((warn_unused_result, nonnull(1, 3, 4, 5)));
 
 static int code_UOR2_TS_bytes(const struct rohc_comp_ctxt *const context,
                               const rohc_ext_t extension,
-                              unsigned char *const f_byte,
-                              unsigned char *const s_byte,
-                              unsigned char *const t_byte)
+                              uint8_t *const f_byte,
+                              uint8_t *const s_byte,
+                              uint8_t *const t_byte)
 	__attribute__((warn_unused_result, nonnull(1, 3, 4, 5)));
 
 static int code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
                               const rohc_ext_t extension,
-                              unsigned char *const f_byte,
-                              unsigned char *const s_byte,
-                              unsigned char *const t_byte)
+                              uint8_t *const f_byte,
+                              uint8_t *const s_byte,
+                              uint8_t *const t_byte)
 	__attribute__((warn_unused_result, nonnull(1, 3, 4, 5)));
 
 static int code_EXT0_packet(const struct rohc_comp_ctxt *const context,
-                            unsigned char *const dest,
+                            uint8_t *const dest,
                             int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int code_EXT1_packet(const struct rohc_comp_ctxt *const context,
-                            unsigned char *const dest,
+                            uint8_t *const dest,
                             int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int code_EXT2_packet(const struct rohc_comp_ctxt *const context,
-                            unsigned char *const dest,
+                            uint8_t *const dest,
                             int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int code_EXT3_packet(struct rohc_comp_ctxt *const context,
                             const struct net_pkt *const uncomp_pkt,
-                            unsigned char *const dest,
+                            uint8_t *const dest,
                             int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 static int code_EXT3_rtp_packet(struct rohc_comp_ctxt *const context,
                                 const struct net_pkt *const uncomp_pkt,
-                                unsigned char *const dest,
+                                uint8_t *const dest,
                                 int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 static int code_EXT3_nortp_packet(struct rohc_comp_ctxt *const context,
                                   const struct net_pkt *const uncomp_pkt,
-                                  unsigned char *const dest,
+                                  uint8_t *const dest,
                                   int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int rtp_header_flags_and_fields(const struct rohc_comp_ctxt *const context,
                                        const struct ip_packet *const ip,
-                                       unsigned char *const dest,
+                                       uint8_t *const dest,
                                        int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
@@ -294,7 +294,7 @@ static int header_flags(const struct rohc_comp_ctxt *const context,
                         const unsigned short changed_f,
                         const struct ip_packet *const ip,
                         const int ip2_or_I2,
-                        unsigned char *const dest,
+                        uint8_t *const dest,
                         int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 6)));
 
@@ -304,7 +304,7 @@ static int header_fields(const struct rohc_comp_ctxt *const context,
                          const struct ip_packet *ip,
                          const int I,
                          const ip_header_pos_t ip_hdr_pos,
-                         unsigned char *const dest,
+                         uint8_t *const dest,
                          int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 7)));
 
@@ -312,7 +312,7 @@ static uint8_t compute_uo_crc(const struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt,
                               const struct net_pkt *const uncomp_pkt,
                               const rohc_crc_type_t crc_type,
                               const uint8_t crc_init,
-                              const unsigned char *const crc_table)
+                              const uint8_t *const crc_table)
 	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
 
 static void update_context(struct rohc_comp_ctxt *const context,
@@ -825,7 +825,7 @@ bad_profile:
  */
 int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
                              const struct net_pkt *const uncomp_pkt,
-                             unsigned char *const rohc_pkt,
+                             uint8_t *const rohc_pkt,
                              const size_t rohc_pkt_max_len,
                              rohc_packet_t *const packet_type,
                              size_t *const payload_offset)
@@ -1555,13 +1555,13 @@ error:
  */
 int code_packet(struct rohc_comp_ctxt *const context,
                 const struct net_pkt *const uncomp_pkt,
-                unsigned char *const rohc_pkt,
+                uint8_t *const rohc_pkt,
                 const size_t rohc_pkt_max_len)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	int (*code_packet_type)(struct rohc_comp_ctxt *const _context,
 	                        const struct net_pkt *const _uncomp_pkt,
-	                        unsigned char *const _rohc_pkt,
+	                        uint8_t *const _rohc_pkt,
 	                        const size_t _rohc_pkt_max_len)
 		__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
@@ -1660,12 +1660,12 @@ error:
  */
 static int code_IR_packet(struct rohc_comp_ctxt *const context,
                           const struct net_pkt *const uncomp_pkt,
-                          unsigned char *const rohc_pkt,
+                          uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	int nr_of_ip_hdr;
-	unsigned char type;
+	uint8_t type;
 	size_t counter;
 	size_t first_position;
 	int crc_position;
@@ -1832,7 +1832,7 @@ error:
  */
 static int code_IR_DYN_packet(struct rohc_comp_ctxt *const context,
                               const struct net_pkt *const uncomp_pkt,
-                              unsigned char *const rohc_pkt,
+                              uint8_t *const rohc_pkt,
                               const size_t rohc_pkt_max_len)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
@@ -1944,7 +1944,7 @@ error:
  */
 static int rohc_code_static_part(const struct rohc_comp_ctxt *const context,
                                  const struct net_pkt *const uncomp_pkt,
-                                 unsigned char *const rohc_pkt,
+                                 uint8_t *const rohc_pkt,
                                  int counter)
 {
 	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
@@ -2005,7 +2005,7 @@ error:
 static int rohc_code_static_ip_part(const struct rohc_comp_ctxt *const context,
                                     struct ip_header_info *const header_info,
                                     const struct ip_packet *const ip,
-                                    unsigned char *const dest,
+                                    uint8_t *const dest,
                                     int counter)
 {
 	if(ip_get_version(ip) == IPV4)
@@ -2052,7 +2052,7 @@ static int rohc_code_static_ip_part(const struct rohc_comp_ctxt *const context,
 static int code_ipv4_static_part(const struct rohc_comp_ctxt *const context,
                                  struct ip_header_info *const header_info,
                                  const struct ip_packet *const ip,
-                                 unsigned char *const dest,
+                                 uint8_t *const dest,
                                  int counter)
 {
 	uint8_t protocol;
@@ -2120,7 +2120,7 @@ static int code_ipv4_static_part(const struct rohc_comp_ctxt *const context,
 static int code_ipv6_static_part(const struct rohc_comp_ctxt *const context,
                                  struct ip_header_info *const header_info,
                                  const struct ip_packet *const ip,
-                                 unsigned char *const dest,
+                                 uint8_t *const dest,
                                  int counter)
 {
 	unsigned int flow_label;
@@ -2179,7 +2179,7 @@ static int code_ipv6_static_part(const struct rohc_comp_ctxt *const context,
  */
 static int rohc_code_dynamic_part(const struct rohc_comp_ctxt *const context,
                                   const struct net_pkt *const uncomp_pkt,
-                                  unsigned char *const rohc_pkt,
+                                  uint8_t *const rohc_pkt,
                                   int counter)
 {
 	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
@@ -2250,7 +2250,7 @@ static int rohc_code_dynamic_ip_part(const struct rohc_comp_ctxt *const context,
                                      const unsigned int hdr_pos,
                                      struct ip_header_info *const header_info,
                                      const struct ip_packet *const ip,
-                                     unsigned char *const dest,
+                                     uint8_t *const dest,
                                      int counter)
 {
 	if(ip_get_version(ip) == IPV4)
@@ -2299,13 +2299,13 @@ static int rohc_code_dynamic_ip_part(const struct rohc_comp_ctxt *const context,
 static int code_ipv4_dynamic_part(const struct rohc_comp_ctxt *const context,
                                   struct ip_header_info *const header_info,
                                   const struct ip_packet *const ip,
-                                  unsigned char *const dest,
+                                  uint8_t *const dest,
                                   int counter)
 {
 	unsigned int tos;
 	unsigned int ttl;
 	unsigned int df;
-	unsigned char df_rnd_nbo_sid;
+	uint8_t df_rnd_nbo_sid;
 	uint16_t id;
 
 	/* part 1 */
@@ -2399,7 +2399,7 @@ static int code_ipv6_dynamic_part(const struct rohc_comp_ctxt *const context,
                                   const unsigned int hdr_pos,
                                   struct ip_header_info *const header_info,
                                   const struct ip_packet *const ip,
-                                  unsigned char *const dest,
+                                  uint8_t *const dest,
                                   int counter)
 {
 	unsigned int tos;
@@ -2532,7 +2532,7 @@ error:
  */
 static int code_uo_remainder(struct rohc_comp_ctxt *const context,
                              const struct net_pkt *const uncomp_pkt,
-                             unsigned char *const dest,
+                             uint8_t *const dest,
                              int counter)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
@@ -2614,12 +2614,12 @@ static int code_uo_remainder(struct rohc_comp_ctxt *const context,
  */
 static int code_UO0_packet(struct rohc_comp_ctxt *const context,
                            const struct net_pkt *const uncomp_pkt,
-                           unsigned char *const rohc_pkt,
+                           uint8_t *const rohc_pkt,
                            const size_t rohc_pkt_max_len)
 {
 	size_t counter;
 	size_t first_position;
-	unsigned char f_byte;
+	uint8_t f_byte;
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	uint8_t crc;
 	int ret;
@@ -3549,12 +3549,12 @@ error:
  */
 static int code_UO2_packet(struct rohc_comp_ctxt *const context,
                            const struct net_pkt *const uncomp_pkt,
-                           unsigned char *const rohc_pkt,
+                           uint8_t *const rohc_pkt,
                            const size_t rohc_pkt_max_len)
 {
-	unsigned char f_byte;     /* part 2 */
-	unsigned char s_byte = 0; /* part 4 */
-	unsigned char t_byte = 0; /* part 5 */
+	uint8_t f_byte;     /* part 2 */
+	uint8_t s_byte = 0; /* part 4 */
+	uint8_t t_byte = 0; /* part 5 */
 	size_t counter;
 	size_t first_position;
 	size_t s_byte_position = 0;
@@ -3565,9 +3565,9 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 	int is_rtp;
 	int (*code_bytes)(const struct rohc_comp_ctxt *_context,
 	                  const rohc_ext_t _extension,
-	                  unsigned char *const _f_byte,
-	                  unsigned char *const _s_byte,
-	                  unsigned char *const _t_byte);
+	                  uint8_t *const _f_byte,
+	                  uint8_t *const _s_byte,
+	                  uint8_t *const _t_byte);
 	int ret;
 
 	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
@@ -3755,9 +3755,9 @@ error:
  */
 static int code_UOR2_bytes(const struct rohc_comp_ctxt *const context,
                            const rohc_ext_t extension,
-                           unsigned char *const f_byte,
-                           unsigned char *const s_byte __attribute__((unused)),
-                           unsigned char *const t_byte)
+                           uint8_t *const f_byte,
+                           uint8_t *const s_byte __attribute__((unused)),
+                           uint8_t *const t_byte)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 
@@ -3888,9 +3888,9 @@ error:
  */
 static int code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
                                const rohc_ext_t extension,
-                               unsigned char *const f_byte,
-                               unsigned char *const s_byte,
-                               unsigned char *const t_byte)
+                               uint8_t *const f_byte,
+                               uint8_t *const s_byte,
+                               uint8_t *const t_byte)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	struct sc_rtp_context *rtp_context;
@@ -4138,9 +4138,9 @@ error:
  */
 static int code_UOR2_TS_bytes(const struct rohc_comp_ctxt *const context,
                               const rohc_ext_t extension,
-                              unsigned char *const f_byte,
-                              unsigned char *const s_byte,
-                              unsigned char *const t_byte)
+                              uint8_t *const f_byte,
+                              uint8_t *const s_byte,
+                              uint8_t *const t_byte)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	struct sc_rtp_context *rtp_context;
@@ -4399,9 +4399,9 @@ error:
  */
 static int code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
                               const rohc_ext_t extension,
-                              unsigned char *const f_byte,
-                              unsigned char *const s_byte,
-                              unsigned char *const t_byte)
+                              uint8_t *const f_byte,
+                              uint8_t *const s_byte,
+                              uint8_t *const t_byte)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	struct sc_rtp_context *rtp_context;
@@ -4650,11 +4650,11 @@ error:
  *                 if successful, -1 otherwise
  */
 static int code_EXT0_packet(const struct rohc_comp_ctxt *const context,
-                            unsigned char *const dest,
+                            uint8_t *const dest,
                             int counter)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	unsigned char f_byte;
+	uint8_t f_byte;
 	rohc_packet_t packet_type;
 
 	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
@@ -4751,13 +4751,13 @@ error:
  *                 if successful, -1 otherwise
  */
 static int code_EXT1_packet(const struct rohc_comp_ctxt *const context,
-                            unsigned char *const dest,
+                            uint8_t *const dest,
                             int counter)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	rohc_packet_t packet_type;
-	unsigned char f_byte;
-	unsigned char s_byte;
+	uint8_t f_byte;
+	uint8_t s_byte;
 
 	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
 	packet_type = rfc3095_ctxt->tmp.packet_type;
@@ -4911,14 +4911,14 @@ error:
  *                 if successful, -1 otherwise
  */
 static int code_EXT2_packet(const struct rohc_comp_ctxt *const context,
-                            unsigned char *const dest,
+                            uint8_t *const dest,
                             int counter)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	rohc_packet_t packet_type;
-	unsigned char f_byte;
-	unsigned char s_byte;
-	unsigned char t_byte;
+	uint8_t f_byte;
+	uint8_t s_byte;
+	uint8_t t_byte;
 
 	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
 	packet_type = rfc3095_ctxt->tmp.packet_type;
@@ -5063,7 +5063,7 @@ error:
  */
 static int code_EXT3_packet(struct rohc_comp_ctxt *const context,
                             const struct net_pkt *const uncomp_pkt,
-                            unsigned char *const dest,
+                            uint8_t *const dest,
                             int counter)
 {
 	if(context->profile->id == ROHC_PROFILE_RTP)
@@ -5124,7 +5124,7 @@ static int code_EXT3_packet(struct rohc_comp_ctxt *const context,
  */
 static int code_EXT3_rtp_packet(struct rohc_comp_ctxt *const context,
                                 const struct net_pkt *const uncomp_pkt,
-                                unsigned char *const dest,
+                                uint8_t *const dest,
                                 int counter)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt; /* TODO: const */
@@ -5452,7 +5452,7 @@ error:
  */
 static int code_EXT3_nortp_packet(struct rohc_comp_ctxt *const context,
                                   const struct net_pkt *const uncomp_pkt,
-                                  unsigned char *const dest,
+                                  uint8_t *const dest,
                                   int counter)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt; /* TODO: const */
@@ -5672,7 +5672,7 @@ static int code_EXT3_nortp_packet(struct rohc_comp_ctxt *const context,
  */
 static int rtp_header_flags_and_fields(const struct rohc_comp_ctxt *const context,
                                        const struct ip_packet *const ip,
-                                       unsigned char *const dest,
+                                       uint8_t *const dest,
                                        int counter)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
@@ -5681,7 +5681,7 @@ static int rtp_header_flags_and_fields(const struct rohc_comp_ctxt *const contex
 	struct rtphdr *rtp;
 	int tss;
 	int rpt;
-	unsigned char byte;
+	uint8_t byte;
 
 	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
 	rtp_context = (struct sc_rtp_context *) rfc3095_ctxt->specific;
@@ -5825,7 +5825,7 @@ static int header_flags(const struct rohc_comp_ctxt *const context,
                         const unsigned short changed_f,
                         const struct ip_packet *const ip,
                         const int ip2_or_I2,
-                        unsigned char *const dest,
+                        uint8_t *const dest,
                         int counter)
 {
 	int flags = 0;
@@ -5933,7 +5933,7 @@ static int header_fields(const struct rohc_comp_ctxt *const context,
                          const struct ip_packet *const ip,
                          const int I,
                          const ip_header_pos_t ip_hdr_pos,
-                         unsigned char *const dest,
+                         uint8_t *const dest,
                          int counter)
 {
 	unsigned int tos;
@@ -6007,7 +6007,7 @@ static uint8_t compute_uo_crc(const struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt,
                               const struct net_pkt *const uncomp_pkt,
                               const rohc_crc_type_t crc_type,
                               const uint8_t crc_init,
-                              const unsigned char *const crc_table)
+                              const uint8_t *const crc_table)
 {
 	const uint8_t *outer_ip_hdr;
 	const uint8_t *inner_ip_hdr;

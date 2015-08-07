@@ -41,7 +41,7 @@
 
 
 static int tcp_parse_static_ip(const struct rohc_decomp_ctxt *const context,
-                               const unsigned char *const rohc_packet,
+                               const uint8_t *const rohc_packet,
                                const size_t rohc_length,
                                struct rohc_tcp_extr_ip_bits *const ip_bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
@@ -50,12 +50,12 @@ static int tcp_parse_static_ipv6_option(const struct rohc_decomp_ctxt *const con
                                         struct rohc_tcp_extr_ip_bits *const ip_bits,
                                         ipv6_option_context_t *const opt_context,
                                         const uint8_t protocol,
-                                        const unsigned char *const rohc_packet,
+                                        const uint8_t *const rohc_packet,
                                         const size_t rohc_length)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
 static int tcp_parse_static_tcp(const struct rohc_decomp_ctxt *const context,
-                                const unsigned char *const rohc_packet,
+                                const uint8_t *const rohc_packet,
                                 const size_t rohc_length,
                                 struct rohc_tcp_extr_bits *const bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
@@ -153,7 +153,7 @@ error:
  *                      -1 if an error occurs
  */
 static int tcp_parse_static_ip(const struct rohc_decomp_ctxt *const context,
-                               const unsigned char *const rohc_packet,
+                               const uint8_t *const rohc_packet,
                                const size_t rohc_length,
                                struct rohc_tcp_extr_ip_bits *const ip_bits)
 {
@@ -323,7 +323,7 @@ static int tcp_parse_static_ipv6_option(const struct rohc_decomp_ctxt *const con
                                         struct rohc_tcp_extr_ip_bits *const ip_bits,
                                         ipv6_option_context_t *const opt_context,
                                         const uint8_t protocol,
-                                        const unsigned char *const rohc_packet,
+                                        const uint8_t *const rohc_packet,
                                         const size_t rohc_length)
 {
 	const ip_opt_static_t *ip_opt_static;
@@ -450,7 +450,7 @@ error:
  *                     -1 in case of failure
  */
 static int tcp_parse_static_tcp(const struct rohc_decomp_ctxt *const context,
-                                const unsigned char *const rohc_packet,
+                                const uint8_t *const rohc_packet,
                                 const size_t rohc_length,
                                 struct rohc_tcp_extr_bits *const bits)
 {

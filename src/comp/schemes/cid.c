@@ -58,7 +58,7 @@ static uint8_t c_add_cid(const int cid)
  */
 int code_cid_values(const rohc_cid_type_t cid_type,
                     const int cid,
-                    unsigned char *const dest,
+                    uint8_t *const dest,
                     const size_t dest_size,
                     size_t *const first_position)
 {

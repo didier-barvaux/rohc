@@ -365,7 +365,7 @@ struct rohc_decomp_rfc3095_ctxt
 	/// @brief The handler used to parse the static part of the next header
 	///        in the ROHC packet
 	int (*parse_static_next_hdr)(const struct rohc_decomp_ctxt *const context,
-	                             const unsigned char *packet,
+	                             const uint8_t *packet,
 	                             size_t length,
 	                             struct rohc_extr_bits *const bits);
 
@@ -390,7 +390,7 @@ struct rohc_decomp_rfc3095_ctxt
 	 *                          -1 in case of error
 	 */
 	int (*parse_ext3)(const struct rohc_decomp_ctxt *const context,
-	                  const unsigned char *const rohc_data,
+	                  const uint8_t *const rohc_data,
 	                  const size_t rohc_data_len,
 	                  const rohc_packet_t packet_type,
 	                  struct rohc_extr_bits *const bits)
@@ -398,7 +398,7 @@ struct rohc_decomp_rfc3095_ctxt
 
 	/// The handler used to parse the tail of the UO* ROHC packet
 	int (*parse_uo_remainder)(const struct rohc_decomp_ctxt *const context,
-	                          const unsigned char *packet,
+	                          const uint8_t *packet,
 	                          unsigned int length,
 	                          struct rohc_extr_bits *const bits);
 
@@ -411,7 +411,7 @@ struct rohc_decomp_rfc3095_ctxt
 	/** The handler used to build the uncompressed next header */
 	int (*build_next_header)(const struct rohc_decomp_ctxt *const context,
 	                         const struct rohc_decoded_values *const decoded,
-	                         unsigned char *dest,
+	                         uint8_t *const dest,
 	                         const unsigned int payload_len);
 
 	/// @brief The handler used to compute the CRC-STATIC value

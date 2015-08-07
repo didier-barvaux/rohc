@@ -220,7 +220,7 @@ struct rohc_comp_rfc3095_ctxt
 
 	/// The handler used to initialize some data just before the IR packet build
 	void (*init_at_IR)(struct rohc_comp_ctxt *const context,
-	                   const unsigned char *const next_header);
+	                   const uint8_t *const next_header);
 
 	/** Determine the next SN value */
 	uint32_t (*get_next_sn)(const struct rohc_comp_ctxt *const context,
@@ -230,23 +230,23 @@ struct rohc_comp_rfc3095_ctxt
 	/// @brief The handler used to add the static part of the next header to the
 	///        ROHC packet
 	size_t (*code_static_part)(const struct rohc_comp_ctxt *const context,
-	                           const unsigned char *const next_header,
-	                           unsigned char *const dest,
+	                           const uint8_t *const next_header,
+	                           uint8_t *const dest,
 	                           const size_t counter)
 		__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 	/// @brief The handler used to add the dynamic part of the next header to the
 	///        ROHC pachet
 	size_t (*code_dynamic_part)(const struct rohc_comp_ctxt *const context,
-	                            const unsigned char *const next_header,
-	                            unsigned char *const dest,
+	                            const uint8_t *const next_header,
+	                            uint8_t *const dest,
 	                            const size_t counter)
 		__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 	/// @brief The handler used to add the IR/IR-DYN remainder header to the
 	///        ROHC pachet
 	int (*code_ir_remainder)(const struct rohc_comp_ctxt *const context,
-	                         unsigned char *const dest,
+	                         uint8_t *const dest,
 	                         const size_t dest_max_len,
 	                         const size_t counter)
 		__attribute__((warn_unused_result, nonnull(1, 2)));
@@ -254,8 +254,8 @@ struct rohc_comp_rfc3095_ctxt
 	/// @brief The handler used to add an additional header in the head of the
 	///        UO-0, UO-1 and UO-2 packets
 	size_t (*code_UO_packet_head)(const struct rohc_comp_ctxt *const context,
-	                              const unsigned char *const next_header,
-	                              unsigned char *const dest,
+	                              const uint8_t *const next_header,
+	                              uint8_t *const dest,
 	                              const size_t counter,
 	                              size_t *const first_position)
 		__attribute__((warn_unused_result, nonnull(1,2, 3, 5)));
@@ -263,8 +263,8 @@ struct rohc_comp_rfc3095_ctxt
 	/// @brief The handler used to add an additional header in the tail of the
 	///        UO-0, UO-1 and UO-2 packets
 	size_t (*code_uo_remainder)(const struct rohc_comp_ctxt *const context,
-	                            const unsigned char *const next_header,
-	                            unsigned char *const dest,
+	                            const uint8_t *const next_header,
+	                            uint8_t *const dest,
 	                            const size_t counter)
 		__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
@@ -312,7 +312,7 @@ rohc_ext_t decide_extension(const struct rohc_comp_ctxt *const context)
 
 int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
                              const struct net_pkt *const uncomp_pkt,
-                             unsigned char *const rohc_pkt,
+                             uint8_t *const rohc_pkt,
                              const size_t rohc_pkt_max_len,
                              rohc_packet_t *const packet_type,
                              size_t *const payload_offset)

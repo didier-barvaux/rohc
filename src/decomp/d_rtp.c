@@ -96,7 +96,7 @@ static rohc_packet_t rtp_choose_uor2_variant(const struct rohc_decomp_ctxt *cons
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int rtp_parse_static_rtp(const struct rohc_decomp_ctxt *const context,
-                                const unsigned char *packet,
+                                const uint8_t *packet,
                                 size_t length,
                                 struct rohc_extr_bits *const bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
@@ -107,7 +107,7 @@ static int rtp_parse_dynamic_rtp(const struct rohc_decomp_ctxt *const context,
                                  struct rohc_extr_bits *const bits);
 
 static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
-                          const unsigned char *const rohc_data,
+                          const uint8_t *const rohc_data,
                           const size_t rohc_data_len,
                           const rohc_packet_t packet_type,
                           struct rohc_extr_bits *const bits)
@@ -124,7 +124,7 @@ static int rtp_parse_rtp_hdr_fields(const struct rohc_decomp_ctxt *const context
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
 static int rtp_parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
-                                  const unsigned char *packet,
+                                  const uint8_t *packet,
                                   unsigned int length,
                                   struct rohc_extr_bits *const bits);
 
@@ -135,7 +135,7 @@ static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 
 static int rtp_build_uncomp_rtp(const struct rohc_decomp_ctxt *const context,
                                 const struct rohc_decoded_values *const decoded,
-                                unsigned char *dest,
+                                uint8_t *const dest,
                                 const unsigned int payload_len);
 
 static void rtp_update_context(struct rohc_decomp_ctxt *const context,
@@ -601,7 +601,7 @@ static rohc_packet_t rtp_choose_uor2_variant(const struct rohc_decomp_ctxt *cons
  *                -1 in case of failure
  */
 static int rtp_parse_static_rtp(const struct rohc_decomp_ctxt *const context,
-                                const unsigned char *packet,
+                                const uint8_t *packet,
                                 size_t length,
                                 struct rohc_extr_bits *const bits)
 {
@@ -893,7 +893,7 @@ error:
  *                          -1 in case of error
  */
 static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
-                          const unsigned char *const rohc_data,
+                          const uint8_t *const rohc_data,
                           const size_t rohc_data_len,
                           const rohc_packet_t packet_type,
                           struct rohc_extr_bits *const bits)
@@ -914,7 +914,7 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
 	struct rohc_decomp_rfc3095_changes *outer_ip_changes;
 
 	/* remaining ROHC data */
-	const unsigned char *rohc_remain_data;
+	const uint8_t *rohc_remain_data;
 	size_t rohc_remain_len;
 
 	/* whether all RND values for outer and inner IP headers are set to 1 or
@@ -1474,7 +1474,7 @@ error:
  *                     -1 in case of failure
  */
 static int rtp_parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
-                                  const unsigned char *packet,
+                                  const uint8_t *packet,
                                   unsigned int length,
                                   struct rohc_extr_bits *const bits)
 {
@@ -1806,7 +1806,7 @@ error:
  */
 static int rtp_build_uncomp_rtp(const struct rohc_decomp_ctxt *const context,
                                 const struct rohc_decoded_values *const decoded,
-                                unsigned char *dest,
+                                uint8_t *const dest,
                                 const unsigned int payload_len)
 {
 	struct udphdr *udp;

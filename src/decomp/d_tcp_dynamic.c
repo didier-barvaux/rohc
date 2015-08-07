@@ -40,7 +40,7 @@
 #endif
 
 static int tcp_parse_dynamic_ip(const struct rohc_decomp_ctxt *const context,
-                                const unsigned char *const rohc_packet,
+                                const uint8_t *const rohc_packet,
                                 const size_t rohc_length,
                                 struct rohc_tcp_extr_ip_bits *const ip_bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
@@ -48,12 +48,12 @@ static int tcp_parse_dynamic_ip(const struct rohc_decomp_ctxt *const context,
 static int tcp_parse_dynamic_ipv6_option(const struct rohc_decomp_ctxt *const context,
                                          ipv6_option_context_t *const opt_context,
                                          const uint8_t protocol,
-                                         const unsigned char *const rohc_packet,
+                                         const uint8_t *const rohc_packet,
                                          const size_t rohc_length)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
 static int tcp_parse_dynamic_tcp(const struct rohc_decomp_ctxt *const context,
-                                 const unsigned char *const rohc_packet,
+                                 const uint8_t *const rohc_packet,
                                  const size_t rohc_length,
                                  struct rohc_tcp_extr_bits *const bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
@@ -137,7 +137,7 @@ error:
  *                       -1 if an error occurs
  */
 static int tcp_parse_dynamic_ip(const struct rohc_decomp_ctxt *const context,
-                                const unsigned char *const rohc_packet,
+                                const uint8_t *const rohc_packet,
                                 const size_t rohc_length,
                                 struct rohc_tcp_extr_ip_bits *const ip_bits)
 {
@@ -287,7 +287,7 @@ error:
 static int tcp_parse_dynamic_ipv6_option(const struct rohc_decomp_ctxt *const context,
                                          ipv6_option_context_t *const opt_context,
                                          const uint8_t protocol,
-                                         const unsigned char *const rohc_packet,
+                                         const uint8_t *const rohc_packet,
                                          const size_t rohc_length)
 {
 	size_t remain_len = rohc_length;
@@ -367,7 +367,7 @@ error:
  *                     -1 in case of failure
  */
 static int tcp_parse_dynamic_tcp(const struct rohc_decomp_ctxt *const context,
-                                 const unsigned char *const rohc_packet,
+                                 const uint8_t *const rohc_packet,
                                  const size_t rohc_length,
                                  struct rohc_tcp_extr_bits *const bits)
 {
@@ -560,7 +560,7 @@ static int tcp_parse_dynamic_tcp(const struct rohc_decomp_ctxt *const context,
 	rohc_dump_buf(context->decompressor->trace_callback,
 	              context->decompressor->trace_callback_priv,
 	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG, "TCP dynamic part",
-	              (unsigned char *) tcp_dynamic, rohc_length - remain_len);
+	              (const uint8_t *const ) tcp_dynamic, rohc_length - remain_len);
 
 	return (rohc_length - remain_len);
 

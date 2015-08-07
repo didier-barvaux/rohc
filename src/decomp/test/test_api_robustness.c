@@ -240,11 +240,11 @@ int main(int argc, char *argv[])
 	/* rohc_decompress3() */
 	{
 		const struct rohc_ts ts = { .sec = 0, .nsec = 0 };
-		unsigned char buf1[1];
+		uint8_t buf1[1];
 		struct rohc_buf pkt1 = rohc_buf_init_full(buf1, 1, ts);
-		unsigned char buf2[100];
+		uint8_t buf2[100];
 		struct rohc_buf pkt2 = rohc_buf_init_empty(buf2, 100);
-		unsigned char buf[] =
+		uint8_t buf[] =
 		{
 			0xfd, 0x00, 0x04, 0xce,  0x40, 0x01, 0xc0, 0xa8,
 			0x13, 0x01, 0xc0, 0xa8,  0x13, 0x05, 0x00, 0x40,
@@ -288,11 +288,11 @@ int main(int argc, char *argv[])
 		CHECK(pkt2.len > 0);
 
 		{
-			unsigned char buf_full[100];
+			uint8_t buf_full[100];
 			struct rohc_buf pkt_full = rohc_buf_init_full(buf_full, 100, ts);
-			unsigned char buf_malformed[100];
+			uint8_t buf_malformed[100];
 			struct rohc_buf pkt_malformed = rohc_buf_init_full(buf_malformed, 0, ts);
-			unsigned char buf_empty[100];
+			uint8_t buf_empty[100];
 			struct rohc_buf pkt_empty = rohc_buf_init_empty(buf_empty, 100);
 
 			rohc_buf_reset(&pkt2);

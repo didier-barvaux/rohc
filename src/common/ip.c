@@ -44,7 +44,7 @@ static bool ext_get_next_layer(const struct net_hdr *const nh,
                                struct net_hdr *const nl)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static bool ext_get_next_header(const unsigned char *const ext,
+static bool ext_get_next_header(const uint8_t *const ext,
                                 const size_t ext_len,
                                 struct net_hdr *const nh)
 	__attribute__((warn_unused_result, nonnull(1, 3)));
@@ -65,7 +65,7 @@ static bool ext_get_next_header(const unsigned char *const ext,
  * @return       Whether the IP packet was successfully created or not
  */
 bool ip_create(struct ip_packet *const ip,
-               const unsigned char *const packet,
+               const uint8_t *const packet,
                const size_t size)
 {
 	ip_version version;
@@ -197,7 +197,7 @@ error:
  * @param ip The IP packet to analyze
  * @return   The IP raw data (header + payload)
  */
-const unsigned char * ip_get_raw_data(const struct ip_packet *const ip)
+const uint8_t * ip_get_raw_data(const struct ip_packet *const ip)
 {
 	return ip->data;
 }
@@ -231,8 +231,8 @@ bool ip_get_inner_packet(const struct ip_packet *const outer,
  * @param type OUT: The type of the next header
  * @return     The next header if successful, NULL otherwise
  */
-unsigned char * ip_get_next_header(const struct ip_packet *const ip,
-                                   uint8_t *const type)
+uint8_t * ip_get_next_header(const struct ip_packet *const ip,
+                             uint8_t *const type)
 {
 	/* function does not handle non-IPv4/IPv6 packets */
 	assert(ip->version != IP_UNKNOWN);
@@ -252,7 +252,7 @@ unsigned char * ip_get_next_header(const struct ip_packet *const ip,
  * @return     The next header that is not an IP extension if there is one,
  *             NULL if there is none
  */
-unsigned char * ip_get_next_layer(const struct ip_packet *const ip)
+uint8_t * ip_get_next_layer(const struct ip_packet *const ip)
 {
 	/* function does not handle non-IPv4/IPv6 packets */
 	assert(ip->version != IP_UNKNOWN);
@@ -274,10 +274,10 @@ unsigned char * ip_get_next_layer(const struct ip_packet *const ip)
  * @return     The next extension header,
  *             NULL if there is no extension
  */
-unsigned char * ip_get_next_ext_from_ip(const struct ip_packet *const ip,
-                                        uint8_t *const type)
+uint8_t * ip_get_next_ext_from_ip(const struct ip_packet *const ip,
+                                  uint8_t *const type)
 {
-	unsigned char *next_header;
+	uint8_t *next_header;
 
 	/* function does not handle non-IPv4/IPv6 packets */
 	assert(ip->version != IP_UNKNOWN);
@@ -312,10 +312,10 @@ unsigned char * ip_get_next_ext_from_ip(const struct ip_packet *const ip,
  * @return     The next extension header,
  *             NULL if there is no more extension
  */
-unsigned char * ip_get_next_ext_from_ext(const unsigned char *const ext,
-                                         uint8_t *const type)
+uint8_t * ip_get_next_ext_from_ext(const uint8_t *const ext,
+                                   uint8_t *const type)
 {
-	unsigned char *next_header;
+	uint8_t *next_header;
 	uint8_t length;
 
 	*type = ext[0];
@@ -324,7 +324,7 @@ unsigned char * ip_get_next_ext_from_ext(const unsigned char *const ext,
 	{
 		/* known extension headers */
 		length = ext[1];
-		next_header = (unsigned char *)(ext + (length + 1) * 8);
+		next_header = (uint8_t *)(ext + (length + 1) * 8);
 	}
 	else
 	{
@@ -341,7 +341,7 @@ unsigned char * ip_get_next_ext_from_ext(const unsigned char *const ext,
  * @param ext The extension
  * @return    The size of the extension
  */
-unsigned short ip_get_extension_size(const unsigned char *const ext)
+unsigned short ip_get_extension_size(const uint8_t *const ext)
 {
 	const uint8_t ext_length = ext[1];
 
@@ -360,7 +360,7 @@ unsigned short ip_get_extension_size(const unsigned char *const ext)
  */
 unsigned short ip_get_total_extension_size(const struct ip_packet *const ip)
 {
-	unsigned char *ext;
+	uint8_t *ext;
 	uint8_t next_hdr_type;
 	unsigned short total_ext_size = 0;
 
@@ -687,7 +687,7 @@ void ip_set_ttl(struct ip_packet *const ip, const uint8_t value)
  * @param ip     The IP packet to modify
  * @param value  The IP address value
  */
-void ip_set_saddr(struct ip_packet *const ip, const unsigned char *value)
+void ip_set_saddr(struct ip_packet *const ip, const uint8_t *value)
 {
 	if(ip->version == IPV4)
 	{
@@ -714,7 +714,7 @@ void ip_set_saddr(struct ip_packet *const ip, const unsigned char *value)
  * @param ip     The IP packet to modify
  * @param value  The IP address value
  */
-void ip_set_daddr(struct ip_packet *const ip, const unsigned char *value)
+void ip_set_daddr(struct ip_packet *const ip, const uint8_t *value)
 {
 	if(ip->version == IPV4)
 	{
@@ -985,7 +985,7 @@ const struct ipv6_addr * ipv6_get_daddr(const struct ip_packet *const ip)
  * @param version OUT: the version of the IP packet: IPV4, IPV6 or IP_UNKNOWN
  * @return        Whether the given packet was successfully parsed or not
  */
-bool get_ip_version(const unsigned char *const packet,
+bool get_ip_version(const uint8_t *const packet,
                     const size_t size,
                     ip_version *const version)
 {
@@ -1042,7 +1042,7 @@ static bool ip_find_next_layer(const struct ip_packet *const ip,
 		}
 		ip_hdr_len = ip_get_hdrlen(ip);
 
-		nh->data = ((unsigned char *) ip->data) + ip_hdr_len;
+		nh->data = ((uint8_t *) ip->data) + ip_hdr_len;
 		nh->len = ip->size - ip_hdr_len;
 
 		/* no support for IPv4 extension headers, so next layer is next header */
@@ -1059,7 +1059,7 @@ static bool ip_find_next_layer(const struct ip_packet *const ip,
 		{
 			goto error;
 		}
-		nh->data = ((unsigned char *) ip->data) + sizeof(struct ipv6_hdr);
+		nh->data = ((uint8_t *) ip->data) + sizeof(struct ipv6_hdr);
 		nh->len = ip->size - sizeof(struct ipv6_hdr);
 
 		/* find next layer after IPv6 extension headers */
@@ -1149,7 +1149,7 @@ static bool ext_get_next_layer(const struct net_hdr *const nh,
  * @return         true if the extension is well-formed,
  *                 false otherwise
  */
-static bool ext_get_next_header(const unsigned char *const ext,
+static bool ext_get_next_header(const uint8_t *const ext,
                                 const size_t ext_len,
                                 struct net_hdr *const nh)
 {

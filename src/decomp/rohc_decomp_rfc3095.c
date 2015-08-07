@@ -55,34 +55,34 @@
  */
 
 static int parse_static_part_ip(const struct rohc_decomp_ctxt *const context,
-                                const unsigned char *const packet,
+                                const uint8_t *const packet,
                                 const size_t length,
                                 struct rohc_extr_ip_bits *const bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 static int parse_static_part_ipv4(const struct rohc_decomp_ctxt *const context,
-                                  const unsigned char *packet,
+                                  const uint8_t *packet,
                                   const size_t length,
                                   struct rohc_extr_ip_bits *const bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 static int parse_static_part_ipv6(const struct rohc_decomp_ctxt *const context,
-                                  const unsigned char *packet,
+                                  const uint8_t *packet,
                                   const size_t length,
                                   struct rohc_extr_ip_bits *const bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
 static int parse_dynamic_part_ip(const struct rohc_decomp_ctxt *const context,
-                                 const unsigned char *const packet,
+                                 const uint8_t *const packet,
                                  const size_t length,
                                  struct rohc_extr_ip_bits *const bits,
                                  struct list_decomp *const list_decomp)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
 static int parse_dynamic_part_ipv4(const struct rohc_decomp_ctxt *const context,
-                                   const unsigned char *packet,
+                                   const uint8_t *packet,
                                    const size_t length,
                                    struct rohc_extr_ip_bits *const bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 static int parse_dynamic_part_ipv6(const struct rohc_decomp_ctxt *const context,
-                                   const unsigned char *packet,
+                                   const uint8_t *packet,
                                    const size_t length,
                                    struct rohc_extr_ip_bits *const bits,
                                    struct list_decomp *const list_decomp)
@@ -94,7 +94,7 @@ static int parse_dynamic_part_ipv6(const struct rohc_decomp_ctxt *const context,
  */
 
 static bool parse_ir(const struct rohc_decomp_ctxt *const context,
-                     const unsigned char *const rohc_packet,
+                     const uint8_t *const rohc_packet,
                      const size_t rohc_length,
                      const size_t large_cid_len,
                      rohc_packet_t *const packet_type,
@@ -104,7 +104,7 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6, 7, 8)));
 
 static bool parse_irdyn(const struct rohc_decomp_ctxt *const context,
-                        const unsigned char *const rohc_packet,
+                        const uint8_t *const rohc_packet,
                         const size_t rohc_length,
                         const size_t large_cid_len,
                         rohc_packet_t *const packet_type,
@@ -114,7 +114,7 @@ static bool parse_irdyn(const struct rohc_decomp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6, 7, 8)));
 
 static bool parse_uo0(const struct rohc_decomp_ctxt *const context,
-                      const unsigned char *const rohc_packet,
+                      const uint8_t *const rohc_packet,
                       const size_t rohc_length,
                       const size_t large_cid_len,
                       rohc_packet_t *const packet_type,
@@ -124,7 +124,7 @@ static bool parse_uo0(const struct rohc_decomp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6, 7, 8)));
 
 static bool parse_uo1(const struct rohc_decomp_ctxt *const context,
-                      const unsigned char *const rohc_packet,
+                      const uint8_t *const rohc_packet,
                       const size_t rohc_length,
                       const size_t large_cid_len,
                       rohc_packet_t *const packet_type,
@@ -133,7 +133,7 @@ static bool parse_uo1(const struct rohc_decomp_ctxt *const context,
                       size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6, 7, 8)));
 static bool parse_uo1rtp(const struct rohc_decomp_ctxt *const context,
-                         const unsigned char *const rohc_packet,
+                         const uint8_t *const rohc_packet,
                          const size_t rohc_length,
                          const size_t large_cid_len,
                          rohc_packet_t *const packet_type,
@@ -142,7 +142,7 @@ static bool parse_uo1rtp(const struct rohc_decomp_ctxt *const context,
                          size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6, 7, 8)));
 static bool parse_uo1id(const struct rohc_decomp_ctxt *const context,
-                        const unsigned char *const rohc_packet,
+                        const uint8_t *const rohc_packet,
                         const size_t rohc_length,
                         const size_t large_cid_len,
                         rohc_packet_t *const packet_type,
@@ -151,7 +151,7 @@ static bool parse_uo1id(const struct rohc_decomp_ctxt *const context,
                         size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6, 7, 8)));
 static bool parse_uo1ts(const struct rohc_decomp_ctxt *const context,
-                        const unsigned char *const rohc_packet,
+                        const uint8_t *const rohc_packet,
                         const size_t rohc_length,
                         const size_t large_cid_len,
                         rohc_packet_t *const packet_type,
@@ -161,7 +161,7 @@ static bool parse_uo1ts(const struct rohc_decomp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6, 7, 8)));
 
 static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
-                       const unsigned char *const rohc_packet,
+                       const uint8_t *const rohc_packet,
                        const size_t rohc_length,
                        const size_t large_cid_len,
                        rohc_packet_t *const packet_type,
@@ -170,7 +170,7 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
                        size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6, 7, 8)));
 static bool parse_uor2rtp(const struct rohc_decomp_ctxt *const context,
-                          const unsigned char *const rohc_packet,
+                          const uint8_t *const rohc_packet,
                           const size_t rohc_length,
                           const size_t large_cid_len,
                           rohc_packet_t *const packet_type,
@@ -179,7 +179,7 @@ static bool parse_uor2rtp(const struct rohc_decomp_ctxt *const context,
                           size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6, 7, 8)));
 static bool parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
-                               const unsigned char *const rohc_packet,
+                               const uint8_t *const rohc_packet,
                                const size_t rohc_length,
                                const size_t large_cid_len,
                                const rohc_packet_t packet_type,
@@ -191,7 +191,7 @@ static bool parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
                                bool *const need_reparse)
 	__attribute__((warn_unused_result, nonnull(1, 2, 8, 9, 10, 11)));
 static bool parse_uor2id(const struct rohc_decomp_ctxt *const context,
-                         const unsigned char *const rohc_packet,
+                         const uint8_t *const rohc_packet,
                          const size_t rohc_length,
                          const size_t large_cid_len,
                          rohc_packet_t *const packet_type,
@@ -200,7 +200,7 @@ static bool parse_uor2id(const struct rohc_decomp_ctxt *const context,
                          size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6, 7, 8)));
 static bool parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
-                              const unsigned char *const rohc_packet,
+                              const uint8_t *const rohc_packet,
                               const size_t rohc_length,
                               const size_t large_cid_len,
                               const rohc_packet_t packet_type,
@@ -212,7 +212,7 @@ static bool parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
                               bool *const need_reparse)
 	__attribute__((warn_unused_result, nonnull(1, 2, 8, 9, 10, 11)));
 static bool parse_uor2ts(const struct rohc_decomp_ctxt *const context,
-                         const unsigned char *const rohc_packet,
+                         const uint8_t *const rohc_packet,
                          const size_t rohc_length,
                          const size_t large_cid_len,
                          rohc_packet_t *const packet_type,
@@ -221,7 +221,7 @@ static bool parse_uor2ts(const struct rohc_decomp_ctxt *const context,
                          size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6, 7, 8)));
 static bool parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
-                              const unsigned char *const rohc_packet,
+                              const uint8_t *const rohc_packet,
                               const size_t rohc_length,
                               const size_t large_cid_len,
                               const rohc_packet_t packet_type,
@@ -234,7 +234,7 @@ static bool parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2, 8, 9, 10, 11)));
 
 static bool parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
-                               const unsigned char *const rohc_packet,
+                               const uint8_t *const rohc_packet,
                                const size_t rohc_length,
                                struct rohc_extr_bits *const bits,
                                size_t *const rohc_hdr_len)
@@ -245,24 +245,24 @@ static bool parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
  * Private function prototypes for parsing the different extensions
  */
 
-static uint8_t parse_extension_type(const unsigned char *const rohc_ext)
+static uint8_t parse_extension_type(const uint8_t *const rohc_ext)
 	__attribute__((warn_unused_result, nonnull(1), pure));
 static int parse_extension0(const struct rohc_decomp_ctxt *const context,
-                            const unsigned char *const rohc_data,
+                            const uint8_t *const rohc_data,
                             const size_t rohc_data_len,
                             const rohc_packet_t packet_type,
                             const ip_header_pos_t innermost_ip_hdr,
                             struct rohc_extr_bits *const bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 6)));
 static int parse_extension1(const struct rohc_decomp_ctxt *const context,
-                            const unsigned char *const rohc_data,
+                            const uint8_t *const rohc_data,
                             const size_t rohc_data_len,
                             const rohc_packet_t packet_type,
                             const ip_header_pos_t innermost_ip_hdr,
                             struct rohc_extr_bits *const bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 6)));
 static int parse_extension2(const struct rohc_decomp_ctxt *const context,
-                            const unsigned char *const rohc_data,
+                            const uint8_t *const rohc_data,
                             const size_t rohc_data_len,
                             const rohc_packet_t packet_type,
                             const ip_header_pos_t innermost_ip_hdr,
@@ -276,7 +276,7 @@ static int parse_extension2(const struct rohc_decomp_ctxt *const context,
 
 static bool build_uncomp_ip(const struct rohc_decomp_ctxt *const context,
                             const struct rohc_decoded_ip_values decoded,
-                            unsigned char *const dest,
+                            uint8_t *const dest,
                             const size_t uncomp_hdrs_max_len,
                             size_t *const uncomp_hdrs_len,
                             const size_t payload_size,
@@ -284,14 +284,14 @@ static bool build_uncomp_ip(const struct rohc_decomp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 3, 5)));
 static bool build_uncomp_ipv4(const struct rohc_decomp_ctxt *const context,
                               const struct rohc_decoded_ip_values decoded,
-                              unsigned char *const dest,
+                              uint8_t *const dest,
                               const size_t uncomp_hdrs_max_len,
                               size_t *const uncomp_hdrs_len,
                               const size_t payload_size)
 	__attribute__((warn_unused_result, nonnull(1, 3, 5)));
 static bool build_uncomp_ipv6(const struct rohc_decomp_ctxt *const context,
                               const struct rohc_decoded_ip_values decoded,
-                              unsigned char *const dest,
+                              uint8_t *const dest,
                               const size_t uncomp_hdrs_max_len,
                               size_t *const uncomp_hdrs_len,
                               const size_t payload_size,
@@ -320,9 +320,9 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 
 static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
                              const struct rohc_decomp_ctxt *const context,
-                             const unsigned char *const outer_ip_hdr,
-                             const unsigned char *const inner_ip_hdr,
-                             const unsigned char *const next_header,
+                             const uint8_t *const outer_ip_hdr,
+                             const uint8_t *const inner_ip_hdr,
+                             const uint8_t *const next_header,
                              const rohc_crc_type_t crc_type,
                              const uint8_t crc_packet)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
@@ -540,11 +540,11 @@ bool rfc3095_decomp_parse_pkt(const struct rohc_decomp_ctxt *const context,
                               struct rohc_extr_bits *const bits,
                               size_t *const rohc_hdr_len)
 {
-	const unsigned char *const rohc_packet_data = rohc_buf_data(rohc_packet);
+	const uint8_t *const rohc_packet_data = rohc_buf_data(rohc_packet);
 	const size_t rohc_length = rohc_packet.len;
 
 	bool (*parse) (const struct rohc_decomp_ctxt *const _context,
-	               const unsigned char *const _rohc_packet,
+	               const uint8_t *const _rohc_packet,
 	               const size_t _rohc_length,
 	               const size_t _large_cid_len,
 	               rohc_packet_t *const _packet_type,
@@ -682,7 +682,7 @@ error:
  * @return               true if IR is successfully parsed, false otherwise
  */
 static bool parse_ir(const struct rohc_decomp_ctxt *const context,
-                     const unsigned char *const rohc_packet,
+                     const uint8_t *const rohc_packet,
                      const size_t rohc_length,
                      const size_t large_cid_len,
                      rohc_packet_t *const packet_type,
@@ -694,7 +694,7 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
 	   (will be computed during parsing) */
-	const unsigned char *rohc_remain_data;
+	const uint8_t *rohc_remain_data;
 	size_t rohc_remain_len;
 
 	/* helper variables for values returned by functions */
@@ -918,7 +918,7 @@ error:
  *                    -1 in case of failure
  */
 static int parse_static_part_ip(const struct rohc_decomp_ctxt *const context,
-                                const unsigned char *const packet,
+                                const uint8_t *const packet,
                                 const size_t length,
                                 struct rohc_extr_ip_bits *const bits)
 {
@@ -975,7 +975,7 @@ error:
  *                 -1 in case of failure
  */
 static int parse_static_part_ipv4(const struct rohc_decomp_ctxt *const context,
-                                  const unsigned char *packet,
+                                  const uint8_t *packet,
                                   const size_t length,
                                   struct rohc_extr_ip_bits *const bits)
 {
@@ -1042,7 +1042,7 @@ error:
  *                 -1 in case of failure
  */
 static int parse_static_part_ipv6(const struct rohc_decomp_ctxt *const context,
-                                  const unsigned char *packet,
+                                  const uint8_t *packet,
                                   const size_t length,
                                   struct rohc_extr_ip_bits *const bits)
 {
@@ -1117,7 +1117,7 @@ error:
  *                    -1 in case of failure
  */
 static int parse_dynamic_part_ip(const struct rohc_decomp_ctxt *const context,
-                                 const unsigned char *const packet,
+                                 const uint8_t *const packet,
                                  const size_t length,
                                  struct rohc_extr_ip_bits *const bits,
                                  struct list_decomp *const list_decomp)
@@ -1171,7 +1171,7 @@ Dynamic part:
  *                 -1 in case of failure
  */
 static int parse_dynamic_part_ipv4(const struct rohc_decomp_ctxt *const context,
-                                   const unsigned char *packet,
+                                   const uint8_t *packet,
                                    const size_t length,
                                    struct rohc_extr_ip_bits *const bits)
 {
@@ -1268,7 +1268,7 @@ error:
  *                     -1 in case of failure
  */
 static int parse_dynamic_part_ipv6(const struct rohc_decomp_ctxt *const context,
-                                   const unsigned char *packet,
+                                   const uint8_t *packet,
                                    const size_t length,
                                    struct rohc_extr_ip_bits *const bits,
                                    struct list_decomp *const list_decomp)
@@ -1416,7 +1416,7 @@ uint32_t rohc_decomp_rfc3095_get_sn(const struct rohc_decomp_ctxt *const context
  *                             false otherwise
  */
 static bool parse_uo0(const struct rohc_decomp_ctxt *const context,
-                      const unsigned char *const rohc_packet,
+                      const uint8_t *const rohc_packet,
                       const size_t rohc_length,
                       const size_t large_cid_len,
                       rohc_packet_t *const packet_type,
@@ -1429,7 +1429,7 @@ static bool parse_uo0(const struct rohc_decomp_ctxt *const context,
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
 	   (will be computed during parsing) */
-	const unsigned char *rohc_remain_data;
+	const uint8_t *rohc_remain_data;
 	size_t rohc_remain_len;
 
 	assert(rfc3095_ctxt != NULL);
@@ -1587,7 +1587,7 @@ error:
  *                             false otherwise
  */
 static bool parse_uo1(const struct rohc_decomp_ctxt *const context,
-                      const unsigned char *const rohc_packet,
+                      const uint8_t *const rohc_packet,
                       const size_t rohc_length,
                       const size_t large_cid_len,
                       rohc_packet_t *const packet_type,
@@ -1600,7 +1600,7 @@ static bool parse_uo1(const struct rohc_decomp_ctxt *const context,
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
 	   (will be computed during parsing) */
-	const unsigned char *rohc_remain_data;
+	const uint8_t *rohc_remain_data;
 	size_t rohc_remain_len;
 
 	/* which IP header is the innermost IPv4 header with non-random IP-ID ? */
@@ -1820,7 +1820,7 @@ error:
  *                             false otherwise
  */
 static bool parse_uo1rtp(const struct rohc_decomp_ctxt *const context,
-                         const unsigned char *const rohc_packet,
+                         const uint8_t *const rohc_packet,
                          const size_t rohc_length,
                          const size_t large_cid_len,
                          rohc_packet_t *const packet_type,
@@ -1833,7 +1833,7 @@ static bool parse_uo1rtp(const struct rohc_decomp_ctxt *const context,
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
 	   (will be computed during parsing) */
-	const unsigned char *rohc_remain_data;
+	const uint8_t *rohc_remain_data;
 	size_t rohc_remain_len;
 
 	assert(context != NULL);
@@ -2018,7 +2018,7 @@ error:
  *                             false otherwise
  */
 static bool parse_uo1id(const struct rohc_decomp_ctxt *const context,
-                        const unsigned char *const rohc_packet,
+                        const uint8_t *const rohc_packet,
                         const size_t rohc_length,
                         const size_t large_cid_len,
                         rohc_packet_t *const packet_type,
@@ -2031,7 +2031,7 @@ static bool parse_uo1id(const struct rohc_decomp_ctxt *const context,
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
 	   (will be computed during parsing) */
-	const unsigned char *rohc_remain_data;
+	const uint8_t *rohc_remain_data;
 	size_t rohc_remain_len;
 
 	/* which IP header is the innermost IPv4 header with non-random IP-ID ? */
@@ -2341,7 +2341,7 @@ error:
  *                             false otherwise
  */
 static bool parse_uo1ts(const struct rohc_decomp_ctxt *const context,
-                        const unsigned char *const rohc_packet,
+                        const uint8_t *const rohc_packet,
                         const size_t rohc_length,
                         const size_t large_cid_len,
                         rohc_packet_t *const packet_type,
@@ -2354,7 +2354,7 @@ static bool parse_uo1ts(const struct rohc_decomp_ctxt *const context,
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
 	   (will be computed during parsing) */
-	const unsigned char *rohc_remain_data;
+	const uint8_t *rohc_remain_data;
 	size_t rohc_remain_len;
 
 	assert(context != NULL);
@@ -2531,7 +2531,7 @@ error:
  *                             false otherwise
  */
 static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
-                       const unsigned char *const rohc_packet,
+                       const uint8_t *const rohc_packet,
                        const size_t rohc_length,
                        const size_t large_cid_len,
                        rohc_packet_t *const packet_type,
@@ -2545,7 +2545,7 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
 	   (will be computed during parsing) */
-	const unsigned char *rohc_remain_data;
+	const uint8_t *rohc_remain_data;
 	size_t rohc_remain_len;
 
 	/* which IP header is the innermost IPv4 header with non-random IP-ID ? */
@@ -2789,7 +2789,7 @@ error:
  * @see parse_uor2rtp_once
  */
 static bool parse_uor2rtp(const struct rohc_decomp_ctxt *const context,
-                          const unsigned char *const rohc_packet,
+                          const uint8_t *const rohc_packet,
                           const size_t rohc_length,
                           const size_t large_cid_len,
                           rohc_packet_t *const packet_type,
@@ -2986,7 +2986,7 @@ error:
  *                             false otherwise
  */
 static bool parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
-                               const unsigned char *const rohc_packet,
+                               const uint8_t *const rohc_packet,
                                const size_t rohc_length,
                                const size_t large_cid_len,
                                const rohc_packet_t packet_type,
@@ -3002,7 +3002,7 @@ static bool parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
 	   (will be computed during parsing) */
-	const unsigned char *rohc_remain_data;
+	const uint8_t *rohc_remain_data;
 	size_t rohc_remain_len;
 
 	/* which IP header is the innermost IPv4 header with non-random IP-ID ? */
@@ -3247,7 +3247,7 @@ error:
  * @see parse_uor2id_once
  */
 static bool parse_uor2id(const struct rohc_decomp_ctxt *const context,
-                         const unsigned char *const rohc_packet,
+                         const uint8_t *const rohc_packet,
                          const size_t rohc_length,
                          const size_t large_cid_len,
                          rohc_packet_t *const packet_type,
@@ -3434,7 +3434,7 @@ error:
  * @see parse_uor2id
  */
 static bool parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
-                              const unsigned char *const rohc_packet,
+                              const uint8_t *const rohc_packet,
                               const size_t rohc_length,
                               const size_t large_cid_len,
                               const rohc_packet_t packet_type,
@@ -3450,7 +3450,7 @@ static bool parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
 	   (will be computed during parsing) */
-	const unsigned char *rohc_remain_data;
+	const uint8_t *rohc_remain_data;
 	size_t rohc_remain_len;
 
 	/* which IP header is the innermost IPv4 header with non-random IP-ID ? */
@@ -3707,7 +3707,7 @@ error:
  * @see parse_uor2ts_once
  */
 static bool parse_uor2ts(const struct rohc_decomp_ctxt *const context,
-                         const unsigned char *const rohc_packet,
+                         const uint8_t *const rohc_packet,
                          const size_t rohc_length,
                          const size_t large_cid_len,
                          rohc_packet_t *const packet_type,
@@ -3894,7 +3894,7 @@ error:
  * @see parse_uor2ts
  */
 static bool parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
-                              const unsigned char *const rohc_packet,
+                              const uint8_t *const rohc_packet,
                               const size_t rohc_length,
                               const size_t large_cid_len,
                               const rohc_packet_t packet_type,
@@ -3910,7 +3910,7 @@ static bool parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
 	   (will be computed during parsing) */
-	const unsigned char *rohc_remain_data;
+	const uint8_t *rohc_remain_data;
 	size_t rohc_remain_len;
 
 	/* which IP header is the innermost IPv4 header with non-random IP-ID ? */
@@ -4219,7 +4219,7 @@ error:
  * @return               true if UO* is successfully parsed, false otherwise
  */
 static bool parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
-                               const unsigned char *const rohc_packet,
+                               const uint8_t *const rohc_packet,
                                const size_t rohc_length,
                                struct rohc_extr_bits *const bits,
                                size_t *const rohc_hdr_len)
@@ -4228,7 +4228,7 @@ static bool parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
 	   (will be computed during parsing) */
-	const unsigned char *rohc_remain_data;
+	const uint8_t *rohc_remain_data;
 	size_t rohc_remain_len;
 
 	assert(context != NULL);
@@ -4396,7 +4396,7 @@ error:
  *                             false otherwise
  */
 static bool parse_irdyn(const struct rohc_decomp_ctxt *const context,
-                        const unsigned char *const rohc_packet,
+                        const uint8_t *const rohc_packet,
                         const size_t rohc_length,
                         const size_t large_cid_len,
                         rohc_packet_t *const packet_type,
@@ -4408,7 +4408,7 @@ static bool parse_irdyn(const struct rohc_decomp_ctxt *const context,
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
 	   (will be computed during parsing) */
-	const unsigned char *rohc_remain_data;
+	const uint8_t *rohc_remain_data;
 	size_t rohc_remain_len;
 
 	/* helper variables for values returned by functions */
@@ -4525,7 +4525,7 @@ error:
  *                          -1 in case of error
  */
 static int parse_extension0(const struct rohc_decomp_ctxt *const context,
-                            const unsigned char *const rohc_data,
+                            const uint8_t *const rohc_data,
                             const size_t rohc_data_len,
                             const rohc_packet_t packet_type,
                             const ip_header_pos_t innermost_ip_hdr,
@@ -4618,7 +4618,7 @@ error:
  *                          -1 in case of error
  */
 static int parse_extension1(const struct rohc_decomp_ctxt *const context,
-                            const unsigned char *const rohc_data,
+                            const uint8_t *const rohc_data,
                             const size_t rohc_data_len,
                             const rohc_packet_t packet_type,
                             const ip_header_pos_t innermost_ip_hdr,
@@ -4752,7 +4752,7 @@ error:
  *                          -1 in case of error
  */
 static int parse_extension2(const struct rohc_decomp_ctxt *const context,
-                            const unsigned char *const rohc_data,
+                            const uint8_t *const rohc_data,
                             const size_t rohc_data_len,
                             const rohc_packet_t packet_type,
                             const ip_header_pos_t innermost_ip_hdr,
@@ -4873,7 +4873,7 @@ error:
  *                    \li ROHC_EXT_2
  *                    \li ROHC_EXT_3
  */
-static uint8_t parse_extension_type(const unsigned char *const rohc_ext)
+static uint8_t parse_extension_type(const uint8_t *const rohc_ext)
 {
 	return GET_BIT_6_7(rohc_ext);
 }
@@ -4913,9 +4913,9 @@ rohc_status_t rfc3095_decomp_build_hdrs(const struct rohc_decomp *const decomp,
 	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	uint8_t *uncomp_hdrs_data = rohc_buf_data(*uncomp_hdrs);
 	size_t uncomp_hdrs_max_len = rohc_buf_avail_len(*uncomp_hdrs);
-	unsigned char *outer_ip_hdr;
-	unsigned char *inner_ip_hdr;
-	unsigned char *next_header;
+	uint8_t *outer_ip_hdr;
+	uint8_t *inner_ip_hdr;
+	uint8_t *next_header;
 	size_t ip_payload_len = 0;
 
 	*uncomp_hdrs_len = 0;
@@ -5085,7 +5085,7 @@ error_output_too_small:
  */
 static bool build_uncomp_ip(const struct rohc_decomp_ctxt *const context,
                             const struct rohc_decoded_ip_values decoded,
-                            unsigned char *const dest,
+                            uint8_t *const dest,
                             const size_t uncomp_hdrs_max_len,
                             size_t *const uncomp_hdrs_len,
                             const size_t payload_size,
@@ -5122,7 +5122,7 @@ static bool build_uncomp_ip(const struct rohc_decomp_ctxt *const context,
  */
 static bool build_uncomp_ipv4(const struct rohc_decomp_ctxt *const context,
                               const struct rohc_decoded_ip_values decoded,
-                              unsigned char *const dest,
+                              uint8_t *const dest,
                               const size_t uncomp_hdrs_max_len,
                               size_t *const uncomp_hdrs_len,
                               const size_t payload_size)
@@ -5188,7 +5188,7 @@ error:
  */
 static bool build_uncomp_ipv6(const struct rohc_decomp_ctxt *const context,
                               const struct rohc_decoded_ip_values decoded,
-                              unsigned char *const dest,
+                              uint8_t *const dest,
                               const size_t uncomp_hdrs_max_len,
                               size_t *const uncomp_hdrs_len,
                               const size_t payload_size,
@@ -5270,15 +5270,15 @@ error:
  */
 static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
                              const struct rohc_decomp_ctxt *const context,
-                             const unsigned char *const outer_ip_hdr,
-                             const unsigned char *const inner_ip_hdr,
-                             const unsigned char *const next_header,
+                             const uint8_t *const outer_ip_hdr,
+                             const uint8_t *const inner_ip_hdr,
+                             const uint8_t *const next_header,
                              const rohc_crc_type_t crc_type,
                              const uint8_t crc_packet)
 {
 	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
-	const unsigned char *crc_table;
-	unsigned int crc_computed;
+	const uint8_t *crc_table;
+	uint8_t crc_computed;
 
 	assert(decomp != NULL);
 	assert(context != NULL);

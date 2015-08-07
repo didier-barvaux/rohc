@@ -237,7 +237,7 @@ error:
  */
 bool f_add_option(struct d_feedback *const feedback,
                   const enum rohc_feedback_opt opt_type,
-                  const unsigned char *const data,
+                  const uint8_t *const data,
                   const size_t data_len)
 {
 	/* options are reserved for FEEDBACK-2 */

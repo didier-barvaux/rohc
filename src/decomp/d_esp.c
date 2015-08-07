@@ -71,7 +71,7 @@ static void d_esp_destroy(struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt,
 	__attribute__((nonnull(1, 2)));
 
 static int esp_parse_static_esp(const struct rohc_decomp_ctxt *const context,
-                                const unsigned char *packet,
+                                const uint8_t *packet,
                                 size_t length,
                                 struct rohc_extr_bits *const bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
@@ -88,7 +88,7 @@ static bool esp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 
 static int esp_build_uncomp_esp(const struct rohc_decomp_ctxt *const context,
                                 const struct rohc_decoded_values *const decoded,
-                                unsigned char *dest,
+                                uint8_t *const dest,
                                 const unsigned int payload_len);
 
 static void esp_update_context(struct rohc_decomp_ctxt *const context,
@@ -246,7 +246,7 @@ static void d_esp_destroy(struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt,
  *                -1 in case of failure
  */
 static int esp_parse_static_esp(const struct rohc_decomp_ctxt *const context,
-                                const unsigned char *packet,
+                                const uint8_t *packet,
                                 size_t length,
                                 struct rohc_extr_bits *const bits)
 {
@@ -396,7 +396,7 @@ static bool esp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
  */
 static int esp_build_uncomp_esp(const struct rohc_decomp_ctxt *const context,
                                 const struct rohc_decoded_values *const decoded,
-                                unsigned char *dest,
+                                uint8_t *const dest,
                                 const unsigned int payload_len __attribute__((unused)))
 {
 	const size_t spi_length = sizeof(uint32_t);

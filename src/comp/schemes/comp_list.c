@@ -52,22 +52,22 @@ static int rohc_list_decide_type(struct list_comp *const comp)
 	__attribute__((warn_unused_result, nonnull(1)));
 
 static int rohc_list_encode_type_0(struct list_comp *const comp,
-                                   unsigned char *const dest,
+                                   uint8_t *const dest,
                                    int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int rohc_list_encode_type_1(struct list_comp *const comp,
-                                   unsigned char *const dest,
+                                   uint8_t *const dest,
                                    int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int rohc_list_encode_type_2(struct list_comp *const comp,
-                                   unsigned char *const dest,
+                                   uint8_t *const dest,
                                    int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int rohc_list_encode_type_3(struct list_comp *const comp,
-                                   unsigned char *const dest,
+                                   uint8_t *const dest,
                                    int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
@@ -326,7 +326,7 @@ error:
  *                 -1 in case of error
  */
 int rohc_list_encode(struct list_comp *const comp,
-                     unsigned char *const dest,
+                     uint8_t *const dest,
                      int counter)
 {
 	int encoding_type;
@@ -748,7 +748,7 @@ static int rohc_list_decide_type(struct list_comp *const comp)
  *                 -1 in case of error
  */
 static int rohc_list_encode_type_0(struct list_comp *const comp,
-                                   unsigned char *const dest,
+                                   uint8_t *const dest,
                                    int counter)
 {
 	size_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
@@ -992,7 +992,7 @@ error:
  *                 -1 in case of error
  */
 static int rohc_list_encode_type_1(struct list_comp *const comp,
-                                   unsigned char *const dest,
+                                   uint8_t *const dest,
                                    int counter)
 {
 	const uint8_t et = 1; /* list encoding type 1 */
@@ -1161,7 +1161,7 @@ error:
  *                 -1 in case of error
  */
 static int rohc_list_encode_type_2(struct list_comp *const comp,
-                                   unsigned char *const dest,
+                                   uint8_t *const dest,
                                    int counter)
 {
 	const uint8_t et = 2; /* list encoding type 2 */
@@ -1316,7 +1316,7 @@ error:
  *                 -1 in case of error
  */
 static int rohc_list_encode_type_3(struct list_comp *const comp,
-                                   unsigned char *const dest,
+                                   uint8_t *const dest,
                                    int counter)
 {
 	const uint8_t et = 3; /* list encoding type 3 */

@@ -167,7 +167,7 @@ int main(int argc, char *argv[])
 
 	/* rohc_comp_get_segment2() */
 	{
-		unsigned char buf1[1];
+		uint8_t buf1[1];
 		struct rohc_buf pkt1 = rohc_buf_init_empty(buf1, 1);
 		CHECK(rohc_comp_get_segment2(NULL, &pkt1) == ROHC_STATUS_ERROR);
 		CHECK(rohc_comp_get_segment2(comp, NULL) == ROHC_STATUS_ERROR);
@@ -263,11 +263,11 @@ int main(int argc, char *argv[])
 	/* rohc_compress4() */
 	{
 		const struct rohc_ts ts = { .sec = 0, .nsec = 0 };
-		unsigned char buf1[1] = { 0x00 };
+		uint8_t buf1[1] = { 0x00 };
 		struct rohc_buf pkt1 = rohc_buf_init_full(buf1, 1, ts);
-		unsigned char buf2[100];
+		uint8_t buf2[100];
 		struct rohc_buf pkt2 = rohc_buf_init_empty(buf2, 100);
-		unsigned char buf[] =
+		uint8_t buf[] =
 		{
 			0x45, 0x00, 0x00, 0x54,  0x00, 0x00, 0x40, 0x00,
 			0x40, 0x01, 0x93, 0x52,  0xc0, 0xa8, 0x13, 0x01,

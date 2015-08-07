@@ -63,7 +63,7 @@ struct list_comp
 		__attribute__((warn_unused_result, const));
 
 	/// @brief the handler used to get the size of an item
-	unsigned short (*get_size)(const unsigned char *ext);
+	unsigned short (*get_size)(const uint8_t *ext);
 
 	/** The handler used to compare two items */
 	rohc_list_item_cmp cmp_item;
@@ -86,7 +86,7 @@ bool detect_ipv6_ext_changes(struct list_comp *const comp,
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 
 int rohc_list_encode(struct list_comp *const comp,
-                     unsigned char *const dest,
+                     uint8_t *const dest,
                      int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
