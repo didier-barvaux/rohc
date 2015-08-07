@@ -2563,7 +2563,7 @@ static int tcp_code_static_ipv6_part(const struct rohc_comp_ctxt *const context,
 	{
 		ipv6_static2_t *const ipv6_static2 = (ipv6_static2_t *) rohc_data;
 
-		ipv6_static_len = sizeof(ipv6_static1_t);
+		ipv6_static_len = sizeof(ipv6_static2_t);
 		if(rohc_max_len < ipv6_static_len)
 		{
 			rohc_comp_warn(context, "ROHC buffer too small for the IPv6 static part: "
@@ -2576,7 +2576,7 @@ static int tcp_code_static_ipv6_part(const struct rohc_comp_ctxt *const context,
 		ipv6_static2->reserved = 0;
 		ipv6_static2->flow_label_enc_discriminator = 1;
 		ipv6_static2->flow_label1 = ipv6->flow1;
-		ipv6_static2->flow_label2 = rohc_ntoh16(ipv6->flow2);
+		ipv6_static2->flow_label2 = ipv6->flow2;
 		ipv6_static2->next_header = ipv6->nh;
 		memcpy(ipv6_static2->src_addr, &ipv6->saddr, sizeof(struct ipv6_addr));
 		memcpy(ipv6_static2->dst_addr, &ipv6->daddr, sizeof(struct ipv6_addr));

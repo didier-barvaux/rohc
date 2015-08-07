@@ -245,7 +245,9 @@ static int tcp_parse_static_ip(const struct rohc_decomp_ctxt *const context,
 				goto error;
 			}
 
-			ip_bits->flowid = (ipv6_static2->flow_label1 << 16) | ipv6_static2->flow_label2;
+			ip_bits->flowid = (ipv6_static2->flow_label1 << 16) |
+			                  rohc_ntoh16(ipv6_static2->flow_label2);
+			assert((ip_bits->flowid & 0xfffff) == ip_bits->flowid);
 			rohc_decomp_debug(context, "  IPv6 flow label = 0x%05x", ip_bits->flowid);
 			ip_bits->flowid_nr = 20;
 			ip_bits->proto = ipv6_static2->next_header;

@@ -177,8 +177,7 @@ typedef struct __attribute__((packed)) ipv6_context
 
 	uint8_t ip_id_behavior;
 
-	uint8_t flow_label1:4;
-	uint16_t flow_label2;
+	uint32_t flow_label:20; /**< IPv6 Flow Label */
 
 	uint32_t src_addr[4];
 	uint32_t dest_addr[4];

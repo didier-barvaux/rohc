@@ -2830,8 +2830,7 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 		}
 		else
 		{
-			ip_decoded->flowid = (ip_context->ctxt.v6.flow_label1 << 16) |
-			                     ip_context->ctxt.v6.flow_label2;
+			ip_decoded->flowid = ip_context->ctxt.v6.flow_label;
 			rohc_decomp_debug(context, "  flow label = 0x%05x taken from context",
 			                  ip_decoded->flowid);
 		}
@@ -4122,6 +4121,8 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 		}
 		else /* IPv6 */
 		{
+			assert((ip_decoded->flowid & 0xfffff) == ip_decoded->flowid);
+			ip_context->ctxt.v6.flow_label = ip_decoded->flowid;
 			memcpy(&ip_context->ctxt.v6.src_addr, ip_decoded->saddr, 16);
 			memcpy(&ip_context->ctxt.v6.dest_addr, ip_decoded->daddr, 16);
 		}
