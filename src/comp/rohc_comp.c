@@ -150,6 +150,13 @@ static bool rohc_comp_feedback_parse_cid(const struct rohc_comp *const comp,
                                          size_t *const cid_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
+static bool rohc_comp_feedback_parse_opt_sn(const struct rohc_comp_ctxt *const context,
+                                            const uint8_t *const feedback_data,
+                                            const size_t feedback_data_len,
+                                            uint32_t *const sn_bits,
+                                            size_t *const sn_bits_nr)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
+
 static bool rohc_comp_feedback_check_opts(const struct rohc_comp_ctxt *const context,
                                           const size_t opts_present[ROHC_FEEDBACK_OPT_MAX])
 	__attribute__((warn_unused_result, nonnull(1, 2)));
@@ -2859,56 +2866,11 @@ bool rohc_comp_feedback_parse_opts(const struct rohc_comp_ctxt *const context,
 		}
       else if(opt_type == ROHC_FEEDBACK_OPT_SN)
 		{
-			if(context->profile->id == ROHC_PROFILE_TCP)
+			if(!rohc_comp_feedback_parse_opt_sn(context, remain_data, remain_len,
+			                                    sn_bits, sn_bits_nr))
 			{
-				if(((*sn_bits) & 0xffffc000) != 0)
-				{
-					rohc_comp_warn(context, "malformed FEEDBACK-2: more than 16 bits "
-					               "used for SN of the TCP profile");
-#ifndef ROHC_RFC_STRICT_DECOMPRESSOR
-					rohc_comp_warn(context, "malformed FEEDBACK-2: truncate the MSB "
-					               "of the unexpected SN value");
-					(*sn_bits) &= 0x00003fff;
-#else
-					goto error;
-#endif
-				}
-				(*sn_bits) = ((*sn_bits) << 2) + ((remain_data[1] >> 6) & 0x03);
-				(*sn_bits_nr) += 2;
-			}
-			else if(context->profile->id == ROHC_PROFILE_ESP)
-			{
-				if(((*sn_bits) & 0xff000000) != 0)
-				{
-					rohc_comp_warn(context, "malformed FEEDBACK-2: more than 32 bits "
-					               "used for SN of the ESP profile");
-#ifndef ROHC_RFC_STRICT_DECOMPRESSOR
-					rohc_comp_warn(context, "malformed FEEDBACK-2: truncate the MSB "
-					               "of the unexpected SN value");
-					(*sn_bits) &= 0x00ffffff;
-#else
-					goto error;
-#endif
-				}
-				(*sn_bits) = ((*sn_bits) << 8) + (remain_data[1] & 0xff);
-				(*sn_bits_nr) += 8;
-			}
-			else /* non-TCP and non-ESP profiles */
-			{
-				if(((*sn_bits) & 0xffffff00) != 0)
-				{
-					rohc_comp_warn(context, "malformed FEEDBACK-2: more than 16 bits "
-					               "used for SN of the non-ESP profile");
-#ifndef ROHC_RFC_STRICT_DECOMPRESSOR
-					rohc_comp_warn(context, "malformed FEEDBACK-2: truncate the MSB "
-					               "of the unexpected SN value");
-					(*sn_bits) &= 0x000000ff;
-#else
-					goto error;
-#endif
-				}
-				(*sn_bits) = ((*sn_bits) << 8) + (remain_data[1] & 0xff);
-				(*sn_bits_nr) += 8;
+				rohc_comp_warn(context, "malformed FEEDBACK-2: malformed SN option");
+				goto error;
 			}
 		}
 
@@ -2961,6 +2923,92 @@ bool rohc_comp_feedback_parse_opts(const struct rohc_comp_ctxt *const context,
 
 error:
 	return false;
+}
+
+
+/**
+ * @brief Parse the FEEDBACK-2 SN option
+ *
+ * @param context            The ROHC decompression context
+ * @param feedback_data      The feedback data without the CID bits
+ * @param feedback_data_len  The length of the feedback data without the CID bits
+ * @param[out] sn_bits       in: the SN bits collected in base header
+ *                           out: the SN bits collected in base header and options
+ * @param[out] sn_bits_nr    in: the number of SN bits collected in base header
+ *                           out: the number of SN bits collected in base header
+ *                                and options
+ * @return                   true if feedback options were successfully parsed,
+ *                           false if feedback options were malformed or CRC is wrong
+ */
+static bool rohc_comp_feedback_parse_opt_sn(const struct rohc_comp_ctxt *const context,
+                                            const uint8_t *const feedback_data,
+                                            const size_t feedback_data_len,
+                                            uint32_t *const sn_bits,
+                                            size_t *const sn_bits_nr)
+{
+	const uint8_t *remain_data = feedback_data;
+
+	/* min length already checked in caller function */
+	assert(feedback_data_len >= 2);
+
+	if(context->profile->id == ROHC_PROFILE_TCP)
+	{
+		if(((*sn_bits) & 0xffffc000) != 0)
+		{
+			rohc_comp_warn(context, "malformed FEEDBACK-2: more than 16 bits "
+			               "used for SN of the TCP profile");
+#ifndef ROHC_RFC_STRICT_DECOMPRESSOR
+			rohc_comp_warn(context, "malformed FEEDBACK-2: truncate the MSB "
+			               "of the unexpected SN value");
+			(*sn_bits) &= 0x00003fff;
+#else
+			goto error;
+#endif
+		}
+		(*sn_bits) = ((*sn_bits) << 2) + ((remain_data[1] >> 6) & 0x03);
+		(*sn_bits_nr) += 2;
+	}
+	else if(context->profile->id == ROHC_PROFILE_ESP)
+	{
+		if(((*sn_bits) & 0xff000000) != 0)
+		{
+			rohc_comp_warn(context, "malformed FEEDBACK-2: more than 32 bits "
+			               "used for SN of the ESP profile");
+#ifndef ROHC_RFC_STRICT_DECOMPRESSOR
+			rohc_comp_warn(context, "malformed FEEDBACK-2: truncate the MSB "
+			               "of the unexpected SN value");
+			(*sn_bits) &= 0x00ffffff;
+#else
+			goto error;
+#endif
+		}
+		(*sn_bits) = ((*sn_bits) << 8) + (remain_data[1] & 0xff);
+		(*sn_bits_nr) += 8;
+	}
+	else /* non-TCP and non-ESP profiles */
+	{
+		if(((*sn_bits) & 0xffffff00) != 0)
+		{
+			rohc_comp_warn(context, "malformed FEEDBACK-2: more than 16 bits "
+			               "used for SN of the non-ESP profile");
+#ifndef ROHC_RFC_STRICT_DECOMPRESSOR
+			rohc_comp_warn(context, "malformed FEEDBACK-2: truncate the MSB "
+			               "of the unexpected SN value");
+			(*sn_bits) &= 0x000000ff;
+#else
+			goto error;
+#endif
+		}
+		(*sn_bits) = ((*sn_bits) << 8) + (remain_data[1] & 0xff);
+		(*sn_bits_nr) += 8;
+	}
+
+	return true;
+
+#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
+error:
+	return false;
+#endif
 }
 
 
