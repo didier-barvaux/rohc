@@ -2981,6 +2981,7 @@ static bool rohc_comp_feedback_check_opts(const struct rohc_comp_ctxt *const con
                                           const size_t opts_present[ROHC_FEEDBACK_OPT_MAX])
 {
 	uint8_t opt_type;
+	assert(context->profile->id < ROHC_PROFILE_MAX);
 
 	for(opt_type = 0; opt_type < ROHC_FEEDBACK_OPT_MAX; opt_type++)
 	{
