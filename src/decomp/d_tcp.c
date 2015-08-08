@@ -112,6 +112,146 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
                            struct rohc_tcp_extr_bits *const bits,
                            size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 6, 7, 8)));
+
+static bool d_tcp_parse_rnd_1(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5, 6, 7)));
+static bool d_tcp_parse_rnd_2(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5, 6, 7)));
+static bool d_tcp_parse_rnd_3(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5, 6, 7)));
+static bool d_tcp_parse_rnd_4(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5, 6, 7)));
+static bool d_tcp_parse_rnd_5(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5, 6, 7)));
+static bool d_tcp_parse_rnd_6(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5, 6, 7)));
+static bool d_tcp_parse_rnd_7(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5, 6, 7)));
+static bool d_tcp_parse_rnd_8(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5, 6, 7)));
+
+static bool d_tcp_parse_seq_1(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5, 6, 7)));
+static bool d_tcp_parse_seq_2(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5, 6, 7)));
+static bool d_tcp_parse_seq_3(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5, 6, 7)));
+static bool d_tcp_parse_seq_4(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5, 6, 7)));
+static bool d_tcp_parse_seq_5(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5, 6, 7)));
+static bool d_tcp_parse_seq_6(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5, 6, 7)));
+static bool d_tcp_parse_seq_7(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5, 6, 7)));
+static bool d_tcp_parse_seq_8(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5, 6, 7)));
+
+static bool d_tcp_parse_co_common(const struct rohc_decomp_ctxt *const context,
+                                  const uint8_t *const rohc_packet,
+                                  const size_t rohc_length,
+                                  struct rohc_decomp_crc *const extr_crc,
+                                  struct rohc_tcp_extr_bits *const bits,
+                                  size_t *const rohc_hdr_len,
+                                  bool *const has_opts_list)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5, 6, 7)));
+
 static void d_tcp_reset_extr_bits(const struct rohc_decomp_ctxt *const context,
                                   struct rohc_tcp_extr_bits *const bits)
 	__attribute__((nonnull(1, 2)));
@@ -842,8 +982,16 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 	struct rohc_tcp_extr_ip_bits *inner_ip_bits;
 	tcp_ip_id_behavior_t innermost_ip_id_behavior;
 
-	bool is_list_present = false;
+	bool has_opts_list;
 	size_t rohc_opts_len;
+
+	bool (*parse_co_pkt)(const struct rohc_decomp_ctxt *const context,
+	                     const uint8_t *const rohc_packet,
+	                     const size_t rohc_length,
+	                     struct rohc_decomp_crc *const extr_crc,
+	                     struct rohc_tcp_extr_bits *const bits,
+	                     size_t *const rohc_hdr_len,
+	                     bool *const has_opts_list);
 
 	assert(rohc_packet != NULL);
 	assert(large_cid_len <= 2);
@@ -859,6 +1007,7 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 
 	assert(tcp_context->ip_contexts_nr > 0);
 	ip_inner_context = &(tcp_context->ip_contexts[tcp_context->ip_contexts_nr - 1]);
+	assert(bits->ip_nr > 0);
 	inner_ip_bits = &(bits->ip[bits->ip_nr - 1]);
 
 	/* check if the ROHC packet is large enough to parse parts 2, 3 and 4 */
@@ -883,841 +1032,78 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 	rohc_remain_len -= large_cid_len;
 	*rohc_hdr_len = 0;
 
-	/* decode the packet type we detected earlier */
-	rohc_decomp_debug(context, "decode %s packet (type %d)",
+	/* parse the packet type we detected earlier */
+	rohc_decomp_debug(context, "parse %s packet (type %d)",
 	                  rohc_get_packet_descr(packet_type), packet_type);
 	switch(packet_type)
 	{
 		case ROHC_PACKET_TCP_RND_1:
-		{
-			const rnd_1_t *const rnd_1 = (rnd_1_t *) rohc_remain_data;
-
-			/* check packet usage */
-			assert(context->state == ROHC_DECOMP_STATE_FC);
-
-			/* check if the ROHC packet is large enough to parse rnd_1 */
-			if(rohc_remain_len < sizeof(rnd_1_t))
-			{
-				rohc_decomp_warn(context, "ROHC packet too small for rnd_1 "
-				                 "(len = %zu)", rohc_remain_len);
-				goto error;
-			}
-
-			assert(rnd_1->discriminator == 0x2e); /* '101110' */
-			bits->seq.bits = (rnd_1->seq_num1 << 16) | rohc_ntoh16(rnd_1->seq_num2);
-			bits->seq.bits_nr = 18;
-			bits->seq.p = 65535;
-			bits->msn.bits = rnd_1->msn;
-			bits->msn.bits_nr = 4;
-			bits->psh_flag_bits = rnd_1->psh_flag;
-			bits->psh_flag_bits_nr = 1;
-			extr_crc->type = ROHC_CRC_TYPE_3;
-			extr_crc->bits = rnd_1->header_crc;
-			extr_crc->bits_nr = 3;
-
-			rohc_remain_data += sizeof(rnd_1_t);
-			rohc_remain_len -= sizeof(rnd_1_t);
-			*rohc_hdr_len += sizeof(rnd_1_t);
-			assert((*rohc_hdr_len) <= rohc_length);
+			parse_co_pkt = d_tcp_parse_rnd_1;
 			break;
-		}
 		case ROHC_PACKET_TCP_RND_2:
-		{
-			const rnd_2_t *const rnd_2 = (rnd_2_t *) rohc_remain_data;
-
-			/* check packet usage */
-			assert(context->state == ROHC_DECOMP_STATE_FC);
-
-			/* check if the ROHC packet is large enough to parse rnd_2 */
-			if(rohc_remain_len < sizeof(rnd_2_t))
-			{
-				rohc_decomp_warn(context, "ROHC packet too small for rnd_2 "
-				                 "(len = %zu)", rohc_remain_len);
-				goto error;
-			}
-
-			assert(rnd_2->discriminator == 0x0c); /* '1100' */
-			bits->seq_scaled.bits = rnd_2->seq_num_scaled;
-			bits->seq_scaled.bits_nr = 4;
-			bits->msn.bits = rnd_2->msn;
-			bits->msn.bits_nr = 4;
-			bits->psh_flag_bits = rnd_2->psh_flag;
-			bits->psh_flag_bits_nr = 1;
-			extr_crc->type = ROHC_CRC_TYPE_3;
-			extr_crc->bits = rnd_2->header_crc;
-			extr_crc->bits_nr = 3;
-
-			rohc_remain_data += sizeof(rnd_2_t);
-			rohc_remain_len -= sizeof(rnd_2_t);
-			*rohc_hdr_len += sizeof(rnd_2_t);
-			assert((*rohc_hdr_len) <= rohc_length);
+			parse_co_pkt = d_tcp_parse_rnd_2;
 			break;
-		}
 		case ROHC_PACKET_TCP_RND_3:
-		{
-			const rnd_3_t *const rnd_3 = (rnd_3_t *) rohc_remain_data;
-
-			/* check packet usage */
-			assert(context->state == ROHC_DECOMP_STATE_FC);
-
-			/* check if the ROHC packet is large enough to parse rnd_3 */
-			if(rohc_remain_len < sizeof(rnd_3_t))
-			{
-				rohc_decomp_warn(context, "ROHC packet too small for rnd_3 "
-				                 "(len = %zu)", rohc_remain_len);
-				goto error;
-			}
-
-			assert(rnd_3->discriminator == 0x00); /* '0' */
-			bits->ack.bits = (rnd_3->ack_num1 << 8) | rnd_3->ack_num2;
-			bits->ack.bits_nr = 15;
-			bits->ack.p = 8191;
-			bits->msn.bits = rnd_3->msn;
-			bits->msn.bits_nr = 4;
-			bits->psh_flag_bits = rnd_3->psh_flag;
-			bits->psh_flag_bits_nr = 1;
-			extr_crc->type = ROHC_CRC_TYPE_3;
-			extr_crc->bits = rnd_3->header_crc;
-			extr_crc->bits_nr = 3;
-
-			rohc_remain_data += sizeof(rnd_3_t);
-			rohc_remain_len -= sizeof(rnd_3_t);
-			*rohc_hdr_len += sizeof(rnd_3_t);
-			assert((*rohc_hdr_len) <= rohc_length);
+			parse_co_pkt = d_tcp_parse_rnd_3;
 			break;
-		}
 		case ROHC_PACKET_TCP_RND_4:
-		{
-			const rnd_4_t *const rnd_4 = (rnd_4_t *) rohc_remain_data;
-
-			/* check packet usage */
-			assert(context->state == ROHC_DECOMP_STATE_FC);
-
-			/* rnd_4 packet cannot be used if ack_stride is zero (it is used as
-			 * divisor to compute the scaled acknowledgment number) */
-			if(tcp_context->ack_stride == 0)
-			{
-				rohc_decomp_warn(context, "cannot decode rnd_4 packet with "
-				                 "ack_stride.UVALUE == 0");
-				goto error;
-			}
-
-			/* check if the ROHC packet is large enough to parse rnd_4 */
-			if(rohc_remain_len < sizeof(rnd_4_t))
-			{
-				rohc_decomp_warn(context, "ROHC packet too small for rnd_4 "
-				                 "(len = %zu)", rohc_remain_len);
-				goto error;
-			}
-
-			assert(rnd_4->discriminator == 0x0d); /* '1101' */
-			bits->ack_scaled.bits = rnd_4->ack_num_scaled;
-			bits->ack_scaled.bits_nr = 4;
-			bits->msn.bits = rnd_4->msn;
-			bits->msn.bits_nr = 4;
-			bits->psh_flag_bits = rnd_4->psh_flag;
-			bits->psh_flag_bits_nr = 1;
-			extr_crc->type = ROHC_CRC_TYPE_3;
-			extr_crc->bits = rnd_4->header_crc;
-			extr_crc->bits_nr = 3;
-
-			rohc_remain_data += sizeof(rnd_4_t);
-			rohc_remain_len -= sizeof(rnd_4_t);
-			*rohc_hdr_len += sizeof(rnd_4_t);
-			assert((*rohc_hdr_len) <= rohc_length);
+			parse_co_pkt = d_tcp_parse_rnd_4;
 			break;
-		}
 		case ROHC_PACKET_TCP_RND_5:
-		{
-			const rnd_5_t *const rnd_5 = (rnd_5_t *) rohc_remain_data;
-
-			/* check packet usage */
-			assert(context->state == ROHC_DECOMP_STATE_FC);
-
-			/* check if the ROHC packet is large enough to parse rnd_5 */
-			if(rohc_remain_len < sizeof(rnd_5_t))
-			{
-				rohc_decomp_warn(context, "ROHC packet too small for rnd_5 "
-				                 "(len = %zu)", rohc_remain_len);
-				goto error;
-			}
-
-			assert(rnd_5->discriminator == 0x04); /* '100' */
-			bits->psh_flag_bits = rnd_5->psh_flag;
-			bits->psh_flag_bits_nr = 1;
-			bits->msn.bits = rnd_5->msn;
-			bits->msn.bits_nr = 4;
-			extr_crc->type = ROHC_CRC_TYPE_3;
-			extr_crc->bits = rnd_5->header_crc;
-			extr_crc->bits_nr = 3;
-			bits->seq.bits = (rnd_5->seq_num1 << 9) |
-			                 (rnd_5->seq_num2 << 1) |
-			                 rnd_5->seq_num3;
-			bits->seq.bits_nr = 14;
-			bits->seq.p = 8191;
-			bits->ack.bits = (rnd_5->ack_num1 << 8) | rnd_5->ack_num2;
-			bits->ack.bits_nr = 15;
-			bits->ack.p = 8191;
-
-			rohc_remain_data += sizeof(rnd_5_t);
-			rohc_remain_len -= sizeof(rnd_5_t);
-			*rohc_hdr_len += sizeof(rnd_5_t);
-			assert((*rohc_hdr_len) <= rohc_length);
+			parse_co_pkt = d_tcp_parse_rnd_5;
 			break;
-		}
 		case ROHC_PACKET_TCP_RND_6:
-		{
-			const rnd_6_t *const rnd_6 = (rnd_6_t *) rohc_remain_data;
-
-			/* check packet usage */
-			assert(context->state == ROHC_DECOMP_STATE_FC);
-
-			/* check if the ROHC packet is large enough to parse rnd_6 */
-			if(rohc_remain_len < sizeof(rnd_6_t))
-			{
-				rohc_decomp_warn(context, "ROHC packet too small for rnd_6 "
-				                 "(len = %zu)", rohc_remain_len);
-				goto error;
-			}
-
-			assert(rnd_6->discriminator == 0x0a); /* '1010' */
-			extr_crc->type = ROHC_CRC_TYPE_3;
-			extr_crc->bits = rnd_6->header_crc;
-			extr_crc->bits_nr = 3;
-			bits->psh_flag_bits = rnd_6->psh_flag;
-			bits->psh_flag_bits_nr = 1;
-			bits->ack.bits = rohc_ntoh16(rnd_6->ack_num);
-			bits->ack.bits_nr = 16;
-			bits->ack.p = 16383;
-			bits->msn.bits = rnd_6->msn;
-			bits->msn.bits_nr = 4;
-			bits->seq_scaled.bits = rnd_6->seq_num_scaled;
-			bits->seq_scaled.bits_nr = 4;
-
-			rohc_remain_data += sizeof(rnd_6_t);
-			rohc_remain_len -= sizeof(rnd_6_t);
-			*rohc_hdr_len += sizeof(rnd_6_t);
-			assert((*rohc_hdr_len) <= rohc_length);
+			parse_co_pkt = d_tcp_parse_rnd_6;
 			break;
-		}
 		case ROHC_PACKET_TCP_RND_7:
-		{
-			const rnd_7_t *const rnd_7 = (rnd_7_t *) rohc_remain_data;
-
-			/* check packet usage */
-			assert(context->state == ROHC_DECOMP_STATE_FC);
-
-			/* check if the ROHC packet is large enough to parse rnd_7 */
-			if(rohc_remain_len < sizeof(rnd_7_t))
-			{
-				rohc_decomp_warn(context, "ROHC packet too small for rnd_7 "
-				                 "(len = %zu)", rohc_remain_len);
-				goto error;
-			}
-
-			assert(rnd_7->discriminator == 0x2f); /* '101111' */
-			bits->ack.bits = (rnd_7->ack_num1 << 16) | rohc_ntoh16(rnd_7->ack_num2);
-			bits->ack.bits_nr = 18;
-			bits->ack.p = 65535;
-			bits->window.bits = rohc_ntoh16(rnd_7->window);
-			bits->window.bits_nr = 16;
-			bits->msn.bits = rnd_7->msn;
-			bits->msn.bits_nr = 4;
-			bits->psh_flag_bits = rnd_7->psh_flag;
-			bits->psh_flag_bits_nr = 1;
-			extr_crc->type = ROHC_CRC_TYPE_3;
-			extr_crc->bits = rnd_7->header_crc;
-			extr_crc->bits_nr = 3;
-
-			rohc_remain_data += sizeof(rnd_7_t);
-			rohc_remain_len -= sizeof(rnd_7_t);
-			*rohc_hdr_len += sizeof(rnd_7_t);
-			assert((*rohc_hdr_len) <= rohc_length);
+			parse_co_pkt = d_tcp_parse_rnd_7;
 			break;
-		}
 		case ROHC_PACKET_TCP_RND_8:
-		{
-			const rnd_8_t *const rnd_8 = (rnd_8_t *) rohc_remain_data;
-
-			/* check packet usage */
-			assert(context->state != ROHC_DECOMP_STATE_NC);
-
-			/* check if the ROHC packet is large enough to parse rnd_8 */
-			if(rohc_remain_len < sizeof(rnd_8_t))
-			{
-				rohc_decomp_warn(context, "ROHC packet too small for rnd_8 "
-				                 "(len = %zu)", rohc_remain_len);
-				goto error;
-			}
-
-			assert(rnd_8->discriminator == 0x16); /* '10110' */
-			bits->rsf_flags_bits = rnd_8->rsf_flags;
-			bits->rsf_flags_bits_nr = 2;
-			is_list_present = !!rnd_8->list_present;
-			extr_crc->type = ROHC_CRC_TYPE_7;
-			extr_crc->bits = rnd_8->header_crc;
-			extr_crc->bits_nr = 7;
-			bits->msn.bits = (rnd_8->msn1 << 3) | rnd_8->msn2;
-			bits->msn.bits_nr = 4;
-			bits->psh_flag_bits = rnd_8->psh_flag;
-			bits->psh_flag_bits_nr = 1;
-			inner_ip_bits->ttl_hl.bits = rnd_8->ttl_hopl;
-			inner_ip_bits->ttl_hl.bits_nr = 3;
-			bits->ecn_used_bits = rnd_8->ecn_used;
-			bits->ecn_used_bits_nr = 1;
-			rohc_decomp_debug(context, "packet ecn_used = %d", bits->ecn_used_bits);
-			bits->seq.bits = rohc_ntoh16(rnd_8->seq_num);
-			bits->seq.bits_nr = 16;
-			bits->seq.p = 65535;
-			bits->ack.bits = rohc_ntoh16(rnd_8->ack_num);
-			bits->ack.bits_nr = 16;
-			bits->ack.p = 16383;
-
-			rohc_remain_data += sizeof(rnd_8_t);
-			rohc_remain_len -= sizeof(rnd_8_t);
-			*rohc_hdr_len += sizeof(rnd_8_t);
-			assert((*rohc_hdr_len) <= rohc_length);
+			parse_co_pkt = d_tcp_parse_rnd_8;
 			break;
-		}
 		case ROHC_PACKET_TCP_SEQ_1:
-		{
-			const seq_1_t *const seq_1 = (seq_1_t *) rohc_remain_data;
-
-			/* check packet usage */
-			assert(context->state == ROHC_DECOMP_STATE_FC);
-
-			/* check if the ROHC packet is large enough to parse seq_1 */
-			if(rohc_remain_len < sizeof(seq_1_t))
-			{
-				rohc_decomp_warn(context, "ROHC packet too small for seq_1 "
-				                 "(len = %zu)", rohc_remain_len);
-				goto error;
-			}
-
-			assert(seq_1->discriminator == 0x0a); /* '1010' */
-			inner_ip_bits->id.bits = seq_1->ip_id;
-			inner_ip_bits->id.bits_nr = 4;
-			inner_ip_bits->id.p = 3;
-			bits->seq.bits = rohc_ntoh16(seq_1->seq_num);
-			bits->seq.bits_nr = 16;
-			bits->seq.p = 32767;
-			bits->msn.bits = seq_1->msn;
-			bits->msn.bits_nr = 4;
-			bits->psh_flag_bits = seq_1->psh_flag;
-			bits->psh_flag_bits_nr = 1;
-			extr_crc->type = ROHC_CRC_TYPE_3;
-			extr_crc->bits = seq_1->header_crc;
-			extr_crc->bits_nr = 3;
-
-			rohc_remain_data += sizeof(seq_1_t);
-			rohc_remain_len -= sizeof(seq_1_t);
-			*rohc_hdr_len += sizeof(seq_1_t);
-			assert((*rohc_hdr_len) <= rohc_length);
+			parse_co_pkt = d_tcp_parse_seq_1;
 			break;
-		}
 		case ROHC_PACKET_TCP_SEQ_2:
-		{
-			const seq_2_t *const seq_2 = (seq_2_t *) rohc_remain_data;
-
-			/* check packet usage */
-			assert(context->state == ROHC_DECOMP_STATE_FC);
-
-			/* check if the ROHC packet is large enough to parse seq_2 */
-			if(rohc_remain_len < sizeof(seq_2_t))
-			{
-				rohc_decomp_warn(context, "ROHC packet too small for seq_2 "
-				                 "(len = %zu)", rohc_remain_len);
-				goto error;
-			}
-
-			assert(seq_2->discriminator == 0x1a); /* '11010' */
-			inner_ip_bits->id.bits = (seq_2->ip_id1 << 4) | seq_2->ip_id2;
-			inner_ip_bits->id.bits_nr = 7;
-			inner_ip_bits->id.p = 3;
-			bits->seq_scaled.bits = seq_2->seq_num_scaled;
-			bits->seq_scaled.bits_nr = 4;
-			bits->msn.bits = seq_2->msn;
-			bits->msn.bits_nr = 4;
-			bits->psh_flag_bits = seq_2->psh_flag;
-			bits->psh_flag_bits_nr = 1;
-			extr_crc->type = ROHC_CRC_TYPE_3;
-			extr_crc->bits = seq_2->header_crc;
-			extr_crc->bits_nr = 3;
-
-			rohc_remain_data += sizeof(seq_2_t);
-			rohc_remain_len -= sizeof(seq_2_t);
-			*rohc_hdr_len += sizeof(seq_2_t);
-			assert((*rohc_hdr_len) <= rohc_length);
+			parse_co_pkt = d_tcp_parse_seq_2;
 			break;
-		}
 		case ROHC_PACKET_TCP_SEQ_3:
-		{
-			const seq_3_t *const seq_3 = (seq_3_t *) rohc_remain_data;
-
-			/* check packet usage */
-			assert(context->state == ROHC_DECOMP_STATE_FC);
-
-			/* check if the ROHC packet is large enough to parse seq_3 */
-			if(rohc_remain_len < sizeof(seq_3_t))
-			{
-				rohc_decomp_warn(context, "ROHC packet too small for seq_3 "
-				                 "(len = %zu)", rohc_remain_len);
-				goto error;
-			}
-
-			assert(seq_3->discriminator == 0x09); /* '1001' */
-			inner_ip_bits->id.bits = seq_3->ip_id;
-			inner_ip_bits->id.bits_nr = 4;
-			inner_ip_bits->id.p = 3;
-			bits->ack.bits = rohc_ntoh16(seq_3->ack_num);
-			bits->ack.bits_nr = 16;
-			bits->ack.p = 16383;
-			bits->msn.bits = seq_3->msn;
-			bits->msn.bits_nr = 4;
-			bits->psh_flag_bits = seq_3->psh_flag;
-			bits->psh_flag_bits_nr = 1;
-			extr_crc->type = ROHC_CRC_TYPE_3;
-			extr_crc->bits = seq_3->header_crc;
-			extr_crc->bits_nr = 3;
-
-			rohc_remain_data += sizeof(seq_3_t);
-			rohc_remain_len -= sizeof(seq_3_t);
-			*rohc_hdr_len += sizeof(seq_3_t);
-			assert((*rohc_hdr_len) <= rohc_length);
+			parse_co_pkt = d_tcp_parse_seq_3;
 			break;
-		}
 		case ROHC_PACKET_TCP_SEQ_4:
-		{
-			const seq_4_t *const seq_4 = (seq_4_t *) rohc_remain_data;
-
-			/* check packet usage */
-			assert(context->state == ROHC_DECOMP_STATE_FC);
-
-			/* seq_4 packet cannot be used if ack_stride is zero (it is used as
-			 * divisor to compute the scaled acknowledgment number) */
-			if(tcp_context->ack_stride == 0)
-			{
-				rohc_decomp_warn(context, "cannot decode seq_4 packet with "
-				                 "ack_stride.UVALUE == 0");
-				goto error;
-			}
-
-			/* check if the ROHC packet is large enough to parse seq_4 */
-			if(rohc_remain_len < sizeof(seq_4_t))
-			{
-				rohc_decomp_warn(context, "ROHC packet too small for seq_4 "
-				                 "(len = %zu)", rohc_remain_len);
-				goto error;
-			}
-
-			assert(seq_4->discriminator == 0x00); /* '0' */
-			bits->ack_scaled.bits = seq_4->ack_num_scaled;
-			bits->ack_scaled.bits_nr = 4;
-			inner_ip_bits->id.bits = seq_4->ip_id;
-			inner_ip_bits->id.bits_nr = 3;
-			inner_ip_bits->id.p = 1;
-			bits->msn.bits = seq_4->msn;
-			bits->msn.bits_nr = 4;
-			bits->psh_flag_bits = seq_4->psh_flag;
-			bits->psh_flag_bits_nr = 1;
-			extr_crc->type = ROHC_CRC_TYPE_3;
-			extr_crc->bits = seq_4->header_crc;
-			extr_crc->bits_nr = 3;
-
-			rohc_remain_data += sizeof(seq_4_t);
-			rohc_remain_len -= sizeof(seq_4_t);
-			*rohc_hdr_len += sizeof(seq_4_t);
-			assert((*rohc_hdr_len) <= rohc_length);
+			parse_co_pkt = d_tcp_parse_seq_4;
 			break;
-		}
 		case ROHC_PACKET_TCP_SEQ_5:
-		{
-			const seq_5_t *const seq_5 = (seq_5_t *) rohc_remain_data;
-
-			/* check packet usage */
-			assert(context->state == ROHC_DECOMP_STATE_FC);
-
-			/* check if the ROHC packet is large enough to parse seq_5 */
-			if(rohc_remain_len < sizeof(seq_5_t))
-			{
-				rohc_decomp_warn(context, "ROHC packet too small for seq_5 "
-				                 "(len = %zu)", rohc_remain_len);
-				goto error;
-			}
-
-			assert(seq_5->discriminator == 0x08); /* '1000' */
-			inner_ip_bits->id.bits = seq_5->ip_id;
-			inner_ip_bits->id.bits_nr = 4;
-			inner_ip_bits->id.p = 3;
-			bits->ack.bits = rohc_ntoh16(seq_5->ack_num);
-			bits->ack.bits_nr = 16;
-			bits->ack.p = 16383;
-			bits->seq.bits = rohc_ntoh16(seq_5->seq_num);
-			bits->seq.bits_nr = 16;
-			bits->seq.p = 32767;
-			bits->msn.bits = seq_5->msn;
-			bits->msn.bits_nr = 4;
-			bits->psh_flag_bits = seq_5->psh_flag;
-			bits->psh_flag_bits_nr = 1;
-			extr_crc->type = ROHC_CRC_TYPE_3;
-			extr_crc->bits = seq_5->header_crc;
-			extr_crc->bits_nr = 3;
-
-			rohc_remain_data += sizeof(seq_5_t);
-			rohc_remain_len -= sizeof(seq_5_t);
-			*rohc_hdr_len += sizeof(seq_5_t);
-			assert((*rohc_hdr_len) <= rohc_length);
+			parse_co_pkt = d_tcp_parse_seq_5;
 			break;
-		}
 		case ROHC_PACKET_TCP_SEQ_6:
-		{
-			const seq_6_t *const seq_6 = (seq_6_t *) rohc_remain_data;
-
-			/* check packet usage */
-			assert(context->state == ROHC_DECOMP_STATE_FC);
-
-			/* check if the ROHC packet is large enough to parse seq_6 */
-			if(rohc_remain_len < sizeof(seq_6_t))
-			{
-				rohc_decomp_warn(context, "ROHC packet too small for seq_6 "
-				                 "(len = %zu)", rohc_remain_len);
-				goto error;
-			}
-
-			assert(seq_6->discriminator == 0x1b); /* '11011' */
-			bits->seq_scaled.bits =
-				(seq_6->seq_num_scaled1 << 1) | seq_6->seq_num_scaled2;
-			bits->seq_scaled.bits_nr = 4;
-			inner_ip_bits->id.bits = seq_6->ip_id;
-			inner_ip_bits->id.bits_nr = 7;
-			inner_ip_bits->id.p = 3;
-			bits->ack.bits = rohc_ntoh16(seq_6->ack_num);
-			bits->ack.bits_nr = 16;
-			bits->ack.p = 16383;
-			bits->msn.bits = seq_6->msn;
-			bits->msn.bits_nr = 4;
-			bits->psh_flag_bits = seq_6->psh_flag;
-			bits->psh_flag_bits_nr = 1;
-			extr_crc->type = ROHC_CRC_TYPE_3;
-			extr_crc->bits = seq_6->header_crc;
-			extr_crc->bits_nr = 3;
-
-			rohc_remain_data += sizeof(seq_6_t);
-			rohc_remain_len -= sizeof(seq_6_t);
-			*rohc_hdr_len += sizeof(seq_6_t);
-			assert((*rohc_hdr_len) <= rohc_length);
+			parse_co_pkt = d_tcp_parse_seq_6;
 			break;
-		}
 		case ROHC_PACKET_TCP_SEQ_7:
-		{
-			const seq_7_t *const seq_7 = (seq_7_t *) rohc_remain_data;
-
-			/* check packet usage */
-			assert(context->state == ROHC_DECOMP_STATE_FC);
-
-			/* check if the ROHC packet is large enough to parse seq_7 */
-			if(rohc_remain_len < sizeof(seq_7_t))
-			{
-				rohc_decomp_warn(context, "ROHC packet too small for seq_7 "
-				                 "(len = %zu)", rohc_remain_len);
-				goto error;
-			}
-
-			assert(seq_7->discriminator == 0x0c); /* '1100' */
-			bits->window.bits =
-				(seq_7->window1 << 11) | (seq_7->window2 << 3) | seq_7->window3;
-			bits->window.bits_nr = 15;
-			bits->window.p = ROHC_LSB_SHIFT_TCP_WINDOW;
-			inner_ip_bits->id.bits = seq_7->ip_id;
-			inner_ip_bits->id.bits_nr = 5;
-			inner_ip_bits->id.p = 3;
-			bits->ack.bits = rohc_ntoh16(seq_7->ack_num);
-			bits->ack.bits_nr = 16;
-			bits->ack.p = 32767;
-			bits->msn.bits = seq_7->msn;
-			bits->msn.bits_nr = 4;
-			bits->psh_flag_bits = seq_7->psh_flag;
-			bits->psh_flag_bits_nr = 1;
-			extr_crc->type = ROHC_CRC_TYPE_3;
-			extr_crc->bits = seq_7->header_crc;
-			extr_crc->bits_nr = 3;
-
-			rohc_remain_data += sizeof(seq_7_t);
-			rohc_remain_len -= sizeof(seq_7_t);
-			*rohc_hdr_len += sizeof(seq_7_t);
-			assert((*rohc_hdr_len) <= rohc_length);
+			parse_co_pkt = d_tcp_parse_seq_7;
 			break;
-		}
 		case ROHC_PACKET_TCP_SEQ_8:
-		{
-			const seq_8_t *const seq_8 = (seq_8_t *) rohc_remain_data;
-
-			/* check packet usage */
-			assert(context->state != ROHC_DECOMP_STATE_NC);
-
-			/* check if the ROHC packet is large enough to parse seq_8 */
-			if(rohc_remain_len < sizeof(seq_8_t))
-			{
-				rohc_decomp_warn(context, "ROHC packet too small for seq_8 "
-				                 "(len = %zu)", rohc_remain_len);
-				goto error;
-			}
-
-			assert(seq_8->discriminator == 0x0b); /* '1011' */
-			inner_ip_bits->id.bits = seq_8->ip_id;
-			inner_ip_bits->id.bits_nr = 4;
-			inner_ip_bits->id.p = 3;
-			is_list_present = !!seq_8->list_present;
-			extr_crc->type = ROHC_CRC_TYPE_7;
-			extr_crc->bits = seq_8->header_crc;
-			extr_crc->bits_nr = 7;
-			bits->msn.bits = seq_8->msn;
-			bits->msn.bits_nr = 4;
-			bits->psh_flag_bits = seq_8->psh_flag;
-			bits->psh_flag_bits_nr = 1;
-			inner_ip_bits->ttl_hl.bits = seq_8->ttl_hopl;
-			inner_ip_bits->ttl_hl.bits_nr = 3;
-			bits->ecn_used_bits = seq_8->ecn_used;
-			bits->ecn_used_bits_nr = 1;
-			rohc_decomp_debug(context, "packet ecn_used = %d", bits->ecn_used_bits);
-			bits->ack.bits = (seq_8->ack_num1 << 8) | seq_8->ack_num2;
-			bits->ack.bits_nr = 15;
-			bits->ack.p = 8191;
-			bits->rsf_flags_bits = seq_8->rsf_flags;
-			bits->rsf_flags_bits_nr = 2;
-			bits->seq.bits = (seq_8->seq_num1 << 8) | seq_8->seq_num2;
-			bits->seq.bits_nr = 14;
-			bits->seq.p = 8191;
-
-			rohc_remain_data += sizeof(seq_8_t);
-			rohc_remain_len -= sizeof(seq_8_t);
-			*rohc_hdr_len += sizeof(seq_8_t);
-			assert((*rohc_hdr_len) <= rohc_length);
+			parse_co_pkt = d_tcp_parse_seq_8;
 			break;
-		}
 		case ROHC_PACKET_TCP_CO_COMMON:
-		{
-			const co_common_t *const co_common = (co_common_t *) rohc_remain_data;
-
-			/* check packet usage */
-			assert(context->state != ROHC_DECOMP_STATE_NC);
-
-			/* check if the ROHC packet is large enough to parse co_common */
-			if(rohc_remain_len < sizeof(co_common_t))
-			{
-				rohc_decomp_warn(context, "ROHC packet too small for co_common "
-				                 "(len = %zu)", rohc_remain_len);
-				goto error;
-			}
-
-			assert(co_common->discriminator == 0x7d); /* '1111101' */
-			bits->ttl_irregular_chain_flag = !!(co_common->ttl_hopl_outer_flag);
-			bits->ack_flag_bits = co_common->ack_flag;
-			bits->ack_flag_bits_nr = 1;
-			bits->psh_flag_bits = co_common->psh_flag;
-			bits->psh_flag_bits_nr = 1;
-			bits->rsf_flags_bits = co_common->rsf_flags;
-			bits->rsf_flags_bits_nr = 2;
-			bits->msn.bits = co_common->msn;
-			bits->msn.bits_nr = 4;
-			is_list_present = !!co_common->list_present;
-			inner_ip_bits->id_behavior = co_common->ip_id_behavior;
-			inner_ip_bits->id_behavior_nr = 2;
-			bits->urg_flag_bits = co_common->urg_flag;
-			bits->urg_flag_bits_nr = 1;
-			extr_crc->type = ROHC_CRC_TYPE_7;
-			extr_crc->bits = co_common->header_crc;
-			extr_crc->bits_nr = 7;
-
-			rohc_remain_data += sizeof(co_common_t);
-			rohc_remain_len -= sizeof(co_common_t);
-			*rohc_hdr_len += sizeof(co_common_t);
-			assert((*rohc_hdr_len) <= rohc_length);
-			rohc_decomp_debug(context, "ROHC co_common base header = %zu bytes",
-			                  *rohc_hdr_len);
-
-			/* sequence number */
-			ret = variable_length_32_dec(rohc_remain_data, rohc_remain_len,
-			                             co_common->seq_indicator, &bits->seq);
-			if(ret < 0)
-			{
-				rohc_decomp_warn(context, "variable_length_32(seq_number) failed");
-				goto error;
-			}
-			rohc_decomp_debug(context, "found %zu bits of sequence number encoded "
-			                  "on %d bytes", bits->seq.bits_nr, ret);
-			rohc_remain_data += ret;
-			rohc_remain_len -= ret;
-			*rohc_hdr_len += ret;
-
-			/* ACK number */
-			if(co_common->ack_indicator != 0)
-			{
-				rohc_decomp_debug(context, "ACK flag not set, but indicator for "
-				                  "ACK number is %u instead of 0",
-				                  co_common->ack_indicator);
-			}
-			ret = variable_length_32_dec(rohc_remain_data, rohc_remain_len,
-			                             co_common->ack_indicator, &bits->ack);
-			if(ret < 0)
-			{
-				rohc_decomp_warn(context, "variable_length_32(ack_number) failed");
-				goto error;
-			}
-			rohc_decomp_debug(context, "found %zu bits of acknowledgment number "
-			                  "encoded on %d bytes", bits->ack.bits_nr, ret);
-			rohc_remain_data += ret;
-			rohc_remain_len -= ret;
-			*rohc_hdr_len += ret;
-
-			/* ACK stride */
-			ret = d_static_or_irreg16(rohc_remain_data, rohc_remain_len,
-			                          co_common->ack_stride_indicator,
-			                          &bits->ack_stride);
-			if(ret < 0)
-			{
-				rohc_decomp_warn(context, "static_or_irreg(ack_stride) failed");
-				goto error;
-			}
-			rohc_decomp_debug(context, "found %zu bits of ACK stride encoded on "
-			                  "%d bytes", bits->ack_stride.bits_nr, ret);
-			rohc_remain_data += ret;
-			rohc_remain_len -= ret;
-			*rohc_hdr_len += ret;
-
-			/* window */
-			ret = d_static_or_irreg16(rohc_remain_data, rohc_remain_len,
-			                          co_common->window_indicator, &bits->window);
-			if(ret < 0)
-			{
-				rohc_decomp_warn(context, "static_or_irreg(window) failed");
-				goto error;
-			}
-			rohc_decomp_debug(context, "found %zu bits of TCP window encoded on "
-			                  "%d bytes", bits->window.bits_nr, ret);
-			rohc_remain_data += ret;
-			rohc_remain_len -= ret;
-			*rohc_hdr_len += ret;
-
-			/* IP-ID behavior */
-			if((co_common->ip_id_behavior == IP_ID_BEHAVIOR_SEQ ||
-			    co_common->ip_id_behavior == IP_ID_BEHAVIOR_SEQ_SWAP) &&
-			   ip_inner_context->ctxt.vx.version != IPV4)
-			{
-				rohc_decomp_warn(context, "packet and context mismatch: co_common "
-				                 "packet advertizes that innermost IP-ID behaves "
-				                 "as %s but innermost IP is IPv6 according to "
-				                 "context",
-				                 tcp_ip_id_behavior_get_descr(co_common->ip_id_behavior));
-				goto error;
-			}
-			ret = d_optional_ip_id_lsb(context, rohc_remain_data, rohc_remain_len,
-			                           co_common->ip_id_behavior,
-			                           co_common->ip_id_indicator, &inner_ip_bits->id);
-			if(ret < 0)
-			{
-				rohc_decomp_warn(context, "optional_ip_id_lsb(ip_id) failed");
-				goto error;
-			}
-			rohc_decomp_debug(context, "found %zu bits of innermost IP-ID encoded "
-			                  "on %d bytes", inner_ip_bits->id.bits_nr, ret);
-			rohc_remain_data += ret;
-			rohc_remain_len -= ret;
-			*rohc_hdr_len += ret;
-
-			/* URG pointer */
-			ret = d_static_or_irreg16(rohc_remain_data, rohc_remain_len,
-			                          co_common->urg_ptr_present, &bits->urg_ptr);
-			if(ret < 0)
-			{
-				rohc_decomp_warn(context, "static_or_irreg(urg_ptr) failed");
-				goto error;
-			}
-			rohc_decomp_debug(context, "found %zu bits of TCP URG pointer encoded "
-			                  "on %d bytes", bits->urg_ptr.bits_nr, ret);
-			rohc_remain_data += ret;
-			rohc_remain_len -= ret;
-			*rohc_hdr_len += ret;
-
-			/* reserved field shall be zero */
-			if(co_common->reserved != 0)
-			{
-				rohc_decomp_debug(context, "malformed ROHC co_common packet: "
-				                  "reserved field shall be zero but it is %u",
-				                  co_common->reserved);
-#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
-				goto error;
-#endif
-			}
-
-			/* ECN */
-			bits->ecn_used_bits = co_common->ecn_used;
-			bits->ecn_used_bits_nr = 1;
-			rohc_decomp_debug(context, "packet ecn_used = %d", bits->ecn_used_bits);
-
-			/* DSCP */
-			if(co_common->dscp_present == 1)
-			{
-				uint8_t dscp_padding;
-
-				if(rohc_remain_len < 1)
-				{
-					rohc_decomp_warn(context, "ROHC packet too small for DSCP "
-					                 "(len = %zu)", rohc_remain_len);
-					goto error;
-				}
-
-				inner_ip_bits->dscp_bits = (rohc_remain_data[0] >> 2) & 0x3f;
-				inner_ip_bits->dscp_bits_nr = 6;
-				rohc_decomp_debug(context, "found %zu bits of innermost DSCP "
-				                  "encoded on %d bytes", inner_ip_bits->dscp_bits_nr, ret);
-				dscp_padding = rohc_remain_data[0] & 0x3;
-				rohc_remain_data++;
-				rohc_remain_len--;
-				(*rohc_hdr_len)++;
-
-				/* padding field shall be zero */
-				if(dscp_padding != 0)
-				{
-					rohc_decomp_debug(context, "malformed ROHC co_common packet: "
-					                  "DSCP padding shall be zero but it is %u",
-					                  dscp_padding);
-#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
-					goto error;
-#endif
-				}
-			}
-
-			/* DF */
-			if(ip_inner_context->ctxt.vx.version == IPV4)
-			{
-				inner_ip_bits->df = co_common->df;
-				inner_ip_bits->df_nr = 1;
-				rohc_decomp_debug(context, "found %zu bits of innermost DF "
-				                  "encoded on %d bytes", inner_ip_bits->df_nr, ret);
-			}
-
-			/* TTL / HL */
-			ret = d_static_or_irreg8(rohc_remain_data, rohc_remain_len,
-			                         co_common->ttl_hopl_present,
-			                         &inner_ip_bits->ttl_hl);
-			if(ret < 0)
-			{
-				rohc_decomp_warn(context, "static_or_irreg(ttl) failed");
-				goto error;
-			}
-			rohc_decomp_debug(context, "found %zu bits of innermost TTL/HL encoded "
-			                  "on %d bytes", inner_ip_bits->ttl_hl.bits_nr, ret);
-			rohc_remain_data += ret;
-			rohc_remain_len -= ret;
-			*rohc_hdr_len += ret;
+			parse_co_pkt = d_tcp_parse_co_common;
 			break;
-		}
 		default:
-		{
 			assert(0); /* should not happen */
 			goto error;
+	}
+	{
+		size_t co_pkt_len;
+		if(!parse_co_pkt(context, rohc_remain_data, rohc_remain_len,
+		                 extr_crc, bits, &co_pkt_len, &has_opts_list))
+		{
+			rohc_decomp_warn(context, "failed to parse %s packet (type %d)",
+			                 rohc_get_packet_descr(packet_type), packet_type);
+			goto error;
 		}
+		rohc_remain_data += co_pkt_len;
+		rohc_remain_len -= co_pkt_len;
+		(*rohc_hdr_len) += co_pkt_len;
 	}
 	rohc_dump_buf(context->decompressor->trace_callback,
 	              context->decompressor->trace_callback_priv,
@@ -1742,13 +1128,13 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 	}
 
 	/* parse the compressed list of TCP options if present */
-	if(is_list_present == 0)
+	if(!has_opts_list)
 	{
 		size_t i;
 		rohc_decomp_debug(context, "no compressed list of TCP options found "
 		                  "after the ROHC base header");
 		/* same list as in previous packets, but reset the 'present' flags ; the
-		 * list light be updated by irregular chain later */
+		 * list might be updated by irregular chain later */
 		memcpy(&bits->tcp_opts, &tcp_context->tcp_opts, sizeof(struct d_tcp_opts_ctxt));
 		for(i = 0; i < ROHC_TCP_OPTS_MAX; i++)
 		{
@@ -1802,6 +1188,1267 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 
 error:
 	free(packed_rohc_packet);
+	return false;
+}
+
+
+/**
+ * @brief Parse the given rnd_1 packet for the TCP profile
+ *
+ * @param context            The decompression context
+ * @param rohc_packet        The ROHC packet to decode
+ * @param rohc_length        The length of the ROHC packet
+ * @param[out] extr_crc      The CRC bits extracted from the ROHC header
+ * @param[out] bits          The bits extracted from the CO packet
+ * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
+ * @param[out] has_opts_list Whether the list TCP options is present after
+ *                           the CO packet
+ * @return                   true if parsing was successful,
+ *                           false if packet was malformed
+ */
+static bool d_tcp_parse_rnd_1(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+{
+	const rnd_1_t *const rnd_1 = (rnd_1_t *) rohc_packet;
+
+	/* check packet usage */
+	assert(context->state == ROHC_DECOMP_STATE_FC);
+
+	/* check if the ROHC packet is large enough to parse rnd_1 */
+	if(rohc_length < sizeof(rnd_1_t))
+	{
+		rohc_decomp_warn(context, "ROHC packet too small for rnd_1 (len = %zu)",
+		                 rohc_length);
+		goto error;
+	}
+
+	assert(rnd_1->discriminator == 0x2e); /* '101110' */
+	bits->seq.bits = (rnd_1->seq_num1 << 16) | rohc_ntoh16(rnd_1->seq_num2);
+	bits->seq.bits_nr = 18;
+	bits->seq.p = 65535;
+	bits->msn.bits = rnd_1->msn;
+	bits->msn.bits_nr = 4;
+	bits->psh_flag_bits = rnd_1->psh_flag;
+	bits->psh_flag_bits_nr = 1;
+	extr_crc->type = ROHC_CRC_TYPE_3;
+	extr_crc->bits = rnd_1->header_crc;
+	extr_crc->bits_nr = 3;
+
+	*rohc_hdr_len = sizeof(rnd_1_t);
+	*has_opts_list = false;
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Parse the given rnd_2 packet for the TCP profile
+ *
+ * @param context            The decompression context
+ * @param rohc_packet        The ROHC packet to decode
+ * @param rohc_length        The length of the ROHC packet
+ * @param[out] extr_crc      The CRC bits extracted from the ROHC header
+ * @param[out] bits          The bits extracted from the CO packet
+ * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
+ * @param[out] has_opts_list Whether the list TCP options is present after
+ *                           the CO packet
+ * @return                   true if parsing was successful,
+ *                           false if packet was malformed
+ */
+static bool d_tcp_parse_rnd_2(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+{
+	const rnd_2_t *const rnd_2 = (rnd_2_t *) rohc_packet;
+
+	/* check packet usage */
+	assert(context->state == ROHC_DECOMP_STATE_FC);
+
+	/* check if the ROHC packet is large enough to parse rnd_2 */
+	if(rohc_length < sizeof(rnd_2_t))
+	{
+		rohc_decomp_warn(context, "ROHC packet too small for rnd_2 (len = %zu)",
+		                 rohc_length);
+		goto error;
+	}
+
+	assert(rnd_2->discriminator == 0x0c); /* '1100' */
+	bits->seq_scaled.bits = rnd_2->seq_num_scaled;
+	bits->seq_scaled.bits_nr = 4;
+	bits->msn.bits = rnd_2->msn;
+	bits->msn.bits_nr = 4;
+	bits->psh_flag_bits = rnd_2->psh_flag;
+	bits->psh_flag_bits_nr = 1;
+	extr_crc->type = ROHC_CRC_TYPE_3;
+	extr_crc->bits = rnd_2->header_crc;
+	extr_crc->bits_nr = 3;
+
+	*rohc_hdr_len = sizeof(rnd_2_t);
+	*has_opts_list = false;
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Parse the given rnd_3 packet for the TCP profile
+ *
+ * @param context            The decompression context
+ * @param rohc_packet        The ROHC packet to decode
+ * @param rohc_length        The length of the ROHC packet
+ * @param[out] extr_crc      The CRC bits extracted from the ROHC header
+ * @param[out] bits          The bits extracted from the CO packet
+ * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
+ * @param[out] has_opts_list Whether the list TCP options is present after
+ *                           the CO packet
+ * @return                   true if parsing was successful,
+ *                           false if packet was malformed
+ */
+static bool d_tcp_parse_rnd_3(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+{
+	const rnd_3_t *const rnd_3 = (rnd_3_t *) rohc_packet;
+
+	/* check packet usage */
+	assert(context->state == ROHC_DECOMP_STATE_FC);
+
+	/* check if the ROHC packet is large enough to parse rnd_3 */
+	if(rohc_length < sizeof(rnd_3_t))
+	{
+		rohc_decomp_warn(context, "ROHC packet too small for rnd_3 (len = %zu)",
+		                 rohc_length);
+		goto error;
+	}
+
+	assert(rnd_3->discriminator == 0x00); /* '0' */
+	bits->ack.bits = (rnd_3->ack_num1 << 8) | rnd_3->ack_num2;
+	bits->ack.bits_nr = 15;
+	bits->ack.p = 8191;
+	bits->msn.bits = rnd_3->msn;
+	bits->msn.bits_nr = 4;
+	bits->psh_flag_bits = rnd_3->psh_flag;
+	bits->psh_flag_bits_nr = 1;
+	extr_crc->type = ROHC_CRC_TYPE_3;
+	extr_crc->bits = rnd_3->header_crc;
+	extr_crc->bits_nr = 3;
+
+	*rohc_hdr_len = sizeof(rnd_3_t);
+	*has_opts_list = false;
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Parse the given rnd_4 packet for the TCP profile
+ *
+ * @param context            The decompression context
+ * @param rohc_packet        The ROHC packet to decode
+ * @param rohc_length        The length of the ROHC packet
+ * @param[out] extr_crc      The CRC bits extracted from the ROHC header
+ * @param[out] bits          The bits extracted from the CO packet
+ * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
+ * @param[out] has_opts_list Whether the list TCP options is present after
+ *                           the CO packet
+ * @return                   true if parsing was successful,
+ *                           false if packet was malformed
+ */
+static bool d_tcp_parse_rnd_4(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+{
+	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
+	const rnd_4_t *const rnd_4 = (rnd_4_t *) rohc_packet;
+
+	/* check packet usage */
+	assert(context->state == ROHC_DECOMP_STATE_FC);
+
+	/* rnd_4 packet cannot be used if ack_stride is zero (it is used as
+	 * divisor to compute the scaled acknowledgment number) */
+	if(tcp_context->ack_stride == 0)
+	{
+		rohc_decomp_warn(context, "cannot decode rnd_4 packet with "
+		                 "ack_stride.UVALUE == 0");
+		goto error;
+	}
+
+	/* check if the ROHC packet is large enough to parse rnd_4 */
+	if(rohc_length < sizeof(rnd_4_t))
+	{
+		rohc_decomp_warn(context, "ROHC packet too small for rnd_4 (len = %zu)",
+		                 rohc_length);
+		goto error;
+	}
+
+	assert(rnd_4->discriminator == 0x0d); /* '1101' */
+	bits->ack_scaled.bits = rnd_4->ack_num_scaled;
+	bits->ack_scaled.bits_nr = 4;
+	bits->msn.bits = rnd_4->msn;
+	bits->msn.bits_nr = 4;
+	bits->psh_flag_bits = rnd_4->psh_flag;
+	bits->psh_flag_bits_nr = 1;
+	extr_crc->type = ROHC_CRC_TYPE_3;
+	extr_crc->bits = rnd_4->header_crc;
+	extr_crc->bits_nr = 3;
+
+	*rohc_hdr_len = sizeof(rnd_4_t);
+	*has_opts_list = false;
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Parse the given rnd_5 packet for the TCP profile
+ *
+ * @param context            The decompression context
+ * @param rohc_packet        The ROHC packet to decode
+ * @param rohc_length        The length of the ROHC packet
+ * @param[out] extr_crc      The CRC bits extracted from the ROHC header
+ * @param[out] bits          The bits extracted from the CO packet
+ * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
+ * @param[out] has_opts_list Whether the list TCP options is present after
+ *                           the CO packet
+ * @return                   true if parsing was successful,
+ *                           false if packet was malformed
+ */
+static bool d_tcp_parse_rnd_5(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+{
+	const rnd_5_t *const rnd_5 = (rnd_5_t *) rohc_packet;
+
+	/* check packet usage */
+	assert(context->state == ROHC_DECOMP_STATE_FC);
+
+	/* check if the ROHC packet is large enough to parse rnd_5 */
+	if(rohc_length < sizeof(rnd_5_t))
+	{
+		rohc_decomp_warn(context, "ROHC packet too small for rnd_5 (len = %zu)",
+		                 rohc_length);
+		goto error;
+	}
+
+	assert(rnd_5->discriminator == 0x04); /* '100' */
+	bits->psh_flag_bits = rnd_5->psh_flag;
+	bits->psh_flag_bits_nr = 1;
+	bits->msn.bits = rnd_5->msn;
+	bits->msn.bits_nr = 4;
+	extr_crc->type = ROHC_CRC_TYPE_3;
+	extr_crc->bits = rnd_5->header_crc;
+	extr_crc->bits_nr = 3;
+	bits->seq.bits =
+		(rnd_5->seq_num1 << 9) | (rnd_5->seq_num2 << 1) | rnd_5->seq_num3;
+	bits->seq.bits_nr = 14;
+	bits->seq.p = 8191;
+	bits->ack.bits = (rnd_5->ack_num1 << 8) | rnd_5->ack_num2;
+	bits->ack.bits_nr = 15;
+	bits->ack.p = 8191;
+
+	*rohc_hdr_len = sizeof(rnd_5_t);
+	*has_opts_list = false;
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Parse the given rnd_6 packet for the TCP profile
+ *
+ * @param context            The decompression context
+ * @param rohc_packet        The ROHC packet to decode
+ * @param rohc_length        The length of the ROHC packet
+ * @param[out] extr_crc      The CRC bits extracted from the ROHC header
+ * @param[out] bits          The bits extracted from the CO packet
+ * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
+ * @param[out] has_opts_list Whether the list TCP options is present after
+ *                           the CO packet
+ * @return                   true if parsing was successful,
+ *                           false if packet was malformed
+ */
+static bool d_tcp_parse_rnd_6(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+{
+	const rnd_6_t *const rnd_6 = (rnd_6_t *) rohc_packet;
+
+	/* check packet usage */
+	assert(context->state == ROHC_DECOMP_STATE_FC);
+
+	/* check if the ROHC packet is large enough to parse rnd_6 */
+	if(rohc_length < sizeof(rnd_6_t))
+	{
+		rohc_decomp_warn(context, "ROHC packet too small for rnd_6 (len = %zu)",
+		                 rohc_length);
+		goto error;
+	}
+
+	assert(rnd_6->discriminator == 0x0a); /* '1010' */
+	extr_crc->type = ROHC_CRC_TYPE_3;
+	extr_crc->bits = rnd_6->header_crc;
+	extr_crc->bits_nr = 3;
+	bits->psh_flag_bits = rnd_6->psh_flag;
+	bits->psh_flag_bits_nr = 1;
+	bits->ack.bits = rohc_ntoh16(rnd_6->ack_num);
+	bits->ack.bits_nr = 16;
+	bits->ack.p = 16383;
+	bits->msn.bits = rnd_6->msn;
+	bits->msn.bits_nr = 4;
+	bits->seq_scaled.bits = rnd_6->seq_num_scaled;
+	bits->seq_scaled.bits_nr = 4;
+
+	*rohc_hdr_len = sizeof(rnd_6_t);
+	*has_opts_list = false;
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Parse the given rnd_7 packet for the TCP profile
+ *
+ * @param context            The decompression context
+ * @param rohc_packet        The ROHC packet to decode
+ * @param rohc_length        The length of the ROHC packet
+ * @param[out] extr_crc      The CRC bits extracted from the ROHC header
+ * @param[out] bits          The bits extracted from the CO packet
+ * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
+ * @param[out] has_opts_list Whether the list TCP options is present after
+ *                           the CO packet
+ * @return                   true if parsing was successful,
+ *                           false if packet was malformed
+ */
+static bool d_tcp_parse_rnd_7(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+{
+	const rnd_7_t *const rnd_7 = (rnd_7_t *) rohc_packet;
+
+	/* check packet usage */
+	assert(context->state == ROHC_DECOMP_STATE_FC);
+
+	/* check if the ROHC packet is large enough to parse rnd_7 */
+	if(rohc_length < sizeof(rnd_7_t))
+	{
+		rohc_decomp_warn(context, "ROHC packet too small for rnd_7 (len = %zu)",
+		                 rohc_length);
+		goto error;
+	}
+
+	assert(rnd_7->discriminator == 0x2f); /* '101111' */
+	bits->ack.bits = (rnd_7->ack_num1 << 16) | rohc_ntoh16(rnd_7->ack_num2);
+	bits->ack.bits_nr = 18;
+	bits->ack.p = 65535;
+	bits->window.bits = rohc_ntoh16(rnd_7->window);
+	bits->window.bits_nr = 16;
+	bits->msn.bits = rnd_7->msn;
+	bits->msn.bits_nr = 4;
+	bits->psh_flag_bits = rnd_7->psh_flag;
+	bits->psh_flag_bits_nr = 1;
+	extr_crc->type = ROHC_CRC_TYPE_3;
+	extr_crc->bits = rnd_7->header_crc;
+	extr_crc->bits_nr = 3;
+
+	*rohc_hdr_len = sizeof(rnd_7_t);
+	*has_opts_list = false;
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Parse the given rnd_8 packet for the TCP profile
+ *
+ * @param context            The decompression context
+ * @param rohc_packet        The ROHC packet to decode
+ * @param rohc_length        The length of the ROHC packet
+ * @param[out] extr_crc      The CRC bits extracted from the ROHC header
+ * @param[out] bits          The bits extracted from the CO packet
+ * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
+ * @param[out] has_opts_list Whether the list TCP options is present after
+ *                           the CO packet
+ * @return                   true if parsing was successful,
+ *                           false if packet was malformed
+ */
+static bool d_tcp_parse_rnd_8(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+{
+	struct rohc_tcp_extr_ip_bits *const innermost_ip_bits =
+		&(bits->ip[bits->ip_nr - 1]);
+	const rnd_8_t *const rnd_8 = (rnd_8_t *) rohc_packet;
+
+	/* check packet usage */
+	assert(context->state != ROHC_DECOMP_STATE_NC);
+
+	/* check if the ROHC packet is large enough to parse rnd_8 */
+	if(rohc_length < sizeof(rnd_8_t))
+	{
+		rohc_decomp_warn(context, "ROHC packet too small for rnd_8 (len = %zu)",
+		                 rohc_length);
+		goto error;
+	}
+
+	assert(rnd_8->discriminator == 0x16); /* '10110' */
+	bits->rsf_flags_bits = rnd_8->rsf_flags;
+	bits->rsf_flags_bits_nr = 2;
+	(*has_opts_list) = !!rnd_8->list_present;
+	extr_crc->type = ROHC_CRC_TYPE_7;
+	extr_crc->bits = rnd_8->header_crc;
+	extr_crc->bits_nr = 7;
+	bits->msn.bits = (rnd_8->msn1 << 3) | rnd_8->msn2;
+	bits->msn.bits_nr = 4;
+	bits->psh_flag_bits = rnd_8->psh_flag;
+	bits->psh_flag_bits_nr = 1;
+	innermost_ip_bits->ttl_hl.bits = rnd_8->ttl_hopl;
+	innermost_ip_bits->ttl_hl.bits_nr = 3;
+	bits->ecn_used_bits = rnd_8->ecn_used;
+	bits->ecn_used_bits_nr = 1;
+	rohc_decomp_debug(context, "packet ecn_used = %d", bits->ecn_used_bits);
+	bits->seq.bits = rohc_ntoh16(rnd_8->seq_num);
+	bits->seq.bits_nr = 16;
+	bits->seq.p = 65535;
+	bits->ack.bits = rohc_ntoh16(rnd_8->ack_num);
+	bits->ack.bits_nr = 16;
+	bits->ack.p = 16383;
+
+	*rohc_hdr_len = sizeof(rnd_8_t);
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Parse the given seq_1 packet for the TCP profile
+ *
+ * @param context            The decompression context
+ * @param rohc_packet        The ROHC packet to decode
+ * @param rohc_length        The length of the ROHC packet
+ * @param[out] extr_crc      The CRC bits extracted from the ROHC header
+ * @param[out] bits          The bits extracted from the CO packet
+ * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
+ * @param[out] has_opts_list Whether the list TCP options is present after
+ *                           the CO packet
+ * @return                   true if parsing was successful,
+ *                           false if packet was malformed
+ */
+static bool d_tcp_parse_seq_1(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+{
+	struct rohc_tcp_extr_ip_bits *const innermost_ip_bits =
+		&(bits->ip[bits->ip_nr - 1]);
+	const seq_1_t *const seq_1 = (seq_1_t *) rohc_packet;
+
+	/* check packet usage */
+	assert(context->state == ROHC_DECOMP_STATE_FC);
+
+	/* check if the ROHC packet is large enough to parse seq_1 */
+	if(rohc_length < sizeof(seq_1_t))
+	{
+		rohc_decomp_warn(context, "ROHC packet too small for seq_1 (len = %zu)",
+		                 rohc_length);
+		goto error;
+	}
+
+	assert(seq_1->discriminator == 0x0a); /* '1010' */
+	innermost_ip_bits->id.bits = seq_1->ip_id;
+	innermost_ip_bits->id.bits_nr = 4;
+	innermost_ip_bits->id.p = 3;
+	bits->seq.bits = rohc_ntoh16(seq_1->seq_num);
+	bits->seq.bits_nr = 16;
+	bits->seq.p = 32767;
+	bits->msn.bits = seq_1->msn;
+	bits->msn.bits_nr = 4;
+	bits->psh_flag_bits = seq_1->psh_flag;
+	bits->psh_flag_bits_nr = 1;
+	extr_crc->type = ROHC_CRC_TYPE_3;
+	extr_crc->bits = seq_1->header_crc;
+	extr_crc->bits_nr = 3;
+
+	*rohc_hdr_len = sizeof(seq_1_t);
+	*has_opts_list = false;
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Parse the given seq_2 packet for the TCP profile
+ *
+ * @param context            The decompression context
+ * @param rohc_packet        The ROHC packet to decode
+ * @param rohc_length        The length of the ROHC packet
+ * @param[out] extr_crc      The CRC bits extracted from the ROHC header
+ * @param[out] bits          The bits extracted from the CO packet
+ * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
+ * @param[out] has_opts_list Whether the list TCP options is present after
+ *                           the CO packet
+ * @return                   true if parsing was successful,
+ *                           false if packet was malformed
+ */
+static bool d_tcp_parse_seq_2(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+{
+	struct rohc_tcp_extr_ip_bits *const innermost_ip_bits =
+		&(bits->ip[bits->ip_nr - 1]);
+	const seq_2_t *const seq_2 = (seq_2_t *) rohc_packet;
+
+	/* check packet usage */
+	assert(context->state == ROHC_DECOMP_STATE_FC);
+
+	/* check if the ROHC packet is large enough to parse seq_2 */
+	if(rohc_length < sizeof(seq_2_t))
+	{
+		rohc_decomp_warn(context, "ROHC packet too small for seq_2 (len = %zu)",
+		                 rohc_length);
+		goto error;
+	}
+
+	assert(seq_2->discriminator == 0x1a); /* '11010' */
+	innermost_ip_bits->id.bits = (seq_2->ip_id1 << 4) | seq_2->ip_id2;
+	innermost_ip_bits->id.bits_nr = 7;
+	innermost_ip_bits->id.p = 3;
+	bits->seq_scaled.bits = seq_2->seq_num_scaled;
+	bits->seq_scaled.bits_nr = 4;
+	bits->msn.bits = seq_2->msn;
+	bits->msn.bits_nr = 4;
+	bits->psh_flag_bits = seq_2->psh_flag;
+	bits->psh_flag_bits_nr = 1;
+	extr_crc->type = ROHC_CRC_TYPE_3;
+	extr_crc->bits = seq_2->header_crc;
+	extr_crc->bits_nr = 3;
+
+	*rohc_hdr_len = sizeof(seq_2_t);
+	*has_opts_list = false;
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Parse the given seq_3 packet for the TCP profile
+ *
+ * @param context            The decompression context
+ * @param rohc_packet        The ROHC packet to decode
+ * @param rohc_length        The length of the ROHC packet
+ * @param[out] extr_crc      The CRC bits extracted from the ROHC header
+ * @param[out] bits          The bits extracted from the CO packet
+ * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
+ * @param[out] has_opts_list Whether the list TCP options is present after
+ *                           the CO packet
+ * @return                   true if parsing was successful,
+ *                           false if packet was malformed
+ */
+static bool d_tcp_parse_seq_3(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+{
+	struct rohc_tcp_extr_ip_bits *const innermost_ip_bits =
+		&(bits->ip[bits->ip_nr - 1]);
+	const seq_3_t *const seq_3 = (seq_3_t *) rohc_packet;
+
+	/* check packet usage */
+	assert(context->state == ROHC_DECOMP_STATE_FC);
+
+	/* check if the ROHC packet is large enough to parse seq_3 */
+	if(rohc_length < sizeof(seq_3_t))
+	{
+		rohc_decomp_warn(context, "ROHC packet too small for seq_3 (len = %zu)",
+		                 rohc_length);
+		goto error;
+	}
+
+	assert(seq_3->discriminator == 0x09); /* '1001' */
+	innermost_ip_bits->id.bits = seq_3->ip_id;
+	innermost_ip_bits->id.bits_nr = 4;
+	innermost_ip_bits->id.p = 3;
+	bits->ack.bits = rohc_ntoh16(seq_3->ack_num);
+	bits->ack.bits_nr = 16;
+	bits->ack.p = 16383;
+	bits->msn.bits = seq_3->msn;
+	bits->msn.bits_nr = 4;
+	bits->psh_flag_bits = seq_3->psh_flag;
+	bits->psh_flag_bits_nr = 1;
+	extr_crc->type = ROHC_CRC_TYPE_3;
+	extr_crc->bits = seq_3->header_crc;
+	extr_crc->bits_nr = 3;
+
+	*rohc_hdr_len = sizeof(seq_3_t);
+	*has_opts_list = false;
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Parse the given seq_4 packet for the TCP profile
+ *
+ * @param context            The decompression context
+ * @param rohc_packet        The ROHC packet to decode
+ * @param rohc_length        The length of the ROHC packet
+ * @param[out] extr_crc      The CRC bits extracted from the ROHC header
+ * @param[out] bits          The bits extracted from the CO packet
+ * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
+ * @param[out] has_opts_list Whether the list TCP options is present after
+ *                           the CO packet
+ * @return                   true if parsing was successful,
+ *                           false if packet was malformed
+ */
+static bool d_tcp_parse_seq_4(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+{
+	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
+	struct rohc_tcp_extr_ip_bits *const innermost_ip_bits =
+		&(bits->ip[bits->ip_nr - 1]);
+	const seq_4_t *const seq_4 = (seq_4_t *) rohc_packet;
+
+	/* check packet usage */
+	assert(context->state == ROHC_DECOMP_STATE_FC);
+
+	/* seq_4 packet cannot be used if ack_stride is zero (it is used as
+	 * divisor to compute the scaled acknowledgment number) */
+	if(tcp_context->ack_stride == 0)
+	{
+		rohc_decomp_warn(context, "cannot decode seq_4 packet with "
+		                 "ack_stride.UVALUE == 0");
+		goto error;
+	}
+
+	/* check if the ROHC packet is large enough to parse seq_4 */
+	if(rohc_length < sizeof(seq_4_t))
+	{
+		rohc_decomp_warn(context, "ROHC packet too small for seq_4 len = %zu)",
+		                 rohc_length);
+		goto error;
+	}
+
+	assert(seq_4->discriminator == 0x00); /* '0' */
+	bits->ack_scaled.bits = seq_4->ack_num_scaled;
+	bits->ack_scaled.bits_nr = 4;
+	innermost_ip_bits->id.bits = seq_4->ip_id;
+	innermost_ip_bits->id.bits_nr = 3;
+	innermost_ip_bits->id.p = 1;
+	bits->msn.bits = seq_4->msn;
+	bits->msn.bits_nr = 4;
+	bits->psh_flag_bits = seq_4->psh_flag;
+	bits->psh_flag_bits_nr = 1;
+	extr_crc->type = ROHC_CRC_TYPE_3;
+	extr_crc->bits = seq_4->header_crc;
+	extr_crc->bits_nr = 3;
+
+	*rohc_hdr_len = sizeof(seq_4_t);
+	*has_opts_list = false;
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Parse the given seq_5 packet for the TCP profile
+ *
+ * @param context            The decompression context
+ * @param rohc_packet        The ROHC packet to decode
+ * @param rohc_length        The length of the ROHC packet
+ * @param[out] extr_crc      The CRC bits extracted from the ROHC header
+ * @param[out] bits          The bits extracted from the CO packet
+ * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
+ * @param[out] has_opts_list Whether the list TCP options is present after
+ *                           the CO packet
+ * @return                   true if parsing was successful,
+ *                           false if packet was malformed
+ */
+static bool d_tcp_parse_seq_5(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+{
+	struct rohc_tcp_extr_ip_bits *const innermost_ip_bits =
+		&(bits->ip[bits->ip_nr - 1]);
+	const seq_5_t *const seq_5 = (seq_5_t *) rohc_packet;
+
+	/* check packet usage */
+	assert(context->state == ROHC_DECOMP_STATE_FC);
+
+	/* check if the ROHC packet is large enough to parse seq_5 */
+	if(rohc_length < sizeof(seq_5_t))
+	{
+		rohc_decomp_warn(context, "ROHC packet too small for seq_5 (len = %zu)",
+		                 rohc_length);
+		goto error;
+	}
+
+	assert(seq_5->discriminator == 0x08); /* '1000' */
+	innermost_ip_bits->id.bits = seq_5->ip_id;
+	innermost_ip_bits->id.bits_nr = 4;
+	innermost_ip_bits->id.p = 3;
+	bits->ack.bits = rohc_ntoh16(seq_5->ack_num);
+	bits->ack.bits_nr = 16;
+	bits->ack.p = 16383;
+	bits->seq.bits = rohc_ntoh16(seq_5->seq_num);
+	bits->seq.bits_nr = 16;
+	bits->seq.p = 32767;
+	bits->msn.bits = seq_5->msn;
+	bits->msn.bits_nr = 4;
+	bits->psh_flag_bits = seq_5->psh_flag;
+	bits->psh_flag_bits_nr = 1;
+	extr_crc->type = ROHC_CRC_TYPE_3;
+	extr_crc->bits = seq_5->header_crc;
+	extr_crc->bits_nr = 3;
+
+	*rohc_hdr_len = sizeof(seq_5_t);
+	*has_opts_list = false;
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Parse the given seq_6 packet for the TCP profile
+ *
+ * @param context            The decompression context
+ * @param rohc_packet        The ROHC packet to decode
+ * @param rohc_length        The length of the ROHC packet
+ * @param[out] extr_crc      The CRC bits extracted from the ROHC header
+ * @param[out] bits          The bits extracted from the CO packet
+ * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
+ * @param[out] has_opts_list Whether the list TCP options is present after
+ *                           the CO packet
+ * @return                   true if parsing was successful,
+ *                           false if packet was malformed
+ */
+static bool d_tcp_parse_seq_6(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+{
+	struct rohc_tcp_extr_ip_bits *const innermost_ip_bits =
+		&(bits->ip[bits->ip_nr - 1]);
+	const seq_6_t *const seq_6 = (seq_6_t *) rohc_packet;
+
+	/* check packet usage */
+	assert(context->state == ROHC_DECOMP_STATE_FC);
+
+	/* check if the ROHC packet is large enough to parse seq_6 */
+	if(rohc_length < sizeof(seq_6_t))
+	{
+		rohc_decomp_warn(context, "ROHC packet too small for seq_6 (len = %zu)",
+		                 rohc_length);
+		goto error;
+	}
+
+	assert(seq_6->discriminator == 0x1b); /* '11011' */
+	bits->seq_scaled.bits = (seq_6->seq_num_scaled1 << 1) | seq_6->seq_num_scaled2;
+	bits->seq_scaled.bits_nr = 4;
+	innermost_ip_bits->id.bits = seq_6->ip_id;
+	innermost_ip_bits->id.bits_nr = 7;
+	innermost_ip_bits->id.p = 3;
+	bits->ack.bits = rohc_ntoh16(seq_6->ack_num);
+	bits->ack.bits_nr = 16;
+	bits->ack.p = 16383;
+	bits->msn.bits = seq_6->msn;
+	bits->msn.bits_nr = 4;
+	bits->psh_flag_bits = seq_6->psh_flag;
+	bits->psh_flag_bits_nr = 1;
+	extr_crc->type = ROHC_CRC_TYPE_3;
+	extr_crc->bits = seq_6->header_crc;
+	extr_crc->bits_nr = 3;
+
+	*rohc_hdr_len = sizeof(seq_6_t);
+	*has_opts_list = false;
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Parse the given seq_7 packet for the TCP profile
+ *
+ * @param context            The decompression context
+ * @param rohc_packet        The ROHC packet to decode
+ * @param rohc_length        The length of the ROHC packet
+ * @param[out] extr_crc      The CRC bits extracted from the ROHC header
+ * @param[out] bits          The bits extracted from the CO packet
+ * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
+ * @param[out] has_opts_list Whether the list TCP options is present after
+ *                           the CO packet
+ * @return                   true if parsing was successful,
+ *                           false if packet was malformed
+ */
+static bool d_tcp_parse_seq_7(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+{
+	struct rohc_tcp_extr_ip_bits *const innermost_ip_bits =
+		&(bits->ip[bits->ip_nr - 1]);
+	const seq_7_t *const seq_7 = (seq_7_t *) rohc_packet;
+
+	/* check packet usage */
+	assert(context->state == ROHC_DECOMP_STATE_FC);
+
+	/* check if the ROHC packet is large enough to parse seq_7 */
+	if(rohc_length < sizeof(seq_7_t))
+	{
+		rohc_decomp_warn(context, "ROHC packet too small for seq_7 (len = %zu)",
+		                 rohc_length);
+		goto error;
+	}
+
+	assert(seq_7->discriminator == 0x0c); /* '1100' */
+	bits->window.bits =
+		(seq_7->window1 << 11) | (seq_7->window2 << 3) | seq_7->window3;
+	bits->window.bits_nr = 15;
+	bits->window.p = ROHC_LSB_SHIFT_TCP_WINDOW;
+	innermost_ip_bits->id.bits = seq_7->ip_id;
+	innermost_ip_bits->id.bits_nr = 5;
+	innermost_ip_bits->id.p = 3;
+	bits->ack.bits = rohc_ntoh16(seq_7->ack_num);
+	bits->ack.bits_nr = 16;
+	bits->ack.p = 32767;
+	bits->msn.bits = seq_7->msn;
+	bits->msn.bits_nr = 4;
+	bits->psh_flag_bits = seq_7->psh_flag;
+	bits->psh_flag_bits_nr = 1;
+	extr_crc->type = ROHC_CRC_TYPE_3;
+	extr_crc->bits = seq_7->header_crc;
+	extr_crc->bits_nr = 3;
+
+	*rohc_hdr_len = sizeof(seq_7_t);
+	*has_opts_list = false;
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Parse the given seq_8 packet for the TCP profile
+ *
+ * @param context            The decompression context
+ * @param rohc_packet        The ROHC packet to decode
+ * @param rohc_length        The length of the ROHC packet
+ * @param[out] extr_crc      The CRC bits extracted from the ROHC header
+ * @param[out] bits          The bits extracted from the CO packet
+ * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
+ * @param[out] has_opts_list Whether the list TCP options is present after
+ *                           the CO packet
+ * @return                   true if parsing was successful,
+ *                           false if packet was malformed
+ */
+static bool d_tcp_parse_seq_8(const struct rohc_decomp_ctxt *const context,
+                              const uint8_t *const rohc_packet,
+                              const size_t rohc_length,
+                              struct rohc_decomp_crc *const extr_crc,
+                              struct rohc_tcp_extr_bits *const bits,
+                              size_t *const rohc_hdr_len,
+                              bool *const has_opts_list)
+{
+	struct rohc_tcp_extr_ip_bits *const innermost_ip_bits =
+		&(bits->ip[bits->ip_nr - 1]);
+	const seq_8_t *const seq_8 = (seq_8_t *) rohc_packet;
+
+	/* check packet usage */
+	assert(context->state != ROHC_DECOMP_STATE_NC);
+
+	/* check if the ROHC packet is large enough to parse seq_8 */
+	if(rohc_length < sizeof(seq_8_t))
+	{
+		rohc_decomp_warn(context, "ROHC packet too small for seq_8 (len = %zu)",
+		                 rohc_length);
+		goto error;
+	}
+
+	assert(seq_8->discriminator == 0x0b); /* '1011' */
+	innermost_ip_bits->id.bits = seq_8->ip_id;
+	innermost_ip_bits->id.bits_nr = 4;
+	innermost_ip_bits->id.p = 3;
+	(*has_opts_list) = !!seq_8->list_present;
+	extr_crc->type = ROHC_CRC_TYPE_7;
+	extr_crc->bits = seq_8->header_crc;
+	extr_crc->bits_nr = 7;
+	bits->msn.bits = seq_8->msn;
+	bits->msn.bits_nr = 4;
+	bits->psh_flag_bits = seq_8->psh_flag;
+	bits->psh_flag_bits_nr = 1;
+	innermost_ip_bits->ttl_hl.bits = seq_8->ttl_hopl;
+	innermost_ip_bits->ttl_hl.bits_nr = 3;
+	bits->ecn_used_bits = seq_8->ecn_used;
+	bits->ecn_used_bits_nr = 1;
+	rohc_decomp_debug(context, "packet ecn_used = %d", bits->ecn_used_bits);
+	bits->ack.bits = (seq_8->ack_num1 << 8) | seq_8->ack_num2;
+	bits->ack.bits_nr = 15;
+	bits->ack.p = 8191;
+	bits->rsf_flags_bits = seq_8->rsf_flags;
+	bits->rsf_flags_bits_nr = 2;
+	bits->seq.bits = (seq_8->seq_num1 << 8) | seq_8->seq_num2;
+	bits->seq.bits_nr = 14;
+	bits->seq.p = 8191;
+
+	*rohc_hdr_len = sizeof(seq_8_t);
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Parse the given co_common packet for the TCP profile
+ *
+ * @param context            The decompression context
+ * @param rohc_packet        The ROHC packet to decode
+ * @param rohc_length        The length of the ROHC packet
+ * @param[out] extr_crc      The CRC bits extracted from the ROHC header
+ * @param[out] bits          The bits extracted from the CO packet
+ * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
+ * @param[out] has_opts_list Whether the list TCP options is present after
+ *                           the CO packet
+ * @return                   true if parsing was successful,
+ *                           false if packet was malformed
+ */
+static bool d_tcp_parse_co_common(const struct rohc_decomp_ctxt *const context,
+                                  const uint8_t *const rohc_packet,
+                                  const size_t rohc_length,
+                                  struct rohc_decomp_crc *const extr_crc,
+                                  struct rohc_tcp_extr_bits *const bits,
+                                  size_t *const rohc_hdr_len,
+                                  bool *const has_opts_list)
+{
+	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
+	const ip_context_t *const innermost_ip_ctxt =
+		&(tcp_context->ip_contexts[tcp_context->ip_contexts_nr - 1]);
+	struct rohc_tcp_extr_ip_bits *const innermost_ip_bits =
+		&(bits->ip[bits->ip_nr - 1]);
+
+	const uint8_t *rohc_remain_data = rohc_packet;
+	size_t rohc_remain_len = rohc_length;
+	const co_common_t *const co_common = (co_common_t *) rohc_remain_data;
+
+	int ret;
+
+	*rohc_hdr_len = 0;
+
+	/* check packet usage */
+	assert(context->state != ROHC_DECOMP_STATE_NC);
+
+	/* check if the ROHC packet is large enough to parse co_common */
+	if(rohc_remain_len < sizeof(co_common_t))
+	{
+		rohc_decomp_warn(context, "ROHC packet too small for co_common (len = %zu)",
+		                 rohc_remain_len);
+		goto error;
+	}
+
+	assert(co_common->discriminator == 0x7d); /* '1111101' */
+	bits->ttl_irregular_chain_flag = !!(co_common->ttl_hopl_outer_flag);
+	bits->ack_flag_bits = co_common->ack_flag;
+	bits->ack_flag_bits_nr = 1;
+	bits->psh_flag_bits = co_common->psh_flag;
+	bits->psh_flag_bits_nr = 1;
+	bits->rsf_flags_bits = co_common->rsf_flags;
+	bits->rsf_flags_bits_nr = 2;
+	bits->msn.bits = co_common->msn;
+	bits->msn.bits_nr = 4;
+	(*has_opts_list) = !!co_common->list_present;
+	innermost_ip_bits->id_behavior = co_common->ip_id_behavior;
+	innermost_ip_bits->id_behavior_nr = 2;
+	bits->urg_flag_bits = co_common->urg_flag;
+	bits->urg_flag_bits_nr = 1;
+	extr_crc->type = ROHC_CRC_TYPE_7;
+	extr_crc->bits = co_common->header_crc;
+	extr_crc->bits_nr = 7;
+
+	rohc_remain_data += sizeof(co_common_t);
+	rohc_remain_len -= sizeof(co_common_t);
+	*rohc_hdr_len += sizeof(co_common_t);
+	rohc_decomp_debug(context, "ROHC co_common base header = %zu bytes",
+	                  *rohc_hdr_len);
+
+	/* sequence number */
+	ret = variable_length_32_dec(rohc_remain_data, rohc_remain_len,
+	                             co_common->seq_indicator, &bits->seq);
+	if(ret < 0)
+	{
+		rohc_decomp_warn(context, "variable_length_32(seq_number) failed");
+		goto error;
+	}
+	rohc_decomp_debug(context, "found %zu bits of sequence number encoded "
+	                  "on %d bytes", bits->seq.bits_nr, ret);
+	rohc_remain_data += ret;
+	rohc_remain_len -= ret;
+	*rohc_hdr_len += ret;
+
+	/* ACK number */
+	if(co_common->ack_indicator != 0)
+	{
+		rohc_decomp_debug(context, "ACK flag not set, but indicator for ACK number "
+		                  "is %u instead of 0", co_common->ack_indicator);
+	}
+	ret = variable_length_32_dec(rohc_remain_data, rohc_remain_len,
+	                             co_common->ack_indicator, &bits->ack);
+	if(ret < 0)
+	{
+		rohc_decomp_warn(context, "variable_length_32(ack_number) failed");
+		goto error;
+	}
+	rohc_decomp_debug(context, "found %zu bits of acknowledgment number "
+	                  "encoded on %d bytes", bits->ack.bits_nr, ret);
+	rohc_remain_data += ret;
+	rohc_remain_len -= ret;
+	*rohc_hdr_len += ret;
+
+	/* ACK stride */
+	ret = d_static_or_irreg16(rohc_remain_data, rohc_remain_len,
+	                          co_common->ack_stride_indicator,
+	                          &bits->ack_stride);
+	if(ret < 0)
+	{
+		rohc_decomp_warn(context, "static_or_irreg(ack_stride) failed");
+		goto error;
+	}
+	rohc_decomp_debug(context, "found %zu bits of ACK stride encoded on "
+	                  "%d bytes", bits->ack_stride.bits_nr, ret);
+	rohc_remain_data += ret;
+	rohc_remain_len -= ret;
+	*rohc_hdr_len += ret;
+
+	/* window */
+	ret = d_static_or_irreg16(rohc_remain_data, rohc_remain_len,
+	                          co_common->window_indicator, &bits->window);
+	if(ret < 0)
+	{
+		rohc_decomp_warn(context, "static_or_irreg(window) failed");
+		goto error;
+	}
+	rohc_decomp_debug(context, "found %zu bits of TCP window encoded on "
+	                  "%d bytes", bits->window.bits_nr, ret);
+	rohc_remain_data += ret;
+	rohc_remain_len -= ret;
+	*rohc_hdr_len += ret;
+
+	/* IP-ID behavior */
+	if((co_common->ip_id_behavior == IP_ID_BEHAVIOR_SEQ ||
+	    co_common->ip_id_behavior == IP_ID_BEHAVIOR_SEQ_SWAP) &&
+	   innermost_ip_ctxt->ctxt.vx.version != IPV4)
+	{
+		rohc_decomp_warn(context, "packet and context mismatch: co_common packet "
+		                 "advertizes that innermost IP-ID behaves as %s but "
+		                 "innermost IP is IPv6 according to context",
+		                 tcp_ip_id_behavior_get_descr(co_common->ip_id_behavior));
+		goto error;
+	}
+	ret = d_optional_ip_id_lsb(context, rohc_remain_data, rohc_remain_len,
+	                           co_common->ip_id_behavior,
+	                           co_common->ip_id_indicator, &innermost_ip_bits->id);
+	if(ret < 0)
+	{
+		rohc_decomp_warn(context, "optional_ip_id_lsb(ip_id) failed");
+		goto error;
+	}
+	rohc_decomp_debug(context, "found %zu bits of innermost IP-ID encoded "
+	                  "on %d bytes", innermost_ip_bits->id.bits_nr, ret);
+	rohc_remain_data += ret;
+	rohc_remain_len -= ret;
+	*rohc_hdr_len += ret;
+
+	/* URG pointer */
+	ret = d_static_or_irreg16(rohc_remain_data, rohc_remain_len,
+	                          co_common->urg_ptr_present, &bits->urg_ptr);
+	if(ret < 0)
+	{
+		rohc_decomp_warn(context, "static_or_irreg(urg_ptr) failed");
+		goto error;
+	}
+	rohc_decomp_debug(context, "found %zu bits of TCP URG pointer encoded "
+	                  "on %d bytes", bits->urg_ptr.bits_nr, ret);
+	rohc_remain_data += ret;
+	rohc_remain_len -= ret;
+	*rohc_hdr_len += ret;
+
+	/* reserved field shall be zero */
+	if(co_common->reserved != 0)
+	{
+		rohc_decomp_debug(context, "malformed ROHC co_common packet: "
+		                  "reserved field shall be zero but it is %u",
+		                  co_common->reserved);
+#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
+		goto error;
+#endif
+	}
+
+	/* ECN */
+	bits->ecn_used_bits = co_common->ecn_used;
+	bits->ecn_used_bits_nr = 1;
+	rohc_decomp_debug(context, "packet ecn_used = %d", bits->ecn_used_bits);
+
+	/* DSCP */
+	if(co_common->dscp_present == 1)
+	{
+		uint8_t dscp_padding;
+
+		if(rohc_remain_len < 1)
+		{
+			rohc_decomp_warn(context, "ROHC packet too small for DSCP (len = %zu)",
+			                 rohc_remain_len);
+			goto error;
+		}
+
+		innermost_ip_bits->dscp_bits = (rohc_remain_data[0] >> 2) & 0x3f;
+		innermost_ip_bits->dscp_bits_nr = 6;
+		rohc_decomp_debug(context, "found %zu bits of innermost DSCP encoded "
+		                  "on %d bytes", innermost_ip_bits->dscp_bits_nr, ret);
+		dscp_padding = rohc_remain_data[0] & 0x3;
+		rohc_remain_data++;
+		rohc_remain_len--;
+		(*rohc_hdr_len)++;
+
+		/* padding field shall be zero */
+		if(dscp_padding != 0)
+		{
+			rohc_decomp_debug(context, "malformed ROHC co_common packet: DSCP "
+			                  "padding shall be zero but it is %u", dscp_padding);
+#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
+			goto error;
+#endif
+		}
+	}
+
+	/* DF */
+	if(innermost_ip_ctxt->ctxt.vx.version == IPV4)
+	{
+		innermost_ip_bits->df = co_common->df;
+		innermost_ip_bits->df_nr = 1;
+		rohc_decomp_debug(context, "found %zu bits of innermost DF encoded "
+		                  "on %d bytes", innermost_ip_bits->df_nr, ret);
+	}
+
+	/* TTL / HL */
+	ret = d_static_or_irreg8(rohc_remain_data, rohc_remain_len,
+	                         co_common->ttl_hopl_present,
+	                         &innermost_ip_bits->ttl_hl);
+	if(ret < 0)
+	{
+		rohc_decomp_warn(context, "static_or_irreg(ttl) failed");
+		goto error;
+	}
+	rohc_decomp_debug(context, "found %zu bits of innermost TTL/HL encoded "
+	                  "on %d bytes", innermost_ip_bits->ttl_hl.bits_nr, ret);
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
+	rohc_remain_data += ret;
+	rohc_remain_len -= ret;
+#endif
+	*rohc_hdr_len += ret;
+
+	return true;
+
+error:
 	return false;
 }
 
