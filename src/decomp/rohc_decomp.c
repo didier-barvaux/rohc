@@ -1629,7 +1629,7 @@ int rohc_decompress_both(struct rohc_decomp *decomp,
 		}
 		else
 		{
-			code = __uncomp_packet.len;
+			code_int = __uncomp_packet.len;
 
 			/* send the feedback via the compressor associated with the
 			 * decompressor */
