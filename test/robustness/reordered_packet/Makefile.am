@@ -25,15 +25,19 @@ test_reordered_packet_CPPFLAGS = \
 	$(libpcap_includes)
 
 test_reordered_packet_LDFLAGS = \
-	-L$(top_builddir)/src/.libs \
-	$(configure_ldflags)
+	$(configure_ldflags) \
+	-L$(top_builddir)/src/common/.libs \
+	-L$(top_builddir)/src/comp/.libs \
+	-L$(top_builddir)/src/decomp/.libs
 
 test_reordered_packet_SOURCES = \
 	test_reordered_packet.c
 
 test_reordered_packet_LDADD = \
 	-l$(pcap_lib_name) \
-	-lrohc \
+	-lrohc_comp \
+	-lrohc_decomp \
+	-lrohc_common \
 	$(additional_platform_libs)
 
 EXTRA_DIST = \
