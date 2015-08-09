@@ -1121,6 +1121,9 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
 			                 "should not be 1");
 			goto error;
 		}
+		assert(outer_ip != NULL);
+		assert(outer_ip_changes != NULL);
+
 		size = parse_outer_header_flags(context, outer_ip_flags_pos,
 		                                rohc_remain_data, rohc_remain_len,
 		                                outer_ip);
@@ -1150,10 +1153,16 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
 			are_all_ipv4_rnd &= outer_ip_changes->rnd;
 		}
 	}
-	else if(rfc3095_ctxt->multiple_ip && outer_ip->version == IPV4)
+	else if(rfc3095_ctxt->multiple_ip)
 	{
-		/* no outer IP header flags, so get context(RND) */
-		are_all_ipv4_rnd &= outer_ip_changes->rnd;
+		assert(outer_ip != NULL);
+		assert(outer_ip_changes != NULL);
+
+		if(outer_ip->version == IPV4)
+		{
+			/* no outer IP header flags, so get context(RND) */
+			are_all_ipv4_rnd &= outer_ip_changes->rnd;
+		}
 	}
 
 	/* if RND changed while parsing UO-1-ID, UOR-2-RTP, UOR-2-ID, or UOR-2-TS,
@@ -1249,7 +1258,9 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
 			                 "extension 3");
 			goto error;
 		}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		rohc_remain_data += size;
+#endif
 		rohc_remain_len -= size;
 	}
 
