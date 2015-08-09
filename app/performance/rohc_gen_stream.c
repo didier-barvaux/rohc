@@ -437,6 +437,7 @@ static bool build_stream(const char *const filename,
 		struct ipv4_hdr *ipv4;
 		struct udphdr *udp;
 		struct rtphdr *rtp;
+		size_t i;
 
 		/* skip the Ethernet header, it will be written later */
 		packet.len += ETHER_HDR_LEN;
@@ -485,7 +486,7 @@ static bool build_stream(const char *const filename,
 		rohc_buf_pull(&packet, sizeof(struct rtphdr));
 
 		/* build RTP payload */
-		for(size_t i = 0; i < payload_len; i++)
+		for(i = 0; i < payload_len; i++)
 		{
 			rohc_buf_byte_at(packet, i) = i % 0xff;
 		}
