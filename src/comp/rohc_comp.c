@@ -59,6 +59,9 @@
 
 #ifndef __KERNEL__
 #	include <string.h>
+#	if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+#		include <sys/time.h>
+#	endif
 #endif
 #include <stdlib.h>
 #ifdef __KERNEL__
@@ -179,6 +182,9 @@ static bool rohc_comp_default_rtp_cb(const unsigned char *const ip,
                                      const unsigned char *const payload,
                                      const unsigned int payload_size,
                                      void *const rtp_private)
+	__attribute__((warn_unused_result));
+
+static inline struct rohc_ts get_timespec(void)
 	__attribute__((warn_unused_result));
 
 #endif /* !ROHC_ENABLE_DEPRECATED_API */
@@ -918,7 +924,7 @@ int rohc_compress(struct rohc_comp *comp,
                   unsigned char *obuf,
                   int osize)
 {
-	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
+	const struct rohc_ts arrival_time = get_timespec();
 	const struct rohc_buf uncomp_packet =
 		rohc_buf_init_full(ibuf, isize, arrival_time);
 	struct rohc_buf rohc_packet = rohc_buf_init_empty(obuf, osize);
@@ -1015,7 +1021,7 @@ int rohc_compress2(struct rohc_comp *const comp,
                    const size_t rohc_packet_max_len,
                    size_t *const rohc_packet_len)
 {
-	struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
+	const struct rohc_ts arrival_time = get_timespec();
 	const struct rohc_buf __uncomp_packet =
 		rohc_buf_init_full((uint8_t *) uncomp_packet, uncomp_packet_len,
 		                   arrival_time);
@@ -5260,6 +5266,44 @@ static bool rohc_comp_default_rtp_cb(const unsigned char *const ip __attribute__
 
 	return is_rtp;
 }
+
+
+#ifndef __KERNEL__
+
+/**
+ * @brief Get the current time
+ *
+ * @return The current time
+ */
+static inline struct rohc_ts get_timespec(void)
+{
+	struct rohc_ts ts;
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	ts.sec = tv.tv_sec;
+	ts.nsec = tv.tv_usec * 1000;
+	return ts;
+}
+
+#else /* __KERNEL__ */
+
+/**
+ * @brief Get the current time
+ *
+ * @return The current time
+ */
+static inline struct rohc_ts get_timespec(void)
+{
+	struct rohc_ts ts;
+	struct timespec __ts;
+	ktime_get_ts(&__ts);
+	ts.sec = __ts.tv_sec;
+	ts.nsec = __ts.tv_nsec;
+	return ts;
+}
+
+#endif /* __KERNEL__ */
+
 
 #endif /* !ROHC_ENABLE_DEPRECATED_API */
 
