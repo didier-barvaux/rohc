@@ -245,6 +245,7 @@ int wan2tun(struct rohc_tunnel *const tunnel,
             struct rohc_decomp *const decomp,
             const int from,
             const int to,
+            const rohc_mode_t mode,
             struct rohc_comp *const comp);
 int flush_feedback(const int to,
                    struct rohc_tunnel *const tunnel);
@@ -889,8 +890,7 @@ int main(int argc, char *argv[])
 #endif
 			   FD_ISSET(wan, &readfds))
 			{
-				failure = wan2tun(&tunnel, decomp, wan, tun,
-				                  mode == ROHC_U_MODE ? NULL : comp);
+				failure = wan2tun(&tunnel, decomp, wan, tun, mode, comp);
 #if STOP_ON_FAILURE
 				if(failure)
 					alive = 0;
@@ -899,15 +899,18 @@ int main(int argc, char *argv[])
 		}
 
 		/* flush feedback data if nothing is sent in the tunnel for a moment */
-		gettimeofday(&now, NULL);
-		if(now.tv_sec > last.tv_sec + 1)
+		if(mode > ROHC_U_MODE)
 		{
-			failure = flush_feedback(wan, &tunnel);
-			last = now;
+			gettimeofday(&now, NULL);
+			if(now.tv_sec > last.tv_sec + 1)
+			{
+				failure = flush_feedback(wan, &tunnel);
+				last = now;
 #if STOP_ON_FAILURE
-			if(failure)
-				alive = 0;
+				if(failure)
+					alive = 0;
 #endif
+			}
 		}
 	}
 	while(alive);
@@ -1194,7 +1197,7 @@ int write_to_udp(int sock,
 	addr.sin_port = htons(port);
 
 	/* write the tunnel sequence number at the beginning of packet */
-	rohc_buf_pull(&packet, 2);
+	rohc_buf_push(&packet, 2);
 	rohc_buf_byte_at(packet, 0) = (htons(tunnel_seq) >> 8) & 0xff;
 	rohc_buf_byte_at(packet, 1) = htons(tunnel_seq) & 0xff;
 
@@ -1491,7 +1494,7 @@ int tun2wan(struct rohc_comp *comp,
 
 	/* compress the IP packet */
 #if DEBUG
-	fprintf(stderr, "compress packet #%u (%zd bytes)\n", tunnel_seq, packet_len);
+	fprintf(stderr, "compress packet #%u (%zd bytes)\n", tunnel_seq, rohc_packet.len);
 #endif
 	status = rohc_compress4(comp, uncomp_packet, &rohc_packet);
 	if(status == ROHC_STATUS_SEGMENT)
@@ -1647,14 +1650,15 @@ void print_decomp_stats(unsigned int seq,
  * @param decomp       The ROHC decompressor
  * @param from         The WAN socket descriptor to read from
  * @param to           The TUN file descriptor to write to
- * @param comp         The same-site associated ROHC compressor if any,
- *                     NULL if running in unidirectional mode
+ * @param mode         The ROHC operational mode
+ * @param comp         The same-site associated ROHC compressor
  * @return             0 in case of success, a non-null value otherwise
  */
 int wan2tun(struct rohc_tunnel *const tunnel,
             struct rohc_decomp *const decomp,
             const int from,
             const int to,
+            const rohc_mode_t mode,
             struct rohc_comp *const comp)
 {
 	static unsigned char buffer[3 + TUNTAP_BUFSIZE];
@@ -1668,6 +1672,8 @@ int wan2tun(struct rohc_tunnel *const tunnel,
 	uint8_t feedback_rcvd_buf[feedback_rcvd_max_len];
 	struct rohc_buf feedback_rcvd =
 		rohc_buf_init_empty(feedback_rcvd_buf, feedback_rcvd_max_len);
+
+	struct rohc_buf *feedback_send_p;
 
 	rohc_status_t status;
 	int ret;
@@ -1760,11 +1766,12 @@ int wan2tun(struct rohc_tunnel *const tunnel,
 
 	/* decompress the ROHC packet */
 #if DEBUG
-	fprintf(stderr, "decompress ROHC packet #%u (%u bytes)\n",
-	        new_seq, packet.len);
+	fprintf(stderr, "decompress ROHC packet #%u (%zu bytes)\n",
+	        new_seq, decomp_packet.len);
 #endif
+	feedback_send_p = (mode == ROHC_U_MODE ? NULL : &(tunnel->feedback_send));
 	status = rohc_decompress3(decomp, packet, &decomp_packet,
-	                          &feedback_rcvd, &(tunnel->feedback_send));
+	                          &feedback_rcvd, feedback_send_p);
 	if(status != ROHC_STATUS_OK)
 	{
 		fprintf(stderr, "decompression of packet #%u failed\n", new_seq);
@@ -1774,8 +1781,9 @@ int wan2tun(struct rohc_tunnel *const tunnel,
 	}
 
 	/* give received feedback to the same-side associated compressor */
-	if(feedback_rcvd.len > 0 && comp != NULL)
+	if(feedback_rcvd.len > 0 && mode > ROHC_U_MODE)
 	{
+		assert(comp != NULL);
 		if(!rohc_comp_deliver_feedback2(comp, feedback_rcvd))
 		{
 			fprintf(stderr, "failed to deliver the received feedback to the "
@@ -1859,14 +1867,12 @@ int flush_feedback(const int to,
 		/* write the ROHC packet in the tunnel */
 		if(tunnel->type == ROHC_TUNNEL_UDP)
 		{
-			rohc_buf_push(&(tunnel->feedback_send), 2);
 			ret = write_to_udp(to, tunnel->params.udp.raddr,
 			                   tunnel->params.udp.port,
 			                   tunnel->feedback_send);
 		}
 		else
 		{
-			rohc_buf_push(&(tunnel->feedback_send), 3);
 			ret = write_to_raw(to, tunnel->params.ethernet.raddr,
 			                   tunnel->params.ethernet.itf_index,
 			                   tunnel->feedback_send);
@@ -1876,6 +1882,7 @@ int flush_feedback(const int to,
 			fprintf(stderr, "failed to write data on tunnel\n");
 			goto error;
 		}
+		rohc_buf_reset(&(tunnel->feedback_send));
 	}
 
 	return 0;
