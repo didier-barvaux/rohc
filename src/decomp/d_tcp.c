@@ -262,6 +262,29 @@ static bool d_tcp_decode_bits(const struct rohc_decomp_ctxt *const context,
                               const size_t payload_len,
                               struct rohc_tcp_decoded_values *const decoded)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
+static bool d_tcp_decode_bits_ip_hdrs(const struct rohc_decomp_ctxt *const context,
+                                      const struct rohc_tcp_extr_bits *const bits,
+                                      struct rohc_tcp_decoded_values *const decoded)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const context,
+                                     const struct rohc_tcp_extr_ip_bits *const ip_bits,
+                                     const ip_context_t *const ip_context,
+                                     const uint16_t decoded_msn,
+                                     struct rohc_tcp_decoded_ip_values *const ip_decoded)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
+static bool d_tcp_decode_bits_tcp_hdr(const struct rohc_decomp_ctxt *const context,
+                                      const struct rohc_tcp_extr_bits *const bits,
+                                      const size_t payload_len,
+                                      struct rohc_tcp_decoded_values *const decoded)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
+static void d_tcp_decode_bits_tcp_flags(const struct rohc_decomp_ctxt *const context,
+                                        const struct rohc_tcp_extr_bits *const bits,
+                                        struct rohc_tcp_decoded_values *const decoded)
+	__attribute__((nonnull(1, 2, 3)));
+static bool d_tcp_decode_bits_tcp_opts(const struct rohc_decomp_ctxt *const context,
+                                       const struct rohc_tcp_extr_bits *const bits,
+                                       struct rohc_tcp_decoded_values *const decoded)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 static bool d_tcp_decode_opt_ts_field(const struct rohc_decomp_ctxt *const context,
                                       const char *const descr,
                                       const struct rohc_lsb_decode *const lsb_ctxt,
@@ -2521,8 +2544,6 @@ static bool d_tcp_decode_bits(const struct rohc_decomp_ctxt *const context,
                               struct rohc_tcp_decoded_values *const decoded)
 {
 	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
-	size_t ip_hdr_nr;
-	size_t i;
 
 	/* decode MSN */
 	if(bits->msn.bits_nr == 16)
@@ -2551,259 +2572,347 @@ static bool d_tcp_decode_bits(const struct rohc_decomp_ctxt *const context,
 	}
 
 	/* decode IP headers */
+	if(!d_tcp_decode_bits_ip_hdrs(context, bits, decoded))
+	{
+		rohc_decomp_warn(context, "failed to decode bits extracted for IP headers");
+		goto error;
+	}
+
+	/* decode TCP header */
+	if(!d_tcp_decode_bits_tcp_hdr(context, bits, payload_len, decoded))
+	{
+		rohc_decomp_warn(context, "failed to decode bits extracted for TCP header");
+		goto error;
+	}
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Decode values for all IP headers from extracted bits
+ *
+ * @param context       The decompression context
+ * @param bits          The bits extracted from the ROHC packet
+ * @param[out] decoded  The corresponding decoded values
+ * @return              true if decoding is successful, false otherwise
+ */
+static bool d_tcp_decode_bits_ip_hdrs(const struct rohc_decomp_ctxt *const context,
+                                      const struct rohc_tcp_extr_bits *const bits,
+                                      struct rohc_tcp_decoded_values *const decoded)
+{
+	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
+	size_t ip_hdr_nr;
+
+	/* decode IP headers */
 	assert(bits->ip_nr > 0);
 	for(ip_hdr_nr = 0; ip_hdr_nr < bits->ip_nr; ip_hdr_nr++)
 	{
-		tcp_ip_id_behavior_t ip_id_behavior;
 		const struct rohc_tcp_extr_ip_bits *const ip_bits = &(bits->ip[ip_hdr_nr]);
 		const ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_nr]);
 		struct rohc_tcp_decoded_ip_values *const ip_decoded = &(decoded->ip[ip_hdr_nr]);
 
 		rohc_decomp_debug(context, "decode fields of IP header #%zu", ip_hdr_nr + 1);
 
-		/* version */
-		ip_decoded->version = ip_bits->version;
-
-		/* ECN flags */
-		if(ip_bits->ecn_flags_bits_nr > 0)
+		if(!d_tcp_decode_bits_ip_hdr(context, ip_bits, ip_context, decoded->msn,
+		                             ip_decoded))
 		{
-			assert(ip_bits->ecn_flags_bits_nr == 2);
-			ip_decoded->ecn_flags = ip_bits->ecn_flags_bits;
-		}
-		else
-		{
-			ip_decoded->ecn_flags = ip_context->ctxt.vx.ip_ecn_flags;
-		}
-
-		/* DSCP */
-		if(ip_bits->dscp_bits_nr > 0)
-		{
-			assert(ip_bits->dscp_bits_nr == 6);
-			ip_decoded->dscp = ip_bits->dscp_bits;
-		}
-		else
-		{
-			ip_decoded->dscp = ip_context->ctxt.v4.dscp;
-		}
-
-		/* IP-ID behavior */
-		if(ip_bits->id_behavior_nr > 0)
-		{
-			assert(ip_bits->id_behavior_nr == 2);
-			ip_id_behavior = ip_bits->id_behavior;
-			rohc_decomp_debug(context, "  use behavior '%s' defined in current packet "
-			                  "for IP-ID",
-			                  tcp_ip_id_behavior_get_descr(ip_id_behavior));
-		}
-		else
-		{
-			ip_id_behavior = ip_context->ctxt.vx.ip_id_behavior;
-			rohc_decomp_debug(context, "  use already-defined behavior '%s' for IP-ID",
-			                  tcp_ip_id_behavior_get_descr(ip_id_behavior));
-		}
-		ip_decoded->id_behavior = ip_id_behavior;
-
-		/* decode IP-ID according to its behavior */
-		if(ip_bits->version == IPV4)
-		{
-			if(ip_bits->id.bits_nr == 16)
-			{
-				ip_decoded->id = ip_bits->id.bits;
-				rohc_decomp_debug(context, "  IP-ID = 0x%04x (%zu-bit 0x%x from "
-				                  "packet)", ip_decoded->id, ip_bits->id.bits_nr,
-				                  ip_bits->id.bits);
-			}
-			else if(ip_bits->id.bits_nr > 0)
-			{
-				/* ROHC packet cannot contain partial IP-ID if it is not sequential */
-				if(ip_id_behavior > IP_ID_BEHAVIOR_SEQ_SWAP)
-				{
-					rohc_decomp_warn(context, "packet and context mismatch for IP "
-					                 "header %zu : received %zu bits of IP-ID in ROHC "
-					                 "packet but IP-ID behavior is %s according to "
-					                 "context", ip_hdr_nr + 1, ip_bits->id.bits_nr,
-					                 tcp_ip_id_behavior_get_descr(ip_id_behavior));
-					goto error;
-				}
-
-				/* decode IP-ID from packet bits and context */
-				if(!d_ip_id_lsb(context, tcp_context->ip_id_lsb_ctxt, decoded->msn,
-				                ip_bits->id.bits, ip_bits->id.bits_nr, ip_bits->id.p,
-				                &ip_decoded->id))
-				{
-					rohc_decomp_warn(context, "failed to decode %zu IP-ID bits "
-					                 "0x%x with p = %d", ip_bits->id.bits_nr,
-					                 ip_bits->id.bits, ip_bits->id.p);
-					goto error;
-				}
-				rohc_decomp_debug(context, "  IP-ID = 0x%04x (decoded from "
-				                  "%zu-bit 0x%x with p = %d)", ip_decoded->id,
-				                  ip_bits->id.bits_nr, ip_bits->id.bits, ip_bits->id.p);
-			}
-			else if(ip_id_behavior == IP_ID_BEHAVIOR_ZERO)
-			{
-				rohc_decomp_debug(context, "  IP-ID follows a zero behavior");
-				ip_decoded->id = 0;
-			}
-		}
-		else if(ip_bits->id.bits_nr > 0)
-		{
-			rohc_decomp_warn(context, "packet and context mismatch for IP header %zu: "
-			                 "received %zu bits of IP-ID in ROHC packet but IP header "
-			                 "is not IPv4 according to context", ip_hdr_nr + 1,
-			                 ip_bits->id.bits_nr);
+			rohc_decomp_warn(context, "failed to decode received bits for IP "
+			                 "header #%zu", ip_hdr_nr + 1);
 			goto error;
-		}
-
-		/* decode innermost TTL/HL */
-		if(ip_bits->ttl_hl.bits_nr == 8)
-		{
-			ip_decoded->ttl = ip_bits->ttl_hl.bits;
-			rohc_decomp_debug(context, "  decoded TTL/HL = 0x%02x (%zu bits 0x%x)",
-			                  ip_decoded->ttl, ip_bits->ttl_hl.bits_nr,
-			                  ip_bits->ttl_hl.bits);
-		}
-		else if(ip_bits->ttl_hl.bits_nr > 0)
-		{
-			uint32_t decoded32;
-
-			if(!rohc_lsb_decode(tcp_context->ttl_hl_lsb_ctxt, ROHC_LSB_REF_0, 0,
-			                    ip_bits->ttl_hl.bits, ip_bits->ttl_hl.bits_nr,
-			                    ROHC_LSB_SHIFT_TCP_TTL, &decoded32))
-			{
-				rohc_decomp_warn(context, "failed to decode %zu TTL/HL bits 0x%x",
-				                 ip_bits->ttl_hl.bits_nr, ip_bits->ttl_hl.bits);
-				goto error;
-			}
-			ip_decoded->ttl = (uint8_t) (decoded32 & 0xff);
-			rohc_decomp_debug(context, "  decoded TTL/HL = 0x%02x (%zu bits 0x%x)",
-			                  ip_decoded->ttl, ip_bits->ttl_hl.bits_nr,
-			                  ip_bits->ttl_hl.bits);
-		}
-		else
-		{
-			ip_decoded->ttl = ip_context->ctxt.vx.ttl_hopl;
-			rohc_decomp_debug(context, "  TTL/HL = 0x%02x taken from context",
-			                  ip_decoded->ttl);
-		}
-
-		/* change DF value if present in packet */
-		if(ip_decoded->version == IPV4)
-		{
-			if(ip_bits->df_nr > 0)
-			{
-				assert(ip_bits->df_nr == 1);
-				ip_decoded->df = ip_bits->df;
-				rohc_decomp_debug(context, "  decoded DF = %d", ip_decoded->df);
-			}
-			else
-			{
-				ip_decoded->df = ip_context->ctxt.v4.df;
-				rohc_decomp_debug(context, "  DF = %d taken from context",
-				                  ip_decoded->df);
-			}
-		}
-		else if(ip_bits->df_nr > 0 && ip_bits->df != 0)
-		{
-			rohc_decomp_debug(context, "malformed ROHC packet: DF shall be zero "
-			                  "for innermost IPv6 header but it is %u", ip_bits->df);
-#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
-			goto error;
-#endif
-		}
-
-		/* protocol / next header */
-		if(ip_bits->proto_nr > 0)
-		{
-			assert(ip_bits->proto_nr == 8);
-			ip_decoded->proto = ip_bits->proto;
-			rohc_decomp_debug(context, "  decoded protocol/next header = 0x%02x (%d)",
-			                  ip_decoded->proto, ip_decoded->proto);
-		}
-		else
-		{
-			ip_decoded->proto = ip_context->ctxt.vx.next_header;
-			rohc_decomp_debug(context, "  protocol/next header = 0x%02x (%d) taken "
-			                  "from context", ip_decoded->proto, ip_decoded->proto);
-		}
-
-		/* flow ID */
-		if(ip_decoded->version == IPV6)
-		{
-			if(ip_bits->flowid_nr > 0)
-			{
-				assert(ip_bits->flowid_nr == 20);
-				ip_decoded->flowid = ip_bits->flowid;
-				rohc_decomp_debug(context, "  decoded flow label = 0x%05x",
-				                  ip_decoded->flowid);
-			}
-			else
-			{
-				ip_decoded->flowid = (ip_context->ctxt.v6.flow_label1 << 16) |
-				                     ip_context->ctxt.v6.flow_label2;
-				rohc_decomp_debug(context, "  flow label = 0x%05x taken from context",
-				                  ip_decoded->flowid);
-			}
-		}
-		else /* IPv4 */
-		{
-			assert(ip_bits->flowid_nr == 0);
-		}
-
-		/* source address */
-		if(ip_bits->saddr_nr > 0)
-		{
-			memcpy(ip_decoded->saddr, ip_bits->saddr, ip_bits->saddr_nr / 8);
-			rohc_decomp_debug(context, "  %zu-byte source address (packet)",
-			                  ip_bits->saddr_nr / 8);
-		}
-		else if(ip_decoded->version == IPV4)
-		{
-			memcpy(ip_decoded->saddr, &ip_context->ctxt.v4.src_addr, 4);
-			rohc_decomp_debug(context, "  4-byte source address (context)");
-		}
-		else /* IPv6 */
-		{
-			memcpy(ip_decoded->saddr, ip_context->ctxt.v6.src_addr, 16);
-			rohc_decomp_debug(context, "  16-byte source address (context)");
-		}
-
-		/* destination address */
-		if(ip_bits->daddr_nr > 0)
-		{
-			memcpy(ip_decoded->daddr, ip_bits->daddr, ip_bits->daddr_nr / 8);
-			rohc_decomp_debug(context, "  %zu-byte destination address (packet)",
-			                  ip_bits->daddr_nr / 8);
-		}
-		else if(ip_decoded->version == IPV4)
-		{
-			memcpy(ip_decoded->daddr, &ip_context->ctxt.v4.dst_addr, 4);
-			rohc_decomp_debug(context, "  4-byte destination address (context)");
-		}
-		else /* IPv6 */
-		{
-			memcpy(ip_decoded->daddr, ip_context->ctxt.v6.dest_addr, 16);
-			rohc_decomp_debug(context, "  16-byte destination address (context)");
-		}
-
-		/* extension headers */
-		if(ip_bits->version == IPV6)
-		{
-			ip_decoded->opts_nr = ip_bits->opts_nr;
-			ip_decoded->opts_len = ip_bits->opts_len;
-			assert(ip_bits->opts_nr <= ROHC_TCP_MAX_IPV6_EXT_HDRS);
-			memcpy(ip_decoded->opts, ip_bits->opts,
-			       ip_bits->opts_nr * sizeof(ipv6_option_context_t));
-			rohc_decomp_debug(context, "  %zu extension headers on %zu bytes",
-			                  ip_decoded->opts_nr, ip_decoded->opts_len);
-		}
-		else
-		{
-			assert(ip_bits->opts_nr == 0);
-			assert(ip_bits->opts_len == 0);
 		}
 	}
 	decoded->ip_nr = bits->ip_nr;
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Decode values for one IP header from extracted bits
+ *
+ * @param context          The decompression context
+ * @param ip_bits          The IP bits extracted from the ROHC packet
+ * @param ip_context       The IP values recorded in context
+ * @param decoded_msn      The decoded Master Sequence Number (MSN)
+ * @param[out] ip_decoded  The corresponding decoded IP values
+ * @return                 true if decoding is successful, false otherwise
+ */
+static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const context,
+                                     const struct rohc_tcp_extr_ip_bits *const ip_bits,
+                                     const ip_context_t *const ip_context,
+                                     const uint16_t decoded_msn,
+                                     struct rohc_tcp_decoded_ip_values *const ip_decoded)
+{
+	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
+	tcp_ip_id_behavior_t ip_id_behavior;
+
+	/* version */
+	ip_decoded->version = ip_bits->version;
+
+	/* ECN flags */
+	if(ip_bits->ecn_flags_bits_nr > 0)
+	{
+		assert(ip_bits->ecn_flags_bits_nr == 2);
+		ip_decoded->ecn_flags = ip_bits->ecn_flags_bits;
+	}
+	else
+	{
+		ip_decoded->ecn_flags = ip_context->ctxt.vx.ip_ecn_flags;
+	}
+
+	/* DSCP */
+	if(ip_bits->dscp_bits_nr > 0)
+	{
+		assert(ip_bits->dscp_bits_nr == 6);
+		ip_decoded->dscp = ip_bits->dscp_bits;
+	}
+	else
+	{
+		ip_decoded->dscp = ip_context->ctxt.v4.dscp;
+	}
+
+	/* IP-ID behavior */
+	if(ip_bits->id_behavior_nr > 0)
+	{
+		assert(ip_bits->id_behavior_nr == 2);
+		ip_id_behavior = ip_bits->id_behavior;
+		rohc_decomp_debug(context, "  use behavior '%s' defined in current packet "
+		                  "for IP-ID", tcp_ip_id_behavior_get_descr(ip_id_behavior));
+	}
+	else
+	{
+		ip_id_behavior = ip_context->ctxt.vx.ip_id_behavior;
+		rohc_decomp_debug(context, "  use already-defined behavior '%s' for IP-ID",
+		                  tcp_ip_id_behavior_get_descr(ip_id_behavior));
+	}
+	ip_decoded->id_behavior = ip_id_behavior;
+
+	/* decode IP-ID according to its behavior */
+	if(ip_bits->version == IPV4)
+	{
+		if(ip_bits->id.bits_nr == 16)
+		{
+			ip_decoded->id = ip_bits->id.bits;
+			rohc_decomp_debug(context, "  IP-ID = 0x%04x (%zu-bit 0x%x from packet)",
+			                  ip_decoded->id, ip_bits->id.bits_nr, ip_bits->id.bits);
+		}
+		else if(ip_bits->id.bits_nr > 0)
+		{
+			/* ROHC packet cannot contain partial IP-ID if it is not sequential */
+			if(ip_id_behavior > IP_ID_BEHAVIOR_SEQ_SWAP)
+			{
+				rohc_decomp_warn(context, "packet and context mismatch: received "
+				                 "%zu bits of IP-ID in ROHC packet but IP-ID behavior "
+				                 "is %s according to context", ip_bits->id.bits_nr,
+				                 tcp_ip_id_behavior_get_descr(ip_id_behavior));
+				goto error;
+			}
+
+			/* decode IP-ID from packet bits and context */
+			if(!d_ip_id_lsb(context, tcp_context->ip_id_lsb_ctxt, decoded_msn,
+			                ip_bits->id.bits, ip_bits->id.bits_nr, ip_bits->id.p,
+			                &ip_decoded->id))
+			{
+				rohc_decomp_warn(context, "failed to decode %zu IP-ID bits "
+				                 "0x%x with p = %d", ip_bits->id.bits_nr,
+				                 ip_bits->id.bits, ip_bits->id.p);
+				goto error;
+			}
+			rohc_decomp_debug(context, "  IP-ID = 0x%04x (decoded from "
+			                  "%zu-bit 0x%x with p = %d)", ip_decoded->id,
+			                  ip_bits->id.bits_nr, ip_bits->id.bits, ip_bits->id.p);
+		}
+		else if(ip_id_behavior == IP_ID_BEHAVIOR_ZERO)
+		{
+			rohc_decomp_debug(context, "  IP-ID follows a zero behavior");
+			ip_decoded->id = 0;
+		}
+	}
+	else if(ip_bits->id.bits_nr > 0)
+	{
+		rohc_decomp_warn(context, "packet and context mismatch: received %zu bits "
+		                 "of IP-ID in ROHC packet but IP header is not IPv4 according "
+		                 "to context", ip_bits->id.bits_nr);
+		goto error;
+	}
+
+	/* decode innermost TTL/HL */
+	if(ip_bits->ttl_hl.bits_nr == 8)
+	{
+		ip_decoded->ttl = ip_bits->ttl_hl.bits;
+		rohc_decomp_debug(context, "  decoded TTL/HL = 0x%02x (%zu bits 0x%x)",
+		                  ip_decoded->ttl, ip_bits->ttl_hl.bits_nr,
+		                  ip_bits->ttl_hl.bits);
+	}
+	else if(ip_bits->ttl_hl.bits_nr > 0)
+	{
+		uint32_t decoded32;
+
+		if(!rohc_lsb_decode(tcp_context->ttl_hl_lsb_ctxt, ROHC_LSB_REF_0, 0,
+		                    ip_bits->ttl_hl.bits, ip_bits->ttl_hl.bits_nr,
+		                    ROHC_LSB_SHIFT_TCP_TTL, &decoded32))
+		{
+			rohc_decomp_warn(context, "failed to decode %zu TTL/HL bits 0x%x",
+			                 ip_bits->ttl_hl.bits_nr, ip_bits->ttl_hl.bits);
+			goto error;
+		}
+		ip_decoded->ttl = (uint8_t) (decoded32 & 0xff);
+		rohc_decomp_debug(context, "  decoded TTL/HL = 0x%02x (%zu bits 0x%x)",
+		                  ip_decoded->ttl, ip_bits->ttl_hl.bits_nr,
+		                  ip_bits->ttl_hl.bits);
+	}
+	else
+	{
+		ip_decoded->ttl = ip_context->ctxt.vx.ttl_hopl;
+		rohc_decomp_debug(context, "  TTL/HL = 0x%02x taken from context",
+		                  ip_decoded->ttl);
+	}
+
+	/* change DF value if present in packet */
+	if(ip_decoded->version == IPV4)
+	{
+		if(ip_bits->df_nr > 0)
+		{
+			assert(ip_bits->df_nr == 1);
+			ip_decoded->df = ip_bits->df;
+			rohc_decomp_debug(context, "  decoded DF = %d", ip_decoded->df);
+		}
+		else
+		{
+			ip_decoded->df = ip_context->ctxt.v4.df;
+			rohc_decomp_debug(context, "  DF = %d taken from context",
+			                  ip_decoded->df);
+		}
+	}
+	else if(ip_bits->df_nr > 0 && ip_bits->df != 0)
+	{
+		rohc_decomp_debug(context, "malformed ROHC packet: DF shall be zero "
+		                  "for innermost IPv6 header but it is %u", ip_bits->df);
+#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
+		goto error;
+#endif
+	}
+
+	/* protocol / next header */
+	if(ip_bits->proto_nr > 0)
+	{
+		assert(ip_bits->proto_nr == 8);
+		ip_decoded->proto = ip_bits->proto;
+		rohc_decomp_debug(context, "  decoded protocol/next header = 0x%02x (%d)",
+		                  ip_decoded->proto, ip_decoded->proto);
+	}
+	else
+	{
+		ip_decoded->proto = ip_context->ctxt.vx.next_header;
+		rohc_decomp_debug(context, "  protocol/next header = 0x%02x (%d) taken "
+		                  "from context", ip_decoded->proto, ip_decoded->proto);
+	}
+
+	/* flow ID */
+	if(ip_decoded->version == IPV6)
+	{
+		if(ip_bits->flowid_nr > 0)
+		{
+			assert(ip_bits->flowid_nr == 20);
+			ip_decoded->flowid = ip_bits->flowid;
+			rohc_decomp_debug(context, "  decoded flow label = 0x%05x",
+			                  ip_decoded->flowid);
+		}
+		else
+		{
+			ip_decoded->flowid = (ip_context->ctxt.v6.flow_label1 << 16) |
+			                     ip_context->ctxt.v6.flow_label2;
+			rohc_decomp_debug(context, "  flow label = 0x%05x taken from context",
+			                  ip_decoded->flowid);
+		}
+	}
+	else /* IPv4 */
+	{
+		assert(ip_bits->flowid_nr == 0);
+	}
+
+	/* source address */
+	if(ip_bits->saddr_nr > 0)
+	{
+		memcpy(ip_decoded->saddr, ip_bits->saddr, ip_bits->saddr_nr / 8);
+		rohc_decomp_debug(context, "  %zu-byte source address (packet)",
+		                  ip_bits->saddr_nr / 8);
+	}
+	else if(ip_decoded->version == IPV4)
+	{
+		memcpy(ip_decoded->saddr, &ip_context->ctxt.v4.src_addr, 4);
+		rohc_decomp_debug(context, "  4-byte source address (context)");
+	}
+	else /* IPv6 */
+	{
+		memcpy(ip_decoded->saddr, ip_context->ctxt.v6.src_addr, 16);
+		rohc_decomp_debug(context, "  16-byte source address (context)");
+	}
+
+	/* destination address */
+	if(ip_bits->daddr_nr > 0)
+	{
+		memcpy(ip_decoded->daddr, ip_bits->daddr, ip_bits->daddr_nr / 8);
+		rohc_decomp_debug(context, "  %zu-byte destination address (packet)",
+		                  ip_bits->daddr_nr / 8);
+	}
+	else if(ip_decoded->version == IPV4)
+	{
+		memcpy(ip_decoded->daddr, &ip_context->ctxt.v4.dst_addr, 4);
+		rohc_decomp_debug(context, "  4-byte destination address (context)");
+	}
+	else /* IPv6 */
+	{
+		memcpy(ip_decoded->daddr, ip_context->ctxt.v6.dest_addr, 16);
+		rohc_decomp_debug(context, "  16-byte destination address (context)");
+	}
+
+	/* extension headers */
+	if(ip_bits->version == IPV6)
+	{
+		ip_decoded->opts_nr = ip_bits->opts_nr;
+		ip_decoded->opts_len = ip_bits->opts_len;
+		assert(ip_bits->opts_nr <= ROHC_TCP_MAX_IPV6_EXT_HDRS);
+		memcpy(ip_decoded->opts, ip_bits->opts,
+		       ip_bits->opts_nr * sizeof(ipv6_option_context_t));
+		rohc_decomp_debug(context, "  %zu extension headers on %zu bytes",
+		                  ip_decoded->opts_nr, ip_decoded->opts_len);
+	}
+	else /* IPv4 */
+	{
+		assert(ip_bits->opts_nr == 0);
+		assert(ip_bits->opts_len == 0);
+	}
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Decode values for the TCP header from extracted bits
+ *
+ * @param context       The decompression context
+ * @param bits          The bits extracted from the ROHC packet
+ * @param payload_len   The length of the packet payload (in bytes)
+ * @param[out] decoded  The corresponding decoded values
+ * @return              true if decoding is successful, false otherwise
+ */
+static bool d_tcp_decode_bits_tcp_hdr(const struct rohc_decomp_ctxt *const context,
+                                      const struct rohc_tcp_extr_bits *const bits,
+                                      const size_t payload_len,
+                                      struct rohc_tcp_decoded_values *const decoded)
+{
+	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
 
 	rohc_decomp_debug(context, "decode fields of TCP header");
 
@@ -3006,83 +3115,7 @@ static bool d_tcp_decode_bits(const struct rohc_decomp_ctxt *const context,
 	}
 
 	/* TCP flags */
-	if(bits->res_flags_bits_nr > 0)
-	{
-		assert(bits->res_flags_bits_nr == 4);
-		decoded->res_flags = bits->res_flags_bits;
-	}
-	else
-	{
-		decoded->res_flags = tcp_context->res_flags;
-	}
-	if(bits->ecn_flags_bits_nr > 0)
-	{
-		rohc_decomp_debug(context, "ECN flags taken from packet");
-		assert(bits->ecn_flags_bits_nr == 2);
-		decoded->ecn_flags = bits->ecn_flags_bits;
-	}
-	else
-	{
-		rohc_decomp_debug(context, "ECN flags taken from context");
-		decoded->ecn_flags = tcp_context->ecn_flags;
-	}
-	if(bits->ecn_used_bits_nr > 0)
-	{
-		assert(bits->ecn_used_bits_nr == 1);
-		decoded->ecn_used = !!bits->ecn_used_bits;
-		rohc_decomp_debug(context, "ecn_used = %d taken from packet",
-		                  GET_REAL(decoded->ecn_used));
-	}
-	else
-	{
-		decoded->ecn_used = tcp_context->ecn_used;
-		rohc_decomp_debug(context, "ecn_used = %d taken from context",
-		                  GET_REAL(decoded->ecn_used));
-	}
-	if(bits->urg_flag_bits_nr > 0)
-	{
-		assert(bits->urg_flag_bits_nr == 1);
-		decoded->urg_flag = !!bits->urg_flag_bits;
-	}
-	else
-	{
-		decoded->urg_flag = !!tcp_context->urg_flag;
-	}
-	if(bits->ack_flag_bits_nr > 0)
-	{
-		assert(bits->ack_flag_bits_nr == 1);
-		decoded->ack_flag = !!bits->ack_flag_bits;
-	}
-	else
-	{
-		decoded->ack_flag = !!tcp_context->ack_flag;
-	}
-	if(!decoded->ack_flag && bits->ack.bits_nr > 0 && decoded->ack_num != 0)
-	{
-		rohc_decomp_debug(context, "ACK flag not set, but %zu bits 0x%x were "
-		                  "transmitted for ACK number", bits->ack.bits_nr,
-		                  bits->ack.bits);
-	}
-	assert(bits->psh_flag_bits_nr == 1); /* all packets contains the PSH flag */
-	decoded->psh_flag = !!bits->psh_flag_bits;
-	if(bits->rsf_flags_bits_nr == 3)
-	{
-		decoded->rsf_flags = bits->rsf_flags_bits;
-	}
-	else if(bits->rsf_flags_bits_nr == 2)
-	{
-		decoded->rsf_flags = rsf_index_dec(bits->rsf_flags_bits);
-	}
-	else
-	{
-		assert(bits->rsf_flags_bits_nr == 0);
-		decoded->rsf_flags = 0; /* RSF defaults to 0 if no bit was transmitted */
-	}
-	rohc_decomp_debug(context, "  TCP flags: RES = 0x%x, ECN = 0x%x, URG = %u, "
-	                  "ACK = %u, PSH = %u, RSF = 0x%x", decoded->res_flags,
-	                  decoded->ecn_flags, rohc_b2u(decoded->urg_flag),
-	                  rohc_b2u(decoded->ack_flag), rohc_b2u(decoded->psh_flag),
-	                  decoded->rsf_flags);
+	d_tcp_decode_bits_tcp_flags(context, bits, decoded);
 
 	/* TCP window */
 	if(bits->window.bits_nr == 16)
@@ -3131,14 +3164,148 @@ static bool d_tcp_decode_bits(const struct rohc_decomp_ctxt *const context,
 		decoded->urg_ptr = tcp_context->urg_ptr;
 	}
 
+	/* decode TCP options */
+	if(!d_tcp_decode_bits_tcp_opts(context, bits, decoded))
+	{
+		rohc_decomp_warn(context, "failed to decode bits extracted for TCP options");
+		goto error;
+	}
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Decode values for the TCP header flags from extracted bits
+ *
+ * @param context       The decompression context
+ * @param bits          The bits extracted from the ROHC packet
+ * @param[out] decoded  The corresponding decoded values
+ */
+static void d_tcp_decode_bits_tcp_flags(const struct rohc_decomp_ctxt *const context,
+                                        const struct rohc_tcp_extr_bits *const bits,
+                                        struct rohc_tcp_decoded_values *const decoded)
+{
+	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
+
+	/* reserved flags */
+	if(bits->res_flags_bits_nr > 0)
+	{
+		assert(bits->res_flags_bits_nr == 4);
+		decoded->res_flags = bits->res_flags_bits;
+	}
+	else
+	{
+		decoded->res_flags = tcp_context->res_flags;
+	}
+
+	/* ECN and ecn_used flags */
+	if(bits->ecn_flags_bits_nr > 0)
+	{
+		rohc_decomp_debug(context, "ECN flags taken from packet");
+		assert(bits->ecn_flags_bits_nr == 2);
+		decoded->ecn_flags = bits->ecn_flags_bits;
+	}
+	else
+	{
+		rohc_decomp_debug(context, "ECN flags taken from context");
+		decoded->ecn_flags = tcp_context->ecn_flags;
+	}
+	if(bits->ecn_used_bits_nr > 0)
+	{
+		assert(bits->ecn_used_bits_nr == 1);
+		decoded->ecn_used = !!bits->ecn_used_bits;
+		rohc_decomp_debug(context, "ecn_used = %d taken from packet",
+		                  GET_REAL(decoded->ecn_used));
+	}
+	else
+	{
+		decoded->ecn_used = tcp_context->ecn_used;
+		rohc_decomp_debug(context, "ecn_used = %d taken from context",
+		                  GET_REAL(decoded->ecn_used));
+	}
+
+	/* URG flag */
+	if(bits->urg_flag_bits_nr > 0)
+	{
+		assert(bits->urg_flag_bits_nr == 1);
+		decoded->urg_flag = !!bits->urg_flag_bits;
+	}
+	else
+	{
+		decoded->urg_flag = !!tcp_context->urg_flag;
+	}
+
+	/* ACK flag */
+	if(bits->ack_flag_bits_nr > 0)
+	{
+		assert(bits->ack_flag_bits_nr == 1);
+		decoded->ack_flag = !!bits->ack_flag_bits;
+	}
+	else
+	{
+		decoded->ack_flag = !!tcp_context->ack_flag;
+	}
+	if(!decoded->ack_flag && bits->ack.bits_nr > 0 && decoded->ack_num != 0)
+	{
+		rohc_decomp_debug(context, "ACK flag not set, but %zu bits 0x%x were "
+		                  "transmitted for ACK number", bits->ack.bits_nr,
+		                  bits->ack.bits);
+	}
+
+	/* PSH flag */
+	assert(bits->psh_flag_bits_nr == 1); /* all packets contains the PSH flag */
+	decoded->psh_flag = !!bits->psh_flag_bits;
+
+	/* RST, SYN, FIN flags */
+	if(bits->rsf_flags_bits_nr == 3)
+	{
+		decoded->rsf_flags = bits->rsf_flags_bits;
+	}
+	else if(bits->rsf_flags_bits_nr == 2)
+	{
+		decoded->rsf_flags = rsf_index_dec(bits->rsf_flags_bits);
+	}
+	else
+	{
+		assert(bits->rsf_flags_bits_nr == 0);
+		decoded->rsf_flags = 0; /* RSF defaults to 0 if no bit was transmitted */
+	}
+
+	rohc_decomp_debug(context, "  TCP flags: RES = 0x%x, ECN = 0x%x, URG = %u, "
+	                  "ACK = %u, PSH = %u, RSF = 0x%x", decoded->res_flags,
+	                  decoded->ecn_flags, rohc_b2u(decoded->urg_flag),
+	                  rohc_b2u(decoded->ack_flag), rohc_b2u(decoded->psh_flag),
+	                  decoded->rsf_flags);
+}
+
+
+/**
+ * @brief Decode values for the TCP options from extracted bits
+ *
+ * @param context       The decompression context
+ * @param bits          The bits extracted from the ROHC packet
+ * @param[out] decoded  The corresponding decoded values
+ * @return              true if decoding is successful, false otherwise
+ */
+static bool d_tcp_decode_bits_tcp_opts(const struct rohc_decomp_ctxt *const context,
+                                       const struct rohc_tcp_extr_bits *const bits,
+                                       struct rohc_tcp_decoded_values *const decoded)
+{
+	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
+	size_t tcp_opt_id;
+
 	rohc_decomp_debug(context, "decode TCP options");
 
 	/* copy the informations collected on TCP options */
 	memcpy(&decoded->tcp_opts, &bits->tcp_opts, sizeof(struct d_tcp_opts_ctxt));
 
-	for(i = 0; i < decoded->tcp_opts.nr; i++)
+	for(tcp_opt_id = 0; tcp_opt_id < decoded->tcp_opts.nr; tcp_opt_id++)
 	{
-		const uint8_t opt_index = decoded->tcp_opts.structure[i];
+		const uint8_t opt_index = decoded->tcp_opts.structure[tcp_opt_id];
 		struct d_tcp_opt_ctxt *const opt_bits = &(decoded->tcp_opts.bits[opt_index]);
 		const uint8_t opt_type = opt_bits->type;
 
