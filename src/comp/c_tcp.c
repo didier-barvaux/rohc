@@ -470,6 +470,11 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 static uint16_t c_tcp_get_next_msn(const struct rohc_comp_ctxt *const context)
 	__attribute__((warn_unused_result, nonnull(1)));
 
+static bool rohc_comp_tcp_are_options_acceptable(const struct rohc_comp *const comp,
+                                                 const uint8_t *const opts,
+                                                 const size_t data_offset)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
+
 static bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
                                        const tcphdr_t *const tcp,
                                        size_t *const opts_len)
@@ -1453,172 +1458,224 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 		goto bad_profile;
 	}
 
-	/* the TCP profile doesn't handle TCP packets with more than 15 options */
+	/* reject packets with malformed TCP options or TCP options that are not
+	 * compatible with the TCP profile */
+	if(!rohc_comp_tcp_are_options_acceptable(comp, tcp_header->options,
+	                                         tcp_header->data_offset))
 	{
-		const size_t opts_len =
-			tcp_header->data_offset * sizeof(uint32_t) - sizeof(struct tcphdr);
-		size_t opt_types_count[TCP_OPT_MAX + 1] = { 0 };
-		size_t opts_offset;
-		size_t opt_pos;
-		size_t opt_len;
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "malformed or incompatible TCP options detected");
+		goto bad_profile;
+	}
 
-		for(opt_pos = 0, opts_offset = 0;
-		    opt_pos < ROHC_TCP_OPTS_MAX && opts_offset < opts_len;
-		    opt_pos++, opts_offset += opt_len)
+	return true;
+
+bad_profile:
+	return false;
+}
+
+
+/**
+ * @brief Whether TCP options are acceptable for TCP profile or not
+ *
+ * TCP options are acceptable for the TCP profile if:
+ *  - the last TCP option is not truncated,
+ *  - well-known TCP options got the expected length (see below),
+ *  - no more than \e ROHC_TCP_OPTS_MAX options are present,
+ *  - each TCP options is present only once (except EOL and NOP).
+ *
+ * The following well-known TCP options shall have expected lengthes:
+ *  - MSS shall be TCP_OLEN_MSS long,
+ *  - WS shall be TCP_OLEN_WS long,
+ *  - SACK Permitted shall be TCP_OLEN_SACK_PERM long,
+ *  - SACK shall be 2 + N * 8 with N in range [1, 4]
+ *  - TS shall be TCP_OLEN_TS long.
+ *
+ * @param comp         The ROHC compressor
+ * @param opts         The beginning of the TCP options
+ * @param data_offset  The length (in 32-bit words) of the full TCP header
+ * @return             true if the TCP options are acceptable,
+ *                     false if they are not
+ *
+ * @see ROHC_TCP_OPTS_MAX
+ */
+static bool rohc_comp_tcp_are_options_acceptable(const struct rohc_comp *const comp,
+                                                 const uint8_t *const opts,
+                                                 const size_t data_offset)
+{
+	const size_t opts_len = data_offset * sizeof(uint32_t) - sizeof(struct tcphdr);
+	size_t opt_types_count[TCP_OPT_MAX + 1] = { 0 };
+	size_t opts_offset;
+	size_t opt_pos;
+	size_t opt_len;
+
+	/* parse up to ROHC_TCP_OPTS_MAX TCP options */
+	for(opt_pos = 0, opts_offset = 0;
+	    opt_pos < ROHC_TCP_OPTS_MAX && opts_offset < opts_len;
+	    opt_pos++, opts_offset += opt_len)
+	{
+		const uint8_t opt_type = opts[opts_offset];
+
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "TCP option %u found", opt_type);
+
+		opt_types_count[opt_type]++;
+
+		if(opt_type == TCP_OPT_NOP)
 		{
-			const uint8_t opt_type = tcp_header->options[opts_offset];
+			/* 1-byte TCP option NOP */
+			opt_len = 1;
+		}
+		else if(opt_type == TCP_OPT_EOL)
+		{
+			size_t i;
 
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "TCP option %u found", opt_type);
-
-			opt_types_count[opt_type]++;
-
-			if(opt_type == TCP_OPT_NOP)
+			/* TCP option EOL consumes all the remaining bytes of options */
+			opt_len = opts_len - opts_offset;
+			for(i = 0; i < opt_len; i++)
 			{
-				/* 1-byte TCP option NOP */
-				opt_len = 1;
-			}
-			else if(opt_type == TCP_OPT_EOL)
-			{
-				size_t i;
-
-				/* TCP option EOL consumes all the remaining bytes of options */
-				opt_len = opts_len - opts_offset;
-				for(i = 0; i < opt_len; i++)
+				if(opts[opts_offset + i] != TCP_OPT_EOL)
 				{
-					if(tcp_header->options[opts_offset + i] != TCP_OPT_EOL)
+					rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+					           "malformed TCP header: malformed option padding: "
+					           "padding byte #%zu is 0x%02x while it should be 0x00",
+					           i + 1, opts[opts_offset + i]);
+					goto bad_opts;
+				}
+			}
+		}
+		else
+		{
+			/* multi-byte TCP options */
+			if((opts_offset + 1) >= opts_len)
+			{
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "malformed TCP header: not enough room for the length "
+				           "field of option %u", opt_type);
+				goto bad_opts;
+			}
+			opt_len = opts[opts_offset + 1];
+			if(opt_len < 2)
+			{
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "malformed TCP header: option %u got length field %zu",
+				           opt_type, opt_len);
+				goto bad_opts;
+			}
+			if((opts_offset + opt_len) > opts_len)
+			{
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "malformed TCP header: not enough room for option %u "
+				           "(%zu bytes required but only %zu available)",
+				           opt_type, opt_len, opts_len - opts_offset);
+				goto bad_opts;
+			}
+
+			/* check the length of well-known options in order to avoid using
+			 * the TCP profile with malformed TCP packets */
+			switch(opt_type)
+			{
+				case TCP_OPT_MSS:
+				{
+					if(opt_len != TCP_OLEN_MSS)
 					{
 						rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-						           "malformed TCP header: malformed option padding: "
-						           "padding byte #%zu is 0x%02x while it should be 0x00",
-						           i + 1, tcp_header->options[opts_offset + i]);
-						goto bad_profile;
+						           "malformed TCP option #%zu: unexpected length "
+						           "for MSS option: %zu found in packet while %u "
+						           "expected", opt_pos + 1, opt_len, TCP_OLEN_MSS);
+						goto bad_opts;
 					}
+					break;
 				}
-			}
-			else
-			{
-				/* multi-byte TCP options */
-				if((opts_offset + 1) >= opts_len)
+				case TCP_OPT_WS:
 				{
-					rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-					           "malformed TCP header: not enough room for the "
-					           "length field of option %u", opt_type);
-					goto bad_profile;
-				}
-				opt_len = tcp_header->options[opts_offset + 1];
-				if(opt_len < 2)
-				{
-					rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-					           "malformed TCP header: option %u got length "
-					           "field %zu", opt_type, opt_len);
-					goto bad_profile;
-				}
-				if((opts_offset + opt_len) > opts_len)
-				{
-					rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-					           "malformed TCP header: not enough room for option %u "
-					           "(%zu bytes required but only %zu available)",
-					           opt_type, opt_len, opts_len - opts_offset);
-					goto bad_profile;
-				}
-
-				/* check the length of well-known options in order to avoid using
-				 * the TCP profile with malformed TCP packets */
-				switch(opt_type)
-				{
-					case TCP_OPT_MSS:
-						if(opt_len != TCP_OLEN_MSS)
-						{
-							rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-							           "malformed TCP option #%zu: unexpected length "
-							           "for MSS option: %zu found in packet while %u "
-							           "expected", opt_pos + 1, opt_len, TCP_OLEN_MSS);
-							goto bad_profile;
-						}
-						break;
-					case TCP_OPT_WS:
-						if(opt_len != TCP_OLEN_WS)
-						{
-							rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-							           "malformed TCP option #%zu: unexpected length "
-							           "for WS option: %zu found in packet while %u "
-							           "expected", opt_pos + 1, opt_len, TCP_OLEN_WS);
-							goto bad_profile;
-						}
-						break;
-					case TCP_OPT_SACK_PERM:
-						if(opt_len != TCP_OLEN_SACK_PERM)
-						{
-							rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-							           "malformed TCP option #%zu: unexpected length "
-							           "for SACK Permitted option: %zu found in packet "
-							           "while %u expected", opt_pos + 1, opt_len,
-							           TCP_OLEN_SACK_PERM);
-							goto bad_profile;
-						}
-						break;
-					case TCP_OPT_SACK:
+					if(opt_len != TCP_OLEN_WS)
 					{
-						size_t sack_blocks_remain = (opt_len - 2) % sizeof(sack_block_t);
-						size_t sack_blocks_nr = (opt_len - 2) / sizeof(sack_block_t);
-						if(sack_blocks_remain != 0 || sack_blocks_nr == 0 || sack_blocks_nr > 4)
-						{
-							rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-							           "malformed TCP option #%zu: unexpected length "
-							           "for SACK option: %zu found in packet while 2 + "
-							           "[1-4] * %zu expected", opt_pos + 1, opt_len,
-							           sizeof(sack_block_t));
-							goto bad_profile;
-						}
-						break;
+						rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+						           "malformed TCP option #%zu: unexpected length "
+						           "for WS option: %zu found in packet while %u "
+						           "expected", opt_pos + 1, opt_len, TCP_OLEN_WS);
+						goto bad_opts;
 					}
-					case TCP_OPT_TS:
-						if(opt_len != TCP_OLEN_TS)
-						{
-							rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-							           "malformed TCP option #%zu: unexpected length "
-							           "for TS option: %zu found in packet while %u "
-							           "expected", opt_pos + 1, opt_len, TCP_OLEN_TS);
-							goto bad_profile;
-						}
-						break;
+					break;
+				}
+				case TCP_OPT_SACK_PERM:
+				{
+					if(opt_len != TCP_OLEN_SACK_PERM)
+					{
+						rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+						           "malformed TCP option #%zu: unexpected length "
+						           "for SACK Permitted option: %zu found in packet "
+						           "while %u expected", opt_pos + 1, opt_len,
+						           TCP_OLEN_SACK_PERM);
+						goto bad_opts;
+					}
+					break;
+				}
+				case TCP_OPT_SACK:
+				{
+					size_t sack_blocks_remain = (opt_len - 2) % sizeof(sack_block_t);
+					size_t sack_blocks_nr = (opt_len - 2) / sizeof(sack_block_t);
+					if(sack_blocks_remain != 0 || sack_blocks_nr == 0 || sack_blocks_nr > 4)
+					{
+						rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+						           "malformed TCP option #%zu: unexpected length for "
+						           "SACK option: %zu found in packet while 2 + [1-4] "
+						           "* %zu expected", opt_pos + 1, opt_len,
+						           sizeof(sack_block_t));
+						goto bad_opts;
+					}
+					break;
+				}
+				case TCP_OPT_TS:
+				{
+					if(opt_len != TCP_OLEN_TS)
+					{
+						rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+						           "malformed TCP option #%zu: unexpected length "
+						           "for TS option: %zu found in packet while %u "
+						           "expected", opt_pos + 1, opt_len, TCP_OLEN_TS);
+						goto bad_opts;
+					}
+					break;
 				}
 			}
 		}
-		if(opt_pos >= ROHC_TCP_OPTS_MAX && opts_offset != opts_len)
-		{
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "unexpected TCP header: too many TCP options: %zu "
-			           "options found in packet but only %u options possible",
-			           opt_pos, ROHC_TCP_OPTS_MAX);
-			goto bad_profile;
-		}
+	}
 
-		/* TCP options shall occur at most once, except EOL and NOP */
-		{
-			unsigned int opt_type;
+	/* no more than ROHC_TCP_OPTS_MAX TCP options accepted by the TCP profile */
+	if(opt_pos >= ROHC_TCP_OPTS_MAX && opts_offset != opts_len)
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "unexpected TCP header: too many TCP options: %zu "
+		           "options found in packet but only %u options possible",
+		           opt_pos, ROHC_TCP_OPTS_MAX);
+		goto bad_opts;
+	}
 
-			for(opt_type = 0; opt_type <= TCP_OPT_MAX; opt_type++)
+	/* TCP options shall occur at most once, except EOL and NOP */
+	{
+		unsigned int opt_type;
+
+		for(opt_type = 0; opt_type <= TCP_OPT_MAX; opt_type++)
+		{
+			if(opt_type != TCP_OPT_EOL &&
+			   opt_type != TCP_OPT_NOP &&
+			   opt_types_count[opt_type] > 1)
 			{
-				if(opt_type != TCP_OPT_EOL &&
-				   opt_type != TCP_OPT_NOP &&
-				   opt_types_count[opt_type] > 1)
-				{
-					rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-					           "malformed TCP options: TCP option '%s' (%u) should "
-					           "occur at most once, but it was found %zu times",
-					           tcp_opt_get_descr(opt_type), opt_type,
-					           opt_types_count[opt_type]);
-					goto bad_profile;
-				}
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "malformed TCP options: TCP option '%s' (%u) should "
+				           "occur at most once, but it was found %zu times",
+				           tcp_opt_get_descr(opt_type), opt_type,
+				           opt_types_count[opt_type]);
+				goto bad_opts;
 			}
 		}
 	}
 
 	return true;
 
-bad_profile:
+bad_opts:
 	return false;
 }
 
