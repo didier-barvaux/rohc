@@ -36,7 +36,8 @@ librohc_comp_la_LDFLAGS = \
 	$(configure_ldflags)
 
 librohc_comp_la_CFLAGS = \
-	$(configure_cflags)
+	$(configure_cflags) \
+	$(configure_cflags_for_lib)
 
 librohc_comp_la_CPPFLAGS = \
 	-I$(top_srcdir)/src/common

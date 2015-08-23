@@ -25,7 +25,8 @@ librohc_la_LDFLAGS = \
 	-no-undefined \
 	-version-info $(ROHC_API_CURRENT):$(ROHC_API_REVISION):$(ROHC_API_AGE)
 librohc_la_CFLAGS = \
-	$(configure_cflags)
+	$(configure_cflags) \
+	$(configure_cflags_for_lib)
 librohc_la_CPPFLAGS =
 librohc_la_DEPENDENCIES = \
 	$(builddir)/common/librohc_common.la \

@@ -41,7 +41,8 @@ librohc_decomp_la_LDFLAGS = \
 	$(configure_ldflags)
 
 librohc_decomp_la_CFLAGS = \
-	$(configure_cflags)
+	$(configure_cflags) \
+	$(configure_cflags_for_lib)
 
 librohc_decomp_la_CPPFLAGS = \
 	-I$(top_srcdir)/src/common
