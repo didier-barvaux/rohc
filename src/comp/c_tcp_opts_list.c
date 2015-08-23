@@ -289,7 +289,7 @@ bool rohc_comp_tcp_are_options_acceptable(const struct rohc_comp *const comp,
                                           const size_t data_offset)
 {
 	const size_t opts_len = data_offset * sizeof(uint32_t) - sizeof(struct tcphdr);
-	size_t opt_types_count[TCP_OPT_MAX + 1] = { 0 };
+	uint8_t opt_types_count[TCP_OPT_MAX + 1] = { 0 };
 	size_t opts_offset;
 	size_t opt_pos;
 	uint8_t opt_len;
@@ -314,6 +314,12 @@ bool rohc_comp_tcp_are_options_acceptable(const struct rohc_comp *const comp,
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "TCP option %u found", opt_type);
 
+		if(opt_types_count[opt_type] >= 255)
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "too many TCP options of type %u", opt_type);
+			goto bad_opts;
+		}
 		opt_types_count[opt_type]++;
 
 		/* check the well-known options in order to avoid using the TCP profile with
@@ -446,7 +452,7 @@ bool rohc_comp_tcp_are_options_acceptable(const struct rohc_comp *const comp,
 			{
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 				           "malformed TCP options: TCP option '%s' (%u) should "
-				           "occur at most once, but it was found %zu times",
+				           "occur at most once, but it was found %u times",
 				           tcp_opt_get_descr(opt_type), opt_type,
 				           opt_types_count[opt_type]);
 				goto bad_opts;

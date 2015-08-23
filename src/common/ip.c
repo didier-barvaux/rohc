@@ -1051,7 +1051,7 @@ error:
 static bool ext_get_next_layer(const struct net_hdr *const nh,
                                struct net_hdr *const nl)
 {
-	size_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
+	uint8_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
 	unsigned int ext_type;
 	size_t remain_len = nh->len;
 	size_t ext_nr = 0;
@@ -1063,6 +1063,10 @@ static bool ext_get_next_layer(const struct net_hdr *const nh,
 	/* parse packet until all extension headers are parsed */
 	while(rohc_is_ipv6_opt(nl->proto))
 	{
+		if(ext_types_count[nl->proto] >= 255)
+		{
+			return false;
+		}
 		ext_types_count[nl->proto]++;
 		ext_nr++;
 

@@ -228,7 +228,7 @@ static bool build_ipv6_ext_pkt_list(struct list_comp *const comp,
                                     const struct ip_packet *const ip,
                                     struct rohc_list *const pkt_list)
 {
-	size_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
+	uint8_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
 	const uint8_t *ext;
 	uint8_t ext_type;
 
@@ -256,6 +256,13 @@ static bool build_ipv6_ext_pkt_list(struct list_comp *const comp,
 		int index_table;
 		int ret;
 
+		/* one more occurrence of this item */
+		if(ext_types_count[ext_type] >= 255)
+		{
+			rohc_comp_list_warn(comp, "too many IPv6 extension header of type 0x%02x",
+			                    ext_type);
+			goto error;
+		}
 		ext_types_count[ext_type]++;
 
 		/* find the best item to encode the extension in translation table */
@@ -751,7 +758,7 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
                                    uint8_t *const dest,
                                    int counter)
 {
-	size_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
+	uint8_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
 	const uint8_t et = 0; /* list encoding type 0 */
 	uint8_t gp;
 	size_t m; /* the number of elements in current list = number of XIs */
@@ -806,7 +813,16 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 		{
 			const struct rohc_list_item *const item = comp->lists[comp->cur_id].items[k];
 			int index_table;
+
+			/* one more occurrence of this item */
+			if(ext_types_count[item->type] >= 255)
+			{
+				rohc_comp_list_warn(comp, "too many IPv6 extension header of type 0x%02x",
+				                    item->type);
+				goto error;
+			}
 			ext_types_count[item->type]++;
+
 			index_table = comp->get_index_table(item->type, ext_types_count[item->type]);
 			assert(index_table >= 0);
 			assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);
@@ -834,7 +850,16 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 		{
 			const struct rohc_list_item *const item = comp->lists[comp->cur_id].items[k];
 			int index_table;
+
+			/* one more occurrence of this item */
+			if(ext_types_count[item->type] >= 255)
+			{
+				rohc_comp_list_warn(comp, "too many IPv6 extension header of type 0x%02x",
+				                    item->type);
+				goto error;
+			}
 			ext_types_count[item->type]++;
+
 			index_table = comp->get_index_table(item->type, ext_types_count[item->type]);
 			assert(index_table >= 0);
 			assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);
@@ -860,7 +885,16 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 				const struct rohc_list_item *const item2 =
 					comp->lists[comp->cur_id].items[k + 1];
 				int index_table2;
+
+				/* one more occurrence of this item */
+				if(ext_types_count[item2->type] >= 255)
+				{
+					rohc_comp_list_warn(comp, "too many IPv6 extension header of type "
+					                    "0x%02x", item2->type);
+					goto error;
+				}
 				ext_types_count[item2->type]++;
+
 				index_table2 =
 					comp->get_index_table(item2->type, ext_types_count[item2->type]);
 				assert(index_table2 >= 0);
@@ -1712,7 +1746,7 @@ static uint8_t rohc_list_compute_ps(const struct list_comp *const comp,
                                     const uint8_t mask[ROHC_LIST_ITEMS_MAX],
                                     const size_t m)
 {
-	size_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
+	uint8_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
 	uint8_t ps = 0; /* 4-bit indexes by default */
 	size_t k;
 
@@ -1722,6 +1756,12 @@ static uint8_t rohc_list_compute_ps(const struct list_comp *const comp,
 		int index_table;
 
 		/* one more occurrence of this item */
+		if(ext_types_count[item->type] >= 255)
+		{
+			rohc_comp_list_warn(comp, "too many IPv6 extension header of type 0x%02x",
+			                    item->type);
+			goto error;
+		}
 		ext_types_count[item->type]++;
 
 		/* get the index corresponding to the item type and the number of
@@ -1797,7 +1837,7 @@ static int rohc_list_build_XIs_8(const struct list_comp *const comp,
                                  uint8_t *const rohc_data,
                                  const size_t rohc_max_len)
 {
-	size_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
+	uint8_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
 	const size_t m = list->items_nr;
 	size_t xi_len = 0;
 	size_t k;
@@ -1809,7 +1849,15 @@ static int rohc_list_build_XIs_8(const struct list_comp *const comp,
 		const struct rohc_list_item *const item = list->items[k];
 		int index_table;
 
+		/* one more occurrence of this item */
+		if(ext_types_count[item->type] >= 255)
+		{
+			rohc_comp_list_warn(comp, "too many IPv6 extension header of type 0x%02x",
+			                    item->type);
+			goto error;
+		}
 		ext_types_count[item->type]++;
+
 		index_table = comp->get_index_table(item->type, ext_types_count[item->type]);
 		assert(index_table >= 0);
 		assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);
@@ -1872,7 +1920,7 @@ static int rohc_list_build_XIs_4(const struct list_comp *const comp,
                                  const size_t rohc_max_len,
                                  uint8_t *const first_4b_xi)
 {
-	size_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
+	uint8_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
 	const size_t m = list->items_nr;
 	size_t xi_index = 0;
 	size_t xi_len = 0;
@@ -1885,7 +1933,15 @@ static int rohc_list_build_XIs_4(const struct list_comp *const comp,
 		const struct rohc_list_item *const item = list->items[k];
 		int index_table;
 
+		/* one more occurrence of this item */
+		if(ext_types_count[item->type] >= 255)
+		{
+			rohc_comp_list_warn(comp, "too many IPv6 extension header of type 0x%02x",
+			                    item->type);
+			goto error;
+		}
 		ext_types_count[item->type]++;
+
 		index_table = comp->get_index_table(item->type, ext_types_count[item->type]);
 		assert(index_table >= 0);
 		assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);

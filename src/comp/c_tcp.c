@@ -1365,7 +1365,7 @@ static bool rohc_comp_tcp_are_ipv6_exts_acceptable(const struct rohc_comp *const
                                                    const size_t max_exts_len,
                                                    size_t *const exts_len)
 {
-	size_t ipv6_ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
+	uint8_t ipv6_ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
 	const uint8_t *remain_data = exts;
 	size_t remain_len = max_exts_len;
 	size_t ipv6_ext_nr;
@@ -1442,6 +1442,12 @@ static bool rohc_comp_tcp_are_ipv6_exts_acceptable(const struct rohc_comp *const
 
 		ipv6_ext_nr++;
 		(*exts_len) += ext_len;
+		if(ipv6_ext_types_count[*next_proto] >= 255)
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "too many IPv6 extension header of type 0x%02x", *next_proto);
+			goto bad_exts;
+		}
 		ipv6_ext_types_count[*next_proto]++;
 	}
 
@@ -1469,7 +1475,7 @@ static bool rohc_comp_tcp_are_ipv6_exts_acceptable(const struct rohc_comp *const
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 				           "malformed IPv6 header: the Destination extension "
 				           "header should occur at most twice, but it was "
-				           "found %zu times", ipv6_ext_types_count[ext_type]);
+				           "found %u times", ipv6_ext_types_count[ext_type]);
 				goto bad_exts;
 			}
 			else if(ext_type != ROHC_IPPROTO_DSTOPTS && ipv6_ext_types_count[ext_type] > 1)
@@ -1477,7 +1483,7 @@ static bool rohc_comp_tcp_are_ipv6_exts_acceptable(const struct rohc_comp *const
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 				           "malformed IPv6 header: the extension header of type "
 				           "%u header should occur at most once, but it was found "
-				           "%zu times", ext_type, ipv6_ext_types_count[ext_type]);
+				           "%u times", ext_type, ipv6_ext_types_count[ext_type]);
 				goto bad_exts;
 			}
 		}
