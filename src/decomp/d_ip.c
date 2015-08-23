@@ -445,7 +445,7 @@ int ip_parse_ext3(const struct rohc_decomp_ctxt *const context,
 	{
 		/* determine which IP header is the innermost IPv4 header with
 		 * non-random IP-ID */
-		if(rfc3095_ctxt->multiple_ip && is_ipv4_non_rnd_pkt(bits->inner_ip))
+		if(rfc3095_ctxt->multiple_ip && is_ipv4_non_rnd_pkt(&bits->inner_ip))
 		{
 			/* inner IP header is IPv4 with non-random IP-ID */
 			if(bits->inner_ip.id_nr > 0 && bits->inner_ip.id != 0)
@@ -461,7 +461,7 @@ int ip_parse_ext3(const struct rohc_decomp_ctxt *const context,
 			rohc_decomp_debug(context, "%zd bits of inner IP-ID in EXT3 = 0x%x",
 			                  bits->inner_ip.id_nr, bits->inner_ip.id);
 		}
-		else if(is_ipv4_non_rnd_pkt(bits->outer_ip))
+		else if(is_ipv4_non_rnd_pkt(&bits->outer_ip))
 		{
 			/* inner IP header is not 'IPv4 with non-random IP-ID', but outer
 			 * IP header is */
