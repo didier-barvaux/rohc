@@ -311,7 +311,6 @@ AC_ARG_ENABLE(fail_on_warning,
               fail_on_warning=no)
 if test "x$fail_on_warning" != "xno"; then
 	configure_cflags="${configure_cflags} -Werror"
-	configure_cflags_for_lib="${configure_cflags_for_lib} -Wno-error=frame-larger-than=1024"
 fi
 
 
