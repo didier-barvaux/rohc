@@ -61,11 +61,11 @@ typedef struct __attribute__((packed)) ipv6_gre_option_context
 
 	uint8_t next_header;
 
-	uint8_t c_flag : 1;
-	uint8_t k_flag : 1;
-	uint8_t s_flag : 1;
-	uint8_t protocol : 1;
-	uint8_t padding : 4;
+	uint8_t c_flag:1;
+	uint8_t k_flag:1;
+	uint8_t s_flag:1;
+	uint8_t protocol:1;
+	uint8_t padding:4;
 
 	uint32_t key;               // if k_flag set
 	uint32_t sequence_number;   // if s_flag set
@@ -82,8 +82,8 @@ typedef struct __attribute__((packed)) ipv6_mime_option_context
 
 	uint8_t next_header;
 
-	uint8_t s_bit : 1;
-	uint8_t res_bits : 7;
+	uint8_t s_bit:1;
+	uint8_t res_bits:7;
 	uint32_t orig_dest;
 	uint32_t orig_src;         // if s_bit set
 
@@ -120,11 +120,11 @@ typedef union
  */
 typedef struct __attribute__((packed)) ipvx_context
 {
-	uint8_t version : 4;
-	uint8_t unused : 4;
+	uint8_t version:4;
+	uint8_t unused:4;
 
-	uint8_t dscp : 6;
-	uint8_t ip_ecn_flags : 2;
+	uint8_t dscp:6;
+	uint8_t ip_ecn_flags:2;
 
 	uint8_t next_header;
 
@@ -140,12 +140,12 @@ typedef struct __attribute__((packed)) ipvx_context
  */
 typedef struct __attribute__((packed)) ipv4_context
 {
-	uint8_t version : 4;
-	uint8_t df : 1;
-	uint8_t unused : 3;
+	uint8_t version:4;
+	uint8_t df:1;
+	uint8_t unused:3;
 
-	uint8_t dscp : 6;
-	uint8_t ip_ecn_flags : 2;
+	uint8_t dscp:6;
+	uint8_t ip_ecn_flags:2;
 
 	uint8_t protocol;
 
@@ -165,11 +165,11 @@ typedef struct __attribute__((packed)) ipv4_context
  */
 typedef struct __attribute__((packed)) ipv6_context
 {
-	uint8_t version : 4;
-	uint8_t unused : 4;
+	uint8_t version:4;
+	uint8_t unused:4;
 
-	uint8_t dscp : 6;
-	uint8_t ip_ecn_flags : 2;
+	uint8_t dscp:6;
+	uint8_t ip_ecn_flags:2;
 
 	uint8_t next_header;
 
@@ -177,7 +177,7 @@ typedef struct __attribute__((packed)) ipv6_context
 
 	uint8_t ip_id_behavior;
 
-	uint8_t flow_label1 : 4;
+	uint8_t flow_label1:4;
 	uint16_t flow_label2;
 
 	uint32_t src_addr[4];

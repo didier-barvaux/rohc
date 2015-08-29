@@ -113,7 +113,7 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
                            size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 6, 7, 8)));
 static void d_tcp_reset_extr_bits(const struct rohc_decomp_ctxt *const context,
-											 struct rohc_tcp_extr_bits *const bits)
+                                  struct rohc_tcp_extr_bits *const bits)
 	__attribute__((nonnull(1, 2)));
 
 /* decoding */
@@ -524,7 +524,7 @@ static rohc_packet_t tcp_detect_packet_type(const struct rohc_decomp_ctxt *const
 					{
 						if(rohc_packet[0] & 0x08)
 						{
-						type = ROHC_PACKET_TCP_SEQ_6;
+							type = ROHC_PACKET_TCP_SEQ_6;
 						}
 						else
 						{
@@ -1497,8 +1497,7 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 		}
 		case ROHC_PACKET_TCP_CO_COMMON:
 		{
-			const co_common_t *const co_common =
-				(co_common_t *) rohc_remain_data;
+			const co_common_t *const co_common = (co_common_t *) rohc_remain_data;
 
 			/* check packet usage */
 			assert(context->state != ROHC_DECOMP_STATE_NC);
@@ -1814,7 +1813,7 @@ error:
  * @param[out] bits  The extracted bits to reset
  */
 static void d_tcp_reset_extr_bits(const struct rohc_decomp_ctxt *const context,
-											 struct rohc_tcp_extr_bits *const bits)
+                                  struct rohc_tcp_extr_bits *const bits)
 {
 	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
 	size_t i;
@@ -1909,12 +1908,9 @@ static bool d_tcp_decode_bits(const struct rohc_decomp_ctxt *const context,
 	for(ip_hdr_nr = 0; ip_hdr_nr < bits->ip_nr; ip_hdr_nr++)
 	{
 		tcp_ip_id_behavior_t ip_id_behavior;
-		const struct rohc_tcp_extr_ip_bits *const ip_bits =
-			&(bits->ip[ip_hdr_nr]);
-		const ip_context_t *const ip_context =
-			&(tcp_context->ip_contexts[ip_hdr_nr]);
-		struct rohc_tcp_decoded_ip_values *const ip_decoded =
-			&(decoded->ip[ip_hdr_nr]);
+		const struct rohc_tcp_extr_ip_bits *const ip_bits = &(bits->ip[ip_hdr_nr]);
+		const ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_nr]);
+		struct rohc_tcp_decoded_ip_values *const ip_decoded = &(decoded->ip[ip_hdr_nr]);
 
 		rohc_decomp_debug(context, "decode fields of IP header #%zu", ip_hdr_nr + 1);
 
@@ -2356,7 +2352,7 @@ static bool d_tcp_decode_bits(const struct rohc_decomp_ctxt *const context,
 			decoded->ack_num_scaled = decoded->ack_num / payload_len;
 			decoded->ack_num_residue = decoded->ack_num % payload_len;
 			rohc_decomp_debug(context, "  TCP ACK number (0x%08x) = scaled (0x%x) "
-									"* payload size (%zu) + residue (0x%x)",
+			                  "* payload size (%zu) + residue (0x%x)",
 			                  decoded->seq_num, decoded->ack_num_scaled, payload_len,
 			                  decoded->ack_num_residue);
 		}

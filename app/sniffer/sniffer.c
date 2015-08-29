@@ -796,7 +796,7 @@ static void sniffer_print_stats(int signum __attribute__((unused)))
 	SNIFFER_LOG(LOG_INFO, "  Uncompressed profile: %lu packets (%llu%%)",
 	            sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UNCOMPRESSED],
 	            compute_percent(sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UNCOMPRESSED],
-	                    total));
+	                            total));
 	SNIFFER_LOG(LOG_INFO, "  IP/UDP/RTP profile: %lu packets (%llu%%)",
 	            sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_RTP],
 	            compute_percent(sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_RTP], total));
@@ -1843,9 +1843,8 @@ static bool rtp_detect_cb(const unsigned char *const ip,
 	 * telephony-event (0x65), Speex (0x72),
 	 * or dynamic RTP type 125 (0x7d) */
 	rtp_pt = payload[1] & 0x7f;
-	if (rtp_pt != 0x03 && rtp_pt != 0x04 && rtp_pt != 0x12 &&
-	    rtp_pt != 0x61 && rtp_pt != 0x65 && rtp_pt != 0x72 &&
-	    rtp_pt != 0x7d)
+	if(rtp_pt != 0x03 && rtp_pt != 0x04 && rtp_pt != 0x12 && rtp_pt != 0x61 &&
+	   rtp_pt != 0x65 && rtp_pt != 0x72 && rtp_pt != 0x7d)
 	{
 		goto not_rtp;
 	}

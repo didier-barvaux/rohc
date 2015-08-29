@@ -41,9 +41,9 @@ extern "C"
 
 /** Macro that handles DLL export declarations gracefully */
 #ifdef DLL_EXPORT /* passed by autotools on command line */
-	#define ROHC_EXPORT __declspec(dllexport)
+#  define ROHC_EXPORT __declspec(dllexport)
 #else
-	#define ROHC_EXPORT
+#  define ROHC_EXPORT
 #endif
 
 
@@ -258,7 +258,7 @@ bool ROHC_EXPORT rohc_decomp_get_general_info(const struct rohc_decomp *const de
 	__attribute__((warn_unused_result));
 
 bool ROHC_EXPORT rohc_decomp_get_last_packet_info(const struct rohc_decomp *const decomp,
-																  rohc_decomp_last_packet_info_t *const info)
+                                                  rohc_decomp_last_packet_info_t *const info)
 	__attribute__((warn_unused_result));
 
 

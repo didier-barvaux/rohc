@@ -59,13 +59,13 @@
 #include "config.h" /* for PACKAGE_(NAME|URL|VERSION) */
 
 #ifndef __KERNEL__
-#	include <string.h>
+#  include <string.h>
 #endif
 #include <stdlib.h>
 #ifdef __KERNEL__
-#	include <linux/types.h>
+#  include <linux/types.h>
 #else
-#	include <stdbool.h>
+#  include <stdbool.h>
 #endif
 #include <assert.h>
 #include <stdarg.h>
@@ -85,8 +85,7 @@ extern const struct rohc_comp_profile c_rtp_profile,
  * The order of profiles declaration is important: they are evaluated in that
  * order. The RTP profile shall be declared before the UDP one for example.
  */
-static const struct rohc_comp_profile *const
-	rohc_comp_profiles[C_NUM_PROFILES] =
+static const struct rohc_comp_profile *const rohc_comp_profiles[C_NUM_PROFILES] =
 {
 	&c_rtp_profile,
 	&c_udp_profile,  /* must be declared after RTP profile */
@@ -127,7 +126,7 @@ static struct rohc_comp_ctxt *
 	                 const struct rohc_comp_profile *const profile,
 	                 const struct net_pkt *const packet,
 	                 const struct rohc_ts arrival_time)
-    __attribute__((nonnull(1, 2, 3), warn_unused_result));
+	__attribute__((nonnull(1, 2, 3), warn_unused_result));
 static struct rohc_comp_ctxt *
 	rohc_comp_find_ctxt(struct rohc_comp *const comp,
 	                    const struct net_pkt *const packet,
@@ -1758,8 +1757,7 @@ error:
 bool rohc_comp_set_features(struct rohc_comp *const comp,
                             const rohc_comp_features_t features)
 {
-	const rohc_comp_features_t all_features =
-		ROHC_COMP_FEATURE_NO_IP_CHECKSUMS;
+	const rohc_comp_features_t all_features = ROHC_COMP_FEATURE_NO_IP_CHECKSUMS;
 
 	/* compressor must be valid */
 	if(comp == NULL)
@@ -2869,7 +2867,7 @@ bool rohc_comp_feedback_parse_opts(const struct rohc_comp_ctxt *const context,
 			}
 			crc_pos_from_end = remain_len - 1; /* TODO: handle multiple CRC options */
 		}
-      else if(opt_type == ROHC_FEEDBACK_OPT_SN)
+		else if(opt_type == ROHC_FEEDBACK_OPT_SN)
 		{
 			if(!rohc_comp_feedback_parse_opt_sn(context, remain_data, remain_len,
 			                                    sn_bits, sn_bits_nr))
@@ -3073,7 +3071,7 @@ static bool rohc_comp_feedback_check_opts(const struct rohc_comp_ctxt *const con
 			/* some options cannot be specified without CRC */
 			if(opts_present[ROHC_FEEDBACK_OPT_CRC] == 0)
 			{
-			   switch(rohc_feedback_opt_charac[opt_type].crc_req)
+				switch(rohc_feedback_opt_charac[opt_type].crc_req)
 				{
 					case ROHC_FEEDBACK_OPT_CRC_REQUIRED:
 						rohc_comp_warn(context, "malformed FEEDBACK-2: %s option (%u) "

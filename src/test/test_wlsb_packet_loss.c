@@ -317,7 +317,6 @@ error:
 }
 
 
-
 /**
  * @brief Run the test with the given shift parameter
  *

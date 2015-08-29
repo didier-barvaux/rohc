@@ -277,7 +277,10 @@ int main(int argc, char *argv[])
 			pkt2.max_len = i;
 			pkt2.offset = 0;
 			pkt2.len = 0;
-			if(verbose) printf("test with pkt2.max_len == %zu\n", i);
+			if(verbose)
+			{
+				printf("test with pkt2.max_len == %zu\n", i);
+			}
 			CHECK(rohc_decompress3(decomp, pkt, &pkt2, NULL, NULL) == ROHC_STATUS_OUTPUT_TOO_SMALL);
 			CHECK(pkt2.len == 0);
 		}

@@ -43,9 +43,9 @@
 
 #include <stddef.h>
 #ifdef __KERNEL__
-#	include <linux/types.h>
+#  include <linux/types.h>
 #else
-#	include <stdbool.h>
+#  include <stdbool.h>
 #endif
 
 
@@ -491,7 +491,7 @@ bool rfc3095_decomp_attempt_repair(const struct rohc_decomp *const decomp,
                                    const struct rohc_decomp_ctxt *const context,
                                    const struct rohc_ts pkt_arrival_time,
                                    struct rohc_decomp_crc_corr_ctxt *const crc_corr,
-	                                struct rohc_extr_bits *const extr_bits)
+                                   struct rohc_extr_bits *const extr_bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
 
 uint32_t rohc_decomp_rfc3095_get_sn(const struct rohc_decomp_ctxt *const context)

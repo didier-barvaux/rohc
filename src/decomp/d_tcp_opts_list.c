@@ -123,7 +123,7 @@ static int d_tcp_parse_nop_irreg(const struct rohc_decomp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
 static bool d_tcp_build_nop(const struct rohc_decomp_ctxt *const context,
                             const struct rohc_tcp_decoded_values *const decoded,
-	                         const struct d_tcp_opt_ctxt *const tcp_opt,
+                            const struct d_tcp_opt_ctxt *const tcp_opt,
                             struct rohc_buf *const uncomp_packet,
                             size_t *const opt_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 5)));
@@ -141,7 +141,7 @@ static int d_tcp_parse_eol_irreg(const struct rohc_decomp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
 static bool d_tcp_build_eol(const struct rohc_decomp_ctxt *const context,
                             const struct rohc_tcp_decoded_values *const decoded,
-	                         const struct d_tcp_opt_ctxt *const tcp_opt,
+                            const struct d_tcp_opt_ctxt *const tcp_opt,
                             struct rohc_buf *const uncomp_packet,
                             size_t *const opt_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 5)));
@@ -159,7 +159,7 @@ static int d_tcp_parse_mss_irreg(const struct rohc_decomp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
 static bool d_tcp_build_mss(const struct rohc_decomp_ctxt *const context,
                             const struct rohc_tcp_decoded_values *const decoded,
-	                         const struct d_tcp_opt_ctxt *const tcp_opt,
+                            const struct d_tcp_opt_ctxt *const tcp_opt,
                             struct rohc_buf *const uncomp_packet,
                             size_t *const opt_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 5)));
@@ -177,7 +177,7 @@ static int d_tcp_parse_ws_irreg(const struct rohc_decomp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
 static bool d_tcp_build_ws(const struct rohc_decomp_ctxt *const context,
                            const struct rohc_tcp_decoded_values *const decoded,
-	                        const struct d_tcp_opt_ctxt *const tcp_opt,
+                           const struct d_tcp_opt_ctxt *const tcp_opt,
                            struct rohc_buf *const uncomp_packet,
                            size_t *const opt_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 5)));
@@ -195,7 +195,7 @@ static int d_tcp_parse_ts_irreg(const struct rohc_decomp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
 static bool d_tcp_build_ts(const struct rohc_decomp_ctxt *const context,
                            const struct rohc_tcp_decoded_values *const decoded,
-	                        const struct d_tcp_opt_ctxt *const tcp_opt,
+                           const struct d_tcp_opt_ctxt *const tcp_opt,
                            struct rohc_buf *const uncomp_packet,
                            size_t *const opt_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 5)));
@@ -213,7 +213,7 @@ static int d_tcp_parse_sack_perm_irreg(const struct rohc_decomp_ctxt *const cont
 	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
 static bool d_tcp_build_sack_perm(const struct rohc_decomp_ctxt *const context,
                                   const struct rohc_tcp_decoded_values *const decoded,
-	                               const struct d_tcp_opt_ctxt *const tcp_opt,
+                                  const struct d_tcp_opt_ctxt *const tcp_opt,
                                   struct rohc_buf *const uncomp_packet,
                                   size_t *const opt_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 5)));
@@ -231,7 +231,7 @@ static int d_tcp_parse_sack_irreg(const struct rohc_decomp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
 static bool d_tcp_build_sack(const struct rohc_decomp_ctxt *const context,
                              const struct rohc_tcp_decoded_values *const decoded,
-	                          const struct d_tcp_opt_ctxt *const tcp_opt,
+                             const struct d_tcp_opt_ctxt *const tcp_opt,
                              struct rohc_buf *const uncomp_packet,
                              size_t *const opt_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 5)));
@@ -249,7 +249,7 @@ static int d_tcp_parse_generic_irreg(const struct rohc_decomp_ctxt *const contex
 	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
 static bool d_tcp_build_generic(const struct rohc_decomp_ctxt *const context,
                                 const struct rohc_tcp_decoded_values *const decoded,
-	                             const struct d_tcp_opt_ctxt *const tcp_opt,
+                                const struct d_tcp_opt_ctxt *const tcp_opt,
                                 struct rohc_buf *const uncomp_packet,
                                 size_t *const opt_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 5)));
@@ -662,7 +662,7 @@ static int d_tcp_opt_list_parse_item(const struct rohc_decomp_ctxt *const contex
 	{
 		rohc_decomp_warn(context, "malformed ROHC packet: failed to parse item "
 		                 "with index %u in the %s chain", opt_index.index,
-		                  is_dynamic_chain ? "dynamic chain" : "optional list");
+		                 is_dynamic_chain ? "dynamic chain" : "optional list");
 		goto error;
 	}
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */

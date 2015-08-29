@@ -43,17 +43,17 @@ extern "C"
 #include <stdlib.h>
 #include <stdint.h>
 #ifdef __KERNEL__
-#	include <linux/types.h>
+#  include <linux/types.h>
 #else
-#	include <stdbool.h>
+#  include <stdbool.h>
 #endif
 
 
 /** Macro that handles DLL export declarations gracefully */
 #ifdef DLL_EXPORT /* passed by autotools on command line */
-	#define ROHC_EXPORT __declspec(dllexport)
+#  define ROHC_EXPORT __declspec(dllexport)
 #else
-	#define ROHC_EXPORT 
+#  define ROHC_EXPORT
 #endif
 
 
@@ -337,7 +337,7 @@ bool ROHC_EXPORT rohc_comp_enable_profiles(struct rohc_comp *const comp,
                                            ...)
 	__attribute__((warn_unused_result));
 bool ROHC_EXPORT rohc_comp_disable_profiles(struct rohc_comp *const comp,
-                                           ...)
+                                            ...)
 	__attribute__((warn_unused_result));
 
 bool ROHC_EXPORT rohc_comp_set_mrru(struct rohc_comp *const comp,
@@ -379,8 +379,8 @@ bool ROHC_EXPORT rohc_comp_set_wlsb_window_width(struct rohc_comp *const comp,
 	__attribute__((warn_unused_result));
 
 bool ROHC_EXPORT rohc_comp_set_periodic_refreshes(struct rohc_comp *const comp,
-																  const size_t ir_timeout,
-																  const size_t fo_timeout)
+                                                  const size_t ir_timeout,
+                                                  const size_t fo_timeout)
 	__attribute__((warn_unused_result));
 
 bool ROHC_EXPORT rohc_comp_set_list_trans_nr(struct rohc_comp *const comp,

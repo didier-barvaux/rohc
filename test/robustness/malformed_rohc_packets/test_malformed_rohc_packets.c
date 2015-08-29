@@ -198,8 +198,8 @@ static int test_decomp(const char *const filename,
 	   link_layer_type != DLT_RAW)
 	{
 		fprintf(stderr, "link layer type %d not supported in source dump (supported = "
-		       "%d, %d, %d)\n", link_layer_type, DLT_EN10MB, DLT_LINUX_SLL,
-		       DLT_RAW);
+		        "%d, %d, %d)\n", link_layer_type, DLT_EN10MB, DLT_LINUX_SLL,
+		        DLT_RAW);
 		goto close_input;
 	}
 
@@ -249,8 +249,7 @@ static int test_decomp(const char *const filename,
 		struct rohc_buf rohc_packet =
 			rohc_buf_init_full(packet, header.caplen, arrival_time);
 		uint8_t ip_buffer[MAX_ROHC_SIZE];
-		struct rohc_buf ip_packet =
-			rohc_buf_init_empty(ip_buffer, MAX_ROHC_SIZE);
+		struct rohc_buf ip_packet = rohc_buf_init_empty(ip_buffer, MAX_ROHC_SIZE);
 		uint8_t rcvd_feedback_buf[6];
 		struct rohc_buf rcvd_feedback = rohc_buf_init_empty(rcvd_feedback_buf, 6);
 		uint8_t send_feedback_buf[6];
@@ -263,7 +262,7 @@ static int test_decomp(const char *const filename,
 		if(header.len < link_len || header.len != header.caplen)
 		{
 			fprintf(stderr, "bad PCAP packet (len = %d, caplen = %d)\n",
-			       header.len, header.caplen);
+			        header.len, header.caplen);
 			goto destroy_decomp;
 		}
 

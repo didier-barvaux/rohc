@@ -278,8 +278,7 @@ int ip_parse_ext3(const struct rohc_decomp_ctxt *const context,
                   const rohc_packet_t packet_type,
                   struct rohc_extr_bits *const bits)
 {
-	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
-		context->persist_ctxt;
+	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	const uint8_t *ip_flags_pos = NULL;
 	const uint8_t *ip2_flags_pos = NULL;
 	uint8_t S, I, ip, ip2;

@@ -41,7 +41,7 @@
 #include "protocols/rtp.h"
 
 #ifndef __KERNEL__
-#	include <string.h>
+#  include <string.h>
 #endif
 #include <assert.h>
 
@@ -395,8 +395,7 @@ static rohc_packet_t rtp_choose_uo1_variant(const struct rohc_decomp_ctxt *const
                                             const uint8_t *const packet,
                                             const size_t rohc_length)
 {
-	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
-		context->persist_ctxt;
+	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	rohc_packet_t type;
 	size_t nr_ipv4_non_rnd;
 	size_t nr_ipv4;
@@ -498,8 +497,7 @@ static rohc_packet_t rtp_choose_uor2_variant(const struct rohc_decomp_ctxt *cons
                                              const size_t rohc_length,
                                              const size_t large_cid_len)
 {
-	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
-		context->persist_ctxt;
+	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	rohc_packet_t type;
 	size_t nr_ipv4_non_rnd;
 	size_t nr_ipv4;
@@ -605,8 +603,7 @@ static int rtp_parse_static_rtp(const struct rohc_decomp_ctxt *const context,
                                 size_t length,
                                 struct rohc_extr_bits *const bits)
 {
-	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
-		context->persist_ctxt;
+	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	const struct d_rtp_context *const rtp_context = rfc3095_ctxt->specific;
 	int read; /* number of bytes read from the packet */
 
@@ -670,8 +667,7 @@ static int rtp_parse_dynamic_rtp(const struct rohc_decomp_ctxt *const context,
                                  const size_t length,
                                  struct rohc_extr_bits *const bits)
 {
-	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
-		context->persist_ctxt;
+	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	const struct d_rtp_context *const rtp_context = rfc3095_ctxt->specific;
 	/* The size (in bytes) of the constant RTP dynamic part:
 	 *
@@ -743,7 +739,7 @@ static int rtp_parse_dynamic_rtp(const struct rohc_decomp_ctxt *const context,
 	bits->sn_nr = 16;
 	bits->is_sn_enc = false;
 	packet += sizeof(uint16_t);
-	remain_len-= sizeof(uint16_t);
+	remain_len -= sizeof(uint16_t);
 	rohc_decomp_debug(context, "SN = %u (0x%04x)", bits->sn, bits->sn);
 
 	/* part 5: 4-byte TimeStamp (TS) */
@@ -898,8 +894,7 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
                           const rohc_packet_t packet_type,
                           struct rohc_extr_bits *const bits)
 {
-	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
-		context->persist_ctxt;
+	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	uint8_t S, rts, I, ip, rtp, ip2;
 	uint16_t I_bits;
 	size_t inner_outer_flags_len;
@@ -1334,8 +1329,7 @@ static int rtp_parse_rtp_hdr_fields(const struct rohc_decomp_ctxt *const context
                                     const size_t rohc_data_len,
                                     struct rohc_extr_bits *const bits)
 {
-	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
-		context->persist_ctxt;
+	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 
 	const uint8_t *rohc_remain_data = rohc_data;
 	size_t rohc_remain_len = rohc_data_len;
@@ -1489,8 +1483,7 @@ static int rtp_parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
                                   unsigned int length,
                                   struct rohc_extr_bits *const bits)
 {
-	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
-		context->persist_ctxt;
+	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	const struct d_rtp_context *const rtp_context = rfc3095_ctxt->specific;
 	int read = 0; /* number of bytes read from the packet */
 
@@ -1558,8 +1551,7 @@ static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
                                         const struct rohc_extr_bits *const bits,
                                         struct rohc_decoded_values *const decoded)
 {
-	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
-		context->persist_ctxt;
+	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	const struct d_rtp_context *const rtp_context = rfc3095_ctxt->specific;
 	struct udphdr *udp;
 	struct rtphdr *rtp;
@@ -1871,8 +1863,7 @@ static int rtp_build_uncomp_rtp(const struct rohc_decomp_ctxt *const context,
 static void rtp_update_context(struct rohc_decomp_ctxt *const context,
                                const struct rohc_decoded_values *const decoded)
 {
-	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
-		context->persist_ctxt;
+	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	struct d_rtp_context *const rtp_context = rfc3095_ctxt->specific;
 	struct udphdr *udp;
 	struct rtphdr *rtp;

@@ -37,7 +37,7 @@
 
 #include <stdlib.h>
 #ifndef __KERNEL__
-#	include <string.h>
+#  include <string.h>
 #endif
 #include <assert.h>
 
@@ -59,7 +59,7 @@ static void c_rtp_destroy(struct rohc_comp_ctxt *const context)
 
 static bool c_rtp_check_profile(const struct rohc_comp *const comp,
                                 const struct net_pkt *const packet)
-		__attribute__((warn_unused_result, nonnull(1, 2)));
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static bool c_rtp_check_context(const struct rohc_comp_ctxt *const context,
                                 const struct net_pkt *const packet)
@@ -85,7 +85,7 @@ static uint32_t c_rtp_get_next_sn(const struct rohc_comp_ctxt *const context,
 
 static bool rtp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
                                      const struct net_pkt *const uncomp_pkt)
-		__attribute__((warn_unused_result, nonnull(1, 2)));
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static size_t rtp_code_static_rtp_part(const struct rohc_comp_ctxt *const context,
                                        const uint8_t *const next_header,
@@ -991,8 +991,7 @@ static void rtp_decide_state(struct rohc_comp_ctxt *const context)
 static uint32_t c_rtp_get_next_sn(const struct rohc_comp_ctxt *const context __attribute__((unused)),
                                   const struct net_pkt *const uncomp_pkt)
 {
-	const struct udphdr *const udp =
-		(struct udphdr *) uncomp_pkt->transport->data;
+	const struct udphdr *const udp = (struct udphdr *) uncomp_pkt->transport->data;
 	const struct rtphdr *const rtp = (struct rtphdr *) (udp + 1);
 	uint32_t next_sn;
 
@@ -1075,7 +1074,7 @@ static bool rtp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 
 	rohc_comp_debug(context, "%s%zu/2 bits or %zu/32 bits are required to encode "
 	                "new TS", (rohc_ts_sc_is_deducible(&rtp_context->ts_sc) ?
-	                 "0 (TS is deducible from SN bits) or " : ""),
+	                           "0 (TS is deducible from SN bits) or " : ""),
 	                rtp_context->tmp.nr_ts_bits_less_equal_than_2,
 	                rtp_context->tmp.nr_ts_bits_more_than_2);
 

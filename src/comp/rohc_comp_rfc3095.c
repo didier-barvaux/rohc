@@ -43,7 +43,7 @@
 #include "crc.h"
 
 #ifndef __KERNEL__
-#	include <string.h>
+#  include <string.h>
 #endif
 #include <assert.h>
 
@@ -333,7 +333,7 @@ static int changed_static_one_hdr(struct rohc_comp_ctxt *const context,
                                   struct ip_header_info *const header_info)
 	__attribute__((warn_unused_result, nonnull(1, 3)));
 static int changed_dynamic_both_hdr(struct rohc_comp_ctxt *const context,
-                                   const struct net_pkt *const uncomp_pkt)
+                                    const struct net_pkt *const uncomp_pkt)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 static int changed_dynamic_one_hdr(struct rohc_comp_ctxt *const context,
                                    const unsigned short changed_fields,
@@ -547,8 +547,7 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 	rohc_comp_debug(context, "new generic context required for a new stream");
 
 	/* allocate memory for the generic part of the context */
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *)
-		malloc(sizeof(struct rohc_comp_rfc3095_ctxt));
+	rfc3095_ctxt = malloc(sizeof(struct rohc_comp_rfc3095_ctxt));
 	if(rfc3095_ctxt == NULL)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -1119,7 +1118,7 @@ static void rohc_comp_rfc3095_feedback_ack(struct rohc_comp_ctxt *const context,
 		 * interval between periodic IR refreshes */
 		/* TODO: reducing IR refreshes is not implemented yet */
 		rohc_comp_debug(context, "ACK(U) received, but not supported, so periodic "
-							 "IR refreshes are unchanged");
+		                "IR refreshes are unchanged");
 	}
 	else if(context->mode == ROHC_O_MODE && context->state == ROHC_COMP_STATE_FO)
 	{
@@ -1766,7 +1765,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	if(rfc3095_ctxt->code_ir_remainder != NULL)
 	{
 		ret = rfc3095_ctxt->code_ir_remainder(context, rohc_pkt, rohc_pkt_max_len,
-		                                   counter);
+		                                      counter);
 		if(ret < 0)
 		{
 			rohc_comp_warn(context, "failed to code IR remainder");
@@ -1910,7 +1909,7 @@ static int code_IR_DYN_packet(struct rohc_comp_ctxt *const context,
 	if(rfc3095_ctxt->code_ir_remainder != NULL)
 	{
 		ret = rfc3095_ctxt->code_ir_remainder(context, rohc_pkt, rohc_pkt_max_len,
-		                                   counter);
+		                                      counter);
 		if(ret < 0)
 		{
 			rohc_comp_warn(context, "failed to code IR remainder");
@@ -1977,7 +1976,7 @@ static int rohc_code_static_part(const struct rohc_comp_ctxt *const context,
 	   uncomp_pkt->transport->data != NULL)
 	{
 		ret = rfc3095_ctxt->code_static_part(context, uncomp_pkt->transport->data,
-		                                  rohc_pkt, counter);
+		                                     rohc_pkt, counter);
 		if(ret < 0)
 		{
 			goto error;
@@ -2218,7 +2217,7 @@ static int rohc_code_dynamic_part(const struct rohc_comp_ctxt *const context,
 	   uncomp_pkt->transport->data != NULL)
 	{
 		ret = rfc3095_ctxt->code_dynamic_part(context, uncomp_pkt->transport->data,
-		                                   rohc_pkt, counter);
+		                                      rohc_pkt, counter);
 		if(ret < 0)
 		{
 			goto error;
@@ -2573,7 +2572,7 @@ static int code_uo_remainder(struct rohc_comp_ctxt *const context,
 	   uncomp_pkt->transport->data != NULL)
 	{
 		counter = rfc3095_ctxt->code_uo_remainder(context, uncomp_pkt->transport->data,
-		                                       dest, counter);
+		                                          dest, counter);
 	}
 
 	return counter;
@@ -2651,7 +2650,7 @@ static int code_UO0_packet(struct rohc_comp_ctxt *const context,
 	if(rfc3095_ctxt->code_UO_packet_head != NULL && uncomp_pkt->transport->data != NULL)
 	{
 		counter = rfc3095_ctxt->code_UO_packet_head(context, uncomp_pkt->transport->data,
-		                                         rohc_pkt, counter, &first_position);
+		                                            rohc_pkt, counter, &first_position);
 	}
 
 	/* part 2: SN + CRC
@@ -2787,7 +2786,7 @@ static int rohc_comp_rfc3095_build_uo1_pkt(struct rohc_comp_ctxt *const context,
 	if(rfc3095_ctxt->code_UO_packet_head != NULL && uncomp_pkt->transport->data != NULL)
 	{
 		counter = rfc3095_ctxt->code_UO_packet_head(context, uncomp_pkt->transport->data,
-		                                         rohc_pkt, counter, &first_position);
+		                                            rohc_pkt, counter, &first_position);
 	}
 
 	/* part 2 */
@@ -2922,7 +2921,7 @@ static int rohc_comp_rfc3095_build_uo1rtp_pkt(struct rohc_comp_ctxt *const conte
 	if(rfc3095_ctxt->code_UO_packet_head != NULL && uncomp_pkt->transport->data != NULL)
 	{
 		counter = rfc3095_ctxt->code_UO_packet_head(context, uncomp_pkt->transport->data,
-		                                         rohc_pkt, counter, &first_position);
+		                                            rohc_pkt, counter, &first_position);
 	}
 
 	/* part 2 */
@@ -3071,7 +3070,7 @@ static int rohc_comp_rfc3095_build_uo1ts_pkt(struct rohc_comp_ctxt *const contex
 	if(rfc3095_ctxt->code_UO_packet_head != NULL && uncomp_pkt->transport->data != NULL)
 	{
 		counter = rfc3095_ctxt->code_UO_packet_head(context, uncomp_pkt->transport->data,
-		                                         rohc_pkt, counter, &first_position);
+		                                            rohc_pkt, counter, &first_position);
 	}
 
 	/* part 2 */
@@ -3230,7 +3229,7 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 	if(rfc3095_ctxt->code_UO_packet_head != NULL && uncomp_pkt->transport->data != NULL)
 	{
 		counter = rfc3095_ctxt->code_UO_packet_head(context, uncomp_pkt->transport->data,
-		                                         rohc_pkt, counter, &first_position);
+		                                            rohc_pkt, counter, &first_position);
 	}
 
 	/* part 5: decide which extension to use */
@@ -3332,8 +3331,7 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 			rtp_context->tmp.nr_ts_bits_ext3 =
 				sdvl_get_min_len(rtp_context->tmp.nr_ts_bits_more_than_2, 0);
 			assert(rtp_context->tmp.nr_ts_bits_ext3 < 32);
-			rtp_context->tmp.ts_send &=
-				(1 << rtp_context->tmp.nr_ts_bits_ext3) - 1;
+			rtp_context->tmp.ts_send &= (1 << rtp_context->tmp.nr_ts_bits_ext3) - 1;
 			rohc_comp_debug(context, "%zu bits of TS (0 in header, %zu in EXT3)",
 			                rtp_context->tmp.nr_ts_bits_more_than_2,
 			                rtp_context->tmp.nr_ts_bits_ext3);
@@ -3624,7 +3622,7 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 	if(rfc3095_ctxt->code_UO_packet_head != NULL && uncomp_pkt->transport->data != NULL)
 	{
 		counter = rfc3095_ctxt->code_UO_packet_head(context, uncomp_pkt->transport->data,
-		                                         rohc_pkt, counter, &first_position);
+		                                            rohc_pkt, counter, &first_position);
 	}
 
 	/* part 2: to be continued, we need to add the 5 bits of SN */
@@ -6027,11 +6025,11 @@ static uint8_t compute_uo_crc(const struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt,
 
 	/* compute CRC on CRC-STATIC fields */
 	crc = rfc3095_ctxt->compute_crc_static(outer_ip_hdr, inner_ip_hdr, next_header,
-	                                    crc_type, crc, crc_table);
+	                                       crc_type, crc, crc_table);
 
 	/* compute CRC on CRC-DYNAMIC fields */
 	crc = rfc3095_ctxt->compute_crc_dynamic(outer_ip_hdr, inner_ip_hdr, next_header,
-	                                     crc_type, crc, crc_table);
+	                                        crc_type, crc, crc_table);
 
 	return crc;
 }

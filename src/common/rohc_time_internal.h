@@ -32,7 +32,7 @@
 #include "rohc_time.h" /* for public definition of struct rohc_ts */
 
 #ifndef __KERNEL__
-#	include <sys/time.h>
+#  include <sys/time.h>
 #endif
 
 
@@ -61,6 +61,7 @@ static inline uint64_t rohc_time_interval(const struct rohc_ts begin,
 
 	return interval;
 }
+
 
 #endif /* ROHC_TIME_INTERNAL_H */
 

@@ -34,7 +34,7 @@
 #  include <stdio.h>
 #endif
 #ifndef __KERNEL__
-#	include <string.h>
+#  include <string.h>
 #endif
 #include <assert.h>
 

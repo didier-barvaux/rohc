@@ -70,8 +70,7 @@ extern const struct rohc_decomp_profile d_uncomp_profile,
 /**
  * @brief The decompression parts of the ROHC profiles.
  */
-static const struct rohc_decomp_profile *const
-	rohc_decomp_profiles[D_NUM_PROFILES] =
+static const struct rohc_decomp_profile *const rohc_decomp_profiles[D_NUM_PROFILES] =
 {
 	&d_uncomp_profile,
 	&d_rtp_profile,
@@ -138,8 +137,8 @@ static struct rohc_decomp_ctxt * context_create(struct rohc_decomp *decomp,
                                                 const rohc_cid_t cid,
                                                 const struct rohc_decomp_profile *const profile,
                                                 const struct rohc_ts arrival_time);
-static struct rohc_decomp_ctxt *
-	find_context(const struct rohc_decomp *const decomp, const size_t cid)
+static struct rohc_decomp_ctxt * find_context(const struct rohc_decomp *const decomp,
+                                              const size_t cid)
 	__attribute__((nonnull(1), warn_unused_result));
 static void context_free(struct rohc_decomp_ctxt *const context)
 	__attribute__((nonnull(1)));
@@ -248,8 +247,8 @@ static bool rohc_decomp_packet_carry_crc_7_or_8(const rohc_packet_t packet_type)
  * @param cid    The CID of the context to find out
  * @return       The context if found, NULL otherwise
  */
-static struct rohc_decomp_ctxt *
-	find_context(const struct rohc_decomp *const decomp, const rohc_cid_t cid)
+static struct rohc_decomp_ctxt * find_context(const struct rohc_decomp *const decomp,
+                                              const rohc_cid_t cid)
 {
 	/* CID must be valid wrt MAX_CID */
 	assert(cid <= decomp->medium.max_cid);
@@ -1177,9 +1176,9 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 		                  profile->msn_max_bits);
 	}
 
- 	/* detect the type of the ROHC packet */
-	stream->packet_type =
-		profile->detect_pkt_type(stream->context, walk, remain_len, large_cid_len);
+	/* detect the type of the ROHC packet */
+	stream->packet_type = profile->detect_pkt_type(stream->context, walk, remain_len,
+	                                               large_cid_len);
 	if(stream->packet_type == ROHC_PACKET_UNKNOWN)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, profile->id,
@@ -1436,8 +1435,8 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 		 * All bits are now extracted from the packet, let's decode them.
 		 */
 
-		decode_ok =
-			profile->decode_bits(context, extr_bits, payload_len, decoded_values);
+		decode_ok = profile->decode_bits(context, extr_bits, payload_len,
+		                                 decoded_values);
 		if(!decode_ok)
 		{
 			rohc_decomp_warn(context, "failed to decode values from bits "
@@ -3086,8 +3085,7 @@ error:
 bool rohc_decomp_set_features(struct rohc_decomp *const decomp,
                               const rohc_decomp_features_t features)
 {
-	const rohc_decomp_features_t all_features =
-		ROHC_DECOMP_FEATURE_CRC_REPAIR;
+	const rohc_decomp_features_t all_features = ROHC_DECOMP_FEATURE_CRC_REPAIR;
 
 	/* decompressor must be valid */
 	if(decomp == NULL)
@@ -3495,9 +3493,8 @@ error:
  * @return            The matching ROHC profile if found and enabled,
  *                    NULL if not found or disabled
  */
-static const struct rohc_decomp_profile *
-	find_profile(const struct rohc_decomp *const decomp,
-	             const rohc_profile_t profile_id)
+static const struct rohc_decomp_profile * find_profile(const struct rohc_decomp *const decomp,
+                                                       const rohc_profile_t profile_id)
 {
 	size_t i;
 

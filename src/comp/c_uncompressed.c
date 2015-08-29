@@ -46,7 +46,7 @@ static void c_uncompressed_destroy(struct rohc_comp_ctxt *const context)
 	__attribute__((nonnull(1)));
 static bool c_uncompressed_check_profile(const struct rohc_comp *const comp,
                                          const struct net_pkt *const packet)
-		__attribute__((warn_unused_result, nonnull(1, 2)));
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 /* check whether a packet belongs to a context */
 static bool c_uncompressed_check_context(const struct rohc_comp_ctxt *const context,
@@ -60,26 +60,26 @@ static int c_uncompressed_encode(struct rohc_comp_ctxt *const context,
                                  const size_t rohc_pkt_max_len,
                                  rohc_packet_t *const packet_type,
                                  size_t *const payload_offset)
-		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
 static int uncompressed_code_packet(struct rohc_comp_ctxt *const context,
                                     const struct net_pkt *const uncomp_pkt,
                                     uint8_t *const rohc_pkt,
                                     const size_t rohc_pkt_max_len,
                                     rohc_packet_t *const packet_type,
                                     size_t *const payload_offset)
-		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
 static int uncompressed_code_IR_packet(const struct rohc_comp_ctxt *const context,
                                        const struct net_pkt *const uncomp_pkt,
                                        uint8_t *const rohc_pkt,
                                        const size_t rohc_pkt_max_len,
                                        size_t *const payload_offset)
-		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 static int uncompressed_code_normal_packet(const struct rohc_comp_ctxt *const context,
                                            const struct net_pkt *const uncomp_pkt,
                                            uint8_t *const rohc_pkt,
                                            const size_t rohc_pkt_max_len,
                                            size_t *const payload_offset)
-		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
 /* re-initialize a context */
 static bool c_uncompressed_reinit_context(struct rohc_comp_ctxt *const context);
@@ -370,7 +370,7 @@ static int uncompressed_code_packet(struct rohc_comp_ctxt *const context,
 	                   uint8_t *const _rohc_pkt,
 	                   const size_t _rohc_pkt_max_len,
 	                   size_t *const _payload_offset)
-		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 	int size;
 
 	/* decide what packet to send depending on state and uncompressed packet */

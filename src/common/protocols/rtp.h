@@ -34,9 +34,9 @@
 #include <stdint.h>
 
 #ifdef __KERNEL__
-#	include <endian.h>
+#  include <endian.h>
 #else
-#	include "config.h" /* for WORDS_BIGENDIAN */
+#  include "config.h" /* for WORDS_BIGENDIAN */
 #endif
 
 

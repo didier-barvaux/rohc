@@ -441,7 +441,7 @@ static int compress_and_check(struct rohc_comp *comp,
 	if(!check_profile(comp, profile_expected))
 	{
 		fprintf(stderr, "packet #%d: the profile is not as expected\n",
-				packet_counter);
+		        packet_counter);
 		goto error;
 	}
 

@@ -50,10 +50,10 @@
 /** The 10Mb/s ethernet header */
 struct ether_header
 {
-	uint8_t  ether_dhost[ETH_ALEN]; /**< destination eth addr */
-	uint8_t  ether_shost[ETH_ALEN]; /**< source ether addr */
+	uint8_t ether_dhost[ETH_ALEN];  /**< destination eth addr */
+	uint8_t ether_shost[ETH_ALEN];  /**< source ether addr */
 	uint16_t ether_type;            /**< packet type ID field */
-} __attribute__ ((__packed__));
+} __attribute__((__packed__));
 
 
 /** A simple maximum macro */

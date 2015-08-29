@@ -30,7 +30,7 @@
 #include "rohc_utils.h"
 
 #ifndef __KERNEL__
-#	include <string.h>
+#  include <string.h>
 #endif
 #include <assert.h>
 

@@ -387,8 +387,7 @@ static int test_comp_and_decomp(const char *const filename,
 		struct rohc_buf ip_packet =
 			rohc_buf_init_full(packet, header.caplen, arrival_time);
 		uint8_t rohc_buffer[MAX_ROHC_SIZE];
-		struct rohc_buf rohc_packet =
-			rohc_buf_init_empty(rohc_buffer, MAX_ROHC_SIZE);
+		struct rohc_buf rohc_packet = rohc_buf_init_empty(rohc_buffer, MAX_ROHC_SIZE);
 		uint8_t decomp_buffer[MAX_ROHC_SIZE];
 		struct rohc_buf decomp_packet =
 			rohc_buf_init_empty(decomp_buffer, MAX_ROHC_SIZE);
@@ -511,8 +510,7 @@ static int test_comp_and_decomp(const char *const filename,
 				{
 					assert(rohc_packet.len >= 1);
 					old_byte = rohc_buf_byte_at(rohc_packet, rohc_packet.len - 1);
-					rohc_buf_byte_at(rohc_packet, rohc_packet.len - 1)
-						^= rand() & 0xff;
+					rohc_buf_byte_at(rohc_packet, rohc_packet.len - 1) ^= rand() & 0xff;
 					new_byte = rohc_buf_byte_at(rohc_packet, rohc_packet.len - 1);
 				}
 			}
@@ -531,7 +529,7 @@ static int test_comp_and_decomp(const char *const filename,
 		{
 			if((!do_repair && counter != packet_to_damage) ||
 			   (do_repair && counter != (packet_to_damage + 1) &&
-			                 counter != (packet_to_damage + 2)))
+			    counter != (packet_to_damage + 2)))
 			{
 				/* failure is NOT expected for the non-damaged packets */
 				fprintf(stderr, "\tunexpected CRC failure to decompress generated "
@@ -550,7 +548,7 @@ static int test_comp_and_decomp(const char *const filename,
 			/* non-CRC failure is NOT expected except for damaged IR/IR-DYN packet */
 			if((!do_repair && counter != packet_to_damage) ||
 			   (do_repair && counter != (packet_to_damage + 1) &&
-			                 counter != (packet_to_damage + 2)))
+			    counter != (packet_to_damage + 2)))
 			{
 				fprintf(stderr, "\tunexpected non-CRC failure to decompress generated "
 				        "ROHC packet\n");
@@ -573,7 +571,7 @@ static int test_comp_and_decomp(const char *const filename,
 		{
 			if((!do_repair && counter != packet_to_damage) ||
 			   (do_repair && counter != (packet_to_damage + 1) &&
-			                 counter != (packet_to_damage + 2)))
+			    counter != (packet_to_damage + 2)))
 			{
 				/* success is expected for the non-damaged packets */
 				fprintf(stderr, "\texpected successful decompression\n");
@@ -597,9 +595,9 @@ static int test_comp_and_decomp(const char *const filename,
 	{
 		fprintf(stderr, "the damaged packet was successfully decompressed\n");
 		fprintf(stderr, "the 2 packets following the damaged packet failed to "
-		                "be decompressed as expected\n");
+		        "be decompressed as expected\n");
 		fprintf(stderr, "all previous and next non-damaged packets were "
-		                "successfully decompressed\n");
+		        "successfully decompressed\n");
 	}
 	is_failure = 0;
 

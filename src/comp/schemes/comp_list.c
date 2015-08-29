@@ -804,8 +804,7 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 		/* write all XIs in packet */
 		for(k = 0; k < m; k++, counter++)
 		{
-			const struct rohc_list_item *const item =
-				comp->lists[comp->cur_id].items[k];
+			const struct rohc_list_item *const item = comp->lists[comp->cur_id].items[k];
 			int index_table;
 			ext_types_count[item->type]++;
 			index_table = comp->get_index_table(item->type, ext_types_count[item->type]);
@@ -833,8 +832,7 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 		/* write all XIs in packet 2 by 2 */
 		for(k = 0; k < m; k += 2, counter++)
 		{
-			const struct rohc_list_item *const item =
-				comp->lists[comp->cur_id].items[k];
+			const struct rohc_list_item *const item = comp->lists[comp->cur_id].items[k];
 			int index_table;
 			ext_types_count[item->type]++;
 			index_table = comp->get_index_table(item->type, ext_types_count[item->type]);
@@ -892,8 +890,7 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 	/* part 4: n items (only unknown items) */
 	for(k = 0; k < m; k++)
 	{
-		const struct rohc_list_item *const item =
-			comp->lists[comp->cur_id].items[k];
+		const struct rohc_list_item *const item = comp->lists[comp->cur_id].items[k];
 
 		/* copy the list element if not known yet */
 		if(!item->known)
@@ -1079,8 +1076,7 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 	/* part 6: n items (only unknown items) */
 	for(k = 0; k < m; k++)
 	{
-		const struct rohc_list_item *const item =
-			comp->lists[comp->cur_id].items[k];
+		const struct rohc_list_item *const item = comp->lists[comp->cur_id].items[k];
 
 		/* skip element if it present in the reference list */
 		if(ins_mask[k] == 0 && item->known)
@@ -1421,8 +1417,7 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 	/* part 7: n items (only unknown items) */
 	for(k = 0; k < m; k++)
 	{
-		const struct rohc_list_item *const item =
-			comp->lists[comp->cur_id].items[k];
+		const struct rohc_list_item *const item = comp->lists[comp->cur_id].items[k];
 
 		/* skip element if it present in the reference list */
 		if(ins_mask[k] == 0 && item->known)

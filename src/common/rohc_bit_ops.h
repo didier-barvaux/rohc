@@ -28,10 +28,10 @@
 #define ROHC_BIT_OPS_H
 
 #ifdef __KERNEL__
-#	include <endian.h>
-#	include <bitops.h>
+#  include <endian.h>
+#  include <bitops.h>
 #else
-#	include "config.h" /* for WORDS_BIGENDIAN */
+#  include "config.h" /* for WORDS_BIGENDIAN */
 #endif
 
 
@@ -100,11 +100,11 @@
  *        in Network Byte Order
  */
 #if WORDS_BIGENDIAN == 1
-	#define GET_NEXT_16_BITS(x) \
-		((((*(x)) << 8) & 0xff00) | ((*((x) + 1)) & 0x00ff))
+#  define GET_NEXT_16_BITS(x) \
+          ((((*(x)) << 8) & 0xff00) | ((*((x) + 1)) & 0x00ff))
 #else
-	#define GET_NEXT_16_BITS(x) \
-		((((*((x) + 1)) << 8) & 0xff00) | ((*(x)) & 0x00ff))
+#  define GET_NEXT_16_BITS(x) \
+          ((((*((x) + 1)) << 8) & 0xff00) | ((*(x)) & 0x00ff))
 #endif
 
 

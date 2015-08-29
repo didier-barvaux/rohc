@@ -182,9 +182,13 @@ bool run_test(bool be_verbose, const unsigned int incr)
 		if(incr == 0)
 		{
 			if((i % 2) == 0)
+			{
 				real_incr = 20;
+			}
 			else
+			{
 				real_incr = 10;
+			}
 		}
 		else
 		{

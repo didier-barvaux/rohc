@@ -36,7 +36,7 @@
 
 #include <stdint.h>
 #ifndef __KERNEL__
-#	include <string.h>
+#  include <string.h>
 #endif
 #include <assert.h>
 
@@ -273,7 +273,7 @@ static int esp_parse_static_esp(const struct rohc_decomp_ctxt *const context,
 	read += spi_length;
 
 #if 0 /* TODO */
-	/* is context re-used? */
+	   /* is context re-used? */
 	if(context->num_recv_packets >= 1 &&
 	   memcmp(&bits->esp_spi, &esp_context->spi, spi_length) != 0)
 	{
@@ -355,8 +355,7 @@ static bool esp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
                                         const struct rohc_extr_bits *const bits,
                                         struct rohc_decoded_values *const decoded)
 {
-	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
-		context->persist_ctxt;
+	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	const size_t spi_length = sizeof(uint32_t);
 	struct esphdr *esp;
 

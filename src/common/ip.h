@@ -33,9 +33,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 #ifdef __KERNEL__
-#	include <linux/types.h>
+#  include <linux/types.h>
 #else
-#	include <stdbool.h>
+#  include <stdbool.h>
 #endif
 
 
@@ -388,7 +388,7 @@ out:
 #endif /* !__i386__ */
 
 #else /* !__KERNEL__ */
-#	include <asm/checksum.h>
+#  include <asm/checksum.h>
 #endif /* __KERNEL__ */
 
 

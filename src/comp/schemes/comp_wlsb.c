@@ -29,7 +29,7 @@
 #include "interval.h" /* for the rohc_f_*bits() functions */
 
 #ifndef __KERNEL__
-#	include <string.h>
+#  include <string.h>
 #endif
 #include <assert.h>
 

@@ -33,12 +33,12 @@
 #include "rohc_utils.h"
 
 #ifdef __KERNEL__
-#	include <linux/types.h>
+#  include <linux/types.h>
 #else
-#	include <stdbool.h>
+#  include <stdbool.h>
 #endif
 #ifndef __KERNEL__
-#	include <string.h>
+#  include <string.h>
 #endif
 #include <assert.h>
 
@@ -346,7 +346,7 @@ static int c_esp_encode(struct rohc_comp_ctxt *const context,
 
 	/* encode the IP packet */
 	size = rohc_comp_rfc3095_encode(context, uncomp_pkt, rohc_pkt, rohc_pkt_max_len,
-	                        packet_type, payload_offset);
+	                                packet_type, payload_offset);
 	if(size < 0)
 	{
 		goto quit;
@@ -376,8 +376,7 @@ quit:
 static uint32_t c_esp_get_next_sn(const struct rohc_comp_ctxt *const context __attribute__((unused)),
                                   const struct net_pkt *const uncomp_pkt)
 {
-	const struct esphdr *const esp =
-		(struct esphdr *) uncomp_pkt->transport->data;
+	const struct esphdr *const esp = (struct esphdr *) uncomp_pkt->transport->data;
 
 	return rohc_ntoh32(esp->sn);
 }

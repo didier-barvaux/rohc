@@ -35,9 +35,9 @@
 #include "ip.h"
 
 #ifdef __KERNEL__
-#	include <linux/types.h>
+#  include <linux/types.h>
 #else
-#	include <stdbool.h>
+#  include <stdbool.h>
 #endif
 
 /// The CRC-3 initial value

@@ -30,7 +30,7 @@
 #include "protocols/ip_numbers.h"
 
 #ifndef __KERNEL__
-#	include <string.h>
+#  include <string.h>
 #endif
 #include <assert.h>
 

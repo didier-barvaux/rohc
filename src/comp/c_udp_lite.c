@@ -36,7 +36,7 @@
 
 #include <stdlib.h>
 #ifndef __KERNEL__
-#	include <string.h>
+#  include <string.h>
 #endif
 #include <assert.h>
 
@@ -114,7 +114,7 @@ static bool c_udp_lite_create(struct rohc_comp_ctxt *const context,
 
 static bool c_udp_lite_check_profile(const struct rohc_comp *const comp,
                                      const struct net_pkt *const packet)
-		__attribute__((warn_unused_result, nonnull(1, 2)));
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static bool c_udp_lite_check_context(const struct rohc_comp_ctxt *const context,
                                      const struct net_pkt *const packet)
@@ -399,7 +399,7 @@ static int c_udp_lite_encode(struct rohc_comp_ctxt *const context,
 
 	/* encode the IP packet */
 	size = rohc_comp_rfc3095_encode(context, uncomp_pkt, rohc_pkt, rohc_pkt_max_len,
-	                        packet_type, payload_offset);
+	                                packet_type, payload_offset);
 	if(size < 0)
 	{
 		goto quit;

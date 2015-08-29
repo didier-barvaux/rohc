@@ -156,8 +156,8 @@ bool rohc_decomp_packet_is_uor2(const uint8_t *const data, const size_t len)
  * @return               Whether the ROHC packet is an UOR-2-TS packet or not
  */
 bool rohc_decomp_packet_is_uor2_ts(const uint8_t *const data,
-                  const size_t data_len,
-                  const size_t large_cid_len)
+                                   const size_t data_len,
+                                   const size_t large_cid_len)
 {
 	return (data_len > (1 + large_cid_len) &&
 	        GET_BIT_7(data + 1 + large_cid_len) != 0);

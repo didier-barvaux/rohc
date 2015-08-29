@@ -212,7 +212,7 @@ void ts_update_context(struct ts_sc_decomp *const ts_sc,
 	if(ts_sc->new_ts_offset != ts_sc->ts_offset)
 	{
 		ts_debug(ts_sc, "old TS_OFFSET %u replaced by new TS_OFFSET %u",
-		            ts_sc->ts_offset, ts_sc->new_ts_offset);
+		         ts_sc->ts_offset, ts_sc->new_ts_offset);
 		ts_sc->ts_offset = ts_sc->new_ts_offset;
 	}
 	else

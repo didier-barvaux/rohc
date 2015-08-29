@@ -43,9 +43,9 @@
 #include <assert.h>
 #include <stdlib.h>
 #ifdef __KERNEL__
-#	include <endian.h>
+#  include <endian.h>
 #else
-#	include <string.h>
+#  include <string.h>
 #endif
 
 #include "config.h" /* for WORDS_BIGENDIAN and ROHC_EXTRA_DEBUG */
@@ -210,11 +210,11 @@ typedef struct __attribute__((packed)) ipv6_generic_option_context
  */
 typedef struct __attribute__((packed)) ipvx_context
 {
-	uint8_t version : 4;
-	uint8_t unused : 4;
+	uint8_t version:4;
+	uint8_t unused:4;
 
-	uint8_t dscp : 6;
-	uint8_t ip_ecn_flags : 2;
+	uint8_t dscp:6;
+	uint8_t ip_ecn_flags:2;
 
 	uint8_t next_header;
 
@@ -231,12 +231,12 @@ typedef struct __attribute__((packed)) ipvx_context
  */
 typedef struct __attribute__((packed)) ipv4_context
 {
-	uint8_t version : 4;
-	uint8_t df : 1;
-	uint8_t unused : 3;
+	uint8_t version:4;
+	uint8_t df:1;
+	uint8_t unused:3;
 
-	uint8_t dscp : 6;
-	uint8_t ip_ecn_flags : 2;
+	uint8_t dscp:6;
+	uint8_t ip_ecn_flags:2;
 
 	uint8_t protocol;
 
@@ -267,11 +267,11 @@ typedef union
  */
 typedef struct __attribute__((packed)) ipv6_context
 {
-	uint8_t version : 4;
-	uint8_t unused : 4;
+	uint8_t version:4;
+	uint8_t unused:4;
 
-	uint8_t dscp : 6;
-	uint8_t ip_ecn_flags : 2;
+	uint8_t dscp:6;
+	uint8_t ip_ecn_flags:2;
 
 	uint8_t next_header;
 
@@ -280,7 +280,7 @@ typedef struct __attribute__((packed)) ipv6_context
 	uint8_t ip_id_behavior;
 	uint8_t last_ip_id_behavior;
 
-	uint8_t flow_label1 : 4;
+	uint8_t flow_label1:4;
 	uint16_t flow_label2;
 
 	uint32_t src_addr[4];
@@ -416,7 +416,7 @@ struct sc_tcp_context
 /**
  * @brief Table of TCP option index, from option Id
  *
- * See RFC4996 6.3.4
+ * See RFC4996 §6.3.4
  * Return item index of TCP option
  */
 static int tcp_options_index[TCP_LIST_ITEM_MAP_LEN] =
@@ -529,19 +529,19 @@ static int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 6)));
 
 static uint8_t * tcp_code_static_ipv6_option_part(struct rohc_comp_ctxt *const context,
-																  multi_ptr_t mptr,
-																  uint8_t protocol,
-																  base_header_ip_t base_header);
+                                                  multi_ptr_t mptr,
+                                                  uint8_t protocol,
+                                                  base_header_ip_t base_header);
 static uint8_t * tcp_code_dynamic_ipv6_option_part(struct rohc_comp_ctxt *const context,
-																	ipv6_option_context_t *const opt_ctxt,
-																	multi_ptr_t mptr,
-																	uint8_t protocol,
-																	base_header_ip_t base_header);
+                                                   ipv6_option_context_t *const opt_ctxt,
+                                                   multi_ptr_t mptr,
+                                                   uint8_t protocol,
+                                                   base_header_ip_t base_header);
 static uint8_t * tcp_code_irregular_ipv6_option_part(struct rohc_comp_ctxt *const context,
-																	  ipv6_option_context_t *const opt_ctxt,
-																	  multi_ptr_t mptr,
-																	  uint8_t protocol,
-																	  base_header_ip_t base_header);
+                                                     ipv6_option_context_t *const opt_ctxt,
+                                                     multi_ptr_t mptr,
+                                                     uint8_t protocol,
+                                                     base_header_ip_t base_header);
 static uint8_t * tcp_code_static_ip_part(struct rohc_comp_ctxt *const context,
                                          base_header_ip_t base_header,
                                          multi_ptr_t mptr);
@@ -560,11 +560,11 @@ static uint8_t * tcp_code_irregular_ip_part(struct rohc_comp_ctxt *const context
                                             int ip_inner_ecn);
 
 static uint8_t * tcp_code_static_tcp_part(const struct rohc_comp_ctxt *context,
-                                           const tcphdr_t *tcp,
-                                           multi_ptr_t mptr);
+                                          const tcphdr_t *tcp,
+                                          multi_ptr_t mptr);
 static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
-                                            const uint8_t *next_header,
-                                            multi_ptr_t mptr);
+                                           const uint8_t *next_header,
+                                           multi_ptr_t mptr);
 static uint8_t * tcp_code_irregular_tcp_part(struct rohc_comp_ctxt *const context,
                                              tcphdr_t *tcp,
                                              uint8_t *const rohc_data,
@@ -594,7 +594,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
                          const size_t rohc_pkt_max_len,
                          const rohc_packet_t packet_type,
                          const tcphdr_t *const tcp,
-								 const uint8_t crc)
+                         const uint8_t crc)
 	__attribute__((nonnull(1, 2, 3, 5, 8), warn_unused_result));
 
 
@@ -652,13 +652,13 @@ static size_t c_tcp_build_rnd_7(struct rohc_comp_ctxt *const context,
 	__attribute__((nonnull(1, 2, 2, 3, 5), warn_unused_result));
 
 static bool c_tcp_build_rnd_8(struct rohc_comp_ctxt *const context,
-										const ip_context_t *const ip_context,
-										struct sc_tcp_context *const tcp_context,
-										const base_header_ip_t ip,
-										const tcphdr_t *const tcp,
-										const uint8_t crc,
-										rnd_8_t *const rnd8,
-										size_t *const rnd8_len)
+                              const ip_context_t *const ip_context,
+                              struct sc_tcp_context *const tcp_context,
+                              const base_header_ip_t ip,
+                              const tcphdr_t *const tcp,
+                              const uint8_t crc,
+                              rnd_8_t *const rnd8,
+                              size_t *const rnd8_len)
 	__attribute__((nonnull(1, 2, 3, 5, 7, 8), warn_unused_result));
 
 
@@ -730,13 +730,13 @@ static size_t c_tcp_build_seq_7(struct rohc_comp_ctxt *const context,
 	__attribute__((nonnull(1, 2, 3, 5, 7), warn_unused_result));
 
 static bool c_tcp_build_seq_8(struct rohc_comp_ctxt *const context,
-										const ip_context_t *const ip_context,
-										struct sc_tcp_context *const tcp_context,
-										const base_header_ip_t ip,
-										const tcphdr_t *const tcp,
-										const uint8_t crc,
-										seq_8_t *const seq8,
-										size_t *const seq8_len)
+                              const ip_context_t *const ip_context,
+                              struct sc_tcp_context *const tcp_context,
+                              const base_header_ip_t ip,
+                              const tcphdr_t *const tcp,
+                              const uint8_t crc,
+                              seq_8_t *const seq8,
+                              size_t *const seq8_len)
 	__attribute__((nonnull(1, 2, 3, 5, 7, 8), warn_unused_result));
 
 static bool c_tcp_build_co_common(struct rohc_comp_ctxt *const context,
@@ -761,9 +761,9 @@ static uint8_t * tcp_code_dynamic_tcp_part_opts(const struct rohc_comp_ctxt *con
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
-												 const tcphdr_t *const tcp,
-												 uint8_t *const comp_opts,
-												 size_t *const comp_opts_len)
+                                     const tcphdr_t *const tcp,
+                                     uint8_t *const comp_opts,
+                                     size_t *const comp_opts_len)
 	__attribute__((nonnull(1, 2, 3, 4), warn_unused_result));
 
 static bool c_ts_lsb(const struct rohc_comp_ctxt *const context,
@@ -818,7 +818,7 @@ static void c_tcp_opt_write_xi(const struct rohc_comp_ctxt *const context,
 	__attribute__((nonnull(1, 2, 3)));
 
 static tcp_ip_id_behavior_t tcp_detect_ip_id_behavior(const uint16_t last_ip_id,
-																		const uint16_t new_ip_id)
+                                                      const uint16_t new_ip_id)
 	__attribute__((warn_unused_result, const));
 
 static void tcp_detect_ecn_used_behavior(struct rohc_comp_ctxt *const context,
@@ -1693,8 +1693,10 @@ static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
 				++base_header.ipv4;
 				break;
 			case IPV6:
-				if(memcmp(base_header.ipv6->src_addr, ip_context->ctxt.v6.src_addr, sizeof(uint32_t) * 4) != 0 ||
-				   memcmp(base_header.ipv6->dest_addr, ip_context->ctxt.v6.dest_addr, sizeof(uint32_t) * 4) != 0)
+				if(memcmp(base_header.ipv6->src_addr, ip_context->ctxt.v6.src_addr,
+				          sizeof(uint32_t) * 4) != 0 ||
+				   memcmp(base_header.ipv6->dest_addr, ip_context->ctxt.v6.dest_addr,
+				          sizeof(uint32_t) * 4) != 0)
 				{
 					rohc_comp_debug(context, "  not same IPv6 addresses");
 					goto bad_context;
@@ -2176,8 +2178,8 @@ static int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
 
 				rohc_comp_debug(context, "IPv6 option %u", protocol);
 				mptr.uint8 =
-				   tcp_code_dynamic_ipv6_option_part(context, opt_ctxt, mptr,
-				                                     protocol, base_header);
+					tcp_code_dynamic_ipv6_option_part(context, opt_ctxt, mptr,
+					                                  protocol, base_header);
 				if(mptr.uint8 == NULL)
 				{
 					rohc_comp_warn(context, "failed to code the IPv6 extension part "
@@ -2249,9 +2251,9 @@ error:
  *                       NULL if a problem occurs
  */
 static uint8_t * tcp_code_static_ipv6_option_part(struct rohc_comp_ctxt *const context,
-																  multi_ptr_t mptr,
-																  uint8_t protocol,
-																  base_header_ip_t base_header)
+                                                  multi_ptr_t mptr,
+                                                  uint8_t protocol,
+                                                  base_header_ip_t base_header)
 {
 	size_t size;
 
@@ -2309,10 +2311,10 @@ static uint8_t * tcp_code_static_ipv6_option_part(struct rohc_comp_ctxt *const c
  *                     NULL if a problem occurs
  */
 static uint8_t * tcp_code_dynamic_ipv6_option_part(struct rohc_comp_ctxt *const context,
-																	ipv6_option_context_t *const opt_ctxt,
-																	multi_ptr_t mptr,
-																	uint8_t protocol,
-																	base_header_ip_t base_header)
+                                                   ipv6_option_context_t *const opt_ctxt,
+                                                   multi_ptr_t mptr,
+                                                   uint8_t protocol,
+                                                   base_header_ip_t base_header)
 {
 	int size;
 
@@ -2363,10 +2365,10 @@ static uint8_t * tcp_code_dynamic_ipv6_option_part(struct rohc_comp_ctxt *const 
  *                     NULL if a problem occurs
  */
 static uint8_t * tcp_code_irregular_ipv6_option_part(struct rohc_comp_ctxt *const context,
-																	  ipv6_option_context_t *const opt_ctxt __attribute__((unused)),
-																	  multi_ptr_t mptr,
-																	  uint8_t protocol,
-																	  base_header_ip_t base_header __attribute__((unused)))
+                                                     ipv6_option_context_t *const opt_ctxt __attribute__((unused)),
+                                                     multi_ptr_t mptr,
+                                                     uint8_t protocol,
+                                                     base_header_ip_t base_header __attribute__((unused)))
 {
 #if ROHC_EXTRA_DEBUG == 1
 	uint8_t *ptr = mptr.uint8;
@@ -2710,8 +2712,8 @@ static uint8_t * tcp_code_irregular_ip_part(struct rohc_comp_ctxt *const context
  * @return            The new pointer in the rohc-packet-under-build buffer
  */
 static uint8_t * tcp_code_static_tcp_part(const struct rohc_comp_ctxt *context,
-                                           const tcphdr_t *tcp,
-                                           multi_ptr_t mptr)
+                                          const tcphdr_t *tcp,
+                                          multi_ptr_t mptr)
 {
 	rohc_dump_buf(context->compressor->trace_callback,
 	              context->compressor->trace_callback_priv,
@@ -2743,7 +2745,7 @@ static uint8_t * tcp_code_static_tcp_part(const struct rohc_comp_ctxt *context,
  Dynamic part of TCP header:
 
 TODO
- 
+
 \endverbatim
  *
  * @param context     The compression context
@@ -2853,7 +2855,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 	if(tcp->data_offset == min_tcp_hdr_len)
 	{
 		rohc_comp_debug(context, "TCP no options!");
-		/* see RFC4996, 6.3.3 : no XI items, PS = 0, m = 0 */
+		/* see RFC4996, §6.3.3 : no XI items, PS = 0, m = 0 */
 		*(mptr.uint8++) = 0;
 	}
 	else
@@ -3623,7 +3625,7 @@ static bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 					   tcp_context->tcp_options_list[opt_idx].used &&
 					   tcp_context->tcp_options_list[opt_idx].age > oldest_idx_age)
 					{
-					   oldest_idx_age = tcp_context->tcp_options_list[opt_idx].age;
+						oldest_idx_age = tcp_context->tcp_options_list[opt_idx].age;
 						oldest_idx = opt_idx;
 					}
 				}
@@ -3789,9 +3791,9 @@ error:
  *                       false otherwise
  */
 static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
-												 const tcphdr_t *const tcp,
-												 uint8_t *const comp_opts,
-												 size_t *const comp_opts_len)
+                                     const tcphdr_t *const tcp,
+                                     uint8_t *const comp_opts,
+                                     size_t *const comp_opts_len)
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
 	uint8_t compressed_options[40]; /* TODO: is it enough? */
@@ -3929,9 +3931,9 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 					uint8_t *const opt_start = ptr_compressed_options;
 					// see RFC4996 page 67
 					ptr_compressed_options =
-					   c_tcp_opt_sack(context, ptr_compressed_options,
-					                  rohc_ntoh32(tcp->ack_num), opt_len,
-					                  (sack_block_t *) (options + 2));
+						c_tcp_opt_sack(context, ptr_compressed_options,
+						               rohc_ntoh32(tcp->ack_num), opt_len,
+						               (sack_block_t *) (options + 2));
 					comp_opt_len += ptr_compressed_options - opt_start;
 					break;
 				}
@@ -4006,7 +4008,7 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 	{
 		// Add them
 		memcpy(comp_opts + (*comp_opts_len), compressed_options,
-				 ptr_compressed_options - compressed_options);
+		       ptr_compressed_options - compressed_options);
 		(*comp_opts_len) += (ptr_compressed_options - compressed_options);
 	}
 
@@ -4143,9 +4145,8 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 			payload_size = rohc_ntoh16(base_header.ipv6->payload_length);
 
 			/* skip IPv6 header */
-			rohc_comp_debug(context, "skip %zd-byte IPv6 header with Next "
-			                "Header 0x%02x", sizeof(base_header_ip_v6_t),
-			                protocol);
+			rohc_comp_debug(context, "skip %zd-byte IPv6 header with Next Header "
+			                "0x%02x", sizeof(base_header_ip_v6_t), protocol);
 			remain_data_len -= sizeof(base_header_ip_v6_t);
 			++base_header.ipv6;
 
@@ -4279,9 +4280,8 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 						&(ip_context->ctxt.v6.opts[ip_ext_pos]);
 
 					mptr.uint8 =
-					   tcp_code_irregular_ipv6_option_part(context, opt_ctxt,
-					                                       mptr, protocol,
-					                                       base_header);
+						tcp_code_irregular_ipv6_option_part(context, opt_ctxt, mptr,
+						                                    protocol, base_header);
 					if(mptr.uint8 == NULL)
 					{
 						rohc_comp_warn(context, "failed to encode the IPv6 "
@@ -4351,14 +4351,14 @@ error:
  *                                  -1 in case of problem
  */
 static int co_baseheader(struct rohc_comp_ctxt *const context,
-								 struct sc_tcp_context *const tcp_context,
-								 ip_context_t *const ip_context,
-								 base_header_ip_t base_header,
-								 uint8_t *const rohc_pkt,
-								 const size_t rohc_pkt_max_len __attribute__((unused)), /* TODO */
+                         struct sc_tcp_context *const tcp_context,
+                         ip_context_t *const ip_context,
+                         base_header_ip_t base_header,
+                         uint8_t *const rohc_pkt,
+                         const size_t rohc_pkt_max_len __attribute__((unused)), /* TODO */
                          const rohc_packet_t packet_type,
                          const tcphdr_t *const tcp,
-								 const uint8_t crc)
+                         const uint8_t crc)
 {
 	multi_ptr_t c_base_header; // compressed
 	int counter;
@@ -4373,39 +4373,39 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 	{
 		case ROHC_PACKET_TCP_RND_1:
 			mptr.uint8 += c_tcp_build_rnd_1(context, tcp_context, tcp, crc,
-													  c_base_header.rnd1);
+			                                c_base_header.rnd1);
 			break;
 		case ROHC_PACKET_TCP_RND_2:
 			mptr.uint8 += c_tcp_build_rnd_2(context, tcp_context, tcp, crc,
-													  c_base_header.rnd2);
+			                                c_base_header.rnd2);
 			break;
 		case ROHC_PACKET_TCP_RND_3:
 			mptr.uint8 += c_tcp_build_rnd_3(context, tcp_context, tcp, crc,
-													  c_base_header.rnd3);
+			                                c_base_header.rnd3);
 			break;
 		case ROHC_PACKET_TCP_RND_4:
 			mptr.uint8 += c_tcp_build_rnd_4(context, tcp_context, tcp, crc,
-													  c_base_header.rnd4);
+			                                c_base_header.rnd4);
 			break;
 		case ROHC_PACKET_TCP_RND_5:
 			mptr.uint8 += c_tcp_build_rnd_5(context, tcp_context, tcp, crc,
-													  c_base_header.rnd5);
+			                                c_base_header.rnd5);
 			break;
 		case ROHC_PACKET_TCP_RND_6:
 			mptr.uint8 += c_tcp_build_rnd_6(context, tcp_context, tcp, crc,
-													  c_base_header.rnd6);
+			                                c_base_header.rnd6);
 			break;
 		case ROHC_PACKET_TCP_RND_7:
 			mptr.uint8 += c_tcp_build_rnd_7(context, tcp_context, tcp, crc,
-													  c_base_header.rnd7);
+			                                c_base_header.rnd7);
 			break;
 		case ROHC_PACKET_TCP_RND_8:
 		{
 			size_t rnd8_len;
 
 			is_ok = c_tcp_build_rnd_8(context, ip_context, tcp_context,
-											  base_header, tcp, crc, c_base_header.rnd8,
-											  &rnd8_len);
+			                          base_header, tcp, crc, c_base_header.rnd8,
+			                          &rnd8_len);
 			if(!is_ok)
 			{
 				rohc_comp_warn(context, "failed to build rnd_8 packet");
@@ -4416,46 +4416,46 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 		}
 		case ROHC_PACKET_TCP_SEQ_1:
 			mptr.uint8 += c_tcp_build_seq_1(context, ip_context, tcp_context,
-													  base_header, tcp, crc,
-													  c_base_header.seq1);
+			                                base_header, tcp, crc,
+			                                c_base_header.seq1);
 			break;
 		case ROHC_PACKET_TCP_SEQ_2:
 			mptr.uint8 += c_tcp_build_seq_2(context, ip_context, tcp_context,
-													  base_header, tcp, crc,
-													  c_base_header.seq2);
+			                                base_header, tcp, crc,
+			                                c_base_header.seq2);
 			break;
 		case ROHC_PACKET_TCP_SEQ_3:
 			mptr.uint8 += c_tcp_build_seq_3(context, ip_context, tcp_context,
-													  base_header, tcp, crc,
-													  c_base_header.seq3);
+			                                base_header, tcp, crc,
+			                                c_base_header.seq3);
 			break;
 		case ROHC_PACKET_TCP_SEQ_4:
 			mptr.uint8 += c_tcp_build_seq_4(context, ip_context, tcp_context,
-													  base_header, tcp, crc,
-													  c_base_header.seq4);
+			                                base_header, tcp, crc,
+			                                c_base_header.seq4);
 			break;
 		case ROHC_PACKET_TCP_SEQ_5:
 			mptr.uint8 += c_tcp_build_seq_5(context, ip_context, tcp_context,
-													  base_header, tcp, crc,
-													  c_base_header.seq5);
+			                                base_header, tcp, crc,
+			                                c_base_header.seq5);
 			break;
 		case ROHC_PACKET_TCP_SEQ_6:
 			mptr.uint8 += c_tcp_build_seq_6(context, ip_context, tcp_context,
-													  base_header, tcp, crc,
-													  c_base_header.seq6);
+			                                base_header, tcp, crc,
+			                                c_base_header.seq6);
 			break;
 		case ROHC_PACKET_TCP_SEQ_7:
 			mptr.uint8 += c_tcp_build_seq_7(context, ip_context, tcp_context,
-													  base_header, tcp, crc,
-													  c_base_header.seq7);
+			                                base_header, tcp, crc,
+			                                c_base_header.seq7);
 			break;
 		case ROHC_PACKET_TCP_SEQ_8:
 		{
 			size_t seq8_len;
 
 			is_ok = c_tcp_build_seq_8(context, ip_context, tcp_context,
-											  base_header, tcp, crc, c_base_header.seq8,
-											  &seq8_len);
+			                          base_header, tcp, crc, c_base_header.seq8,
+			                          &seq8_len);
 			if(!is_ok)
 			{
 				rohc_comp_warn(context, "failed to build seq_8 packet");
@@ -4469,7 +4469,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 			size_t co_common_len;
 
 			is_ok = c_tcp_build_co_common(context, ip_context, tcp_context,
-											      base_header, tcp, crc,
+			                              base_header, tcp, crc,
 			                              c_base_header.co_common, &co_common_len);
 			if(!is_ok)
 			{
@@ -4816,13 +4816,13 @@ static size_t c_tcp_build_rnd_7(struct rohc_comp_ctxt *const context,
  * @return              true if the packet is successfully built, false otherwise
  */
 static bool c_tcp_build_rnd_8(struct rohc_comp_ctxt *const context,
-										const ip_context_t *const ip_context,
-										struct sc_tcp_context *const tcp_context,
-										const base_header_ip_t ip,
-										const tcphdr_t *const tcp,
-										const uint8_t crc,
-										rnd_8_t *const rnd8,
-										size_t *const rnd8_len)
+                              const ip_context_t *const ip_context,
+                              struct sc_tcp_context *const tcp_context,
+                              const base_header_ip_t ip,
+                              const tcphdr_t *const tcp,
+                              const uint8_t crc,
+                              rnd_8_t *const rnd8,
+                              size_t *const rnd8_len)
 {
 	uint32_t seq_num;
 	size_t comp_opts_len;
@@ -4876,13 +4876,13 @@ static bool c_tcp_build_rnd_8(struct rohc_comp_ctxt *const context,
 	 * or if some static options changed (irregular chain cannot transmit
 	 * static options) */
 	if(tcp_context->tmp.is_tcp_opts_list_struct_changed ||
-		tcp_context->tmp.is_tcp_opts_list_static_changed)
+	   tcp_context->tmp.is_tcp_opts_list_static_changed)
 	{
 		/* the structure of the list of TCP options changed or at least one of
 		 * the static option changed, compress them */
 		rnd8->list_present = 1;
 		is_ok = tcp_compress_tcp_options(context, tcp, rnd8->options,
-													&comp_opts_len);
+		                                 &comp_opts_len);
 		if(!is_ok)
 		{
 			rohc_comp_warn(context, "failed to compress TCP options");
@@ -5316,13 +5316,13 @@ static bool c_tcp_build_seq_8(struct rohc_comp_ctxt *const context,
 	 * or if some static options changed (irregular chain cannot transmit
 	 * static options) */
 	if(tcp_context->tmp.is_tcp_opts_list_struct_changed ||
-		tcp_context->tmp.is_tcp_opts_list_static_changed)
+	   tcp_context->tmp.is_tcp_opts_list_static_changed)
 	{
 		/* the structure of the list of TCP options changed or at least one of
 		 * the static option changed, compress them */
 		seq8->list_present = 1;
 		is_ok = tcp_compress_tcp_options(context, tcp, seq8->options,
-													&comp_opts_len);
+		                                 &comp_opts_len);
 		if(!is_ok)
 		{
 			rohc_comp_warn(context, "failed to compress TCP options");
@@ -5391,8 +5391,7 @@ static bool c_tcp_build_co_common(struct rohc_comp_ctxt *const context,
 	co_common_opt_len = 0;
 
 	co_common->discriminator = 0x7D; // '1111101'
-	co_common->ttl_hopl_outer_flag =
-		tcp_context->tmp.ttl_irregular_chain_flag;
+	co_common->ttl_hopl_outer_flag = tcp_context->tmp.ttl_irregular_chain_flag;
 
 	rohc_comp_debug(context, "TCP ack_flag = %d, psh_flag = %d, rsf_flags = %d",
 	                tcp->ack_flag, tcp->psh_flag, tcp->rsf_flags);
@@ -5604,7 +5603,7 @@ static bool c_tcp_build_co_common(struct rohc_comp_ctxt *const context,
 	 * or if some static options changed (irregular chain cannot transmit
 	 * static options) */
 	if(tcp_context->tmp.is_tcp_opts_list_struct_changed ||
-		tcp_context->tmp.is_tcp_opts_list_static_changed)
+	   tcp_context->tmp.is_tcp_opts_list_static_changed)
 	{
 		size_t comp_opts_len;
 
@@ -5736,7 +5735,7 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 							/* record option in context */
 							assert(base_header.ipv6_opt->length < MAX_IPV6_OPTION_LENGTH);
 							opt_ctxt->generic.option_length =
-							   (base_header.ipv6_opt->length + 1) << 3;
+								(base_header.ipv6_opt->length + 1) << 3;
 							opt_ctxt->generic.length = base_header.ipv6_opt->length;
 							memcpy(opt_ctxt->generic.data, base_header.ipv6_opt->value,
 							       opt_ctxt->generic.option_length - 2);
@@ -5809,8 +5808,7 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 		               "TCP options");
 		goto error;
 	}
-	rohc_comp_debug(context, "%zu bytes of TCP options successfully parsed",
-	                opts_len);
+	rohc_comp_debug(context, "%zu bytes of TCP options successfully parsed", opts_len);
 	base_header.uint8 += opts_len;
 	hdrs_len += opts_len;
 
@@ -6871,7 +6869,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 			}
 		}
 		else if((rohc_ntoh32(tcp->seq_num) & 0xFFFF) !=
-			     (rohc_ntoh32(tcp_context->old_tcphdr.seq_num) & 0xFFFF))
+		        (rohc_ntoh32(tcp_context->old_tcphdr.seq_num) & 0xFFFF))
 		{
 			TRACE_GOTO_CHOICE;
 			packet_type = ROHC_PACKET_TCP_CO_COMMON;
@@ -7282,7 +7280,7 @@ static void c_tcp_opt_write_xi(const struct rohc_comp_ctxt *const context,
  *                    IP_ID_BEHAVIOR_RAND
  */
 static tcp_ip_id_behavior_t tcp_detect_ip_id_behavior(const uint16_t last_ip_id,
-																		const uint16_t new_ip_id)
+                                                      const uint16_t new_ip_id)
 {
 	tcp_ip_id_behavior_t behavior;
 

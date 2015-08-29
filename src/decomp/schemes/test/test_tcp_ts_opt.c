@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
 	};
 	return run_tests(tests);
 #else
-#	error "no function found to run cmocka tests"
+#  error "no function found to run cmocka tests"
 #endif
 }
 

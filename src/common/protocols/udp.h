@@ -37,10 +37,11 @@
 /** The UDP header */
 struct udphdr
 {
-  uint16_t source;  /**< The source port of the UDP header */
-  uint16_t dest;    /**< The destination port of the UDP header */
-  uint16_t len;     /**< The length (in bytes) of the UDP packet (header + payload) */
-  uint16_t check;   /**< The checksum over of the UDP header + pseudo IP header */
+	uint16_t source; /**< The source port of the UDP header */
+	uint16_t dest;   /**< The destination port of the UDP header */
+	uint16_t len;    /**< The length (in bytes) of the UDP packet (header + payload) */
+	uint16_t check;  /**< The checksum over of the UDP header + pseudo IP header */
 } __attribute__((packed));
 
 #endif
+

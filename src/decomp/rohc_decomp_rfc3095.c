@@ -543,14 +543,14 @@ bool rfc3095_decomp_parse_pkt(const struct rohc_decomp_ctxt *const context,
 	const uint8_t *const rohc_packet_data = rohc_buf_data(rohc_packet);
 	const size_t rohc_length = rohc_packet.len;
 
-	bool (*parse) (const struct rohc_decomp_ctxt *const _context,
-	               const uint8_t *const _rohc_packet,
-	               const size_t _rohc_length,
-	               const size_t _large_cid_len,
-	               rohc_packet_t *const _packet_type,
-	               struct rohc_decomp_crc *const _extr_crc,
-	               struct rohc_extr_bits *const _bits,
-	               size_t *const _rohc_hdr_len)
+	bool (*parse)(const struct rohc_decomp_ctxt *const _context,
+	              const uint8_t *const _rohc_packet,
+	              const size_t _rohc_length,
+	              const size_t _large_cid_len,
+	              rohc_packet_t *const _packet_type,
+	              struct rohc_decomp_crc *const _extr_crc,
+	              struct rohc_extr_bits *const _bits,
+	              size_t *const _rohc_hdr_len)
 		__attribute__((warn_unused_result, nonnull(1, 2, 5, 6, 7, 8)));
 
 	assert(context != NULL);
@@ -827,7 +827,7 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 	if(rfc3095_ctxt->parse_static_next_hdr != NULL)
 	{
 		size = rfc3095_ctxt->parse_static_next_hdr(context, rohc_remain_data,
-		                                        rohc_remain_len, bits);
+		                                           rohc_remain_len, bits);
 		if(size == -1)
 		{
 			rohc_decomp_warn(context, "cannot parse next header static part");
@@ -872,7 +872,7 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 		if(rfc3095_ctxt->parse_dyn_next_hdr != NULL)
 		{
 			size = rfc3095_ctxt->parse_dyn_next_hdr(context, rohc_remain_data,
-			                                     rohc_remain_len, bits);
+			                                        rohc_remain_len, bits);
 			if(size == -1)
 			{
 				rohc_decomp_warn(context, "cannot parse next header dynamic part");
@@ -2203,8 +2203,8 @@ static bool parse_uo1id(const struct rohc_decomp_ctxt *const context,
 			{
 				/* decode the extension */
 				ext_size = rfc3095_ctxt->parse_ext3(context, rohc_remain_data,
-				                                 rohc_remain_len, *packet_type,
-				                                 bits);
+				                                    rohc_remain_len, *packet_type,
+				                                    bits);
 
 				break;
 			}
@@ -2539,8 +2539,7 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
                        struct rohc_extr_bits *const bits,
                        size_t *const rohc_hdr_len)
 {
-	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
-		context->persist_ctxt;
+	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	size_t rohc_remainder_len;
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
@@ -2720,8 +2719,8 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
 			{
 				/* decode the extension */
 				ext_size = rfc3095_ctxt->parse_ext3(context, rohc_remain_data,
-				                                 rohc_remain_len, *packet_type,
-				                                 bits);
+				                                    rohc_remain_len, *packet_type,
+				                                    bits);
 				break;
 			}
 
@@ -3166,8 +3165,8 @@ static bool parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
 			{
 				/* decode the extension */
 				ext_size = rfc3095_ctxt->parse_ext3(context, rohc_remain_data,
-				                                 rohc_remain_len, packet_type,
-				                                 bits);
+				                                    rohc_remain_len, packet_type,
+				                                    bits);
 				break;
 			}
 
@@ -3625,8 +3624,8 @@ static bool parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
 			{
 				/* decode the extension */
 				ext_size = rfc3095_ctxt->parse_ext3(context, rohc_remain_data,
-				                                 rohc_remain_len, packet_type,
-				                                 bits);
+				                                    rohc_remain_len, packet_type,
+				                                    bits);
 
 				break;
 			}
@@ -4087,8 +4086,8 @@ static bool parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
 			{
 				/* decode the extension */
 				ext_size = rfc3095_ctxt->parse_ext3(context, rohc_remain_data,
-				                                 rohc_remain_len, packet_type,
-				                                 bits);
+				                                    rohc_remain_len, packet_type,
+				                                    bits);
 				break;
 			}
 
@@ -4325,7 +4324,7 @@ static bool parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
 		int size;
 
 		size = rfc3095_ctxt->parse_uo_remainder(context, rohc_remain_data,
-		                                     rohc_remain_len, bits);
+		                                        rohc_remain_len, bits);
 		if(size < 0)
 		{
 			rohc_decomp_warn(context, "cannot decode the remainder of UO* packet");
@@ -4483,7 +4482,7 @@ static bool parse_irdyn(const struct rohc_decomp_ctxt *const context,
 	if(rfc3095_ctxt->parse_dyn_next_hdr != NULL)
 	{
 		size = rfc3095_ctxt->parse_dyn_next_hdr(context, rohc_remain_data,
-		                                     rohc_remain_len, bits);
+		                                        rohc_remain_len, bits);
 		if(size == -1)
 		{
 			rohc_decomp_warn(context, "cannot decode the next header dynamic part");
@@ -5311,11 +5310,11 @@ static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
 
 	/* compute the CRC from built uncompressed headers */
 	crc_computed = rfc3095_ctxt->compute_crc_static(outer_ip_hdr, inner_ip_hdr,
-	                                             next_header, crc_type,
-	                                             crc_computed, crc_table);
+	                                                next_header, crc_type,
+	                                                crc_computed, crc_table);
 	crc_computed = rfc3095_ctxt->compute_crc_dynamic(outer_ip_hdr, inner_ip_hdr,
-	                                              next_header, crc_type,
-	                                              crc_computed, crc_table);
+	                                                 next_header, crc_type,
+	                                                 crc_computed, crc_table);
 	rohc_decomp_debug(context, "CRC-%d on uncompressed header = 0x%x",
 	                  crc_type, crc_computed);
 
@@ -5350,7 +5349,7 @@ bool rfc3095_decomp_attempt_repair(const struct rohc_decomp *const decomp,
                                    const struct rohc_decomp_ctxt *const context,
                                    const struct rohc_ts pkt_arrival_time,
                                    struct rohc_decomp_crc_corr_ctxt *const crc_corr,
-	                                struct rohc_extr_bits *const extr_bits)
+                                   struct rohc_extr_bits *const extr_bits)
 {
 	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	const uint32_t sn_ref_0 = rohc_lsb_get_ref(rfc3095_ctxt->sn_lsb_ctxt,
@@ -5544,8 +5543,7 @@ bool rfc3095_decomp_decode_bits(const struct rohc_decomp_ctxt *const context,
                                 const size_t payload_len __attribute__((unused)),
                                 struct rohc_decoded_values *const decoded)
 {
-	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt =
-		context->persist_ctxt;
+	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	bool decode_ok;
 
 	decoded->is_context_reused = bits->is_context_reused;
@@ -5937,7 +5935,7 @@ void rfc3095_decomp_update_ctxt(struct rohc_decomp_ctxt *const context,
 	if(context->crc_corr.algo == ROHC_DECOMP_CRC_CORR_SN_UPDATES &&
 	   context->crc_corr.counter == 3)
 	{
-		/* step f of RFC3095, 5.3.2.2.5. Repair of incorrect SN updates:
+		/* step f of RFC3095, §5.3.2.2.5. Repair of incorrect SN updates:
 		 *   If the decompressed header generated in d. passes the CRC test,
 		 *   ref -1 is not changed while ref 0 is set to SN curr2. */
 		keep_ref_minus_1 = true;
@@ -6015,7 +6013,7 @@ void rfc3095_decomp_update_ctxt(struct rohc_decomp_ctxt *const context,
 			          "%u packets seem to have been lost, damaged, or failed "
 			          "to be decompressed (SN jumped from 0x%x to 0x%x)",
 			          decoded->sn - expected_next_sn, sn_context, decoded->sn);
-			          context->nr_lost_packets = decoded->sn - expected_next_sn;
+			context->nr_lost_packets = decoded->sn - expected_next_sn;
 			context->nr_misordered_packets = 0;
 			context->is_duplicated = false;
 		}

@@ -245,13 +245,21 @@ static int test_comp_and_decomp(const char *const filename,
 
 	/* determine the length of the link layer header */
 	if(link_layer_type == DLT_EN10MB)
+	{
 		link_len = ETHER_HDR_LEN;
+	}
 	else if(link_layer_type == DLT_LINUX_SLL)
+	{
 		link_len = LINUX_COOKED_HDR_LEN;
+	}
 	else if(link_layer_type == DLT_NULL)
+	{
 		link_len = BSD_LOOPBACK_HDR_LEN;
+	}
 	else /* DLT_RAW */
+	{
 		link_len = 0;
+	}
 
 	/* create the ROHC compressor with small CID */
 	comp = rohc_comp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
@@ -326,8 +334,7 @@ static int test_comp_and_decomp(const char *const filename,
 		struct rohc_buf ip_packet =
 			rohc_buf_init_full(packet, header.caplen, arrival_time);
 		uint8_t rohc_buffer[MAX_ROHC_SIZE];
-		struct rohc_buf rohc_packet =
-			rohc_buf_init_empty(rohc_buffer, MAX_ROHC_SIZE);
+		struct rohc_buf rohc_packet = rohc_buf_init_empty(rohc_buffer, MAX_ROHC_SIZE);
 		uint8_t decomp_buffer[MAX_ROHC_SIZE];
 		struct rohc_buf decomp_packet =
 			rohc_buf_init_empty(decomp_buffer, MAX_ROHC_SIZE);

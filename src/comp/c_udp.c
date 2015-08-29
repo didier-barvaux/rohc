@@ -36,7 +36,7 @@
 
 #include <stdlib.h>
 #ifndef __KERNEL__
-#	include <string.h>
+#  include <string.h>
 #endif
 #include <assert.h>
 
@@ -367,7 +367,7 @@ static int c_udp_encode(struct rohc_comp_ctxt *const context,
 
 	/* encode the IP packet */
 	size = rohc_comp_rfc3095_encode(context, uncomp_pkt, rohc_pkt, rohc_pkt_max_len,
-	                        packet_type, payload_offset);
+	                                packet_type, payload_offset);
 	if(size < 0)
 	{
 		goto quit;

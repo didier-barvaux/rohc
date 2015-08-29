@@ -33,9 +33,9 @@
 #include <assert.h>
 
 #ifdef __KERNEL__
-#	include <endian.h>
+#  include <endian.h>
 #else
-#	include "config.h" /* for WORDS_BIGENDIAN */
+#  include "config.h" /* for WORDS_BIGENDIAN */
 #endif
 
 
@@ -44,238 +44,203 @@
 #define ROHC_PACKET_TYPE_IR      0xFD
 #define ROHC_PACKET_TYPE_IR_DYN  0xF8
 
-/**
- * @brief Define the IPv6 option header.
- *
- */
 
-typedef struct __attribute__((packed)) ipv6_opt
+/** The IPv6 option header */
+struct ipv6_opt
 {
 	uint8_t next_header;
 	uint8_t length;
 	uint8_t value[1];
-} ipv6_opt_t;
+} __attribute__((packed));
 
-/**
- * @brief Define the static part of IPv6 option header.
- *
- */
 
-typedef struct __attribute__((packed)) ip_opt_static
+/** The static part of IPv6 option header */
+typedef struct
 {
 	uint8_t next_header;
 	uint8_t length;
-} ip_opt_static_t;
+} __attribute__((packed)) ip_opt_static_t;
 
-/**
- * @brief Define the dynamic part of IPv6 option header.
- *
- */
 
-typedef struct __attribute__((packed)) ip_opt_dynamic
+/** The dynamic part of IPv6 option header */
+typedef struct
 {
 	uint8_t value[1];
-} ip_opt_dynamic_t;
+} __attribute__((packed)) ip_opt_dynamic_t;
 
-/**
- * @brief Define the IPv6 Destination options header
- *
- */
 
-typedef struct __attribute__((packed)) ip_dest_opt
+/** The IPv6 Destination options header */
+typedef struct
 {
 	uint8_t next_header;
 	uint8_t length;
 	uint8_t value[1];
-} ip_dest_opt_t;
+} __attribute__((packed)) ip_dest_opt_t;
 
-/**
- * @brief Define the static part of IPv6 Destination option header.
- *
- */
 
-typedef struct __attribute__((packed)) ip_dest_opt_static
+/** The static part of IPv6 Destination option header */
+typedef struct
 {
 	uint8_t next_header;
 	uint8_t length;
-} ip_dest_opt_static_t;
+} __attribute__((packed)) ip_dest_opt_static_t;
 
-/**
- * @brief Define the dynamic part of IPv6 Destination option header.
- *
- */
 
-typedef struct __attribute__((packed)) ip_dest_opt_dynamic
+/** The dynamic part of IPv6 Destination option header */
+typedef struct
 {
 	uint8_t value[1];
-} ip_dest_opt_dynamic_t;
+} __attribute__((packed)) ip_dest_opt_dynamic_t;
 
-/**
- * @brief Define the IPv6 Hop-by-Hop option header.
- *
- */
 
-typedef struct __attribute__((packed)) ip_hop_opt
+/** The IPv6 Hop-by-Hop option header */
+typedef struct
 {
 	uint8_t next_header;
 	uint8_t length;
 	uint8_t value[1];
-} ip_hop_opt_t;
+} __attribute__((packed)) ip_hop_opt_t;
 
-/**
- * @brief Define the static part of IPv6 Hop-by-Hop option header.
- *
- */
 
-typedef struct __attribute__((packed)) ip_hop_opt_static
+/** The static part of IPv6 Hop-by-Hop option header */
+typedef struct
 {
 	uint8_t next_header;
 	uint8_t length;
-} ip_hop_opt_static_t;
+} __attribute__((packed)) ip_hop_opt_static_t;
 
-/**
- * @brief Define the dynamic part of IPv6 Hop-by-Hop option header.
- *
- */
 
-typedef struct __attribute__((packed)) ip_hop_opt_dynamic
+/** The dynamic part of IPv6 Hop-by-Hop option header */
+typedef struct
 {
 	uint8_t value[1];
-} ip_hop_opt_dynamic_t;
+} __attribute__((packed)) ip_hop_opt_dynamic_t;
 
-/**
- * @brief Define the IPv6 Routing option header.
- *
- */
 
-typedef struct __attribute__((packed)) ip_rout_opt
+/** The IPv6 Routing option header */
+typedef struct
 {
 	uint8_t next_header;
 	uint8_t length;
 	uint8_t value[1];
-} ip_rout_opt_t;
+} __attribute__((packed)) ip_rout_opt_t;
 
-/**
- * @brief Define the static part of IPv6 Routing option header.
- *
- */
 
-typedef struct __attribute__((packed)) ip_rout_opt_static
+/** The static part of IPv6 Routing option header */
+typedef struct
 {
 	uint8_t next_header;
 	uint8_t length;
 	uint8_t value[1];
-} ip_rout_opt_static_t;
+} __attribute__((packed)) ip_rout_opt_static_t;
 
 
-/**
- * @brief Define the common IP v4/v6 header.
- *
- */
-typedef struct __attribute__((packed)) base_header_ip_vx
+/** The common IPv4/v6 header */
+typedef struct
 {
-#if WORDS_BIGENDIAN != 1
-	uint8_t reserved : 4;
-	uint8_t version : 4;
+#if WORDS_BIGENDIAN == 1
+	uint8_t version:4;    /**< The IP version */
+	uint8_t reserved:4;   /**< That field depends on IP version */
 #else
-	uint8_t version : 4;
-	uint8_t reserved : 4;
+	uint8_t reserved:4;
+	uint8_t version:4;
 #endif
-} base_header_ip_vx_t;
+} __attribute__((packed)) base_header_ip_vx_t;
 
 
 /**
- * @brief Define the IPv4 header.
+ * @brief The IPv4 header
  *
- * See RFC4996 page 77
+ * @todo TODO: duplicate with struct ipv4_hdr
  */
-typedef struct __attribute__((packed)) base_header_ip_v4
+typedef struct
 {
-#if WORDS_BIGENDIAN != 1
-	uint8_t header_length : 4;
-	uint8_t version : 4;
-	uint8_t ip_ecn_flags : 2;
-	uint8_t dscp : 6;
+#if WORDS_BIGENDIAN == 1
+	uint8_t version:4;         /**< The IP version */
+	uint8_t header_length:4;   /**< The IP header length (in 32-bit words) */
+	uint8_t dscp:6;            /**< The Differentiated Services Code Point (DSCP) */
+	uint8_t ip_ecn_flags:2;    /**< The Explicit Congestion Notification (ECN) flags */
 #else
-	uint8_t version : 4;
-	uint8_t header_length : 4;
-	uint8_t dscp : 6;
-	uint8_t ip_ecn_flags : 2;
+	uint8_t header_length:4;
+	uint8_t version:4;
+	uint8_t ip_ecn_flags:2;
+	uint8_t dscp:6;
 #endif
-	uint16_t length;
-	uint16_t ip_id;
-#if WORDS_BIGENDIAN != 1
-	uint8_t frag_offset1 : 5;
-	uint8_t mf : 1;
-	uint8_t df : 1;
-	uint8_t rf : 1;
+	uint16_t length;           /**< The IP packet total length (in bytes) */
+	uint16_t ip_id;            /**< The IP identification */
+#if WORDS_BIGENDIAN == 1
+	uint16_t rf:1;             /**< The Reserved Flag (RF), should be zero */
+	uint16_t df:1;             /**< The Don't Fragment (DF) flag */
+	uint16_t mf:1;             /**< The More Fragment (MF) flag */
+	uint16_t frag_offset:13;   /**< The Fragment Offset */
+#else
+	uint8_t frag_offset1:5;
+	uint8_t mf:1;
+	uint8_t df:1;
+	uint8_t rf:1;
 	uint8_t frag_offset2;
-#else
-	uint16_t rf : 1;
-	uint16_t df : 1;
-	uint16_t mf : 1;
-	uint16_t frag_offset : 13;
 #endif
-	uint8_t ttl_hopl;
-	uint8_t protocol;
-	uint16_t checksum;
-	uint32_t src_addr;
-	uint32_t dest_addr;
-	// extension_headers
+	uint8_t ttl_hopl;          /**< The Time To Live (TTL) */
+	uint8_t protocol;          /**< The protocol of the next header */
+	uint16_t checksum;         /**< The checksum on the IP header */
+	uint32_t src_addr;         /**< The source IP address */
+	uint32_t dest_addr;        /**< The destination IP address */
+	/* extension_headers begin here */
 } base_header_ip_v4_t;
 
-/**
- * @brief Define the IP v6 header.
- *
- * See RFC4996 page 78
- */
 
-typedef struct __attribute__((packed)) base_header_ip_v6
+/**
+ * @brief The IPv6 header
+ *
+ * @todo TODO: duplicate with struct ipv6_hdr
+ */
+typedef struct
 {
-#if WORDS_BIGENDIAN != 1
-	uint8_t dscp1 : 4;
-	uint8_t version : 4;
-	uint8_t flow_label1 : 4;
-	uint8_t ip_ecn_flags : 2;
-	uint8_t dscp2 : 2;
+#if WORDS_BIGENDIAN == 1
+	uint16_t version:4;        /**< The IP version */
+	uint16_t dscp1:4;          /**< The Differentiated Services Code Point (DSCP) */
+	uint16_t dscp2:2;          /**< The sequel of \e dscp1 */
+	uint16_t ip_ecn_flags:2;   /**< The Explicit Congestion Notification (ECN) flags */
+	uint16_t flow_label1:4;    /**< The Flow Label */
 #else
-	uint16_t version : 4;
-	uint16_t dscp1:4;
-	uint16_t dscp2:2;
-	uint16_t ip_ecn_flags : 2;
-	uint16_t flow_label1 : 4;
+	uint8_t dscp1:4;
+	uint8_t version:4;
+	uint8_t flow_label1:4;
+	uint8_t ip_ecn_flags:2;
+	uint8_t dscp2:2;
 #endif
-	uint16_t flow_label2;
-	uint16_t payload_length;
-	uint8_t next_header;
-	uint8_t ttl_hopl;
-	uint32_t src_addr[4];
-	uint32_t dest_addr[4];
-	// extension_headers
-} base_header_ip_v6_t;
+	uint16_t flow_label2;      /**< The sequel of \e flow_label1 */
+	uint16_t payload_length;   /**< The length (in bytes) of the IP payload
+	                                (extension headers included) */
+	uint8_t next_header;       /**< The protocol of the next header */
+	uint8_t ttl_hopl;          /**< The Hop Limit */
+	uint32_t src_addr[4];      /**< The source IP address */
+	uint32_t dest_addr[4];     /**< The destination IP address */
+	/* extension_headers begin here */
+} __attribute__((packed)) base_header_ip_v6_t;
 
 #define DSCP_V6(ptr)       (((ptr)->dscp1 << 2) | (ptr)->dscp2)
 #define FLOW_LABEL_V6(ptr) (((ptr->flow_label1) << 16) | ptr->flow_label2)
 
+
 /**
- * @brief Define the IP v4 static part.
+ * @brief The IPv4 static part
  *
  * See RFC4996 page 62
  */
-
-typedef struct __attribute__((packed)) ipv4_static
+typedef struct
 {
-#if WORDS_BIGENDIAN != 1
-	uint8_t reserved : 7;
-	uint8_t version_flag : 1;
+#if WORDS_BIGENDIAN == 1
+	uint8_t version_flag:1;
+	uint8_t reserved:7;
 #else
-	uint8_t version_flag : 1;
-	uint8_t reserved : 7;
+	uint8_t reserved:7;
+	uint8_t version_flag:1;
 #endif
 	uint8_t protocol;
 	uint32_t src_addr;
 	uint32_t dst_addr;
-} ipv4_static_t;
+} __attribute__((packed)) ipv4_static_t;
 
 
 /** The different IP-ID behaviors */
@@ -289,139 +254,133 @@ typedef enum
 
 
 /**
- * @brief Define the IP v4 dynamic part without ip_id.
+ * @brief The IPv4 dynamic part without IP-ID field
  *
  * See RFC4996 page 62
  */
-
-typedef struct __attribute__((packed)) ipv4_dynamic1
+typedef struct
 {
-#if WORDS_BIGENDIAN != 1
-	uint8_t ip_id_behavior : 2;
-	uint8_t df : 1;
-	uint8_t reserved : 5;
-	uint8_t ip_ecn_flags : 2;
-	uint8_t dscp : 6;
+#if WORDS_BIGENDIAN == 1
+	uint8_t reserved:5;
+	uint8_t df:1;
+	uint8_t ip_id_behavior:2;
+	uint8_t dscp:6;
+	uint8_t ip_ecn_flags:2;
 #else
-	uint8_t reserved : 5;
-	uint8_t df : 1;
-	uint8_t ip_id_behavior : 2;
-	uint8_t dscp : 6;
-	uint8_t ip_ecn_flags : 2;
+	uint8_t ip_id_behavior:2;
+	uint8_t df:1;
+	uint8_t reserved:5;
+	uint8_t ip_ecn_flags:2;
+	uint8_t dscp:6;
 #endif
 	uint8_t ttl_hopl;
-} ipv4_dynamic1_t;
+} __attribute__((packed)) ipv4_dynamic1_t;
+
 
 /**
- * @brief Define the IP v4 dynamic part with ip_id field.
+ * @brief The IPv4 dynamic part with IP-ID field
  *
  * See RFC4996 page 62
  */
-
-typedef struct __attribute__((packed)) ipv4_dynamic2
+typedef struct
 {
-#if WORDS_BIGENDIAN != 1
-	uint8_t ip_id_behavior : 2;
-	uint8_t df : 1;
-	uint8_t reserved : 5;
-	uint8_t ip_ecn_flags : 2;
-	uint8_t dscp : 6;
+#if WORDS_BIGENDIAN == 1
+	uint8_t reserved:5;
+	uint8_t df:1;
+	uint8_t ip_id_behavior:2;
+	uint8_t dscp:6;
+	uint8_t ip_ecn_flags:2;
 #else
-	uint8_t reserved : 5;
-	uint8_t df : 1;
-	uint8_t ip_id_behavior : 2;
-	uint8_t dscp : 6;
-	uint8_t ip_ecn_flags : 2;
+	uint8_t ip_id_behavior:2;
+	uint8_t df:1;
+	uint8_t reserved:5;
+	uint8_t ip_ecn_flags:2;
+	uint8_t dscp:6;
 #endif
 	uint8_t ttl_hopl;
 	uint16_t ip_id;
-} ipv4_dynamic2_t;
+} __attribute__((packed)) ipv4_dynamic2_t;
 
 
 /**
- * @brief Define the IP v6 static part, null flow_label encoded with 1 bit
+ * @brief The IPv6 static part, null flow_label encoded with 1 bit
  *
  * See RFC4996 page 58
  */
-
-typedef struct __attribute__((packed)) ipv6_static1
+typedef struct
 {
-#if WORDS_BIGENDIAN != 1
-	uint8_t reserved2 : 4;
-	uint8_t flow_label_enc_discriminator : 1;
-	uint8_t reserved1 : 2;
-	uint8_t version_flag : 1;
+#if WORDS_BIGENDIAN == 1
+	uint8_t version_flag:1;
+	uint8_t reserved1:2;
+	uint8_t flow_label_enc_discriminator:1;
+	uint8_t reserved2:4;
 #else
-	uint8_t version_flag : 1;
-	uint8_t reserved1 : 2;
-	uint8_t flow_label_enc_discriminator : 1;
-	uint8_t reserved2 : 4;
+	uint8_t reserved2:4;
+	uint8_t flow_label_enc_discriminator:1;
+	uint8_t reserved1:2;
+	uint8_t version_flag:1;
 #endif
 	uint8_t next_header;
 	uint32_t src_addr[4];
 	uint32_t dst_addr[4];
-} ipv6_static1_t;
+} __attribute__((packed)) ipv6_static1_t;
+
 
 /**
- * @brief Define the IP v6 static part, flow_label encoded with 1+20 bits
+ * @brief The IPv6 static part, flow_label encoded with 1+20 bits
  *
  * See RFC4996 page 59
  */
-
-typedef struct __attribute__((packed)) ipv6_static2
+typedef struct
 {
-#if WORDS_BIGENDIAN != 1
-	uint8_t flow_label1 : 4;
-	uint8_t flow_label_enc_discriminator : 1;
-	uint8_t reserved : 2;
-	uint8_t version_flag : 1;
+#if WORDS_BIGENDIAN == 1
+	uint8_t version_flag:1;
+	uint8_t reserved:2;
+	uint8_t flow_label_enc_discriminator:1;
+	uint8_t flow_label1:4;
 #else
-	uint8_t version_flag : 1;
-	uint8_t reserved : 2;
-	uint8_t flow_label_enc_discriminator : 1;
-	uint8_t flow_label1 : 4;
+	uint8_t flow_label1:4;
+	uint8_t flow_label_enc_discriminator:1;
+	uint8_t reserved:2;
+	uint8_t version_flag:1;
 #endif
 	uint16_t flow_label2;
 	uint8_t next_header;
 	uint32_t src_addr[4];
 	uint32_t dst_addr[4];
-} ipv6_static2_t;
+} __attribute__((packed)) ipv6_static2_t;
+
 
 /**
- * @brief Define the IP v6 dynamic part.
+ * @brief The IPv6 dynamic part
  *
  * See RFC4996 page 59
  */
-
-typedef struct __attribute__((packed)) ipv6_dynamic
+typedef struct
 {
-#if WORDS_BIGENDIAN != 1
-	uint8_t ip_ecn_flags : 2;
-	uint8_t dscp : 6;
+#if WORDS_BIGENDIAN == 1
+	uint8_t dscp:6;
+	uint8_t ip_ecn_flags:2;
 #else
-	uint8_t dscp : 6;
-	uint8_t ip_ecn_flags : 2;
+	uint8_t ip_ecn_flags:2;
+	uint8_t dscp:6;
 #endif
 	uint8_t ttl_hopl;
-} ipv6_dynamic_t;
+} __attribute__((packed)) ipv6_dynamic_t;
 
 
 /**
- * @brief Define the IP v6 extension
+ * @brief The IPv6 extension header
  *
+ * The high-order 3 bits of the option type define the behavior when processing
+ * an unknown option and whether or not the option content changes in flight.
  */
-
-/* The high-order 3 bits of the option type define the behavior
- * when processing an unknown option and whether or not the option
- * content changes in flight.
- */
-
-typedef struct  __attribute__((packed)) ipv6_extension
+typedef struct
 {
 	uint8_t next_header;
 	uint8_t extension_length;
 	uint8_t datas[1];
-} ipv6_extension_t;
+} __attribute__((packed)) ipv6_extension_t;
 
 
 #define ROHC_TCP_MAX_IP_HDRS        10U
@@ -429,16 +388,16 @@ typedef struct  __attribute__((packed)) ipv6_extension
 
 
 /**
- * @brief Define the Selective Acknowlegment TCP option
+ * @brief The Selective Acknowlegment TCP option
  *
  * See RFC2018 for TCP Selective Acknowledgement Options
  * See RFC4996 page 66
  */
-typedef struct __attribute__((packed))
+typedef struct
 {
 	uint32_t block_start;
 	uint32_t block_end;
-} sack_block_t;
+} __attribute__((packed)) sack_block_t;
 
 
 /** The maximum number of SACK blocks in the TCP SACK option */
@@ -446,43 +405,43 @@ typedef struct __attribute__((packed))
 
 
 /**
- * @brief Define the TCP header
+ * @brief The TCP header
  *
  * See RFC4996 page 72/73
  */
-
-typedef struct __attribute__((packed)) tcphdr
+typedef struct tcphdr
 {
 	uint16_t src_port;
 	uint16_t dst_port;
 	uint32_t seq_num;
 	uint32_t ack_num;
-#if WORDS_BIGENDIAN != 1
-	uint8_t res_flags : 4;
-	uint8_t data_offset : 4;
-	uint8_t rsf_flags : 3;
-	uint8_t psh_flag : 1;
-	uint8_t ack_flag : 1;
-	uint8_t urg_flag : 1;
-	uint8_t ecn_flags : 2;
+#if WORDS_BIGENDIAN == 1
+	uint8_t data_offset:4;
+	uint8_t res_flags:4;
+	uint8_t ecn_flags:2;
+	uint8_t urg_flag:1;
+	uint8_t ack_flag:1;
+	uint8_t psh_flag:1;
+	uint8_t rsf_flags:3;
 #else
-	uint8_t data_offset : 4;
-	uint8_t res_flags : 4;
-	uint8_t ecn_flags : 2;
-	uint8_t urg_flag : 1;
-	uint8_t ack_flag : 1;
-	uint8_t psh_flag : 1;
-	uint8_t rsf_flags : 3;
+	uint8_t res_flags:4;
+	uint8_t data_offset:4;
+	uint8_t rsf_flags:3;
+	uint8_t psh_flag:1;
+	uint8_t ack_flag:1;
+	uint8_t urg_flag:1;
+	uint8_t ecn_flags:2;
 #endif
 	uint16_t window;
 	uint16_t checksum;
 	uint16_t urg_ptr;
 	uint8_t options[0];          /**< The beginning of the TCP options */
-} tcphdr_t;
+} __attribute__((packed)) tcphdr_t;
 
 
 /** The largest index that may be used to identify one TCP option */
 #define MAX_TCP_OPTION_INDEX 15U
+
 
 /**
  * @brief The maximum of TCP options
@@ -505,74 +464,70 @@ struct tcp_option_timestamp
 } __attribute__((packed));
 
 
-/**
- * @brief Define the RSF flags
- *
- */
-
+/* The RSF flags */
 #define RSF_RST_ONLY  0x04
 #define RSF_SYN_ONLY  0x02
 #define RSF_FIN_ONLY  0x01
 #define RSF_NONE      0x00
 
+
 /**
- * @brief Define the TCP static part.
+ * @brief The TCP static part
  *
  * See RFC4996 page 73/74
  */
-
-typedef struct __attribute__((packed)) tcp_static
+typedef struct
 {
-	uint16_t src_port;               // =:= irregular(16)                               [ 16 ];
-	uint16_t dst_port;               // =:= irregular(16)                               [ 16 ];
-} tcp_static_t;
+	uint16_t src_port;          /**< irregular(16)                          [ 16 ] */
+	uint16_t dst_port;          /**< irregular(16)                          [ 16 ] */
+} __attribute__((packed)) tcp_static_t;
+
 
 /**
- * @brief Define the TCP dynamic part.
+ * @brief The TCP dynamic part
  *
  * See RFC4996 page 73/74
  */
-
-typedef struct __attribute__((packed)) tcp_dynamic
+typedef struct
 {
-#if WORDS_BIGENDIAN != 1
-	uint8_t tcp_res_flags : 4;     // =:= irregular(4)                                [ 4 ];
-	uint8_t urp_zero : 1;          // =:= irregular(1)                                [ 1 ];
-	uint8_t ack_zero : 1;          // =:= irregular(1)                                [ 1 ];
-	uint8_t ack_stride_flag : 1;   // =:= irregular(1)                                [ 1 ];
-	uint8_t ecn_used : 1;          // =:= one_bit_choice                              [ 1 ];
+#if WORDS_BIGENDIAN == 1
+	uint8_t ecn_used:1;         /**< one_bit_choice                         [ 1 ] */
+	uint8_t ack_stride_flag:1;  /**< irregular(1)                           [ 1 ] */
+	uint8_t ack_zero:1;         /**< irregular(1)                           [ 1 ] */
+	uint8_t urp_zero:1;         /**< irregular(1)                           [ 1 ] */
+	uint8_t tcp_res_flags:4;    /**< irregular(4)                           [ 4 ] */
 
-	uint8_t rsf_flags : 3;         // =:= irregular(3)                                [ 3 ];
-	uint8_t psh_flag : 1;          // =:= irregular(1)                                [ 1 ];
-	uint8_t ack_flag : 1;          // =:= irregular(1)                                [ 1 ];
-	uint8_t urg_flag : 1;          // =:= irregular(1)                                [ 1 ];
-	uint8_t tcp_ecn_flags : 2;     // =:= irregular(2)                                [ 2 ];
-
+	uint8_t tcp_ecn_flags:2;    /**< irregular(2)                           [ 2 ] */
+	uint8_t urg_flag:1;         /**< irregular(1)                           [ 1 ] */
+	uint8_t ack_flag:1;         /**< irregular(1)                           [ 1 ] */
+	uint8_t psh_flag:1;         /**< irregular(1)                           [ 1 ] */
+	uint8_t rsf_flags:3;        /**< irregular(3)                           [ 3 ] */
 #else
+	uint8_t tcp_res_flags:4;
+	uint8_t urp_zero:1;
+	uint8_t ack_zero:1;
+	uint8_t ack_stride_flag:1;
+	uint8_t ecn_used:1;
 
-	uint8_t ecn_used : 1;          // =:= one_bit_choice                              [ 1 ];
-	uint8_t ack_stride_flag : 1;   // =:= irregular(1)                                [ 1 ];
-	uint8_t ack_zero : 1;          // =:= irregular(1)                                [ 1 ];
-	uint8_t urp_zero : 1;          // =:= irregular(1)                                [ 1 ];
-	uint8_t tcp_res_flags : 4;     // =:= irregular(4)                                [ 4 ];
-
-	uint8_t tcp_ecn_flags : 2;     // =:= irregular(2)                                [ 2 ];
-	uint8_t urg_flag : 1;          // =:= irregular(1)                                [ 1 ];
-	uint8_t ack_flag : 1;          // =:= irregular(1)                                [ 1 ];
-	uint8_t psh_flag : 1;          // =:= irregular(1)                                [ 1 ];
-	uint8_t rsf_flags : 3;         // =:= irregular(3)                                [ 3 ];
-
+	uint8_t rsf_flags:3;
+	uint8_t psh_flag:1;
+	uint8_t ack_flag:1;
+	uint8_t urg_flag:1;
+	uint8_t tcp_ecn_flags:2;
 #endif
+	uint16_t msn;               /**< irregular(16)                          [ 16 ] */
+	uint32_t seq_num;           /**< irregular(32)                          [ 32 ] */
 
-	uint16_t msn;                 // =:= irregular(16)                               [ 16 ];
-	uint32_t seq_num;             // =:= irregular(32)                               [ 32 ];
-//	uint32_t	ack_num;             // =:= zero_or_irreg(ack_zero.CVALUE, 32)          [ 0, 32 ];
-//	uint16_t	window;              // =:= irregular(16)                               [ 16 ];
-//	uint16_t	checksum;            // =:= irregular(16)                               [ 16 ];
-//	uint16_t	urg_ptr;             // =:= zero_or_irreg(urp_zero.CVALUE, 16)          [ 0, 16 ];
-//	uint16_t	ack_stride;          // =:= static_or_irreg(ack_stride_flag.CVALUE, 16) [ 0, 16 ];
-//	options                          // =:= list_tcp_options                            [ VARIABLE ];
-} tcp_dynamic_t;
+	/* variable fields:
+	 *   zero_or_irreg(ack_zero.CVALUE, 32)                                 [ 0, 32 ]
+	 *   irregular(16)                                                      [ 16 ]
+	 *   irregular(16)                                                      [ 16 ]
+	 *   zero_or_irreg(urp_zero.CVALUE, 16)                                 [ 0, 16 ]
+	 *   static_or_irreg(ack_stride_flag.CVALUE, 16)                        [ 0, 16 ]
+	 *   list_tcp_options                                                   [ VARIABLE ]
+	 */
+
+} __attribute__((packed)) tcp_dynamic_t;
 
 
 /** The different TCP options */
@@ -611,568 +566,580 @@ typedef enum
 #define TCP_INDEX_GENERIC14   14U
 #define TCP_INDEX_GENERIC15   15U
 
+
 /**
- * @brief Define the Common compressed packet format
+ * @brief The Common compressed packet format
  *
  * See RFC4996 page 80/81
  */
-
-typedef struct __attribute__((packed)) co_common
+typedef struct
 {
-#if WORDS_BIGENDIAN != 1
+#if WORDS_BIGENDIAN == 1
 
-	uint8_t ttl_hopl_outer_flag : 1;   // =:= compressed_value(1, ttl_irregular_chain_flag) [ 1 ];
-	uint8_t discriminator : 7;         // =:= '1111101'
+	uint8_t discriminator:7;         /**< '1111101'                         [ 7 ] */
+	uint8_t ttl_hopl_outer_flag:1;   /**< compressed_value(1,
+												           ttl_irregular_chain_flag)   [ 1 ] */
 
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                     [ 4 ];
-	uint8_t rsf_flags : 2;             // =:= rsf_index_enc                                 [ 2 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                  [ 1 ];
-	uint8_t ack_flag : 1;              // =:= irregular(1)                                  [ 1 ];
+	uint8_t ack_flag:1;              /**< irregular(1)                      [ 1 ] */
+	uint8_t psh_flag:1;              /**< irregular(1)                      [ 1 ] */
+	uint8_t rsf_flags:2;             /**< rsf_index_enc                     [ 2 ] */
+	uint8_t msn:4;                   /**< lsb(4, 4)                         [ 4 ] */
 
-	uint8_t urg_ptr_present : 1;       // =:= irregular(1)                                  [ 1 ];
-	uint8_t ip_id_indicator : 1;       // =:= irregular(1)                                  [ 1 ];
-	uint8_t window_indicator : 1;      // =:= irregular(1)                                  [ 1 ];
-	uint8_t ack_stride_indicator : 1;  // =:= irregular(1)                                  [ 1 ];
-	uint8_t ack_indicator : 2;         // =:= irregular(2)                                  [ 2 ];
-	uint8_t seq_indicator : 2;         // =:= irregular(2)                                  [ 2 ];
+	uint8_t seq_indicator:2;         /**< irregular(2)                      [ 2 ] */
+	uint8_t ack_indicator:2;         /**< irregular(2)                      [ 2 ] */
+	uint8_t ack_stride_indicator:1;  /**< irregular(1)                      [ 1 ] */
+	uint8_t window_indicator:1;      /**< irregular(1)                      [ 1 ] */
+	uint8_t ip_id_indicator:1;       /**< irregular(1)                      [ 1 ] */
+	uint8_t urg_ptr_present:1;       /**< irregular(1)                      [ 1 ] */
 
-	uint8_t urg_flag : 1;              // =:= irregular(1)                                  [ 1 ];
-	uint8_t ip_id_behavior : 2;        // =:= ip_id_behavior_choice(true)                   [ 2 ];
-	uint8_t list_present : 1;          // =:= irregular(1)                                  [ 1 ];
-	uint8_t ttl_hopl_present : 1;      // =:= irregular(1)                                  [ 1 ];
-	uint8_t dscp_present : 1;          // =:= irregular(1)                                  [ 1 ];
-	uint8_t ecn_used : 1;              // =:= one_bit_choice                                [ 1 ];
-	uint8_t reserved : 1;              // =:= compressed_value(1, 0)                        [ 1 ];
+	uint8_t reserved:1;              /**< compressed_value(1, 0)            [ 1 ] */
+	uint8_t ecn_used:1;              /**< one_bit_choice                    [ 1 ] */
+	uint8_t dscp_present:1;          /**< irregular(1)                      [ 1 ] */
+	uint8_t ttl_hopl_present:1;      /**< irregular(1)                      [ 1 ] */
+	uint8_t list_present:1;          /**< irregular(1)                      [ 1 ] */
+	uint8_t ip_id_behavior:2;        /**< ip_id_behavior_choice(true)       [ 2 ] */
+	uint8_t urg_flag:1;              /**< irregular(1)                      [ 1 ] */
 
-	uint8_t header_crc : 7;            // =:= crc7(THIS.UVALUE,THIS.ULENGTH)                [ 7 ];
-	uint8_t df : 1;                    // =:= dont_fragment(version.UVALUE)                 [ 1 ];
+	uint8_t df:1;                    /**< dont_fragment(version.UVALUE)     [ 1 ] */
+	uint8_t header_crc:7;            /**< crc7(THIS.UVALUE,THIS.ULENGTH)    [ 7 ] */
 
 #else
 
-	uint8_t discriminator : 7;         // =:= '1111101'
-	uint8_t ttl_hopl_outer_flag : 1;   // =:= compressed_value(1, ttl_irregular_chain_flag) [ 1 ];
+	uint8_t ttl_hopl_outer_flag:1;
+	uint8_t discriminator:7;
 
-	uint8_t ack_flag : 1;              // =:= irregular(1)                                  [ 1 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                  [ 1 ];
-	uint8_t rsf_flags : 2;             // =:= rsf_index_enc                                 [ 2 ];
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                     [ 4 ];
+	uint8_t msn:4;
+	uint8_t rsf_flags:2;
+	uint8_t psh_flag:1;
+	uint8_t ack_flag:1;
 
-	uint8_t seq_indicator : 2;         // =:= irregular(2)                                  [ 2 ];
-	uint8_t ack_indicator : 2;         // =:= irregular(2)                                  [ 2 ];
-	uint8_t ack_stride_indicator : 1;  // =:= irregular(1)                                  [ 1 ];
-	uint8_t window_indicator : 1;      // =:= irregular(1)                                  [ 1 ];
-	uint8_t ip_id_indicator : 1;       // =:= irregular(1)                                  [ 1 ];
-	uint8_t urg_ptr_present : 1;       // =:= irregular(1)                                  [ 1 ];
+	uint8_t urg_ptr_present:1;
+	uint8_t ip_id_indicator:1;
+	uint8_t window_indicator:1;
+	uint8_t ack_stride_indicator:1;
+	uint8_t ack_indicator:2;
+	uint8_t seq_indicator:2;
 
-	uint8_t reserved : 1;              // =:= compressed_value(1, 0)                        [ 1 ];
-	uint8_t ecn_used : 1;              // =:= one_bit_choice                                [ 1 ];
-	uint8_t dscp_present : 1;          // =:= irregular(1)                                  [ 1 ];
-	uint8_t ttl_hopl_present : 1;      // =:= irregular(1)                                  [ 1 ];
-	uint8_t list_present : 1;          // =:= irregular(1)                                  [ 1 ];
-	uint8_t ip_id_behavior : 2;        // =:= ip_id_behavior_choice(true)                   [ 2 ];
-	uint8_t urg_flag : 1;              // =:= irregular(1)                                  [ 1 ];
+	uint8_t urg_flag:1;
+	uint8_t ip_id_behavior:2;
+	uint8_t list_present:1;
+	uint8_t ttl_hopl_present:1;
+	uint8_t dscp_present:1;
+	uint8_t ecn_used:1;
+	uint8_t reserved:1;
 
-	uint8_t df : 1;                    // =:= dont_fragment(version.UVALUE)                 [ 1 ];
-	uint8_t header_crc : 7;            // =:= crc7(THIS.UVALUE,THIS.ULENGTH)                [ 7 ];
+	uint8_t header_crc:7;
+	uint8_t df:1;
 
 #endif
 
-//  u_intXX_t	seq_num:X;              // =:= variable_length_32_enc(seq_indicator.CVALUE)                     [ 0, 8, 16, 32 ];
-//  u_intXX_t	ack_num:X;              // =:= variable_length_32_enc(ack_indicator.CVALUE)                     [ 0, 8, 16, 32 ];
-//  u_intXX_t	ack_stride:X;           // =:= static_or_irreg(ack_stride_indicator.CVALUE, 16)                 [ 0, 16 ];
-//  u_intXX_t  window:X;               // =:= static_or_irreg(window_indicator.CVALUE, 16)                     [ 0, 16 ];
-//  u_intXX_t  ip_id:X;                // =:= optional_ip_id_lsb(ip_id_behavior.UVALUE,ip_id_indicator.CVALUE) [ 0, 8, 16 ];
-//  u_intXX_t  urg_ptr:X;              // =:= static_or_irreg(urg_ptr_present.CVALUE, 16)                      [ 0, 16 ];
-//  u_intXX_t	dscp:X;                 // =:= dscp_enc-dscp_present.CVALUE)                                    [ 0, 8 ];
-//  u_intXX_t	ttl_hopl:X;             // =:= static_or_irreg(ttl_hopl_present.CVALUE, 8)                      [ 0, 8 ];
-//  options                            // =:= tcp_list_presence_enc(list_present.CVALUE)                       [ VARIABLE ];
+	/* variable fields:
+	 *   variable_length_32_enc(seq_indicator.CVALUE)                       [ 0, 8, 16, 32 ]
+	 *   variable_length_32_enc(ack_indicator.CVALUE)                       [ 0, 8, 16, 32 ]
+	 *   static_or_irreg(ack_stride_indicator.CVALUE, 16)                   [ 0, 16 ]
+	 *   static_or_irreg(window_indicator.CVALUE, 16)                       [ 0, 16 ]
+	 *   optional_ip_id_lsb(ip_id_behavior.UVALUE,ip_id_indicator.CVALUE)   [ 0, 8, 16 ]
+	 *   static_or_irreg(urg_ptr_present.CVALUE, 16)                        [ 0, 16 ]
+	 *   dscp_enc-dscp_present.CVALUE)                                      [ 0, 8 ]
+	 *   static_or_irreg(ttl_hopl_present.CVALUE, 8)                        [ 0, 8 ]
+	 *   tcp_list_presence_enc(list_present.CVALUE)                         [ VARIABLE ]
+	 *   irregular chain                                                    [ VARIABLE ]
+	 */
 
-} co_common_t;
+} __attribute__((packed)) co_common_t;
 
 
 /**
- * @brief Define the rnd_1 compressed packet format
+ * @brief The rnd_1 compressed packet format
  *
  * Send LSBs of sequence number
  * See RFC4996 page 81
  */
-typedef struct __attribute__((packed)) rnd_1
+typedef struct
 {
-#if WORDS_BIGENDIAN != 1
-	uint8_t seq_num1:2;           // =:= lsb(18, 65535)           [ 18 ];
-	uint8_t discriminator : 6;         // =:= '101110'                                       [ 6 ];
-	uint16_t seq_num2;            // =:= lsb(18, 65535)           [ 18 ];
-	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+#if WORDS_BIGENDIAN == 1
+	uint8_t discriminator:6;    /**< '101110'                               [  6 ] */
+	uint8_t seq_num1:2;         /**< lsb(18, 65535)                         [ 18 ] */
+	uint16_t seq_num2;          /**< sequel of \e seq_num1                  [  - ] */
+	uint8_t msn:4;              /**< lsb(4, 4)                              [  4 ] */
+	uint8_t psh_flag:1;         /**< irregular(1)                           [  1 ] */
+	uint8_t header_crc:3;       /**< crc3(THIS.UVALUE, THIS.ULENGTH)        [  3 ] */
 #else
-	uint8_t discriminator : 6;         // =:= '101110'                                       [ 6 ];
-	uint8_t seq_num1:2;          // =:= lsb(18, 65535)           [ 18 ];
-	uint16_t seq_num2;           // =:= lsb(18, 65535)           [ 18 ];
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t seq_num1:2;
+	uint8_t discriminator:6;
+	uint16_t seq_num2;
+	uint8_t header_crc:3;
+	uint8_t psh_flag:1;
+	uint8_t msn:4;
 #endif
-} rnd_1_t;
+	/* irregular chain                                                      [ VARIABLE ] */
+} __attribute__((packed)) rnd_1_t;
 
 
 /**
- * @brief Define the rnd_2 compressed packet format
+ * @brief The rnd_2 compressed packet format
  *
  * Send scaled sequence number LSBs
  * See RFC4996 page 81
  */
-typedef struct __attribute__((packed)) rnd_2
+typedef struct
 {
-#if WORDS_BIGENDIAN != 1
-	uint8_t seq_num_scaled:4;     // =:= lsb(4, 7)             [ 4 ];
-	uint8_t discriminator : 4;         // =:= '1100'                                         [ 4 ];
-	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+#if WORDS_BIGENDIAN == 1
+	uint8_t discriminator:4;    /**< '1100'                                 [ 4 ] */
+	uint8_t seq_num_scaled:4;   /**< lsb(4, 7)                              [ 4 ] */
+	uint8_t msn:4;              /**< lsb(4, 4)                              [ 4 ] */
+	uint8_t psh_flag:1;         /**< irregular(1)                           [ 1 ] */
+	uint8_t header_crc:3;       /**< crc3(THIS.UVALUE, THIS.ULENGTH)        [ 3 ] */
 #else
-	uint8_t discriminator : 4;         // =:= '1100'                                         [ 4 ];
-	uint8_t seq_num_scaled:4;    // =:= lsb(4, 7)             [ 4 ];
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t seq_num_scaled:4;
+	uint8_t discriminator:4;
+	uint8_t header_crc:3;
+	uint8_t psh_flag:1;
+	uint8_t msn:4;
 #endif
-} rnd_2_t;
+	/* irregular chain                                                      [ VARIABLE ] */
+} __attribute__((packed)) rnd_2_t;
 
 
 /**
- * @brief Define the rnd_3 compressed packet format
+ * @brief The rnd_3 compressed packet format
  *
  * Send acknowledgment number LSBs
  * See RFC4996 page 81
  */
-typedef struct __attribute__((packed)) rnd_3
+typedef struct
 {
-#if WORDS_BIGENDIAN != 1
-	uint8_t ack_num1:7;         // =:= lsb(15, 8191)               [ 15 ];
-	uint8_t discriminator : 1;         // =:= '0'                                            [ 4 ];
-	uint8_t ack_num2:8;         // =:= lsb(15, 8191)               [ 15 ];
-	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+#if WORDS_BIGENDIAN == 1
+	uint16_t discriminator:1;   /**< '0'                                    [  4 ] */
+	uint8_t ack_num1:7;         /**< lsb(15, 8191)                          [ 15 ] */
+	uint8_t ack_num2;           /**< sequel of \e ack_num1                  [  - ] */
+	uint8_t msn:4;              /**< lsb(4, 4)                              [  4 ] */
+	uint8_t psh_flag:1;         /**< irregular(1)                           [  1 ] */
+	uint8_t header_crc:3;       /**< crc3(THIS.UVALUE, THIS.ULENGTH)        [  3 ] */
 #else
-	uint16_t discriminator : 1;        // =:= '0'                                            [ 4 ];
-	uint8_t ack_num1:7;        // =:= lsb(15, 8191)                [ 15 ];
-	uint8_t ack_num2;          // =:= lsb(15, 8191)                [ 15 ];
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t ack_num1:7;
+	uint8_t discriminator:1;
+	uint8_t ack_num2:8;
+	uint8_t header_crc:3;
+	uint8_t psh_flag:1;
+	uint8_t msn:4;
 #endif
-} rnd_3_t;
+	/* irregular chain                                                      [ VARIABLE ] */
+} __attribute__((packed)) rnd_3_t;
 
 
 /**
- * @brief Define the rnd_4 compressed packet format
+ * @brief The rnd_4 compressed packet format
  *
  * Send acknowlegment number scaled
  * See RFC4996 page 81
  */
-typedef struct __attribute__((packed)) rnd_4
+typedef struct
 {
-#if WORDS_BIGENDIAN != 1
-	uint8_t ack_num_scaled:4;   // =:= lsb(4, 3)                [ 4 ];
-	uint8_t discriminator : 4;         // =:= '1101'                                         [ 4 ];
-
-	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+#if WORDS_BIGENDIAN == 1
+	uint8_t discriminator:4;    /**< '1101'                                 [ 4 ] */
+	uint8_t ack_num_scaled:4;   /**< lsb(4, 3)                              [ 4 ] */
+	uint8_t msn:4;              /**< lsb(4, 4)                              [ 4 ] */
+	uint8_t psh_flag:1;         /**< irregular(1)                           [ 1 ] */
+	uint8_t header_crc:3;       /**< crc3(THIS.UVALUE, THIS.ULENGTH)        [ 3 ] */
 #else
-	uint8_t discriminator : 4;         // =:= '1101'                                         [ 4 ];
-	uint8_t ack_num_scaled:4;   // =:= lsb(4, 3)                [ 4 ];
-
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t ack_num_scaled:4;
+	uint8_t discriminator:4;
+	uint8_t header_crc:3;
+	uint8_t psh_flag:1;
+	uint8_t msn:4;
 #endif
-} rnd_4_t;
+	/* irregular chain                                                      [ VARIABLE ] */
+} __attribute__((packed)) rnd_4_t;
 
 
 /**
- * @brief Define the rnd_5 compressed packet format
+ * @brief The rnd_5 compressed packet format
  *
  * Send ACK and sequence number
  * See RFC4996 page 82
  */
-typedef struct __attribute__((packed)) rnd_5
+typedef struct
 {
-#if WORDS_BIGENDIAN != 1
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	uint8_t discriminator : 3;         // =:= '100'                                          [ 3 ];
-
-	uint8_t seq_num1:5;          // =:= lsb(15, 8191)           [ 15 ];
-	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	uint8_t seq_num2;            // =:= lsb(15, 8191)           [ 15 ];
-	uint8_t ack_num1:7;          // =:= lsb(15, 8191)           [ 15 ];
-	uint8_t seq_num3:1;          // =:= lsb(15, 8191)           [ 15 ];
-	uint8_t ack_num2;            // =:= lsb(15, 8191)           [ 15 ];
+#if WORDS_BIGENDIAN == 1
+	uint8_t discriminator:3;    /**< '100'                                  [  3 ] */
+	uint8_t psh_flag:1;         /**< irregular(1)                           [  1 ] */
+	uint8_t msn:4;              /**< lsb(4, 4)                              [  4 ] */
+	uint32_t header_crc:3;      /**< crc3(THIS.UVALUE, THIS.ULENGTH)        [  3 ] */
+	uint32_t seq_num1:5;        /**< lsb(14, 8191)                          [ 14 ] */
+	uint32_t seq_num2:8;        /**< sequel of \e seq_num1                  [  - ] */
+	uint32_t seq_num3:1;        /**< sequel of \e seq_num1 and \e seq_num2  [  - ] */
+	uint32_t ack_num1:7;        /**< lsb(15, 8191)                          [ 15 ] */
+	uint32_t ack_num2:8;        /**< sequel of \e ack_num1                  [  - ] */
 #else
-	uint8_t discriminator : 3;         // =:= '100'                                          [ 3 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-
-	uint32_t header_crc : 3;           // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	uint32_t seq_num1:5;        // =:= lsb(14, 8191)            [ 14 ];
-	uint32_t seq_num2:8;        // =:= lsb(14, 8191)            [ 14 ];
-	uint32_t seq_num3:1;        // =:= lsb(14, 8191)            [ 14 ];
-	uint32_t ack_num1:7;        // =:= lsb(15, 8191)            [ 15 ];
-	uint32_t ack_num2:8;        // =:= lsb(15, 8191)            [ 15 ];
+	uint8_t msn:4;
+	uint8_t psh_flag:1;
+	uint8_t discriminator:3;
+	uint8_t seq_num1:5;
+	uint8_t header_crc:3;
+	uint8_t seq_num2;
+	uint8_t ack_num1:7;
+	uint8_t seq_num3:1;
+	uint8_t ack_num2;
 #endif
-} rnd_5_t;
+	/* irregular chain                                                      [ VARIABLE ] */
+} __attribute__((packed)) rnd_5_t;
 
 
 /**
- * @brief Define the rnd_6 compressed packet format
+ * @brief The rnd_6 compressed packet format
  *
  * Send both ACK and scaled sequence number LSBs
  * See RFC4996 page 82
  */
-typedef struct __attribute__((packed)) rnd_6
+typedef struct
 {
-#if WORDS_BIGENDIAN != 1
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	uint8_t discriminator : 4;         // =:= '1010'                                         [ 4 ];
+#if WORDS_BIGENDIAN == 1
+	uint8_t discriminator:4;    /**< '1010'                                 [ 4 ] */
+	uint8_t header_crc:3;       /**< crc3(THIS.UVALUE, THIS.ULENGTH)        [ 3 ] */
+	uint8_t psh_flag:1;         /**< irregular(1)                           [ 1 ] */
 #else
-	uint8_t discriminator : 4;         // =:= '1010'                                         [ 4 ];
-	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t psh_flag:1;
+	uint8_t header_crc:3;
+	uint8_t discriminator:4;
 #endif
-	uint16_t ack_num;            // =:= lsb(16, 16383)        [ 16 ];
-#if WORDS_BIGENDIAN != 1
-	uint8_t seq_num_scaled:4;    // =:= lsb(4, 7)             [ 4 ];
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint16_t ack_num;           /**< lsb(16, 16383)                         [ 16 ] */
+#if WORDS_BIGENDIAN == 1
+	uint8_t msn:4;              /**< lsb(4, 4)                              [ 4 ] */
+	uint8_t seq_num_scaled:4;   /**< lsb(4, 7)                              [ 4 ] */
 #else
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	uint8_t seq_num_scaled:4;    // =:= lsb(4, 7)             [ 4 ];
+	uint8_t seq_num_scaled:4;
+	uint8_t msn:4;
 #endif
-} rnd_6_t;
+	/* irregular chain                                                      [ VARIABLE ] */
+} __attribute__((packed)) rnd_6_t;
 
 
 /**
- * @brief Define the rnd_7 compressed packet format
+ * @brief The rnd_7 compressed packet format
  *
  * Send ACK and window
  * See RFC4996 page 82
  */
-typedef struct __attribute__((packed)) rnd_7
+typedef struct
 {
-#if WORDS_BIGENDIAN != 1
-	uint8_t ack_num1:2;         // =:= lsb(18, 65535)            [ 18 ];
-	uint8_t discriminator : 6;         // =:= '101111'                                       [ 6 ];
-	uint16_t ack_num2;          // =:= lsb(18, 65535)            [ 18 ];
+#if WORDS_BIGENDIAN == 1
+	uint8_t discriminator:6;    /**< '101111'                               [ 6 ] */
+	uint8_t ack_num1:2;         /**< lsb(18, 65535)                         [ 18 ] */
+	uint16_t ack_num2;          /**< sequel of \e ack_num1                  [ - ]*/
 #else
-	uint8_t discriminator : 6;         // =:= '101111'                                       [ 6 ];
-	uint8_t ack_num1:2;         // =:= lsb(18, 65535)            [ 18 ];
-	uint16_t ack_num2;          // =:= lsb(18, 65535)            [ 18 ];
+	uint8_t ack_num1:2;
+	uint8_t discriminator:6;
+	uint16_t ack_num2;
 #endif
-	uint16_t window;                   // =:= irregular(16)                                  [ 16 ];
-#if WORDS_BIGENDIAN != 1
-	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint16_t window;            /**< irregular(16)                          [ 16 ] */
+#if WORDS_BIGENDIAN == 1
+	uint8_t msn:4;              /**< lsb(4, 4)                              [ 4 ] */
+	uint8_t psh_flag:1;         /**< irregular(1)                           [ 1 ] */
+	uint8_t header_crc:3;       /**< crc3(THIS.UVALUE, THIS.ULENGTH)        [ 3 ] */
 #else
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t header_crc:3;
+	uint8_t psh_flag:1;
+	uint8_t msn:4;
 #endif
-} rnd_7_t;
+	/* irregular chain                                                      [ VARIABLE ] */
+} __attribute__((packed)) rnd_7_t;
 
 
 /**
- * @brief Define the rnd_8 compressed packet format
+ * @brief The rnd_8 compressed packet format
  *
  * Can send LSBs of TTL, RSF flags, change ECN behavior and options list
  * See RFC4996 page 82
  */
-typedef struct __attribute__((packed)) rnd_8
+typedef struct
 {
-#if WORDS_BIGENDIAN != 1
-	uint8_t list_present : 1;          // =:= irregular(1)                                   [ 1 ];
-	uint8_t rsf_flags : 2;             // =:= rsf_index_enc                                  [ 2 ];
-	uint8_t discriminator : 5;         // =:= '10110'                                        [ 5 ];
-	uint8_t msn1 : 1;                  // =:= lsb(4, 4)                                      [ 4 ];
-	uint8_t header_crc : 7;            // =:= crc7(THIS.UVALUE, THIS.ULENGTH)                [ 7 ];
-	uint8_t ecn_used : 1;              // =:= one_bit_choice                                 [ 1 ];
-	uint8_t ttl_hopl : 3;              // =:= lsb(3, 3)                                      [ 3 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	uint8_t msn2 : 3;                  // =:= lsb(4, 4)                                      [ 4 ];
+#if WORDS_BIGENDIAN == 1
+	uint8_t discriminator:5;    /**< '10110'                                [ 5 ] */
+	uint8_t rsf_flags:2;        /**< rsf_index_enc                          [ 2 ] */
+	uint8_t list_present:1;     /**< irregular(1)                           [ 1 ] */
+	uint16_t header_crc:7;      /**< crc7(THIS.UVALUE, THIS.ULENGTH)        [ 7 ] */
+	uint16_t msn1:1;            /**< lsb(4, 4)                              [ 4 ] */
+	uint16_t msn2:3;            /**< sequel of \e msn1                      [ - ] */
+	uint16_t psh_flag:1;        /**< irregular(1)                           [ 1 ] */
+	uint16_t ttl_hopl:3;        /**< lsb(3, 3)                              [ 3 ] */
+	uint16_t ecn_used:1;        /**< one_bit_choice                         [ 1 ] */
 #else
-	uint8_t discriminator : 5;         // =:= '10110'                                        [ 5 ];
-	uint8_t rsf_flags : 2;             // =:= rsf_index_enc                                  [ 2 ];
-	uint8_t list_present : 1;          // =:= irregular(1)                                   [ 1 ];
-	uint16_t header_crc : 7;           // =:= crc7(THIS.UVALUE, THIS.ULENGTH)                [ 7 ];
-	uint16_t msn1 : 1;                  // =:= lsb(4, 4)                                      [ 4 ];
-	uint16_t msn2 : 3;                  // =:= lsb(4, 4)                                      [ 4 ];
-	uint16_t psh_flag : 1;             // =:= irregular(1)                                   [ 1 ];
-	uint16_t ttl_hopl : 3;             // =:= lsb(3, 3)                                      [ 3 ];
-	uint16_t ecn_used : 1;             // =:= one_bit_choice                                 [ 1 ];
+	uint8_t list_present:1;
+	uint8_t rsf_flags:2;
+	uint8_t discriminator:5;
+	uint8_t msn1:1;
+	uint8_t header_crc:7;
+	uint8_t ecn_used:1;
+	uint8_t ttl_hopl:3;
+	uint8_t psh_flag:1;
+	uint8_t msn2:3;
 #endif
-	uint16_t seq_num;           // =:= lsb(16, 65535)             [ 16 ];
-	uint16_t ack_num;           // =:= lsb(16, 16383)             [ 16 ];
-	uint8_t options[0];                // =:= tcp_list_presence_enc(list_present.CVALUE)     [ VARIABLE ];
-} rnd_8_t;
+	uint16_t seq_num;           /**< lsb(16, 65535)                         [ 16 ] */
+	uint16_t ack_num;           /**< lsb(16, 16383)                         [ 16 ] */
+	uint8_t options[0];         /**< tcp_list_presence_enc(list_present.CVALUE)
+	                                                                        [ VARIABLE ] */
+	/* irregular chain                                                      [ VARIABLE ] */
+} __attribute__((packed)) rnd_8_t;
 
 
 /**
- * @brief Define the seq_1 compressed packet format
+ * @brief The seq_1 compressed packet format
  *
  * Send LSBs of sequence number
  * See RFC4996 page 83
  */
-typedef struct __attribute__((packed)) seq_1
+typedef struct
 {
-#if WORDS_BIGENDIAN != 1
-	uint8_t ip_id : 4;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 4, 3)         [ 4 ];
-	uint8_t discriminator : 4;         // =:= '1010'                                         [ 4 ];
+#if WORDS_BIGENDIAN == 1
+	uint8_t discriminator:4;    /**< '1010'                                 [ 4 ] */
+	uint8_t ip_id:4;            /**< ip_id_lsb(ip_id_behavior.UVALUE, 4, 3) [ 4 ] */
 #else
-	uint8_t discriminator : 4;         // =:= '1010'                                         [ 4 ];
-	uint8_t ip_id : 4;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 4, 3)         [ 4 ];
+	uint8_t ip_id:4;
+	uint8_t discriminator:4;
 #endif
-	uint16_t seq_num;          // =:= lsb(16, 32767)             [ 16 ];
-#if WORDS_BIGENDIAN != 1
-	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint16_t seq_num;           /**< lsb(16, 32767)                         [ 16 ] */
+#if WORDS_BIGENDIAN == 1
+	uint8_t msn:4;              /**< lsb(4, 4)                              [ 4 ] */
+	uint8_t psh_flag:1;         /**< irregular(1)                           [ 1 ] */
+	uint8_t header_crc:3;       /**< crc3(THIS.UVALUE, THIS.ULENGTH)        [ 3 ] */
 #else
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t header_crc:3;
+	uint8_t psh_flag:1;
+	uint8_t msn:4;
 #endif
-} seq_1_t;
+	/* irregular chain                                                      [ VARIABLE ] */
+} __attribute__((packed)) seq_1_t;
 
 
 /**
- * @brief Define the seq_2 compressed packet format
+ * @brief The seq_2 compressed packet format
  *
  * Send scaled sequence number LSBs
  * See RFC4996 page 83
  */
-typedef struct __attribute__((packed)) seq_2
+typedef struct
 {
-#if WORDS_BIGENDIAN != 1
-	uint8_t ip_id1 : 3;                // =:= ip_id_lsb(ip_id_behavior.UVALUE, 7, 3)        [ 3 ];
-	uint8_t discriminator : 5;         // =:= '11010'                                        [ 5 ];
-	uint8_t seq_num_scaled:4;   // =:= lsb(4, 7)                [ 4 ];
-	uint8_t ip_id2 : 4;                // =:= ip_id_lsb(ip_id_behavior.UVALUE, 7, 3)        [ 4 ];
-	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+#if WORDS_BIGENDIAN == 1
+	uint16_t discriminator:5;   /**< '11010'                                [ 5 ] */
+	uint16_t ip_id1:3;          /**< ip_id_lsb(ip_id_behavior.UVALUE, 7, 3) [ 7 ] */
+	uint16_t ip_id2:4;          /**< sequel of ip_id1                       [ - ] */
+	uint16_t seq_num_scaled:4;  /**< lsb(4, 7)                              [ 4 ] */
+	uint8_t msn:4;              /**< lsb(4, 4)                              [ 4 ] */
+	uint8_t psh_flag:1;         /**< irregular(1)                           [ 1 ] */
+	uint8_t header_crc:3;       /**< crc3(THIS.UVALUE, THIS.ULENGTH)        [ 3 ] */
 #else
-	uint16_t discriminator : 5;        // =:= '11010'                                        [ 5 ];
-	uint16_t ip_id1 : 3;               // =:= ip_id_lsb(ip_id_behavior.UVALUE, 7, 3)         [ 7 ];
-	uint16_t ip_id2 : 4;               // =:= ip_id_lsb(ip_id_behavior.UVALUE, 7, 3)         [ 7 ];
-	uint16_t seq_num_scaled : 4;    // =:= lsb(4, 7)                                      [ 4 ];
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t ip_id1:3;
+	uint8_t discriminator:5;
+	uint8_t seq_num_scaled:4;
+	uint8_t ip_id2:4;
+	uint8_t header_crc:3;
+	uint8_t psh_flag:1;
+	uint8_t msn:4;
 #endif
-} seq_2_t;
+	/* irregular chain                                                      [ VARIABLE ] */
+} __attribute__((packed)) seq_2_t;
 
 
 /**
- * @brief Define the seq_3 compressed packet format
+ * @brief The seq_3 compressed packet format
  *
  * Send acknowledgment number LSBs
  * See RFC4996 page 83
  */
-typedef struct __attribute__((packed)) seq_3
+typedef struct
 {
-#if WORDS_BIGENDIAN != 1
-	uint8_t ip_id : 4;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 4, 3)         [ 4 ];
-	uint8_t discriminator : 4;         // =:= '1001'                                         [ 4 ];
+#if WORDS_BIGENDIAN == 1
+	uint8_t discriminator:4;    /**< '1001'                                 [  4 ] */
+	uint8_t ip_id:4;            /**< ip_id_lsb(ip_id_behavior.UVALUE, 4, 3) [  4 ] */
 #else
-	uint8_t discriminator : 4;         // =:= '1001'                                         [ 4 ];
-	uint8_t ip_id : 4;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 4, 3)         [ 4 ];
+	uint8_t ip_id:4;
+	uint8_t discriminator:4;
 #endif
-	uint16_t ack_num;          // =:= lsb(16, 16383)               [ 16 ];
-#if WORDS_BIGENDIAN != 1
-	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint16_t ack_num;           /**< lsb(16, 16383)                         [ 16 ] */
+#if WORDS_BIGENDIAN == 1
+	uint8_t msn:4;              /**< lsb(4, 4)                              [  4 ] */
+	uint8_t psh_flag:1;         /**< irregular(1)                           [  1 ] */
+	uint8_t header_crc:3;       /**< crc3(THIS.UVALUE, THIS.ULENGTH)        [  3 ] */
 #else
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t header_crc:3;
+	uint8_t psh_flag:1;
+	uint8_t msn:4;
 #endif
-} seq_3_t;
+	/* irregular chain                                                      [ VARIABLE ] */
+} __attribute__((packed)) seq_3_t;
 
 
 /**
- * @brief Define the seq_4 compressed packet format
+ * @brief The seq_4 compressed packet format
  *
  * Send scaled acknowledgment number scaled
  * See RFC4996 page 84
  */
-typedef struct __attribute__((packed)) seq_4
+typedef struct
 {
-#if WORDS_BIGENDIAN != 1
-	uint8_t ip_id : 3;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 3, 1)         [ 3 ];
-	uint8_t ack_num_scaled:4;  // =:= lsb(4, 3)                 [ 4 ];
-	uint8_t discriminator : 1;         // =:= '0'                                            [ 1 ];
-	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+#if WORDS_BIGENDIAN == 1
+	uint8_t discriminator:1;    /**< '0'                                    [ 1 ] */
+	uint8_t ack_num_scaled:4;   /**< lsb(4, 3)                              [ 4 ] */
+	uint8_t ip_id:3;            /**< ip_id_lsb(ip_id_behavior.UVALUE, 3, 1) [ 3 ] */
+	uint8_t msn:4;              /**< lsb(4, 4)                              [ 4 ] */
+	uint8_t psh_flag:1;         /**< irregular(1)                           [ 1 ] */
+	uint8_t header_crc:3;       /**< crc3(THIS.UVALUE, THIS.ULENGTH)        [ 3 ] */
 #else
-	uint8_t discriminator : 1;         // =:= '0'                                            [ 1 ];
-	uint8_t ack_num_scaled:4;  // =:= lsb(4, 3)                 [ 4 ];
-	uint8_t ip_id : 3;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 3, 1)         [ 3 ];
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t ip_id:3;
+	uint8_t ack_num_scaled:4;
+	uint8_t discriminator:1;
+	uint8_t header_crc:3;
+	uint8_t psh_flag:1;
+	uint8_t msn:4;
 #endif
-} seq_4_t;
+	/* irregular chain                                                      [ VARIABLE ] */
+} __attribute__((packed)) seq_4_t;
 
 
 /**
- * @brief Define the seq_5 compressed packet format
+ * @brief The seq_5 compressed packet format
  *
  * Send ACK and sequence number
  * See RFC4996 page 84
  */
-typedef struct __attribute__((packed)) seq_5
+typedef struct
 {
-#if WORDS_BIGENDIAN != 1
-	uint8_t ip_id : 4;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 4, 3)         [ 4 ];
-	uint8_t discriminator : 4;         // =:= '1000'                                         [ 4 ];
+#if WORDS_BIGENDIAN == 1
+	uint8_t discriminator:4;    /**< '1000'                                 [  4 ] */
+	uint8_t ip_id:4;            /**< ip_id_lsb(ip_id_behavior.UVALUE, 4, 3) [  4 ] */
 #else
-	uint8_t discriminator : 4;         // =:= '1000'                                         [ 4 ];
-	uint8_t ip_id : 4;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 4, 3)         [ 4 ];
+	uint8_t ip_id:4;
+	uint8_t discriminator:4;
 #endif
-	uint16_t ack_num;          // =:= lsb(16, 16383)              [ 16 ];
-	uint16_t seq_num;          // =:= lsb(16, 32767)              [ 16 ];
-#if WORDS_BIGENDIAN != 1
-	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint16_t ack_num;           /**< lsb(16, 16383)                         [ 16 ] */
+	uint16_t seq_num;           /**< lsb(16, 32767)                         [ 16 ] */
+#if WORDS_BIGENDIAN == 1
+	uint8_t msn:4;              /**< lsb(4, 4)                              [  4 ] */
+	uint8_t psh_flag:1;         /**< irregular(1)                           [  1 ] */
+	uint8_t header_crc:3;       /**< crc3(THIS.UVALUE, THIS.ULENGTH)        [  3 ] */
 #else
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t header_crc:3;
+	uint8_t psh_flag:1;
+	uint8_t msn:4;
 #endif
-} seq_5_t;
+	/* irregular chain                                                      [ VARIABLE ] */
+} __attribute__((packed)) seq_5_t;
 
 
 /**
- * @brief Define the seq_6 compressed packet format
+ * @brief The seq_6 compressed packet format
  *
  * Send both ACK and scaled sequence number LSBs
  * See RFC4996 page 84
  */
-typedef struct __attribute__((packed)) seq_6
+typedef struct
 {
-#if WORDS_BIGENDIAN != 1
-	uint8_t seq_num_scaled1:3;   // =:= lsb(4, 7)                  [ 3 ];
-	uint8_t discriminator : 5;         // =:= '11011'                                        [ 5 ];
-	uint8_t ip_id : 7;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 7, 3)         [ 7 ];
-	uint8_t seq_num_scaled2:1;   // =:= lsb(4, 7)                  [ 1 ];
+#if WORDS_BIGENDIAN == 1
+	uint16_t discriminator:5;   /**< '11011'                                [  5 ] */
+	uint16_t seq_num_scaled1:3; /**< lsb(4, 7)                              [  4 ] */
+	uint16_t seq_num_scaled2:1; /**< sequel of \e seq_num_scaled1           [  4 ] */
+	uint16_t ip_id:7;           /**< ip_id_lsb(ip_id_behavior.UVALUE, 7, 3) [  7 ] */
 #else
-	uint16_t discriminator : 5;        // =:= '11011'                                        [ 5 ];
-	uint16_t seq_num_scaled1:3;  // =:= lsb(4, 7)                  [ 4 ];
-	uint16_t seq_num_scaled2:1;  // =:= lsb(4, 7)                  [ 4 ];
-	uint16_t ip_id : 7;                // =:= ip_id_lsb(ip_id_behavior.UVALUE, 7, 3)         [ 7 ];
+	uint8_t seq_num_scaled1:3;
+	uint8_t discriminator:5;
+	uint8_t ip_id:7;
+	uint8_t seq_num_scaled2:1;
 #endif
-	uint16_t ack_num;            // =:= lsb(16, 16383)             [ 16 ];
-#if WORDS_BIGENDIAN != 1
-	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint16_t ack_num;           /**< lsb(16, 16383)                         [ 16 ] */
+#if WORDS_BIGENDIAN == 1
+	uint8_t msn:4;              /**< lsb(4, 4)                              [ 4 ] */
+	uint8_t psh_flag:1;         /**< irregular(1)                           [ 1 ] */
+	uint8_t header_crc:3;       /**< crc3(THIS.UVALUE, THIS.ULENGTH)        [ 3 ] */
 #else
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t header_crc:3;
+	uint8_t psh_flag:1;
+	uint8_t msn:4;
 #endif
-} seq_6_t;
+	/* irregular chain                                                      [ VARIABLE ] */
+} __attribute__((packed)) seq_6_t;
 
 
 /**
- * @brief Define the seq_7 compressed packet format
+ * @brief The seq_7 compressed packet format
  *
  * Send ACK and window
  * See RFC4996 page 85
  */
-typedef struct __attribute__((packed)) seq_7
+typedef struct
 {
-#if WORDS_BIGENDIAN != 1
-	uint8_t window1 : 4;      // =:= lsb(15, 16383)                                 [ 15 ];
-	uint8_t discriminator : 4;   // =:= '1100'                                         [ 4 ];
-
-	uint8_t window2;
-
-	uint8_t ip_id : 5;     // =:= ip_id_lsb(ip_id_behavior.UVALUE, 5, 3)         [ 5 ];
-	uint8_t window3 : 3;
-
-	uint16_t ack_num;      // =:= lsb(16, 32767)                [ 16 ];
-
-	uint8_t header_crc : 3;      // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	uint8_t psh_flag : 1;     // =:= irregular(1)                                   [ 1 ];
-	uint8_t msn : 4;          // =:= lsb(4, 4)                                      [ 4 ];
+#if WORDS_BIGENDIAN == 1
+	uint8_t discriminator:4;    /**< '1100'                                 [  4 ] */
+	uint8_t window1:4;          /**< lsb(15, 16383)                         [ 15 ] */
+	uint8_t window2;            /**< sequel of \e window1                   [  - ] */
+	uint8_t window3:3;          /**< sequel of \e window1 and \e window2    [  - ] */
+	uint8_t ip_id:5;            /**< ip_id_lsb(ip_id_behavior.UVALUE, 5, 3) [  5 ] */
+	uint16_t ack_num;           /**< lsb(16, 32767)                         [ 16 ] */
+	uint8_t msn:4;              /**< lsb(4, 4)                              [  4 ] */
+	uint8_t psh_flag:1;         /**< irregular(1)                           [  1 ] */
+	uint8_t header_crc:3;       /**< crc3(THIS.UVALUE, THIS.ULENGTH)        [  3 ] */
 #else
-	uint8_t discriminator : 4;   // =:= '1100'                                         [ 4 ];
-	uint8_t window1 : 4;      // =:= lsb(15, 16383)                                 [ 15 ];
-
+	uint8_t window1:4;
+	uint8_t discriminator:4;
 	uint8_t window2;
-
-	uint8_t window3 : 3;
-	uint8_t ip_id : 5;     // =:= ip_id_lsb(ip_id_behavior.UVALUE, 5, 3)         [ 5 ];
-
-	uint16_t ack_num;      // =:= lsb(16, 32767)                [ 16 ];
-
-	uint8_t msn : 4;          // =:= lsb(4, 4)                                      [ 4 ];
-	uint8_t psh_flag : 1;     // =:= irregular(1)                                   [ 1 ];
-	uint8_t header_crc : 3;      // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t ip_id:5;
+	uint8_t window3:3;
+	uint16_t ack_num;
+	uint8_t header_crc:3;
+	uint8_t psh_flag:1;
+	uint8_t msn:4;
 #endif
-} seq_7_t;
+	/* irregular chain                                                      [ VARIABLE ] */
+} __attribute__((packed)) seq_7_t;
 
 
 /**
- * @brief Define the seq_8 compressed packet format
+ * @brief The seq_8 compressed packet format
  *
  * Can send LSBs of TTL, RSF flags, change ECN behavior, and options list
  * See RFC4996 page 85
  */
-typedef struct __attribute__((packed)) seq_8
+typedef struct
 {
-#if WORDS_BIGENDIAN != 1
-	uint8_t ip_id : 4;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 4, 3)         [ 4 ];
-	uint8_t discriminator : 4;         // =:= '1011'                                         [ 4 ];
-	uint8_t header_crc : 7;            // =:= crc7(THIS.UVALUE, THIS.ULENGTH)                [ 7 ];
-	uint8_t list_present : 1;          // =:= irregular(1)                                   [ 1 ];
-	uint8_t ttl_hopl : 3;              // =:= lsb(3, 3)                                      [ 3 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	uint8_t ack_num1:7;       // =:= lsb(15, 8191)               [ 15 ];
-	uint8_t ecn_used : 1;              // =:= one_bit_choice                                 [ 1 ];
-	uint8_t ack_num2;         // =:= lsb(15, 8191)               [ 15 ];
-	uint8_t seq_num1:6;       // =:= lsb(14, 8191)               [ 14 ];
-	uint8_t rsf_flags : 2;             // =:= rsf_index_enc                                  [ 2 ];
-	uint8_t seq_num2:8;       // =:= lsb(14, 8191)               [ 14 ];
+#if WORDS_BIGENDIAN == 1
+	uint8_t discriminator:4;    /**< '1011'                                 [  4 ] */
+	uint8_t ip_id:4;            /**< ip_id_lsb(ip_id_behavior.UVALUE, 4, 3) [  4 ] */
+	uint8_t list_present:1;     /**< irregular(1)                           [  1 ] */
+	uint8_t header_crc:7;       /**< crc7(THIS.UVALUE, THIS.ULENGTH)        [  7 ] */
+	uint8_t msn:4;              /**< lsb(4, 4)                              [  4 ] */
+	uint8_t psh_flag:1;         /**< irregular(1)                           [  1 ] */
+	uint8_t ttl_hopl:3;         /**< lsb(3, 3)                              [  3 ] */
+	uint8_t ecn_used:1;         /**< one_bit_choice                         [  1 ] */
+	uint8_t ack_num1:7;         /**< lsb(15, 8191)                          [ 15 ] */
+	uint8_t ack_num2;           /**< sequel of \e ack_num1                  [  - ] */
+	uint8_t rsf_flags:2;        /**< rsf_index_enc                          [  2 ] */
+	uint8_t seq_num1:6;         /**< lsb(14, 8191)                          [ 14 ] */
+	uint8_t seq_num2;           /**< sequel of \e seq_num1                  [  - ] */
 #else
-	uint8_t discriminator : 4;         // =:= '1011'                                         [ 4 ];
-	uint8_t ip_id : 4;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 4, 3)         [ 4 ];
-	uint8_t list_present : 1;          // =:= irregular(1)                                   [ 1 ];
-	uint8_t header_crc : 7;            // =:= crc7(THIS.UVALUE, THIS.ULENGTH)                [ 7 ];
-	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	uint8_t ttl_hopl : 3;              // =:= lsb(3, 3)                                      [ 3 ];
-	uint8_t ecn_used : 1;              // =:= one_bit_choice                                 [ 1 ];
-	uint8_t ack_num1:7;      // =:= lsb(15, 8191)                [ 15 ];
-	uint8_t ack_num2;        // =:= lsb(15, 8191)                [ 15 ];
-	uint8_t rsf_flags : 2;             // =:= rsf_index_enc                                  [ 2 ];
-	uint8_t seq_num1 : 6;    // =:= lsb(14, 8191)                [ 14 ];
-	uint8_t seq_num2;        // =:= lsb(14, 8191)                [ 14 ];
+	uint8_t ip_id:4;
+	uint8_t discriminator:4;
+	uint8_t header_crc:7;
+	uint8_t list_present:1;
+	uint8_t ttl_hopl:3;
+	uint8_t psh_flag:1;
+	uint8_t msn:4;
+	uint8_t ack_num1:7;
+	uint8_t ecn_used:1;
+	uint8_t ack_num2;
+	uint8_t seq_num1:6;
+	uint8_t rsf_flags:2;
+	uint8_t seq_num2:8;
 #endif
-	uint8_t options[0];                // =:= tcp_list_presence_enc(list_present.CVALUE)     [ VARIABLE ];
-} seq_8_t;
+	uint8_t options[0];       /**< tcp_list_presence_enc(list_present.CVALUE)
+	                                                                      [ VARIABLE ] */
+	/* irregular chain                                                    [ VARIABLE ] */
+} __attribute__((packed)) seq_8_t;
 
 
 /**
  * @brief Define union of different header pointers
+ *
+ * @todo TODO: remove this union
  */
 typedef union
 {
@@ -1182,7 +1149,7 @@ typedef union
 	base_header_ip_vx_t *ipvx;
 	base_header_ip_v4_t *ipv4;
 	base_header_ip_v6_t *ipv6;
-	ipv6_opt_t *ipv6_opt;
+	struct ipv6_opt *ipv6_opt;
 	ip_dest_opt_t *ip_dest_opt;
 	ip_hop_opt_t *ip_hop_opt;
 	ip_rout_opt_t *ip_rout_opt;
@@ -1253,6 +1220,7 @@ static inline char * tcp_opt_get_descr(const uint8_t opt_type)
 			return "generic";
 	}
 }
+
 
 #endif /* ROHC_PROTOCOLS_TCP_H */
 
