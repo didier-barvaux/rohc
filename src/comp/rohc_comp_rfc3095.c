@@ -42,6 +42,7 @@
 #include "sdvl.h"
 #include "crc.h"
 
+#include <stdint.h>
 #ifndef __KERNEL__
 #  include <string.h>
 #endif
@@ -6277,11 +6278,12 @@ static int changed_dynamic_one_hdr(struct rohc_comp_ctxt *const context,
 	/* IPv4 only checks */
 	if(ip_get_version(ip) == IPV4)
 	{
-		unsigned int df, old_df;
+		uint8_t old_df;
+		uint8_t df;
 
 		/* check the Don't Fragment flag for change (IPv4 only) */
 		df = ipv4_get_df(ip);
-		old_df = IPV4_GET_DF(header_info->info.v4.old_ip);
+		old_df = header_info->info.v4.old_ip.df;
 		if(df != old_df || header_info->info.v4.df_count < MAX_FO_COUNT)
 		{
 			if(df != old_df)

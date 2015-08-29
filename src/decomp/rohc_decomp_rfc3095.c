@@ -5152,7 +5152,7 @@ static bool build_uncomp_ipv4(const struct rohc_decomp_ctxt *const context,
 		ip->id = swab16(ip->id);
 	}
 	ip->frag_off = 0;
-	IPV4_SET_DF(ip, decoded.df);
+	ip->df = decoded.df;
 	ip->ttl = decoded.ttl;
 
 	/* inferred fields */

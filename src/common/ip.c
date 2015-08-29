@@ -29,6 +29,7 @@
 #include "rohc_utils.h"
 #include "protocols/ip_numbers.h"
 #include "protocols/ip.h"
+#include "protocols/ipv4.h"
 
 #ifndef __KERNEL__
 #  include <string.h>
@@ -395,7 +396,7 @@ bool ip_is_fragment(const struct ip_packet *const ip)
 
 	if(ip->version == IPV4)
 	{
-		is_fragment = ((rohc_ntoh16(ip->header.v4.frag_off) & (~IP_DF)) != 0);
+		is_fragment = ipv4_is_fragment(&ip->header.v4);
 	}
 	else if(ip->version == IPV6)
 	{
@@ -833,7 +834,7 @@ void ipv4_set_id(struct ip_packet *const ip, const int value)
 int ipv4_get_df(const struct ip_packet *const ip)
 {
 	assert(ip->version == IPV4);
-	return IPV4_GET_DF(ip->header.v4);
+	return ip->header.v4.df;
 }
 
 
@@ -849,7 +850,7 @@ int ipv4_get_df(const struct ip_packet *const ip)
 void ipv4_set_df(struct ip_packet *const ip, const int value)
 {
 	assert(ip->version == IPV4);
-	IPV4_SET_DF(&ip->header.v4, value);
+	ip->header.v4.df = value;
 }
 
 

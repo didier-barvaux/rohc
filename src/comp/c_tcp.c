@@ -984,8 +984,8 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 				ip_context->ctxt.v4.last_ip_id_behavior = IP_ID_BEHAVIOR_SEQ;
 				ip_context->ctxt.v4.ip_id_behavior = IP_ID_BEHAVIOR_SEQ;
 				ip_context->ctxt.v4.protocol = proto;
-				ip_context->ctxt.v4.dscp = (ipv4->tos >> 2) & 0x3f;
-				ip_context->ctxt.v4.df = IPV4_GET_DF(*ipv4);
+				ip_context->ctxt.v4.dscp = ipv4->dscp;
+				ip_context->ctxt.v4.df = ipv4->df;
 				ip_context->ctxt.v4.ttl_hopl = ipv4->ttl;
 				ip_context->ctxt.v4.src_addr = ipv4->saddr;
 				ip_context->ctxt.v4.dst_addr = ipv4->daddr;
@@ -1344,7 +1344,7 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 			}
 
 			/* check if the IPv4 header is a fragment */
-			if((rohc_ntoh16(ipv4->frag_off) & (~IP_DF)) != 0)
+			if(ipv4_is_fragment(ipv4))
 			{
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 				           "IP packet #%zu is fragmented", ip_hdrs_nr + 1);
@@ -2513,8 +2513,8 @@ static int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
 		inner_ip_context->ctxt.v4.last_ip_id_behavior =
 			inner_ip_context->ctxt.v4.ip_id_behavior;
 		inner_ip_context->ctxt.v4.last_ip_id = tcp_context->tmp.ip_id;
-		inner_ip_context->ctxt.v4.df = IPV4_GET_DF(*inner_ipv4);
-		inner_ip_context->ctxt.vx.dscp = (inner_ipv4->tos >> 2) & 0x3f;
+		inner_ip_context->ctxt.v4.df = inner_ipv4->df;
+		inner_ip_context->ctxt.vx.dscp = inner_ipv4->dscp;
 	}
 	else if(inner_ip_hdr->version == IPV6)
 	{
@@ -2806,7 +2806,7 @@ static uint8_t * tcp_code_dynamic_ipv4_part(const struct rohc_comp_ctxt *context
 	                ip_context->ctxt.v4.last_ip_id, ip_id);
 
 	mptr.ipv4_dynamic1->reserved = 0;
-	mptr.ipv4_dynamic1->df = IPV4_GET_DF(*ipv4);
+	mptr.ipv4_dynamic1->df = ipv4->df;
 
 	/* IP-ID behavior
 	 * cf. RFC4996 page 60/61 ip_id_behavior_choice() and ip_id_enc_dyn() */
@@ -2832,8 +2832,8 @@ static uint8_t * tcp_code_dynamic_ipv4_part(const struct rohc_comp_ctxt *context
 	/* TODO: should not update context there */
 	ip_context->ctxt.v4.last_ip_id_behavior = ip_context->ctxt.v4.ip_id_behavior;
 
-	mptr.ipv4_dynamic1->dscp = (ipv4->tos >> 2) & 0x3f;
-	mptr.ipv4_dynamic1->ip_ecn_flags = ipv4->tos & 0x3;
+	mptr.ipv4_dynamic1->dscp = ipv4->dscp;
+	mptr.ipv4_dynamic1->ip_ecn_flags = ipv4->ecn;
 	mptr.ipv4_dynamic1->ttl_hopl = ipv4->ttl;
 
 	/* IP-ID itself
@@ -2863,9 +2863,9 @@ static uint8_t * tcp_code_dynamic_ipv4_part(const struct rohc_comp_ctxt *context
 	}
 
 	/* TODO: should not update context there */
-	ip_context->ctxt.v4.dscp = (ipv4->tos >> 2) & 0x3f;
+	ip_context->ctxt.v4.dscp = ipv4->dscp;
 	ip_context->ctxt.v4.ttl_hopl = ipv4->ttl;
-	ip_context->ctxt.v4.df = IPV4_GET_DF(*ipv4);
+	ip_context->ctxt.v4.df = ipv4->df;
 	ip_context->ctxt.v4.last_ip_id = rohc_ntoh16(ipv4->id);
 
 #if ROHC_EXTRA_DEBUG == 1
@@ -2972,7 +2972,7 @@ static uint8_t * tcp_code_irregular_ipv4_part(struct rohc_comp_ctxt *const conte
 		 *   ip_ecn_flags =:= static_or_irreg( ecn_used.UVALUE ) */
 		if(ecn_used)
 		{
-			rohc_data[0] = ipv4->tos;
+			rohc_data[0] = ipv4->dscp_ecn;
 			rohc_comp_debug(context, "add DSCP and ip_ecn_flags = 0x%02x",
 			                rohc_data[0]);
 			rohc_data++;
@@ -4495,7 +4495,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 			assert(remain_len >= sizeof(struct ipv4_hdr));
 
 			protocol = ipv4->protocol;
-			ip_inner_ecn = ipv4->tos & 0x03;
+			ip_inner_ecn = ipv4->ecn;
 			ipv4_hdr_len = ipv4->ihl * sizeof(uint32_t);
 			payload_size = rohc_ntoh16(ipv4->tot_len) - ipv4_hdr_len;
 
@@ -4906,8 +4906,8 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 		const struct ipv4_hdr *const inner_ipv4 = (struct ipv4_hdr *) inner_ip_hdr;
 		inner_ip_ctxt->ctxt.v4.last_ip_id_behavior = inner_ip_ctxt->ctxt.v4.ip_id_behavior;
 		inner_ip_ctxt->ctxt.v4.last_ip_id = tcp_context->tmp.ip_id;
-		inner_ip_ctxt->ctxt.v4.df = IPV4_GET_DF(*inner_ipv4);
-		inner_ip_ctxt->ctxt.vx.dscp = (inner_ipv4->tos >> 2) & 0x3f;
+		inner_ip_ctxt->ctxt.v4.df = inner_ipv4->df;
+		inner_ip_ctxt->ctxt.vx.dscp = inner_ipv4->dscp;
 	}
 	else
 	{
@@ -5930,10 +5930,10 @@ static bool c_tcp_build_co_common(struct rohc_comp_ctxt *const context,
 	if(inner_ip_hdr->version == IPV4)
 	{
 		const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) inner_ip_hdr;
-		const uint8_t dscp = (ipv4->tos >> 2) & 0x3f;
 
 		/* dscp_present =:= irregular(1) [ 1 ] */
-		ret = dscp_encode(inner_ip_ctxt->ctxt.vx.dscp, dscp, co_common_opt, &indicator);
+		ret = dscp_encode(inner_ip_ctxt->ctxt.vx.dscp, ipv4->dscp,
+		                  co_common_opt, &indicator);
 		if(ret < 0)
 		{
 			rohc_comp_warn(context, "failed to encode dscp_encode(dscp)");
@@ -5945,7 +5945,7 @@ static bool c_tcp_build_co_common(struct rohc_comp_ctxt *const context,
 		rohc_comp_debug(context, "dscp_present = %d (context = 0x%02x, "
 		                "value = 0x%02x) => length = %d bytes",
 		                co_common->dscp_present, inner_ip_ctxt->ctxt.vx.dscp,
-		                dscp, ret);
+		                ipv4->dscp, ret);
 
 		/* ttl_hopl */
 		ret = c_static_or_irreg8(inner_ip_ctxt->ctxt.vx.ttl_hopl,
@@ -5965,7 +5965,7 @@ static bool c_tcp_build_co_common(struct rohc_comp_ctxt *const context,
 		                co_common->ttl_hopl_present, ret);
 
 		// =:= dont_fragment(version.UVALUE) [ 1 ];
-		co_common->df = IPV4_GET_DF(*ipv4);
+		co_common->df = ipv4->df;
 	}
 	else
 	{
@@ -6115,7 +6115,7 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 			}
 
 			protocol = ipv4->protocol;
-			pkt_ecn_vals |= ipv4->tos & 0x3;
+			pkt_ecn_vals |= ipv4->ecn;
 
 			remain_data += sizeof(struct ipv4_hdr);
 			remain_len -= sizeof(struct ipv4_hdr);
@@ -6628,11 +6628,11 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		           tcp_context->tmp.ip_id_delta);
 
 		tcp_context->tmp.ip_df_changed =
-			(IPV4_GET_DF(*inner_ipv4) != inner_ip_ctxt->ctxt.v4.df);
+			!!(inner_ipv4->df != inner_ip_ctxt->ctxt.v4.df);
 		tcp_field_descr_change(context, "DF", tcp_context->tmp.ip_df_changed, 0);
 
 		tcp_context->tmp.dscp_changed =
-			(((inner_ipv4->tos >> 2) & 0x3f) != inner_ip_ctxt->ctxt.v4.dscp);
+			!!(inner_ipv4->dscp != inner_ip_ctxt->ctxt.v4.dscp);
 		tcp_field_descr_change(context, "DSCP", tcp_context->tmp.dscp_changed, 0);
 
 		tcp_context->tmp.ttl_hopl = inner_ipv4->ttl;

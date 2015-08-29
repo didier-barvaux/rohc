@@ -127,31 +127,6 @@ struct ip_packet
 
 
 /*
- * IPv4 definitions & macros:
- */
-
-/// The offset for the DF flag in an ipv4_hdr->frag_off variable
-#define IPV4_DF_OFFSET  14
-
-/// Get the IPv4 Don't Fragment (DF) bit from an ipv4_hdr object
-#define IPV4_GET_DF(ip4) \
-	IP_GET_16_SUBFIELD((ip4).frag_off, IP_DF, IPV4_DF_OFFSET)
-
-/// Set the IPv4 Don't Fragment (DF) bit in an ipv4_hdr object
-#define IPV4_SET_DF(ip4, value) \
-	IP_SET_16_SUBFIELD((ip4)->frag_off, IP_DF, IPV4_DF_OFFSET, (value))
-
-/// The format to print an IPv4 address
-#define IPV4_ADDR_FORMAT \
-	"%02x%02x%02x%02x (%u.%u.%u.%u)"
-
-/// The data to print an IPv4 address in raw format
-#define IPV4_ADDR_RAW(x) \
-	(x)[0], (x)[1], (x)[2], (x)[3], \
-	(x)[0], (x)[1], (x)[2], (x)[3]
-
-
-/*
  * IPv6 definitions & macros:
  */
 

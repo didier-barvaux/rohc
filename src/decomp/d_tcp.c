@@ -3608,11 +3608,12 @@ static bool d_tcp_build_ipv4_hdr(const struct rohc_decomp_ctxt *const context,
 
 	/* dynamic part */
 	ipv4->frag_off = 0;
-	IPV4_SET_DF(ipv4, decoded->df);
-	ipv4->tos = (decoded->dscp << 2) | decoded->ecn_flags;
+	ipv4->df = decoded->df;
+	ipv4->dscp = decoded->dscp;
+	ipv4->ecn = decoded->ecn_flags;
 	ipv4->ttl = decoded->ttl;
 	rohc_decomp_debug(context, "    DSCP = 0x%02x, ip_ecn_flags = %d",
-	                  (ipv4->tos >> 2) & 0x3f, ipv4->tos & 0x3);
+	                  ipv4->dscp, ipv4->ecn);
 	/* IP-ID */
 	if(decoded->id_behavior == IP_ID_BEHAVIOR_SEQ_SWAP)
 	{
