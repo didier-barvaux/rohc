@@ -75,5 +75,15 @@ struct ipv6_hdr
 #define ip6_hlim  ip6_ctlun.ip6_un1.ip6_un1_hlim
 #define ip6_hops  ip6_ctlun.ip6_un1.ip6_un1_hlim
 
+
+/** The IPv6 option header */
+struct ipv6_opt
+{
+	uint8_t next_header;
+	uint8_t length;
+	uint8_t value[1];
+} __attribute__((packed));
+
+
 #endif
 

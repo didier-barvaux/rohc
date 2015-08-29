@@ -45,183 +45,168 @@
 #define ROHC_PACKET_TYPE_IR_DYN  0xF8
 
 
-/** The IPv6 option header */
-struct ipv6_opt
+/************************************************************************
+ * Limits                                                               *
+ ************************************************************************/
+
+/**
+ * @brief The maximum number of IP headers supported by the TCP profile
+ *
+ * The limit value was chosen arbitrarily. It should handle most real-life case
+ * without hurting performances nor memory footprint.
+ */
+#define ROHC_TCP_MAX_IP_HDRS        10U
+
+
+/**
+ * @brief The maximum number of IPv6 extension header supported by the TCP profile
+ *
+ * The limit value was chosen arbitrarily. It should handle most real-life case
+ * without hurting performances nor memory footprint.
+ */
+#define ROHC_TCP_MAX_IPV6_EXT_HDRS  20U
+
+
+/**
+ * @brief The largest index that may be used to identify one TCP option
+ *
+ * The ROHC standard defines that one TCP option is identified by an index. It
+ * also defines that index is in range [0 ; 15].
+ */
+#define MAX_TCP_OPTION_INDEX 15U
+
+
+/**
+ * @brief The maximum of TCP options
+ *
+ * One TCP header may contain up to 40 bytes of options, so it may contain
+ * up 40 1-byte options, so the ROHC (de)compressors should expect such TCP
+ * packets. However the m field in the compressed list of TCP options (see
+ * RFC 6846, section 6.3.3 for more details) cannot be larger than 15, so
+ * restrict the number of TCP options that value. One TCP packet with more
+ * than 15 TCP options will be compressed with the IP-only profile.
+ * */
+#define ROHC_TCP_OPTS_MAX  15U
+
+
+
+/************************************************************************
+ * Uncompressed TCP base header                                         *
+ ************************************************************************/
+
+/**
+ * @brief The TCP base header without options
+ *
+ * See RFC4996 page 72/73
+ */
+struct tcphdr
 {
-	uint8_t next_header;
-	uint8_t length;
-	uint8_t value[1];
+	uint16_t src_port;
+	uint16_t dst_port;
+	uint32_t seq_num;
+	uint32_t ack_num;
+#if WORDS_BIGENDIAN == 1
+	uint8_t data_offset:4;
+	uint8_t res_flags:4;
+	uint8_t ecn_flags:2;
+	uint8_t urg_flag:1;
+	uint8_t ack_flag:1;
+	uint8_t psh_flag:1;
+	uint8_t rsf_flags:3;
+#else
+	uint8_t res_flags:4;
+	uint8_t data_offset:4;
+	uint8_t rsf_flags:3;
+	uint8_t psh_flag:1;
+	uint8_t ack_flag:1;
+	uint8_t urg_flag:1;
+	uint8_t ecn_flags:2;
+#endif
+	uint16_t window;
+	uint16_t checksum;
+	uint16_t urg_ptr;
+	uint8_t options[0];          /**< The beginning of the TCP options */
 } __attribute__((packed));
 
 
-/** The static part of IPv6 option header */
-typedef struct
+/* The RSF flags */
+#define RSF_RST_ONLY  0x04
+#define RSF_SYN_ONLY  0x02
+#define RSF_FIN_ONLY  0x01
+#define RSF_NONE      0x00
+
+
+
+/************************************************************************
+ * Uncompressed TCP options                                             *
+ ************************************************************************/
+
+/** The different TCP options */
+typedef enum
 {
-	uint8_t next_header;
-	uint8_t length;
-} __attribute__((packed)) ip_opt_static_t;
+	TCP_OPT_EOL       = 0U,  /**< The End of Option List (EOL) TCP option */
+	TCP_OPT_NOP       = 1U,  /**< The No OPeration (NOP) TCP option */
+	TCP_OPT_MSS       = 2U,  /**< The Maximum Segment Size (MSS) TCP option */
+#define TCP_OLEN_MSS         4U
+	TCP_OPT_WS        = 3U,  /**< The Window Scale (WS) TCP option */
+#define TCP_OLEN_WS          3U
+	TCP_OPT_SACK_PERM = 4U,  /**< The SACK Permitted TCP option */
+#define TCP_OLEN_SACK_PERM   2U
+	TCP_OPT_SACK      = 5U,  /**< The Selective ACKnowledgement (SACK) TCP option */
+	TCP_OPT_TS        = 8U,  /**< The TimeStamp (TS) TCP option */
+#define TCP_OLEN_TS         10U
+	TCP_OPT_MAX       = 255U /**< The maximum TCP option */
+
+} rohc_tcp_option_type_t;
 
 
-/** The dynamic part of IPv6 option header */
-typedef struct
-{
-	uint8_t value[1];
-} __attribute__((packed)) ip_opt_dynamic_t;
-
-
-/** The IPv6 Destination options header */
-typedef struct
-{
-	uint8_t next_header;
-	uint8_t length;
-	uint8_t value[1];
-} __attribute__((packed)) ip_dest_opt_t;
-
-
-/** The static part of IPv6 Destination option header */
-typedef struct
-{
-	uint8_t next_header;
-	uint8_t length;
-} __attribute__((packed)) ip_dest_opt_static_t;
-
-
-/** The dynamic part of IPv6 Destination option header */
-typedef struct
-{
-	uint8_t value[1];
-} __attribute__((packed)) ip_dest_opt_dynamic_t;
-
-
-/** The IPv6 Hop-by-Hop option header */
-typedef struct
-{
-	uint8_t next_header;
-	uint8_t length;
-	uint8_t value[1];
-} __attribute__((packed)) ip_hop_opt_t;
-
-
-/** The static part of IPv6 Hop-by-Hop option header */
-typedef struct
-{
-	uint8_t next_header;
-	uint8_t length;
-} __attribute__((packed)) ip_hop_opt_static_t;
-
-
-/** The dynamic part of IPv6 Hop-by-Hop option header */
-typedef struct
-{
-	uint8_t value[1];
-} __attribute__((packed)) ip_hop_opt_dynamic_t;
-
-
-/** The IPv6 Routing option header */
-typedef struct
-{
-	uint8_t next_header;
-	uint8_t length;
-	uint8_t value[1];
-} __attribute__((packed)) ip_rout_opt_t;
-
-
-/** The static part of IPv6 Routing option header */
-typedef struct
-{
-	uint8_t next_header;
-	uint8_t length;
-	uint8_t value[1];
-} __attribute__((packed)) ip_rout_opt_static_t;
-
-
-/** The common IPv4/v6 header */
-typedef struct
-{
-#if WORDS_BIGENDIAN == 1
-	uint8_t version:4;    /**< The IP version */
-	uint8_t reserved:4;   /**< That field depends on IP version */
-#else
-	uint8_t reserved:4;
-	uint8_t version:4;
-#endif
-} __attribute__((packed)) base_header_ip_vx_t;
+#define TCP_INDEX_NOP          0U
+#define TCP_INDEX_EOL          1U
+#define TCP_INDEX_MSS          2U
+#define TCP_INDEX_WS           3U
+#define TCP_INDEX_TS           4U
+#define TCP_INDEX_SACK_PERM    5U
+#define TCP_INDEX_SACK         6U
+#define TCP_INDEX_GENERIC7     7U
+#define TCP_INDEX_GENERIC8     8U
+#define TCP_INDEX_GENERIC9     9U
+#define TCP_INDEX_GENERIC10   10U
+#define TCP_INDEX_GENERIC11   11U
+#define TCP_INDEX_GENERIC12   12U
+#define TCP_INDEX_GENERIC13   13U
+#define TCP_INDEX_GENERIC14   14U
+#define TCP_INDEX_GENERIC15   15U
 
 
 /**
- * @brief The IPv4 header
+ * @brief The Selective Acknowlegment TCP option
  *
- * @todo TODO: duplicate with struct ipv4_hdr
+ * See RFC2018 for TCP Selective Acknowledgement Options
+ * See RFC4996 page 66
  */
 typedef struct
 {
-#if WORDS_BIGENDIAN == 1
-	uint8_t version:4;         /**< The IP version */
-	uint8_t header_length:4;   /**< The IP header length (in 32-bit words) */
-	uint8_t dscp:6;            /**< The Differentiated Services Code Point (DSCP) */
-	uint8_t ip_ecn_flags:2;    /**< The Explicit Congestion Notification (ECN) flags */
-#else
-	uint8_t header_length:4;
-	uint8_t version:4;
-	uint8_t ip_ecn_flags:2;
-	uint8_t dscp:6;
-#endif
-	uint16_t length;           /**< The IP packet total length (in bytes) */
-	uint16_t ip_id;            /**< The IP identification */
-#if WORDS_BIGENDIAN == 1
-	uint16_t rf:1;             /**< The Reserved Flag (RF), should be zero */
-	uint16_t df:1;             /**< The Don't Fragment (DF) flag */
-	uint16_t mf:1;             /**< The More Fragment (MF) flag */
-	uint16_t frag_offset:13;   /**< The Fragment Offset */
-#else
-	uint8_t frag_offset1:5;
-	uint8_t mf:1;
-	uint8_t df:1;
-	uint8_t rf:1;
-	uint8_t frag_offset2;
-#endif
-	uint8_t ttl_hopl;          /**< The Time To Live (TTL) */
-	uint8_t protocol;          /**< The protocol of the next header */
-	uint16_t checksum;         /**< The checksum on the IP header */
-	uint32_t src_addr;         /**< The source IP address */
-	uint32_t dest_addr;        /**< The destination IP address */
-	/* extension_headers begin here */
-} base_header_ip_v4_t;
+	uint32_t block_start;
+	uint32_t block_end;
+} __attribute__((packed)) sack_block_t;
 
 
-/**
- * @brief The IPv6 header
- *
- * @todo TODO: duplicate with struct ipv6_hdr
- */
-typedef struct
+/** The maximum number of SACK blocks in the TCP SACK option */
+#define TCP_SACK_BLOCKS_MAX_NR  4U
+
+
+/** The Timestamp option of the TCP header */
+struct tcp_option_timestamp
 {
-#if WORDS_BIGENDIAN == 1
-	uint16_t version:4;        /**< The IP version */
-	uint16_t dscp1:4;          /**< The Differentiated Services Code Point (DSCP) */
-	uint16_t dscp2:2;          /**< The sequel of \e dscp1 */
-	uint16_t ip_ecn_flags:2;   /**< The Explicit Congestion Notification (ECN) flags */
-	uint16_t flow_label1:4;    /**< The Flow Label */
-#else
-	uint8_t dscp1:4;
-	uint8_t version:4;
-	uint8_t flow_label1:4;
-	uint8_t ip_ecn_flags:2;
-	uint8_t dscp2:2;
-#endif
-	uint16_t flow_label2;      /**< The sequel of \e flow_label1 */
-	uint16_t payload_length;   /**< The length (in bytes) of the IP payload
-	                                (extension headers included) */
-	uint8_t next_header;       /**< The protocol of the next header */
-	uint8_t ttl_hopl;          /**< The Hop Limit */
-	uint32_t src_addr[4];      /**< The source IP address */
-	uint32_t dest_addr[4];     /**< The destination IP address */
-	/* extension_headers begin here */
-} __attribute__((packed)) base_header_ip_v6_t;
+	uint32_t ts;        /**< The timestamp value */
+	uint32_t ts_reply;  /**< The timestamp echo reply value */
+} __attribute__((packed));
 
-#define DSCP_V6(ptr)       (((ptr)->dscp1 << 2) | (ptr)->dscp2)
-#define FLOW_LABEL_V6(ptr) (((ptr->flow_label1) << 16) | ptr->flow_label2)
 
+
+/************************************************************************
+ * Compressed IPv4 header                                               *
+ ************************************************************************/
 
 /**
  * @brief The IPv4 static part
@@ -302,6 +287,65 @@ typedef struct
 } __attribute__((packed)) ipv4_dynamic2_t;
 
 
+
+/************************************************************************
+ * Compressed IPv6 base header and its extension headers                *
+ ************************************************************************/
+
+/** The static part of IPv6 option header */
+typedef struct
+{
+	uint8_t next_header;
+	uint8_t length;
+} __attribute__((packed)) ip_opt_static_t;
+
+
+/** The dynamic part of IPv6 option header */
+typedef struct
+{
+	uint8_t value[1];
+} __attribute__((packed)) ip_opt_dynamic_t;
+
+
+/** The static part of IPv6 Destination option header */
+typedef struct
+{
+	uint8_t next_header;
+	uint8_t length;
+} __attribute__((packed)) ip_dest_opt_static_t;
+
+
+/** The dynamic part of IPv6 Destination option header */
+typedef struct
+{
+	uint8_t value[1];
+} __attribute__((packed)) ip_dest_opt_dynamic_t;
+
+
+/** The static part of IPv6 Hop-by-Hop option header */
+typedef struct
+{
+	uint8_t next_header;
+	uint8_t length;
+} __attribute__((packed)) ip_hop_opt_static_t;
+
+
+/** The dynamic part of IPv6 Hop-by-Hop option header */
+typedef struct
+{
+	uint8_t value[1];
+} __attribute__((packed)) ip_hop_opt_dynamic_t;
+
+
+/** The static part of IPv6 Routing option header */
+typedef struct
+{
+	uint8_t next_header;
+	uint8_t length;
+	uint8_t value[1];
+} __attribute__((packed)) ip_rout_opt_static_t;
+
+
 /**
  * @brief The IPv6 static part, null flow_label encoded with 1 bit
  *
@@ -369,107 +413,10 @@ typedef struct
 } __attribute__((packed)) ipv6_dynamic_t;
 
 
-/**
- * @brief The IPv6 extension header
- *
- * The high-order 3 bits of the option type define the behavior when processing
- * an unknown option and whether or not the option content changes in flight.
- */
-typedef struct
-{
-	uint8_t next_header;
-	uint8_t extension_length;
-	uint8_t datas[1];
-} __attribute__((packed)) ipv6_extension_t;
 
-
-#define ROHC_TCP_MAX_IP_HDRS        10U
-#define ROHC_TCP_MAX_IPV6_EXT_HDRS  20U
-
-
-/**
- * @brief The Selective Acknowlegment TCP option
- *
- * See RFC2018 for TCP Selective Acknowledgement Options
- * See RFC4996 page 66
- */
-typedef struct
-{
-	uint32_t block_start;
-	uint32_t block_end;
-} __attribute__((packed)) sack_block_t;
-
-
-/** The maximum number of SACK blocks in the TCP SACK option */
-#define TCP_SACK_BLOCKS_MAX_NR  4U
-
-
-/**
- * @brief The TCP header
- *
- * See RFC4996 page 72/73
- */
-typedef struct tcphdr
-{
-	uint16_t src_port;
-	uint16_t dst_port;
-	uint32_t seq_num;
-	uint32_t ack_num;
-#if WORDS_BIGENDIAN == 1
-	uint8_t data_offset:4;
-	uint8_t res_flags:4;
-	uint8_t ecn_flags:2;
-	uint8_t urg_flag:1;
-	uint8_t ack_flag:1;
-	uint8_t psh_flag:1;
-	uint8_t rsf_flags:3;
-#else
-	uint8_t res_flags:4;
-	uint8_t data_offset:4;
-	uint8_t rsf_flags:3;
-	uint8_t psh_flag:1;
-	uint8_t ack_flag:1;
-	uint8_t urg_flag:1;
-	uint8_t ecn_flags:2;
-#endif
-	uint16_t window;
-	uint16_t checksum;
-	uint16_t urg_ptr;
-	uint8_t options[0];          /**< The beginning of the TCP options */
-} __attribute__((packed)) tcphdr_t;
-
-
-/** The largest index that may be used to identify one TCP option */
-#define MAX_TCP_OPTION_INDEX 15U
-
-
-/**
- * @brief The maximum of TCP options
- *
- * One TCP header may contain up to 40 bytes of options, so it may contain
- * up 40 1-byte options, so the ROHC (de)compressors should expect such TCP
- * packets. However the m field in the compressed list of TCP options (see
- * RFC 6846, section 6.3.3 for more details) cannot be larger than 15, so
- * restrict the number of TCP options that value. One TCP packet with more
- * than 15 TCP options will be compressed with the IP-only profile.
- * */
-#define ROHC_TCP_OPTS_MAX  15U
-
-
-/** The Timestamp option of the TCP header */
-struct tcp_option_timestamp
-{
-	uint32_t ts;        /**< The timestamp value */
-	uint32_t ts_reply;  /**< The timestamp echo reply value */
-} __attribute__((packed));
-
-
-/* The RSF flags */
-#define RSF_RST_ONLY  0x04
-#define RSF_SYN_ONLY  0x02
-#define RSF_FIN_ONLY  0x01
-#define RSF_NONE      0x00
-
+/************************************************************************
+ * Compressed TCP header and its options                                *
+ ************************************************************************/
 
 /**
  * @brief The TCP static part
@@ -528,43 +475,6 @@ typedef struct
 	 */
 
 } __attribute__((packed)) tcp_dynamic_t;
-
-
-/** The different TCP options */
-typedef enum
-{
-	TCP_OPT_EOL       = 0U,  /**< The End of Option List (EOL) TCP option */
-	TCP_OPT_NOP       = 1U,  /**< The No OPeration (NOP) TCP option */
-	TCP_OPT_MSS       = 2U,  /**< The Maximum Segment Size (MSS) TCP option */
-#define TCP_OLEN_MSS         4U
-	TCP_OPT_WS        = 3U,  /**< The Window Scale (WS) TCP option */
-#define TCP_OLEN_WS          3U
-	TCP_OPT_SACK_PERM = 4U,  /**< The SACK Permitted TCP option */
-#define TCP_OLEN_SACK_PERM   2U
-	TCP_OPT_SACK      = 5U,  /**< The Selective ACKnowledgement (SACK) TCP option */
-	TCP_OPT_TS        = 8U,  /**< The TimeStamp (TS) TCP option */
-#define TCP_OLEN_TS         10U
-	TCP_OPT_MAX       = 255U /**< The maximum TCP option */
-
-} rohc_tcp_option_type_t;
-
-
-#define TCP_INDEX_NOP          0U
-#define TCP_INDEX_EOL          1U
-#define TCP_INDEX_MSS          2U
-#define TCP_INDEX_WS           3U
-#define TCP_INDEX_TS           4U
-#define TCP_INDEX_SACK_PERM    5U
-#define TCP_INDEX_SACK         6U
-#define TCP_INDEX_GENERIC7     7U
-#define TCP_INDEX_GENERIC8     8U
-#define TCP_INDEX_GENERIC9     9U
-#define TCP_INDEX_GENERIC10   10U
-#define TCP_INDEX_GENERIC11   11U
-#define TCP_INDEX_GENERIC12   12U
-#define TCP_INDEX_GENERIC13   13U
-#define TCP_INDEX_GENERIC14   14U
-#define TCP_INDEX_GENERIC15   15U
 
 
 /**
@@ -1136,27 +1046,10 @@ typedef struct
 } __attribute__((packed)) seq_8_t;
 
 
-/**
- * @brief Define union of different header pointers
- *
- * @todo TODO: remove this union
- */
-typedef union
-{
-	unsigned int uint;
-	uint8_t *uint8;
-	uint16_t *uint16;
-	base_header_ip_vx_t *ipvx;
-	base_header_ip_v4_t *ipv4;
-	base_header_ip_v6_t *ipv6;
-	struct ipv6_opt *ipv6_opt;
-	ip_dest_opt_t *ip_dest_opt;
-	ip_hop_opt_t *ip_hop_opt;
-	ip_rout_opt_t *ip_rout_opt;
-	tcphdr_t *tcphdr;
-} base_header_ip_t;
 
-
+/************************************************************************
+ * Helper functions                                                     *
+ ************************************************************************/
 
 static inline char * tcp_ip_id_behavior_get_descr(const tcp_ip_id_behavior_t ip_id_behavior)
 	__attribute__((warn_unused_result, const));

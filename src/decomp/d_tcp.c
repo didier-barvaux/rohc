@@ -3579,17 +3579,14 @@ error:
  * @return                    true if IPv4 header was successfully built,
  *                            false if the output \e uncomp_packet was not
  *                            large enough
- *
- * @todo TODO: replace base_header_ip_v4_t
  */
 static bool d_tcp_build_ipv4_hdr(const struct rohc_decomp_ctxt *const context,
                                  const struct rohc_tcp_decoded_ip_values *const decoded,
                                  struct rohc_buf *const uncomp_packet,
                                  size_t *const ip_hdr_len)
 {
-	base_header_ip_v4_t *const ipv4 =
-		(base_header_ip_v4_t *) rohc_buf_data(*uncomp_packet);
-	const size_t hdr_len = sizeof(base_header_ip_v4_t);
+	struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) rohc_buf_data(*uncomp_packet);
+	const size_t hdr_len = sizeof(struct ipv4_hdr);
 
 	rohc_decomp_debug(context, "  build %zu-byte IPv4 header", hdr_len);
 
@@ -3603,39 +3600,31 @@ static bool d_tcp_build_ipv4_hdr(const struct rohc_decomp_ctxt *const context,
 	/* static part */
 	ipv4->version = decoded->version;
 	rohc_decomp_debug(context, "    version = %u", ipv4->version);
-	ipv4->header_length = hdr_len >> 2;
-	rohc_decomp_debug(context, "    ihl = %u", ipv4->header_length);
+	ipv4->ihl = hdr_len / sizeof(uint32_t);
+	rohc_decomp_debug(context, "    ihl = %u", ipv4->ihl);
 	ipv4->protocol = decoded->proto;
-	memcpy(&ipv4->src_addr, decoded->saddr, 4);
-	memcpy(&ipv4->dest_addr, decoded->daddr, 4);
+	memcpy(&ipv4->saddr, decoded->saddr, 4);
+	memcpy(&ipv4->daddr, decoded->daddr, 4);
 
 	/* dynamic part */
-	ipv4->rf = 0;
-	ipv4->df = decoded->df;
-	ipv4->mf = 0;
-	ipv4->dscp = decoded->dscp;
-	ipv4->ip_ecn_flags = decoded->ecn_flags;
-	ipv4->ttl_hopl = decoded->ttl;
+	ipv4->frag_off = 0;
+	IPV4_SET_DF(ipv4, decoded->df);
+	ipv4->tos = (decoded->dscp << 2) | decoded->ecn_flags;
+	ipv4->ttl = decoded->ttl;
 	rohc_decomp_debug(context, "    DSCP = 0x%02x, ip_ecn_flags = %d",
-	                  ipv4->dscp, ipv4->ip_ecn_flags);
-#if WORDS_BIGENDIAN != 1
-	ipv4->frag_offset1 = 0;
-	ipv4->frag_offset2 = 0;
-#else
-	ipv4->frag_offset = 0;
-#endif
+	                  (ipv4->tos >> 2) & 0x3f, ipv4->tos & 0x3);
 	/* IP-ID */
 	if(decoded->id_behavior == IP_ID_BEHAVIOR_SEQ_SWAP)
 	{
-		ipv4->ip_id = rohc_hton16(swab16(decoded->id));
+		ipv4->id = rohc_hton16(swab16(decoded->id));
 	}
 	else
 	{
-		ipv4->ip_id = rohc_hton16(decoded->id);
+		ipv4->id = rohc_hton16(decoded->id);
 	}
 	rohc_decomp_debug(context, "    %s IP-ID = 0x%04x",
 	                  tcp_ip_id_behavior_get_descr(decoded->id_behavior),
-	                  rohc_ntoh16(ipv4->ip_id));
+	                  rohc_ntoh16(ipv4->id));
 
 	/* length and checksums will be computed once all headers are built */
 
@@ -3664,17 +3653,14 @@ error:
  * @return                    true if IPv6 header was successfully built,
  *                            false if the output \e uncomp_packet was not
  *                            large enough
- *
- * @todo TODO: replace base_header_ip_v6_t
  */
 static bool d_tcp_build_ipv6_hdr(const struct rohc_decomp_ctxt *const context,
                                  const struct rohc_tcp_decoded_ip_values *const decoded,
                                  struct rohc_buf *const uncomp_packet,
                                  size_t *const ip_hdr_len)
 {
-	base_header_ip_v6_t *const ipv6 =
-		(base_header_ip_v6_t *) rohc_buf_data(*uncomp_packet);
-	const size_t hdr_len = sizeof(base_header_ip_v6_t);
+	struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) rohc_buf_data(*uncomp_packet);
+	const size_t hdr_len = sizeof(struct ipv6_hdr);
 	const size_t ipv6_exts_len = decoded->opts_len;
 	const size_t full_ipv6_len = hdr_len + ipv6_exts_len;
 	size_t all_opts_len;
@@ -3692,21 +3678,18 @@ static bool d_tcp_build_ipv6_hdr(const struct rohc_decomp_ctxt *const context,
 	}
 
 	/* static part */
-	ipv6->version = decoded->version;
-	rohc_decomp_debug(context, "    version = %u", ipv6->version);
-	ipv6->flow_label1 = (decoded->flowid >> 16) & 0xf;
-	ipv6->flow_label2 = decoded->flowid & 0xffff;
-	rohc_decomp_debug(context, "    flow label = 0x%01x%04x", ipv6->flow_label1,
-	                  ipv6->flow_label2);
-	ipv6->next_header = decoded->proto;
-	memcpy(ipv6->src_addr, decoded->saddr, sizeof(uint32_t) * 4);
-	memcpy(ipv6->dest_addr, decoded->daddr, sizeof(uint32_t) * 4);
+	ipv6->ip6_vfc = decoded->version << 4;
+	rohc_decomp_debug(context, "    version = %u", (ipv6->ip6_vfc >> 4) & 0x0f);
+	IPV6_SET_FLOW_LABEL(ipv6, decoded->flowid);
+	rohc_decomp_debug(context, "    flow label = 0x%05x",
+	                  IPV6_GET_FLOW_LABEL(*ipv6));
+	ipv6->ip6_nxt = decoded->proto;
+	memcpy(&ipv6->ip6_src, decoded->saddr, sizeof(struct ipv6_addr));
+	memcpy(&ipv6->ip6_dst, decoded->daddr, sizeof(struct ipv6_addr));
 
 	/* dynamic part */
-	ipv6->dscp1 = decoded->dscp >> 2;
-	ipv6->dscp2 = decoded->dscp & 0x03;
-	ipv6->ip_ecn_flags = decoded->ecn_flags;
-	ipv6->ttl_hopl = decoded->ttl;
+	IPV6_SET_TC(ipv6, (decoded->dscp << 2) | decoded->ecn_flags);
+	ipv6->ip6_hlim = decoded->ttl;
 
 	/* total length will be computed once all headers are built */
 
@@ -3761,8 +3744,8 @@ static bool d_tcp_build_tcp_hdr(const struct rohc_decomp_ctxt *const context,
                                 struct rohc_buf *const uncomp_packet,
                                 size_t *const tcp_full_len)
 {
-	tcphdr_t *const tcp = (tcphdr_t *) rohc_buf_data(*uncomp_packet);
-	const size_t tcp_hdr_len = sizeof(tcphdr_t);
+	struct tcphdr *const tcp = (struct tcphdr *) rohc_buf_data(*uncomp_packet);
+	const size_t tcp_hdr_len = sizeof(struct tcphdr);
 	size_t tcp_opts_len;
 
 	*tcp_full_len = 0;
@@ -3893,27 +3876,25 @@ static rohc_status_t d_tcp_build_hdrs(const struct rohc_decomp *const decomp,
 		if(ip_decoded->version == IPV4)
 		{
 			const uint16_t ipv4_tot_len = uncomp_hdrs->len + payload_len;
-			base_header_ip_v4_t *const ipv4 =
-				(base_header_ip_v4_t *) rohc_buf_data(*uncomp_hdrs);
-			ipv4->length = rohc_hton16(ipv4_tot_len);
+			struct ipv4_hdr *const ipv4 =
+				(struct ipv4_hdr *) rohc_buf_data(*uncomp_hdrs);
+			ipv4->tot_len = rohc_hton16(ipv4_tot_len);
 			rohc_decomp_debug(context, "    IP total length = 0x%04x (%u)",
 			                  ipv4_tot_len, ipv4_tot_len);
-			ipv4->checksum = 0;
-			ipv4->checksum =
-				ip_fast_csum(rohc_buf_data(*uncomp_hdrs), ipv4->header_length);
+			ipv4->check = 0;
+			ipv4->check =
+				ip_fast_csum(rohc_buf_data(*uncomp_hdrs), ipv4->ihl);
 			rohc_decomp_debug(context, "    IP checksum = 0x%04x on %zu bytes",
-			                  rohc_ntoh16(ipv4->checksum),
-			                  ipv4->header_length * sizeof(uint32_t));
-			rohc_buf_pull(uncomp_hdrs, ipv4->header_length * sizeof(uint32_t));
+			                  rohc_ntoh16(ipv4->check), ipv4->ihl * sizeof(uint32_t));
+			rohc_buf_pull(uncomp_hdrs, ipv4->ihl * sizeof(uint32_t));
 		}
 		else
 		{
-			base_header_ip_v6_t *const ipv6 =
-				(base_header_ip_v6_t *) rohc_buf_data(*uncomp_hdrs);
-			rohc_buf_pull(uncomp_hdrs, sizeof(base_header_ip_v6_t));
-			ipv6->payload_length = rohc_hton16(uncomp_hdrs->len + payload_len);
+			struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) rohc_buf_data(*uncomp_hdrs);
+			rohc_buf_pull(uncomp_hdrs, sizeof(struct ipv6_hdr));
+			ipv6->ip6_plen = rohc_hton16(uncomp_hdrs->len + payload_len);
 			rohc_decomp_debug(context, "    IPv6 payload length = %d",
-			                  rohc_ntoh16(ipv6->payload_length));
+			                  rohc_ntoh16(ipv6->ip6_plen));
 			rohc_buf_pull(uncomp_hdrs, ip_decoded->opts_len);
 		}
 	}

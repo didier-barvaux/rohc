@@ -5,7 +5,6 @@ raw TODO list for improving TCP profile.
 
 => tcp_profile/common/tcp.h:
 
- - get rid of the base_header_ip_t union
  - get rid of the multi_ptr_t union
 
 
