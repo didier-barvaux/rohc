@@ -486,12 +486,6 @@ unsigned short ip_get_extension_size(const uint8_t *const ext)
 unsigned short ip_get_total_extension_size(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1)));
 
-/* Private functions (do not use directly) */
-bool get_ip_version(const uint8_t *const packet,
-                    const size_t size,
-                    ip_version *const version)
-	__attribute__((warn_unused_result, nonnull(1, 3)));
-
 
 #endif
 

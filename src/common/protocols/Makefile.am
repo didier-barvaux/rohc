@@ -8,6 +8,7 @@ noinst_HEADERS = \
 	ip_numbers.h \
 	ipv4.h \
 	ipv6.h \
+	ip.h \
 	udp.h \
 	udp_lite.h \
 	rtp.h \

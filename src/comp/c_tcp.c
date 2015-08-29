@@ -32,6 +32,9 @@
 #include "rohc_packets.h"
 #include "net_pkt.h"
 #include "protocols/ip_numbers.h"
+#include "protocols/ip.h"
+#include "protocols/ipv4.h"
+#include "protocols/ipv6.h"
 #include "protocols/tcp.h"
 #include "schemes/cid.h"
 #include "schemes/ip_id_offset.h"
@@ -638,7 +641,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 static int co_baseheader(struct rohc_comp_ctxt *const context,
                          struct sc_tcp_context *const tcp_context,
                          ip_context_t *const ip_inner_context,
-                         const uint8_t *const inner_ip_hdr,
+                         const struct ip_hdr *const inner_ip_hdr,
                          const size_t inner_ip_hdr_len,
                          uint8_t *const rohc_pkt,
                          const size_t rohc_pkt_max_len,
@@ -704,7 +707,7 @@ static size_t c_tcp_build_rnd_7(struct rohc_comp_ctxt *const context,
 static bool c_tcp_build_rnd_8(struct rohc_comp_ctxt *const context,
                               const ip_context_t *const inner_ip_ctxt,
                               struct sc_tcp_context *const tcp_context,
-                              const uint8_t *const inner_ip_hdr,
+                              const struct ip_hdr *const inner_ip_hdr,
                               const size_t inner_ip_hdr_len,
                               const struct tcphdr *const tcp,
                               const uint8_t crc,
@@ -720,7 +723,7 @@ static bool c_tcp_build_rnd_8(struct rohc_comp_ctxt *const context,
 static size_t c_tcp_build_seq_1(struct rohc_comp_ctxt *const context,
                                 const ip_context_t *const inner_ip_ctxt,
                                 struct sc_tcp_context *const tcp_context,
-                                const uint8_t *const inner_ip_hdr,
+                                const struct ip_hdr *const inner_ip_hdr,
                                 const size_t inner_ip_hdr_len,
                                 const struct tcphdr *const tcp,
                                 const uint8_t crc,
@@ -730,7 +733,7 @@ static size_t c_tcp_build_seq_1(struct rohc_comp_ctxt *const context,
 static size_t c_tcp_build_seq_2(struct rohc_comp_ctxt *const context,
                                 const ip_context_t *const inner_ip_ctxt,
                                 struct sc_tcp_context *const tcp_context,
-                                const uint8_t *const inner_ip_hdr,
+                                const struct ip_hdr *const inner_ip_hdr,
                                 const size_t inner_ip_hdr_len,
                                 const struct tcphdr *const tcp,
                                 const uint8_t crc,
@@ -740,7 +743,7 @@ static size_t c_tcp_build_seq_2(struct rohc_comp_ctxt *const context,
 static size_t c_tcp_build_seq_3(struct rohc_comp_ctxt *const context,
                                 const ip_context_t *const inner_ip_ctxt,
                                 struct sc_tcp_context *const tcp_context,
-                                const uint8_t *const inner_ip_hdr,
+                                const struct ip_hdr *const inner_ip_hdr,
                                 const size_t inner_ip_hdr_len,
                                 const struct tcphdr *const tcp,
                                 const uint8_t crc,
@@ -750,7 +753,7 @@ static size_t c_tcp_build_seq_3(struct rohc_comp_ctxt *const context,
 static size_t c_tcp_build_seq_4(struct rohc_comp_ctxt *const context,
                                 const ip_context_t *const inner_ip_ctxt,
                                 struct sc_tcp_context *const tcp_context,
-                                const uint8_t *const inner_ip_hdr,
+                                const struct ip_hdr *const inner_ip_hdr,
                                 const size_t inner_ip_hdr_len,
                                 const struct tcphdr *const tcp,
                                 const uint8_t crc,
@@ -760,7 +763,7 @@ static size_t c_tcp_build_seq_4(struct rohc_comp_ctxt *const context,
 static size_t c_tcp_build_seq_5(struct rohc_comp_ctxt *const context,
                                 const ip_context_t *const inner_ip_ctxt,
                                 struct sc_tcp_context *const tcp_context,
-                                const uint8_t *const inner_ip_hdr,
+                                const struct ip_hdr *const inner_ip_hdr,
                                 const size_t inner_ip_hdr_len,
                                 const struct tcphdr *const tcp,
                                 const uint8_t crc,
@@ -770,7 +773,7 @@ static size_t c_tcp_build_seq_5(struct rohc_comp_ctxt *const context,
 static size_t c_tcp_build_seq_6(struct rohc_comp_ctxt *const context,
                                 const ip_context_t *const inner_ip_ctxt,
                                 struct sc_tcp_context *const tcp_context,
-                                const uint8_t *const inner_ip_hdr,
+                                const struct ip_hdr *const inner_ip_hdr,
                                 const size_t inner_ip_hdr_len,
                                 const struct tcphdr *const tcp,
                                 const uint8_t crc,
@@ -780,7 +783,7 @@ static size_t c_tcp_build_seq_6(struct rohc_comp_ctxt *const context,
 static size_t c_tcp_build_seq_7(struct rohc_comp_ctxt *const context,
                                 const ip_context_t *const inner_ip_ctxt,
                                 struct sc_tcp_context *const tcp_context,
-                                const uint8_t *const inner_ip_hdr,
+                                const struct ip_hdr *const inner_ip_hdr,
                                 const size_t inner_ip_hdr_len,
                                 const struct tcphdr *const tcp,
                                 const uint8_t crc,
@@ -790,7 +793,7 @@ static size_t c_tcp_build_seq_7(struct rohc_comp_ctxt *const context,
 static bool c_tcp_build_seq_8(struct rohc_comp_ctxt *const context,
                               const ip_context_t *const inner_ip_ctxt,
                               struct sc_tcp_context *const tcp_context,
-                              const uint8_t *const inner_ip_hdr,
+                              const struct ip_hdr *const inner_ip_hdr,
                               const size_t inner_ip_hdr_len,
                               const struct tcphdr *const tcp,
                               const uint8_t crc,
@@ -801,7 +804,7 @@ static bool c_tcp_build_seq_8(struct rohc_comp_ctxt *const context,
 static bool c_tcp_build_co_common(struct rohc_comp_ctxt *const context,
                                   const ip_context_t *const inner_ip_ctxt,
                                   struct sc_tcp_context *const tcp_context,
-                                  const uint8_t *const inner_ip_hdr,
+                                  const struct ip_hdr *const inner_ip_hdr,
                                   const size_t inner_ip_hdr_len,
                                   const struct tcphdr *const tcp,
                                   const uint8_t crc,
@@ -957,24 +960,17 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 	tcp_context->ip_contexts_nr = 0;
 	do
 	{
+		const struct ip_hdr *const ip = (struct ip_hdr *) remain_data;
 		ip_context_t *const ip_context =
 			&(tcp_context->ip_contexts[tcp_context->ip_contexts_nr]);
-		ip_version ip_ver;
 
-		/* get IP version */
-		if(!get_ip_version(remain_data, remain_len, &ip_ver))
-		{
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "failed to determine the version of IP header #%zu",
-			           tcp_context->ip_contexts_nr + 1);
-			goto error;
-		}
+		/* retrieve IP version */
+		assert(remain_len >= sizeof(struct ip_hdr));
+		rohc_comp_debug(context, "found IPv%d", ip->version);
+		ip_context->version = ip->version;
+		ip_context->ctxt.vx.version = ip->version;
 
-		rohc_comp_debug(context, "found IPv%d", ip_ver);
-		ip_context->version = ip_ver;
-		ip_context->ctxt.vx.version = ip_ver;
-
-		switch(ip_ver)
+		switch(ip->version)
 		{
 			case IPV4:
 			{
@@ -1303,10 +1299,10 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 	ip_hdrs_nr = 0;
 	do
 	{
-		ip_version ip_ver;
+		const struct ip_hdr *const ip = (struct ip_hdr *) remain_data;
 
-		/* get IP version */
-		if(!get_ip_version(remain_data, remain_len, &ip_ver))
+		/* check minimal length for IP version */
+		if(remain_len < sizeof(struct ip_hdr))
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "failed to determine the version of IP header #%zu",
@@ -1314,7 +1310,7 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 			goto bad_profile;
 		}
 
-		if(ip_ver == IPV4)
+		if(ip->version == IPV4)
 		{
 			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) remain_data;
 			const size_t ipv4_min_words_nr = sizeof(struct ipv4_hdr) / sizeof(uint32_t);
@@ -1369,7 +1365,7 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 			remain_data += sizeof(struct ipv4_hdr);
 			remain_len -= sizeof(struct ipv4_hdr);
 		}
-		else if(ip_ver == IPV6)
+		else if(ip->version == IPV6)
 		{
 			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
 			size_t ipv6_exts_len;
@@ -1414,7 +1410,8 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 		else
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "unsupported version %d for header #%zu", ip_ver, ip_hdrs_nr);
+			           "unsupported version %u for header #%zu",
+			           ip->version, ip_hdrs_nr + 1);
 			goto bad_profile;
 		}
 		ip_hdrs_nr++;
@@ -1873,132 +1870,129 @@ static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
 	    ip_hdr_pos < tcp_context->ip_contexts_nr && rohc_is_tunneling(next_proto);
 	    ip_hdr_pos++)
 	{
+		const struct ip_hdr *const ip = (struct ip_hdr *) remain_data;
 		const ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
 		size_t ip_ext_pos;
-		ip_version ip_ver;
 
-		/* get IP version */
-		assert(get_ip_version(remain_data, remain_len, &ip_ver));
-		rohc_comp_debug(context, "found IPv%d", ip_ver);
-		if(ip_ver != ip_context->version)
+		/* retrieve IP version */
+		assert(remain_len >= sizeof(struct ip_hdr));
+		rohc_comp_debug(context, "found IPv%d", ip->version);
+		if(ip->version != ip_context->version)
 		{
 			rohc_comp_debug(context, "  not same IP version");
 			goto bad_context;
 		}
 
-		switch(ip_ver)
+		if(ip->version == IPV4)
 		{
-			case IPV4:
+			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) remain_data;
+
+			assert(remain_len >= sizeof(struct ipv4_hdr));
+
+			/* check source and destination addresses */
+			if(ipv4->saddr != ip_context->ctxt.v4.src_addr ||
+			   ipv4->daddr != ip_context->ctxt.v4.dst_addr)
 			{
-				const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) remain_data;
-
-				assert(remain_len >= sizeof(struct ipv4_hdr));
-
-				/* check source and destination addresses */
-				if(ipv4->saddr != ip_context->ctxt.v4.src_addr ||
-				   ipv4->daddr != ip_context->ctxt.v4.dst_addr)
-				{
-					rohc_comp_debug(context, "  not same IPv4 addresses");
-					goto bad_context;
-				}
-				rohc_comp_debug(context, "  same IPv4 addresses");
-
-				/* check transport protocol */
-				next_proto = ipv4->protocol;
-				if(next_proto != ip_context->ctxt.v4.protocol)
-				{
-					rohc_comp_debug(context, "  IPv4 not same protocol");
-					goto bad_context;
-				}
-				rohc_comp_debug(context, "  IPv4 same protocol %d", next_proto);
-
-				/* skip IPv4 header */
-				remain_data += sizeof(struct ipv4_hdr);
-				remain_len -= sizeof(struct ipv4_hdr);
-				break;
-			}
-			case IPV6:
-			{
-				const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
-
-				assert(remain_len >= sizeof(struct ipv6_hdr));
-
-				/* check source and destination addresses */
-				if(memcmp(&ipv6->ip6_src, ip_context->ctxt.v6.src_addr,
-				          sizeof(struct ipv6_addr)) != 0 ||
-				   memcmp(&ipv6->ip6_dst, ip_context->ctxt.v6.dest_addr,
-				          sizeof(struct ipv6_addr)) != 0)
-				{
-					rohc_comp_debug(context, "  not same IPv6 addresses");
-					goto bad_context;
-				}
-				rohc_comp_debug(context, "  same IPv6 addresses");
-
-				/* check Flow Label */
-				if(IPV6_GET_FLOW_LABEL(*ipv6) != ip_context->ctxt.v6.flow_label)
-				{
-					rohc_comp_debug(context, "  not same IPv6 flow label");
-					goto bad_context;
-				}
-
-				/* check next header protocol */
-				next_proto = ipv6->ip6_nxt;
-				if(next_proto != ip_context->ctxt.v6.next_header)
-				{
-					rohc_comp_debug(context, "  IPv6 not same protocol %d", next_proto);
-					goto bad_context;
-				}
-				rohc_comp_debug(context, "  IPv6 same protocol %d", next_proto);
-
-				/* skip IPv6 base header */
-				remain_data += sizeof(struct ipv6_hdr);
-				remain_len -= sizeof(struct ipv6_hdr);
-
-				/* check IPv6 extension headers */
-				for(ip_ext_pos = 0;
-				    ip_ext_pos < ip_context->ctxt.v6.opts_nr && rohc_is_tunneling(next_proto);
-				    ip_ext_pos++)
-				{
-					const ipv6_option_context_t *const opt_ctxt =
-						&(ip_context->ctxt.v6.opts[ip_ext_pos]);
-					const struct ipv6_opt *const ipv6_opt =
-						(struct ipv6_opt *) remain_data;
-					size_t opt_len;
-
-					assert(remain_len >= sizeof(struct ipv6_opt));
-
-					/* check next header protocol */
-					next_proto = ipv6_opt->next_header;
-					if(next_proto != opt_ctxt->generic.next_header)
-					{
-						rohc_comp_debug(context, "  not same IPv6 option (%d != %d)",
-						                next_proto, opt_ctxt->generic.next_header);
-						goto bad_context;
-					}
-					rohc_comp_debug(context, "  same IPv6 option %d", next_proto);
-
-					/* skip extension header */
-					opt_len = (ipv6_opt->length + 1) << 3;
-					remain_data += opt_len;
-					remain_len -= opt_len;
-				}
-				if(ip_ext_pos < ip_context->ctxt.v6.opts_nr)
-				{
-					rohc_comp_debug(context, "  less IP extension headers than context");
-					goto bad_context;
-				}
-				if(rohc_is_tunneling(next_proto))
-				{
-					rohc_comp_debug(context, "  more IP extension headers than context");
-					goto bad_context;
-				}
-				break;
-			}
-			default:
-			{
-				assert(0);
+				rohc_comp_debug(context, "  not same IPv4 addresses");
 				goto bad_context;
 			}
+			rohc_comp_debug(context, "  same IPv4 addresses");
+
+			/* check transport protocol */
+			next_proto = ipv4->protocol;
+			if(next_proto != ip_context->ctxt.v4.protocol)
+			{
+				rohc_comp_debug(context, "  IPv4 not same protocol");
+				goto bad_context;
+			}
+			rohc_comp_debug(context, "  IPv4 same protocol %d", next_proto);
+
+			/* skip IPv4 header */
+			remain_data += sizeof(struct ipv4_hdr);
+			remain_len -= sizeof(struct ipv4_hdr);
+		}
+		else if(ip->version == IPV6)
+		{
+			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
+
+			assert(remain_len >= sizeof(struct ipv6_hdr));
+
+			/* check source and destination addresses */
+			if(memcmp(&ipv6->ip6_src, ip_context->ctxt.v6.src_addr,
+			          sizeof(struct ipv6_addr)) != 0 ||
+			   memcmp(&ipv6->ip6_dst, ip_context->ctxt.v6.dest_addr,
+			          sizeof(struct ipv6_addr)) != 0)
+			{
+				rohc_comp_debug(context, "  not same IPv6 addresses");
+				goto bad_context;
+			}
+			rohc_comp_debug(context, "  same IPv6 addresses");
+
+			/* check Flow Label */
+			if(IPV6_GET_FLOW_LABEL(*ipv6) != ip_context->ctxt.v6.flow_label)
+			{
+				rohc_comp_debug(context, "  not same IPv6 flow label");
+				goto bad_context;
+			}
+
+			/* check next header protocol */
+			next_proto = ipv6->ip6_nxt;
+			if(next_proto != ip_context->ctxt.v6.next_header)
+			{
+				rohc_comp_debug(context, "  IPv6 not same protocol %d", next_proto);
+				goto bad_context;
+			}
+			rohc_comp_debug(context, "  IPv6 same protocol %d", next_proto);
+
+			/* skip IPv6 base header */
+			remain_data += sizeof(struct ipv6_hdr);
+			remain_len -= sizeof(struct ipv6_hdr);
+
+			/* check IPv6 extension headers */
+			for(ip_ext_pos = 0;
+			    ip_ext_pos < ip_context->ctxt.v6.opts_nr && rohc_is_tunneling(next_proto);
+			    ip_ext_pos++)
+			{
+				const ipv6_option_context_t *const opt_ctxt =
+					&(ip_context->ctxt.v6.opts[ip_ext_pos]);
+				const struct ipv6_opt *const ipv6_opt =
+					(struct ipv6_opt *) remain_data;
+				size_t opt_len;
+
+				assert(remain_len >= sizeof(struct ipv6_opt));
+
+				/* check next header protocol */
+				next_proto = ipv6_opt->next_header;
+				if(next_proto != opt_ctxt->generic.next_header)
+				{
+					rohc_comp_debug(context, "  not same IPv6 option (%d != %d)",
+					                next_proto, opt_ctxt->generic.next_header);
+					goto bad_context;
+				}
+				rohc_comp_debug(context, "  same IPv6 option %d", next_proto);
+
+				/* skip extension header */
+				opt_len = (ipv6_opt->length + 1) << 3;
+				remain_data += opt_len;
+				remain_len -= opt_len;
+			}
+			if(ip_ext_pos < ip_context->ctxt.v6.opts_nr)
+			{
+				rohc_comp_debug(context, "  less IP extension headers than context");
+				goto bad_context;
+			}
+			if(rohc_is_tunneling(next_proto))
+			{
+				rohc_comp_debug(context, "  more IP extension headers than context");
+				goto bad_context;
+			}
+		}
+		else
+		{
+			rohc_comp_warn(context, "unsupported version %u for header #%zu",
+			               ip->version, ip_hdr_pos + 1);
+			assert(0);
+			goto bad_context;
 		}
 	}
 
@@ -2310,16 +2304,15 @@ static int tcp_code_static_part(struct rohc_comp_ctxt *const context,
 	/* add IP parts of static chain */
 	for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)
 	{
+		const struct ip_hdr *const ip_hdr = (struct ip_hdr *) remain_data;
 		const ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
-		ip_version ip_vers;
 		size_t ip_ext_pos;
 
 		/* retrieve IP version */
-		assert(get_ip_version(remain_data, remain_len, &ip_vers));
-		rohc_comp_debug(context, "found IPv%d", ip_vers);
-		assert(ip_vers == IPV4 || ip_vers == IPV6);
+		assert(remain_len >= sizeof(struct ip_hdr));
+		rohc_comp_debug(context, "found IPv%d", ip_hdr->version);
 
-		if(ip_vers == IPV4)
+		if(ip_hdr->version == IPV4)
 		{
 			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) remain_data;
 
@@ -2330,7 +2323,7 @@ static int tcp_code_static_part(struct rohc_comp_ctxt *const context,
 			remain_data += sizeof(struct ipv4_hdr);
 			remain_len -= sizeof(struct ipv4_hdr);
 		}
-		else if(ip_vers == IPV6)
+		else if(ip_hdr->version == IPV6)
 		{
 			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
 			uint8_t protocol;
@@ -2367,7 +2360,7 @@ static int tcp_code_static_part(struct rohc_comp_ctxt *const context,
 		}
 		else
 		{
-			rohc_comp_warn(context, "unexpected IP version %u", ip_vers);
+			rohc_comp_warn(context, "unexpected IP version %u", ip_hdr->version);
 			assert(0);
 			goto error;
 		}
@@ -2414,8 +2407,7 @@ static int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
 	ip_context_t *inner_ip_context = NULL;
 	const uint8_t *remain_data = ip->data;
 	size_t remain_len = ip->size;
-	const uint8_t *inner_ip_hdr = NULL;
-	size_t inner_ip_hdr_len = 0;
+	const struct ip_hdr *inner_ip_hdr = NULL;
 	multi_ptr_t mptr;
 	size_t ip_hdr_pos;
 
@@ -2427,22 +2419,20 @@ static int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
 	/* add dynamic chain for both IR and IR-DYN packet */
 	for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)
 	{
+		const struct ip_hdr *const ip_hdr = (struct ip_hdr *) remain_data;
 		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
 		const bool is_inner = !!(ip_hdr_pos + 1 == tcp_context->ip_contexts_nr);
-		ip_version ip_vers;
 		size_t ip_ext_pos;
 
 		/* the last IP header is the innermost one */
 		inner_ip_context = ip_context;
-		inner_ip_hdr = remain_data;
-		inner_ip_hdr_len = remain_len;
+		inner_ip_hdr = (struct ip_hdr *) remain_data;
 
 		/* retrieve IP version */
-		assert(get_ip_version(remain_data, remain_len, &ip_vers));
-		rohc_comp_debug(context, "found IPv%d", ip_vers);
-		assert(ip_vers == IPV4 || ip_vers == IPV6);
+		assert(remain_len >= sizeof(struct ip_hdr));
+		rohc_comp_debug(context, "found IPv%d", ip_hdr->version);
 
-		if(ip_vers == IPV4)
+		if(ip_hdr->version == IPV4)
 		{
 			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) remain_data;
 
@@ -2454,7 +2444,7 @@ static int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
 			remain_data += sizeof(struct ipv4_hdr);
 			remain_len -= sizeof(struct ipv4_hdr);
 		}
-		else if(ip_vers == IPV6)
+		else if(ip_hdr->version == IPV6)
 		{
 			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
 			uint8_t protocol;
@@ -2489,7 +2479,7 @@ static int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
 		}
 		else
 		{
-			rohc_comp_warn(context, "unexpected IP version %u", ip_vers);
+			rohc_comp_warn(context, "unexpected IP version %u", ip_hdr->version);
 			assert(0);
 			goto error;
 		}
@@ -2517,32 +2507,27 @@ static int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
 
 	/* update context with new values (done at the very end to avoid wrongly
 	 * updating the context in case of compression failure) */
-	assert(inner_ip_hdr_len >= 1);
+	if(inner_ip_hdr->version == IPV4)
 	{
-		const ip_version ip_vers = (inner_ip_hdr[0] >> 4) & 0x0f;
-
-		if(ip_vers == IPV4)
-		{
-			const struct ipv4_hdr *const inner_ipv4 = (struct ipv4_hdr *) inner_ip_hdr;
-			inner_ip_context->ctxt.v4.last_ip_id_behavior =
-				inner_ip_context->ctxt.v4.ip_id_behavior;
-			inner_ip_context->ctxt.v4.last_ip_id = tcp_context->tmp.ip_id;
-			inner_ip_context->ctxt.v4.df = IPV4_GET_DF(*inner_ipv4);
-			inner_ip_context->ctxt.vx.dscp = (inner_ipv4->tos >> 2) & 0x3f;
-		}
-		else if(ip_vers == IPV6)
-		{
-			const struct ipv6_hdr *const inner_ipv6 = (struct ipv6_hdr *) inner_ip_hdr;
-			inner_ip_context->ctxt.vx.dscp = (IPV6_GET_TC(*inner_ipv6) >> 2) & 0x3f;
-		}
-		else
-		{
-			rohc_comp_warn(context, "unexpected IP version %u", ip_vers);
-			assert(0);
-			goto error;
-		}
-		inner_ip_context->ctxt.vx.ttl_hopl = tcp_context->tmp.ttl_hopl;
+		const struct ipv4_hdr *const inner_ipv4 = (struct ipv4_hdr *) inner_ip_hdr;
+		inner_ip_context->ctxt.v4.last_ip_id_behavior =
+			inner_ip_context->ctxt.v4.ip_id_behavior;
+		inner_ip_context->ctxt.v4.last_ip_id = tcp_context->tmp.ip_id;
+		inner_ip_context->ctxt.v4.df = IPV4_GET_DF(*inner_ipv4);
+		inner_ip_context->ctxt.vx.dscp = (inner_ipv4->tos >> 2) & 0x3f;
 	}
+	else if(inner_ip_hdr->version == IPV6)
+	{
+		const struct ipv6_hdr *const inner_ipv6 = (struct ipv6_hdr *) inner_ip_hdr;
+		inner_ip_context->ctxt.vx.dscp = (IPV6_GET_TC(*inner_ipv6) >> 2) & 0x3f;
+	}
+	else
+	{
+		rohc_comp_warn(context, "unexpected IP version %u", inner_ip_hdr->version);
+		assert(0);
+		goto error;
+	}
+	inner_ip_context->ctxt.vx.ttl_hopl = tcp_context->tmp.ttl_hopl;
 
 	return (mptr.uint8 - rohc_pkt);
 
@@ -4469,7 +4454,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	size_t remain_len = ip->size;
 
 	ip_context_t *inner_ip_ctxt = NULL;
-	const uint8_t *inner_ip_hdr = NULL;
+	const struct ip_hdr *inner_ip_hdr = NULL;
 	size_t inner_ip_hdr_len = 0;
 
 	const struct tcphdr *tcp;
@@ -4490,20 +4475,19 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	assert(tcp_context->ip_contexts_nr > 0);
 	for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)
 	{
+		const struct ip_hdr *const ip_hdr = (struct ip_hdr *) remain_data;
 		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
-		ip_version ip_vers;
 		uint8_t protocol;
 
 		/* retrieve IP version */
-		assert(get_ip_version(remain_data, remain_len, &ip_vers));
-		rohc_comp_debug(context, "found IPv%d", ip_vers);
-		assert(ip_vers == IPV4 || ip_vers == IPV6);
+		assert(remain_len >= sizeof(struct ip_hdr));
+		rohc_comp_debug(context, "found IPv%d", ip_hdr->version);
 
-		inner_ip_hdr = remain_data;
+		inner_ip_hdr = (struct ip_hdr *) remain_data;
 		inner_ip_hdr_len = remain_len;
 		inner_ip_ctxt = ip_context;
 
-		if(ip_vers == IPV4)
+		if(ip_hdr->version == IPV4)
 		{
 			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) remain_data;
 			size_t ipv4_hdr_len;
@@ -4521,7 +4505,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 			remain_data += ipv4_hdr_len;
 			remain_len -= ipv4_hdr_len;
 		}
-		else /* IPv6 */
+		else if(ip_hdr->version == IPV6)
 		{
 			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
 			size_t ip_ext_pos;
@@ -4553,6 +4537,12 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 				remain_data += opt_ctxt->generic.option_length;
 				remain_len -= opt_ctxt->generic.option_length;
 			}
+		}
+		else
+		{
+			rohc_comp_warn(context, "unexpected IP version %u", ip_hdr->version);
+			assert(0);
+			goto error;
 		}
 	}
 
@@ -4638,17 +4628,16 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	mptr.uint8 = &rohc_pkt[counter - 1] + i;
 	for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)
 	{
+		const struct ip_hdr *const ip_hdr = (struct ip_hdr *) remain_data;
 		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
 		const bool is_innermost = !!(ip_hdr_pos == (tcp_context->ip_contexts_nr - 1));
-		ip_version ip_vers;
 
 		/* retrieve IP version */
-		assert(get_ip_version(remain_data, remain_len, &ip_vers));
-		rohc_comp_debug(context, "found IPv%d", ip_vers);
-		assert(ip_vers == IPV4 || ip_vers == IPV6);
+		assert(remain_len >= sizeof(struct ip_hdr));
+		rohc_comp_debug(context, "found IPv%d", ip_hdr->version);
 
 		/* irregular part for IP header */
-		if(ip_vers == IPV4)
+		if(ip_hdr->version == IPV4)
 		{
 			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) remain_data;
 
@@ -4663,7 +4652,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 			remain_data += sizeof(struct ipv4_hdr);
 			remain_len -= sizeof(struct ipv4_hdr);
 		}
-		else if(ip_vers == IPV6)
+		else if(ip_hdr->version == IPV6)
 		{
 			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
 			uint8_t protocol;
@@ -4703,7 +4692,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 		}
 		else
 		{
-			rohc_comp_warn(context, "unexpected IP version %u", ip_vers);
+			rohc_comp_warn(context, "unexpected IP version %u", ip_hdr->version);
 			assert(0);
 			goto error;
 		}
@@ -4764,7 +4753,7 @@ error:
 static int co_baseheader(struct rohc_comp_ctxt *const context,
                          struct sc_tcp_context *const tcp_context,
                          ip_context_t *const inner_ip_ctxt,
-                         const uint8_t *const inner_ip_hdr,
+                         const struct ip_hdr *const inner_ip_hdr,
                          const size_t inner_ip_hdr_len,
                          uint8_t *const rohc_pkt,
                          const size_t rohc_pkt_max_len __attribute__((unused)), /* TODO */
@@ -4772,14 +4761,10 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
                          const struct tcphdr *const tcp,
                          const uint8_t crc)
 {
-	ip_version inner_ip_version;
 	multi_ptr_t c_base_header; // compressed
 	int counter;
 	multi_ptr_t mptr;
 	bool is_ok;
-
-	assert(inner_ip_hdr_len >= 1);
-	inner_ip_version = (inner_ip_hdr[0] >> 4) & 0x0f;
 
 	// Init pointer on rohc compressed buffer
 	c_base_header.uint8 = rohc_pkt;
@@ -4915,7 +4900,8 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 
 	/* update context with new values (done at the very end to avoid wrongly
 	 * updating the context in case of compression failure) */
-	if(inner_ip_version == IPV4)
+	assert(inner_ip_hdr_len >= 1);
+	if(inner_ip_hdr->version == IPV4)
 	{
 		const struct ipv4_hdr *const inner_ipv4 = (struct ipv4_hdr *) inner_ip_hdr;
 		inner_ip_ctxt->ctxt.v4.last_ip_id_behavior = inner_ip_ctxt->ctxt.v4.ip_id_behavior;
@@ -5237,22 +5223,18 @@ static size_t c_tcp_build_rnd_7(struct rohc_comp_ctxt *const context,
 static bool c_tcp_build_rnd_8(struct rohc_comp_ctxt *const context,
                               const ip_context_t *const inner_ip_ctxt,
                               struct sc_tcp_context *const tcp_context,
-                              const uint8_t *const inner_ip_hdr,
+                              const struct ip_hdr *const inner_ip_hdr,
                               const size_t inner_ip_hdr_len,
                               const struct tcphdr *const tcp,
                               const uint8_t crc,
                               rnd_8_t *const rnd8,
                               size_t *const rnd8_len)
 {
-	ip_version inner_ip_version;
 	uint32_t seq_num;
 	size_t comp_opts_len;
 	uint8_t ttl_hl;
 	uint8_t msn;
 	bool is_ok;
-
-	assert(inner_ip_hdr_len >= 1);
-	inner_ip_version = (inner_ip_hdr[0] >> 4) & 0x0f;
 
 	rohc_comp_debug(context, "code rnd_8 packet");
 
@@ -5269,7 +5251,8 @@ static bool c_tcp_build_rnd_8(struct rohc_comp_ctxt *const context,
 	rnd8->psh_flag = tcp->psh_flag;
 
 	/* TTL/HL */
-	if(inner_ip_version == IPV4)
+	assert(inner_ip_hdr_len >= 1);
+	if(inner_ip_hdr->version == IPV4)
 	{
 		const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) inner_ip_hdr;
 		assert(inner_ip_hdr_len >= sizeof(struct ipv4_hdr));
@@ -5279,7 +5262,7 @@ static bool c_tcp_build_rnd_8(struct rohc_comp_ctxt *const context,
 	else
 	{
 		const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) inner_ip_hdr;
-		assert(inner_ip_version == IPV6);
+		assert(inner_ip_hdr->version == IPV6);
 		assert(inner_ip_hdr_len >= sizeof(struct ipv6_hdr));
 		assert(inner_ip_ctxt->ctxt.vx.version == IPV6);
 		ttl_hl = ipv6->ip6_hlim;
@@ -5352,19 +5335,17 @@ error:
 static size_t c_tcp_build_seq_1(struct rohc_comp_ctxt *const context,
                                 const ip_context_t *const inner_ip_ctxt,
                                 struct sc_tcp_context *const tcp_context,
-                                const uint8_t *const inner_ip_hdr,
+                                const struct ip_hdr *const inner_ip_hdr,
                                 const size_t inner_ip_hdr_len,
                                 const struct tcphdr *const tcp,
                                 const uint8_t crc,
                                 seq_1_t *const seq1)
 {
-	ip_version inner_ip_version;
 	uint32_t seq_num;
 
 	assert(inner_ip_ctxt->ctxt.vx.version == IPV4);
 	assert(inner_ip_hdr_len >= sizeof(struct ipv4_hdr));
-	inner_ip_version = (inner_ip_hdr[0] >> 4) & 0x0f;
-	assert(inner_ip_version == IPV4);
+	assert(inner_ip_hdr->version == IPV4);
 
 	rohc_comp_debug(context, "code seq_1 packet");
 
@@ -5400,18 +5381,15 @@ static size_t c_tcp_build_seq_1(struct rohc_comp_ctxt *const context,
 static size_t c_tcp_build_seq_2(struct rohc_comp_ctxt *const context,
                                 const ip_context_t *const inner_ip_ctxt,
                                 struct sc_tcp_context *const tcp_context,
-                                const uint8_t *const inner_ip_hdr,
+                                const struct ip_hdr *const inner_ip_hdr,
                                 const size_t inner_ip_hdr_len,
                                 const struct tcphdr *const tcp,
                                 const uint8_t crc,
                                 seq_2_t *const seq2)
 {
-	ip_version inner_ip_version;
-
 	assert(inner_ip_ctxt->ctxt.vx.version == IPV4);
 	assert(inner_ip_hdr_len >= sizeof(struct ipv4_hdr));
-	inner_ip_version = (inner_ip_hdr[0] >> 4) & 0x0f;
-	assert(inner_ip_version == IPV4);
+	assert(inner_ip_hdr->version == IPV4);
 
 	rohc_comp_debug(context, "code seq_2 packet");
 
@@ -5447,18 +5425,15 @@ static size_t c_tcp_build_seq_2(struct rohc_comp_ctxt *const context,
 static size_t c_tcp_build_seq_3(struct rohc_comp_ctxt *const context,
                                 const ip_context_t *const inner_ip_ctxt,
                                 struct sc_tcp_context *const tcp_context,
-                                const uint8_t *const inner_ip_hdr,
+                                const struct ip_hdr *const inner_ip_hdr,
                                 const size_t inner_ip_hdr_len,
                                 const struct tcphdr *const tcp,
                                 const uint8_t crc,
                                 seq_3_t *const seq3)
 {
-	ip_version inner_ip_version;
-
 	assert(inner_ip_ctxt->ctxt.vx.version == IPV4);
 	assert(inner_ip_hdr_len >= sizeof(struct ipv4_hdr));
-	inner_ip_version = (inner_ip_hdr[0] >> 4) & 0x0f;
-	assert(inner_ip_version == IPV4);
+	assert(inner_ip_hdr->version == IPV4);
 
 	rohc_comp_debug(context, "code seq_3 packet");
 
@@ -5494,18 +5469,15 @@ static size_t c_tcp_build_seq_3(struct rohc_comp_ctxt *const context,
 static size_t c_tcp_build_seq_4(struct rohc_comp_ctxt *const context,
                                 const ip_context_t *const inner_ip_ctxt,
                                 struct sc_tcp_context *const tcp_context,
-                                const uint8_t *const inner_ip_hdr,
+                                const struct ip_hdr *const inner_ip_hdr,
                                 const size_t inner_ip_hdr_len,
                                 const struct tcphdr *const tcp,
                                 const uint8_t crc,
                                 seq_4_t *const seq4)
 {
-	ip_version inner_ip_version;
-
 	assert(inner_ip_ctxt->ctxt.vx.version == IPV4);
 	assert(inner_ip_hdr_len >= sizeof(struct ipv4_hdr));
-	inner_ip_version = (inner_ip_hdr[0] >> 4) & 0x0f;
-	assert(inner_ip_version == IPV4);
+	assert(inner_ip_hdr->version == IPV4);
 	assert(tcp_context->ack_stride != 0);
 
 	rohc_comp_debug(context, "code seq_4 packet");
@@ -5542,19 +5514,17 @@ static size_t c_tcp_build_seq_4(struct rohc_comp_ctxt *const context,
 static size_t c_tcp_build_seq_5(struct rohc_comp_ctxt *const context,
                                 const ip_context_t *const inner_ip_ctxt,
                                 struct sc_tcp_context *const tcp_context,
-                                const uint8_t *const inner_ip_hdr,
+                                const struct ip_hdr *const inner_ip_hdr,
                                 const size_t inner_ip_hdr_len,
                                 const struct tcphdr *const tcp,
                                 const uint8_t crc,
                                 seq_5_t *const seq5)
 {
-	ip_version inner_ip_version;
 	uint32_t seq_num;
 
 	assert(inner_ip_ctxt->ctxt.vx.version == IPV4);
 	assert(inner_ip_hdr_len >= sizeof(struct ipv4_hdr));
-	inner_ip_version = (inner_ip_hdr[0] >> 4) & 0x0f;
-	assert(inner_ip_version == IPV4);
+	assert(inner_ip_hdr->version == IPV4);
 
 	rohc_comp_debug(context, "code seq_5 packet");
 
@@ -5590,19 +5560,17 @@ static size_t c_tcp_build_seq_5(struct rohc_comp_ctxt *const context,
 static size_t c_tcp_build_seq_6(struct rohc_comp_ctxt *const context,
                                 const ip_context_t *const inner_ip_ctxt,
                                 struct sc_tcp_context *const tcp_context,
-                                const uint8_t *const inner_ip_hdr,
+                                const struct ip_hdr *const inner_ip_hdr,
                                 const size_t inner_ip_hdr_len,
                                 const struct tcphdr *const tcp,
                                 const uint8_t crc,
                                 seq_6_t *const seq6)
 {
-	ip_version inner_ip_version;
 	uint8_t seq_num_scaled;
 
 	assert(inner_ip_ctxt->ctxt.vx.version == IPV4);
 	assert(inner_ip_hdr_len >= sizeof(struct ipv4_hdr));
-	inner_ip_version = (inner_ip_hdr[0] >> 4) & 0x0f;
-	assert(inner_ip_version == IPV4);
+	assert(inner_ip_hdr->version == IPV4);
 
 	rohc_comp_debug(context, "code seq_6 packet");
 
@@ -5644,19 +5612,17 @@ static size_t c_tcp_build_seq_6(struct rohc_comp_ctxt *const context,
 static size_t c_tcp_build_seq_7(struct rohc_comp_ctxt *const context,
                                 const ip_context_t *const inner_ip_ctxt,
                                 struct sc_tcp_context *const tcp_context,
-                                const uint8_t *const inner_ip_hdr,
+                                const struct ip_hdr *const inner_ip_hdr,
                                 const size_t inner_ip_hdr_len,
                                 const struct tcphdr *const tcp,
                                 const uint8_t crc,
                                 seq_7_t *const seq7)
 {
-	ip_version inner_ip_version;
 	uint16_t window;
 
 	assert(inner_ip_ctxt->ctxt.vx.version == IPV4);
 	assert(inner_ip_hdr_len >= sizeof(struct ipv4_hdr));
-	inner_ip_version = (inner_ip_hdr[0] >> 4) & 0x0f;
-	assert(inner_ip_version == IPV4);
+	assert(inner_ip_hdr->version == IPV4);
 
 	rohc_comp_debug(context, "code seq_7 packet");
 
@@ -5700,7 +5666,7 @@ static size_t c_tcp_build_seq_7(struct rohc_comp_ctxt *const context,
 static bool c_tcp_build_seq_8(struct rohc_comp_ctxt *const context,
                               const ip_context_t *const inner_ip_ctxt,
                               struct sc_tcp_context *const tcp_context,
-                              const uint8_t *const inner_ip_hdr,
+                              const struct ip_hdr *const inner_ip_hdr,
                               const size_t inner_ip_hdr_len,
                               const struct tcphdr *const tcp,
                               const uint8_t crc,
@@ -5708,7 +5674,6 @@ static bool c_tcp_build_seq_8(struct rohc_comp_ctxt *const context,
                               size_t *const seq8_len)
 {
 	const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) inner_ip_hdr;
-	ip_version inner_ip_version;
 	size_t comp_opts_len;
 	uint16_t ack_num;
 	uint16_t seq_num;
@@ -5716,8 +5681,7 @@ static bool c_tcp_build_seq_8(struct rohc_comp_ctxt *const context,
 
 	assert(inner_ip_ctxt->ctxt.vx.version == IPV4);
 	assert(inner_ip_hdr_len >= sizeof(struct ipv4_hdr));
-	inner_ip_version = (inner_ip_hdr[0] >> 4) & 0x0f;
-	assert(inner_ip_version == IPV4);
+	assert(inner_ip_hdr->version == IPV4);
 
 	rohc_comp_debug(context, "code seq_8 packet");
 
@@ -5810,14 +5774,13 @@ error:
 static bool c_tcp_build_co_common(struct rohc_comp_ctxt *const context,
                                   const ip_context_t *const inner_ip_ctxt,
                                   struct sc_tcp_context *const tcp_context,
-                                  const uint8_t *const inner_ip_hdr,
+                                  const struct ip_hdr *const inner_ip_hdr,
                                   const size_t inner_ip_hdr_len,
                                   const struct tcphdr *const tcp,
                                   const uint8_t crc,
                                   co_common_t *const co_common,
                                   size_t *const co_common_len)
 {
-	ip_version inner_ip_version;
 	uint8_t *co_common_opt;
 	size_t co_common_opt_len;
 	size_t encoded_seq_len;
@@ -5825,9 +5788,6 @@ static bool c_tcp_build_co_common(struct rohc_comp_ctxt *const context,
 	int indicator;
 	bool is_ok;
 	int ret;
-
-	assert(inner_ip_hdr_len >= 1);
-	inner_ip_version = (inner_ip_hdr[0] >> 4) & 0x0f;
 
 	rohc_comp_debug(context, "code common packet");
 
@@ -5910,7 +5870,7 @@ static bool c_tcp_build_co_common(struct rohc_comp_ctxt *const context,
 	                co_common->window_indicator, rohc_ntoh16(tcp->window), ret);
 
 	/* innermost IP-ID */
-	if(inner_ip_version == IPV4)
+	if(inner_ip_hdr->version == IPV4)
 	{
 		// =:= irregular(1) [ 1 ];
 		ret = c_optional_ip_id_lsb(context, inner_ip_ctxt->ctxt.v4.ip_id_behavior,
@@ -5966,7 +5926,8 @@ static bool c_tcp_build_co_common(struct rohc_comp_ctxt *const context,
 	rohc_comp_debug(context, "urg_ptr_present = %d (URG pointer encoded on %d bytes)",
 	                co_common->urg_ptr_present, ret);
 
-	if(inner_ip_version == IPV4)
+	assert(inner_ip_hdr_len >= 1);
+	if(inner_ip_hdr->version == IPV4)
 	{
 		const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) inner_ip_hdr;
 		const uint8_t dscp = (ipv4->tos >> 2) & 0x3f;
@@ -6131,23 +6092,18 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 	ip_hdrs_nr = 0;
 	do
 	{
+		const struct ip_hdr *const ip = (struct ip_hdr *) remain_data;
 		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdrs_nr]);
-		ip_version ip_vers;
 
-		if(!get_ip_version(remain_data, remain_len, &ip_vers))
-		{
-			rohc_comp_warn(context, "failed to get version of IP header #%zu",
-			               ip_hdrs_nr + 1);
-			goto error;
-		}
-
-		rohc_comp_debug(context, "found IPv%d header #%zu", ip_vers, ip_hdrs_nr + 1);
+		assert(remain_len >= sizeof(struct ip_hdr));
+		rohc_comp_debug(context, "found IPv%d header #%zu",
+		                ip->version, ip_hdrs_nr + 1);
 
 		inner_ip_hdr = remain_data;
-		inner_ip_version = ip_vers;
+		inner_ip_version = ip->version;
 		*ip_inner_ctxt = ip_context;
 
-		if(ip_vers == IPV4)
+		if(ip->version == IPV4)
 		{
 			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) remain_data;
 
@@ -6165,7 +6121,7 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 			remain_len -= sizeof(struct ipv4_hdr);
 			hdrs_len += sizeof(struct ipv4_hdr);
 		}
-		else if(ip_vers == IPV6)
+		else if(ip->version == IPV6)
 		{
 			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
 			size_t exts_len;
@@ -6196,7 +6152,7 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 		}
 		else
 		{
-			rohc_comp_warn(context, "unknown IP header with version %u", ip_vers);
+			rohc_comp_warn(context, "unknown IP header with version %u", ip->version);
 			goto error;
 		}
 	}
@@ -6509,21 +6465,21 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	tcp_context->tmp.ttl_irregular_chain_flag = 0;
 	for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)
 	{
+		const struct ip_hdr *const ip = (struct ip_hdr *) remain_data;
 		const ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
 		const bool is_innermost = !!(ip_hdr_pos + 1 == tcp_context->ip_contexts_nr);
 		uint8_t ttl_hopl;
 		size_t ip_ext_pos;
-		ip_version ip_ver;
 
-		/* get IP version */
-		assert(get_ip_version(remain_data, remain_len, &ip_ver));
-		rohc_comp_debug(context, "found IPv%d", ip_ver);
+		/* retrieve IP version */
+		assert(remain_len >= sizeof(struct ip_hdr));
+		rohc_comp_debug(context, "found IPv%d", ip->version);
 
 		inner_ip_ctxt = ip_context;
 		inner_ip_hdr = remain_data;
-		inner_ip_version = ip_ver;
+		inner_ip_version = ip->version;
 
-		if(ip_ver == IPV4)
+		if(ip->version == IPV4)
 		{
 			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) remain_data;
 			size_t ipv4_hdr_len;
@@ -6552,7 +6508,7 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 			remain_data += ipv4_hdr_len;
 			remain_len -= ipv4_hdr_len;
 		}
-		else if(ip_ver == IPV6)
+		else if(ip->version == IPV6)
 		{
 			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
 
