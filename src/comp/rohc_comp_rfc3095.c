@@ -2123,23 +2123,19 @@ static int code_ipv6_static_part(const struct rohc_comp_ctxt *const context,
                                  uint8_t *const dest,
                                  int counter)
 {
-	unsigned int flow_label;
 	uint8_t protocol;
 	const struct ipv6_addr *saddr;
 	const struct ipv6_addr *daddr;
 
 	/* part 1 */
-	flow_label = ipv6_get_flow_label(ip);
-	dest[counter] = ((6 << 4) & 0xf0) | ((flow_label >> 16) & 0x0f);
+	dest[counter] = ((6 << 4) & 0xf0) | ip->header.v6.flow1;
 	rohc_comp_debug(context, "version + flow label (msb) = 0x%02x",
 	                dest[counter]);
 	counter++;
 
 	/* part 2 */
-	dest[counter] = (flow_label >> 8) & 0xff;
-	counter++;
-	dest[counter] = flow_label & 0xff;
-	counter++;
+	memcpy(dest + counter, &ip->header.v6.flow2, sizeof(uint16_t));
+	counter += sizeof(uint16_t);
 	rohc_comp_debug(context, "flow label (lsb) = 0x%02x%02x",
 	                dest[counter - 2], dest[counter - 1]);
 
@@ -6082,7 +6078,7 @@ static void update_context_ip_hdr(struct ip_header_info *const ip_flags,
 	{
 		ip_flags->info.v6.old_ip = *(ipv6_get_header(ip));
 		/* replace Next Header by the one of the last extension header */
-		ip_flags->info.v6.old_ip.ip6_nxt = ip_get_protocol(ip);
+		ip_flags->info.v6.old_ip.nh = ip_get_protocol(ip);
 		/* update compression list context */
 		rohc_list_update_context(&ip_flags->info.v6.ext_comp);
 	}
@@ -6424,9 +6420,9 @@ static unsigned short detect_changed_fields(const struct rohc_comp_ctxt *const c
 		const struct ipv6_hdr *old_ip;
 
 		old_ip = &header_info->info.v6.old_ip;
-		old_tos = IPV6_GET_TC(*old_ip);
-		old_ttl = old_ip->ip6_hlim;
-		old_protocol = old_ip->ip6_nxt;
+		old_tos = ipv6_get_tc(old_ip);
+		old_ttl = old_ip->hl;
+		old_protocol = old_ip->nh;
 	}
 
 	new_tos = ip_get_tos(ip);

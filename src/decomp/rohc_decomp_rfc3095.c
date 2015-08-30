@@ -5204,26 +5204,25 @@ static bool build_uncomp_ipv6(const struct rohc_decomp_ctxt *const context,
 	}
 
 	/* static fields */
-	IPV6_SET_VERSION(ip, decoded.version);
-	IPV6_SET_FLOW_LABEL(ip, decoded.flowid);
-	ip->ip6_nxt = decoded.proto;
-	memcpy(&ip->ip6_src, decoded.saddr, 16);
-	memcpy(&ip->ip6_dst, decoded.daddr, 16);
+	ip->version = decoded.version;
+	ipv6_set_flow_label(ip, decoded.flowid);
+	ip->nh = decoded.proto;
+	memcpy(&ip->saddr, decoded.saddr, 16);
+	memcpy(&ip->daddr, decoded.daddr, 16);
 
 	/* if there are extension headers, set Next Header in base header
 	 * according to the first one */
 	if(list_decomp->pkt_list.id != ROHC_LIST_GEN_ID_NONE &&
 	   list_decomp->pkt_list.items_nr > 0)
 	{
-		ip->ip6_nxt = (uint8_t) list_decomp->pkt_list.items[0]->type;
+		ip->nh = (uint8_t) list_decomp->pkt_list.items[0]->type;
 		rohc_decomp_debug(context, "set Next Header in IPv6 base header to "
-		                  "0x%02x because of IPv6 extension header",
-		                  ip->ip6_nxt);
+		                  "0x%02x because of IPv6 extension header", ip->nh);
 	}
 
 	/* dynamic fields */
-	IPV6_SET_TC(ip, decoded.tos);
-	ip->ip6_hlim = decoded.ttl;
+	ipv6_set_tc(ip, decoded.tos);
+	ip->hl = decoded.ttl;
 
 	/* extension list */
 	if(list_decomp->pkt_list.id != ROHC_LIST_GEN_ID_NONE)
@@ -5239,10 +5238,10 @@ static bool build_uncomp_ipv6(const struct rohc_decomp_ctxt *const context,
 	}
 
 	/* inferred fields */
-	ip->ip6_plen = rohc_hton16(payload_size + ext_size);
+	ip->plen = rohc_hton16(payload_size + ext_size);
 	rohc_decomp_debug(context, "Payload Length = 0x%04x (extensions = %zu "
 	                  "bytes, payload = %zu bytes)",
-	                  rohc_ntoh16(ip->ip6_plen), ext_size, payload_size);
+	                  rohc_ntoh16(ip->plen), ext_size, payload_size);
 
 	*uncomp_hdrs_len = sizeof(struct ipv6_hdr) + ext_size;
 	return true;
@@ -5859,7 +5858,7 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 		else
 		{
 			/* keep context value */
-			decoded->flowid = ipv6_get_flow_label(&ctxt->ip);
+			decoded->flowid = ip_get_flow_label(&ctxt->ip);
 		}
 		rohc_decomp_debug(context, "decoded %s flow label = 0x%05x", descr,
 		                  decoded->flowid);
@@ -6065,7 +6064,7 @@ void rfc3095_decomp_update_ctxt(struct rohc_decomp_ctxt *const context,
 	}
 	else /* IPV6 */
 	{
-		ipv6_set_flow_label(&rfc3095_ctxt->outer_ip_changes->ip, decoded->outer_ip.flowid);
+		ip_set_flow_label(&rfc3095_ctxt->outer_ip_changes->ip, decoded->outer_ip.flowid);
 	}
 
 	/* update fields related to the inner IP header (if any) */
@@ -6089,7 +6088,7 @@ void rfc3095_decomp_update_ctxt(struct rohc_decomp_ctxt *const context,
 		}
 		else /* IPV6 */
 		{
-			ipv6_set_flow_label(&rfc3095_ctxt->inner_ip_changes->ip, decoded->inner_ip.flowid);
+			ip_set_flow_label(&rfc3095_ctxt->inner_ip_changes->ip, decoded->inner_ip.flowid);
 		}
 		rfc3095_ctxt->inner_ip_changes->ip.nl.proto = decoded->inner_ip.proto;
 	}

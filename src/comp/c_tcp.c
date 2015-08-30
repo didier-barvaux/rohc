@@ -999,16 +999,16 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 				const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
 
 				assert(remain_len >= sizeof(struct ipv6_hdr));
-				proto = ipv6->ip6_nxt;
+				proto = ipv6->nh;
 
 				ip_context->ctxt.v6.ip_id_behavior = IP_ID_BEHAVIOR_RAND;
 				ip_context->ctxt.v6.next_header = proto;
 				ip_context->ctxt.v6.dscp = remain_data[1];
-				ip_context->ctxt.v6.ttl_hopl = ipv6->ip6_hlim;
-				ip_context->ctxt.v6.flow_label = IPV6_GET_FLOW_LABEL(*ipv6);
-				memcpy(ip_context->ctxt.v6.src_addr, &ipv6->ip6_src,
+				ip_context->ctxt.v6.ttl_hopl = ipv6->hl;
+				ip_context->ctxt.v6.flow_label = ipv6_get_flow_label(ipv6);
+				memcpy(ip_context->ctxt.v6.src_addr, &ipv6->saddr,
 				       sizeof(struct ipv6_addr));
-				memcpy(ip_context->ctxt.v6.dest_addr, &ipv6->ip6_dst,
+				memcpy(ip_context->ctxt.v6.dest_addr, &ipv6->daddr,
 				       sizeof(struct ipv6_addr));
 
 				remain_data += sizeof(struct ipv6_hdr);
@@ -1378,17 +1378,17 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 				           ip_hdrs_nr + 1);
 				goto bad_profile;
 			}
-			next_proto = ipv6->ip6_nxt;
+			next_proto = ipv6->nh;
 			remain_data += sizeof(struct ipv6_hdr);
 			remain_len -= sizeof(struct ipv6_hdr);
 
 			/* payload length shall be correct */
-			if(rohc_ntoh16(ipv6->ip6_plen) != remain_len)
+			if(rohc_ntoh16(ipv6->plen) != remain_len)
 			{
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 				           "IP packet #%zu is not supported by the profile: payload "
 				           "length is %u while it shall be %zu", ip_hdrs_nr + 1,
-				           rohc_ntoh16(ipv6->ip6_plen), remain_len);
+				           rohc_ntoh16(ipv6->plen), remain_len);
 				goto bad_profile;
 			}
 
@@ -1918,9 +1918,9 @@ static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
 			assert(remain_len >= sizeof(struct ipv6_hdr));
 
 			/* check source and destination addresses */
-			if(memcmp(&ipv6->ip6_src, ip_context->ctxt.v6.src_addr,
+			if(memcmp(&ipv6->saddr, ip_context->ctxt.v6.src_addr,
 			          sizeof(struct ipv6_addr)) != 0 ||
-			   memcmp(&ipv6->ip6_dst, ip_context->ctxt.v6.dest_addr,
+			   memcmp(&ipv6->daddr, ip_context->ctxt.v6.dest_addr,
 			          sizeof(struct ipv6_addr)) != 0)
 			{
 				rohc_comp_debug(context, "  not same IPv6 addresses");
@@ -1929,14 +1929,14 @@ static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
 			rohc_comp_debug(context, "  same IPv6 addresses");
 
 			/* check Flow Label */
-			if(IPV6_GET_FLOW_LABEL(*ipv6) != ip_context->ctxt.v6.flow_label)
+			if(ipv6_get_flow_label(ipv6) != ip_context->ctxt.v6.flow_label)
 			{
 				rohc_comp_debug(context, "  not same IPv6 flow label");
 				goto bad_context;
 			}
 
 			/* check next header protocol */
-			next_proto = ipv6->ip6_nxt;
+			next_proto = ipv6->nh;
 			if(next_proto != ip_context->ctxt.v6.next_header)
 			{
 				rohc_comp_debug(context, "  IPv6 not same protocol %d", next_proto);
@@ -2332,7 +2332,7 @@ static int tcp_code_static_part(struct rohc_comp_ctxt *const context,
 
 			mptr.uint8 = tcp_code_static_ipv6_part(context, ipv6, mptr);
 
-			protocol = ipv6->ip6_nxt;
+			protocol = ipv6->nh;
 			remain_data += sizeof(struct ipv6_hdr);
 			remain_len -= sizeof(struct ipv6_hdr);
 
@@ -2453,7 +2453,7 @@ static int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
 
 			mptr.uint8 = tcp_code_dynamic_ipv6_part(context, ip_context, ipv6, mptr);
 
-			protocol = ipv6->ip6_nxt;
+			protocol = ipv6->nh;
 			remain_data += sizeof(struct ipv6_hdr);
 			remain_len -= sizeof(struct ipv6_hdr);
 
@@ -2519,7 +2519,7 @@ static int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
 	else if(inner_ip_hdr->version == IPV6)
 	{
 		const struct ipv6_hdr *const inner_ipv6 = (struct ipv6_hdr *) inner_ip_hdr;
-		inner_ip_context->ctxt.vx.dscp = (IPV6_GET_TC(*inner_ipv6) >> 2) & 0x3f;
+		inner_ip_context->ctxt.vx.dscp = ipv6_get_dscp(inner_ipv6);
 	}
 	else
 	{
@@ -2741,15 +2741,15 @@ static uint8_t * tcp_code_static_ipv6_part(struct rohc_comp_ctxt *const context,
 {
 	int size;
 
-	if(IPV6_GET_FLOW_LABEL(*ipv6) == 0)
+	if(ipv6->flow1 == 0 && ipv6->flow2 == 0)
 	{
 		mptr.ipv6_static1->version_flag = 1;
 		mptr.ipv6_static1->reserved1 = 0;
 		mptr.ipv6_static1->flow_label_enc_discriminator = 0;
 		mptr.ipv6_static1->reserved2 = 0;
-		mptr.ipv6_static1->next_header = ipv6->ip6_nxt;
-		memcpy(mptr.ipv6_static1->src_addr, &ipv6->ip6_src, sizeof(struct ipv6_addr));
-		memcpy(mptr.ipv6_static1->dst_addr, &ipv6->ip6_dst, sizeof(struct ipv6_addr));
+		mptr.ipv6_static1->next_header = ipv6->nh;
+		memcpy(mptr.ipv6_static1->src_addr, &ipv6->saddr, sizeof(struct ipv6_addr));
+		memcpy(mptr.ipv6_static1->dst_addr, &ipv6->daddr, sizeof(struct ipv6_addr));
 		size = sizeof(ipv6_static1_t);
 	}
 	else
@@ -2757,14 +2757,14 @@ static uint8_t * tcp_code_static_ipv6_part(struct rohc_comp_ctxt *const context,
 		mptr.ipv6_static2->version_flag = 1;
 		mptr.ipv6_static2->reserved = 0;
 		mptr.ipv6_static2->flow_label_enc_discriminator = 1;
-		mptr.ipv6_static2->flow_label1 = (rohc_ntoh32(ipv6->ip6_flow) >> 16) & 0x0f;
-		mptr.ipv6_static2->flow_label2 = rohc_ntoh32(ipv6->ip6_flow) & 0xffff;
-		mptr.ipv6_static2->next_header = ipv6->ip6_nxt;
-		memcpy(mptr.ipv6_static2->src_addr, &ipv6->ip6_src, sizeof(struct ipv6_addr));
-		memcpy(mptr.ipv6_static2->dst_addr, &ipv6->ip6_dst, sizeof(struct ipv6_addr));
+		mptr.ipv6_static2->flow_label1 = ipv6->flow1;
+		mptr.ipv6_static2->flow_label2 = rohc_ntoh16(ipv6->flow2);
+		mptr.ipv6_static2->next_header = ipv6->nh;
+		memcpy(mptr.ipv6_static2->src_addr, &ipv6->saddr, sizeof(struct ipv6_addr));
+		memcpy(mptr.ipv6_static2->dst_addr, &ipv6->daddr, sizeof(struct ipv6_addr));
 		size = sizeof(ipv6_static2_t);
 	}
-	rohc_comp_debug(context, "IPv6 next header = %u", ipv6->ip6_nxt);
+	rohc_comp_debug(context, "IPv6 next header = %u", ipv6->nh);
 
 #if ROHC_EXTRA_DEBUG == 1
 	rohc_dump_buf(context->compressor->trace_callback,
@@ -2893,20 +2893,18 @@ static uint8_t * tcp_code_dynamic_ipv6_part(const struct rohc_comp_ctxt *context
                                             const struct ipv6_hdr *const ipv6,
                                             multi_ptr_t mptr)
 {
-	const uint8_t tc = IPV6_GET_TC(*ipv6);
-	const uint8_t dscp = (tc >> 2) & 0x3f;
-	const uint8_t ecn = tc & 0x03;
+	const uint8_t dscp = ipv6_get_dscp(ipv6);
 	size_t size;
 
 	assert(ip_context->ctxt.v6.version == IPV6);
 
 	mptr.ipv6_dynamic->dscp = dscp;
-	mptr.ipv6_dynamic->ip_ecn_flags = ecn;
-	mptr.ipv6_dynamic->ttl_hopl = ipv6->ip6_hlim;
+	mptr.ipv6_dynamic->ip_ecn_flags = ipv6->ecn;
+	mptr.ipv6_dynamic->ttl_hopl = ipv6->hl;
 
 	/* TODO: should not update context there */
 	ip_context->ctxt.v6.dscp = dscp;
-	ip_context->ctxt.v6.ttl_hopl = ipv6->ip6_hlim;
+	ip_context->ctxt.v6.ttl_hopl = ipv6->hl;
 
 	size = sizeof(ipv6_dynamic_t);
 
@@ -3042,7 +3040,7 @@ static uint8_t * tcp_code_irregular_ipv6_part(struct rohc_comp_ctxt *const conte
 		 *   ip_ecn_flags =:= static_or_irreg( ecn_used.UVALUE ) */
 		if(ecn_used)
 		{
-			rohc_data[0] = IPV6_GET_TC(*ipv6);
+			rohc_data[0] = ipv6_get_tc(ipv6);
 			rohc_comp_debug(context, "add DSCP and ip_ecn_flags = 0x%02x",
 			                rohc_data[0]);
 			rohc_data++;
@@ -3051,7 +3049,7 @@ static uint8_t * tcp_code_irregular_ipv6_part(struct rohc_comp_ctxt *const conte
 		{
 			/* ipv6_outer_with_ttl_irregular:
 			 *   ttl_hopl =:= irregular(8) */
-			rohc_data[0] = ipv6->ip6_hlim;
+			rohc_data[0] = ipv6->hl;
 			rohc_comp_debug(context, "add ttl_hopl = 0x%02x", rohc_data[0]);
 			rohc_data++;
 		}
@@ -4512,10 +4510,9 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 
 			assert(remain_len >= sizeof(struct ipv6_hdr));
 
-			/* get the transport protocol */
-			protocol = ipv6->ip6_nxt;
-			ip_inner_ecn = IPV6_GET_TC(*ipv6) & 0x03;
-			payload_size = rohc_ntoh16(ipv6->ip6_plen);
+			protocol = ipv6->nh;
+			ip_inner_ecn = ipv6->ecn;
+			payload_size = rohc_ntoh16(ipv6->plen);
 
 			/* skip IPv6 header */
 			rohc_comp_debug(context, "skip %zu-byte IPv6 header with Next Header "
@@ -4666,7 +4663,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 			                                          tcp_context->tmp.ttl_irregular_chain_flag,
 			                                          ip_inner_ecn);
 
-			protocol = ipv6->ip6_nxt;
+			protocol = ipv6->nh;
 			remain_data += sizeof(struct ipv6_hdr);
 			remain_len -= sizeof(struct ipv6_hdr);
 
@@ -4912,7 +4909,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 	else
 	{
 		const struct ipv6_hdr *const inner_ipv6 = (struct ipv6_hdr *) inner_ip_hdr;
-		inner_ip_ctxt->ctxt.vx.dscp = (IPV6_GET_TC(*inner_ipv6) >> 2) & 0x3f;
+		inner_ip_ctxt->ctxt.vx.dscp = ipv6_get_dscp(inner_ipv6);
 	}
 	inner_ip_ctxt->ctxt.vx.ttl_hopl = tcp_context->tmp.ttl_hopl;
 
@@ -5265,7 +5262,7 @@ static bool c_tcp_build_rnd_8(struct rohc_comp_ctxt *const context,
 		assert(inner_ip_hdr->version == IPV6);
 		assert(inner_ip_hdr_len >= sizeof(struct ipv6_hdr));
 		assert(inner_ip_ctxt->ctxt.vx.version == IPV6);
-		ttl_hl = ipv6->ip6_hlim;
+		ttl_hl = ipv6->hl;
 	}
 	rnd8->ttl_hopl = ttl_hl & 0x7;
 	rnd8->ecn_used = GET_REAL(tcp_context->ecn_used);
@@ -5970,7 +5967,7 @@ static bool c_tcp_build_co_common(struct rohc_comp_ctxt *const context,
 	else
 	{
 		const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) inner_ip_hdr;
-		const uint8_t dscp = (IPV6_GET_TC(*ipv6) >> 2) & 0x3f;
+		const uint8_t dscp = ipv6_get_dscp(ipv6);
 
 		/* dscp_present =:= irregular(1) [ 1 ] */
 		ret = dscp_encode(inner_ip_ctxt->ctxt.vx.dscp, dscp, co_common_opt, &indicator);
@@ -6133,7 +6130,7 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 				goto error;
 			}
 
-			protocol = ipv6->ip6_nxt;
+			protocol = ipv6->nh;
 			pkt_ecn_vals |= remain_data[1] & 0x3;
 
 			remain_data += sizeof(struct ipv6_hdr);
@@ -6515,10 +6512,10 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 			assert(remain_len >= sizeof(struct ipv6_hdr));
 
 			/* get the transport protocol */
-			protocol = ipv6->ip6_nxt;
+			protocol = ipv6->nh;
 
 			/* irregular chain? */
-			ttl_hopl = ipv6->ip6_hlim;
+			ttl_hopl = ipv6->hl;
 			if(!is_innermost && ttl_hopl != ip_context->ctxt.v6.ttl_hopl)
 			{
 				tcp_context->tmp.ttl_irregular_chain_flag |= 1;
@@ -6651,10 +6648,10 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		tcp_context->tmp.ip_df_changed = false; /* no DF for IPv6 */
 
 		tcp_context->tmp.dscp_changed =
-			(((IPV6_GET_TC(*inner_ipv6) >> 2) & 0x3f) != inner_ip_ctxt->ctxt.v6.dscp);
+			!!(ipv6_get_dscp(inner_ipv6) != inner_ip_ctxt->ctxt.v6.dscp);
 		tcp_field_descr_change(context, "DSCP", tcp_context->tmp.dscp_changed, 0);
 
-		tcp_context->tmp.ttl_hopl = inner_ipv6->ip6_hlim;
+		tcp_context->tmp.ttl_hopl = inner_ipv6->hl;
 	}
 
 	/* encode innermost IPv4 TTL or IPv6 Hop Limit */

@@ -3679,18 +3679,18 @@ static bool d_tcp_build_ipv6_hdr(const struct rohc_decomp_ctxt *const context,
 	}
 
 	/* static part */
-	ipv6->ip6_vfc = decoded->version << 4;
-	rohc_decomp_debug(context, "    version = %u", (ipv6->ip6_vfc >> 4) & 0x0f);
-	IPV6_SET_FLOW_LABEL(ipv6, decoded->flowid);
-	rohc_decomp_debug(context, "    flow label = 0x%05x",
-	                  IPV6_GET_FLOW_LABEL(*ipv6));
-	ipv6->ip6_nxt = decoded->proto;
-	memcpy(&ipv6->ip6_src, decoded->saddr, sizeof(struct ipv6_addr));
-	memcpy(&ipv6->ip6_dst, decoded->daddr, sizeof(struct ipv6_addr));
+	ipv6->version = decoded->version;
+	rohc_decomp_debug(context, "    version = %u", ipv6->version);
+	ipv6_set_flow_label(ipv6, decoded->flowid);
+	rohc_decomp_debug(context, "    flow label = 0x%01x%04x",
+	                  ipv6->flow1, rohc_ntoh16(ipv6->flow2));
+	ipv6->nh = decoded->proto;
+	memcpy(&ipv6->saddr, decoded->saddr, sizeof(struct ipv6_addr));
+	memcpy(&ipv6->daddr, decoded->daddr, sizeof(struct ipv6_addr));
 
 	/* dynamic part */
-	IPV6_SET_TC(ipv6, (decoded->dscp << 2) | decoded->ecn_flags);
-	ipv6->ip6_hlim = decoded->ttl;
+	ipv6_set_dscp_ecn(ipv6, decoded->dscp, decoded->ecn_flags);
+	ipv6->hl = decoded->ttl;
 
 	/* total length will be computed once all headers are built */
 
@@ -3893,9 +3893,9 @@ static rohc_status_t d_tcp_build_hdrs(const struct rohc_decomp *const decomp,
 		{
 			struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) rohc_buf_data(*uncomp_hdrs);
 			rohc_buf_pull(uncomp_hdrs, sizeof(struct ipv6_hdr));
-			ipv6->ip6_plen = rohc_hton16(uncomp_hdrs->len + payload_len);
-			rohc_decomp_debug(context, "    IPv6 payload length = %d",
-			                  rohc_ntoh16(ipv6->ip6_plen));
+			ipv6->plen = rohc_hton16(uncomp_hdrs->len + payload_len);
+			rohc_decomp_debug(context, "    IPv6 payload length = %u",
+			                  rohc_ntoh16(ipv6->plen));
 			rohc_buf_pull(uncomp_hdrs, ip_decoded->opts_len);
 		}
 	}

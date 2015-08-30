@@ -680,7 +680,7 @@ static test_result_t test_run_one_step(test_context_t context,
 		else if(ip_version == 6) /* IPv6 */
 		{
 			const struct ipv6_hdr *ip = (struct ipv6_hdr *) ip_packet;
-			tot_len = sizeof(struct ipv6_hdr) + ntohs(ip->ip6_plen);
+			tot_len = sizeof(struct ipv6_hdr) + ntohs(ip->plen);
 		}
 		else /* unknown IP version */
 		{

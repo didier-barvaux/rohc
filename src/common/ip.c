@@ -30,6 +30,7 @@
 #include "protocols/ip_numbers.h"
 #include "protocols/ip.h"
 #include "protocols/ipv4.h"
+#include "protocols/ipv6.h"
 
 #ifndef __KERNEL__
 #  include <string.h>
@@ -434,7 +435,7 @@ unsigned int ip_get_totlen(const struct ip_packet *const ip)
 	}
 	else if(ip->version == IPV6)
 	{
-		len = sizeof(struct ipv6_hdr) + rohc_ntoh16(ip->header.v6.ip6_plen);
+		len = sizeof(struct ipv6_hdr) + rohc_ntoh16(ip->header.v6.plen);
 	}
 	else /* IP_UNKNOWN */
 	{
@@ -543,7 +544,7 @@ void ip_set_protocol(struct ip_packet *const ip, const uint8_t value)
 	}
 	else if(ip->version == IPV6)
 	{
-		ip->header.v6.ip6_nxt = value & 0xff;
+		ip->header.v6.nh = value & 0xff;
 		ip->nl.proto = value & 0xff;
 	}
 	else
@@ -574,7 +575,7 @@ unsigned int ip_get_tos(const struct ip_packet *const ip)
 	}
 	else if(ip->version == IPV6)
 	{
-		tos = IPV6_GET_TC(ip->header.v6);
+		tos = ipv6_get_tc(&ip->header.v6);
 	}
 	else
 	{
@@ -607,7 +608,7 @@ void ip_set_tos(struct ip_packet *const ip, const uint8_t value)
 	}
 	else if(ip->version == IPV6)
 	{
-		IPV6_SET_TC(&ip->header.v6, value);
+		ipv6_set_tc(&ip->header.v6, value);
 	}
 	else
 	{
@@ -637,7 +638,7 @@ unsigned int ip_get_ttl(const struct ip_packet *const ip)
 	}
 	else if(ip->version == IPV6)
 	{
-		ttl = ip->header.v6.ip6_hlim;
+		ttl = ip->header.v6.hl;
 	}
 	else
 	{
@@ -670,7 +671,7 @@ void ip_set_ttl(struct ip_packet *const ip, const uint8_t value)
 	}
 	else if(ip->version == IPV6)
 	{
-		ip->header.v6.ip6_hlim = value & 0xff;
+		ip->header.v6.hl = value & 0xff;
 	}
 	else
 	{
@@ -697,7 +698,7 @@ void ip_set_saddr(struct ip_packet *const ip, const uint8_t *value)
 	}
 	else if(ip->version == IPV6)
 	{
-		memcpy(&ip->header.v6.ip6_src, value, sizeof(struct ipv6_addr));
+		memcpy(&ip->header.v6.saddr, value, sizeof(struct ipv6_addr));
 	}
 	else
 	{
@@ -724,7 +725,7 @@ void ip_set_daddr(struct ip_packet *const ip, const uint8_t *value)
 	}
 	else if(ip->version == IPV6)
 	{
-		memcpy(&ip->header.v6.ip6_dst, value, sizeof(struct ipv6_addr));
+		memcpy(&ip->header.v6.daddr, value, sizeof(struct ipv6_addr));
 	}
 	else
 	{
@@ -916,10 +917,10 @@ const struct ipv6_hdr * ipv6_get_header(const struct ip_packet *const ip)
  * @param ip The IPv6 packet to analyze
  * @return   The flow label of the given IPv6 packet
  */
-uint32_t ipv6_get_flow_label(const struct ip_packet *const ip)
+uint32_t ip_get_flow_label(const struct ip_packet *const ip)
 {
 	assert(ip->version == IPV6);
-	return IPV6_GET_FLOW_LABEL(ip->header.v6);
+	return ipv6_get_flow_label(&ip->header.v6);
 }
 
 
@@ -932,10 +933,10 @@ uint32_t ipv6_get_flow_label(const struct ip_packet *const ip)
  * @param ip     The IPv6 packet to modify
  * @param value  The flow label value
  */
-void ipv6_set_flow_label(struct ip_packet *const ip, const uint32_t value)
+void ip_set_flow_label(struct ip_packet *const ip, const uint32_t value)
 {
 	assert(ip->version == IPV6);
-	IPV6_SET_FLOW_LABEL(&ip->header.v6, value);
+	ipv6_set_flow_label(&ip->header.v6, value);
 }
 
 
@@ -951,7 +952,7 @@ void ipv6_set_flow_label(struct ip_packet *const ip, const uint32_t value)
 const struct ipv6_addr * ipv6_get_saddr(const struct ip_packet *const ip)
 {
 	assert(ip->version == IPV6);
-	return &(ip->header.v6.ip6_src);
+	return &(ip->header.v6.saddr);
 }
 
 
@@ -967,7 +968,7 @@ const struct ipv6_addr * ipv6_get_saddr(const struct ip_packet *const ip)
 const struct ipv6_addr * ipv6_get_daddr(const struct ip_packet *const ip)
 {
 	assert(ip->version == IPV6);
-	return &(ip->header.v6.ip6_dst);
+	return &(ip->header.v6.daddr);
 }
 
 
@@ -1013,7 +1014,7 @@ static bool ip_find_next_layer(const struct ip_packet *const ip,
 	else if(ip->version == IPV6)
 	{
 		/* find next header after IPv6 header */
-		nh->proto = ip->header.v6.ip6_nxt;
+		nh->proto = ip->header.v6.nh;
 
 		if(ip->size < sizeof(struct ipv6_hdr))
 		{

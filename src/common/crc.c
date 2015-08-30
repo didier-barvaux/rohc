@@ -341,10 +341,10 @@ uint8_t compute_crc_static(const uint8_t *const outer_ip,
 		const struct ipv6_hdr *ip_hdr = (struct ipv6_hdr *) outer_ip;
 
 		/* bytes 1-4 (Version, TC, Flow Label) */
-		crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->ip6_flow), 4,
+		crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->version_tc_flow), 4,
 		                    crc, crc_table);
 		/* bytes 7-40 (Next Header, Hop Limit, Source Address, Destination Address) */
-		crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->ip6_nxt), 34,
+		crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->nh), 34,
 		                    crc, crc_table);
 		/* IPv6 extensions */
 		crc = ipv6_ext_calc_crc_static(outer_ip, crc_type, crc, crc_table);
@@ -375,10 +375,10 @@ uint8_t compute_crc_static(const uint8_t *const outer_ip,
 			const struct ipv6_hdr *ip_hdr = (struct ipv6_hdr *) inner_ip;
 
 			/* bytes 1-4 (Version, TC, Flow Label) */
-			crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->ip6_flow), 4,
+			crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->version_tc_flow), 4,
 			                    crc, crc_table);
 			/* bytes 7-40 (Next Header, Hop Limit, Source Address, Destination Address) */
-			crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->ip6_nxt), 34,
+			crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->nh), 34,
 			                    crc, crc_table);
 			/* IPv6 extensions */
 			crc = ipv6_ext_calc_crc_static(inner_ip, crc_type, crc, crc_table);
@@ -429,7 +429,7 @@ uint8_t compute_crc_dynamic(const uint8_t *const outer_ip,
 	{
 		const struct ipv6_hdr *ip_hdr = (struct ipv6_hdr *) outer_ip;
 		/* bytes 5-6 (Payload Length) */
-		crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->ip6_plen), 2,
+		crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->plen), 2,
 		                    crc, crc_table);
 		/* IPv6 extensions (only AH is CRC-DYNAMIC) */
 		crc = ipv6_ext_calc_crc_dyn(outer_ip, crc_type, crc, crc_table);
@@ -455,7 +455,7 @@ uint8_t compute_crc_dynamic(const uint8_t *const outer_ip,
 		{
 			const struct ipv6_hdr *ip_hdr = (struct ipv6_hdr *) inner_ip;
 			/* bytes 5-6 (Payload Length) */
-			crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->ip6_plen), 2,
+			crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->plen), 2,
 			                    crc, crc_table);
 			/* IPv6 extensions (only AH is CRC-DYNAMIC) */
 			crc = ipv6_ext_calc_crc_dyn(inner_ip, crc_type, crc, crc_table);
@@ -841,7 +841,7 @@ static uint8_t * ipv6_get_first_extension(const uint8_t *const ip,
 	assert(type != NULL);
 
 	ip_hdr = (struct ipv6_hdr *) ip;
-	*type = ip_hdr->ip6_nxt;
+	*type = ip_hdr->nh;
 
 	if(rohc_is_ipv6_opt(*type))
 	{

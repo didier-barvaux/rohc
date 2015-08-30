@@ -836,7 +836,7 @@ static int compress_decompress(struct rohc_comp *comp,
 		else
 		{
 			struct ipv6_hdr *ip = (struct ipv6_hdr *) rohc_buf_data(ip_packet);
-			tot_len = sizeof(struct ipv6_hdr) + ntohs(ip->ip6_plen);
+			tot_len = sizeof(struct ipv6_hdr) + ntohs(ip->plen);
 		}
 
 		if(tot_len < ip_packet.len)

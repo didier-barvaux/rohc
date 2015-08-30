@@ -147,9 +147,9 @@ bool c_ip_check_context(const struct rohc_comp_ctxt *const context,
 	}
 	else /* IPV6 */
 	{
-		same_src = IPV6_ADDR_CMP(&outer_ip_flags->info.v6.old_ip.ip6_src,
+		same_src = IPV6_ADDR_CMP(&outer_ip_flags->info.v6.old_ip.saddr,
 		                         ipv6_get_saddr(&packet->outer_ip));
-		same_dest = IPV6_ADDR_CMP(&outer_ip_flags->info.v6.old_ip.ip6_dst,
+		same_dest = IPV6_ADDR_CMP(&outer_ip_flags->info.v6.old_ip.daddr,
 		                          ipv6_get_daddr(&packet->outer_ip));
 	}
 
@@ -159,8 +159,8 @@ bool c_ip_check_context(const struct rohc_comp_ctxt *const context,
 	}
 
 	/* compare the Flow Label of the first header if IPv6 */
-	if(version == IPV6 && ipv6_get_flow_label(&packet->outer_ip) !=
-	   IPV6_GET_FLOW_LABEL(outer_ip_flags->info.v6.old_ip))
+	if(version == IPV6 && ip_get_flow_label(&packet->outer_ip) !=
+	   ipv6_get_flow_label(&outer_ip_flags->info.v6.old_ip))
 	{
 		goto bad_context;
 	}
@@ -198,9 +198,9 @@ bool c_ip_check_context(const struct rohc_comp_ctxt *const context,
 		}
 		else /* IPV6 */
 		{
-			same_src2 = IPV6_ADDR_CMP(&inner_ip_flags->info.v6.old_ip.ip6_src,
+			same_src2 = IPV6_ADDR_CMP(&inner_ip_flags->info.v6.old_ip.saddr,
 			                          ipv6_get_saddr(&packet->inner_ip));
-			same_dest2 = IPV6_ADDR_CMP(&inner_ip_flags->info.v6.old_ip.ip6_dst,
+			same_dest2 = IPV6_ADDR_CMP(&inner_ip_flags->info.v6.old_ip.daddr,
 			                           ipv6_get_daddr(&packet->inner_ip));
 		}
 
@@ -210,8 +210,8 @@ bool c_ip_check_context(const struct rohc_comp_ctxt *const context,
 		}
 
 		/* compare the Flow Label of the second header if IPv6 */
-		if(version == IPV6 && ipv6_get_flow_label(&packet->inner_ip) !=
-		   IPV6_GET_FLOW_LABEL(inner_ip_flags->info.v6.old_ip))
+		if(version == IPV6 && ip_get_flow_label(&packet->inner_ip) !=
+		   ipv6_get_flow_label(&inner_ip_flags->info.v6.old_ip))
 		{
 			goto bad_context;
 		}
