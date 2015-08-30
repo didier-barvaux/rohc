@@ -1,5 +1,5 @@
 /*
- * Copyright 2012,2013,2014 Didier Barvaux
+ * Copyright 2012,2013,2014,2015 Didier Barvaux
  * Copyright 2013,2014 Viveris Technologies
  * Copyright 2012 WBX
  *
@@ -39,6 +39,7 @@
 #include "schemes/cid.h"
 #include "schemes/ip_id_offset.h"
 #include "schemes/rfc4996.h"
+#include "schemes/tcp_ts.h"
 #include "sdvl.h"
 #include "crc.h"
 #include "rohc_bit_ops.h"
@@ -828,13 +829,6 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
                                      uint8_t *const comp_opts,
                                      size_t *const comp_opts_len)
 	__attribute__((nonnull(1, 2, 3, 4), warn_unused_result));
-
-static bool c_ts_lsb(const struct rohc_comp_ctxt *const context,
-                     uint8_t **dest,
-                     const uint32_t timestamp,
-                     const size_t nr_bits_minus_1,
-                     const size_t nr_bits_0x40000)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static uint8_t * c_tcp_opt_sack(const struct rohc_comp_ctxt *const context,
                                 uint8_t *ptr,
@@ -3536,28 +3530,35 @@ static uint8_t * tcp_code_irregular_tcp_part(struct rohc_comp_ctxt *const contex
 			{
 				const struct tcp_option_timestamp *const opt_ts =
 					(struct tcp_option_timestamp *) (opts + opts_offset + 2);
+				size_t encoded_ts_lsb_len;
 
 				/* encode TS with ts_lsb() */
-				is_ok = c_ts_lsb(context, &remain_data, rohc_ntoh32(opt_ts->ts),
-				                 tcp_context->tmp.nr_opt_ts_req_bits_minus_1,
-				                 tcp_context->tmp.nr_opt_ts_req_bits_0x40000);
+				is_ok = c_tcp_ts_lsb_code(context, rohc_ntoh32(opt_ts->ts),
+				                          tcp_context->tmp.nr_opt_ts_req_bits_minus_1,
+				                          tcp_context->tmp.nr_opt_ts_req_bits_0x40000,
+				                          remain_data, 4 /* TODO: max len */,
+				                          &encoded_ts_lsb_len);
 				if(!is_ok)
 				{
 					rohc_comp_warn(context, "irregular chain: failed to encode "
 					               "echo request of TCP Timestamp option");
 					goto error;
 				}
+				remain_data += encoded_ts_lsb_len;
 
 				/* encode TS reply with ts_lsb()*/
-				is_ok = c_ts_lsb(context, &remain_data, rohc_ntoh32(opt_ts->ts_reply),
-				                 tcp_context->tmp.nr_opt_ts_reply_bits_minus_1,
-				                 tcp_context->tmp.nr_opt_ts_reply_bits_0x40000);
+				is_ok = c_tcp_ts_lsb_code(context, rohc_ntoh32(opt_ts->ts_reply),
+				                          tcp_context->tmp.nr_opt_ts_reply_bits_minus_1,
+				                          tcp_context->tmp.nr_opt_ts_reply_bits_0x40000,
+				                          remain_data, 4 /* TODO: max len */,
+				                          &encoded_ts_lsb_len);
 				if(!is_ok)
 				{
 					rohc_comp_warn(context, "irregular chain: failed to encode "
 					               "echo reply of TCP Timestamp option");
 					goto error;
 				}
+				remain_data += encoded_ts_lsb_len;
 
 				/* TODO: move at the very end of compression to avoid altering
 				 *       context in case of compression failure */
@@ -3604,84 +3605,6 @@ static uint8_t * tcp_code_irregular_tcp_part(struct rohc_comp_ctxt *const contex
 
 error:
 	return NULL;
-}
-
-
-/**
- * @brief Compress the TimeStamp option value.
- *
- * See RFC4996 page 65
- *
- * @param context          The compression context
- * @param[out] dest        Pointer to the compressed value
- * @param timestamp        The timestamp value to compress
- * @param nr_bits_minus_1  The minimal number of required bits for p = -1
- * @param nr_bits_0x40000  The minimal number of required bits for p = 0x40000
- * @return                 true if compression was successful, false otherwise
- */
-static bool c_ts_lsb(const struct rohc_comp_ctxt *const context,
-                     uint8_t **dest,
-                     const uint32_t timestamp,
-                     const size_t nr_bits_minus_1,
-                     const size_t nr_bits_0x40000)
-{
-	uint8_t *ptr = *dest;
-
-	assert(context != NULL);
-	assert(ptr != NULL);
-
-	if(nr_bits_minus_1 <= 7)
-	{
-		/* discriminator '0' */
-		ptr[0] = timestamp & 0x7F;
-		rohc_comp_debug(context, "encode timestamp = 0x%04x on 1 byte: 0x%02x",
-		                timestamp, ptr[0]);
-		ptr++;
-	}
-	else if(nr_bits_minus_1 <= 14)
-	{
-		/* discriminator '10' */
-		ptr[0] = 0x80 | ((timestamp >> 8) & 0x3F);
-		ptr[1] = timestamp;
-		rohc_comp_debug(context, "encode timestamp = 0x%04x on 2 bytes: 0x%02x "
-		                "0x%02x", timestamp, ptr[0], ptr[1]);
-		ptr += 2;
-	}
-	else if(nr_bits_0x40000 <= 21)
-	{
-		/* discriminator '110' */
-		ptr[0] = 0xC0 | ((timestamp >> 16) & 0x1F);
-		ptr[1] = timestamp >> 8;
-		ptr[2] = timestamp;
-		rohc_comp_debug(context, "encode timestamp = 0x%04x on 3 bytes: 0x%02x "
-		                "0x%02x 0x%02x", timestamp, ptr[0], ptr[1], ptr[2]);
-		ptr += 3;
-	}
-	else if(nr_bits_0x40000 <= 29)
-	{
-		/* discriminator '111' */
-		ptr[0] = 0xE0 | ((timestamp >> 24) & 0x1F);
-		ptr[1] = timestamp >> 16;
-		ptr[2] = timestamp >> 8;
-		ptr[3] = timestamp;
-		rohc_comp_debug(context, "encode timestamp = 0x%04x on 4 bytes: 0x%02x "
-		                "0x%02x 0x%02x 0x%02x", timestamp, ptr[0], ptr[1],
-		                ptr[2], ptr[3]);
-		ptr += 4;
-	}
-	else
-	{
-		rohc_comp_warn(context, "failed to compress timestamp 0x%08x: more "
-		               "than 29 bits required", timestamp);
-		goto error;
-	}
-
-	*dest = ptr;
-
-	return true;
-
-error:
-	return false;
 }
 
 

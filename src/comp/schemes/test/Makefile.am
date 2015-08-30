@@ -6,11 +6,13 @@
 
 
 TESTS = \
-	test_rfc4996.sh
+	test_rfc4996.sh \
+	test_tcp_ts_opt.sh
 
 
 check_PROGRAMS = \
-	test_rfc4996
+	test_rfc4996 \
+	test_tcp_ts_opt
 
 
 test_rfc4996_SOURCES = \
@@ -29,7 +31,23 @@ test_rfc4996_CPPFLAGS = \
 	-I$(top_srcdir)/src/comp/ \
 	-I$(srcdir)/..
 
+test_tcp_ts_opt_SOURCES = \
+	$(srcdir)/../tcp_ts.c \
+	test_tcp_ts_opt.c
+test_tcp_ts_opt_LDADD = \
+	$(CMOCKA_LIBS)
+test_tcp_ts_opt_LDFLAGS = \
+	$(configure_ldflags)
+test_tcp_ts_opt_CFLAGS = \
+	$(configure_cflags) \
+	$(CMOCKA_CFLAGS)
+test_tcp_ts_opt_CPPFLAGS = \
+	-I$(top_srcdir)/src/common \
+	-I$(top_srcdir)/src/comp \
+	-I$(srcdir)/..
+
 
 EXTRA_DIST = \
-	test_rfc4996.sh
+	test_rfc4996.sh \
+	test_tcp_ts_opt.sh
 

@@ -19,7 +19,7 @@
  */
 
 /**
- * @file   decomp/schemes/tcp_ts.h
+ * @file   decomp/schemes/tcp_ts.c
  * @brief  Handle decoding of TCP TimeStamp (TS) option
  * @author FWX <rohc_team@dialine.fr>
  * @author Didier Barvaux <didier@barvaux.org>

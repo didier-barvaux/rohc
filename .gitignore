@@ -52,6 +52,9 @@ src/common/test/test_api_robustness
 src/comp/schemes/test/test_rfc4996
 src/comp/schemes/test/test_rfc4996.exe
 src/comp/schemes/test/test_rfc4996.log
+src/comp/schemes/test/test_tcp_ts_opt
+src/comp/schemes/test/test_tcp_ts_opt.exe
+src/comp/schemes/test/test_tcp_ts_opt.log
 src/comp/test/test_api_robustness
 src/comp/test/test_api_robustness.exe
 src/comp/test/test_api_robustness.log

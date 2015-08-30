@@ -21,7 +21,8 @@ librohc_comp_schemes_la_SOURCES = \
 	comp_scaled_rtp_ts.c \
 	comp_list.c \
 	comp_list_ipv6.c \
-	rfc4996.c
+	rfc4996.c \
+	tcp_ts.c
 
 librohc_comp_schemes_la_LIBADD = \
 	$(additional_platform_libs)
@@ -44,5 +45,6 @@ noinst_HEADERS = \
 	comp_scaled_rtp_ts.h \
 	comp_list.h \
 	comp_list_ipv6.h \
-	rfc4996.h
+	rfc4996.h \
+	tcp_ts.h
 
