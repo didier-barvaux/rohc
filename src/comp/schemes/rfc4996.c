@@ -23,17 +23,14 @@
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#include "rohc_comp_internals.h"
-#include "rohc_traces_internal.h"
-#include "rohc_debug.h"
-#include "rohc_bit_ops.h"
-#include "rohc_utils.h"
-#include "protocols/tcp.h" // For IP_ID_BEHAVIOR
 #include "rfc4996.h"
-#include "crc.h"
+#include "rohc_utils.h"
+#include "protocols/tcp.h"
 
 #ifndef __KERNEL__
 #  include <string.h>
+#else
+#  include <bitops.h> /* for __builtin_popcount() in Linux kernel */
 #endif
 #include <assert.h>
 
@@ -345,15 +342,11 @@ bool rsf_index_enc_possible(const uint8_t rsf_flags)
  *
  * See RFC4996 page 71
  *
- * @param context    The compressor context
  * @param rsf_flags  The RSF flags
  * @return           The rsf index
  */
-unsigned int rsf_index_enc(const struct rohc_comp_ctxt *const context,
-                           unsigned int rsf_flags)
+unsigned int rsf_index_enc(const uint8_t rsf_flags)
 {
-	assert(context != NULL);
-
 	switch(rsf_flags)
 	{
 		case RSF_NONE:
@@ -365,7 +358,6 @@ unsigned int rsf_index_enc(const struct rohc_comp_ctxt *const context,
 		case RSF_FIN_ONLY:
 			return 3;
 		default:
-			rohc_comp_warn(context, "uncompressible TCP RSF flags 0x%x", rsf_flags);
 			assert(0);
 			return 0;
 	}
@@ -377,7 +369,6 @@ unsigned int rsf_index_enc(const struct rohc_comp_ctxt *const context,
  *
  * See RFC4996 page 76
  *
- * @param context          The compressor context
  * @param behavior         The IP-ID behavior
  * @param ip_id            The IP-ID value to compress
  * @param ip_id_offset     The IP-ID offset value to compress
@@ -388,8 +379,7 @@ unsigned int rsf_index_enc(const struct rohc_comp_ctxt *const context,
  * @return                 The number of ROHC bytes written,
  *                         -1 if a problem occurs
  */
-int c_optional_ip_id_lsb(const struct rohc_comp_ctxt *const context,
-                         const int behavior,
+int c_optional_ip_id_lsb(const int behavior,
                          const uint16_t ip_id,
                          const uint16_t ip_id_offset,
                          const size_t nr_bits_wlsb,
@@ -398,12 +388,6 @@ int c_optional_ip_id_lsb(const struct rohc_comp_ctxt *const context,
                          int *const indicator)
 {
 	size_t length = 0;
-
-	assert(context != NULL);
-
-	rohc_comp_debug(context, "optional_ip_id_lsb(behavior = %d, IP-ID = 0x%04x, "
-	                "IP-ID offset = 0x%04x, nr of bits required for WLSB encoding "
-	                "= %zu)", behavior, ip_id, ip_id_offset, nr_bits_wlsb);
 
 	switch(behavior)
 	{
@@ -418,7 +402,6 @@ int c_optional_ip_id_lsb(const struct rohc_comp_ctxt *const context,
 				rohc_data[0] = ip_id_offset & 0xff;
 				*indicator = 0;
 				length++;
-				rohc_comp_debug(context, "write ip_id = 0x%02x", rohc_data[0]);
 			}
 			else
 			{
@@ -430,7 +413,6 @@ int c_optional_ip_id_lsb(const struct rohc_comp_ctxt *const context,
 				memcpy(rohc_data, &ip_id_nbo, sizeof(uint16_t));
 				length += sizeof(uint16_t);
 				*indicator = 1;
-				rohc_comp_debug(context, "write ip_id = 0x%04x", ip_id);
 			}
 			break;
 		case IP_ID_BEHAVIOR_RAND:

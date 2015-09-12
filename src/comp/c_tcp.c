@@ -5585,7 +5585,7 @@ static int c_tcp_build_rnd_8(const struct rohc_comp_ctxt *const context,
 	}
 
 	rnd8->discriminator = 0x16; /* '10110' */
-	rnd8->rsf_flags = rsf_index_enc(context, tcp->rsf_flags);
+	rnd8->rsf_flags = rsf_index_enc(tcp->rsf_flags);
 	rnd8->list_present = 0; /* options are set later */
 	rnd8->header_crc = crc;
 	rohc_comp_debug(context, "CRC 0x%x", rnd8->header_crc);
@@ -6152,7 +6152,7 @@ static int c_tcp_build_seq_8(const struct rohc_comp_ctxt *const context,
 	rohc_comp_debug(context, "ack_number = 0x%04x (0x%02x 0x%02x)",
 	                ack_num, seq8->ack_num1, seq8->ack_num2);
 
-	seq8->rsf_flags = rsf_index_enc(context, tcp->rsf_flags);
+	seq8->rsf_flags = rsf_index_enc(tcp->rsf_flags);
 
 	/* sequence number */
 	seq_num = rohc_ntoh32(tcp->seq_num) & 0x3fff;
@@ -6249,7 +6249,7 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 	// =:= irregular(1) [ 1 ];
 	co_common->psh_flag = tcp->psh_flag;
 	// =:= rsf_index_enc [ 2 ];
-	co_common->rsf_flags = rsf_index_enc(context, tcp->rsf_flags);
+	co_common->rsf_flags = rsf_index_enc(tcp->rsf_flags);
 	// =:= lsb(4, 4) [ 4 ];
 	co_common->msn = tcp_context->msn & 0xf;
 
@@ -6318,7 +6318,12 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 	if(inner_ip_hdr->version == IPV4)
 	{
 		// =:= irregular(1) [ 1 ];
-		ret = c_optional_ip_id_lsb(context, inner_ip_ctxt->ctxt.v4.ip_id_behavior,
+		rohc_comp_debug(context, "optional_ip_id_lsb(behavior = %d, IP-ID = 0x%04x, "
+		                "IP-ID offset = 0x%04x, nr of bits required for WLSB encoding "
+		                "= %zu)", inner_ip_ctxt->ctxt.v4.ip_id_behavior,
+		                tcp_context->tmp.ip_id, tcp_context->tmp.ip_id_delta,
+		                tcp_context->tmp.nr_ip_id_bits_3);
+		ret = c_optional_ip_id_lsb(inner_ip_ctxt->ctxt.v4.ip_id_behavior,
 		                           tcp_context->tmp.ip_id,
 		                           tcp_context->tmp.ip_id_delta,
 		                           tcp_context->tmp.nr_ip_id_bits_3,

@@ -27,10 +27,9 @@
 #ifndef ROHC_COMP_SCHEMES_RFC4996_H
 #define ROHC_COMP_SCHEMES_RFC4996_H
 
-#include "protocols/tcp.h"
-#include "schemes/comp_wlsb.h"
-
 #include <stdint.h>
+#include <stddef.h>
+#include <stdbool.h>
 
 
 struct rohc_comp_ctxt;
@@ -82,19 +81,18 @@ void c_field_scaling(uint32_t *const scaled_value,
 // RFC4996 page 71
 bool rsf_index_enc_possible(const uint8_t rsf_flags)
 	__attribute__((warn_unused_result, const));
-unsigned int rsf_index_enc(const struct rohc_comp_ctxt *const context,
-                           unsigned int rsf_flags);
+unsigned int rsf_index_enc(const uint8_t rsf_flags)
+	__attribute__((warn_unused_result, const));
 
 /* optional_ip_id_lsb encoding method */
-int c_optional_ip_id_lsb(const struct rohc_comp_ctxt *const context,
-                         const int behavior,
+int c_optional_ip_id_lsb(const int behavior,
                          const uint16_t ip_id,
                          const uint16_t ip_id_offset,
                          const size_t nr_bits_wlsb,
                          uint8_t *const rohc_data,
                          const size_t rohc_max_len,
                          int *const indicator)
-	__attribute__((warn_unused_result, nonnull(1, 6, 8)));
+	__attribute__((warn_unused_result, nonnull(5, 7)));
 
 // RFC4996 page 75
 int dscp_encode(const uint8_t context_value,

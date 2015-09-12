@@ -26,6 +26,7 @@
 #include <stdint.h>
 
 #include "rfc4996.h"
+#include "comp_wlsb.h"
 
 #include "config.h"
 
