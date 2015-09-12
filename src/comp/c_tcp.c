@@ -39,6 +39,7 @@
 #include "schemes/cid.h"
 #include "schemes/ip_id_offset.h"
 #include "schemes/rfc4996.h"
+#include "schemes/tcp_sack.h"
 #include "schemes/tcp_ts.h"
 #include "sdvl.h"
 #include "crc.h"
@@ -856,26 +857,6 @@ static int tcp_code_co_tcp_opts(const struct rohc_comp_ctxt *const context,
                                 uint8_t *const comp_opts,
                                 const size_t comp_opts_max_len)
 	__attribute__((nonnull(1, 2, 3), warn_unused_result));
-
-static int c_tcp_opt_sack(const struct rohc_comp_ctxt *const context,
-                          const uint32_t ack_value,
-                          const sack_block_t *const sack_blocks,
-                          const uint8_t length,
-                          uint8_t *const rohc_data,
-                          const size_t rohc_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 3, 5)));
-static int c_sack_block(const struct rohc_comp_ctxt *const context,
-                        const uint32_t reference,
-                        const sack_block_t *const sack_block,
-                        uint8_t *const rohc_data,
-                        const size_t rohc_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 3, 4)));
-static int c_sack_pure_lsb(const struct rohc_comp_ctxt *const context,
-                           const uint32_t base,
-                           const uint32_t field,
-                           uint8_t *const rohc_data,
-                           const size_t rohc_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 4)));
 
 static bool c_tcp_opt_get_type_len(const struct rohc_comp_ctxt *const context,
                                    const uint8_t *const opts_data,
@@ -3827,9 +3808,9 @@ static int tcp_code_dynamic_tcp_part_opts(const struct rohc_comp_ctxt *const con
 			}
 			case TCP_OPT_SACK:
 			{
-				ret = c_tcp_opt_sack(context, rohc_ntoh32(tcp->ack_num),
-				                     (sack_block_t *) (options + 2), opt_len - 2,
-				                     rohc_remain_data, rohc_remain_len);
+				ret = c_tcp_opt_sack_code(context, rohc_ntoh32(tcp->ack_num),
+				                          (sack_block_t *) (options + 2), opt_len - 2,
+				                          rohc_remain_data, rohc_remain_len);
 				if(ret < 0)
 				{
 					rohc_comp_warn(context, "failed to encode TCP option SACK");
@@ -4031,9 +4012,9 @@ static int tcp_code_irregular_tcp_part(const struct rohc_comp_ctxt *const contex
 				const sack_block_t *const sack_blocks =
 					(sack_block_t *) (opts + opts_offset + 2);
 
-				ret = c_tcp_opt_sack(context, rohc_ntoh32(tcp->ack_num),
-				                     sack_blocks, opt_len - 2,
-				                     rohc_remain_data, rohc_remain_len);
+				ret = c_tcp_opt_sack_code(context, rohc_ntoh32(tcp->ack_num),
+				                          sack_blocks, opt_len - 2,
+				                          rohc_remain_data, rohc_remain_len);
 				if(ret < 0)
 				{
 					rohc_comp_warn(context, "failed to encode TCP option SACK");
@@ -4081,237 +4062,6 @@ static int tcp_code_irregular_tcp_part(const struct rohc_comp_ctxt *const contex
 	              "TCP irregular part",
 	              rohc_data, rohc_max_len - rohc_remain_len);
 #endif
-
-	return (rohc_max_len - rohc_remain_len);
-
-error:
-	return -1;
-}
-
-
-/**
- * @brief Compress the SACK field value
- *
- * See RFC6846 page 67
- * (and RFC2018 for Selective Acknowledgement option)
- *
- * @param context         The compression context
- * @param base            The base value
- * @param field           The value to compress
- * @param[out] rohc_data  The ROHC packet being built
- * @param rohc_max_len    The max remaining length in the ROHC buffer
- * @return                The length appended in the ROHC buffer if positive,
- *                        -1 in case of error
- */
-static int c_sack_pure_lsb(const struct rohc_comp_ctxt *const context,
-                           const uint32_t base,
-                           const uint32_t field,
-                           uint8_t *const rohc_data,
-                           const size_t rohc_max_len)
-{
-	/* if base can be >= field, overflow is expected */
-	const uint32_t sack_field = field - base;
-	size_t len;
-
-	if(sack_field < 0x8000)
-	{
-		/* 2 bytes with discriminator '0' */
-		len = 2;
-		if(rohc_max_len < len)
-		{
-			rohc_comp_warn(context, "ROHC buffer too small for the SACK pure LSB: "
-			               "%zu bytes required, but only %zu bytes available",
-			               len, rohc_max_len);
-			goto error;
-		}
-		rohc_data[0] = (sack_field >> 8) & 0x7f;
-		rohc_data[1] = sack_field & 0xff;
-	}
-	else if(sack_field < 0x400000)
-	{
-		/* 3 bytes with discriminator '10' */
-		len = 3;
-		if(rohc_max_len < len)
-		{
-			rohc_comp_warn(context, "ROHC buffer too small for the SACK pure LSB: "
-			               "%zu bytes required, but only %zu bytes available",
-			               len, rohc_max_len);
-			goto error;
-		}
-		rohc_data[0] = 0x80 | ((sack_field >> 16) & 0x3f);
-		rohc_data[1] = (sack_field >> 8) & 0xff;
-		rohc_data[2] = sack_field & 0xff;
-	}
-	else if(sack_field < 0x20000000)
-	{
-		/* 4 bytes with discriminator '110' */
-		len = 4;
-		if(rohc_max_len < len)
-		{
-			rohc_comp_warn(context, "ROHC buffer too small for the SACK pure LSB: "
-			               "%zu bytes required, but only %zu bytes available",
-			               len, rohc_max_len);
-			goto error;
-		}
-		rohc_data[0] = 0xc0 | ((sack_field >> 24) & 0x1f);
-		rohc_data[1] = (sack_field >> 16) & 0xff;
-		rohc_data[2] = (sack_field >> 8) & 0xff;
-		rohc_data[3] = sack_field & 0xff;
-	}
-	else
-	{
-		/* 5 bytes with discriminator '11111111' */
-		len = 5;
-		if(rohc_max_len < len)
-		{
-			rohc_comp_warn(context, "ROHC buffer too small for the SACK pure LSB: "
-			               "%zu bytes required, but only %zu bytes available",
-			               len, rohc_max_len);
-			goto error;
-		}
-		rohc_data[0] = 0xff;
-		rohc_data[1] = (sack_field >> 24) & 0xff;
-		rohc_data[2] = (sack_field >> 16) & 0xff;
-		rohc_data[3] = (sack_field >> 8) & 0xff;
-		rohc_data[4] = sack_field & 0xff;
-	}
-
-	rohc_comp_debug(context, "sack_field = 0x%x (0x%x - 0x%x) encoded on %zu "
-	                "bytes (discriminator included)", sack_field, field,
-	                base, len);
-
-	return len;
-
-error:
-	return -1;
-}
-
-
-/**
- * @brief Compress a SACK block
- *
- * See RFC6846 page 68
- * (and RFC2018 for Selective Acknowledgement option)
- *
- * @param context         The compression context
- * @param reference       The reference value
- * @param sack_block      The SACK block to compress
- * @param[out] rohc_data  The ROHC packet being built
- * @param rohc_max_len    The max remaining length in the ROHC buffer
- * @return                The length appended in the ROHC buffer if positive,
- *                        -1 in case of error
- */
-static int c_sack_block(const struct rohc_comp_ctxt *const context,
-                        const uint32_t reference,
-                        const sack_block_t *const sack_block,
-                        uint8_t *const rohc_data,
-                        const size_t rohc_max_len)
-{
-	uint8_t *rohc_remain_data = rohc_data;
-	size_t rohc_remain_len = rohc_max_len;
-	int ret;
-
-	rohc_comp_debug(context, "reference = 0x%x, block_start = 0x%x, block_end "
-	                "= 0x%x", reference, rohc_ntoh32(sack_block->block_start),
-	                rohc_ntoh32(sack_block->block_end));
-
-	/* block_start =:= sack_var_length_enc(reference) */
-	ret = c_sack_pure_lsb(context, reference, rohc_ntoh32(sack_block->block_start),
-	                      rohc_remain_data, rohc_remain_len);
-	if(ret < 0)
-	{
-		rohc_comp_warn(context, "failed to encode the SACK block start");
-		goto error;
-	}
-	rohc_remain_data += ret;
-	rohc_remain_len -= ret;
-
-	/* block_end =:= sack_var_length_enc(block_start) */
-	ret = c_sack_pure_lsb(context, rohc_ntoh32(sack_block->block_start),
-	                      rohc_ntoh32(sack_block->block_end),
-	                      rohc_remain_data, rohc_remain_len);
-	if(ret < 0)
-	{
-		rohc_comp_warn(context, "failed to encode the SACK block end");
-		goto error;
-	}
-#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
-	rohc_remain_data += ret;
-#endif
-	rohc_remain_len -= ret;
-
-	return (rohc_max_len - rohc_remain_len);
-
-error:
-	return -1;
-}
-
-
-/**
- * @brief Compress the SACK TCP option
- *
- * See RFC6846 page 68
- * (and RFC2018 for Selective Acknowledgement option)
- *
- * @param context         The compression context
- * @param ack_value       The ack value
- * @param sack_blocks     The SACK blocks to compress
- * @param length          The length of the SACK blocks
- * @param[out] rohc_data  The ROHC packet being built
- * @param rohc_max_len    The max remaining length in the ROHC buffer
- * @return                The length appended in the ROHC buffer if positive,
- *                        -1 in case of error
- */
-static int c_tcp_opt_sack(const struct rohc_comp_ctxt *const context,
-                          const uint32_t ack_value,
-                          const sack_block_t *const sack_blocks,
-                          const uint8_t length,
-                          uint8_t *const rohc_data,
-                          const size_t rohc_max_len)
-{
-	uint8_t * rohc_remain_data = rohc_data;
-	size_t rohc_remain_len = rohc_max_len;
-	const sack_block_t *block;
-	size_t blocks_nr;
-	size_t i;
-	int ret;
-
-	rohc_comp_debug(context, "TCP option SACK (reference ACK = 0x%08x)", ack_value);
-	rohc_dump_buf(context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv,
-	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG, "TCP option SACK",
-	              (uint8_t *) sack_blocks, length);
-
-	if(rohc_max_len < 1)
-	{
-		rohc_comp_warn(context, "ROHC buffer too small for the TCP option SACK "
-		               "part: 1 byte required, but only %zu bytes available",
-		               rohc_max_len);
-		goto error;
-	}
-
-	/* determine the number of SACK blocks
-	 * (integer division checked by \ref c_tcp_check_profile ) */
-	blocks_nr = length / sizeof(sack_block_t);
-	rohc_remain_data[0] = blocks_nr;
-	rohc_remain_data++;
-	rohc_remain_len--;
-
-	/* compress every SACK block, one by one */
-	for(i = 0, block = sack_blocks; i < blocks_nr; i++, block++)
-	{
-		rohc_comp_debug(context, "block of SACK option: start = 0x%08x, "
-		                "end = 0x%08x", rohc_ntoh32(block->block_start),
-		                rohc_ntoh32(block->block_end));
-		ret = c_sack_block(context, ack_value, block, rohc_remain_data, rohc_remain_len);
-		if(ret < 0)
-		{
-			rohc_comp_warn(context, "failed to encode SACK block #%zu", i + 1);
-			goto error;
-		}
-		rohc_remain_data += ret;
-		rohc_remain_len -= ret;
-	}
 
 	return (rohc_max_len - rohc_remain_len);
 
@@ -4848,9 +4598,9 @@ static int tcp_code_co_tcp_opts(const struct rohc_comp_ctxt *const context,
 				case TCP_OPT_SACK:
 				{
 					// see RFC4996 page 67
-					ret = c_tcp_opt_sack(context, rohc_ntoh32(tcp->ack_num),
-					                     (sack_block_t *) (options + 2), opt_len - 2,
-					                     items_remain_data, items_remain_len);
+					ret = c_tcp_opt_sack_code(context, rohc_ntoh32(tcp->ack_num),
+					                          (sack_block_t *) (options + 2), opt_len - 2,
+					                          items_remain_data, items_remain_len);
 					if(ret < 0)
 					{
 						rohc_comp_warn(context, "failed to encode TCP option SACK");

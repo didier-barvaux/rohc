@@ -10,9 +10,6 @@ raw TODO list for improving TCP profile.
  - c_tcp_check_context(): the code from c_generic could be re-used
  - c_tcp_encode(): the code that parse IP headers in IP/UDP/RTP
    profiles could probably be re-used (and maybe enhanced if needed)
- - c_sack_pure_lsb(): could probably be moved in rfc4996.[ch]
- - c_sack_block(): could probably be moved in rfc4996.[ch]
- - c_tcp_opt_sack(): could probably be moved in rfc4996.[ch]
 
 
 ==== decompression ====

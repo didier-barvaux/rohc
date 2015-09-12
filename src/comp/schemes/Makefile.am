@@ -22,6 +22,7 @@ librohc_comp_schemes_la_SOURCES = \
 	comp_list.c \
 	comp_list_ipv6.c \
 	rfc4996.c \
+	tcp_sack.c \
 	tcp_ts.c
 
 librohc_comp_schemes_la_LIBADD = \
@@ -46,5 +47,6 @@ noinst_HEADERS = \
 	comp_list.h \
 	comp_list_ipv6.h \
 	rfc4996.h \
+	tcp_sack.h \
 	tcp_ts.h
 
