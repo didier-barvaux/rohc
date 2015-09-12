@@ -949,6 +949,9 @@ static void c_tcp_feedback_ack(struct rohc_comp_ctxt *const context,
  * @param context  The compression context
  * @param packet   The IP/TCP packet given to initialize the new context
  * @return         true if successful, false otherwise
+ *
+ * @todo TODO: the code that parses IP headers in IP/UDP/RTP profiles could
+ *             probably be re-used (and maybe enhanced if needed)
  */
 static bool c_tcp_create(struct rohc_comp_ctxt *const context,
                          const struct net_pkt *const packet)
@@ -1872,6 +1875,9 @@ bad_opts:
  * @param packet   The IP/TCP packet to check
  * @return         true if the IP/TCP packet belongs to the context
  *                 false if it does not belong to the context
+ *
+ * @todo TODO: the code that parses IP headers in IP/UDP/RTP profiles could
+ *             probably be re-used (and maybe enhanced if needed)
  */
 static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
                                 const struct net_pkt *const packet)
@@ -2061,6 +2067,9 @@ bad_context:
  * @param payload_offset    OUT: The offset for the payload in the IP packet
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
+ *
+ * @todo TODO: the code that parses IP headers in IP/UDP/RTP profiles could
+ *             probably be re-used (and maybe enhanced if needed)
  */
 static int c_tcp_encode(struct rohc_comp_ctxt *const context,
                         const struct net_pkt *const uncomp_pkt,

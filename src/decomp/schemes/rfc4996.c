@@ -222,6 +222,8 @@ unsigned int rsf_index_dec(const unsigned int rsf_index)
  * @param[out] ip_id         The decoded IP-ID value
  * @return                   true if IP-ID was successfully decoded,
  *                           false if decoding failed
+ *
+ * @todo TODO: could be merged with decomp/schemes/ip_id_offset.[ch] module
  */
 bool d_ip_id_lsb(const struct rohc_decomp_ctxt *const context,
                  const struct rohc_lsb_decode *const ip_id_lsb_ctxt,

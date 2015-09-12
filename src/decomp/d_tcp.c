@@ -982,6 +982,8 @@ error:
  * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
  * @return                   true if parsing was successful,
  *                           false if packet was malformed
+ *
+ * @todo TODO: avoid malloc/free of packed_rohc_packet
  */
 static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
                            const uint8_t *const rohc_packet,
