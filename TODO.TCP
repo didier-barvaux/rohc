@@ -1,13 +1,6 @@
 raw TODO list for improving TCP profile.
 
 
-==== common ====
-
-=> tcp_profile/common/tcp.h:
-
- - get rid of the multi_ptr_t union
-
-
 ==== compression ====
 
 => src/comp/c_tcp.c

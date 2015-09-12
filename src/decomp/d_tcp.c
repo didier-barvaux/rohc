@@ -2270,7 +2270,7 @@ static bool d_tcp_parse_co_common(const struct rohc_decomp_ctxt *const context,
 	}
 
 	assert(co_common->discriminator == 0x7d); /* '1111101' */
-	bits->ttl_irregular_chain_flag = !!(co_common->ttl_hopl_outer_flag);
+	bits->ttl_irreg_chain_flag = !!(co_common->ttl_hopl_outer_flag);
 	bits->ack_flag_bits = co_common->ack_flag;
 	bits->ack_flag_bits_nr = 1;
 	bits->psh_flag_bits = co_common->psh_flag;
@@ -2504,7 +2504,7 @@ static void d_tcp_reset_extr_bits(const struct rohc_decomp_ctxt *const context,
 	}
 
 	/* by default there is no TTL/HL field in the irregular chain */
-	bits->ttl_irregular_chain_flag = false;
+	bits->ttl_irreg_chain_flag = false;
 
 	/* default constant LSB shift parameters */
 	bits->msn.p = ROHC_LSB_SHIFT_TCP_SN;

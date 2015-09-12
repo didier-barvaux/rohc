@@ -300,13 +300,6 @@ typedef struct
 } __attribute__((packed)) ip_opt_static_t;
 
 
-/** The dynamic part of IPv6 option header */
-typedef struct
-{
-	uint8_t value[1];
-} __attribute__((packed)) ip_opt_dynamic_t;
-
-
 /** The static part of IPv6 Destination option header */
 typedef struct
 {
@@ -315,26 +308,12 @@ typedef struct
 } __attribute__((packed)) ip_dest_opt_static_t;
 
 
-/** The dynamic part of IPv6 Destination option header */
-typedef struct
-{
-	uint8_t value[1];
-} __attribute__((packed)) ip_dest_opt_dynamic_t;
-
-
 /** The static part of IPv6 Hop-by-Hop option header */
 typedef struct
 {
 	uint8_t next_header;
 	uint8_t length;
 } __attribute__((packed)) ip_hop_opt_static_t;
-
-
-/** The dynamic part of IPv6 Hop-by-Hop option header */
-typedef struct
-{
-	uint8_t value[1];
-} __attribute__((packed)) ip_hop_opt_dynamic_t;
 
 
 /** The static part of IPv6 Routing option header */

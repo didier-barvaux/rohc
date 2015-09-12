@@ -371,7 +371,7 @@ struct rohc_tcp_extr_bits
 	struct rohc_lsb_field16 msn;
 
 	/** Whether at least one of IP headers changed its TTL/HL */
-	bool ttl_irregular_chain_flag;
+	bool ttl_irreg_chain_flag;
 
 	/* TCP header */
 	uint16_t src_port;    /**< The TCP source port bits found in static chain */

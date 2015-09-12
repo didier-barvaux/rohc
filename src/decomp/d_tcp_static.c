@@ -338,11 +338,11 @@ static int tcp_parse_static_ipv6_option(const struct rohc_decomp_ctxt *const con
 	rohc_decomp_debug(context, "  parse static part of IPv6 extension header %u",
 	                  protocol);
 
-	/* at least 1 byte required to read the next header and length */
-	if(rohc_length < 2)
+	/* at least 2 bytes required to read the next header and length */
+	if(rohc_length < sizeof(ip_opt_static_t))
 	{
 		rohc_decomp_warn(context, "malformed ROHC packet: too short for the "
-		                 "version flag of the IP static part");
+		                 "IP extension header static part");
 		goto error;
 	}
 	ip_opt_static = (ip_opt_static_t *) rohc_packet;
