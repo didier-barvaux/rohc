@@ -199,6 +199,19 @@ CFLAGS="$old_CFLAGS"
 #fi
 #CFLAGS="$old_CFLAGS"
 
+#### -Wsuggest-attribute=const
+AC_MSG_CHECKING([whether compiler understands -Wsuggest-attribute=const])
+old_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS -Werror $unknown_warning_option -Wsuggest-attribute=const"
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[int a;]], [[ a = 1;]])],
+                  [suggest_attribute_const=yes], [suggest_attribute_const=no])
+if test "x${suggest_attribute_const}" = "xyes" ; then
+	AC_MSG_RESULT(yes)
+	configure_cflags="${configure_cflags} -Wsuggest-attribute=const"
+else
+	AC_MSG_RESULT(no)
+fi
+CFLAGS="$old_CFLAGS"
 
 # Checks for header files.
 AC_CHECK_HEADERS([stdio.h stdlib.h string.h strings.h])

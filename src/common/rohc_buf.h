@@ -198,7 +198,7 @@ bool rohc_buf_is_malformed(const struct rohc_buf buf)
 	__attribute__((warn_unused_result));
 
 bool rohc_buf_is_empty(const struct rohc_buf buf)
-	__attribute__((warn_unused_result));
+	__attribute__((warn_unused_result, const));
 
 void rohc_buf_pull(struct rohc_buf *const buf, const size_t offset)
 	__attribute__((nonnull(1)));
@@ -206,12 +206,12 @@ void rohc_buf_push(struct rohc_buf *const buf, const size_t offset)
 	__attribute__((nonnull(1)));
 
 size_t rohc_buf_avail_len(const struct rohc_buf buf)
-	__attribute__((warn_unused_result));
+	__attribute__((warn_unused_result, const));
 
 uint8_t * rohc_buf_data_at(const struct rohc_buf buf, const size_t offset)
-	__attribute__((warn_unused_result));
+	__attribute__((warn_unused_result, const));
 uint8_t * rohc_buf_data(const struct rohc_buf buf)
-	__attribute__((warn_unused_result));
+	__attribute__((warn_unused_result, const));
 
 void rohc_buf_prepend(struct rohc_buf *const buf,
                       const uint8_t *const data,
