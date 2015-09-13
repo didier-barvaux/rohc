@@ -433,10 +433,9 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 /* static chain */
 static int tcp_code_static_part(struct rohc_comp_ctxt *const context,
                                 const struct ip_packet *const ip,
-                                const int packet_size __attribute__((unused)),
                                 uint8_t *const rohc_pkt,
                                 const size_t rohc_pkt_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 static int tcp_code_static_ipv4_part(const struct rohc_comp_ctxt *const context,
                                      const struct ipv4_hdr *const ipv4,
                                      uint8_t *const rohc_data,
@@ -462,11 +461,10 @@ static int tcp_code_static_tcp_part(const struct rohc_comp_ctxt *const context,
 /* dynamic chain */
 static int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
                              const struct ip_packet *const ip,
-                             const int packet_size __attribute__((unused)),
                              uint8_t *const rohc_pkt,
-                             const size_t rohc_pkt_max_len __attribute__((unused)),
+                             const size_t rohc_pkt_max_len,
                              size_t *const parsed_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 4, 6)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 static int tcp_code_dynamic_ipv4_part(const struct rohc_comp_ctxt *const context,
                                       ip_context_t *const ip_context,
                                       const struct ipv4_hdr *const ipv4,
@@ -494,6 +492,13 @@ static int tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 /* irregular chain */
+static int tcp_code_irreg_chain(struct rohc_comp_ctxt *const context,
+                                const struct ip_packet *const ip,
+                                const uint8_t ip_inner_ecn,
+                                const struct tcphdr *const tcp,
+                                uint8_t *const rohc_pkt,
+                                const size_t rohc_pkt_max_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
 static int tcp_code_irregular_ipv4_part(const struct rohc_comp_ctxt *const context,
                                         const ip_context_t *const ip_context,
                                         const struct ipv4_hdr *const ipv4,
@@ -531,20 +536,19 @@ static int tcp_code_irregular_tcp_part(const struct rohc_comp_ctxt *const contex
 /* IR and CO packets */
 static int code_IR_packet(struct rohc_comp_ctxt *const context,
                           const struct ip_packet *const ip,
-                          const int packet_size,
                           uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
                           const rohc_packet_t packet_type,
                           size_t *const payload_offset)
-	__attribute__((warn_unused_result, nonnull(1, 2, 4, 7)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 6)));
 
 static int code_CO_packet(struct rohc_comp_ctxt *const context,
                           const struct ip_packet *ip,
-                          const int packet_size,
                           uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
                           const rohc_packet_t packet_type,
-                          size_t *const payload_offset);
+                          size_t *const payload_offset)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 6)));
 static int co_baseheader(struct rohc_comp_ctxt *const context,
                          struct sc_tcp_context *const tcp_context,
                          ip_context_t *const ip_inner_context,
@@ -1760,9 +1764,8 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	        (*packet_type) != ROHC_PACKET_IR_DYN)
 	{
 		/* co_common, seq_X, or rnd_X */
-		counter = code_CO_packet(context, &uncomp_pkt->outer_ip, uncomp_pkt->len,
-		                         rohc_pkt, rohc_pkt_max_len, *packet_type,
-		                         payload_offset);
+		counter = code_CO_packet(context, &uncomp_pkt->outer_ip, rohc_pkt,
+		                         rohc_pkt_max_len, *packet_type, payload_offset);
 		if(counter < 0)
 		{
 			rohc_comp_warn(context, "failed to build CO packet");
@@ -1774,9 +1777,8 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		assert((*packet_type) == ROHC_PACKET_IR ||
 		       (*packet_type) == ROHC_PACKET_IR_DYN);
 
-		counter = code_IR_packet(context, &uncomp_pkt->outer_ip, uncomp_pkt->len,
-		                         rohc_pkt, rohc_pkt_max_len, *packet_type,
-		                         payload_offset);
+		counter = code_IR_packet(context, &uncomp_pkt->outer_ip, rohc_pkt,
+		                         rohc_pkt_max_len, *packet_type, payload_offset);
 		if(counter < 0)
 		{
 			rohc_comp_warn(context, "failed to build IR(-DYN) packet");
@@ -1819,7 +1821,6 @@ error:
  *
  * @param context           The compression context
  * @param ip                The outer IP header
- * @param packet_size       The length of the uncompressed packet (in bytes)
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       The type of ROHC packet that is created
@@ -1829,7 +1830,6 @@ error:
  */
 static int code_IR_packet(struct rohc_comp_ctxt *const context,
                           const struct ip_packet *const ip,
-                          const int packet_size __attribute__((unused)),
                           uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
                           const rohc_packet_t packet_type,
@@ -1903,8 +1903,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	/* add static chain for IR packet only */
 	if(packet_type == ROHC_PACKET_IR)
 	{
-		ret = tcp_code_static_part(context, ip, packet_size, rohc_remain_data,
-		                           rohc_remain_len);
+		ret = tcp_code_static_part(context, ip, rohc_remain_data, rohc_remain_len);
 		if(ret < 0)
 		{
 			rohc_comp_warn(context, "failed to build the static chain of the "
@@ -1922,7 +1921,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	}
 
 	/* add dynamic chain */
-	ret = tcp_code_dyn_part(context, ip, packet_size, rohc_remain_data,
+	ret = tcp_code_dyn_part(context, ip, rohc_remain_data,
 	                        rohc_remain_len, payload_offset);
 	if(ret < 0)
 	{
@@ -1966,7 +1965,6 @@ error:
  *
  * @param context           The compression context
  * @param ip                The outer IP header
- * @param packet_size       The length of the uncompressed packet (in bytes)
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @return                  The length of the ROHC packet if successful,
@@ -1974,7 +1972,6 @@ error:
  */
 static int tcp_code_static_part(struct rohc_comp_ctxt *const context,
                                 const struct ip_packet *const ip,
-                                const int packet_size __attribute__((unused)),
                                 uint8_t *const rohc_pkt,
                                 const size_t rohc_pkt_max_len)
 {
@@ -2106,7 +2103,6 @@ error:
  *
  * @param context           The compression context
  * @param ip                The outer IP header
- * @param packet_size       The length of the uncompressed packet (in bytes)
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param[out] parsed_len   The length of uncompressed data parsed
@@ -2115,7 +2111,6 @@ error:
  */
 static int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
                              const struct ip_packet *const ip,
-                             const int packet_size __attribute__((unused)),
                              uint8_t *const rohc_pkt,
                              const size_t rohc_pkt_max_len,
                              size_t *const parsed_len)
@@ -2776,6 +2771,147 @@ error:
 
 
 /**
+ * @brief Code the irregular chain of one CO packet
+ *
+ * @param context           The compression context
+ * @param ip                The outer IP header
+ * @param ip_inner_ecn      The ECN flags of the innermost IP header
+ * @param tcp               The uncompressed TCP header
+ * @param rohc_pkt          OUT: The ROHC packet
+ * @param rohc_pkt_max_len  The maximum length of the ROHC packet
+ * @return                  The length of the ROHC packet if successful,
+ *                          -1 otherwise
+ */
+static int tcp_code_irreg_chain(struct rohc_comp_ctxt *const context,
+                                const struct ip_packet *const ip,
+                                const uint8_t ip_inner_ecn,
+                                const struct tcphdr *const tcp,
+                                uint8_t *const rohc_pkt,
+                                const size_t rohc_pkt_max_len)
+{
+	struct sc_tcp_context *const tcp_context = context->specific;
+
+	const uint8_t *remain_data = ip->data;
+	size_t remain_len = ip->size;
+
+	uint8_t *rohc_remain_data = rohc_pkt;
+	size_t rohc_remain_len = rohc_pkt_max_len;
+
+	size_t ip_hdr_pos;
+	int ret;
+
+	for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)
+	{
+		const struct ip_hdr *const ip_hdr = (struct ip_hdr *) remain_data;
+		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
+		const bool is_innermost = !!(ip_hdr_pos == (tcp_context->ip_contexts_nr - 1));
+
+		/* retrieve IP version */
+		assert(remain_len >= sizeof(struct ip_hdr));
+		rohc_comp_debug(context, "found IPv%d", ip_hdr->version);
+
+		/* irregular part for IP header */
+		if(ip_hdr->version == IPV4)
+		{
+			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) remain_data;
+
+			assert(remain_len >= sizeof(struct ipv4_hdr));
+
+			ret = tcp_code_irregular_ipv4_part(context, ip_context, ipv4, is_innermost,
+			                                   tcp_context->ecn_used, ip_inner_ecn,
+			                                   tcp_context->tmp.ttl_irreg_chain_flag,
+			                                   rohc_remain_data, rohc_remain_len);
+			if(ret < 0)
+			{
+				rohc_comp_warn(context, "failed to build the IPv4 base header part "
+				               "of the irregular chain");
+				goto error;
+			}
+			rohc_remain_data += ret;
+			rohc_remain_len -= ret;
+
+			remain_data += sizeof(struct ipv4_hdr);
+			remain_len -= sizeof(struct ipv4_hdr);
+		}
+		else if(ip_hdr->version == IPV6)
+		{
+			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
+			uint8_t protocol;
+			size_t ip_ext_pos;
+
+			assert(remain_len >= sizeof(struct ipv6_hdr));
+
+			ret = tcp_code_irregular_ipv6_part(context, ip_context, ipv6, is_innermost,
+			                                   tcp_context->ecn_used, ip_inner_ecn,
+			                                   tcp_context->tmp.ttl_irreg_chain_flag,
+			                                   rohc_remain_data, rohc_remain_len);
+			if(ret < 0)
+			{
+				rohc_comp_warn(context, "failed to build the IPv6 base header part "
+				               "of the irregular chain");
+				goto error;
+			}
+			rohc_remain_data += ret;
+			rohc_remain_len -= ret;
+
+			protocol = ipv6->nh;
+			remain_data += sizeof(struct ipv6_hdr);
+			remain_len -= sizeof(struct ipv6_hdr);
+
+			/* irregular part for IPv6 extension headers */
+			for(ip_ext_pos = 0; ip_ext_pos < ip_context->ctxt.v6.opts_nr; ip_ext_pos++)
+			{
+				const struct ipv6_opt *const ipv6_opt = (struct ipv6_opt *) remain_data;
+				ipv6_option_context_t *const opt_ctxt =
+					&(ip_context->ctxt.v6.opts[ip_ext_pos]);
+
+				ret = tcp_code_irregular_ipv6_opt_part(context, opt_ctxt, ipv6_opt,
+				                                       protocol, rohc_remain_data,
+				                                       rohc_remain_len);
+				if(ret < 0)
+				{
+					rohc_comp_warn(context, "failed to encode the IPv6 extension headers "
+					               "part of the irregular chain");
+					goto error;
+				}
+				rohc_remain_data += ret;
+				rohc_remain_len -= ret;
+
+				protocol = ipv6_opt->next_header;
+				remain_data += opt_ctxt->generic.option_length;
+				remain_len -= opt_ctxt->generic.option_length;
+			}
+		}
+		else
+		{
+			rohc_comp_warn(context, "unexpected IP version %u", ip_hdr->version);
+			assert(0);
+			goto error;
+		}
+	}
+
+	/* TCP part (base header + options) of the irregular chain */
+	ret = tcp_code_irregular_tcp_part(context, tcp, ip_inner_ecn,
+	                                  rohc_remain_data, rohc_remain_len);
+	if(ret < 0)
+	{
+		rohc_comp_warn(context, "failed to build the TCP header part "
+		               "of the irregular chain");
+		goto error;
+	}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
+	rohc_remain_data += ret;
+#endif
+	rohc_remain_len -= ret;
+
+	return (rohc_pkt_max_len - rohc_remain_len);
+
+error:
+	return -1;
+}
+
+
+/**
  * @brief Build the irregular part of the IPv4 header
  *
  * See RFC 4996 page 63
@@ -3293,7 +3429,9 @@ static int tcp_code_irregular_tcp_part(const struct rohc_comp_ctxt *const contex
 		rohc_comp_warn(context, "failed to compress TCP options in irregular chain");
 		goto error;
 	}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	rohc_remain_data += ret;
+#endif
 	rohc_remain_len -= ret;
 
 #if ROHC_EXTRA_DEBUG == 1
@@ -3345,7 +3483,6 @@ error:
  *
  * @param context           The compression context
  * @param ip                The outer IP header
- * @param packet_size       The length of the uncompressed packet (in bytes)
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       The type of ROHC packet to create
@@ -3355,7 +3492,6 @@ error:
  */
 static int code_CO_packet(struct rohc_comp_ctxt *const context,
                           const struct ip_packet *ip,
-                          const int packet_size __attribute__((unused)),
                           uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
                           const rohc_packet_t packet_type,
@@ -3378,7 +3514,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	size_t pos_2nd_byte;
 	uint8_t save_first_byte;
 	size_t payload_size = 0;
-	int ip_inner_ecn = 0;
+	uint8_t ip_inner_ecn = 0;
 	uint8_t crc_computed;
 	size_t ip_hdr_pos;
 	int ret;
@@ -3537,106 +3673,13 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	rohc_remain_data += ret;
 	rohc_remain_len -= ret;
 
-	/* irregular chain */
-	remain_data = ip->data; /* parse the uncompressed packet from the start */
-	remain_len = ip->size;
-	for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)
-	{
-		const struct ip_hdr *const ip_hdr = (struct ip_hdr *) remain_data;
-		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
-		const bool is_innermost = !!(ip_hdr_pos == (tcp_context->ip_contexts_nr - 1));
-
-		/* retrieve IP version */
-		assert(remain_len >= sizeof(struct ip_hdr));
-		rohc_comp_debug(context, "found IPv%d", ip_hdr->version);
-
-		/* irregular part for IP header */
-		if(ip_hdr->version == IPV4)
-		{
-			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) remain_data;
-
-			assert(remain_len >= sizeof(struct ipv4_hdr));
-
-			ret = tcp_code_irregular_ipv4_part(context, ip_context, ipv4, is_innermost,
-			                                   tcp_context->ecn_used, ip_inner_ecn,
-			                                   tcp_context->tmp.ttl_irreg_chain_flag,
-			                                   rohc_remain_data, rohc_remain_len);
-			if(ret < 0)
-			{
-				rohc_comp_warn(context, "failed to build the IPv4 base header part "
-				               "of the irregular chain");
-				goto error;
-			}
-			rohc_remain_data += ret;
-			rohc_remain_len -= ret;
-
-			remain_data += sizeof(struct ipv4_hdr);
-			remain_len -= sizeof(struct ipv4_hdr);
-		}
-		else if(ip_hdr->version == IPV6)
-		{
-			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
-			uint8_t protocol;
-			size_t ip_ext_pos;
-
-			assert(remain_len >= sizeof(struct ipv6_hdr));
-
-			ret = tcp_code_irregular_ipv6_part(context, ip_context, ipv6, is_innermost,
-			                                   tcp_context->ecn_used, ip_inner_ecn,
-			                                   tcp_context->tmp.ttl_irreg_chain_flag,
-			                                   rohc_remain_data, rohc_remain_len);
-			if(ret < 0)
-			{
-				rohc_comp_warn(context, "failed to build the IPv6 base header part "
-				               "of the irregular chain");
-				goto error;
-			}
-			rohc_remain_data += ret;
-			rohc_remain_len -= ret;
-
-			protocol = ipv6->nh;
-			remain_data += sizeof(struct ipv6_hdr);
-			remain_len -= sizeof(struct ipv6_hdr);
-
-			/* irregular part for IPv6 extension headers */
-			for(ip_ext_pos = 0; ip_ext_pos < ip_context->ctxt.v6.opts_nr; ip_ext_pos++)
-			{
-				const struct ipv6_opt *const ipv6_opt = (struct ipv6_opt *) remain_data;
-				ipv6_option_context_t *const opt_ctxt =
-					&(ip_context->ctxt.v6.opts[ip_ext_pos]);
-
-				ret = tcp_code_irregular_ipv6_opt_part(context, opt_ctxt, ipv6_opt,
-				                                       protocol, rohc_remain_data,
-				                                       rohc_remain_len);
-				if(ret < 0)
-				{
-					rohc_comp_warn(context, "failed to encode the IPv6 extension headers "
-					               "part of the irregular chain");
-					goto error;
-				}
-				rohc_remain_data += ret;
-				rohc_remain_len -= ret;
-
-				protocol = ipv6_opt->next_header;
-				remain_data += opt_ctxt->generic.option_length;
-				remain_len -= opt_ctxt->generic.option_length;
-			}
-		}
-		else
-		{
-			rohc_comp_warn(context, "unexpected IP version %u", ip_hdr->version);
-			assert(0);
-			goto error;
-		}
-	}
-
-	/* TCP part (base header + options) of the irregular chain */
-	ret = tcp_code_irregular_tcp_part(context, tcp, ip_inner_ecn,
-	                                  rohc_remain_data, rohc_remain_len);
+	/* add irregular chain */
+	ret = tcp_code_irreg_chain(context, ip, ip_inner_ecn, tcp,
+	                           rohc_remain_data, rohc_remain_len);
 	if(ret < 0)
 	{
-		rohc_comp_warn(context, "failed to build the TCP header part "
-		               "of the irregular chain");
+		rohc_comp_warn(context, "failed to build the irregular chain of the "
+		               "CO packet");
 		goto error;
 	}
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
