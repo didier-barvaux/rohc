@@ -1170,8 +1170,8 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 	}
 	else
 	{
-		ret = d_tcp_parse_tcp_opts_dyn(context, rohc_remain_data, rohc_remain_len,
-		                               false, &bits->tcp_opts);
+		ret = d_tcp_parse_tcp_opts_list_item(context, rohc_remain_data,
+		                                     rohc_remain_len, false, &bits->tcp_opts);
 		if(ret < 0)
 		{
 			rohc_decomp_warn(context, "failed to parse optional compressed list "

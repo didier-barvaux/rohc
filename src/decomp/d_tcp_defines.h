@@ -256,7 +256,7 @@ struct d_tcp_opts_ctxt /* TODO: doxygen */
 
 	/** The structure of the list of TCP options */
 	uint8_t structure[ROHC_TCP_OPTS_MAX];
-	/** Whethee the TCP options are expected in the dynamic part? */
+	/** Whether the TCP options are expected in the dynamic part? */
 	bool expected_dynamic[ROHC_TCP_OPTS_MAX];
 	/** The TCP options that were found or not */
 	bool found[ROHC_TCP_OPTS_MAX];

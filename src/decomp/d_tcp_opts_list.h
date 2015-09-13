@@ -36,11 +36,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-int d_tcp_parse_tcp_opts_dyn(const struct rohc_decomp_ctxt *const context,
-                             const uint8_t *const rohc_packet,
-                             const size_t rohc_length,
-                             const bool is_dynamic_chain,
-                             struct d_tcp_opts_ctxt *const tcp_opts)
+int d_tcp_parse_tcp_opts_list_item(const struct rohc_decomp_ctxt *const context,
+                                   const uint8_t *const rohc_packet,
+                                   const size_t rohc_length,
+                                   const bool is_dynamic_chain,
+                                   struct d_tcp_opts_ctxt *const tcp_opts)
 	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
 
 int d_tcp_parse_tcp_opts_irreg(const struct rohc_decomp_ctxt *const context,
