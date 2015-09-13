@@ -2311,10 +2311,13 @@ static bool d_tcp_parse_co_common(const struct rohc_decomp_ctxt *const context,
 	*rohc_hdr_len += ret;
 
 	/* ACK number */
-	if(co_common->ack_indicator != 0)
+	if(co_common->ack_flag == 0 && co_common->ack_indicator != 0)
 	{
 		rohc_decomp_debug(context, "ACK flag not set, but indicator for ACK number "
 		                  "is %u instead of 0", co_common->ack_indicator);
+#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
+		goto error;
+#endif
 	}
 	ret = variable_length_32_dec(rohc_remain_data, rohc_remain_len,
 	                             co_common->ack_indicator, &bits->ack);
