@@ -251,7 +251,8 @@ rohc_status_t ROHC_EXPORT rohc_decompress3(struct rohc_decomp *const decomp,
  * Functions related to statistics:
  */
 
-const char * ROHC_EXPORT rohc_decomp_get_state_descr(const rohc_decomp_state_t state);
+const char * ROHC_EXPORT rohc_decomp_get_state_descr(const rohc_decomp_state_t state)
+	__attribute__((warn_unused_result, const));
 
 bool ROHC_EXPORT rohc_decomp_get_general_info(const struct rohc_decomp *const decomp,
                                               rohc_decomp_general_info_t *const info)

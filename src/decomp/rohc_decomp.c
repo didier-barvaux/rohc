@@ -904,7 +904,9 @@ rohc_status_t rohc_decompress3(struct rohc_decomp *const decomp,
 			case ROHC_STATUS_BAD_CRC:
 				decomp->stats.failed_crc++;
 				break;
-			default: /* ROHC_STATUS_OK or ROHC_STATUS_SEGMENT shall not happen */
+			case ROHC_STATUS_OK: /* success codes shall not happen */
+			case ROHC_STATUS_SEGMENT:
+			default:
 				assert(0);
 				status = ROHC_STATUS_ERROR;
 				goto error;
@@ -2390,6 +2392,7 @@ const char * rohc_decomp_get_state_descr(const rohc_decomp_state_t state)
 			return "Static Context";
 		case ROHC_DECOMP_STATE_FC:
 			return "Full Context";
+		case ROHC_DECOMP_STATE_UNKNOWN:
 		default:
 			return "no description";
 	}
@@ -4039,6 +4042,8 @@ static bool rohc_decomp_packet_carry_crc_7_or_8(const rohc_packet_t packet_type)
 		case ROHC_PACKET_TCP_RND_7:
 			carry_crc_7_or_8 = false;
 			break;
+		case ROHC_PACKET_UNKNOWN:
+		case ROHC_PACKET_MAX:
 		default:
 			assert(0);
 			carry_crc_7_or_8 = false;

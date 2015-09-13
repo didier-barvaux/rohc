@@ -27,7 +27,7 @@
 #ifndef ROHC_DECOMP_SCHEMES_RFC4996_H
 #define ROHC_DECOMP_SCHEMES_RFC4996_H
 
-#include "protocols/tcp.h"
+#include "interval.h"
 #include "decomp_wlsb.h"
 
 #include <stdint.h>

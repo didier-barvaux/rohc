@@ -63,7 +63,7 @@ static bool c_rtp_check_profile(const struct rohc_comp *const comp,
 
 static bool c_rtp_check_context(const struct rohc_comp_ctxt *const context,
                                 const struct net_pkt *const packet)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+	__attribute__((warn_unused_result, nonnull(1, 2), pure));
 
 static int c_rtp_encode(struct rohc_comp_ctxt *const context,
                         const struct net_pkt *const uncomp_pkt,
@@ -390,10 +390,12 @@ bad_profile:
 static bool c_rtp_check_context(const struct rohc_comp_ctxt *const context,
                                 const struct net_pkt *const packet)
 {
-	const struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	const struct sc_rtp_context *rtp_context;
-	const struct udphdr *udp;
-	const struct rtphdr *rtp;
+	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
+		(struct rohc_comp_rfc3095_ctxt *) context->specific;
+	const struct sc_rtp_context *const rtp_context =
+		(struct sc_rtp_context *) rfc3095_ctxt->specific;
+	const struct udphdr *const udp = (struct udphdr *) packet->transport->data;
+	const struct rtphdr *const rtp = (struct rtphdr *) (udp + 1);
 	bool udp_check;
 
 	/* check IP and UDP headers */
@@ -403,14 +405,7 @@ static bool c_rtp_check_context(const struct rohc_comp_ctxt *const context,
 		goto bad_context;
 	}
 
-	/* get UDP and RTP headers */
-	assert(packet->transport->data != NULL);
-	udp = (struct udphdr *) packet->transport->data;
-	rtp = (struct rtphdr *) (udp + 1);
-
 	/* check the RTP SSRC field */
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-	rtp_context = (struct sc_rtp_context *) rfc3095_ctxt->specific;
 	if(rtp_context->old_rtp.ssrc != rtp->ssrc)
 	{
 		goto bad_context;

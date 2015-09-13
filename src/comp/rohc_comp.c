@@ -2161,6 +2161,7 @@ const char * rohc_comp_get_state_descr(const rohc_comp_state_t state)
 			return "FO";
 		case ROHC_COMP_STATE_SO:
 			return "SO";
+		case ROHC_COMP_STATE_UNKNOWN:
 		default:
 			return "no description";
 	}
@@ -3089,6 +3090,9 @@ static bool rohc_comp_feedback_check_opts(const struct rohc_comp_ctxt *const con
 #endif
 					case ROHC_FEEDBACK_OPT_CRC_NOT_REQUIRED:
 						break;
+					default:
+						assert(0);
+						goto error;
 				}
 			}
 		}

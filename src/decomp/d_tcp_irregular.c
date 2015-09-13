@@ -198,8 +198,8 @@ static int tcp_parse_irregular_ip(const struct rohc_decomp_ctxt *const context,
 {
 	int ret;
 
-	rohc_decomp_debug(context, "is_innermost = %d, ttl_irregular_chain_flag = %d",
-	                  is_innermost, bits->ttl_irregular_chain_flag ? 1 : 0);
+	rohc_decomp_debug(context, "is_innermost = %d, ttl_irreg_chain_flag = %d",
+	                  is_innermost, bits->ttl_irreg_chain_flag ? 1 : 0);
 
 	if(ip_context->ctxt.vx.version == IPV4)
 	{
@@ -312,7 +312,7 @@ static int tcp_parse_irregular_ipv4(const struct rohc_decomp_ctxt *const context
 	}
 
 	/* parse TTL/HL if present */
-	if(bits->ttl_irregular_chain_flag)
+	if(bits->ttl_irreg_chain_flag)
 	{
 		if(remain_len < 1)
 		{
@@ -390,7 +390,7 @@ static int tcp_parse_irregular_ipv6(const struct rohc_decomp_ctxt *const context
 	}
 
 	/* parse TTL/HL if present */
-	if(bits->ttl_irregular_chain_flag)
+	if(bits->ttl_irreg_chain_flag)
 	{
 		if(remain_len < 1)
 		{

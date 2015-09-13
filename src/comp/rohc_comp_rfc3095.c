@@ -42,6 +42,7 @@
 #include "sdvl.h"
 #include "crc.h"
 
+#include <stdint.h>
 #ifndef __KERNEL__
 #  include <string.h>
 #endif
@@ -1498,6 +1499,7 @@ static rohc_packet_t decide_packet(struct rohc_comp_ctxt *const context)
 			break;
 		}
 
+		case ROHC_COMP_STATE_UNKNOWN:
 		default:
 		{
 			/* impossible value */
@@ -1602,6 +1604,7 @@ int code_packet(struct rohc_comp_ctxt *const context,
 
 		default:
 			rohc_comp_debug(context, "unknown packet, failure");
+			assert(0); /* should not happen */
 			goto error;
 	}
 
@@ -2122,23 +2125,19 @@ static int code_ipv6_static_part(const struct rohc_comp_ctxt *const context,
                                  uint8_t *const dest,
                                  int counter)
 {
-	unsigned int flow_label;
 	uint8_t protocol;
 	const struct ipv6_addr *saddr;
 	const struct ipv6_addr *daddr;
 
 	/* part 1 */
-	flow_label = ipv6_get_flow_label(ip);
-	dest[counter] = ((6 << 4) & 0xf0) | ((flow_label >> 16) & 0x0f);
+	dest[counter] = ((6 << 4) & 0xf0) | ip->header.v6.flow1;
 	rohc_comp_debug(context, "version + flow label (msb) = 0x%02x",
 	                dest[counter]);
 	counter++;
 
 	/* part 2 */
-	dest[counter] = (flow_label >> 8) & 0xff;
-	counter++;
-	dest[counter] = flow_label & 0xff;
-	counter++;
+	memcpy(dest + counter, &ip->header.v6.flow2, sizeof(uint16_t));
+	counter += sizeof(uint16_t);
 	rohc_comp_debug(context, "flow label (lsb) = 0x%02x%02x",
 	                dest[counter - 2], dest[counter - 1]);
 
@@ -3338,6 +3337,7 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 
 			break;
 		}
+		case ROHC_EXT_UNKNOWN:
 		default:
 		{
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -3415,6 +3415,7 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 			}
 			break;
 		}
+		case ROHC_EXT_UNKNOWN:
 		default:
 		{
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -3445,6 +3446,7 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 		case ROHC_EXT_3:
 			ret = code_EXT3_packet(context, uncomp_pkt, rohc_pkt, counter);
 			break;
+		case ROHC_EXT_UNKNOWN:
 		default:
 			rohc_comp_warn(context, "unknown extension (%d)", extension);
 			goto error;
@@ -3702,6 +3704,7 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 		case ROHC_EXT_3:
 			ret = code_EXT3_packet(context, uncomp_pkt, rohc_pkt, counter);
 			break;
+		case ROHC_EXT_UNKNOWN:
 		default:
 			rohc_comp_warn(context, "unknown extension (%d)", extension);
 			goto error;
@@ -3840,6 +3843,7 @@ static int code_UOR2_bytes(const struct rohc_comp_ctxt *const context,
 			break;
 		}
 
+		case ROHC_EXT_UNKNOWN:
 		default:
 		{
 			rohc_comp_warn(context, "unknown extension (%d)", extension);
@@ -4090,6 +4094,7 @@ static int code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
 			break;
 		}
 
+		case ROHC_EXT_UNKNOWN:
 		default:
 		{
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -4351,6 +4356,7 @@ static int code_UOR2_TS_bytes(const struct rohc_comp_ctxt *const context,
 			break;
 		}
 
+		case ROHC_EXT_UNKNOWN:
 		default:
 		{
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -4600,6 +4606,7 @@ static int code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
 			break;
 		}
 
+		case ROHC_EXT_UNKNOWN:
 		default:
 		{
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -6081,7 +6088,7 @@ static void update_context_ip_hdr(struct ip_header_info *const ip_flags,
 	{
 		ip_flags->info.v6.old_ip = *(ipv6_get_header(ip));
 		/* replace Next Header by the one of the last extension header */
-		ip_flags->info.v6.old_ip.ip6_nxt = ip_get_protocol(ip);
+		ip_flags->info.v6.old_ip.nh = ip_get_protocol(ip);
 		/* update compression list context */
 		rohc_list_update_context(&ip_flags->info.v6.ext_comp);
 	}
@@ -6277,11 +6284,12 @@ static int changed_dynamic_one_hdr(struct rohc_comp_ctxt *const context,
 	/* IPv4 only checks */
 	if(ip_get_version(ip) == IPV4)
 	{
-		unsigned int df, old_df;
+		uint8_t old_df;
+		uint8_t df;
 
 		/* check the Don't Fragment flag for change (IPv4 only) */
 		df = ipv4_get_df(ip);
-		old_df = IPV4_GET_DF(header_info->info.v4.old_ip);
+		old_df = header_info->info.v4.old_ip.df;
 		if(df != old_df || header_info->info.v4.df_count < MAX_FO_COUNT)
 		{
 			if(df != old_df)
@@ -6422,9 +6430,9 @@ static unsigned short detect_changed_fields(const struct rohc_comp_ctxt *const c
 		const struct ipv6_hdr *old_ip;
 
 		old_ip = &header_info->info.v6.old_ip;
-		old_tos = IPV6_GET_TC(*old_ip);
-		old_ttl = old_ip->ip6_hlim;
-		old_protocol = old_ip->ip6_nxt;
+		old_tos = ipv6_get_tc(old_ip);
+		old_ttl = old_ip->hl;
+		old_protocol = old_ip->nh;
 	}
 
 	new_tos = ip_get_tos(ip);
@@ -6868,8 +6876,6 @@ static rohc_ext_t decide_extension_uor2(const struct rohc_comp_ctxt *const conte
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 	rohc_ext_t ext;
 
-	assert(rfc3095_ctxt->tmp.packet_type == ROHC_PACKET_UOR_2);
-
 	if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 5 &&
 	   nr_innermost_ip_id_bits == 0 &&
 	   nr_outermost_ip_id_bits == 0)
@@ -6925,8 +6931,6 @@ static rohc_ext_t decide_extension_uor2rtp(const struct rohc_comp_ctxt *const co
 	const struct sc_rtp_context *const rtp_context = rfc3095_ctxt->specific;
 	const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits_more_than_2;
 	rohc_ext_t ext;
-
-	assert(rfc3095_ctxt->tmp.packet_type == ROHC_PACKET_UOR_2_RTP);
 
 	if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 6 &&
 	   nr_ts_bits <= 6 &&
@@ -6987,8 +6991,6 @@ static rohc_ext_t decide_extension_uor2ts(const struct rohc_comp_ctxt *const con
 	const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits_more_than_2;
 	rohc_ext_t ext;
 
-	assert(rfc3095_ctxt->tmp.packet_type == ROHC_PACKET_UOR_2_TS);
-
 	if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 6 &&
 	   nr_ts_bits <= 5 &&
 	   nr_innermost_ip_id_bits == 0 &&
@@ -7048,8 +7050,6 @@ static rohc_ext_t decide_extension_uor2id(const struct rohc_comp_ctxt *const con
 	const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits_more_than_2;
 	rohc_ext_t ext;
 
-	assert(rfc3095_ctxt->tmp.packet_type == ROHC_PACKET_UOR_2_ID);
-
 	if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 6 &&
 	   (nr_ts_bits == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
 	   nr_innermost_ip_id_bits <= 5 &&
@@ -7108,8 +7108,6 @@ static rohc_ext_t decide_extension_uo1id(const struct rohc_comp_ctxt *const cont
 	const struct sc_rtp_context *const rtp_context = rfc3095_ctxt->specific;
 	const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits_more_than_2;
 	rohc_ext_t ext;
-
-	assert(rfc3095_ctxt->tmp.packet_type == ROHC_PACKET_UO_1_ID);
 
 	if(rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 <= 4 &&
 	   (nr_ts_bits == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&

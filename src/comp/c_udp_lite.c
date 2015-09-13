@@ -118,7 +118,7 @@ static bool c_udp_lite_check_profile(const struct rohc_comp *const comp,
 
 static bool c_udp_lite_check_context(const struct rohc_comp_ctxt *const context,
                                      const struct net_pkt *const packet)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+	__attribute__((warn_unused_result, nonnull(1, 2), pure));
 
 static int c_udp_lite_encode(struct rohc_comp_ctxt *const context,
                              const struct net_pkt *const uncomp_pkt,
@@ -332,12 +332,11 @@ bad_profile:
 static bool c_udp_lite_check_context(const struct rohc_comp_ctxt *const context,
                                      const struct net_pkt *const packet)
 {
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	struct sc_udp_lite_context *udp_lite_context;
-	const struct udphdr *udp_lite;
-
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-	udp_lite_context = (struct sc_udp_lite_context *) rfc3095_ctxt->specific;
+	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
+		(struct rohc_comp_rfc3095_ctxt *) context->specific;
+	const struct sc_udp_lite_context *const udp_lite_context =
+	(struct sc_udp_lite_context *) rfc3095_ctxt->specific;
+	const struct udphdr *const udp_lite = (struct udphdr *) packet->transport->data;
 
 	/* first, check the same parameters as for the IP-only profile */
 	if(!c_ip_check_context(context, packet))
@@ -346,8 +345,6 @@ static bool c_udp_lite_check_context(const struct rohc_comp_ctxt *const context,
 	}
 
 	/* in addition, check UDP-Lite ports */
-	assert(packet->transport->data != NULL);
-	udp_lite = (struct udphdr *) packet->transport->data;
 	if(udp_lite_context->old_udp_lite.source != udp_lite->source ||
 	   udp_lite_context->old_udp_lite.dest != udp_lite->dest)
 	{

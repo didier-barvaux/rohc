@@ -27,6 +27,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <assert.h>
 
 
 /**
@@ -132,17 +133,17 @@ static inline int32_t rohc_interval_compute_p(const size_t k,
 struct rohc_interval8 rohc_f_8bits(const uint8_t v_ref,
                                    const size_t k,
                                    const rohc_lsb_shift_t p)
-	__attribute__((warn_unused_result, const));
+	__attribute__((warn_unused_result));
 
 struct rohc_interval16 rohc_f_16bits(const uint16_t v_ref,
                                      const size_t k,
                                      const rohc_lsb_shift_t p)
-	__attribute__((warn_unused_result, const));
+	__attribute__((warn_unused_result));
 
 struct rohc_interval32 rohc_f_32bits(const uint32_t v_ref,
                                      const size_t k,
                                      const rohc_lsb_shift_t p)
-	__attribute__((warn_unused_result, const));
+	__attribute__((warn_unused_result));
 
 
 /**
@@ -189,6 +190,19 @@ static inline int32_t rohc_interval_compute_p(const size_t k,
 		}
 		break;
 
+		case ROHC_LSB_SHIFT_VAR:
+			assert(0); /* should not happen */
+			computed_p = p;
+			break;
+
+		case ROHC_LSB_SHIFT_SN:
+		case ROHC_LSB_SHIFT_IP_ID:
+		case ROHC_LSB_SHIFT_TCP_TTL:
+		case ROHC_LSB_SHIFT_TCP_SN:
+		case ROHC_LSB_SHIFT_TCP_SEQ_SCALED:
+		case ROHC_LSB_SHIFT_TCP_WINDOW:
+		case ROHC_LSB_SHIFT_TCP_TS_3B:
+		case ROHC_LSB_SHIFT_TCP_TS_4B:
 		default: /* otherwise: use the p value given as parameter */
 		{
 			computed_p = p;

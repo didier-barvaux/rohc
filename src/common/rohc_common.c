@@ -121,6 +121,7 @@ const char * rohc_get_mode_descr(const rohc_mode_t mode)
 			return "O-mode";
 		case ROHC_R_MODE:
 			return "R-mode";
+		case ROHC_UNKNOWN_MODE:
 		default:
 			return "no description";
 	}
@@ -164,6 +165,7 @@ const char * rohc_get_profile_descr(const rohc_profile_t profile)
 			return "IP/UDP-Lite/RTP";
 		case ROHC_PROFILE_UDPLITE:
 			return "IP/UDP-Lite";
+		case ROHC_PROFILE_MAX:
 		default:
 			return "no description";
 	}

@@ -397,9 +397,11 @@ bool ROHC_EXPORT rohc_comp_get_general_info(const struct rohc_comp *const comp,
 	__attribute__((warn_unused_result));
 
 bool ROHC_EXPORT rohc_comp_get_last_packet_info2(const struct rohc_comp *const comp,
-                                                 rohc_comp_last_packet_info2_t *const info);
+                                                 rohc_comp_last_packet_info2_t *const info)
+	__attribute__((warn_unused_result));
 
-const char * ROHC_EXPORT rohc_comp_get_state_descr(const rohc_comp_state_t state);
+const char * ROHC_EXPORT rohc_comp_get_state_descr(const rohc_comp_state_t state)
+	__attribute__((warn_unused_result, const));
 
 
 #undef ROHC_EXPORT /* do not pollute outside this header */

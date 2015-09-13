@@ -26,6 +26,7 @@
 #include <stdint.h>
 
 #include "rfc4996.h"
+#include "comp_wlsb.h"
 
 #include "config.h"
 
@@ -113,7 +114,8 @@ error:
  */
 static bool run_test_variable_length_32_enc(const bool be_verbose)
 {
-	uint8_t compressed_data[sizeof(uint32_t)];
+	const size_t comp_max_len = sizeof(uint32_t);
+	uint8_t comp_data[comp_max_len];
 	struct c_wlsb *wlsb;
 	uint32_t old_value;
 	bool is_success = false;
@@ -195,7 +197,7 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 		      inputs[i].uncomp_value);
 		comp_len = variable_length_32_enc(old_value, inputs[i].uncomp_value,
 		                                  nr_bits_63, nr_bits_16383,
-		                                  compressed_data, &indicator);
+		                                  comp_data, comp_max_len, &indicator);
 		printf("\t\tindicator %d\n", indicator);
 		printf("\t\tencoded length %zu\n", comp_len);
 

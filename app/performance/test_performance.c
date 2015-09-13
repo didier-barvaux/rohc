@@ -568,7 +568,7 @@ static int time_compress_packet(struct rohc_comp *comp,
 			struct ipv6_hdr *ip;
 
 			ip = (struct ipv6_hdr *) rohc_buf_data(ip_packet);
-			tot_len = sizeof(struct ipv6_hdr) + ntohs(ip->ip6_plen);
+			tot_len = sizeof(struct ipv6_hdr) + ntohs(ip->plen);
 		}
 		else /* unknown IP version */
 		{

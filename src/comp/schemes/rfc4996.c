@@ -23,17 +23,14 @@
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#include "rohc_comp_internals.h"
-#include "rohc_traces_internal.h"
-#include "rohc_debug.h"
-#include "rohc_bit_ops.h"
-#include "rohc_utils.h"
-#include "protocols/tcp.h" // For IP_ID_BEHAVIOR
 #include "rfc4996.h"
-#include "crc.h"
+#include "rohc_utils.h"
+#include "protocols/tcp.h"
 
 #ifndef __KERNEL__
 #  include <string.h>
+#else
+#  include <bitops.h> /* for __builtin_popcount() in Linux kernel */
 #endif
 #include <assert.h>
 
@@ -46,6 +43,7 @@
  * @param context_value    The context value
  * @param packet_value     The packet value
  * @param[out] rohc_data   The compressed value
+ * @param rohc_max_len     The max remaining length in the ROHC buffer
  * @param[out] indicator   The indicator: 1 if present, 0 if not
  * @return                 The number of ROHC bytes written,
  *                         -1 if a problem occurs
@@ -53,6 +51,7 @@
 int c_static_or_irreg8(const uint8_t context_value,
                        const uint8_t packet_value,
                        uint8_t *const rohc_data,
+                       const size_t rohc_max_len,
                        int *const indicator)
 {
 	size_t length;
@@ -64,12 +63,19 @@ int c_static_or_irreg8(const uint8_t context_value,
 	}
 	else
 	{
+		if(rohc_max_len < 1)
+		{
+			goto error;
+		}
 		rohc_data[0] = packet_value;
 		*indicator = 1;
 		length = 1;
 	}
 
 	return length;
+
+error:
+	return -1;
 }
 
 
@@ -79,6 +85,7 @@ int c_static_or_irreg8(const uint8_t context_value,
  * @param packet_value     The packet value
  * @param is_static        Whether the value is static or not
  * @param[out] rohc_data   The compressed value
+ * @param rohc_max_len     The max remaining length in the ROHC buffer
  * @param[out] indicator   The indicator: 1 if present, 0 if not
  * @return                 The number of ROHC bytes written,
  *                         -1 if a problem occurs
@@ -86,23 +93,33 @@ int c_static_or_irreg8(const uint8_t context_value,
 int c_static_or_irreg16(const uint16_t packet_value,
                         const bool is_static,
                         uint8_t *const rohc_data,
+                        const size_t rohc_max_len,
                         int *const indicator)
 {
-	size_t length;
+	size_t field_len;
 
 	if(is_static)
 	{
+		field_len = 0;
 		*indicator = 0;
-		length = 0;
 	}
 	else
 	{
+		field_len = sizeof(uint16_t);
+
+		if(rohc_max_len < field_len)
+		{
+			goto error;
+		}
+
 		memcpy(rohc_data, &packet_value, sizeof(uint16_t));
 		*indicator = 1;
-		length = 2;
 	}
 
-	return length;
+	return field_len;
+
+error:
+	return -1;
 }
 
 
@@ -111,29 +128,40 @@ int c_static_or_irreg16(const uint16_t packet_value,
  *
  * @param packet_value     The packet value
  * @param[out] rohc_data   The compressed value
+ * @param rohc_max_len     The max remaining length in the ROHC buffer
  * @param[out] indicator   The indicator: 1 if present, 0 if not
  * @return                 The number of ROHC bytes written,
  *                         -1 if a problem occurs
  */
 int c_zero_or_irreg16(const uint16_t packet_value,
                       uint8_t *const rohc_data,
+                      const size_t rohc_max_len,
                       int *const indicator)
 {
-	size_t length;
+	size_t field_len;
 
 	if(packet_value != 0)
 	{
+		field_len = sizeof(uint16_t);
+
+		if(rohc_max_len < field_len)
+		{
+			goto error;
+		}
+
 		memcpy(rohc_data, &packet_value, sizeof(uint16_t));
 		*indicator = 0;
-		length = sizeof(uint16_t);
 	}
 	else
 	{
+		field_len = 0;
 		*indicator = 1;
-		length = 0;
 	}
 
-	return length;
+	return field_len;
+
+error:
+	return -1;
 }
 
 
@@ -142,29 +170,40 @@ int c_zero_or_irreg16(const uint16_t packet_value,
  *
  * @param packet_value     The packet value
  * @param[out] rohc_data   The compressed value
+ * @param rohc_max_len     The max remaining length in the ROHC buffer
  * @param[out] indicator   The indicator: 1 if present, 0 if not
  * @return                 The number of ROHC bytes written,
  *                         -1 if a problem occurs
  */
 int c_zero_or_irreg32(const uint32_t packet_value,
                       uint8_t *const rohc_data,
+                      const size_t rohc_max_len,
                       int *const indicator)
 {
-	size_t length;
+	size_t field_len;
 
 	if(packet_value != 0)
 	{
-		memcpy(rohc_data, &packet_value, sizeof(uint32_t));
+		field_len = sizeof(uint32_t);
+
+		if(rohc_max_len < field_len)
+		{
+			goto error;
+		}
+
+		memcpy(rohc_data, &packet_value, field_len);
 		*indicator = 0;
-		length = sizeof(uint32_t);
 	}
 	else
 	{
+		field_len = 0;
 		*indicator = 1;
-		length = 0;
 	}
 
-	return length;
+	return field_len;
+
+error:
+	return -1;
 }
 
 
@@ -180,15 +219,18 @@ int c_zero_or_irreg32(const uint32_t packet_value,
  * @param nr_bits_16383   The number of bits required for W-LSB encoding
  *                        with p = 16383
  * @param[out] rohc_data  The compressed value
+ * @param rohc_max_len    The max remaining length in the ROHC buffer
  * @param[out] indicator  The indicator for the compressed value
- * @return                The number of ROHC bytes written
+ * @return                The number of ROHC bytes written in case of success,
+ *                        -1 in case of error
  */
-size_t variable_length_32_enc(const uint32_t old_value,
-                              const uint32_t new_value,
-                              const size_t nr_bits_63,
-                              const size_t nr_bits_16383,
-                              uint8_t *const rohc_data,
-                              int *const indicator)
+int variable_length_32_enc(const uint32_t old_value,
+                           const uint32_t new_value,
+                           const size_t nr_bits_63,
+                           const size_t nr_bits_16383,
+                           uint8_t *const rohc_data,
+                           const size_t rohc_max_len,
+                           int *const indicator)
 {
 	size_t encoded_len;
 
@@ -205,6 +247,10 @@ size_t variable_length_32_enc(const uint32_t old_value,
 	{
 		/* 1-byte value */
 		encoded_len = 1;
+		if(rohc_max_len < encoded_len)
+		{
+			goto error;
+		}
 		*indicator = 1;
 		rohc_data[0] = new_value & 0xff;
 	}
@@ -212,6 +258,10 @@ size_t variable_length_32_enc(const uint32_t old_value,
 	{
 		/* 2-byte value */
 		encoded_len = 2;
+		if(rohc_max_len < encoded_len)
+		{
+			goto error;
+		}
 		*indicator = 2;
 		rohc_data[0] = (new_value >> 8) & 0xff;
 		rohc_data[1] = new_value & 0xff;
@@ -220,6 +270,10 @@ size_t variable_length_32_enc(const uint32_t old_value,
 	{
 		/* 4-byte value */
 		encoded_len = 4;
+		if(rohc_max_len < encoded_len)
+		{
+			goto error;
+		}
 		*indicator = 3;
 		rohc_data[0] = (new_value >> 24) & 0xff;
 		rohc_data[1] = (new_value >> 16) & 0xff;
@@ -231,6 +285,9 @@ size_t variable_length_32_enc(const uint32_t old_value,
 	assert((*indicator) >= 0 && (*indicator) <= 3);
 
 	return encoded_len;
+
+error:
+	return -1;
 }
 
 
@@ -285,15 +342,11 @@ bool rsf_index_enc_possible(const uint8_t rsf_flags)
  *
  * See RFC4996 page 71
  *
- * @param context    The compressor context
  * @param rsf_flags  The RSF flags
  * @return           The rsf index
  */
-unsigned int rsf_index_enc(const struct rohc_comp_ctxt *const context,
-                           unsigned int rsf_flags)
+unsigned int rsf_index_enc(const uint8_t rsf_flags)
 {
-	assert(context != NULL);
-
 	switch(rsf_flags)
 	{
 		case RSF_NONE:
@@ -305,7 +358,6 @@ unsigned int rsf_index_enc(const struct rohc_comp_ctxt *const context,
 		case RSF_FIN_ONLY:
 			return 3;
 		default:
-			rohc_comp_warn(context, "uncompressible TCP RSF flags 0x%x", rsf_flags);
 			assert(0);
 			return 0;
 	}
@@ -317,31 +369,25 @@ unsigned int rsf_index_enc(const struct rohc_comp_ctxt *const context,
  *
  * See RFC4996 page 76
  *
- * @param context          The compressor context
  * @param behavior         The IP-ID behavior
  * @param ip_id            The IP-ID value to compress
  * @param ip_id_offset     The IP-ID offset value to compress
  * @param nr_bits_wlsb     The number of IP-ID offset bits required for W-LSB
  * @param[out] rohc_data   The compressed value
+ * @param rohc_max_len     The max remaining length in the ROHC buffer
  * @param[out] indicator   The indicator: 0 if short, 1 if long
  * @return                 The number of ROHC bytes written,
  *                         -1 if a problem occurs
  */
-int c_optional_ip_id_lsb(const struct rohc_comp_ctxt *const context,
-                         const int behavior,
+int c_optional_ip_id_lsb(const int behavior,
                          const uint16_t ip_id,
                          const uint16_t ip_id_offset,
                          const size_t nr_bits_wlsb,
                          uint8_t *const rohc_data,
+                         const size_t rohc_max_len,
                          int *const indicator)
 {
 	size_t length = 0;
-
-	assert(context != NULL);
-
-	rohc_comp_debug(context, "optional_ip_id_lsb(behavior = %d, IP-ID = 0x%04x, "
-	                "IP-ID offset = 0x%04x, nr of bits required for WLSB encoding "
-	                "= %zu)", behavior, ip_id, ip_id_offset, nr_bits_wlsb);
 
 	switch(behavior)
 	{
@@ -349,18 +395,24 @@ int c_optional_ip_id_lsb(const struct rohc_comp_ctxt *const context,
 		case IP_ID_BEHAVIOR_SEQ:
 			if(nr_bits_wlsb <= 8)
 			{
+				if(rohc_max_len < 1)
+				{
+					goto error;
+				}
 				rohc_data[0] = ip_id_offset & 0xff;
 				*indicator = 0;
 				length++;
-				rohc_comp_debug(context, "write ip_id = 0x%02x", rohc_data[0]);
 			}
 			else
 			{
 				const uint16_t ip_id_nbo = rohc_hton16(ip_id);
+				if(rohc_max_len < sizeof(uint16_t))
+				{
+					goto error;
+				}
 				memcpy(rohc_data, &ip_id_nbo, sizeof(uint16_t));
 				length += sizeof(uint16_t);
 				*indicator = 1;
-				rohc_comp_debug(context, "write ip_id = 0x%04x", ip_id);
 			}
 			break;
 		case IP_ID_BEHAVIOR_RAND:
@@ -376,6 +428,9 @@ int c_optional_ip_id_lsb(const struct rohc_comp_ctxt *const context,
 	}
 
 	return length;
+
+error:
+	return -1;
 }
 
 
@@ -387,6 +442,7 @@ int c_optional_ip_id_lsb(const struct rohc_comp_ctxt *const context,
  * @param context_value    The DSCP value in the compression context
  * @param packet_value     The DSCP value in the packet to compress
  * @param[out] rohc_data   The compressed value
+ * @param rohc_max_len     The max remaining length in the ROHC buffer
  * @param[out] indicator   The indicator: 1 if present, 1 if not
  * @return                 The number of ROHC bytes written,
  *                         -1 if a problem occurs
@@ -394,6 +450,7 @@ int c_optional_ip_id_lsb(const struct rohc_comp_ctxt *const context,
 int dscp_encode(const uint8_t context_value,
                 const uint8_t packet_value,
                 uint8_t *const rohc_data,
+                const size_t rohc_max_len,
                 int *const indicator)
 {
 	size_t len;
@@ -406,11 +463,18 @@ int dscp_encode(const uint8_t context_value,
 	else
 	{
 		/* 6 bits + 2 bits padding */
+		if(rohc_max_len < 1)
+		{
+			goto error;
+		}
 		rohc_data[0] = ((packet_value & 0x3F) << 2);
 		*indicator = 1;
 		len = 1;
 	}
 
 	return len;
+
+error:
+	return -1;
 }
 

@@ -20,7 +20,7 @@
 
 /**
  * @file   decomp/schemes/tcp_sack.h
- * @brief  Library of decoding methods from RFC4997 and RFC4996
+ * @brief  Handle decoding of TCP Selective ACKnowledgement (SACK) option
  * @author FWX <rohc_team@dialine.fr>
  * @author Didier Barvaux <didier@barvaux.org>
  */

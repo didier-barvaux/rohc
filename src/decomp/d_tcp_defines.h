@@ -249,14 +249,14 @@ struct d_tcp_opt_ctxt /* TODO: doxygen */
 
 
 /** The decompression context for TCP options */
-struct d_tcp_opts_ctxt /* TODO: doxygen */
+struct d_tcp_opts_ctxt
 {
 	/** The number of options in the list of TCP options */
 	size_t nr;
 
 	/** The structure of the list of TCP options */
 	uint8_t structure[ROHC_TCP_OPTS_MAX];
-	/** Whethee the TCP options are expected in the dynamic part? */
+	/** Whether the TCP options are expected in the dynamic part? */
 	bool expected_dynamic[ROHC_TCP_OPTS_MAX];
 	/** The TCP options that were found or not */
 	bool found[ROHC_TCP_OPTS_MAX];
@@ -371,7 +371,7 @@ struct rohc_tcp_extr_bits
 	struct rohc_lsb_field16 msn;
 
 	/** Whether at least one of IP headers changed its TTL/HL */
-	bool ttl_irregular_chain_flag;
+	bool ttl_irreg_chain_flag;
 
 	/* TCP header */
 	uint16_t src_port;    /**< The TCP source port bits found in static chain */

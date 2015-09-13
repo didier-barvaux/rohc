@@ -76,7 +76,7 @@ static bool c_esp_check_profile(const struct rohc_comp *const comp,
 
 static bool c_esp_check_context(const struct rohc_comp_ctxt *const context,
                                 const struct net_pkt *const packet)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+	__attribute__((warn_unused_result, nonnull(1, 2), pure));
 
 static int c_esp_encode(struct rohc_comp_ctxt *const context,
                         const struct net_pkt *const packet,
@@ -272,17 +272,11 @@ bad_profile:
 static bool c_esp_check_context(const struct rohc_comp_ctxt *const context,
                                 const struct net_pkt *const packet)
 {
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	struct sc_esp_context *esp_context;
-	const struct esphdr *esp;
-
-	assert(context != NULL);
-	assert(packet != NULL);
-
-	assert(context->specific != NULL);
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-	assert(rfc3095_ctxt->specific != NULL);
-	esp_context = (struct sc_esp_context *) rfc3095_ctxt->specific;
+	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
+		(struct rohc_comp_rfc3095_ctxt *) context->specific;
+	const struct sc_esp_context *const esp_context =
+		(struct sc_esp_context *) rfc3095_ctxt->specific;
+	const struct esphdr *const esp = (struct esphdr *) packet->transport->data;
 
 	/* first, check the same parameters as for the IP-only profile */
 	if(!c_ip_check_context(context, packet))
@@ -291,8 +285,6 @@ static bool c_esp_check_context(const struct rohc_comp_ctxt *const context,
 	}
 
 	/* in addition, check Security parameters index (SPI) */
-	assert(packet->transport->data != NULL);
-	esp = (struct esphdr *) packet->transport->data;
 	if(esp_context->old_esp.spi != esp->spi)
 	{
 		goto bad_context;

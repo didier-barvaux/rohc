@@ -542,8 +542,8 @@ static int tcp_parse_dynamic_tcp(const struct rohc_decomp_ctxt *const context,
 #endif
 
 	/* parse the compressed list of TCP options */
-	ret = d_tcp_parse_tcp_opts_dyn(context, remain_data, remain_len, true,
-	                               &bits->tcp_opts);
+	ret = d_tcp_parse_tcp_opts_list_item(context, remain_data, remain_len, true,
+	                                     &bits->tcp_opts);
 	if(ret < 0)
 	{
 		rohc_decomp_warn(context, "failed to parse optional compressed list "

@@ -78,7 +78,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 
 static bool rohc_list_is_gen_id_known(const struct list_decomp *const decomp,
                                       const unsigned int gen_id)
-	__attribute__((warn_unused_result, nonnull(1)));
+	__attribute__((warn_unused_result, nonnull(1), pure));
 
 static int rohc_list_parse_insertion_scheme(struct list_decomp *const decomp,
                                             const uint8_t *packet,
@@ -896,7 +896,6 @@ error:
 static bool rohc_list_is_gen_id_known(const struct list_decomp *const decomp,
                                       const unsigned int gen_id)
 {
-	assert(decomp != NULL);
 	return (gen_id <= ROHC_LIST_GEN_ID_MAX &&
 	        decomp->lists[gen_id].counter > 0);
 }
@@ -1280,6 +1279,7 @@ static int rohc_list_decode_mask(struct list_decomp *const decomp,
 		/* 7-bit mask */
 		rd_list_debug(decomp, "no second byte of %s bit mask", descr);
 		*mask_len = 7;
+		mask[1] = 0; /* shut up compiler warning about read of uninitialized data */
 		parsed_bytes_nr = 1;
 	}
 

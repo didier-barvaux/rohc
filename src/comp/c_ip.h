@@ -35,14 +35,14 @@
 
 bool c_ip_check_context(const struct rohc_comp_ctxt *const context,
                         const struct net_pkt *const packet)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+	__attribute__((warn_unused_result, nonnull(1, 2), pure));
 
 rohc_packet_t c_ip_decide_FO_packet(const struct rohc_comp_ctxt *context);
 rohc_packet_t c_ip_decide_SO_packet(const struct rohc_comp_ctxt *context);
 
 uint32_t c_ip_get_next_sn(const struct rohc_comp_ctxt *const context,
                           const struct net_pkt *const uncomp_pkt)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+	__attribute__((warn_unused_result, nonnull(1, 2), pure));
 
 int c_ip_code_ir_remainder(const struct rohc_comp_ctxt *const context,
                            uint8_t *const dest,

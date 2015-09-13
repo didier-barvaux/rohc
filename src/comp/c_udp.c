@@ -287,12 +287,11 @@ bad_profile:
 bool c_udp_check_context(const struct rohc_comp_ctxt *const context,
                          const struct net_pkt *const packet)
 {
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	struct sc_udp_context *udp_context;
-	const struct udphdr *udp;
-
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-	udp_context = (struct sc_udp_context *) rfc3095_ctxt->specific;
+	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
+		(struct rohc_comp_rfc3095_ctxt *) context->specific;
+	const struct sc_udp_context *const udp_context =
+		(struct sc_udp_context *) rfc3095_ctxt->specific;
+	const struct udphdr *const udp = (struct udphdr *) packet->transport->data;
 
 	/* first, check the same parameters as for the IP-only profile */
 	if(!c_ip_check_context(context, packet))
@@ -301,8 +300,6 @@ bool c_udp_check_context(const struct rohc_comp_ctxt *const context,
 	}
 
 	/* in addition, check UDP ports */
-	assert(packet->transport->data != NULL);
-	udp = (struct udphdr *) packet->transport->data;
 	if(udp_context->old_udp.source != udp->source ||
 	   udp_context->old_udp.dest != udp->dest)
 	{

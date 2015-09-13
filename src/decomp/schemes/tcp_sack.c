@@ -19,8 +19,8 @@
  */
 
 /**
- * @file   tcp_sack.c
- * @brief  Decompression scheme for the TCP SACK option
+ * @file   decomp/schemes/tcp_sack.c
+ * @brief  Handle decoding of TCP Selective ACKnowledgement (SACK) option
  * @author FWX <rohc_team@dialine.fr>
  * @author Didier Barvaux <didier@barvaux.org>
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>

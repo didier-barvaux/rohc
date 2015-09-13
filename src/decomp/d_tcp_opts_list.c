@@ -55,10 +55,10 @@ struct d_tcp_opt /* TODO */
 	bool is_well_known;
 	uint8_t kind;
 	char descr[255];
-	int (*parse_dynamic)(const struct rohc_decomp_ctxt *const context,
-	                     const uint8_t *const data,
-	                     const size_t data_len,
-	                     struct d_tcp_opt_ctxt *const opt_ctxt)
+	int (*parse_list_item)(const struct rohc_decomp_ctxt *const context,
+	                       const uint8_t *const data,
+	                       const size_t data_len,
+	                       struct d_tcp_opt_ctxt *const opt_ctxt)
 		__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 	int (*parse_irregular)(const struct rohc_decomp_ctxt *const context,
 	                       const uint8_t *const data,
@@ -110,10 +110,10 @@ static size_t d_tcp_opt_list_get_indexes_len(const uint8_t ps, const uint8_t m)
 static bool tcp_opt_is_well_known(const uint8_t idx)
 	__attribute__((warn_unused_result, pure));
 
-static int d_tcp_parse_nop_dyn(const struct rohc_decomp_ctxt *const context,
-                               const uint8_t *const data,
-                               const size_t data_len,
-                               struct d_tcp_opt_ctxt *const opt_ctxt)
+static int d_tcp_parse_nop_list_item(const struct rohc_decomp_ctxt *const context,
+                                     const uint8_t *const data,
+                                     const size_t data_len,
+                                     struct d_tcp_opt_ctxt *const opt_ctxt)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 static int d_tcp_parse_nop_irreg(const struct rohc_decomp_ctxt *const context,
                                  const uint8_t *const data,
@@ -128,10 +128,10 @@ static bool d_tcp_build_nop(const struct rohc_decomp_ctxt *const context,
                             size_t *const opt_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 5)));
 
-static int d_tcp_parse_eol_dyn(const struct rohc_decomp_ctxt *const context,
-                               const uint8_t *const data,
-                               const size_t data_len,
-                               struct d_tcp_opt_ctxt *const opt_ctxt)
+static int d_tcp_parse_eol_list_item(const struct rohc_decomp_ctxt *const context,
+                                     const uint8_t *const data,
+                                     const size_t data_len,
+                                     struct d_tcp_opt_ctxt *const opt_ctxt)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 static int d_tcp_parse_eol_irreg(const struct rohc_decomp_ctxt *const context,
                                  const uint8_t *const data,
@@ -146,10 +146,10 @@ static bool d_tcp_build_eol(const struct rohc_decomp_ctxt *const context,
                             size_t *const opt_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 5)));
 
-static int d_tcp_parse_mss_dyn(const struct rohc_decomp_ctxt *const context,
-                               const uint8_t *const data,
-                               const size_t data_len,
-                               struct d_tcp_opt_ctxt *const opt_ctxt)
+static int d_tcp_parse_mss_list_item(const struct rohc_decomp_ctxt *const context,
+                                     const uint8_t *const data,
+                                     const size_t data_len,
+                                     struct d_tcp_opt_ctxt *const opt_ctxt)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 static int d_tcp_parse_mss_irreg(const struct rohc_decomp_ctxt *const context,
                                  const uint8_t *const data,
@@ -164,10 +164,10 @@ static bool d_tcp_build_mss(const struct rohc_decomp_ctxt *const context,
                             size_t *const opt_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 5)));
 
-static int d_tcp_parse_ws_dyn(const struct rohc_decomp_ctxt *const context,
-                              const uint8_t *const data,
-                              const size_t data_len,
-                              struct d_tcp_opt_ctxt *const opt_ctxt)
+static int d_tcp_parse_ws_list_item(const struct rohc_decomp_ctxt *const context,
+                                    const uint8_t *const data,
+                                    const size_t data_len,
+                                    struct d_tcp_opt_ctxt *const opt_ctxt)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 static int d_tcp_parse_ws_irreg(const struct rohc_decomp_ctxt *const context,
                                 const uint8_t *const data,
@@ -182,10 +182,10 @@ static bool d_tcp_build_ws(const struct rohc_decomp_ctxt *const context,
                            size_t *const opt_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 5)));
 
-static int d_tcp_parse_ts_dyn(const struct rohc_decomp_ctxt *const context,
-                              const uint8_t *const data,
-                              const size_t data_len,
-                              struct d_tcp_opt_ctxt *const opt_ctxt)
+static int d_tcp_parse_ts_list_item(const struct rohc_decomp_ctxt *const context,
+                                    const uint8_t *const data,
+                                    const size_t data_len,
+                                    struct d_tcp_opt_ctxt *const opt_ctxt)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 static int d_tcp_parse_ts_irreg(const struct rohc_decomp_ctxt *const context,
                                 const uint8_t *const data,
@@ -200,10 +200,10 @@ static bool d_tcp_build_ts(const struct rohc_decomp_ctxt *const context,
                            size_t *const opt_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 5)));
 
-static int d_tcp_parse_sack_perm_dyn(const struct rohc_decomp_ctxt *const context,
-                                     const uint8_t *const data,
-                                     const size_t data_len,
-                                     struct d_tcp_opt_ctxt *const opt_ctxt)
+static int d_tcp_parse_sack_perm_list_item(const struct rohc_decomp_ctxt *const context,
+                                           const uint8_t *const data,
+                                           const size_t data_len,
+                                           struct d_tcp_opt_ctxt *const opt_ctxt)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 static int d_tcp_parse_sack_perm_irreg(const struct rohc_decomp_ctxt *const context,
                                        const uint8_t *const data,
@@ -218,10 +218,10 @@ static bool d_tcp_build_sack_perm(const struct rohc_decomp_ctxt *const context,
                                   size_t *const opt_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 5)));
 
-static int d_tcp_parse_sack_dyn(const struct rohc_decomp_ctxt *const context,
-                                const uint8_t *const data,
-                                const size_t data_len,
-                                struct d_tcp_opt_ctxt *const opt_ctxt)
+static int d_tcp_parse_sack_list_item(const struct rohc_decomp_ctxt *const context,
+                                      const uint8_t *const data,
+                                      const size_t data_len,
+                                      struct d_tcp_opt_ctxt *const opt_ctxt)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 static int d_tcp_parse_sack_irreg(const struct rohc_decomp_ctxt *const context,
                                   const uint8_t *const data,
@@ -236,10 +236,10 @@ static bool d_tcp_build_sack(const struct rohc_decomp_ctxt *const context,
                              size_t *const opt_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 5)));
 
-static int d_tcp_parse_generic_dyn(const struct rohc_decomp_ctxt *const context,
-                                   const uint8_t *const data,
-                                   const size_t data_len,
-                                   struct d_tcp_opt_ctxt *const opt_ctxt)
+static int d_tcp_parse_generic_list_item(const struct rohc_decomp_ctxt *const context,
+                                         const uint8_t *const data,
+                                         const size_t data_len,
+                                         struct d_tcp_opt_ctxt *const opt_ctxt)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 static int d_tcp_parse_generic_irreg(const struct rohc_decomp_ctxt *const context,
                                      const uint8_t *const data,
@@ -260,77 +260,77 @@ static struct d_tcp_opt d_tcp_opts[MAX_TCP_OPTION_INDEX + 1] =
 {
 	[TCP_INDEX_NOP]       = { TCP_INDEX_NOP, true, TCP_OPT_NOP,
 	                          "No Operation (NOP)",
-	                          d_tcp_parse_nop_dyn, d_tcp_parse_nop_irreg,
+	                          d_tcp_parse_nop_list_item, d_tcp_parse_nop_irreg,
 	                          d_tcp_build_nop },
 	[TCP_INDEX_EOL]       = { TCP_INDEX_EOL, true, TCP_OPT_EOL,
 	                          "End of Option List (EOL)",
-	                          d_tcp_parse_eol_dyn, d_tcp_parse_eol_irreg,
+	                          d_tcp_parse_eol_list_item, d_tcp_parse_eol_irreg,
 	                          d_tcp_build_eol },
 	[TCP_INDEX_MSS]       = { TCP_INDEX_MSS, true, TCP_OPT_MSS,
 	                          "Maximum Segment Size (MSS)",
-	                          d_tcp_parse_mss_dyn, d_tcp_parse_mss_irreg,
+	                          d_tcp_parse_mss_list_item, d_tcp_parse_mss_irreg,
 	                          d_tcp_build_mss },
 	[TCP_INDEX_WS]        = { TCP_INDEX_WS, true, TCP_OPT_WS,
 	                          "Window Scale (WS)",
-	                          d_tcp_parse_ws_dyn, d_tcp_parse_ws_irreg,
+	                          d_tcp_parse_ws_list_item, d_tcp_parse_ws_irreg,
 	                          d_tcp_build_ws },
 	[TCP_INDEX_TS]        = { TCP_INDEX_TS, true, TCP_OPT_TS,
 	                          "Timestamps (TS)",
-	                          d_tcp_parse_ts_dyn, d_tcp_parse_ts_irreg,
+	                          d_tcp_parse_ts_list_item, d_tcp_parse_ts_irreg,
 	                          d_tcp_build_ts },
 	[TCP_INDEX_SACK_PERM] = { TCP_INDEX_SACK_PERM, true, TCP_OPT_SACK_PERM,
 	                          "Selective Acknowledgment Permitted (SACK)",
-	                          d_tcp_parse_sack_perm_dyn, d_tcp_parse_sack_perm_irreg,
+	                          d_tcp_parse_sack_perm_list_item, d_tcp_parse_sack_perm_irreg,
 	                          d_tcp_build_sack_perm },
 	[TCP_INDEX_SACK]      = { TCP_INDEX_SACK, true, TCP_OPT_SACK,
 	                          "Selective Acknowledgment (SACK)",
-	                          d_tcp_parse_sack_dyn, d_tcp_parse_sack_irreg,
+	                          d_tcp_parse_sack_list_item, d_tcp_parse_sack_irreg,
 	                          d_tcp_build_sack },
 	[TCP_INDEX_GENERIC7]  = { TCP_INDEX_GENERIC7, false, 0,
 	                          "generic index 7",
-	                          d_tcp_parse_generic_dyn, d_tcp_parse_generic_irreg,
+	                          d_tcp_parse_generic_list_item, d_tcp_parse_generic_irreg,
 	                          d_tcp_build_generic },
 	[TCP_INDEX_GENERIC8]  = { TCP_INDEX_GENERIC8, false, 0,
 	                          "generic index 8",
-	                          d_tcp_parse_generic_dyn, d_tcp_parse_generic_irreg,
+	                          d_tcp_parse_generic_list_item, d_tcp_parse_generic_irreg,
 	                          d_tcp_build_generic },
 	[TCP_INDEX_GENERIC9]  = { TCP_INDEX_GENERIC9, false, 0,
 	                          "generic index 9",
-	                          d_tcp_parse_generic_dyn, d_tcp_parse_generic_irreg,
+	                          d_tcp_parse_generic_list_item, d_tcp_parse_generic_irreg,
 	                          d_tcp_build_generic },
 	[TCP_INDEX_GENERIC10] = { TCP_INDEX_GENERIC10, false, 0,
 	                          "generic index 10",
-	                          d_tcp_parse_generic_dyn, d_tcp_parse_generic_irreg,
+	                          d_tcp_parse_generic_list_item, d_tcp_parse_generic_irreg,
 	                          d_tcp_build_generic },
 	[TCP_INDEX_GENERIC11] = { TCP_INDEX_GENERIC11, false, 0,
 	                          "generic index 11",
-	                          d_tcp_parse_generic_dyn, d_tcp_parse_generic_irreg,
+	                          d_tcp_parse_generic_list_item, d_tcp_parse_generic_irreg,
 	                          d_tcp_build_generic },
 	[TCP_INDEX_GENERIC12] = { TCP_INDEX_GENERIC12, false, 0,
 	                          "generic index 12",
-	                          d_tcp_parse_generic_dyn, d_tcp_parse_generic_irreg,
+	                          d_tcp_parse_generic_list_item, d_tcp_parse_generic_irreg,
 	                          d_tcp_build_generic },
 	[TCP_INDEX_GENERIC13] = { TCP_INDEX_GENERIC13, false, 0,
 	                          "generic index 13",
-	                          d_tcp_parse_generic_dyn, d_tcp_parse_generic_irreg,
+	                          d_tcp_parse_generic_list_item, d_tcp_parse_generic_irreg,
 	                          d_tcp_build_generic },
 	[TCP_INDEX_GENERIC14] = { TCP_INDEX_GENERIC14, false, 0,
 	                          "generic index 14",
-	                          d_tcp_parse_generic_dyn, d_tcp_parse_generic_irreg,
+	                          d_tcp_parse_generic_list_item, d_tcp_parse_generic_irreg,
 	                          d_tcp_build_generic },
 	[TCP_INDEX_GENERIC15] = { TCP_INDEX_GENERIC15, false, 0,
 	                          "generic index 15",
-	                          d_tcp_parse_generic_dyn, d_tcp_parse_generic_irreg,
+	                          d_tcp_parse_generic_list_item, d_tcp_parse_generic_irreg,
 	                          d_tcp_build_generic },
 };
 
 
 /* TODO */
-int d_tcp_parse_tcp_opts_dyn(const struct rohc_decomp_ctxt *const context,
-                             const uint8_t *const rohc_packet,
-                             const size_t rohc_length,
-                             const bool is_dynamic_chain,
-                             struct d_tcp_opts_ctxt *const tcp_opts)
+int d_tcp_parse_tcp_opts_list_item(const struct rohc_decomp_ctxt *const context,
+                                   const uint8_t *const rohc_packet,
+                                   const size_t rohc_length,
+                                   const bool is_dynamic_chain,
+                                   struct d_tcp_opts_ctxt *const tcp_opts)
 {
 	const uint8_t *remain_data = rohc_packet;
 	size_t remain_len = rohc_length;
@@ -656,8 +656,8 @@ static int d_tcp_opt_list_parse_item(const struct rohc_decomp_ctxt *const contex
 	}
 
 	/* parse TCP option */
-	ret = d_tcp_opts[opt_index.index].parse_dynamic(context, remain_data, remain_len,
-	                                                opt_bits);
+	ret = d_tcp_opts[opt_index.index].parse_list_item(context, remain_data,
+	                                                  remain_len, opt_bits);
 	if(ret < 0)
 	{
 		rohc_decomp_warn(context, "malformed ROHC packet: failed to parse item "
@@ -713,10 +713,10 @@ static bool tcp_opt_is_well_known(const uint8_t idx)
 
 
 /* TODO */
-static int d_tcp_parse_nop_dyn(const struct rohc_decomp_ctxt *const context __attribute__((unused)),
-                               const uint8_t *const data __attribute__((unused)),
-                               const size_t data_len __attribute__((unused)),
-                               struct d_tcp_opt_ctxt *const opt_ctxt __attribute__((unused)))
+static int d_tcp_parse_nop_list_item(const struct rohc_decomp_ctxt *const context __attribute__((unused)),
+                                     const uint8_t *const data __attribute__((unused)),
+                                     const size_t data_len __attribute__((unused)),
+                                     struct d_tcp_opt_ctxt *const opt_ctxt __attribute__((unused)))
 {
 	return 0;
 }
@@ -760,26 +760,26 @@ error:
 
 
 /* TODO */
-static int d_tcp_parse_eol_dyn(const struct rohc_decomp_ctxt *const context,
-                               const uint8_t *const data,
-                               const size_t data_len,
-                               struct d_tcp_opt_ctxt *const opt_ctxt)
+static int d_tcp_parse_eol_list_item(const struct rohc_decomp_ctxt *const context,
+                                     const uint8_t *const data,
+                                     const size_t data_len,
+                                     struct d_tcp_opt_ctxt *const opt_ctxt)
 {
-	const size_t eol_dyn_len = sizeof(uint8_t);
+	const size_t eol_list_item_len = sizeof(uint8_t);
 	const size_t max_opt_len = 0xff; /* TODO */
 	size_t eol_uncomp_len;
 
-	if(data_len < eol_dyn_len)
+	if(data_len < eol_list_item_len)
 	{
-		rohc_decomp_warn(context, "malformed TCP dynamic part: malformed TCP option "
+		rohc_decomp_warn(context, "malformed TCP options list: malformed TCP option "
 		                 "items: only %zu bytes available while at least %zu bytes "
-		                 "required for EOL option", data_len, eol_dyn_len);
+		                 "required for EOL option", data_len, eol_list_item_len);
 		goto error;
 	}
 	eol_uncomp_len = data[0] + 1;
 	if(eol_uncomp_len > max_opt_len)
 	{
-		rohc_decomp_warn(context, "malformed TCP dynamic part: malformed TCP option "
+		rohc_decomp_warn(context, "malformed TCP options list: malformed TCP option "
 		                 "items: TCP EOL option is %zu-byte long according to ROHC "
 		                 "packet, but maximum length is %zu bytes", eol_uncomp_len,
 		                 max_opt_len);
@@ -789,7 +789,7 @@ static int d_tcp_parse_eol_dyn(const struct rohc_decomp_ctxt *const context,
 	opt_ctxt->data.eol.is_static = false;
 	opt_ctxt->data.eol.len = eol_uncomp_len;
 
-	return eol_dyn_len;
+	return eol_list_item_len;
 
 error:
 	return -1;
@@ -840,27 +840,27 @@ error:
 
 
 /* TODO */
-static int d_tcp_parse_mss_dyn(const struct rohc_decomp_ctxt *const context,
-                               const uint8_t *const data,
-                               const size_t data_len,
-                               struct d_tcp_opt_ctxt *const opt_ctxt)
+static int d_tcp_parse_mss_list_item(const struct rohc_decomp_ctxt *const context,
+                                     const uint8_t *const data,
+                                     const size_t data_len,
+                                     struct d_tcp_opt_ctxt *const opt_ctxt)
 {
-	const size_t mss_dyn_len = sizeof(uint16_t);
+	const size_t mss_list_item_len = sizeof(uint16_t);
 
-	if(data_len < mss_dyn_len)
+	if(data_len < mss_list_item_len)
 	{
-		rohc_decomp_warn(context, "malformed TCP dynamic part: malformed TCP option "
+		rohc_decomp_warn(context, "malformed TCP options list: malformed TCP option "
 		                 "items: only %zu bytes available while at least %zu bytes "
-		                 "required for MSS option", data_len, mss_dyn_len);
+		                 "required for MSS option", data_len, mss_list_item_len);
 		goto error;
 	}
 	opt_ctxt->data.mss.is_static = false;
-	memcpy(&opt_ctxt->data.mss.value, data, mss_dyn_len);
+	memcpy(&opt_ctxt->data.mss.value, data, mss_list_item_len);
 	opt_ctxt->data.mss.value = rohc_ntoh16(opt_ctxt->data.mss.value);
 	rohc_decomp_debug(context, "    TCP option MAXSEG = %u (0x%04x)",
 	                  opt_ctxt->data.mss.value, opt_ctxt->data.mss.value);
 
-	return mss_dyn_len;
+	return mss_list_item_len;
 
 error:
 	return -1;
@@ -911,24 +911,24 @@ error:
 
 
 /* TODO */
-static int d_tcp_parse_ws_dyn(const struct rohc_decomp_ctxt *const context,
-                              const uint8_t *const data,
-                              const size_t data_len,
-                              struct d_tcp_opt_ctxt *const opt_ctxt)
+static int d_tcp_parse_ws_list_item(const struct rohc_decomp_ctxt *const context,
+                                    const uint8_t *const data,
+                                    const size_t data_len,
+                                    struct d_tcp_opt_ctxt *const opt_ctxt)
 {
-	const size_t ws_dyn_len = sizeof(uint8_t);
+	const size_t ws_list_item_len = sizeof(uint8_t);
 
-	if(data_len < ws_dyn_len)
+	if(data_len < ws_list_item_len)
 	{
-		rohc_decomp_warn(context, "malformed TCP dynamic part: malformed TCP option "
+		rohc_decomp_warn(context, "malformed TCP options list: malformed TCP option "
 		                 "items: only %zu bytes available while at least %zu bytes "
-		                 "required for WS option", data_len, ws_dyn_len);
+		                 "required for WS option", data_len, ws_list_item_len);
 		goto error;
 	}
 	opt_ctxt->data.ws.is_static = false;
 	opt_ctxt->data.ws.value = data[0];
 
-	return ws_dyn_len;
+	return ws_list_item_len;
 
 error:
 	return -1;
@@ -977,21 +977,21 @@ error:
 
 
 /* TODO */
-static int d_tcp_parse_ts_dyn(const struct rohc_decomp_ctxt *const context,
-                              const uint8_t *const data,
-                              const size_t data_len,
-                              struct d_tcp_opt_ctxt *const opt_ctxt)
+static int d_tcp_parse_ts_list_item(const struct rohc_decomp_ctxt *const context,
+                                    const uint8_t *const data,
+                                    const size_t data_len,
+                                    struct d_tcp_opt_ctxt *const opt_ctxt)
 {
 	const struct tcp_option_timestamp *const opt_ts =
 		(struct tcp_option_timestamp *) data;
 	const size_t ts_field_len = sizeof(uint32_t);
-	const size_t ts_dyn_len = 2 * ts_field_len;
+	const size_t ts_list_item_len = 2 * ts_field_len;
 
-	if(data_len < ts_dyn_len)
+	if(data_len < ts_list_item_len)
 	{
-		rohc_decomp_warn(context, "malformed TCP dynamic part: malformed TCP option "
+		rohc_decomp_warn(context, "malformed TCP options list: malformed TCP option "
 		                 "items: only %zu bytes available while at least %zu bytes "
-		                 "required for TS option", data_len, ts_dyn_len);
+		                 "required for TS option", data_len, ts_list_item_len);
 		goto error;
 	}
 
@@ -1000,7 +1000,7 @@ static int d_tcp_parse_ts_dyn(const struct rohc_decomp_ctxt *const context,
 	opt_ctxt->data.ts.rep.bits = rohc_ntoh32(opt_ts->ts_reply);
 	opt_ctxt->data.ts.rep.bits_nr = 32;
 
-	return ts_dyn_len;
+	return ts_list_item_len;
 
 error:
 	return -1;
@@ -1087,10 +1087,10 @@ error:
 
 
 /* TODO */
-static int d_tcp_parse_sack_perm_dyn(const struct rohc_decomp_ctxt *const context __attribute__((unused)),
-                                     const uint8_t *const data __attribute__((unused)),
-                                     const size_t data_len __attribute__((unused)),
-                                     struct d_tcp_opt_ctxt *const opt_ctxt __attribute__((unused)))
+static int d_tcp_parse_sack_perm_list_item(const struct rohc_decomp_ctxt *const context __attribute__((unused)),
+                                           const uint8_t *const data __attribute__((unused)),
+                                           const size_t data_len __attribute__((unused)),
+                                           struct d_tcp_opt_ctxt *const opt_ctxt __attribute__((unused)))
 {
 	return 0;
 }
@@ -1136,10 +1136,10 @@ error:
 
 
 /* TODO */
-static int d_tcp_parse_sack_dyn(const struct rohc_decomp_ctxt *const context,
-                                const uint8_t *const data,
-                                const size_t data_len,
-                                struct d_tcp_opt_ctxt *const opt_ctxt)
+static int d_tcp_parse_sack_list_item(const struct rohc_decomp_ctxt *const context,
+                                      const uint8_t *const data,
+                                      const size_t data_len,
+                                      struct d_tcp_opt_ctxt *const opt_ctxt)
 {
 	int ret;
 
@@ -1165,7 +1165,7 @@ static int d_tcp_parse_sack_irreg(const struct rohc_decomp_ctxt *const context,
                                   const uint8_t opt_index __attribute__((unused)),
                                   struct d_tcp_opt_ctxt *const opt_ctxt)
 {
-	return d_tcp_parse_sack_dyn(context, data, data_len, opt_ctxt);
+	return d_tcp_parse_sack_list_item(context, data, data_len, opt_ctxt);
 }
 
 
@@ -1202,10 +1202,10 @@ error:
 
 
 /* TODO */
-static int d_tcp_parse_generic_dyn(const struct rohc_decomp_ctxt *const context,
-                                   const uint8_t *const data,
-                                   const size_t data_len,
-                                   struct d_tcp_opt_ctxt *const opt_ctxt)
+static int d_tcp_parse_generic_list_item(const struct rohc_decomp_ctxt *const context,
+                                         const uint8_t *const data,
+                                         const size_t data_len,
+                                         struct d_tcp_opt_ctxt *const opt_ctxt)
 {
 	const size_t opt_hdr_len = ROHC_TCP_OPT_HDR_LEN;
 	uint8_t opt_type;
@@ -1215,7 +1215,7 @@ static int d_tcp_parse_generic_dyn(const struct rohc_decomp_ctxt *const context,
 	/* enough data for option type and length? */
 	if(data_len < opt_hdr_len)
 	{
-		rohc_decomp_warn(context, "malformed TCP dynamic part: malformed TCP option "
+		rohc_decomp_warn(context, "malformed TCP options list: malformed TCP option "
 		                 "items: only %zu bytes available while at least %zu bytes "
 		                 "required for TCP generic option", data_len, opt_hdr_len);
 		goto error;
@@ -1231,7 +1231,7 @@ static int d_tcp_parse_generic_dyn(const struct rohc_decomp_ctxt *const context,
 	opt_len = data[1] & 0x7f;
 	if(opt_len < opt_hdr_len)
 	{
-		rohc_decomp_warn(context, "malformed TCP dynamic part: malformed TCP option "
+		rohc_decomp_warn(context, "malformed TCP options list: malformed TCP option "
 		                 "items: TCP generic option length should be at least %zu "
 		                 "bytes, but is only %u byte(s)", opt_hdr_len, opt_len);
 		goto error;
@@ -1241,7 +1241,7 @@ static int d_tcp_parse_generic_dyn(const struct rohc_decomp_ctxt *const context,
 	/* enough data for the whole option? */
 	if(data_len < opt_len)
 	{
-		rohc_decomp_warn(context, "malformed TCP dynamic part: malformed TCP option "
+		rohc_decomp_warn(context, "malformed TCP options list: malformed TCP option "
 		                 "items: only %zu bytes available while at least %zu bytes "
 		                 "required for TCP generic option", data_len, opt_hdr_len);
 		goto error;
@@ -1252,7 +1252,7 @@ static int d_tcp_parse_generic_dyn(const struct rohc_decomp_ctxt *const context,
 	{
 		if(opt_type != opt_ctxt->type) /* TODO */
 		{
-			rohc_decomp_warn(context, "malformed TCP dynamic part: malformed TCP "
+			rohc_decomp_warn(context, "malformed TCP options list: malformed TCP "
 			                 "option items: type of TCP generic option changed "
 			                 "from %u to %u", opt_ctxt->type, opt_type);
 			goto error;
@@ -1260,7 +1260,7 @@ static int d_tcp_parse_generic_dyn(const struct rohc_decomp_ctxt *const context,
 		if(opt_load_len != opt_ctxt->data.generic.load_len || /* TODO */
 		   memcmp(data + opt_hdr_len, opt_ctxt->data.generic.load, opt_load_len) != 0)
 		{
-			rohc_decomp_warn(context, "malformed TCP dynamic part: malformed TCP "
+			rohc_decomp_warn(context, "malformed TCP options list: malformed TCP "
 			                 "option items: payload of TCP generic option changed");
 			goto error;
 		}

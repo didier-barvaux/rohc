@@ -1,6 +1,5 @@
 /*
- * Copyright 2011,2013,2014 Didier Barvaux
- * Copyright 2007,2009,2010,2012 Viveris Technologies
+ * Copyright 2015 Didier Barvaux
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -18,29 +17,27 @@
  */
 
 /**
- * @file   feedback_parse.h
- * @brief  Function to parse ROHC feedback
- * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @file   /comp/schemes/tcp_sack.h
+ * @brief  Handle encoding of TCP Selective ACKnowledgement (SACK) option
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#ifndef ROHC_DECOMP_FEEDBACK_PARSE_H
-#define ROHC_DECOMP_FEEDBACK_PARSE_H
+#ifndef ROHC_COMP_SCHEMES_TCP_SACK_H
+#define ROHC_COMP_SCHEMES_TCP_SACK_H
 
-#include <rohc/rohc_buf.h>
+#include "rohc_comp_internals.h"
+#include "protocols/tcp.h" /* for sack_block_t */
 
-#include <stdbool.h>
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 
+int c_tcp_opt_sack_code(const struct rohc_comp_ctxt *const context,
+                        const uint32_t ack_value,
+                        const sack_block_t *const sack_blocks,
+                        const uint8_t length,
+                        uint8_t *const rohc_data,
+                        const size_t rohc_max_len)
+	__attribute__((warn_unused_result, nonnull(1, 3, 5)));
 
-bool rohc_packet_is_feedback(const uint8_t byte)
-	__attribute__((warn_unused_result, const));
-
-bool rohc_feedback_get_size(const struct rohc_buf rohc_data,
-                            size_t *const feedback_hdr_len,
-                            size_t *const feedback_data_len)
-	__attribute__((warn_unused_result, nonnull(2, 3)));
-
-#endif
+#endif /* ROHC_COMP_SCHEMES_TCP_SACK_H */
 

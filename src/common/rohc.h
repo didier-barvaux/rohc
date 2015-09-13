@@ -241,15 +241,17 @@ typedef enum
  * Prototypes of public functions
  */
 
-char * ROHC_EXPORT rohc_version(void);
+char * ROHC_EXPORT rohc_version(void)
+	__attribute__((warn_unused_result, const));
 
 const char * ROHC_EXPORT rohc_strerror(const rohc_status_t status)
-	__attribute__((warn_unused_result));
+	__attribute__((warn_unused_result, const));
 
-const char * ROHC_EXPORT rohc_get_mode_descr(const rohc_mode_t mode);
+const char * ROHC_EXPORT rohc_get_mode_descr(const rohc_mode_t mode)
+	__attribute__((warn_unused_result, const));
 
 const char * ROHC_EXPORT rohc_get_profile_descr(const rohc_profile_t profile)
-	__attribute__((warn_unused_result));
+	__attribute__((warn_unused_result, const));
 
 
 

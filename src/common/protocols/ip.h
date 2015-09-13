@@ -1,6 +1,5 @@
 /*
- * Copyright 2011,2013,2014 Didier Barvaux
- * Copyright 2007,2009,2010,2012 Viveris Technologies
+ * Copyright 2015 Didier Barvaux
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -18,29 +17,35 @@
  */
 
 /**
- * @file   feedback_parse.h
- * @brief  Function to parse ROHC feedback
- * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @file   protocols/ip.h
+ * @brief  Defines the common IPv4/v6 header
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#ifndef ROHC_DECOMP_FEEDBACK_PARSE_H
-#define ROHC_DECOMP_FEEDBACK_PARSE_H
+#ifndef ROHC_PROTOCOLS_IP_H
+#define ROHC_PROTOCOLS_IP_H
 
-#include <rohc/rohc_buf.h>
-
-#include <stdbool.h>
 #include <stdint.h>
-#include <stddef.h>
+
+#ifdef __KERNEL__
+#  include <endian.h>
+#else
+#  include "config.h" /* for WORDS_BIGENDIAN */
+#endif
 
 
-bool rohc_packet_is_feedback(const uint8_t byte)
-	__attribute__((warn_unused_result, const));
+/** The common IPv4/v6 header */
+struct ip_hdr
+{
+#if WORDS_BIGENDIAN == 1
+	uint8_t version:4;    /**< The IP version */
+	uint8_t reserved:4;   /**< That field depends on IP version */
+#else
+	uint8_t reserved:4;
+	uint8_t version:4;
+#endif
+} __attribute__((packed));
 
-bool rohc_feedback_get_size(const struct rohc_buf rohc_data,
-                            size_t *const feedback_hdr_len,
-                            size_t *const feedback_data_len)
-	__attribute__((warn_unused_result, nonnull(2, 3)));
 
 #endif
 
