@@ -1511,6 +1511,7 @@ static int c_tcp_build_eol_list_item(const struct rohc_comp_ctxt *const context,
                                      uint8_t *const comp_opt,
                                      const size_t comp_opt_max_len)
 {
+	const size_t pad_len_bits = (uncomp_opt_len - 1) * 8;
 	const size_t comp_opt_len = 1;
 
 	/* is the ROHC buffer large enough to contain the list item? */
@@ -1522,7 +1523,15 @@ static int c_tcp_build_eol_list_item(const struct rohc_comp_ctxt *const context,
 		goto error;
 	}
 
-	comp_opt[0] = uncomp_opt_len - 1;
+	/* a very large EOL option (eg. 40 bytes) cannot be encoded */
+	if(pad_len_bits > 0xff)
+	{
+		rohc_comp_warn(context, "cannot build TCP option EOL item: unexpected "
+		               "large number of %zu pad_len bits", pad_len_bits);
+		goto error;
+	}
+
+	comp_opt[0] = pad_len_bits;
 
 	return comp_opt_len;
 

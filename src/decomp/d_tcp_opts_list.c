@@ -766,7 +766,6 @@ static int d_tcp_parse_eol_list_item(const struct rohc_decomp_ctxt *const contex
                                      struct d_tcp_opt_ctxt *const opt_ctxt)
 {
 	const size_t eol_list_item_len = sizeof(uint8_t);
-	const size_t max_opt_len = 0xff; /* TODO */
 	size_t eol_uncomp_len;
 
 	if(data_len < eol_list_item_len)
@@ -776,15 +775,17 @@ static int d_tcp_parse_eol_list_item(const struct rohc_decomp_ctxt *const contex
 		                 "required for EOL option", data_len, eol_list_item_len);
 		goto error;
 	}
-	eol_uncomp_len = data[0] + 1;
-	if(eol_uncomp_len > max_opt_len)
+
+	/* pad_len is expressed in bits, so better having a multiple of 8 */
+	if((data[0] % 8) != 0)
 	{
 		rohc_decomp_warn(context, "malformed TCP options list: malformed TCP option "
-		                 "items: TCP EOL option is %zu-byte long according to ROHC "
-		                 "packet, but maximum length is %zu bytes", eol_uncomp_len,
-		                 max_opt_len);
+		                 "items: TCP EOL option has malformed pad_len %u bits, "
+		                 "not divisible by 8 (incomplete byte)", data[0]);
 		goto error;
 	}
+	eol_uncomp_len = (data[0] / 8) + 1;
+
 	rohc_decomp_debug(context, "    EOL option is repeated %zu times", eol_uncomp_len);
 	opt_ctxt->data.eol.is_static = false;
 	opt_ctxt->data.eol.len = eol_uncomp_len;
