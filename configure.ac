@@ -99,11 +99,29 @@ AC_PROG_CC
 AC_PROG_INSTALL
 AC_PROG_LIBTOOL
 
+
 # check some newer CFLAGS
+
+#### -Wunknown-warning-option
+AC_MSG_CHECKING([whether compiler understands -Wunknown-warning-option])
+old_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS -Werror -Wunknown-warning-option"
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])],
+                  [unknown_warning_option=-Wunknown-warning-option],
+                  [unknown_warning_option=""])
+if test "x${unknown_warning_option}" != "x" ; then
+	AC_MSG_RESULT(yes)
+else
+	AC_MSG_RESULT(no)
+fi
+CFLAGS="$old_CFLAGS"
+
+#### -Wmisleading-indentation
 AC_MSG_CHECKING([whether compiler understands -Wmisleading-indentation])
 old_CFLAGS="$CFLAGS"
-CFLAGS="$CFLAGS -Werror -Wunknown-warning-option -Wmisleading-indentation"
-AC_TRY_COMPILE([], [], [misleading_indentation=yes], [misleading_indentation=no])
+CFLAGS="$CFLAGS -Werror $unknown_warning_option -Wmisleading-indentation"
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])],
+                  [misleading_indentation=yes], [misleading_indentation=no])
 if test "x${misleading_indentation}" = "xyes" ; then
 	AC_MSG_RESULT(yes)
 	configure_cflags="${configure_cflags} -Wmisleading-indentation"
@@ -111,6 +129,76 @@ else
 	AC_MSG_RESULT(no)
 fi
 CFLAGS="$old_CFLAGS"
+
+#### -Wshift-overflow=2
+AC_MSG_CHECKING([whether compiler understands -Wshift-overflow=2])
+old_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS -Werror $unknown_warning_option -Wshift-overflow=2"
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])],
+                  [shift_overflow_2=yes], [shift_overflow_2=no])
+if test "x${shift_overflow_2}" = "xyes" ; then
+	AC_MSG_RESULT(yes)
+	configure_cflags="${configure_cflags} -Wshift-overflow=2"
+else
+	AC_MSG_RESULT(no)
+fi
+CFLAGS="$old_CFLAGS"
+
+#### -Wswitch-default
+AC_MSG_CHECKING([whether compiler understands -Wswitch-default])
+old_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS -Werror $unknown_warning_option -Wswitch-default"
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])], [switch_default=yes], [switch_default=no])
+if test "x${switch_default}" = "xyes" ; then
+	AC_MSG_RESULT(yes)
+	configure_cflags="${configure_cflags} -Wswitch-default"
+else
+	AC_MSG_RESULT(no)
+fi
+CFLAGS="$old_CFLAGS"
+
+#### -Wswitch-enum
+#### disabled because of too many warnings with packet types
+#AC_MSG_CHECKING([whether compiler understands -Wswitch-enum])
+#old_CFLAGS="$CFLAGS"
+#CFLAGS="$CFLAGS -Werror $unknown_warning_option -Wswitch-enum"
+#AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])], [switch_enum=yes], [switch_enum=no])
+#if test "x${switch_enum}" = "xyes" ; then
+#	AC_MSG_RESULT(yes)
+#	configure_cflags="${configure_cflags} -Wswitch-enum -Wno-error=switch-enum"
+#else
+#	AC_MSG_RESULT(no)
+#fi
+#CFLAGS="$old_CFLAGS"
+
+#### -Wswitch-bool
+AC_MSG_CHECKING([whether compiler understands -Wswitch-bool])
+old_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS -Werror $unknown_warning_option -Wswitch-bool"
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])], [switch_bool=yes], [switch_bool=no])
+if test "x${switch_bool}" = "xyes" ; then
+	AC_MSG_RESULT(yes)
+	configure_cflags="${configure_cflags} -Wswitch-bool"
+else
+	AC_MSG_RESULT(no)
+fi
+CFLAGS="$old_CFLAGS"
+
+#### -Wc99-c11-compat
+#### disabled because of too many warnings with unnamed structs/unions and
+#### _Static_assert
+#AC_MSG_CHECKING([whether compiler understands -Wc99-c11-compat])
+#old_CFLAGS="$CFLAGS"
+#CFLAGS="$CFLAGS -Werror $unknown_warning_option -Wc99-c11-compat"
+#AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])], [c99_c11_compat=yes], [c99_c11_compat=no])
+#if test "x${c99_c11_compat}" = "xyes" ; then
+#	AC_MSG_RESULT(yes)
+#	configure_cflags="${configure_cflags} -Wc99-c11-compat -Wno-error=c99-c11-compat"
+#else
+#	AC_MSG_RESULT(no)
+#fi
+#CFLAGS="$old_CFLAGS"
+
 
 # Checks for header files.
 AC_CHECK_HEADERS([stdio.h stdlib.h string.h strings.h])

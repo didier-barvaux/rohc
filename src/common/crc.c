@@ -255,6 +255,7 @@ uint8_t crc_calculate(const rohc_crc_type_t crc_type,
 		case ROHC_CRC_TYPE_3:
 			crc = crc_calc_3(data, length, init_val, crc_table);
 			break;
+		case ROHC_CRC_TYPE_NONE:
 		default:
 			/* undefined CRC type, should not happen */
 			assert(0);
@@ -811,6 +812,7 @@ static bool rohc_crc_get_polynom(const rohc_crc_type_t crc_type,
 		case ROHC_CRC_TYPE_8:
 			*polynom = 0xe0;
 			break;
+		case ROHC_CRC_TYPE_NONE:
 		default:
 			/* unknown CRC type, should not happen */
 			assert(0);

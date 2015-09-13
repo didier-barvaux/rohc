@@ -112,6 +112,8 @@ const char * rohc_get_packet_descr(const rohc_packet_t packet_type)
 		case ROHC_PACKET_TCP_SEQ_8:
 			return "TCP/seq_8";
 
+		case ROHC_PACKET_UNKNOWN:
+		case ROHC_PACKET_MAX:
 		default:
 			return "unknown ROHC packet";
 	}
@@ -147,6 +149,7 @@ const char * rohc_get_ext_descr(const rohc_ext_t ext_type)
 			return "EXT-3";
 		case ROHC_EXT_NONE:
 			return "none";
+		case ROHC_EXT_UNKNOWN:
 		default:
 			return "unknown ROHC extension";
 	}

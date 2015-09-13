@@ -5399,6 +5399,7 @@ static bool tcp_detect_changes_ipv6_exts(struct rohc_comp_ctxt *const context,
 			case ROHC_IPPROTO_GRE:  /* TODO: GRE not yet supported */
 			case ROHC_IPPROTO_MINE: /* TODO: MINE not yet supported */
 			case ROHC_IPPROTO_AH:   /* TODO: AH not yet supported */
+			default:
 				assert(0);
 				break;
 		}
@@ -6069,6 +6070,7 @@ static rohc_packet_t tcp_decide_packet(struct rohc_comp_ctxt *const context,
 			context->so_count++;
 			packet_type = tcp_decide_SO_packet(context, ip_inner_context, tcp);
 			break;
+		case ROHC_COMP_STATE_UNKNOWN:
 		default:
 #if defined(NDEBUG) || defined(__KERNEL__) || defined(ENABLE_DEAD_CODE)
 			packet_type = ROHC_PACKET_UNKNOWN;

@@ -280,6 +280,11 @@ bool rohc_comp_tcp_are_options_acceptable(const struct rohc_comp *const comp,
 					}
 					break;
 				}
+				default:
+				{
+					/* nothing to check for other options */
+					break;
+				}
 			}
 		}
 	}

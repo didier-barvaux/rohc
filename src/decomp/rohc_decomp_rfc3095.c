@@ -2169,6 +2169,14 @@ static bool parse_uo1id(const struct rohc_decomp_ctxt *const context,
 		/* decode extension */
 		switch(ext_type)
 		{
+			case ROHC_EXT_NONE:
+			{
+				/* should not happen */
+				rohc_decomp_warn(context, "unexpected extension (0x%x)", ext_type);
+				assert(0);
+				goto error;
+			}
+
 			case ROHC_EXT_0:
 			{
 				/* decode extension 0 */
@@ -2209,6 +2217,7 @@ static bool parse_uo1id(const struct rohc_decomp_ctxt *const context,
 				break;
 			}
 
+			case ROHC_EXT_UNKNOWN:
 			default:
 			{
 				rohc_decomp_warn(context, "unknown extension (0x%x)", ext_type);
@@ -2650,6 +2659,14 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
 		ext_type = parse_extension_type(rohc_remain_data);
 		switch(ext_type)
 		{
+			case ROHC_EXT_NONE:
+			{
+				/* should not happen */
+				rohc_decomp_warn(context, "unexpected extension (0x%x)", ext_type);
+				assert(0);
+				goto error;
+			}
+
 			case ROHC_EXT_0:
 			{
 				/* check extension usage */
@@ -2724,6 +2741,7 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
 				break;
 			}
 
+			case ROHC_EXT_UNKNOWN:
 			default:
 			{
 				rohc_decomp_warn(context, "unknown extension (0x%x)", ext_type);
@@ -3125,6 +3143,14 @@ static bool parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
 		ext_type = parse_extension_type(rohc_remain_data);
 		switch(ext_type)
 		{
+			case ROHC_EXT_NONE:
+			{
+				/* should not happen */
+				rohc_decomp_warn(context, "unexpected extension (0x%x)", ext_type);
+				assert(0);
+				goto error;
+			}
+
 			case ROHC_EXT_0:
 			{
 				/* decode extension 0 */
@@ -3170,6 +3196,7 @@ static bool parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
 				break;
 			}
 
+			case ROHC_EXT_UNKNOWN:
 			default:
 			{
 				rohc_decomp_warn(context, "unknown extension (0x%x)", ext_type);
@@ -3588,6 +3615,14 @@ static bool parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
 		ext_type = parse_extension_type(rohc_remain_data);
 		switch(ext_type)
 		{
+			case ROHC_EXT_NONE:
+			{
+				/* should not happen */
+				rohc_decomp_warn(context, "unexpected extension (0x%x)", ext_type);
+				assert(0);
+				goto error;
+			}
+
 			case ROHC_EXT_0:
 			{
 				/* decode extension 0 */
@@ -3630,6 +3665,7 @@ static bool parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
 				break;
 			}
 
+			case ROHC_EXT_UNKNOWN:
 			default:
 			{
 				rohc_decomp_warn(context, "unknown extension (0x%x)", ext_type);
@@ -4031,6 +4067,14 @@ static bool parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
 		ext_type = parse_extension_type(rohc_remain_data);
 		switch(ext_type)
 		{
+			case ROHC_EXT_NONE:
+			{
+				/* should not happen */
+				rohc_decomp_warn(context, "unexpected extension (0x%x)", ext_type);
+				assert(0);
+				goto error;
+			}
+
 			case ROHC_EXT_0:
 			{
 				/* decode extension 0 */
@@ -4091,6 +4135,7 @@ static bool parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
 				break;
 			}
 
+			case ROHC_EXT_UNKNOWN:
 			default:
 			{
 				rohc_decomp_warn(context, "unknown extension (0x%x)", ext_type);
@@ -5301,6 +5346,7 @@ static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
 			crc_computed = CRC_INIT_8;
 			crc_table = decomp->crc_table_8;
 			break;
+		case ROHC_CRC_TYPE_NONE:
 		default:
 			rohc_decomp_warn(context, "unknown CRC type %d", crc_type);
 			assert(0);

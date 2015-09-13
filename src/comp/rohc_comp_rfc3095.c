@@ -1499,6 +1499,7 @@ static rohc_packet_t decide_packet(struct rohc_comp_ctxt *const context)
 			break;
 		}
 
+		case ROHC_COMP_STATE_UNKNOWN:
 		default:
 		{
 			/* impossible value */
@@ -1603,6 +1604,7 @@ int code_packet(struct rohc_comp_ctxt *const context,
 
 		default:
 			rohc_comp_debug(context, "unknown packet, failure");
+			assert(0); /* should not happen */
 			goto error;
 	}
 
@@ -3335,6 +3337,7 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 
 			break;
 		}
+		case ROHC_EXT_UNKNOWN:
 		default:
 		{
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -3412,6 +3415,7 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 			}
 			break;
 		}
+		case ROHC_EXT_UNKNOWN:
 		default:
 		{
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -3442,6 +3446,7 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 		case ROHC_EXT_3:
 			ret = code_EXT3_packet(context, uncomp_pkt, rohc_pkt, counter);
 			break;
+		case ROHC_EXT_UNKNOWN:
 		default:
 			rohc_comp_warn(context, "unknown extension (%d)", extension);
 			goto error;
@@ -3699,6 +3704,7 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 		case ROHC_EXT_3:
 			ret = code_EXT3_packet(context, uncomp_pkt, rohc_pkt, counter);
 			break;
+		case ROHC_EXT_UNKNOWN:
 		default:
 			rohc_comp_warn(context, "unknown extension (%d)", extension);
 			goto error;
@@ -3837,6 +3843,7 @@ static int code_UOR2_bytes(const struct rohc_comp_ctxt *const context,
 			break;
 		}
 
+		case ROHC_EXT_UNKNOWN:
 		default:
 		{
 			rohc_comp_warn(context, "unknown extension (%d)", extension);
@@ -4087,6 +4094,7 @@ static int code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
 			break;
 		}
 
+		case ROHC_EXT_UNKNOWN:
 		default:
 		{
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -4348,6 +4356,7 @@ static int code_UOR2_TS_bytes(const struct rohc_comp_ctxt *const context,
 			break;
 		}
 
+		case ROHC_EXT_UNKNOWN:
 		default:
 		{
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -4597,6 +4606,7 @@ static int code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
 			break;
 		}
 
+		case ROHC_EXT_UNKNOWN:
 		default:
 		{
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
