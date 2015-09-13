@@ -394,7 +394,14 @@ static void tcp_decide_state(struct rohc_comp_ctxt *const context)
 	__attribute__((nonnull(1)));
 
 static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
-                                     const struct net_pkt *const uncomp_pkt)
+                                     const struct net_pkt *const uncomp_pkt,
+                                     const struct tcphdr *const tcp)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+static bool tcp_encode_uncomp_ip_fields(struct rohc_comp_ctxt *const context,
+                                        const struct net_pkt *const uncomp_pkt)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
+static bool tcp_encode_uncomp_tcp_fields(struct rohc_comp_ctxt *const context,
+                                         const struct tcphdr *const tcp)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static rohc_packet_t tcp_decide_packet(struct rohc_comp_ctxt *const context,
@@ -1733,7 +1740,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	tcp_decide_state(context);
 
 	/* compute how many bits are needed to send header fields */
-	if(!tcp_encode_uncomp_fields(context, uncomp_pkt))
+	if(!tcp_encode_uncomp_fields(context, uncomp_pkt, tcp))
 	{
 		rohc_comp_warn(context, "failed to compute how many bits are needed to "
 		               "transmit all changes in header fields");
@@ -5511,11 +5518,56 @@ static void tcp_decide_state(struct rohc_comp_ctxt *const context)
  *
  * @param context      The compression context
  * @param uncomp_pkt   The uncompressed packet to encode
+ * @param tcp          The uncompressed TCP header to encode
  * @return             true in case of success,
  *                     false otherwise
  */
 static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
-                                     const struct net_pkt *const uncomp_pkt)
+                                     const struct net_pkt *const uncomp_pkt,
+                                     const struct tcphdr *const tcp)
+{
+	struct sc_tcp_context *const tcp_context = context->specific;
+
+	/* how many bits are required to encode the new SN ? */
+	tcp_context->tmp.nr_msn_bits =
+		wlsb_get_k_16bits(tcp_context->msn_wlsb, tcp_context->msn);
+	rohc_comp_debug(context, "%zu bits are required to encode new MSN 0x%04x",
+	                tcp_context->tmp.nr_msn_bits, tcp_context->msn);
+	/* add the new MSN to the W-LSB encoding object */
+	/* TODO: move this after successful packet compression */
+	c_add_wlsb(tcp_context->msn_wlsb, tcp_context->msn, tcp_context->msn);
+
+	if(!tcp_encode_uncomp_ip_fields(context, uncomp_pkt))
+	{
+		rohc_comp_warn(context, "failed to encode the uncompressed fields "
+		               "of the IP headers");
+		goto error;
+	}
+
+	if(!tcp_encode_uncomp_tcp_fields(context, tcp))
+	{
+		rohc_comp_warn(context, "failed to encode the uncompressed fields "
+		               "of the TCP header");
+		goto error;
+	}
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Encode uncompressed IP fields with the corresponding encoding scheme
+ *
+ * @param context      The compression context
+ * @param uncomp_pkt   The uncompressed packet to encode
+ * @return             true in case of success,
+ *                     false otherwise
+ */
+static bool tcp_encode_uncomp_ip_fields(struct rohc_comp_ctxt *const context,
+                                        const struct net_pkt *const uncomp_pkt)
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
 
@@ -5526,23 +5578,11 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	const uint8_t *inner_ip_hdr = NULL;
 	ip_version inner_ip_version = IP_UNKNOWN;
 
-	const struct tcphdr *tcp;
 	uint8_t protocol;
-	uint32_t seq_num_hbo;
-	uint32_t ack_num_hbo;
 	size_t ip_hdr_pos;
 
 	/* there is at least one IP header otherwise it won't be the IP/TCP profile */
 	assert(tcp_context->ip_contexts_nr > 0);
-
-	/* how many bits are required to encode the new SN ? */
-	tcp_context->tmp.nr_msn_bits =
-		wlsb_get_k_16bits(tcp_context->msn_wlsb, tcp_context->msn);
-	rohc_comp_debug(context, "%zu bits are required to encode new MSN 0x%04x",
-	                tcp_context->tmp.nr_msn_bits, tcp_context->msn);
-	/* add the new MSN to the W-LSB encoding object */
-	/* TODO: move this after successful packet compression */
-	c_add_wlsb(tcp_context->msn_wlsb, tcp_context->msn, tcp_context->msn);
 
 	/* parse IP headers */
 	tcp_context->tmp.ttl_irreg_chain_flag = 0;
@@ -5766,10 +5806,27 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	c_add_wlsb(tcp_context->ttl_hopl_wlsb, tcp_context->msn,
 	           tcp_context->tmp.ttl_hopl);
 
-	tcp = (struct tcphdr *) remain_data;
-	assert(remain_len >= sizeof(struct tcphdr));
-	seq_num_hbo = rohc_ntoh32(tcp->seq_num);
-	ack_num_hbo = rohc_ntoh32(tcp->ack_num);
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Encode uncompressed TCP fields with the corresponding encoding scheme
+ *
+ * @param context  The compression context
+ * @param tcp      The uncompressed TCP header to encode
+ * @return         true in case of success, false otherwise
+ */
+static bool tcp_encode_uncomp_tcp_fields(struct rohc_comp_ctxt *const context,
+                                         const struct tcphdr *const tcp)
+{
+	struct sc_tcp_context *const tcp_context = context->specific;
+	const uint32_t seq_num_hbo = rohc_ntoh32(tcp->seq_num);
+	const uint32_t ack_num_hbo = rohc_ntoh32(tcp->ack_num);
+
 	rohc_comp_debug(context, "new TCP seq = 0x%08x, ack_seq = 0x%08x",
 	                seq_num_hbo, ack_num_hbo);
 	rohc_comp_debug(context, "old TCP seq = 0x%08x, ack_seq = 0x%08x",
@@ -6031,9 +6088,6 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	}
 
 	return true;
-
-error:
-	return false;
 }
 
 
