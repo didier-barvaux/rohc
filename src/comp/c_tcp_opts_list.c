@@ -83,6 +83,12 @@ static void c_tcp_opt_trace(const struct rohc_comp_ctxt *const context,
                             const size_t opt_len)
 	__attribute__((nonnull(1, 3)));
 
+static uint8_t c_tcp_get_opt_index(const struct rohc_comp_ctxt *const context,
+                                   struct c_tcp_opts_ctxt *const opts_ctxt,
+                                   const uint8_t opt_type,
+                                   const bool indexes_in_use[MAX_TCP_OPTION_INDEX + 1])
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
+
 static int c_tcp_opt_compute_ps(const uint8_t idx_max)
 	__attribute__((warn_unused_result, const));
 
@@ -231,7 +237,7 @@ static struct c_tcp_opt c_tcp_opts[MAX_TCP_OPTION_INDEX + 1] =
  * See RFC4996 §6.3.4
  * Return item index of TCP option
  */
-static int tcp_options_index[TCP_LIST_ITEM_MAP_LEN] =
+static int c_tcp_type2index[TCP_LIST_ITEM_MAP_LEN] =
 {
 	TCP_INDEX_EOL,             // TCP_OPT_EOL             0
 	TCP_INDEX_NOP,             // TCP_OPT_NOP             1
@@ -513,64 +519,7 @@ bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 		}
 
 		/* determine the index of the TCP option */
-		if(opt_type < TCP_LIST_ITEM_MAP_LEN && tcp_options_index[opt_type] >= 0)
-		{
-			/* TCP option got a reserved index */
-			opt_idx = tcp_options_index[opt_type];
-			rohc_comp_debug(context, "    option '%s' (%u) will use reserved "
-			                "index %u", tcp_opt_get_descr(opt_type), opt_type,
-			                opt_idx);
-		}
-		else /* TCP option doesn't have a reserved index */
-		{
-			int opt_idx_free = -1;
-			uint8_t oldest_idx = 0;
-			size_t oldest_idx_age = 0;
-
-			/* find the index that was used for the same option in previous
-			 * packets... */
-			for(opt_idx = TCP_INDEX_GENERIC7;
-			    opt_idx_free < 0 && opt_idx <= MAX_TCP_OPTION_INDEX; opt_idx++)
-			{
-				if(opts_ctxt->list[opt_idx].used &&
-				   opts_ctxt->list[opt_idx].type == opt_type)
-				{
-					rohc_comp_debug(context, "    re-use index %u that was already "
-					                "used for the same option previously", opt_idx);
-					opt_idx_free = opt_idx;
-				}
-			}
-			/* ... or use the first free index... */
-			for(opt_idx = TCP_INDEX_GENERIC7;
-			    opt_idx_free < 0 && opt_idx <= MAX_TCP_OPTION_INDEX; opt_idx++)
-			{
-				if(!opts_ctxt->list[opt_idx].used)
-				{
-					rohc_comp_debug(context, "    use free index %u that was never "
-					                "used before", opt_idx);
-					opt_idx_free = opt_idx;
-				}
-			}
-			/* ... or recycle the oldest index (but not already recycled) */
-			if(opt_idx_free < 0)
-			{
-				for(opt_idx = TCP_INDEX_GENERIC7; opt_idx <= MAX_TCP_OPTION_INDEX; opt_idx++)
-				{
-					if(!indexes_in_use[opt_idx] &&
-					   opts_ctxt->list[opt_idx].used &&
-					   opts_ctxt->list[opt_idx].age > oldest_idx_age)
-					{
-						oldest_idx_age = opts_ctxt->list[opt_idx].age;
-						oldest_idx = opt_idx;
-					}
-				}
-				rohc_comp_debug(context, "    no free index, recycle index %u "
-				                "because it is the oldest one", oldest_idx);
-				opt_idx_free = oldest_idx;
-				opts_ctxt->list[opt_idx_free].used = false;
-			}
-			opt_idx = opt_idx_free;
-		}
+		opt_idx = c_tcp_get_opt_index(context, opts_ctxt, opt_type, indexes_in_use);
 		indexes_in_use[opt_idx] = true;
 
 		/* the EOL, MSS, and WS options are 'static options': they cannot be
@@ -1222,6 +1171,87 @@ static void c_tcp_opt_trace(const struct rohc_comp_ctxt *const context,
 			break;
 		}
 	}
+}
+
+
+/**
+ * @brief Determine the index of the TCP option
+ *
+ * @param context            The compression context
+ * @param[in,out] opts_ctxt  The compression context for TCP options
+ * @param opt_type           The type of the option
+ * @param indexes_in_use     What indexes are used by the current packet?
+ * @return                   true if the TCP options were successfully parsed and
+ *                           can be compressed, false otherwise
+ */
+static uint8_t c_tcp_get_opt_index(const struct rohc_comp_ctxt *const context,
+                                   struct c_tcp_opts_ctxt *const opts_ctxt,
+                                   const uint8_t opt_type,
+                                   const bool indexes_in_use[MAX_TCP_OPTION_INDEX + 1])
+{
+	uint8_t opt_idx;
+
+	if(opt_type < TCP_LIST_ITEM_MAP_LEN && c_tcp_type2index[opt_type] >= 0)
+	{
+		/* TCP option got a reserved index */
+		opt_idx = c_tcp_type2index[opt_type];
+		rohc_comp_debug(context, "    option '%s' (%u) will use reserved index %u",
+		                tcp_opt_get_descr(opt_type), opt_type, opt_idx);
+	}
+	else /* TCP option doesn't have a reserved index */
+	{
+		int opt_idx_free = -1;
+		uint8_t oldest_idx = 0;
+		size_t oldest_idx_age = 0;
+
+		/* find the index that was used for the same option in previous packets... */
+		for(opt_idx = TCP_INDEX_GENERIC7;
+		    opt_idx_free < 0 && opt_idx <= MAX_TCP_OPTION_INDEX; opt_idx++)
+		{
+			if(opts_ctxt->list[opt_idx].used &&
+			   opts_ctxt->list[opt_idx].type == opt_type)
+			{
+				rohc_comp_debug(context, "    re-use index %u that was already "
+				                "used for the same option previously", opt_idx);
+				opt_idx_free = opt_idx;
+			}
+		}
+
+		/* ... or use the first free index... */
+		for(opt_idx = TCP_INDEX_GENERIC7;
+		    opt_idx_free < 0 && opt_idx <= MAX_TCP_OPTION_INDEX; opt_idx++)
+		{
+			if(!opts_ctxt->list[opt_idx].used)
+			{
+				rohc_comp_debug(context, "    use free index %u that was never "
+				                "used before", opt_idx);
+				opt_idx_free = opt_idx;
+			}
+		}
+
+		/* ... or recycle the oldest index (but not already recycled by the current
+		 * packet, otherwise 2 options might get the same index) */
+		if(opt_idx_free < 0)
+		{
+			for(opt_idx = TCP_INDEX_GENERIC7; opt_idx <= MAX_TCP_OPTION_INDEX; opt_idx++)
+			{
+				if(!indexes_in_use[opt_idx] &&
+				   opts_ctxt->list[opt_idx].used &&
+				   opts_ctxt->list[opt_idx].age > oldest_idx_age)
+				{
+					oldest_idx_age = opts_ctxt->list[opt_idx].age;
+					oldest_idx = opt_idx;
+				}
+			}
+			rohc_comp_debug(context, "    no free index, recycle index %u "
+			                "because it is the oldest one", oldest_idx);
+			opt_idx_free = oldest_idx;
+			opts_ctxt->list[opt_idx_free].used = false;
+		}
+		opt_idx = opt_idx_free;
+	}
+
+	return opt_idx;
 }
 
 
