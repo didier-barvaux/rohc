@@ -195,7 +195,7 @@ struct rohc_buf
 
 
 bool rohc_buf_is_malformed(const struct rohc_buf buf)
-	__attribute__((warn_unused_result));
+	__attribute__((warn_unused_result, pure));
 
 bool rohc_buf_is_empty(const struct rohc_buf buf)
 	__attribute__((warn_unused_result, const));

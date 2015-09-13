@@ -6876,8 +6876,6 @@ static rohc_ext_t decide_extension_uor2(const struct rohc_comp_ctxt *const conte
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 	rohc_ext_t ext;
 
-	assert(rfc3095_ctxt->tmp.packet_type == ROHC_PACKET_UOR_2);
-
 	if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 5 &&
 	   nr_innermost_ip_id_bits == 0 &&
 	   nr_outermost_ip_id_bits == 0)
@@ -6933,8 +6931,6 @@ static rohc_ext_t decide_extension_uor2rtp(const struct rohc_comp_ctxt *const co
 	const struct sc_rtp_context *const rtp_context = rfc3095_ctxt->specific;
 	const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits_more_than_2;
 	rohc_ext_t ext;
-
-	assert(rfc3095_ctxt->tmp.packet_type == ROHC_PACKET_UOR_2_RTP);
 
 	if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 6 &&
 	   nr_ts_bits <= 6 &&
@@ -6995,8 +6991,6 @@ static rohc_ext_t decide_extension_uor2ts(const struct rohc_comp_ctxt *const con
 	const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits_more_than_2;
 	rohc_ext_t ext;
 
-	assert(rfc3095_ctxt->tmp.packet_type == ROHC_PACKET_UOR_2_TS);
-
 	if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 6 &&
 	   nr_ts_bits <= 5 &&
 	   nr_innermost_ip_id_bits == 0 &&
@@ -7056,8 +7050,6 @@ static rohc_ext_t decide_extension_uor2id(const struct rohc_comp_ctxt *const con
 	const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits_more_than_2;
 	rohc_ext_t ext;
 
-	assert(rfc3095_ctxt->tmp.packet_type == ROHC_PACKET_UOR_2_ID);
-
 	if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 6 &&
 	   (nr_ts_bits == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
 	   nr_innermost_ip_id_bits <= 5 &&
@@ -7116,8 +7108,6 @@ static rohc_ext_t decide_extension_uo1id(const struct rohc_comp_ctxt *const cont
 	const struct sc_rtp_context *const rtp_context = rfc3095_ctxt->specific;
 	const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits_more_than_2;
 	rohc_ext_t ext;
-
-	assert(rfc3095_ctxt->tmp.packet_type == ROHC_PACKET_UO_1_ID);
 
 	if(rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 <= 4 &&
 	   (nr_ts_bits == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&

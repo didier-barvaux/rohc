@@ -297,7 +297,7 @@ bool ip_get_inner_packet(const struct ip_packet *const outer,
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 const uint8_t * ip_get_raw_data(const struct ip_packet *const ip)
-	__attribute__((warn_unused_result, nonnull(1)));
+	__attribute__((warn_unused_result, nonnull(1), pure));
 uint8_t * ip_get_next_header(const struct ip_packet *const ip,
                              uint8_t *const type)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
@@ -311,7 +311,7 @@ uint8_t * ip_get_next_ext_from_ext(const uint8_t *const ext,
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 unsigned int ip_get_totlen(const struct ip_packet *const ip)
-	__attribute__((warn_unused_result, nonnull(1)));
+	__attribute__((warn_unused_result, nonnull(1), pure));
 unsigned int ip_get_hdrlen(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1)));
 
@@ -372,7 +372,7 @@ const struct ipv6_addr * ipv6_get_daddr(const struct ip_packet *const ip)
 void ip_set_flow_label(struct ip_packet *const ip, const uint32_t value)
 	__attribute__((nonnull(1)));
 unsigned short ip_get_extension_size(const uint8_t *const ext)
-	__attribute__((warn_unused_result, nonnull(1)));
+	__attribute__((warn_unused_result, nonnull(1), pure));
 unsigned short ip_get_total_extension_size(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1)));
 

@@ -249,7 +249,7 @@ struct d_tcp_opt_ctxt /* TODO: doxygen */
 
 
 /** The decompression context for TCP options */
-struct d_tcp_opts_ctxt /* TODO: doxygen */
+struct d_tcp_opts_ctxt
 {
 	/** The number of options in the list of TCP options */
 	size_t nr;

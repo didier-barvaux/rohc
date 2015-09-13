@@ -120,11 +120,11 @@ void rohc_list_reset(struct rohc_list *const list)
 
 bool rohc_list_equal(const struct rohc_list *const list1,
                      const struct rohc_list *const list2)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+	__attribute__((warn_unused_result, nonnull(1, 2), pure));
 
 bool rohc_list_supersede(const struct rohc_list *const large,
                          const struct rohc_list *const small)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+	__attribute__((warn_unused_result, nonnull(1, 2), pure));
 
 void rohc_list_item_reset(struct rohc_list_item *const list_item)
 	__attribute__((nonnull(1)));

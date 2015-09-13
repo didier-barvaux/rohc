@@ -258,7 +258,7 @@ uint8_t * ip_get_next_header(const struct ip_packet *const ip,
 uint8_t * ip_get_next_layer(const struct ip_packet *const ip)
 {
 	/* function does not handle non-IPv4/IPv6 packets */
-	assert(ip->version != IP_UNKNOWN);
+	assert(ip->version == IPV4 || ip->version == IPV6);
 
 	return ip->nl.data;
 }

@@ -337,7 +337,7 @@ void rohc_get_ipid_bits(const struct rohc_comp_ctxt *const context,
 bool rohc_comp_rfc3095_is_sn_possible(const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt,
                                       const size_t bits_nr,
                                       const size_t add_bits_nr)
-	__attribute__((warn_unused_result, nonnull(1)));
+	__attribute__((warn_unused_result, nonnull(1), pure));
 
 #endif
 

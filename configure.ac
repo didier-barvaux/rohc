@@ -213,6 +213,22 @@ else
 fi
 CFLAGS="$old_CFLAGS"
 
+#### -Wsuggest-attribute=pure
+#### disabled because some suggestions cannot be applied because of assertions
+#AC_MSG_CHECKING([whether compiler understands -Wsuggest-attribute=pure])
+#old_CFLAGS="$CFLAGS"
+#CFLAGS="$CFLAGS -Werror $unknown_warning_option -Wsuggest-attribute=pure"
+#AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[int a;]], [[ a = 1;]])],
+#                  [suggest_attribute_pure=yes], [suggest_attribute_pure=no])
+#if test "x${suggest_attribute_pure}" = "xyes" ; then
+#	AC_MSG_RESULT(yes)
+#	configure_cflags="${configure_cflags} -Wsuggest-attribute=pure -Wno-error=suggest-attribute=pure"
+#else
+#	AC_MSG_RESULT(no)
+#fi
+#CFLAGS="$old_CFLAGS"
+
+
 # Checks for header files.
 AC_CHECK_HEADERS([stdio.h stdlib.h string.h strings.h])
 AC_CHECK_HEADERS([time.h sys/time.h])

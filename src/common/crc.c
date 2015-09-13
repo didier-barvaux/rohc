@@ -239,10 +239,6 @@ uint8_t crc_calculate(const rohc_crc_type_t crc_type,
 {
 	uint8_t crc;
 
-	/* sanity checks */
-	assert(data != NULL);
-	assert(crc_table != NULL);
-
 	/* call the function that corresponds to the CRC type */
 	switch(crc_type)
 	{
@@ -281,8 +277,6 @@ uint32_t crc_calc_fcs32(const uint8_t *const data,
 {
 	uint32_t crc = init_val;
 	size_t i;
-
-	assert(data != NULL);
 
 	for(i = 0; i < length; i++)
 	{
