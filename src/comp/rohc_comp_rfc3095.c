@@ -1665,22 +1665,15 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
                           uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len)
 {
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	int nr_of_ip_hdr;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt =
+		(struct rohc_comp_rfc3095_ctxt *) context->specific;
+	const size_t nr_of_ip_hdr = uncomp_pkt->ip_hdr_nr;
 	uint8_t type;
 	size_t counter;
 	size_t first_position;
 	int crc_position;
 	int ret;
 
-	assert(context != NULL);
-	assert(context->specific != NULL);
-	assert(rohc_pkt != NULL);
-
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-	nr_of_ip_hdr = uncomp_pkt->ip_hdr_nr;
-
-	assert(uncomp_pkt != NULL);
 	assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 16);
 	assert((ip_get_version(&uncomp_pkt->outer_ip) == IPV4 &&
 	        rfc3095_ctxt->tmp.nr_ip_id_bits <= 16) ||

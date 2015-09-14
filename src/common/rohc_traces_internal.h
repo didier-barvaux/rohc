@@ -51,7 +51,6 @@
 /** Print information depending on the debug level */
 #define rohc_print(entity_struct, level, entity, profile, format, ...) \
 	do { \
-		assert((entity_struct) != NULL); \
 		__rohc_print((entity_struct)->trace_callback, \
 		             (entity_struct)->trace_callback_priv, \
 		             level, entity, profile, \
