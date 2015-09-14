@@ -3378,6 +3378,20 @@ static bool d_tcp_decode_bits_tcp_opts(const struct rohc_decomp_ctxt *const cont
 			                      bits->tcp_opts.bits[TCP_INDEX_SACK].data.sack,
 			                      &decoded->opt_sack_blocks);
 		}
+		else if(opt_index >= TCP_INDEX_GENERIC7)
+		{
+			/* generic option: in case of static or stable encoding, retrieve option
+			 * data from the context */
+			if(bits->tcp_opts.bits[opt_index].data.generic.type == TCP_GENERIC_OPT_STATIC ||
+			   bits->tcp_opts.bits[opt_index].data.generic.type == TCP_GENERIC_OPT_STABLE)
+			{
+				opt_bits->data.generic.load_len =
+					tcp_context->tcp_opts.bits[opt_index].data.generic.load_len;
+				memcpy(opt_bits->data.generic.load,
+				       tcp_context->tcp_opts.bits[opt_index].data.generic.load,
+				       opt_bits->data.generic.load_len);
+			}
+		}
 	}
 
 	return true;

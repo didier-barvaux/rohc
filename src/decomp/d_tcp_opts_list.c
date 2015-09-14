@@ -1226,7 +1226,14 @@ static int d_tcp_parse_generic_list_item(const struct rohc_decomp_ctxt *const co
 	opt_type = data[0];
 
 	/* option_static flag */
-	opt_ctxt->data.generic.option_static = GET_BOOL(GET_BIT_7(data + 1));
+	if(GET_BOOL(GET_BIT_7(data + 1)))
+	{
+		opt_ctxt->data.generic.type = TCP_GENERIC_OPT_STATIC;
+	}
+	else
+	{
+		opt_ctxt->data.generic.type = TCP_GENERIC_OPT_FULL;
+	}
 
 	/* option length */
 	opt_len = data[1] & 0x7f;
@@ -1296,13 +1303,13 @@ static int d_tcp_parse_generic_irreg(const struct rohc_decomp_ctxt *const contex
 	persist = &tcp_context->tcp_opts.bits[opt_index];
 
 	/* TODO: in what case option_static could be set to 1 ? */
-	if(persist->data.generic.option_static == 1)
+	if(persist->data.generic.type == TCP_GENERIC_OPT_STATIC)
 	{
 		/* TODO: handle generic_static_irregular() encoding */
 		rohc_decomp_warn(context, "unsupported generic_static_irregular() encoding");
 		goto error;
 	}
-	else if(persist->data.generic.option_static == 0)
+	else
 	{
 		uint8_t discriminator;
 
@@ -1316,15 +1323,24 @@ static int d_tcp_parse_generic_irreg(const struct rohc_decomp_ctxt *const contex
 		discriminator = data[0];
 		read++;
 
-		if(discriminator == 0x01)
+		if(discriminator == 0xff)
 		{
-			/* TODO: handle generic_stable_irregular() */
-			rohc_decomp_warn(context, "unsupported generic_stable_irregular() encoding");
-			goto error;
+			/* the item that can change, but currently is unchanged
+			 *
+			 *   discriminator =:= '11111111' [ 8 ];
+			 */
+			opt_ctxt->data.generic.type = TCP_GENERIC_OPT_STABLE;
 		}
 		else if(discriminator == 0x00)
 		{
-			/* generic_full_irregular() */
+			/* The item that is assumed to change constantly. Length is not allowed
+			 * to change here, since a length change is most likely to cause new
+			 * NOPs or an EOL length change.
+			 *
+			 *   discriminator =:= '00000000'        [ 8 ];
+			 *   contents      =:=
+			 *     irregular(length_lsb.UVALUE*8-16) [ length_lsb.UVALUE*8-16 ];
+			 */
 			const size_t opt_load_len = persist->data.generic.load_len;
 
 			if(data_len < (read + opt_load_len))
@@ -1335,10 +1351,20 @@ static int d_tcp_parse_generic_irreg(const struct rohc_decomp_ctxt *const contex
 				                 "byte(s)", read + opt_load_len, data_len);
 				goto error;
 			}
+			opt_ctxt->data.generic.type = TCP_GENERIC_OPT_FULL;
 			opt_ctxt->data.generic.load_len = opt_load_len;
 			memcpy(opt_ctxt->data.generic.load, data + read, opt_load_len);
 			read += opt_load_len;
-			rohc_decomp_debug(context, "TCP generic option payload = %zu bytes", opt_load_len);
+			rohc_decomp_debug(context, "TCP generic option payload = %zu bytes",
+			                  opt_load_len);
+		}
+		else
+		{
+			rohc_decomp_warn(context, "malformed TCP irregular part: malformed "
+			                 "TCP option items: TCP generic irregular option's "
+			                 "discriminator should be either 0x00 or 0xff, but "
+			                 "it is 0x%02x", discriminator);
+			goto error;
 		}
 	}
 

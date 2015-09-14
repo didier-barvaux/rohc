@@ -876,7 +876,7 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 	const size_t opts_len = (tcp->data_offset << 2) - sizeof(struct tcphdr);
 	uint8_t opt_len;
 	size_t opts_offset;
-	size_t opt_idx;
+	size_t opt_pos;
 
 	bool is_ok;
 	int ret;
@@ -885,9 +885,9 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 	                "TCP options");
 
 	/* build the list of irregular encodings of TCP options */
-	for(opt_idx = 0, opts_offset = 0;
-	    opt_idx <= MAX_TCP_OPTION_INDEX && opts_offset < opts_len;
-	    opt_idx++, opts_offset += opt_len)
+	for(opt_pos = 0, opts_offset = 0;
+	    opt_pos <= MAX_TCP_OPTION_INDEX && opts_offset < opts_len;
+	    opt_pos++, opts_offset += opt_len)
 	{
 		size_t comp_opt_len = 0;
 		uint8_t opt_type;
@@ -897,13 +897,13 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 		                           &opt_type, &opt_len))
 		{
 			rohc_comp_warn(context, "malformed TCP options: failed to parse option "
-			               "#%zu", opt_idx + 1);
+			               "#%zu", opt_pos + 1);
 			goto error;
 		}
 
 		/* don't put this option in the irregular chain if already present in the
 		 * dynamic chain */
-		if(opts_ctxt->tmp.is_list_item_present[opt_idx])
+		if(opts_ctxt->tmp.is_list_item_present[opt_pos])
 		{
 			rohc_comp_debug(context, "irregular chain: do not encode irregular "
 			                "content for TCP option %u because it is already "
@@ -984,23 +984,51 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 		{
 			/* generic encoding */
 			/* TODO: in what case option_static could be set to 1 ? */
-			/* TODO: handle generic_stable_irregular() */
-			if(rohc_remain_len < (size_t) (1 + opt_len - 2))
+
+			const size_t opt_idx = opts_ctxt->tmp.type2index[opt_pos];
+			uint8_t discriminator;
+			size_t contents_len;
+
+			if(c_tcp_opt_changed(opts_ctxt, opt_idx, opts + opts_offset,
+			                     opt_len - opts_offset))
+			{
+				/* generic_full_irregular: the item that is assumed to change
+				 * constantly. Length is not allowed to change here, since a length
+				 * change is most likely to cause new NOPs or an EOL length change. */
+				discriminator = 0x00;
+				contents_len = opt_len - 2;
+			}
+			else
+			{
+				/* generic_stable_irregular: the item that can change, but currently
+				 * is unchanged */
+				discriminator = 0xff;
+				contents_len = 0;
+			}
+
+			if(rohc_remain_len < (1 + contents_len))
 			{
 				rohc_comp_warn(context, "ROHC buffer too small for the TCP irregular "
-				               "part: %u bytes required for TCP generic option, but "
-				               "only %zu bytes available", 1 + opt_len - 2,
+				               "part: %zu bytes required for TCP generic option, but "
+				               "only %zu bytes available", 1 + contents_len,
 				               rohc_remain_len);
 				goto error;
 			}
-			rohc_remain_data[0] = 0x00;
+
+			/* discriminator byte */
+			rohc_remain_data[0] = discriminator;
 			rohc_remain_data++;
 			rohc_remain_len--;
 			comp_opt_len++;
-			memcpy(rohc_remain_data, opts + opts_offset + 2, opt_len - 2);
-			rohc_remain_data += opt_len - 2;
-			rohc_remain_len -= opt_len - 2;
-			comp_opt_len += opt_len - 2;
+
+			/* option contents, if any */
+			if(contents_len > 0)
+			{
+				memcpy(rohc_remain_data, opts + opts_offset + 2, contents_len);
+				rohc_remain_data += contents_len;
+				rohc_remain_len -= contents_len;
+				comp_opt_len += contents_len;
+			}
 		}
 		rohc_comp_debug(context, "irregular chain: added %zu bytes of irregular "
 		                "content for TCP option %u", comp_opt_len, opt_type);
