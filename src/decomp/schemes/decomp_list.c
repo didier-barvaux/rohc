@@ -348,7 +348,7 @@ bool rohc_decomp_list_create_item(struct list_decomp *const decomp,
 	assert(rohc_packet != NULL);
 
 	/* is there enough room in packet for at least one byte of the item? */
-	if(rohc_max_len <= 0)
+	if(rohc_max_len == 0)
 	{
 		rd_list_warn(decomp, "packet too small for at least 1 byte of item for "
 		             "XI #%u (only %zu bytes available while at least 1 byte "

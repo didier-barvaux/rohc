@@ -1473,7 +1473,7 @@ static size_t rohc_list_compute_ins_mask(const struct list_comp *const comp,
 	size_t ref_k; /* the index of the current element in reference list */
 	size_t k; /* the index of the current element in current list */
 
-	if(rohc_max_len <= 0)
+	if(rohc_max_len == 0)
 	{
 		rohc_comp_list_warn(comp, "ROHC buffer is too short for the insertion mask");
 		goto error;
@@ -1606,7 +1606,7 @@ static size_t rohc_list_compute_rem_mask(const struct list_comp *const comp,
 	size_t ref_k; /* the index of the current element in reference list */
 	size_t k; /* the index of the current element in current list */
 
-	if(rohc_max_len <= 0)
+	if(rohc_max_len == 0)
 	{
 		rohc_comp_list_warn(comp, "ROHC buffer is too short for the removal mask");
 		goto error;
