@@ -1440,7 +1440,6 @@ bool c_tcp_is_list_item_needed(const struct rohc_comp_ctxt *const context,
 		                tcp_opt_get_descr(opt_type));
 		item_needed = true;
 	}
-#if 0 /* TODO: transmit items several times in a row after a change */
 	else if(opts_ctxt->list[opt_idx].nr_trans < context->compressor->list_trans_nr)
 	{
 		/* option was already transmitted and didn't change since then, but the
@@ -1452,7 +1451,6 @@ bool c_tcp_is_list_item_needed(const struct rohc_comp_ctxt *const context,
 		                opts_ctxt->list[opt_idx].nr_trans);
 		item_needed = true;
 	}
-#endif
 	else
 	{
 		/* option was already transmitted and didn't change since then,
