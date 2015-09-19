@@ -1144,11 +1144,21 @@ static int d_tcp_parse_sack_list_item(const struct rohc_decomp_ctxt *const conte
 {
 	int ret;
 
+	/* parse the SACK blocks */
 	ret = d_tcp_sack_parse(context, data, data_len, &opt_ctxt->data.sack);
 	if(ret < 0)
 	{
 		rohc_decomp_warn(context, "malformed ROHC packet: malformed TCP option "
 		                 "items: failed to parse TCP SACK option");
+		goto error;
+	}
+
+	/* unchanged encoding is only accepted in irregular chain */
+	if(opt_ctxt->data.sack.blocks_nr == 0)
+	{
+		rohc_decomp_warn(context, "malformed ROHC packet: malformed TCP option "
+		                 "items: encoding with no SACK block is only allowed in "
+		                 "the irregular chain");
 		goto error;
 	}
 
@@ -1166,7 +1176,22 @@ static int d_tcp_parse_sack_irreg(const struct rohc_decomp_ctxt *const context,
                                   const uint8_t opt_index __attribute__((unused)),
                                   struct d_tcp_opt_ctxt *const opt_ctxt)
 {
-	return d_tcp_parse_sack_list_item(context, data, data_len, opt_ctxt);
+	int ret;
+
+	/* parse the SACK blocks */
+	ret = d_tcp_sack_parse(context, data, data_len, &opt_ctxt->data.sack);
+	if(ret < 0)
+	{
+		rohc_decomp_warn(context, "malformed ROHC packet: malformed TCP option "
+		                 "items: failed to parse TCP SACK option");
+		goto error;
+	}
+
+	return ret;
+
+error:
+	return -1;
+
 }
 
 

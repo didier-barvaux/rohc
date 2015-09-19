@@ -1,5 +1,5 @@
 /*
- * Copyright 2012,2013,2014 Didier Barvaux
+ * Copyright 2012,2013,2014,2015 Didier Barvaux
  * Copyright 2013,2014 Viveris Technologies
  * Copyright 2012 WBX
  *

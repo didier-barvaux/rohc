@@ -1,5 +1,5 @@
 /*
- * Copyright 2012,2013,2014 Didier Barvaux
+ * Copyright 2012,2013,2014,2015 Didier Barvaux
  * Copyright 2013,2014 Viveris Technologies
  * Copyright 2012 WBX
  *
@@ -2522,10 +2522,8 @@ static void d_tcp_reset_extr_bits(const struct rohc_decomp_ctxt *const context,
 
 	/* no parsed TCP options at the beginning */
 	bits->tcp_opts.nr = 0;
-	for(i = 0; i <= MAX_TCP_OPTION_INDEX; i++)
-	{
-		bits->tcp_opts.bits[i].used = false;
-	}
+	memset(bits->tcp_opts.bits, 0,
+	       (MAX_TCP_OPTION_INDEX + 1) * sizeof(struct d_tcp_opt_ctxt));
 	for(i = 0; i < ROHC_TCP_OPTS_MAX; i++)
 	{
 		bits->tcp_opts.expected_dynamic[i] = false;
@@ -3473,24 +3471,34 @@ static void d_tcp_decode_opt_sack(const struct rohc_decomp_ctxt *const context,
                                   const struct d_tcp_opt_sack bits,
                                   struct d_tcp_opt_sack *const decoded)
 {
-	size_t i;
-
-	if(bits.blocks_nr > 0)
+	if(bits.blocks_nr == 0)
 	{
-		rohc_decomp_debug(context, "  decode SACK option (%zu blocks)",
-		                  bits.blocks_nr);
-	}
+		struct d_tcp_context *const tcp_context = context->persist_ctxt;
 
-	for(i = 0; i < bits.blocks_nr; i++)
-	{
-		const uint32_t block_start = ack_num + bits.blocks[i].block_start;
-		const uint32_t block_end = block_start + bits.blocks[i].block_end;
-		decoded->blocks[i].block_start = rohc_hton32(block_start);
-		decoded->blocks[i].block_end = rohc_hton32(block_end);
-		rohc_decomp_debug(context, "decoded SACK option: block #%zu = "
-		                  "[0x%08x, 0x%08x]", i + 1, block_start, block_end);
+		/* TCP SACK option didn't change and wasn't transmitted, retrieve it from
+		 * the decompression context */
+		rohc_decomp_debug(context, "  decode SACK option (%zu blocks retrieved "
+		                  "from context)", bits.blocks_nr);
+		memcpy(decoded, &tcp_context->opt_sack_blocks, sizeof(struct d_tcp_opt_sack));
 	}
-	decoded->blocks_nr = bits.blocks_nr;
+	else if(bits.blocks_nr > 0)
+	{
+		size_t i;
+
+		rohc_decomp_debug(context, "  decode SACK option (%zu blocks retrieved "
+		                  "from packet)", bits.blocks_nr);
+
+		for(i = 0; i < bits.blocks_nr; i++)
+		{
+			const uint32_t block_start = ack_num + bits.blocks[i].block_start;
+			const uint32_t block_end = block_start + bits.blocks[i].block_end;
+			decoded->blocks[i].block_start = rohc_hton32(block_start);
+			decoded->blocks[i].block_end = rohc_hton32(block_end);
+			rohc_decomp_debug(context, "decoded SACK option: block #%zu = "
+			                  "[0x%08x, 0x%08x]", i + 1, block_start, block_end);
+		}
+		decoded->blocks_nr = bits.blocks_nr;
+	}
 }
 
 
