@@ -558,7 +558,7 @@ static bool test_wlsb_8(struct c_wlsb *const wlsb,
 	                                required_bits, p, &decoded32);
 	if(!lsb_decode_ok)
 	{
-		fprintf(stderr, "failed to decode %zd-bit value\n", required_bits);
+		fprintf(stderr, "failed to decode %zu-bit value\n", required_bits);
 		goto error;
 	}
 	assert(decoded32 <= 0xff);
@@ -637,20 +637,20 @@ static bool test_wlsb_16(struct c_wlsb *const wlsb,
 		required_bits_mask = (1 << required_bits) - 1;
 	}
 	value16_encoded = value16 & required_bits_mask;
-	trace(be_verbose, "\t\tencoded on %zd bits: 0x%04x\n", required_bits,
+	trace(be_verbose, "\t\tencoded on %zu bits: 0x%04x\n", required_bits,
 	      value16_encoded);
 
 	/* update encoding context */
 	c_add_wlsb(wlsb, value16, value16);
 
 	/* decode */
-	trace(be_verbose, "\t\tdecode %zd-bit value 0x%04x ...\n", required_bits,
+	trace(be_verbose, "\t\tdecode %zu-bit value 0x%04x ...\n", required_bits,
 	      value16_encoded);
 	lsb_decode_ok = rohc_lsb_decode(lsb, ROHC_LSB_REF_0, 0, value16_encoded,
 	                                required_bits, p, &decoded32);
 	if(!lsb_decode_ok)
 	{
-		fprintf(stderr, "failed to decode %zd-bit value\n", required_bits);
+		fprintf(stderr, "failed to decode %zu-bit value\n", required_bits);
 		goto error;
 	}
 	assert(decoded32 <= 0xffff);
@@ -728,20 +728,20 @@ static bool test_wlsb_32(struct c_wlsb *const wlsb,
 		required_bits_mask = (1 << required_bits) - 1;
 	}
 	value32_encoded = value32 & required_bits_mask;
-	trace(be_verbose, "\t\tencoded on %zd bits: 0x%08x\n", required_bits,
+	trace(be_verbose, "\t\tencoded on %zu bits: 0x%08x\n", required_bits,
 	      value32_encoded);
 
 	/* update encoding context */
 	c_add_wlsb(wlsb, value32, value32);
 
 	/* decode */
-	trace(be_verbose, "\t\tdecode %zd-bit value 0x%08x ...\n", required_bits,
+	trace(be_verbose, "\t\tdecode %zu-bit value 0x%08x ...\n", required_bits,
 	      value32_encoded);
 	lsb_decode_ok = rohc_lsb_decode(lsb, ROHC_LSB_REF_0, 0, value32_encoded,
 	                                required_bits, p, &value32_decoded);
 	if(!lsb_decode_ok)
 	{
-		fprintf(stderr, "failed to decode %zd-bit value\n", required_bits);
+		fprintf(stderr, "failed to decode %zu-bit value\n", required_bits);
 		goto error;
 	}
 	trace(be_verbose, "\t\tdecoded: 0x%08x\n", value32_decoded);

@@ -448,7 +448,7 @@ static int generate_comp_stats_one(struct rohc_comp *comp,
 	/* check frame length */
 	if(header.len <= link_len || header.len != header.caplen)
 	{
-		fprintf(stderr, "packet #%lu: bad PCAP packet (len = %d, caplen = %d)\n",
+		fprintf(stderr, "packet #%lu: bad PCAP packet (len = %u, caplen = %u)\n",
 		        num_packet, header.len, header.caplen);
 		goto error;
 	}

@@ -450,7 +450,7 @@ static int test_decomp_one(struct rohc_decomp *const decomp,
 	/* check Ethernet frame length */
 	if(header.len <= link_len_src || header.len != header.caplen)
 	{
-		fprintf(stderr, "bad PCAP packet (len = %d, caplen = %d)\n",
+		fprintf(stderr, "bad PCAP packet (len = %u, caplen = %u)\n",
 		        header.len, header.caplen);
 		goto error_fmt;
 	}

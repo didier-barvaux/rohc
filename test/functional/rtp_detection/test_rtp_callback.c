@@ -382,7 +382,7 @@ static int compress_and_check(struct rohc_comp *comp,
 	/* check Ethernet frame length */
 	if(header.len <= link_len || header.len != header.caplen)
 	{
-		fprintf(stderr, "packet #%d: bad PCAP packet (len = %d, caplen = %d)\n",
+		fprintf(stderr, "packet #%d: bad PCAP packet (len = %u, caplen = %u)\n",
 		        packet_counter, header.len, header.caplen);
 		goto error;
 	}
@@ -426,13 +426,13 @@ static int compress_and_check(struct rohc_comp *comp,
 	/* check the compression result against expected one */
 	if(success_expected && status != ROHC_STATUS_OK)
 	{
-		fprintf(stderr, "packet #%d: failed to compress one %zd-byte IP packet\n",
+		fprintf(stderr, "packet #%d: failed to compress one %zu-byte IP packet\n",
 		        packet_counter, ip_packet.len);
 		goto error;
 	}
 	else if(!success_expected && status != ROHC_STATUS_ERROR)
 	{
-		fprintf(stderr, "packet #%d: compress successfully one %zd-byte IP packet "
+		fprintf(stderr, "packet #%d: compress successfully one %zu-byte IP packet "
 		        "while it should have failed\n", packet_counter, ip_packet.len);
 		goto error;
 	}
@@ -547,7 +547,7 @@ static bool check_profile(struct rohc_comp *comp,
 	/* check if the profiles match */
 	if(info.profile_id != profile)
 	{
-		fprintf(stderr, "profile %d was used instead of %d\n",
+		fprintf(stderr, "profile %d was used instead of %u\n",
 		        info.profile_id, profile);
 		return false;
 	}

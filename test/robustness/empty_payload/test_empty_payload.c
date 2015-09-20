@@ -417,8 +417,8 @@ static int test_comp_and_decomp(const char *filename,
 		/* check the length of the link layer header/frame */
 		if(header.len <= link_len || header.len != header.caplen)
 		{
-			fprintf(stderr, "\ttruncated packet in capture (len = %d, "
-			        "caplen = %d)\n", header.len, header.caplen);
+			fprintf(stderr, "\ttruncated packet in capture (len = %u, "
+			        "caplen = %u)\n", header.len, header.caplen);
 			goto destroy_decomp;
 		}
 

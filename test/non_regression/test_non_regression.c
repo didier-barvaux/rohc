@@ -801,7 +801,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	/* check Ethernet frame length */
 	if(header.len <= link_len_src || header.len != header.caplen)
 	{
-		printf("bad PCAP packet (len = %d, caplen = %d)\n", header.len,
+		printf("bad PCAP packet (len = %u, caplen = %u)\n", header.len,
 		       header.caplen);
 		status = -3;
 		goto exit;
@@ -841,8 +841,8 @@ static int compress_decompress(struct rohc_comp *comp,
 
 		if(tot_len < ip_packet.len)
 		{
-			printf("The Ethernet frame has %zd bytes of padding after the "
-			       "%zd byte IP packet!\n", ip_packet.len - tot_len, tot_len);
+			printf("The Ethernet frame has %zu bytes of padding after the "
+			       "%zu byte IP packet!\n", ip_packet.len - tot_len, tot_len);
 			ip_packet.len = tot_len;
 		}
 	}
@@ -934,7 +934,7 @@ static int compress_decompress(struct rohc_comp *comp,
 		}
 
 		fprintf(size_output_file, "compressor_num = %d\tpacket_num = %d\t"
-		        "rohc_size = %zd\tpacket_type = %d\n", num_comp, num_packet,
+		        "rohc_size = %zu\tpacket_type = %d\n", num_comp, num_packet,
 		        rohc_packet.len, last_packet_info.packet_type);
 	}
 

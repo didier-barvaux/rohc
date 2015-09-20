@@ -206,8 +206,8 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 	rohc_status_t status;
 	size_t i;
 
-	fprintf(stderr, "test ROHC segments with %zd-byte IP packet and "
-	        "MMRU = %zd bytes\n", ip_packet_len, mrru);
+	fprintf(stderr, "test ROHC segments with %zu-byte IP packet and "
+	        "MMRU = %zu bytes\n", ip_packet_len, mrru);
 
 	/* check that buffer for IP packet is large enough */
 	if(ip_packet_len > TEST_MAX_ROHC_SIZE * 3)
@@ -346,7 +346,7 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 		{
 			/* new ROHC segment retrieved */
 //! [segment ROHC packet #2]
-			fprintf(stderr, "\t%zd-byte ROHC segment generated\n",
+			fprintf(stderr, "\t%zu-byte ROHC segment generated\n",
 			        rohc_packet.len);
 			segments_nr++;
 
@@ -375,7 +375,7 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 		}
 		/* final ROHC segment retrieved */
 //! [segment ROHC packet #3]
-		fprintf(stderr, "\t%zd-byte final ROHC segment generated\n",
+		fprintf(stderr, "\t%zu-byte final ROHC segment generated\n",
 		        rohc_packet.len);
 		segments_nr++;
 
@@ -427,12 +427,12 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 	/* check the number of generated segments */
 	if(expected_segments_nr != segments_nr)
 	{
-		fprintf(stderr, "\tunexpected number of segment(s): %zd segment(s) "
+		fprintf(stderr, "\tunexpected number of segment(s): %zu segment(s) "
 		        "generated while %zu expected\n", segments_nr,
 		        expected_segments_nr);
 		goto destroy_decomp;
 	}
-	fprintf(stderr, "\t%zd segment(s) generated as expected\n", segments_nr);
+	fprintf(stderr, "\t%zu segment(s) generated as expected\n", segments_nr);
 
 	/* check that decompressed packet matches the original IP packet */
 	if(is_comp_expected_ok)

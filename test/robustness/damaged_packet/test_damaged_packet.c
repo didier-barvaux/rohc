@@ -409,8 +409,8 @@ static int test_comp_and_decomp(const char *const filename,
 		/* check the length of the link layer header/frame */
 		if(header.len <= link_len || header.len != header.caplen)
 		{
-			fprintf(stderr, "\ttruncated packet in capture (len = %d, "
-			        "caplen = %d)\n", header.len, header.caplen);
+			fprintf(stderr, "\ttruncated packet in capture (len = %u, "
+			        "caplen = %u)\n", header.len, header.caplen);
 			goto destroy_decomp;
 		}
 
@@ -514,7 +514,7 @@ static int test_comp_and_decomp(const char *const filename,
 					new_byte = rohc_buf_byte_at(rohc_packet, rohc_packet.len - 1);
 				}
 			}
-			fprintf(stderr, "\tvoluntary damage packet (change byte #%zd from "
+			fprintf(stderr, "\tvoluntary damage packet (change byte #%zu from "
 			        "0x%02x to 0x%02x)\n", pos, old_byte, new_byte);
 		}
 		else

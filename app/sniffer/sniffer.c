@@ -630,7 +630,7 @@ static void sniffer_interrupt(int signum)
 		{
 			if(sniffer_dumpers[i] != NULL)
 			{
-				SNIFFER_LOG(LOG_INFO, "close dump file for context with ID %u", i);
+				SNIFFER_LOG(LOG_INFO, "close dump file for context with ID %d", i);
 				pcap_dump_close(sniffer_dumpers[i]);
 			}
 		}
@@ -1195,8 +1195,8 @@ static int compress_decompress(struct rohc_comp *comp,
 	/* check Ethernet frame length */
 	if(header.len <= link_len_src || header.len != header.caplen)
 	{
-		SNIFFER_LOG(LOG_WARNING, "bad PCAP packet (full len = %d, capture "
-		            "len = %d)", header.len, header.caplen);
+		SNIFFER_LOG(LOG_WARNING, "bad PCAP packet (full len = %u, capture "
+		            "len = %u)", header.len, header.caplen);
 		ret = -3;
 		goto error;
 	}
@@ -1513,8 +1513,8 @@ static int compare_packets(const struct rohc_buf pkt1,
 
 	if(pkt1.len != pkt2.len)
 	{
-		SNIFFER_LOG(LOG_WARNING, "packets have different sizes (%zd != %zd), "
-		            "compare only the %zd first bytes",
+		SNIFFER_LOG(LOG_WARNING, "packets have different sizes (%zu != %zu), "
+		            "compare only the %zu first bytes",
 		            pkt1.len, pkt2.len, min_size);
 	}
 

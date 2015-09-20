@@ -814,7 +814,7 @@ static test_result_t test_run_one_step(test_context_t context,
 	return result;
 
 error:
-	fprintf(stderr, "bad PCAP packet (len = %d, caplen = %d)\n",
+	fprintf(stderr, "bad PCAP packet (len = %u, caplen = %u)\n",
 	        header.len, header.caplen);
 error_comp:
 	fprintf(stderr, "Compression failed, cannot compare the packets!\n");

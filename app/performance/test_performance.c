@@ -539,8 +539,7 @@ static int time_compress_packet(struct rohc_comp *comp,
 	/* check Ethernet frame length */
 	if(header.len <= link_len || header.len != header.caplen)
 	{
-		fprintf(stderr, "packet %lu: bad PCAP packet "
-		        "(len = %d, caplen = %d)\n",
+		fprintf(stderr, "packet %lu: bad PCAP packet (len = %u, caplen = %u)\n",
 		        num_packet, header.len, header.caplen);
 		goto error;
 	}
@@ -761,8 +760,7 @@ static int time_decompress_packet(struct rohc_decomp *decomp,
 	/* check Ethernet frame length */
 	if(header.len <= link_len || header.len != header.caplen)
 	{
-		fprintf(stderr, "packet %lu: bad PCAP packet "
-		        "(len = %d, caplen = %d)\n",
+		fprintf(stderr, "packet %lu: bad PCAP packet (len = %u, caplen = %u)\n",
 		        num_packet, header.len, header.caplen);
 		goto error;
 	}

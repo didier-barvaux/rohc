@@ -368,8 +368,8 @@ static int test_comp_and_decomp(const char *const filename,
 		/* check the length of the link layer header/frame */
 		if(header.len <= link_len || header.len != header.caplen)
 		{
-			fprintf(stderr, "\ttruncated packet in capture (len = %d, "
-			        "caplen = %d)\n", header.len, header.caplen);
+			fprintf(stderr, "\ttruncated packet in capture (len = %u, "
+			        "caplen = %u)\n", header.len, header.caplen);
 			goto destroy_decomp;
 		}
 
@@ -453,8 +453,8 @@ static int test_comp_and_decomp(const char *const filename,
 	/* last compressed packet must be of the expected type */
 	if(pkt_type_comp != expected_packet)
 	{
-		fprintf(stderr, "last packet was compressed as '%s' (%u) "
-		        "while '%s' (%u) was expected\n",
+		fprintf(stderr, "last packet was compressed as '%s' (%d) "
+		        "while '%s' (%d) was expected\n",
 		        rohc_get_packet_descr(pkt_type_comp), pkt_type_comp,
 		        rohc_get_packet_descr(expected_packet), expected_packet);
 		goto destroy_decomp;
@@ -463,8 +463,8 @@ static int test_comp_and_decomp(const char *const filename,
 	/* last decompressed packet must be of the expected type */
 	if(pkt_type_decomp != expected_packet)
 	{
-		fprintf(stderr, "last packet was decompressed as '%s' (%u) "
-		        "while '%s' (%u) was expected\n",
+		fprintf(stderr, "last packet was decompressed as '%s' (%d) "
+		        "while '%s' (%d) was expected\n",
 		        rohc_get_packet_descr(pkt_type_decomp), pkt_type_decomp,
 		        rohc_get_packet_descr(expected_packet), expected_packet);
 		goto destroy_decomp;

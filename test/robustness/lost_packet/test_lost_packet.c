@@ -432,8 +432,8 @@ static int test_comp_and_decomp(const char *const filename,
 		/* check the length of the link layer header/frame */
 		if(header.len <= link_len || header.len != header.caplen)
 		{
-			fprintf(stderr, "\ttruncated packet in capture (len = %d, "
-			        "caplen = %d)\n", header.len, header.caplen);
+			fprintf(stderr, "\ttruncated packet in capture (len = %u, "
+			        "caplen = %u)\n", header.len, header.caplen);
 			goto destroy_decomp;
 		}
 
@@ -485,7 +485,7 @@ static int test_comp_and_decomp(const char *const filename,
 		/* is it the packet to lose? */
 		if(counter >= first_packet_to_lose && counter <= last_packet_to_lose)
 		{
-			fprintf(stderr, "\tvoluntary lose packet #%d\n", counter);
+			fprintf(stderr, "\tvoluntary lose packet #%u\n", counter);
 			continue;
 		}
 

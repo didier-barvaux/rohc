@@ -261,7 +261,7 @@ static int test_decomp(const char *const filename,
 		/* check Ethernet frame length */
 		if(header.len < link_len || header.len != header.caplen)
 		{
-			fprintf(stderr, "bad PCAP packet (len = %d, caplen = %d)\n",
+			fprintf(stderr, "bad PCAP packet (len = %u, caplen = %u)\n",
 			        header.len, header.caplen);
 			goto destroy_decomp;
 		}
