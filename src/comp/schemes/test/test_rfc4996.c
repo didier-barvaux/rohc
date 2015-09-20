@@ -214,7 +214,7 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 		if(comp_len != inputs[i].expected_len)
 		{
 			fprintf(stderr, "variable_length_32_enc(value = 0x%08x) wrote one "
-			        "%zd-byte compressed value while one %zd-byte value was "
+			        "%zu-byte compressed value while one %zu-byte value was "
 			        "expected\n", inputs[i].uncomp_value, comp_len,
 			        inputs[i].expected_len);
 			goto free_wlsb;

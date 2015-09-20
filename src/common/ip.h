@@ -209,7 +209,7 @@ static inline uint16_t ip_fast_csum(const uint8_t *const iph,
 	size_t count;
 	uint32_t result = 0;
 
-	if(len <= 0)
+	if(len == 0)
 	{
 		goto out;
 	}

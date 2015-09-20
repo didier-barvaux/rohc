@@ -568,16 +568,15 @@ static void print_rohc_traces(void *const priv_ctxt __attribute__((unused)),
                               const char *const format,
                               ...)
 {
-	const char *level_descrs[] =
-	{
-		[ROHC_TRACE_DEBUG]   = "DEBUG",
-		[ROHC_TRACE_INFO]    = "INFO",
-		[ROHC_TRACE_WARNING] = "WARNING",
-		[ROHC_TRACE_ERROR]   = "ERROR"
-	};
-
 	if(level >= ROHC_TRACE_WARNING || is_verbose)
 	{
+		const char *level_descrs[] =
+		{
+			[ROHC_TRACE_DEBUG]   = "DEBUG",
+			[ROHC_TRACE_INFO]    = "INFO",
+			[ROHC_TRACE_WARNING] = "WARNING",
+			[ROHC_TRACE_ERROR]   = "ERROR"
+		};
 		va_list args;
 		fprintf(stdout, "[%s] ", level_descrs[level]);
 		va_start(args, format);

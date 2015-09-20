@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
 
 		/* 16-bit field */
 		trace(verbose, "run test with 16-bit field, shift parameter %d, windows "
-		      "width %zd, and %zd lost values\n", p_params[p_index], win_size,
+		      "width %zu, and %zu lost values\n", p_params[p_index], win_size,
 		      loss_nr);
 		if(!run_test16_with_shift_param(extraverbose, p_params[p_index],
 		                                win_size, loss_nr))
@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
 
 		/* 32-bit field */
 		trace(verbose, "run test with 32-bit field, shift parameter %d, windows "
-		      "width %zd, and %zd lost values\n", p_params[p_index], win_size,
+		      "width %zu, and %zu lost values\n", p_params[p_index], win_size,
 		      loss_nr);
 		if(!run_test32_with_shift_param(extraverbose, p_params[p_index],
 		                                win_size, loss_nr))
@@ -410,7 +410,7 @@ static bool run_test16_with_shift_param(bool be_verbose,
 			required_bits_mask = (1 << required_bits) - 1;
 		}
 		value16_encoded = value16 & required_bits_mask;
-		trace(be_verbose, "\t\tencoded on %zd bits: 0x%04x\n", required_bits,
+		trace(be_verbose, "\t\tencoded on %zu bits: 0x%04x\n", required_bits,
 		      value16_encoded);
 
 		/* update encoding context */
@@ -420,7 +420,7 @@ static bool run_test16_with_shift_param(bool be_verbose,
 		if(i >= (win_size + 1) && i <= (win_size + loss_nr))
 		{
 			/* value is lost, so do not decode it */
-			trace(be_verbose, "\t\tlose %zd-bit value 0x%04x\n", required_bits,
+			trace(be_verbose, "\t\tlose %zu-bit value 0x%04x\n", required_bits,
 			      value16_encoded);
 		}
 		else
@@ -428,13 +428,13 @@ static bool run_test16_with_shift_param(bool be_verbose,
 			uint32_t decoded32;
 
 			/* value is not lost, so decode it */
-			trace(be_verbose, "\t\tdecode %zd-bit value 0x%04x ...\n", required_bits,
+			trace(be_verbose, "\t\tdecode %zu-bit value 0x%04x ...\n", required_bits,
 			      value16_encoded);
 			lsb_decode_ok = rohc_lsb_decode(lsb, ROHC_LSB_REF_0, 0, value16_encoded,
 			                                required_bits, p, &decoded32);
 			if(!lsb_decode_ok)
 			{
-				fprintf(stderr, "failed to decode %zd-bit value\n", required_bits);
+				fprintf(stderr, "failed to decode %zu-bit value\n", required_bits);
 				goto destroy_lsb;
 			}
 			assert(decoded32 <= 0xffff);
@@ -560,7 +560,7 @@ static bool run_test32_with_shift_param(bool be_verbose,
 			required_bits_mask = (1 << required_bits) - 1;
 		}
 		value32_encoded = value32 & required_bits_mask;
-		trace(be_verbose, "\t\tencoded on %zd bits: 0x%08x\n", required_bits,
+		trace(be_verbose, "\t\tencoded on %zu bits: 0x%08x\n", required_bits,
 		      value32_encoded);
 
 		/* update encoding context */
@@ -570,19 +570,19 @@ static bool run_test32_with_shift_param(bool be_verbose,
 		if(i >= (win_size + 1) && i <= (win_size + loss_nr))
 		{
 			/* value is lost, so do not decode it */
-			trace(be_verbose, "\t\tlose %zd-bit value 0x%04x\n", required_bits,
+			trace(be_verbose, "\t\tlose %zu-bit value 0x%04x\n", required_bits,
 			      value32_encoded);
 		}
 		else
 		{
 			/* decode */
-			trace(be_verbose, "\t\tdecode %zd-bit value 0x%08x ...\n", required_bits,
+			trace(be_verbose, "\t\tdecode %zu-bit value 0x%08x ...\n", required_bits,
 			      value32_encoded);
 			lsb_decode_ok = rohc_lsb_decode(lsb, ROHC_LSB_REF_0, 0, value32_encoded,
 			                                required_bits, p, &value32_decoded);
 			if(!lsb_decode_ok)
 			{
-				fprintf(stderr, "failed to decode %zd-bit value\n", required_bits);
+				fprintf(stderr, "failed to decode %zu-bit value\n", required_bits);
 				goto destroy_lsb;
 			}
 			trace(be_verbose, "\t\tdecoded: 0x%08x\n", value32_decoded);

@@ -103,3 +103,29 @@ distclean-local:
 	$(RM) output.zcov
 	$(RM) -r coverage-report/
 
+# run cppcheck on all sources, apps and tests
+cppcheck:
+	 $(AM_V_GEN)cppcheck \
+		 --quiet --enable=all \
+		 --error-exitcode=2 \
+		 --std=c89 --std=c99 --std=c11 \
+		 -I src/common/protocols/ -I src/common/ \
+		 -I src/comp/schemes/ -I src/comp/ \
+		 -I src/decomp/schemes/ -I src/decomp/ \
+		 -I src/ \
+		 -I test/ \
+		 -I /usr/include/ \
+		 -i linux/ \
+		 -D__clang_analyzer__ \
+		 --suppress=unusedStructMember:src/comp/c_tcp.c:185 \
+		 --suppress=unusedStructMember:src/comp/c_tcp.c:207 \
+		 --suppress=unusedStructMember:src/comp/c_tcp.c:242 \
+		 --suppress=unusedStructMember:src/comp/c_tcp_opts_list.c:46 \
+		 --suppress=unusedStructMember:src/comp/c_tcp_opts_list.c:47 \
+		 --suppress=unusedStructMember:src/comp/c_tcp_opts_list.c:48 \
+		 --suppress=useClosedFile:test/non_regression/test_non_regression_kernel.c:589 \
+		 --suppress=useClosedFile:test/non_regression/test_non_regression_kernel.c:590 \
+		 --suppress=useClosedFile:test/non_regression/test_non_regression_kernel.c:591 \
+		 --suppress=unusedFunction:src/decomp/schemes/test/test_wlsb.c:40 \
+		 .
+

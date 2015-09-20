@@ -795,7 +795,7 @@ static int rtp_parse_dynamic_rtp(const struct rohc_decomp_ctxt *const context,
 			/* decode the SDVL-encoded TS_STRIDE field */
 			ts_stride_sdvl_len = sdvl_decode(packet, remain_len,
 			                                 &ts_stride, &ts_stride_bits_nr);
-			if(ts_stride_sdvl_len <= 0)
+			if(ts_stride_sdvl_len == 0)
 			{
 				rohc_decomp_warn(context, "failed to decode SDVL-encoded "
 				                 "TS_STRIDE field");
@@ -1031,7 +1031,7 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
 		/* decode SDVL-encoded TS value */
 		ts_sdvl_size = sdvl_decode(rohc_remain_data, rohc_remain_len,
 		                           &ts_ext, &ts_ext_nr);
-		if(ts_sdvl_size <= 0)
+		if(ts_sdvl_size == 0)
 		{
 			rohc_decomp_warn(context, "failed to decode SDVL-encoded TS field");
 			goto error;
@@ -1436,7 +1436,7 @@ static int rtp_parse_rtp_hdr_fields(const struct rohc_decomp_ctxt *const context
 		/* decode SDVL-encoded TS value */
 		ts_stride_size = sdvl_decode(rohc_remain_data, rohc_remain_len,
 		                             &ts_stride, &ts_stride_bits_nr);
-		if(ts_stride_size <= 0)
+		if(ts_stride_size == 0)
 		{
 			rohc_decomp_warn(context, "failed to decode SDVL-encoded "
 			                 "TS_STRIDE field");

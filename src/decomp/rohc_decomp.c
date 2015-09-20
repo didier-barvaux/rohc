@@ -525,8 +525,10 @@ struct rohc_decomp * rohc_decomp_new2(const rohc_cid_type_t cid_type,
 		const size_t rtt = 1000U; /* conservative 1-second RTT */
 		const size_t pkt_period = 20U; /* one packet every 20 ms like for VoIP */
 		const size_t prtt = rtt / pkt_period;
-		assert(rohc_decomp_set_prtt(decomp, prtt));
-		assert(rohc_decomp_set_rate_limits(decomp, 1, prtt, 30, 100, 30, 100));
+		is_fine = rohc_decomp_set_prtt(decomp, prtt);
+		assert(is_fine);
+		is_fine = rohc_decomp_set_rate_limits(decomp, 1, prtt, 30, 100, 30, 100);
+		assert(is_fine);
 		decomp->last_pkts_errors = 0;
 		decomp->last_pkt_feedbacks[ROHC_FEEDBACK_ACK].needed = 0;
 		decomp->last_pkt_feedbacks[ROHC_FEEDBACK_ACK].sent = 0;

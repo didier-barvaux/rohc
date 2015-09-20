@@ -539,8 +539,7 @@ static int time_compress_packet(struct rohc_comp *comp,
 	/* check Ethernet frame length */
 	if(header.len <= link_len || header.len != header.caplen)
 	{
-		fprintf(stderr, "packet %lu: bad PCAP packet "
-		        "(len = %d, caplen = %d)\n",
+		fprintf(stderr, "packet %lu: bad PCAP packet (len = %u, caplen = %u)\n",
 		        num_packet, header.len, header.caplen);
 		goto error;
 	}
@@ -761,8 +760,7 @@ static int time_decompress_packet(struct rohc_decomp *decomp,
 	/* check Ethernet frame length */
 	if(header.len <= link_len || header.len != header.caplen)
 	{
-		fprintf(stderr, "packet %lu: bad PCAP packet "
-		        "(len = %d, caplen = %d)\n",
+		fprintf(stderr, "packet %lu: bad PCAP packet (len = %u, caplen = %u)\n",
 		        num_packet, header.len, header.caplen);
 		goto error;
 	}
@@ -806,10 +804,10 @@ static void print_rohc_traces(void *const is_verbose__,
                               ...)
 {
 	const bool *const is_verbose = (bool *) is_verbose__;
-	va_list args;
 
 	if(*is_verbose)
 	{
+		va_list args;
 		va_start(args, format);
 		vprintf(format, args);
 		va_end(args);

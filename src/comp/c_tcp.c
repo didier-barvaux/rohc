@@ -151,7 +151,6 @@ struct tcp_tmp_variables
 	bool ip_df_changed;
 	bool dscp_changed;
 
-	bool tcp_res_flag_changed;
 	bool tcp_ack_flag_changed;
 	bool tcp_urg_flag_present;
 	bool tcp_urg_flag_changed;
@@ -258,7 +257,6 @@ typedef struct __attribute__((packed)) ipv6_context
 	uint32_t dest_addr[4];
 
 	size_t opts_nr;
-	size_t opts_len;
 	ipv6_option_context_t opts[ROHC_TCP_MAX_IPV6_EXT_HDRS];
 
 } ipv6_context_t;
@@ -6570,8 +6568,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 		{
 			if(!crc7_at_least &&
 			   !tcp_context->tmp.tcp_seq_num_changed &&
-			   tcp_context->tmp.nr_ack_bits_65535 <= 18 &&
-			   !tcp_context->tmp.tcp_seq_num_changed)
+			   tcp_context->tmp.nr_ack_bits_65535 <= 18)
 			{
 				/* rnd_7 is possible */
 				TRACE_GOTO_CHOICE;

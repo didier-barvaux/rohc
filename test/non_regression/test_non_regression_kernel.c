@@ -324,7 +324,8 @@ static int test_run(const char *input_filename,
 	while((packet = (unsigned char *) pcap_next(context.input.handle, &header)) != NULL)
 	{
 		unsigned char *compare_packet;
-		struct pcap_pkthdr compare_header;
+		struct pcap_pkthdr compare_header =
+			{ .ts = { .tv_sec = 0, .tv_usec = 0 }, .caplen = 0, .len = 0 };
 		counter++;
 
 		/* get next ROHC packet from the comparison dump file if asked */
@@ -814,7 +815,7 @@ static test_result_t test_run_one_step(test_context_t context,
 	return result;
 
 error:
-	fprintf(stderr, "bad PCAP packet (len = %d, caplen = %d)\n",
+	fprintf(stderr, "bad PCAP packet (len = %u, caplen = %u)\n",
 	        header.len, header.caplen);
 error_comp:
 	fprintf(stderr, "Compression failed, cannot compare the packets!\n");

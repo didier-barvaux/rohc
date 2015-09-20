@@ -64,10 +64,6 @@ static bool rohc_ip_ctxt_create(struct rohc_comp_ctxt *const context,
 	const struct rohc_comp *const comp = context->compressor;
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 
-	assert(context != NULL);
-	assert(context->profile != NULL);
-	assert(packet != NULL);
-
 	/* call the generic function for all IP-based profiles */
 	if(!rohc_comp_rfc3095_create(context, ROHC_LSB_SHIFT_SN, packet))
 	{

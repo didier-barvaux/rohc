@@ -872,7 +872,7 @@ rohc_status_t rohc_comp_get_segment2(struct rohc_comp *const comp,
 	segment->len = 0;
 
 	/* abort if no RRU is available in the compressor */
-	if(comp->rru_len <= 0)
+	if(comp->rru_len == 0)
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		             "no RRU available in given compressor");
@@ -1020,7 +1020,7 @@ bool rohc_comp_set_wlsb_window_width(struct rohc_comp *const comp,
 	{
 		return false;
 	}
-	if(width <= 0)
+	if(width == 0)
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "failed to "
 		             "set width of W-LSB sliding window to %zd: window width "
@@ -1085,7 +1085,7 @@ bool rohc_comp_set_periodic_refreshes(struct rohc_comp *const comp,
 	{
 		return false;
 	}
-	if(ir_timeout <= 0 || fo_timeout <= 0 || ir_timeout <= fo_timeout)
+	if(ir_timeout == 0 || fo_timeout == 0 || ir_timeout <= fo_timeout)
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "invalid "
 		             "timeouts for context periodic refreshes (IR timeout = %zd, "
@@ -1142,7 +1142,7 @@ bool rohc_comp_set_list_trans_nr(struct rohc_comp *const comp,
 	{
 		return false;
 	}
-	if(list_trans_nr <= 0)
+	if(list_trans_nr == 0)
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "invalid "
 		             "value for uncompressed transmissions of list compression "

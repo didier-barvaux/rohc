@@ -705,7 +705,7 @@ ssize_t rohc_proc_comp_read(struct file *file,
 	WARN_ON(couples_ref_nr == 0);
 
 	/* if one reads a packet when none is available, return an error */
-	if (couple->rohc_size_out <= 0) {
+	if (couple->rohc_size_out == 0) {
 		rohc_err("cannot send ROHC packet to userspace: no ROHC packet available\n");
 		goto error;
 	}
@@ -754,7 +754,7 @@ ssize_t rohc_proc_decomp_read(struct file *file,
 	WARN_ON(couples_ref_nr == 0);
 
 	/* if one reads a packet when none is available, return an error */
-	if (couple->ip_size_out <= 0) {
+	if (couple->ip_size_out == 0) {
 		rohc_err("cannot send decompressed IP packet to userspace: no IP packet available\n");
 		goto error;
 	}

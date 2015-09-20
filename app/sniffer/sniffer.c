@@ -630,7 +630,7 @@ static void sniffer_interrupt(int signum)
 		{
 			if(sniffer_dumpers[i] != NULL)
 			{
-				SNIFFER_LOG(LOG_INFO, "close dump file for context with ID %u", i);
+				SNIFFER_LOG(LOG_INFO, "close dump file for context with ID %d", i);
 				pcap_dump_close(sniffer_dumpers[i]);
 			}
 		}
@@ -1195,8 +1195,8 @@ static int compress_decompress(struct rohc_comp *comp,
 	/* check Ethernet frame length */
 	if(header.len <= link_len_src || header.len != header.caplen)
 	{
-		SNIFFER_LOG(LOG_WARNING, "bad PCAP packet (full len = %d, capture "
-		            "len = %d)", header.len, header.caplen);
+		SNIFFER_LOG(LOG_WARNING, "bad PCAP packet (full len = %u, capture "
+		            "len = %u)", header.len, header.caplen);
 		ret = -3;
 		goto error;
 	}
@@ -1513,8 +1513,8 @@ static int compare_packets(const struct rohc_buf pkt1,
 
 	if(pkt1.len != pkt2.len)
 	{
-		SNIFFER_LOG(LOG_WARNING, "packets have different sizes (%zd != %zd), "
-		            "compare only the %zd first bytes",
+		SNIFFER_LOG(LOG_WARNING, "packets have different sizes (%zu != %zu), "
+		            "compare only the %zu first bytes",
 		            pkt1.len, pkt2.len, min_size);
 	}
 
@@ -1692,19 +1692,18 @@ static void print_rohc_traces(void *const priv_ctxt __attribute__((unused)),
                               const int profile __attribute__((unused)),
                               const char *format, ...)
 {
-	const char *level_descrs[] =
-	{
-		[ROHC_TRACE_DEBUG]   = "DEBUG",
-		[ROHC_TRACE_INFO]    = "INFO",
-		[ROHC_TRACE_WARNING] = "WARNING",
-		[ROHC_TRACE_ERROR]   = "ERROR"
-	};
-
 	if(level >= ROHC_TRACE_WARNING || is_verbose)
 	{
 		va_list args;
 		if(!is_daemon)
 		{
+			const char *level_descrs[] =
+			{
+				[ROHC_TRACE_DEBUG]   = "DEBUG",
+				[ROHC_TRACE_INFO]    = "INFO",
+				[ROHC_TRACE_WARNING] = "WARNING",
+				[ROHC_TRACE_ERROR]   = "ERROR"
+			};
 			fprintf(stdout, "[%s] ", level_descrs[level]);
 			va_start(args, format);
 			vfprintf(stdout, format, args);

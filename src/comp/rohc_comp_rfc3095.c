@@ -1665,22 +1665,15 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
                           uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len)
 {
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	int nr_of_ip_hdr;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt =
+		(struct rohc_comp_rfc3095_ctxt *) context->specific;
+	const size_t nr_of_ip_hdr = uncomp_pkt->ip_hdr_nr;
 	uint8_t type;
 	size_t counter;
 	size_t first_position;
 	int crc_position;
 	int ret;
 
-	assert(context != NULL);
-	assert(context->specific != NULL);
-	assert(rohc_pkt != NULL);
-
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-	nr_of_ip_hdr = uncomp_pkt->ip_hdr_nr;
-
-	assert(uncomp_pkt != NULL);
 	assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 16);
 	assert((ip_get_version(&uncomp_pkt->outer_ip) == IPV4 &&
 	        rfc3095_ctxt->tmp.nr_ip_id_bits <= 16) ||
@@ -5941,15 +5934,11 @@ static int header_fields(const struct rohc_comp_ctxt *const context,
                          uint8_t *const dest,
                          int counter)
 {
-	unsigned int tos;
-	unsigned int ttl;
-	uint8_t protocol;
-
 	/* part 1 */
 	if(is_field_changed(changed_f, MOD_TOS) ||
 	   header_info->tos_count < MAX_FO_COUNT)
 	{
-		tos = ip_get_tos(ip);
+		const unsigned int tos = ip_get_tos(ip);
 		rohc_comp_debug(context, "IP TOS/TC of IP header #%u = 0x%02x",
 		                ip_hdr_pos, tos);
 		header_info->tos_count++;
@@ -5961,7 +5950,7 @@ static int header_fields(const struct rohc_comp_ctxt *const context,
 	if(is_field_changed(changed_f, MOD_TTL) ||
 	   header_info->ttl_count < MAX_FO_COUNT)
 	{
-		ttl = ip_get_ttl(ip);
+		const unsigned int ttl = ip_get_ttl(ip);
 		rohc_comp_debug(context, "IP TTL/HL of IP header #%u = 0x%02x",
 		                ip_hdr_pos, ttl);
 		header_info->ttl_count++;
@@ -5973,7 +5962,7 @@ static int header_fields(const struct rohc_comp_ctxt *const context,
 	if(is_field_changed(changed_f, MOD_PROTOCOL) ||
 	   header_info->protocol_count < MAX_FO_COUNT)
 	{
-		protocol = ip_get_protocol(ip);
+		const uint8_t protocol = ip_get_protocol(ip);
 		rohc_comp_debug(context, "IP Protocol/Next Header of IP header #%u "
 		                "= 0x%02x", ip_hdr_pos, protocol);
 		header_info->protocol_count++;
@@ -6244,8 +6233,7 @@ static int changed_dynamic_one_hdr(struct rohc_comp_ctxt *const context,
                                    const struct ip_packet *const ip)
 {
 	/* TODO: should not alter the counters in the context there */
-	int nb_fields = 0; /* number of fields that changed */
-	int nb_flags = 0; /* number of flags that changed */
+	size_t nb_fields = 0; /* number of fields that changed */
 
 	/* check the Type Of Service / Traffic Class field for change */
 	if(is_field_changed(changed_fields, MOD_TOS) ||
@@ -6261,7 +6249,7 @@ static int changed_dynamic_one_hdr(struct rohc_comp_ctxt *const context,
 		{
 			rohc_comp_debug(context, "TOS/TC changed in the last few packets");
 		}
-		nb_fields += 1;
+		nb_fields++;
 	}
 
 	/* check the Time To Live / Hop Limit field for change */
@@ -6278,12 +6266,13 @@ static int changed_dynamic_one_hdr(struct rohc_comp_ctxt *const context,
 		{
 			rohc_comp_debug(context, "TTL/HL changed in the last few packets");
 		}
-		nb_fields += 1;
+		nb_fields++;
 	}
 
 	/* IPv4 only checks */
 	if(ip_get_version(ip) == IPV4)
 	{
+		size_t nb_flags = 0; /* number of flags that changed */
 		uint8_t old_df;
 		uint8_t df;
 
@@ -6302,7 +6291,7 @@ static int changed_dynamic_one_hdr(struct rohc_comp_ctxt *const context,
 			{
 				rohc_comp_debug(context, "DF changed in the last few packets");
 			}
-			nb_fields += 1;
+			nb_fields++;
 		}
 
 		/* check the RND flag for change (IPv4 only) */
@@ -6321,7 +6310,7 @@ static int changed_dynamic_one_hdr(struct rohc_comp_ctxt *const context,
 			{
 				rohc_comp_debug(context, "RND changed in the last few packets");
 			}
-			nb_flags += 1;
+			nb_flags++;
 		}
 
 		/*  check the NBO flag for change (IPv4 only) */
@@ -6345,7 +6334,7 @@ static int changed_dynamic_one_hdr(struct rohc_comp_ctxt *const context,
 
 		if(nb_flags > 0)
 		{
-			nb_fields += 1;
+			nb_fields++;
 		}
 
 		/*  check the SID flag for change (IPv4 only) */
@@ -6373,13 +6362,13 @@ static int changed_dynamic_one_hdr(struct rohc_comp_ctxt *const context,
 		{
 			rohc_comp_debug(context, "the structure of the list of IPv6 "
 			                "extension headers changed");
-			nb_fields += 1;
+			nb_fields++;
 		}
 		else if(is_field_changed(changed_fields, MOD_IPV6_EXT_LIST_CONTENT))
 		{
 			rohc_comp_debug(context, "the content of the list of IPv6 "
 			                "extension headers changed");
-			nb_fields += 1;
+			nb_fields++;
 		}
 	}
 
