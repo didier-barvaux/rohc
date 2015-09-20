@@ -1243,7 +1243,9 @@ static int parse_dynamic_part_ipv4(const struct rohc_decomp_ctxt *const context,
 		                 "yet");
 		goto error;
 	}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	packet++;
+#endif
 	read++;
 
 	return read;
