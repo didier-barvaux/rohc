@@ -236,7 +236,12 @@ struct d_tcp_opt_ctxt /* TODO: doxygen */
 		struct d_tcp_opt_sack sack; /* TODO: ptr inside is not needed */
 		struct
 		{
-			bool option_static;
+			enum
+			{
+				TCP_GENERIC_OPT_STATIC,
+				TCP_GENERIC_OPT_STABLE,
+				TCP_GENERIC_OPT_FULL,
+			} type;
 			uint8_t load_len;
 #define ROHC_TCP_OPT_HDR_LEN 2U
 #define ROHC_TCP_OPT_MAX_LEN 0xffU

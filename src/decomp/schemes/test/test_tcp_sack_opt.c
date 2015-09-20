@@ -252,6 +252,40 @@ void test_tcp_sack_opt_5_blocks(const uint32_t val)
 }
 
 
+void test_tcp_sack_opt_0_block(const uint32_t val)
+{
+	struct rohc_decomp decomp = { .trace_callback = NULL };
+	struct rohc_decomp_profile profile = { .id = ROHC_PROFILE_TCP };
+	struct rohc_decomp_ctxt context = { .decompressor = &decomp, .profile = &profile };
+	struct d_tcp_opt_sack sack;
+	const uint8_t previous_data[] = {
+		0x01,                    /* discriminator */
+		lsb_15(val),             /* block 1 */
+		lsb_15(val + 1),
+	};
+	const uint8_t data[] = {
+		0x00,                    /* discriminator */
+	};
+	int ret;
+
+	/* decode previous data */
+	ret = d_tcp_sack_parse(&context, previous_data, 5, &sack);
+	assert_true(ret == 5);
+	assert_true(sack.blocks_nr == 1);
+	assert_true(sack.blocks[0].block_start == val);
+	assert_true(sack.blocks[0].block_end == (val + 1));
+
+	/* decode new unchanged data (too short) */
+	ret = d_tcp_sack_parse(&context, data, 0, &sack);
+	assert_true(ret == -1);
+
+	/* decode new unchanged data (correct length) */
+	ret = d_tcp_sack_parse(&context, data, 1, &sack);
+	assert_true(ret == 1);
+	assert_true(sack.blocks_nr == 0);
+}
+
+
 /** Test \ref test_tcp_sack_opt */
 static void test_tcp_sack_opt(void **state)
 {
@@ -284,6 +318,11 @@ static void test_tcp_sack_opt(void **state)
 	printf("test malformed 5-block SACK...\n");
 	test_tcp_sack_opt_5_blocks(0);
 	test_tcp_sack_opt_5_blocks(0xffffffff - 9);
+
+	/* unchanged 0-block (for irregular chain only) */
+	printf("test unchanged 0-block SACK...\n");
+	test_tcp_sack_opt_0_block(0);
+	test_tcp_sack_opt_0_block(0x7fff - 1);
 }
 
 

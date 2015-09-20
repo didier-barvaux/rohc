@@ -766,7 +766,6 @@ static int d_tcp_parse_eol_list_item(const struct rohc_decomp_ctxt *const contex
                                      struct d_tcp_opt_ctxt *const opt_ctxt)
 {
 	const size_t eol_list_item_len = sizeof(uint8_t);
-	const size_t max_opt_len = 0xff; /* TODO */
 	size_t eol_uncomp_len;
 
 	if(data_len < eol_list_item_len)
@@ -776,15 +775,17 @@ static int d_tcp_parse_eol_list_item(const struct rohc_decomp_ctxt *const contex
 		                 "required for EOL option", data_len, eol_list_item_len);
 		goto error;
 	}
-	eol_uncomp_len = data[0] + 1;
-	if(eol_uncomp_len > max_opt_len)
+
+	/* pad_len is expressed in bits, so better having a multiple of 8 */
+	if((data[0] % 8) != 0)
 	{
 		rohc_decomp_warn(context, "malformed TCP options list: malformed TCP option "
-		                 "items: TCP EOL option is %zu-byte long according to ROHC "
-		                 "packet, but maximum length is %zu bytes", eol_uncomp_len,
-		                 max_opt_len);
+		                 "items: TCP EOL option has malformed pad_len %u bits, "
+		                 "not divisible by 8 (incomplete byte)", data[0]);
 		goto error;
 	}
+	eol_uncomp_len = (data[0] / 8) + 1;
+
 	rohc_decomp_debug(context, "    EOL option is repeated %zu times", eol_uncomp_len);
 	opt_ctxt->data.eol.is_static = false;
 	opt_ctxt->data.eol.len = eol_uncomp_len;
@@ -1143,11 +1144,21 @@ static int d_tcp_parse_sack_list_item(const struct rohc_decomp_ctxt *const conte
 {
 	int ret;
 
+	/* parse the SACK blocks */
 	ret = d_tcp_sack_parse(context, data, data_len, &opt_ctxt->data.sack);
 	if(ret < 0)
 	{
 		rohc_decomp_warn(context, "malformed ROHC packet: malformed TCP option "
 		                 "items: failed to parse TCP SACK option");
+		goto error;
+	}
+
+	/* unchanged encoding is only accepted in irregular chain */
+	if(opt_ctxt->data.sack.blocks_nr == 0)
+	{
+		rohc_decomp_warn(context, "malformed ROHC packet: malformed TCP option "
+		                 "items: encoding with no SACK block is only allowed in "
+		                 "the irregular chain");
 		goto error;
 	}
 
@@ -1165,7 +1176,22 @@ static int d_tcp_parse_sack_irreg(const struct rohc_decomp_ctxt *const context,
                                   const uint8_t opt_index __attribute__((unused)),
                                   struct d_tcp_opt_ctxt *const opt_ctxt)
 {
-	return d_tcp_parse_sack_list_item(context, data, data_len, opt_ctxt);
+	int ret;
+
+	/* parse the SACK blocks */
+	ret = d_tcp_sack_parse(context, data, data_len, &opt_ctxt->data.sack);
+	if(ret < 0)
+	{
+		rohc_decomp_warn(context, "malformed ROHC packet: malformed TCP option "
+		                 "items: failed to parse TCP SACK option");
+		goto error;
+	}
+
+	return ret;
+
+error:
+	return -1;
+
 }
 
 
@@ -1225,7 +1251,14 @@ static int d_tcp_parse_generic_list_item(const struct rohc_decomp_ctxt *const co
 	opt_type = data[0];
 
 	/* option_static flag */
-	opt_ctxt->data.generic.option_static = GET_BOOL(GET_BIT_7(data + 1));
+	if(GET_BOOL(GET_BIT_7(data + 1)))
+	{
+		opt_ctxt->data.generic.type = TCP_GENERIC_OPT_STATIC;
+	}
+	else
+	{
+		opt_ctxt->data.generic.type = TCP_GENERIC_OPT_FULL;
+	}
 
 	/* option length */
 	opt_len = data[1] & 0x7f;
@@ -1295,13 +1328,13 @@ static int d_tcp_parse_generic_irreg(const struct rohc_decomp_ctxt *const contex
 	persist = &tcp_context->tcp_opts.bits[opt_index];
 
 	/* TODO: in what case option_static could be set to 1 ? */
-	if(persist->data.generic.option_static == 1)
+	if(persist->data.generic.type == TCP_GENERIC_OPT_STATIC)
 	{
 		/* TODO: handle generic_static_irregular() encoding */
 		rohc_decomp_warn(context, "unsupported generic_static_irregular() encoding");
 		goto error;
 	}
-	else if(persist->data.generic.option_static == 0)
+	else
 	{
 		uint8_t discriminator;
 
@@ -1315,15 +1348,24 @@ static int d_tcp_parse_generic_irreg(const struct rohc_decomp_ctxt *const contex
 		discriminator = data[0];
 		read++;
 
-		if(discriminator == 0x01)
+		if(discriminator == 0xff)
 		{
-			/* TODO: handle generic_stable_irregular() */
-			rohc_decomp_warn(context, "unsupported generic_stable_irregular() encoding");
-			goto error;
+			/* the item that can change, but currently is unchanged
+			 *
+			 *   discriminator =:= '11111111' [ 8 ];
+			 */
+			opt_ctxt->data.generic.type = TCP_GENERIC_OPT_STABLE;
 		}
 		else if(discriminator == 0x00)
 		{
-			/* generic_full_irregular() */
+			/* The item that is assumed to change constantly. Length is not allowed
+			 * to change here, since a length change is most likely to cause new
+			 * NOPs or an EOL length change.
+			 *
+			 *   discriminator =:= '00000000'        [ 8 ];
+			 *   contents      =:=
+			 *     irregular(length_lsb.UVALUE*8-16) [ length_lsb.UVALUE*8-16 ];
+			 */
 			const size_t opt_load_len = persist->data.generic.load_len;
 
 			if(data_len < (read + opt_load_len))
@@ -1334,10 +1376,20 @@ static int d_tcp_parse_generic_irreg(const struct rohc_decomp_ctxt *const contex
 				                 "byte(s)", read + opt_load_len, data_len);
 				goto error;
 			}
+			opt_ctxt->data.generic.type = TCP_GENERIC_OPT_FULL;
 			opt_ctxt->data.generic.load_len = opt_load_len;
 			memcpy(opt_ctxt->data.generic.load, data + read, opt_load_len);
 			read += opt_load_len;
-			rohc_decomp_debug(context, "TCP generic option payload = %zu bytes", opt_load_len);
+			rohc_decomp_debug(context, "TCP generic option payload = %zu bytes",
+			                  opt_load_len);
+		}
+		else
+		{
+			rohc_decomp_warn(context, "malformed TCP irregular part: malformed "
+			                 "TCP option items: TCP generic irregular option's "
+			                 "discriminator should be either 0x00 or 0xff, but "
+			                 "it is 0x%02x", discriminator);
+			goto error;
 		}
 	}
 
@@ -1385,8 +1437,6 @@ bool d_tcp_build_tcp_opts(const struct rohc_decomp_ctxt *const context,
                           struct rohc_buf *const uncomp_packet,
                           size_t *const opts_len)
 {
-	const uint8_t padding_bytes[sizeof(uint32_t) - 1] = { TCP_OPT_EOL };
-	size_t opt_padding_len;
 	size_t i;
 
 	rohc_decomp_debug(context, "build TCP options");
@@ -1423,24 +1473,11 @@ bool d_tcp_build_tcp_opts(const struct rohc_decomp_ctxt *const context,
 		*opts_len += opt_len;
 	}
 
-	/* add padding after TCP options (they must be aligned on 32-bit words) */
-	opt_padding_len = sizeof(uint32_t) - ((*opts_len) % sizeof(uint32_t));
-	opt_padding_len %= sizeof(uint32_t);
-	if(rohc_buf_avail_len(*uncomp_packet) < opt_padding_len)
-	{
-		rohc_decomp_warn(context, "output buffer too small for the %zu-byte "
-		                 "TCP option padding", opt_padding_len);
-		goto error;
-	}
-	rohc_decomp_debug(context, "  add %zu TCP EOL option(s) for padding",
-	                  opt_padding_len);
-	rohc_buf_append(uncomp_packet, padding_bytes, opt_padding_len);
-	rohc_buf_pull(uncomp_packet, opt_padding_len);
-	*opts_len += opt_padding_len;
+	/* TCP options shall be aligned on 32-bit words */
 	assert(((*opts_len) % sizeof(uint32_t)) == 0);
 
 	rohc_decomp_debug(context, "  %zu TCP options built on %zu bytes",
-	                  decoded->tcp_opts.nr + opt_padding_len, *opts_len);
+	                  decoded->tcp_opts.nr, *opts_len);
 
 	return true;
 

@@ -50,6 +50,8 @@ static int c_tcp_sack_code_pure_lsb(const struct rohc_comp_ctxt *const context,
  * @param ack_value       The ack value
  * @param sack_blocks     The SACK blocks to compress
  * @param length          The length of the SACK blocks
+ * @param is_unchanged    Whether the SACK option is unchanged or not
+ *                        (only for irregular chain, use false for list item)
  * @param[out] rohc_data  The ROHC packet being built
  * @param rohc_max_len    The max remaining length in the ROHC buffer
  * @return                The length appended in the ROHC buffer if positive,
@@ -59,6 +61,7 @@ int c_tcp_opt_sack_code(const struct rohc_comp_ctxt *const context,
                         const uint32_t ack_value,
                         const sack_block_t *const sack_blocks,
                         const uint8_t length,
+                        const bool is_unchanged,
                         uint8_t *const rohc_data,
                         const size_t rohc_max_len)
 {
@@ -83,28 +86,38 @@ int c_tcp_opt_sack_code(const struct rohc_comp_ctxt *const context,
 		goto error;
 	}
 
-	/* determine the number of SACK blocks
-	 * (integer division checked by \ref c_tcp_check_profile ) */
-	blocks_nr = length / sizeof(sack_block_t);
-	rohc_remain_data[0] = blocks_nr;
-	rohc_remain_data++;
-	rohc_remain_len--;
-
-	/* compress every SACK block, one by one */
-	for(i = 0, block = sack_blocks; i < blocks_nr; i++, block++)
+	/* the irregular chain supports a special encoding for unchanged option */
+	if(is_unchanged)
 	{
-		rohc_comp_debug(context, "block of SACK option: start = 0x%08x, "
-		                "end = 0x%08x", rohc_ntoh32(block->block_start),
-		                rohc_ntoh32(block->block_end));
-		ret = c_tcp_sack_code_block(context, ack_value, block,
-		                            rohc_remain_data, rohc_remain_len);
-		if(ret < 0)
+		rohc_remain_data[0] = 0x00;
+		rohc_remain_data++;
+		rohc_remain_len--;
+	}
+	else
+	{
+		/* determine the number of SACK blocks
+		 * (integer division checked by \ref c_tcp_check_profile ) */
+		blocks_nr = length / sizeof(sack_block_t);
+		rohc_remain_data[0] = blocks_nr;
+		rohc_remain_data++;
+		rohc_remain_len--;
+
+		/* compress every SACK block, one by one */
+		for(i = 0, block = sack_blocks; i < blocks_nr; i++, block++)
 		{
-			rohc_comp_warn(context, "failed to encode SACK block #%zu", i + 1);
-			goto error;
+			rohc_comp_debug(context, "block of SACK option: start = 0x%08x, "
+			                "end = 0x%08x", rohc_ntoh32(block->block_start),
+			                rohc_ntoh32(block->block_end));
+			ret = c_tcp_sack_code_block(context, ack_value, block,
+			                            rohc_remain_data, rohc_remain_len);
+			if(ret < 0)
+			{
+				rohc_comp_warn(context, "failed to encode SACK block #%zu", i + 1);
+				goto error;
+			}
+			rohc_remain_data += ret;
+			rohc_remain_len -= ret;
 		}
-		rohc_remain_data += ret;
-		rohc_remain_len -= ret;
 	}
 
 	return (rohc_max_len - rohc_remain_len);

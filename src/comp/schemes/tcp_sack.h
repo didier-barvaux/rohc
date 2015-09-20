@@ -35,9 +35,10 @@ int c_tcp_opt_sack_code(const struct rohc_comp_ctxt *const context,
                         const uint32_t ack_value,
                         const sack_block_t *const sack_blocks,
                         const uint8_t length,
+                        const bool is_unchanged,
                         uint8_t *const rohc_data,
                         const size_t rohc_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 3, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 3, 6)));
 
 #endif /* ROHC_COMP_SCHEMES_TCP_SACK_H */
 
