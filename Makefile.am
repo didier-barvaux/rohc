@@ -134,3 +134,6 @@ complexity:
 	$(AM_V_GEN)complexity --threshold=20 --horrid-threshold=35 \
 		`find src/ app/ -name \*.c -or -name \*.h`
 
+# run all Q&A tests
+qa: cppcheck complexity
+
