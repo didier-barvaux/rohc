@@ -1437,8 +1437,6 @@ bool d_tcp_build_tcp_opts(const struct rohc_decomp_ctxt *const context,
                           struct rohc_buf *const uncomp_packet,
                           size_t *const opts_len)
 {
-	const uint8_t padding_bytes[sizeof(uint32_t) - 1] = { TCP_OPT_EOL };
-	size_t opt_padding_len;
 	size_t i;
 
 	rohc_decomp_debug(context, "build TCP options");
@@ -1475,24 +1473,11 @@ bool d_tcp_build_tcp_opts(const struct rohc_decomp_ctxt *const context,
 		*opts_len += opt_len;
 	}
 
-	/* add padding after TCP options (they must be aligned on 32-bit words) */
-	opt_padding_len = sizeof(uint32_t) - ((*opts_len) % sizeof(uint32_t));
-	opt_padding_len %= sizeof(uint32_t);
-	if(rohc_buf_avail_len(*uncomp_packet) < opt_padding_len)
-	{
-		rohc_decomp_warn(context, "output buffer too small for the %zu-byte "
-		                 "TCP option padding", opt_padding_len);
-		goto error;
-	}
-	rohc_decomp_debug(context, "  add %zu TCP EOL option(s) for padding",
-	                  opt_padding_len);
-	rohc_buf_append(uncomp_packet, padding_bytes, opt_padding_len);
-	rohc_buf_pull(uncomp_packet, opt_padding_len);
-	*opts_len += opt_padding_len;
+	/* TCP options shall be aligned on 32-bit words */
 	assert(((*opts_len) % sizeof(uint32_t)) == 0);
 
 	rohc_decomp_debug(context, "  %zu TCP options built on %zu bytes",
-	                  decoded->tcp_opts.nr + opt_padding_len, *opts_len);
+	                  decoded->tcp_opts.nr, *opts_len);
 
 	return true;
 
