@@ -129,3 +129,8 @@ cppcheck:
 		 --suppress=unusedFunction:src/decomp/schemes/test/test_wlsb.c:40 \
 		 .
 
+# run GNU complexity on all sources and apps, but not tests
+complexity:
+	$(AM_V_GEN)complexity --threshold=20 --horrid-threshold=35 \
+		`find src/ app/ -name \*.c -or -name \*.h`
+
