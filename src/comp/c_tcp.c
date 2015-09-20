@@ -6568,8 +6568,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 		{
 			if(!crc7_at_least &&
 			   !tcp_context->tmp.tcp_seq_num_changed &&
-			   tcp_context->tmp.nr_ack_bits_65535 <= 18 &&
-			   !tcp_context->tmp.tcp_seq_num_changed)
+			   tcp_context->tmp.nr_ack_bits_65535 <= 18)
 			{
 				/* rnd_7 is possible */
 				TRACE_GOTO_CHOICE;
