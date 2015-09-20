@@ -296,7 +296,7 @@ bool rohc_comp_tcp_are_options_acceptable(const struct rohc_comp *const comp,
 
 	/* parse up to ROHC_TCP_OPTS_MAX TCP options */
 	for(opt_pos = 0, opts_offset = 0;
-	    opt_pos < ROHC_TCP_OPTS_MAX && opts_offset < opts_len;
+	    opt_pos < ROHC_TCP_OPTS_MAX_PROTO && opts_offset < opts_len;
 	    opt_pos++, opts_offset += opt_len)
 	{
 		uint8_t opt_type;
@@ -322,7 +322,20 @@ bool rohc_comp_tcp_are_options_acceptable(const struct rohc_comp *const comp,
 		{
 			case TCP_OPT_EOL:
 			{
+				const size_t max_eol_opt_len = (0xff + 8) / 8;
 				size_t i;
+
+				/* the TCP profile encodes the length of the EOL option in bits
+				 * (minus the first 8 type bits) in a 8-bit field, so reject TCP
+				 * packets with a large EOL option */
+				if(opt_len > max_eol_opt_len)
+				{
+					rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+					           "unexpected TCP header: %u-byte option EOL cannot be "
+					           "compressed with the TCP profile (%zu bytes max)",
+					           opt_len, max_eol_opt_len);
+					goto bad_opts;
+				}
 
 				/* TCP option EOL bytes shall all be zeroes */
 				for(i = 0; i < opt_len; i++)
@@ -412,7 +425,7 @@ bool rohc_comp_tcp_are_options_acceptable(const struct rohc_comp *const comp,
 	}
 
 	/* no more than ROHC_TCP_OPTS_MAX TCP options accepted by the TCP profile */
-	if(opt_pos >= ROHC_TCP_OPTS_MAX && opts_offset != opts_len)
+	if(opt_pos > ROHC_TCP_OPTS_MAX)
 	{
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "unexpected TCP header: too many TCP options: %zu "
