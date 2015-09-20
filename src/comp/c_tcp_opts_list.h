@@ -77,7 +77,7 @@ struct c_tcp_opts_ctxt_tmp
 	/** The number of options in the list of TCP options */
 	size_t nr;
 	/** The mapping between option types and indexes */
-	uint8_t type2index[ROHC_TCP_OPTS_MAX];
+	uint8_t position2index[ROHC_TCP_OPTS_MAX];
 	/* The maximum index value used for the list of TCP options */
 	uint8_t idx_max;
 

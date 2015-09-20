@@ -558,7 +558,7 @@ bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 			rohc_comp_debug(context, "    option '%s' (%u) will use new index %u",
 			                tcp_opt_get_descr(opt_type), opt_type, opt_idx);
 		}
-		opts_ctxt->tmp.type2index[opt_pos] = opt_idx;
+		opts_ctxt->tmp.position2index[opt_pos] = opt_idx;
 		opts_ctxt->tmp.nr++;
 		if(opt_idx > opts_ctxt->tmp.idx_max)
 		{
@@ -742,10 +742,13 @@ int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
 	    i > 0 && opt_pos < m;
 	    i -= opt_len, opt_pos++, options += opt_len)
 	{
+		const uint8_t opt_idx = opts_ctxt->tmp.position2index[opt_pos];
 		bool item_needed;
 		uint8_t opt_type;
-		uint8_t opt_idx;
 		size_t comp_opt_len;
+
+		/* the TCP option index shall be in use */
+		assert(opts_ctxt->list[opt_idx].used);
 
 		/* get type and length of the next TCP option */
 		if(!c_tcp_opt_get_type_len(options, i, &opt_type, &opt_len))
@@ -759,10 +762,6 @@ int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
 
 		/* print a trace that describes the TCP option */
 		c_tcp_opt_trace(context, opt_type, options, opt_len);
-
-		/* determine the index of the TCP option */
-		opt_idx = opts_ctxt->tmp.type2index[opt_pos];
-		assert(opts_ctxt->list[opt_idx].used);
 
 		/* do we need to transmit the item? */
 		item_needed = c_tcp_is_list_item_needed(context, is_dynamic_chain, opt_idx,
@@ -807,7 +806,7 @@ int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
 
 		/* TCP option is transmitted towards decompressor once more */
 		opts_ctxt->list[opt_idx].nr_trans++;
-		opts_ctxt->tmp.is_list_item_present[opt_pos] = true;
+		opts_ctxt->tmp.is_list_item_present[opt_idx] = true;
 		rohc_comp_debug(context, "TCP options list: option '%s' (%u) added "
 			                "%zu bytes of item", tcp_opt_get_descr(opt_type),
 			                opt_type, comp_opt_len);
@@ -885,11 +884,15 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 
 	/* build the list of irregular encodings of TCP options */
 	for(opt_pos = 0, opts_offset = 0;
-	    opt_pos <= MAX_TCP_OPTION_INDEX && opts_offset < opts_len;
+	    opt_pos < ROHC_TCP_OPTS_MAX && opts_offset < opts_len;
 	    opt_pos++, opts_offset += opt_len)
 	{
+		const uint8_t opt_idx = opts_ctxt->tmp.position2index[opt_pos];
 		size_t comp_opt_len = 0;
 		uint8_t opt_type;
+
+		/* the TCP option index shall be in use */
+		assert(opts_ctxt->list[opt_idx].used);
 
 		/* get type and length of the next TCP option */
 		if(!c_tcp_opt_get_type_len(opts + opts_offset, opts_len - opts_offset,
@@ -902,7 +905,7 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 
 		/* don't put this option in the irregular chain if already present in the
 		 * dynamic chain */
-		if(opts_ctxt->tmp.is_list_item_present[opt_pos])
+		if(opts_ctxt->tmp.is_list_item_present[opt_idx])
 		{
 			rohc_comp_debug(context, "irregular chain: do not encode irregular "
 			                "content for TCP option %u because it is already "
@@ -962,7 +965,6 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 		{
 			const sack_block_t *const sack_blocks =
 				(sack_block_t *) (opts + opts_offset + 2);
-			const uint8_t opt_idx = opts_ctxt->tmp.type2index[opt_pos];
 			const bool is_sack_unchanged =
 				!c_tcp_opt_changed(opts_ctxt, opt_idx, opts + opts_offset, opt_len);
 
@@ -987,7 +989,6 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 			/* generic encoding */
 			/* TODO: in what case option_static could be set to 1 ? */
 
-			const size_t opt_idx = opts_ctxt->tmp.type2index[opt_pos];
 			uint8_t discriminator;
 			size_t contents_len;
 
