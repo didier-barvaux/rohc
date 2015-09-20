@@ -319,14 +319,13 @@ uint8_t * ip_get_next_ext_from_ext(const uint8_t *const ext,
                                    uint8_t *const type)
 {
 	uint8_t *next_header;
-	uint8_t length;
 
 	*type = ext[0];
 
 	if(rohc_is_ipv6_opt(*type))
 	{
 		/* known extension headers */
-		length = ext[1];
+		const uint8_t length = ext[1];
 		next_header = (uint8_t *)(ext + (length + 1) * 8);
 	}
 	else

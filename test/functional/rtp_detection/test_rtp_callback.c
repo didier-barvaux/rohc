@@ -575,10 +575,9 @@ static void print_rohc_traces(void *const priv_ctxt,
                               const char *const format,
                               ...)
 {
-	va_list args;
-
 	if(is_verbose)
 	{
+		va_list args;
 		va_start(args, format);
 		vfprintf(stdout, format, args);
 		va_end(args);

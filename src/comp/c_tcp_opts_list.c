@@ -1245,8 +1245,6 @@ static uint8_t c_tcp_get_opt_index(const struct rohc_comp_ctxt *const context,
 	else /* TCP option doesn't have a reserved index */
 	{
 		int opt_idx_free = -1;
-		uint8_t oldest_idx = 0;
-		size_t oldest_idx_age = 0;
 
 		/* find the index that was used for the same option in previous packets... */
 		for(opt_idx = TCP_INDEX_GENERIC7;
@@ -1277,6 +1275,9 @@ static uint8_t c_tcp_get_opt_index(const struct rohc_comp_ctxt *const context,
 		 * packet, otherwise 2 options might get the same index) */
 		if(opt_idx_free < 0)
 		{
+			uint8_t oldest_idx = 0;
+			size_t oldest_idx_age = 0;
+
 			for(opt_idx = TCP_INDEX_GENERIC7; opt_idx <= MAX_TCP_OPTION_INDEX; opt_idx++)
 			{
 				if(!indexes_in_use[opt_idx] &&
