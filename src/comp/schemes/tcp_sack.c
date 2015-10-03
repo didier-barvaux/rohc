@@ -72,7 +72,8 @@ int c_tcp_opt_sack_code(const struct rohc_comp_ctxt *const context,
 	size_t i;
 	int ret;
 
-	rohc_comp_debug(context, "TCP option SACK (reference ACK = 0x%08x)", ack_value);
+	rohc_comp_debug(context, "%schanged TCP option SACK (reference ACK = 0x%08x)",
+	                (is_unchanged ? "un" : ""), ack_value);
 	rohc_dump_buf(context->compressor->trace_callback,
 	              context->compressor->trace_callback_priv,
 	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG, "TCP option SACK",
