@@ -269,7 +269,8 @@ static void usage(void)
  * @param ignore_malformed  do not exit with error code if malformed packets
  *                          are found
  * @return                  0 in case of success,
- *                          1 in case of failure
+ *                          1 in case of failure,
+ *                          77 if test is skipped
  */
 static int test_decomp(const char *const filename,
                        const size_t failure_start,
@@ -285,13 +286,14 @@ static int test_decomp(const char *const filename,
 	unsigned char *packet;
 	struct rohc_decomp *decomp;
 	unsigned int counter;
-	int is_failure = 1;
+	int test_status = 1;
 
 	/* open the source dump file */
 	handle = pcap_open_offline(filename, errbuf);
 	if(handle == NULL)
 	{
 		fprintf(stderr, "failed to open the source pcap file: %s\n", errbuf);
+		test_status = 77; /* skip test */
 		goto error;
 	}
 
@@ -304,6 +306,7 @@ static int test_decomp(const char *const filename,
 		fprintf(stderr, "link layer type %d not supported in source dump (supported = "
 		        "%d, %d, %d)\n", link_layer_type, DLT_EN10MB, DLT_LINUX_SLL,
 		        DLT_RAW);
+		test_status = 77; /* skip test */
 		goto close_input;
 	}
 
@@ -417,14 +420,14 @@ static int test_decomp(const char *const filename,
 		rohc_buf_reset(&send_feedback);
 	}
 
-	is_failure = 0;
+	test_status = 0;
 
 destroy_decomp:
 	rohc_decomp_free(decomp);
 close_input:
 	pcap_close(handle);
 error:
-	return is_failure;
+	return test_status;
 }
 
 
