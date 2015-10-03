@@ -930,6 +930,7 @@ static int rohc_list_parse_insertion_scheme(struct list_decomp *const decomp,
 	size_t mask_len; /* length (in bits) of the removal mask */
 	size_t item_read_len; /* the amount of bytes currently read in the item field */
 	size_t ref_list_cur_pos; /* current position in reference list */
+	int ref_list_miss; /* the index of the first missing item in reference list */
 	size_t xi_index; /* the index of the current XI in XI list */
 	size_t xi_len; /* the length (in bytes) of the XI list */
 	size_t k; /* the number of ones in insertion mask and the number of elements in XI list */
@@ -977,6 +978,7 @@ static int rohc_list_parse_insertion_scheme(struct list_decomp *const decomp,
 	xi_index = 0;
 	item_read_len = 0;
 	ref_list_cur_pos = 0;
+	ref_list_miss = -1;
 	for(i = 0; i < mask_len; i++)
 	{
 		uint8_t new_item_to_insert;
@@ -997,7 +999,7 @@ static int rohc_list_parse_insertion_scheme(struct list_decomp *const decomp,
 		if(!new_item_to_insert)
 		{
 			/* take the next item from reference list (if there no more item in
-			   reference list, do nothing) */
+			   reference list and no more new item, complain but do nothing) */
 			if(ref_list_cur_pos < ref_list->items_nr)
 			{
 				/* new list, insert the item from reference list */
@@ -1008,6 +1010,23 @@ static int rohc_list_parse_insertion_scheme(struct list_decomp *const decomp,
 				ins_list->items_nr++;
 				/* skip item in removal list */
 				ref_list_cur_pos++;
+			}
+			else
+			{
+				ref_list_miss = i;
+
+				if(xi_index < k)
+				{
+					rd_list_warn(decomp, "malformed compressed list based on reference "
+					             "list with %zu existing items and %zu additional new "
+					             "items: bit #%zu is not set in insertion mask, "
+					             "reference list do not contain item any more, but "
+					             "there is still new %zu item(s) to insert", items_nr,
+					             k, i + 1, k - xi_index);
+#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
+					goto error;
+#endif
+				}
 			}
 		}
 		else
@@ -1093,9 +1112,23 @@ static int rohc_list_parse_insertion_scheme(struct list_decomp *const decomp,
 
 			/* use new item from packet */
 			rd_list_debug(decomp, "use new item #%zu into current list (index "
-			              "%zu)", xi_index, i);
-			ins_list->items[i] = &(decomp->trans_table[xi_index_value]);
-			ins_list->items_nr++;
+			              "%zu)", xi_index + 1, i);
+			if(ref_list_miss >= 0)
+			{
+				rd_list_warn(decomp, "malformed compressed list based on reference "
+				             "list with %zu existing items and %zu additional new "
+				             "items: bit #%zu is set in insertion mask but bit #%d "
+				             "was not set and reference list did not contain item "
+				             "any more", items_nr, k, i + 1, ref_list_miss + 1);
+#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
+				goto error;
+#endif
+			}
+			else
+			{
+				ins_list->items[i] = &(decomp->trans_table[xi_index_value]);
+				ins_list->items_nr++;
+			}
 
 			/* skip the XI we have just parsed */
 			xi_index++;
