@@ -302,10 +302,7 @@ static int tcp_parse_static_ip(const struct rohc_decomp_ctxt *const context,
 		rohc_decomp_debug(context, "IPv6 header is followed by %zu extension "
 		                  "headers", ip_bits->opts_nr);
 	}
-	rohc_dump_buf(context->decompressor->trace_callback,
-	              context->decompressor->trace_callback_priv,
-	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
-	              "IP static part", rohc_packet, read);
+	rohc_decomp_dump_buf(context, "IP static part", rohc_packet, read);
 
 	return read;
 
@@ -422,10 +419,7 @@ static int tcp_parse_static_ipv6_option(const struct rohc_decomp_ctxt *const con
 	ip_bits->opts_len += opt_context->len;
 
 #if ROHC_EXTRA_DEBUG == 1
-	rohc_dump_buf(context->decompressor->trace_callback,
-	              context->decompressor->trace_callback_priv,
-	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
-	              "IPv6 option static part", rohc_packet, size);
+	rohc_decomp_dump_buf(context, "IPv6 option static part", rohc_packet, size);
 #endif
 
 	return size;
@@ -463,10 +457,8 @@ static int tcp_parse_static_tcp(const struct rohc_decomp_ctxt *const context,
 		                 rohc_length);
 		goto error;
 	}
-	rohc_dump_buf(context->decompressor->trace_callback,
-	              context->decompressor->trace_callback_priv,
-	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
-	              "TCP static part", rohc_packet, sizeof(tcp_static_t));
+	rohc_decomp_dump_buf(context, "TCP static part", rohc_packet,
+	                     sizeof(tcp_static_t));
 	tcp_static = (tcp_static_t *) rohc_packet;
 
 	/* TCP source port */

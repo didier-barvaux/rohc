@@ -222,6 +222,8 @@ typedef enum
 	ROHC_DECOMP_FEATURE_CRC_REPAIR   = (1 << 0),
 	/** Be compatible with 1.6.x versions */
 	ROHC_DECOMP_FEATURE_COMPAT_1_6_x = (1 << 1),
+	/** Dump content of packets in traces (beware: performance impact) */
+	ROHC_DECOMP_FEATURE_DUMP_PACKETS = (1 << 3),
 
 } rohc_decomp_features_t;
 

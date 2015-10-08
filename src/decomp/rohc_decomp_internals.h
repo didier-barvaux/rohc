@@ -55,6 +55,17 @@
 	           (context)->profile->id, \
 	           format, ##__VA_ARGS__)
 
+/** Dump a buffer for the given compression context */
+#define rohc_decomp_dump_buf(context, descr, buf, buf_len) \
+	do { \
+		if(((context)->decompressor->features & ROHC_DECOMP_FEATURE_DUMP_PACKETS) != 0) { \
+			rohc_dump_buf((context)->decompressor->trace_callback, \
+			              (context)->decompressor->trace_callback_priv, \
+			              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG, \
+			              descr, buf, buf_len); \
+		} \
+	} while(0)
+
 
 /*
  * Definitions of ROHC compression structures

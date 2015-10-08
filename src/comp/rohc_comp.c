@@ -576,9 +576,12 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 
 #if ROHC_EXTRA_DEBUG == 1
 	/* print uncompressed bytes */
-	rohc_dump_packet(comp->trace_callback, comp->trace_callback_priv,
-	                 ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
-	                 "uncompressed data, max 100 bytes", uncomp_packet);
+	if((comp->features & ROHC_COMP_FEATURE_DUMP_PACKETS) != 0)
+	{
+		rohc_dump_packet(comp->trace_callback, comp->trace_callback_priv,
+		                 ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
+		                 "uncompressed data, max 100 bytes", uncomp_packet);
+	}
 #endif
 
 	/* parse the uncompressed packet */
@@ -1757,7 +1760,9 @@ error:
 bool rohc_comp_set_features(struct rohc_comp *const comp,
                             const rohc_comp_features_t features)
 {
-	const rohc_comp_features_t all_features = ROHC_COMP_FEATURE_NO_IP_CHECKSUMS;
+	const rohc_comp_features_t all_features =
+		ROHC_COMP_FEATURE_NO_IP_CHECKSUMS |
+		ROHC_COMP_FEATURE_DUMP_PACKETS;
 
 	/* compressor must be valid */
 	if(comp == NULL)

@@ -1745,10 +1745,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 			goto error;
 		}
 	}
-	rohc_dump_buf(context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv,
-	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
-	              "current ROHC packet", rohc_pkt, counter);
+	rohc_comp_dump_buf(context, "current ROHC packet", rohc_pkt, counter);
 
 	rohc_comp_debug(context, "payload_offset = %zu", *payload_offset);
 
@@ -1900,11 +1897,8 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 		rohc_remain_data += ret;
 		rohc_remain_len -= ret;
 		rohc_hdr_len += ret;
-		rohc_dump_buf(context->compressor->trace_callback,
-		              context->compressor->trace_callback_priv,
-		              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
-		              "current ROHC packet (with static part)",
-		              rohc_pkt, rohc_hdr_len);
+		rohc_comp_dump_buf(context, "current ROHC packet (with static part)",
+		                   rohc_pkt, rohc_hdr_len);
 	}
 
 	/* add dynamic chain */
@@ -1921,11 +1915,8 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	rohc_remain_len -= ret;
 #endif
 	rohc_hdr_len += ret;
-	rohc_dump_buf(context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv,
-	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
-	              "current ROHC packet (with dynamic part)",
-	              rohc_pkt, rohc_hdr_len);
+	rohc_comp_dump_buf(context, "current ROHC packet (with dynamic part)",
+	                   rohc_pkt, rohc_hdr_len);
 
 	/* IR(-DYN) header was successfully built, compute the CRC */
 	rohc_pkt[crc_position] = crc_calculate(ROHC_CRC_TYPE_8, rohc_pkt,
@@ -1935,10 +1926,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	                rohc_hdr_len, rohc_pkt[crc_position]);
 
 	rohc_comp_debug(context, "IR(-DYN) packet, length %zu", rohc_hdr_len);
-	rohc_dump_buf(context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv,
-	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
-	              "current ROHC packet", rohc_pkt, rohc_hdr_len);
+	rohc_comp_dump_buf(context, "current ROHC packet", rohc_pkt, rohc_hdr_len);
 
 	return rohc_hdr_len;
 
@@ -2331,10 +2319,8 @@ static int tcp_code_static_ipv6_opt_part(const struct rohc_comp_ctxt *const cont
 	}
 
 #if ROHC_EXTRA_DEBUG == 1
-	rohc_dump_buf(context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv,
-	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
-	              "IPv6 option static part", rohc_data, ipv6_opt_static_len);
+	rohc_comp_dump_buf(context, "IPv6 option static part",
+	                   rohc_data, ipv6_opt_static_len);
 #endif
 
 	return ipv6_opt_static_len;
@@ -2396,10 +2382,8 @@ static int tcp_code_dynamic_ipv6_opt_part(const struct rohc_comp_ctxt *const con
 	}
 
 #if ROHC_EXTRA_DEBUG == 1
-	rohc_dump_buf(context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv,
-	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
-	              "IPv6 option dynamic part", rohc_data, ipv6_opt_dynamic_len);
+	rohc_comp_dump_buf(context, "IPv6 option dynamic part",
+	                   rohc_data, ipv6_opt_dynamic_len);
 #endif
 
 	return ipv6_opt_dynamic_len;
@@ -2442,10 +2426,8 @@ static int tcp_code_irregular_ipv6_opt_part(struct rohc_comp_ctxt *const context
 	}
 
 #if ROHC_EXTRA_DEBUG == 1
-	rohc_dump_buf(context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv,
-	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
-	              "IPv6 option irregular part", rohc_data, irreg_ipv6_opt_len);
+	rohc_comp_dump_buf(context, "IPv6 option irregular part",
+	                   rohc_data, irreg_ipv6_opt_len);
 #endif
 
 	return irreg_ipv6_opt_len;
@@ -2486,10 +2468,7 @@ static int tcp_code_static_ipv4_part(const struct rohc_comp_ctxt *const context,
 	ipv4_static->dst_addr = ipv4->daddr;
 
 #if ROHC_EXTRA_DEBUG == 1
-	rohc_dump_buf(context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv,
-	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
-	              "IPv4 static part", rohc_data, ipv4_static_len);
+	rohc_comp_dump_buf(context, "IPv4 static part", rohc_data, ipv4_static_len);
 #endif
 
 	return ipv4_static_len;
@@ -2562,10 +2541,7 @@ static int tcp_code_static_ipv6_part(const struct rohc_comp_ctxt *const context,
 	rohc_comp_debug(context, "IPv6 next header = %u", ipv6->nh);
 
 #if ROHC_EXTRA_DEBUG == 1
-	rohc_dump_buf(context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv,
-	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
-	              "IPv6 static part", rohc_data, ipv6_static_len);
+	rohc_comp_dump_buf(context, "IPv6 static part", rohc_data, ipv6_static_len);
 #endif
 
 	return ipv6_static_len;
@@ -2677,10 +2653,7 @@ static int tcp_code_dynamic_ipv4_part(const struct rohc_comp_ctxt *const context
 	ip_context->ctxt.v4.last_ip_id = rohc_ntoh16(ipv4->id);
 
 #if ROHC_EXTRA_DEBUG == 1
-	rohc_dump_buf(context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv,
-	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
-	              "IPv4 dynamic part", rohc_data, ipv4_dynamic_len);
+	rohc_comp_dump_buf(context, "IPv4 dynamic part", rohc_data, ipv4_dynamic_len);
 #endif
 
 	return ipv4_dynamic_len;
@@ -2730,10 +2703,7 @@ static int tcp_code_dynamic_ipv6_part(const struct rohc_comp_ctxt *const context
 	ip_context->ctxt.v6.ttl_hopl = ipv6->hl;
 
 #if ROHC_EXTRA_DEBUG == 1
-	rohc_dump_buf(context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv,
-	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
-	              "IP dynamic part", rohc_data, ipv6_dynamic_len);
+	rohc_comp_dump_buf(context, "IP dynamic part", rohc_data, ipv6_dynamic_len);
 #endif
 
 	return ipv6_dynamic_len;
@@ -2979,11 +2949,8 @@ static int tcp_code_irregular_ipv4_part(const struct rohc_comp_ctxt *const conte
 	}
 
 #if ROHC_EXTRA_DEBUG == 1
-	rohc_dump_buf(context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv,
-	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
-	              "IP irregular part",
-	              rohc_data, rohc_max_len - rohc_remain_len);
+	rohc_comp_dump_buf(context, "IP irregular part", rohc_data,
+	                   rohc_max_len - rohc_remain_len);
 #endif
 
 	return (rohc_max_len - rohc_remain_len);
@@ -3070,11 +3037,8 @@ static int tcp_code_irregular_ipv6_part(const struct rohc_comp_ctxt *const conte
 	}
 
 #if ROHC_EXTRA_DEBUG == 1
-	rohc_dump_buf(context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv,
-	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
-	              "IP irregular part",
-	              rohc_data, rohc_max_len - rohc_remain_len);
+	rohc_comp_dump_buf(context, "IP irregular part", rohc_data,
+	                   rohc_max_len - rohc_remain_len);
 #endif
 
 	return (rohc_max_len - rohc_remain_len);
@@ -3114,10 +3078,7 @@ static int tcp_code_static_tcp_part(const struct rohc_comp_ctxt *const context,
 	tcp_static_t *const tcp_static = (tcp_static_t *) rohc_data;
 	const size_t tcp_static_len = sizeof(tcp_static_t);
 
-	rohc_dump_buf(context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv,
-	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
-	              "TCP header", (uint8_t *) tcp, sizeof(struct tcphdr));
+	rohc_comp_dump_buf(context, "TCP header", (uint8_t *) tcp, sizeof(struct tcphdr));
 
 	if(rohc_max_len < tcp_static_len)
 	{
@@ -3135,10 +3096,7 @@ static int tcp_code_static_tcp_part(const struct rohc_comp_ctxt *const context,
 	rohc_comp_debug(context, "TCP destination port = %d (0x%04x)",
 	                rohc_ntoh16(tcp->dst_port), rohc_ntoh16(tcp->dst_port));
 
-	rohc_dump_buf(context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv,
-	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
-	              "TCP static part", rohc_data, tcp_static_len);
+	rohc_comp_dump_buf(context, "TCP static part", rohc_data, tcp_static_len);
 
 	return tcp_static_len;
 
@@ -3331,10 +3289,8 @@ static int tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *const context,
 		rohc_remain_len -= ret;
 	}
 
-	rohc_dump_buf(context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv,
-	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG, "TCP dynamic part",
-	              rohc_data, rohc_max_len - rohc_remain_len);
+	rohc_comp_dump_buf(context, "TCP dynamic part", rohc_data,
+	                   rohc_max_len - rohc_remain_len);
 
 	return (rohc_max_len - rohc_remain_len);
 
@@ -3414,11 +3370,8 @@ static int tcp_code_irregular_tcp_part(const struct rohc_comp_ctxt *const contex
 	rohc_remain_len -= ret;
 
 #if ROHC_EXTRA_DEBUG == 1
-	rohc_dump_buf(context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv,
-	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
-	              "TCP irregular part",
-	              rohc_data, rohc_max_len - rohc_remain_len);
+	rohc_comp_dump_buf(context, "TCP irregular part", rohc_data,
+	                   rohc_max_len - rohc_remain_len);
 #endif
 
 	return (rohc_max_len - rohc_remain_len);
@@ -3673,10 +3626,8 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 		rohc_pkt[pos_2nd_byte - 1] = save_first_byte;
 	}
 
-	rohc_dump_buf(context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv,
-	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
-	              "CO packet", rohc_pkt, rohc_pkt_max_len - rohc_remain_len);
+	rohc_comp_dump_buf(context, "CO packet", rohc_pkt,
+	                   rohc_pkt_max_len - rohc_remain_len);
 
 	return (rohc_pkt_max_len - rohc_remain_len);
 
@@ -3813,10 +3764,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 	}
 	rohc_hdr_len += ret;
 
-	rohc_dump_buf(context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv,
-	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
-	              "co_header", rohc_pkt, rohc_hdr_len);
+	rohc_comp_dump_buf(context, "co_header", rohc_pkt, rohc_hdr_len);
 
 	/* update context with new values (done at the very end to avoid wrongly
 	 * updating the context in case of compression failure) */

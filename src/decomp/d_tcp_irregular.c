@@ -219,10 +219,7 @@ static int tcp_parse_irregular_ip(const struct rohc_decomp_ctxt *const context,
 	}
 
 #if ROHC_EXTRA_DEBUG == 1
-	rohc_dump_buf(context->decompressor->trace_callback,
-	              context->decompressor->trace_callback_priv,
-	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
-	              "IP irregular part", rohc_data, ret);
+	rohc_decomp_dump_buf(context, "IP irregular part", rohc_data, ret);
 #endif
 
 	return ret;
@@ -500,10 +497,8 @@ static int tcp_parse_irregular_tcp(const struct rohc_decomp_ctxt *const context,
 #endif
 	remain_len -= ret;
 
-	rohc_dump_buf(context->decompressor->trace_callback,
-	              context->decompressor->trace_callback_priv,
-	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
-	              "TCP irregular part", rohc_data, rohc_data_len - remain_len);
+	rohc_decomp_dump_buf(context, "TCP irregular part", rohc_data,
+	                     rohc_data_len - remain_len);
 
 	return (rohc_data_len - remain_len);
 
