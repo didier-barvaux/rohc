@@ -929,7 +929,7 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 	while(rohc_is_tunneling(proto) && tcp_context->ip_contexts_nr < ROHC_TCP_MAX_IP_HDRS);
 
 	/* profile cannot handle the packet if it bypasses internal limit of IP headers */
-	if(tcp_context->ip_contexts_nr > ROHC_TCP_MAX_IP_HDRS)
+	if(rohc_is_tunneling(proto))
 	{
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "too many IP headers for TCP profile (%u headers max)",
@@ -1281,7 +1281,7 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 	while(rohc_is_tunneling(next_proto) && ip_hdrs_nr < ROHC_TCP_MAX_IP_HDRS);
 
 	/* profile cannot handle the packet if it bypasses internal limit of IP headers */
-	if(ip_hdrs_nr > ROHC_TCP_MAX_IP_HDRS)
+	if(rohc_is_tunneling(next_proto))
 	{
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "too many IP headers for TCP profile (%u headers max)",
