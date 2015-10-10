@@ -2731,6 +2731,11 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 			rohc_decomp_debug(context, "  IP-ID = 0x%04x (decoded from "
 			                  "%zu-bit 0x%x with p = %d)", ip_decoded->id,
 			                  ip_bits->id.bits_nr, ip_bits->id.bits, ip_bits->id.p);
+
+			if(ip_id_behavior == IP_ID_BEHAVIOR_SEQ_SWAP)
+			{
+				ip_decoded->id = swab16(ip_decoded->id);
+			}
 		}
 		else if(ip_id_behavior == IP_ID_BEHAVIOR_ZERO)
 		{
@@ -3648,14 +3653,7 @@ static bool d_tcp_build_ipv4_hdr(const struct rohc_decomp_ctxt *const context,
 	rohc_decomp_debug(context, "    DSCP = 0x%02x, ip_ecn_flags = %d",
 	                  ipv4->dscp, ipv4->ecn);
 	/* IP-ID */
-	if(decoded->id_behavior == IP_ID_BEHAVIOR_SEQ_SWAP)
-	{
-		ipv4->id = rohc_hton16(swab16(decoded->id));
-	}
-	else
-	{
-		ipv4->id = rohc_hton16(decoded->id);
-	}
+	ipv4->id = rohc_hton16(decoded->id);
 	rohc_decomp_debug(context, "    %s IP-ID = 0x%04x",
 	                  tcp_ip_id_behavior_get_descr(decoded->id_behavior),
 	                  rohc_ntoh16(ipv4->id));
@@ -4113,7 +4111,15 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 
 			if(is_inner)
 			{
-				const uint16_t ip_id_offset = ip_context->ctxt.v4.ip_id - msn;
+				uint16_t ip_id_offset;
+				if(ip_decoded->id_behavior == IP_ID_BEHAVIOR_SEQ_SWAP)
+				{
+					ip_id_offset = swab16(ip_context->ctxt.v4.ip_id) - msn;
+				}
+				else
+				{
+					ip_id_offset = ip_context->ctxt.v4.ip_id - msn;
+				}
 				rohc_lsb_set_ref(tcp_context->ip_id_lsb_ctxt, ip_id_offset, false);
 				rohc_decomp_debug(context, "innermost IP-ID offset 0x%04x is the new "
 				                  "reference", ip_id_offset);

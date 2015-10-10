@@ -86,7 +86,7 @@ unsigned int rsf_index_enc(const uint8_t rsf_flags)
 
 /* optional_ip_id_lsb encoding method */
 int c_optional_ip_id_lsb(const int behavior,
-                         const uint16_t ip_id,
+                         const uint16_t ip_id_nbo,
                          const uint16_t ip_id_offset,
                          const size_t nr_bits_wlsb,
                          uint8_t *const rohc_data,

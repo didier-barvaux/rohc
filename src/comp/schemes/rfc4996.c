@@ -370,8 +370,8 @@ unsigned int rsf_index_enc(const uint8_t rsf_flags)
  * See RFC4996 page 76
  *
  * @param behavior         The IP-ID behavior
- * @param ip_id            The IP-ID value to compress
- * @param ip_id_offset     The IP-ID offset value to compress
+ * @param ip_id_nbo        The IP-ID value to compress (in NBO)
+ * @param ip_id_offset     The IP-ID offset value to compress (in HBO)
  * @param nr_bits_wlsb     The number of IP-ID offset bits required for W-LSB
  * @param[out] rohc_data   The compressed value
  * @param rohc_max_len     The max remaining length in the ROHC buffer
@@ -380,7 +380,7 @@ unsigned int rsf_index_enc(const uint8_t rsf_flags)
  *                         -1 if a problem occurs
  */
 int c_optional_ip_id_lsb(const int behavior,
-                         const uint16_t ip_id,
+                         const uint16_t ip_id_nbo,
                          const uint16_t ip_id_offset,
                          const size_t nr_bits_wlsb,
                          uint8_t *const rohc_data,
@@ -405,7 +405,6 @@ int c_optional_ip_id_lsb(const int behavior,
 			}
 			else
 			{
-				const uint16_t ip_id_nbo = rohc_hton16(ip_id);
 				if(rohc_max_len < sizeof(uint16_t))
 				{
 					goto error;

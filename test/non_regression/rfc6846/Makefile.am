@@ -88,6 +88,7 @@ TESTS_MAXCONTEXTS0_WLSB4_SMALLCID = \
 	test_non_regression_ipv4_tcp_sack-unchanged-irregular_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_tcp_many-eol-opts_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_tcp_many-nop-opts_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_ip-id-swapped_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv6_tcp_uk6x_maxcontexts0_wlsb4_smallcid.sh
 
 
@@ -173,6 +174,7 @@ TESTS_MAXCONTEXTS0_WLSB64_SMALLCID = \
 	test_non_regression_ipv4_tcp_sack-unchanged-irregular_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_tcp_many-eol-opts_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_tcp_many-nop-opts_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_ip-id-swapped_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv6_tcp_uk6x_maxcontexts0_wlsb64_smallcid.sh
 
 
@@ -263,6 +265,7 @@ TESTS_MAXCONTEXTS1_WLSB4_SMALLCID = \
 	test_non_regression_ipv4_tcp_sack-unchanged-irregular_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_tcp_many-eol-opts_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_tcp_many-nop-opts_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_ip-id-swapped_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv6_tcp_uk6x_maxcontexts1_wlsb4_smallcid.sh
 
 
@@ -348,6 +351,7 @@ TESTS_MAXCONTEXTS1_WLSB64_SMALLCID = \
 	test_non_regression_ipv4_tcp_sack-unchanged-irregular_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_tcp_many-eol-opts_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_tcp_many-nop-opts_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_ip-id-swapped_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv6_tcp_uk6x_maxcontexts1_wlsb64_smallcid.sh
 
 
@@ -443,6 +447,7 @@ TESTS_MAXCONTEXTS0_WLSB4_LARGECID = \
 	test_non_regression_ipv4_tcp_sack-unchanged-irregular_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv4_tcp_many-eol-opts_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv4_tcp_many-nop-opts_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_ip-id-swapped_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv6_tcp_uk6x_maxcontexts0_wlsb4_largecid.sh
 
 
@@ -528,6 +533,7 @@ TESTS_MAXCONTEXTS0_WLSB64_LARGECID = \
 	test_non_regression_ipv4_tcp_sack-unchanged-irregular_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv4_tcp_many-eol-opts_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv4_tcp_many-nop-opts_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_ip-id-swapped_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv6_tcp_uk6x_maxcontexts0_wlsb64_largecid.sh
 
 
@@ -618,6 +624,7 @@ TESTS_MAXCONTEXTS1_WLSB4_LARGECID = \
 	test_non_regression_ipv4_tcp_sack-unchanged-irregular_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv4_tcp_many-eol-opts_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv4_tcp_many-nop-opts_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_ip-id-swapped_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv6_tcp_uk6x_maxcontexts1_wlsb4_largecid.sh
 
 
@@ -703,6 +710,7 @@ TESTS_MAXCONTEXTS1_WLSB64_LARGECID = \
 	test_non_regression_ipv4_tcp_sack-unchanged-irregular_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv4_tcp_many-eol-opts_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv4_tcp_many-nop-opts_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_ip-id-swapped_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv6_tcp_uk6x_maxcontexts1_wlsb64_largecid.sh
 
 

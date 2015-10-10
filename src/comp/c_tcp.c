@@ -127,8 +127,6 @@ struct tcp_tmp_variables
 	 * number */
 	size_t nr_ack_scaled_bits;
 
-	/** The current IP-ID value (if IPv4) */
-	uint16_t ip_id;
 	/** The IP-ID / SN delta (with bits swapped if necessary) */
 	uint16_t ip_id_delta;
 	/** Whether the behavior of the IP-ID field changed with current packet */
@@ -2259,7 +2257,7 @@ static int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
 		const struct ipv4_hdr *const inner_ipv4 = (struct ipv4_hdr *) inner_ip_hdr;
 		inner_ip_context->ctxt.v4.last_ip_id_behavior =
 			inner_ip_context->ctxt.v4.ip_id_behavior;
-		inner_ip_context->ctxt.v4.last_ip_id = tcp_context->tmp.ip_id;
+		inner_ip_context->ctxt.v4.last_ip_id = rohc_ntoh16(inner_ipv4->id);
 		inner_ip_context->ctxt.v4.df = inner_ipv4->df;
 		inner_ip_context->ctxt.vx.dscp = inner_ipv4->dscp;
 	}
@@ -2677,7 +2675,6 @@ static int tcp_code_dynamic_ipv4_part(const struct rohc_comp_ctxt *const context
 	else
 	{
 		ipv4_dynamic2_t *const ipv4_dynamic2 = (ipv4_dynamic2_t *) rohc_data;
-		uint16_t ip_id_nbo;
 
 		ipv4_dynamic_len = sizeof(ipv4_dynamic2_t);
 		if(rohc_max_len < ipv4_dynamic_len)
@@ -2688,17 +2685,9 @@ static int tcp_code_dynamic_ipv4_part(const struct rohc_comp_ctxt *const context
 			goto error;
 		}
 
-		if(ipv4_dynamic2->ip_id_behavior == IP_ID_BEHAVIOR_SEQ_SWAP)
-		{
-			ip_id_nbo = swab16(ipv4->id);
-		}
-		else
-		{
-			ip_id_nbo = ipv4->id;
-		}
-		ipv4_dynamic2->ip_id = ip_id_nbo;
+		ipv4_dynamic2->ip_id = ipv4->id;
 		rohc_comp_debug(context, "ip_id_behavior = %d, IP-ID = 0x%04x",
-		                ipv4_dynamic1->ip_id_behavior, rohc_ntoh16(ip_id_nbo));
+		                ipv4_dynamic1->ip_id_behavior, rohc_ntoh16(ipv4->id));
 	}
 
 	/* TODO: should not update context there */
@@ -3850,7 +3839,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 	{
 		const struct ipv4_hdr *const inner_ipv4 = (struct ipv4_hdr *) inner_ip_hdr;
 		inner_ip_ctxt->ctxt.v4.last_ip_id_behavior = inner_ip_ctxt->ctxt.v4.ip_id_behavior;
-		inner_ip_ctxt->ctxt.v4.last_ip_id = tcp_context->tmp.ip_id;
+		inner_ip_ctxt->ctxt.v4.last_ip_id = rohc_ntoh16(inner_ipv4->id);
 		inner_ip_ctxt->ctxt.v4.df = inner_ipv4->df;
 		inner_ip_ctxt->ctxt.vx.dscp = inner_ipv4->dscp;
 	}
@@ -4993,14 +4982,15 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 	/* innermost IP-ID */
 	if(inner_ip_hdr->version == IPV4)
 	{
+		const struct ipv4_hdr *const inner_ipv4 = (struct ipv4_hdr *) inner_ip_hdr;
 		// =:= irregular(1) [ 1 ];
 		rohc_comp_debug(context, "optional_ip_id_lsb(behavior = %d, IP-ID = 0x%04x, "
 		                "IP-ID offset = 0x%04x, nr of bits required for WLSB encoding "
 		                "= %zu)", inner_ip_ctxt->ctxt.v4.ip_id_behavior,
-		                tcp_context->tmp.ip_id, tcp_context->tmp.ip_id_delta,
+		                rohc_ntoh16(inner_ipv4->id), tcp_context->tmp.ip_id_delta,
 		                tcp_context->tmp.nr_ip_id_bits_3);
 		ret = c_optional_ip_id_lsb(inner_ip_ctxt->ctxt.v4.ip_id_behavior,
-		                           tcp_context->tmp.ip_id,
+		                           inner_ipv4->id,
 		                           tcp_context->tmp.ip_id_delta,
 		                           tcp_context->tmp.nr_ip_id_bits_3,
 		                           co_common_opt, rohc_remain_len, &indicator);
@@ -5734,8 +5724,7 @@ static bool tcp_encode_uncomp_ip_fields(struct rohc_comp_ctxt *const context,
 	if(inner_ip_version == IPV4)
 	{
 		const struct ipv4_hdr *const inner_ipv4 = (struct ipv4_hdr *) inner_ip_hdr;
-
-		tcp_context->tmp.ip_id = rohc_ntoh16(inner_ipv4->id);
+		const uint16_t ip_id = rohc_ntoh16(inner_ipv4->id);
 
 		/* does IP-ID behavior changed? */
 		tcp_context->tmp.ip_id_behavior_changed =
@@ -5746,15 +5735,14 @@ static bool tcp_encode_uncomp_ip_fields(struct rohc_comp_ctxt *const context,
 		/* compute the new IP-ID / SN delta */
 		if(inner_ip_ctxt->ctxt.v4.ip_id_behavior == IP_ID_BEHAVIOR_SEQ)
 		{
-			tcp_context->tmp.ip_id_delta = tcp_context->tmp.ip_id - tcp_context->msn;
+			tcp_context->tmp.ip_id_delta = ip_id - tcp_context->msn;
 			rohc_comp_debug(context, "new outer IP-ID delta = 0x%x / %u (behavior = %d)",
 			                tcp_context->tmp.ip_id_delta, tcp_context->tmp.ip_id_delta,
 			                inner_ip_ctxt->ctxt.v4.ip_id_behavior);
 		}
 		else if(inner_ip_ctxt->ctxt.v4.ip_id_behavior == IP_ID_BEHAVIOR_SEQ_SWAP)
 		{
-			tcp_context->tmp.ip_id = swab16(tcp_context->tmp.ip_id);
-			tcp_context->tmp.ip_id_delta = tcp_context->tmp.ip_id - tcp_context->msn;
+			tcp_context->tmp.ip_id_delta = swab16(ip_id) - tcp_context->msn;
 			rohc_comp_debug(context, "new outer IP-ID delta = 0x%x / %u (behavior = %d)",
 			                tcp_context->tmp.ip_id_delta, tcp_context->tmp.ip_id_delta,
 			                inner_ip_ctxt->ctxt.v4.ip_id_behavior);
@@ -5812,7 +5800,6 @@ static bool tcp_encode_uncomp_ip_fields(struct rohc_comp_ctxt *const context,
 		const struct ipv6_hdr *const inner_ipv6 = (struct ipv6_hdr *) inner_ip_hdr;
 
 		/* no IP-ID for IPv6 */
-		tcp_context->tmp.ip_id = 0;
 		tcp_context->tmp.ip_id_delta = 0;
 		tcp_context->tmp.ip_id_behavior_changed = false;
 		tcp_context->tmp.nr_ip_id_bits_3 = 0;
@@ -6759,8 +6746,9 @@ static tcp_ip_id_behavior_t tcp_detect_ip_id_behavior(const uint16_t last_ip_id,
 	else
 	{
 		const uint16_t swapped_last_ip_id = swab16(last_ip_id);
+		const uint16_t swapped_new_ip_id = swab16(new_ip_id);
 
-		if(is_ip_id_increasing(swapped_last_ip_id, new_ip_id))
+		if(is_ip_id_increasing(swapped_last_ip_id, swapped_new_ip_id))
 		{
 			behavior = IP_ID_BEHAVIOR_SEQ_SWAP;
 		}
