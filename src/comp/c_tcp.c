@@ -2956,7 +2956,7 @@ static int tcp_code_irregular_ipv4_part(const struct rohc_comp_ctxt *const conte
 		memcpy(rohc_remain_data, &ipv4->id, sizeof(uint16_t));
 		rohc_remain_data += sizeof(uint16_t);
 		rohc_remain_len -= sizeof(uint16_t);
-		rohc_comp_debug(context, "add ip_id 0x%04x", rohc_ntoh16(ipv4->id));
+		rohc_comp_debug(context, "random IP-ID 0x%04x", rohc_ntoh16(ipv4->id));
 	}
 
 	if(!is_innermost)
@@ -2974,7 +2974,7 @@ static int tcp_code_irregular_ipv4_part(const struct rohc_comp_ctxt *const conte
 				goto error;
 			}
 			rohc_remain_data[0] = ipv4->dscp_ecn;
-			rohc_comp_debug(context, "add DSCP and ip_ecn_flags = 0x%02x",
+			rohc_comp_debug(context, "DSCP / ip_ecn_flags = 0x%02x",
 			                rohc_remain_data[0]);
 			rohc_remain_data++;
 			rohc_remain_len--;
@@ -2992,7 +2992,7 @@ static int tcp_code_irregular_ipv4_part(const struct rohc_comp_ctxt *const conte
 				goto error;
 			}
 			rohc_remain_data[0] = ipv4->ttl;
-			rohc_comp_debug(context, "add ttl_hopl = 0x%02x", rohc_remain_data[0]);
+			rohc_comp_debug(context, "ttl_hopl = 0x%02x", rohc_remain_data[0]);
 			rohc_remain_data++;
 			rohc_remain_len--;
 		}
@@ -5277,6 +5277,8 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 			rohc_comp_warn(context, "unknown IP header with version %u", ip->version);
 			goto error;
 		}
+
+		ip_hdrs_nr++;
 	}
 	while(protocol != ROHC_IPPROTO_TCP && hdrs_len < uncomp_pkt->outer_ip.size);
 
