@@ -1611,6 +1611,7 @@ static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
 				rohc_comp_debug(context, "  not same IPv6 flow label");
 				goto bad_context;
 			}
+			rohc_comp_debug(context, "  same IPv6 flow label");
 
 			/* check next header protocol */
 			next_proto = ipv6->nh;
@@ -1627,7 +1628,7 @@ static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
 
 			/* check IPv6 extension headers */
 			for(ip_ext_pos = 0;
-			    ip_ext_pos < ip_context->ctxt.v6.opts_nr && rohc_is_tunneling(next_proto);
+			    ip_ext_pos < ip_context->ctxt.v6.opts_nr && rohc_is_ipv6_opt(next_proto);
 			    ip_ext_pos++)
 			{
 				const ipv6_option_context_t *const opt_ctxt =
@@ -1655,12 +1656,14 @@ static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
 			}
 			if(ip_ext_pos < ip_context->ctxt.v6.opts_nr)
 			{
-				rohc_comp_debug(context, "  less IP extension headers than context");
+				rohc_comp_debug(context, "  less IP extension headers (%zu) than "
+				                "context (%zu)", ip_ext_pos, ip_context->ctxt.v6.opts_nr);
 				goto bad_context;
 			}
-			if(rohc_is_tunneling(next_proto))
+			if(rohc_is_ipv6_opt(next_proto))
 			{
-				rohc_comp_debug(context, "  more IP extension headers than context");
+				rohc_comp_debug(context, "  more IP extension headers (%zu+) than "
+				                "context (%zu)", ip_ext_pos, ip_context->ctxt.v6.opts_nr);
 				goto bad_context;
 			}
 		}
