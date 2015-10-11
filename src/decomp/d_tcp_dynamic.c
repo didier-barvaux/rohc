@@ -104,6 +104,9 @@ bool tcp_parse_dyn_chain(const struct rohc_decomp_ctxt *const context,
 		(*parsed_len) += ret;
 	}
 
+	/* TTL/HL values of outer IP headers are included in the dynamic chain */
+	bits->ttl_dyn_chain_flag = true;
+
 	/* parse TCP dynamic part */
 	ret = tcp_parse_dynamic_tcp(context, remain_data, remain_len, bits);
 	if(ret < 0)

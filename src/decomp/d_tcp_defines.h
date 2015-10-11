@@ -374,7 +374,9 @@ struct rohc_tcp_extr_bits
 	/** The extracted bits of the Master Sequence Number (MSN) of the packet */
 	struct rohc_lsb_field16 msn;
 
-	/** Whether at least one of IP headers changed its TTL/HL */
+	/** Whether TTL/HL of outer IP headers is included in the dynamic chain */
+	bool ttl_dyn_chain_flag;
+	/** Whether TTL/HL of outer IP headers is included in the irregular chain */
 	bool ttl_irreg_chain_flag;
 
 	/* TCP header */
@@ -446,6 +448,11 @@ struct rohc_tcp_decoded_values
 
 	/** The Master Sequence Number (MSN) of the packet */
 	uint16_t msn;
+
+	/** Whether TTL/HL of outer IP headers is included in the dynamic chain */
+	bool ttl_dyn_chain_flag;
+	/** Whether TTL/HL of outer IP headers is included in the irregular chain */
+	bool ttl_irreg_chain_flag;
 
 	/* TCP source & destination ports */
 	uint16_t src_port;        /**< The TCP source port */

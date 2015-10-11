@@ -2508,7 +2508,8 @@ static void d_tcp_reset_extr_bits(const struct rohc_decomp_ctxt *const context,
 		bits->ip_nr = tcp_context->ip_contexts_nr;
 	}
 
-	/* by default there is no TTL/HL field in the irregular chain */
+	/* by default there is no TTL/HL field in the dynamic/irregular chain */
+	bits->ttl_dyn_chain_flag = false;
 	bits->ttl_irreg_chain_flag = false;
 
 	/* default constant LSB shift parameters */
@@ -2573,6 +2574,11 @@ static bool d_tcp_decode_bits(const struct rohc_decomp_ctxt *const context,
 		rohc_decomp_debug(context, "decoded MSN = 0x%04x (%zu bits 0x%x)",
 		                  decoded->msn, bits->msn.bits_nr, bits->msn.bits);
 	}
+
+	/* flag telling whether the dynamic/irregular chains contain the TTL/HL
+	 * values of the outer IP headers */
+	decoded->ttl_dyn_chain_flag = bits->ttl_dyn_chain_flag;
+	decoded->ttl_irreg_chain_flag = bits->ttl_irreg_chain_flag;
 
 	/* decode IP headers */
 	if(!d_tcp_decode_bits_ip_hdrs(context, bits, decoded))
@@ -2751,7 +2757,7 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 		goto error;
 	}
 
-	/* decode innermost TTL/HL */
+	/* decode TTL/HL */
 	if(ip_bits->ttl_hl.bits_nr == 8)
 	{
 		ip_decoded->ttl = ip_bits->ttl_hl.bits;
@@ -3673,8 +3679,8 @@ static bool d_tcp_build_ipv4_hdr(const struct rohc_decomp_ctxt *const context,
 	ipv4->dscp = decoded->dscp;
 	ipv4->ecn = decoded->ecn_flags;
 	ipv4->ttl = decoded->ttl;
-	rohc_decomp_debug(context, "    DSCP = 0x%02x, ip_ecn_flags = %d",
-	                  ipv4->dscp, ipv4->ecn);
+	rohc_decomp_debug(context, "    DSCP = 0x%02x, ip_ecn_flags = %d, TTL = %u",
+	                  ipv4->dscp, ipv4->ecn, ipv4->ttl);
 	/* IP-ID */
 	ipv4->id = rohc_hton16(decoded->id);
 	rohc_decomp_debug(context, "    %s IP-ID = 0x%04x",
@@ -3745,6 +3751,8 @@ static bool d_tcp_build_ipv6_hdr(const struct rohc_decomp_ctxt *const context,
 	/* dynamic part */
 	ipv6_set_dscp_ecn(ipv6, decoded->dscp, decoded->ecn_flags);
 	ipv6->hl = decoded->ttl;
+	rohc_decomp_debug(context, "    DSCP = 0x%02x, ip_ecn_flags = %d, HL = %u",
+	                  decoded->dscp, decoded->ecn_flags, ipv6->hl);
 
 	/* total length will be computed once all headers are built */
 
@@ -4118,10 +4126,19 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 		ip_context->ctxt.vx.dscp = ip_decoded->dscp;
 		ip_context->ctxt.vx.ip_ecn_flags = ip_decoded->ecn_flags;
 		ip_context->ctxt.vx.next_header = ip_decoded->proto;
-		ip_context->ctxt.vx.ttl_hopl = ip_decoded->ttl;
-		if(is_inner)
+
+		/* update context with new TTL/HL for the innermost IP header and for :
+		 *  - for the innermost IP header,
+		 *  - for the outer IP headers if TTL/HL was transmitted in dynamic chain
+		 * do not update context with new TTL/HL:
+		 *  - for the outer IP headers if TTL/HL was transmitted in irregular chain */
+		if(is_inner || decoded->ttl_dyn_chain_flag)
 		{
-			rohc_lsb_set_ref(tcp_context->ttl_hl_lsb_ctxt, ip_decoded->ttl, false);
+			ip_context->ctxt.vx.ttl_hopl = ip_decoded->ttl;
+			if(is_inner)
+			{
+				rohc_lsb_set_ref(tcp_context->ttl_hl_lsb_ctxt, ip_decoded->ttl, false);
+			}
 		}
 		ip_context->ctxt.vx.ip_id_behavior = ip_decoded->id_behavior;
 
