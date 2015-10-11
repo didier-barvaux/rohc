@@ -3043,16 +3043,12 @@ static bool d_tcp_decode_bits_tcp_hdr(const struct rohc_decomp_ctxt *const conte
 	 * but not both */
 	assert(bits->ack.bits_nr == 0 || bits->ack_scaled.bits_nr == 0);
 
-	/* TCP ACK stride */
-	if(bits->ack_stride.bits_nr > 0)
-	{
-		assert(bits->ack_stride.bits_nr == 16);
-		decoded->ack_stride = bits->ack_stride.bits;
-	}
-
 	/* TCP unscaled & scaled acknowledgement number */
 	if(bits->ack_scaled.bits_nr > 0)
 	{
+		/* ack_stride is never transmitted in same packet as scaled ACK */
+		assert(bits->ack_stride.bits_nr == 0);
+
 		/* decode scaled acknowledgement number from packet bits and context */
 		if(!rohc_lsb_decode(tcp_context->ack_scaled_lsb_ctxt, ROHC_LSB_REF_0, 0,
 		                    bits->ack_scaled.bits, bits->ack_scaled.bits_nr,
@@ -3068,19 +3064,24 @@ static bool d_tcp_decode_bits_tcp_hdr(const struct rohc_decomp_ctxt *const conte
 		                  bits->ack_scaled.bits_nr, bits->ack_scaled.bits,
 		                  bits->ack_scaled.p);
 
+		/* TCP ACK stride
+		 * (ack_stride is never transmitted in same packet as scaled ACK) */
+		decoded->ack_stride = tcp_context->ack_stride;
+		decoded->ack_num_residue = tcp_context->ack_num_residue;
+
 		/* decode acknowledgement number from scaled acknowledgement number */
-		if(payload_len == 0)
+		if(decoded->ack_stride == 0)
 		{
 			rohc_decomp_warn(context, "cannot use scaled TCP acknowledgement "
-			                 "numnber for a packet with an empty payload");
+			                 "number for a packet with a zero ack_stride");
 			goto error;
 		}
-		decoded->ack_num = decoded->ack_num_scaled * payload_len +
-		                   tcp_context->ack_num_residue;
-		rohc_decomp_debug(context, "  ack_number_scaled = 0x%x, payload size = %zu, "
-		                  "ack_number_residue = 0x%x -> ack_number = 0x%x",
-		                  decoded->ack_num_scaled, payload_len,
-		                  tcp_context->ack_num_residue, decoded->ack_num);
+		decoded->ack_num = decoded->ack_num_scaled * decoded->ack_stride +
+		                   decoded->ack_num_residue;
+		rohc_decomp_debug(context, "  ack_number_scaled = 0x%08x, ack_stride = 0x%04x, "
+		                  "ack_number_residue = 0x%04x -> ack_number = 0x%08x",
+		                  decoded->ack_num_scaled, decoded->ack_stride,
+		                  decoded->ack_num_residue, decoded->ack_num);
 	}
 	else
 	{
@@ -3116,15 +3117,37 @@ static bool d_tcp_decode_bits_tcp_hdr(const struct rohc_decomp_ctxt *const conte
 			decoded->ack_num = old_ack;
 		}
 
-		/* compute scaled acknowledgement number & residue */
-		if(payload_len != 0)
+		/* TCP ACK stride
+		 * (ack_stride is never transmitted in same packet as scaled ACK) */
+		if(bits->ack_stride.bits_nr > 0)
 		{
-			decoded->ack_num_scaled = decoded->ack_num / payload_len;
-			decoded->ack_num_residue = decoded->ack_num % payload_len;
-			rohc_decomp_debug(context, "  TCP ACK number (0x%08x) = scaled (0x%x) "
-			                  "* payload size (%zu) + residue (0x%x)",
-			                  decoded->seq_num, decoded->ack_num_scaled, payload_len,
-			                  decoded->ack_num_residue);
+			/* when transmitted, ack_stride is always transmitted in full */
+			assert(bits->ack_stride.bits_nr == 16);
+			decoded->ack_stride = bits->ack_stride.bits;
+			rohc_decomp_debug(context, "  TCP ACK stride = 0x%04x (decoded from 16-bit "
+			                  "0x%02x)", decoded->ack_stride, bits->ack_stride.bits);
+		}
+		else
+		{
+			decoded->ack_stride = tcp_context->ack_stride;
+			rohc_decomp_debug(context, "  TCP ACK stride = 0x%04x (taken from context)",
+			                  decoded->ack_stride);
+		}
+
+		/* compute scaled acknowledgement residue */
+		if(decoded->ack_stride != 0)
+		{
+			decoded->ack_num_scaled = decoded->ack_num / decoded->ack_stride;
+			decoded->ack_num_residue = decoded->ack_num % decoded->ack_stride;
+			rohc_decomp_debug(context, "  TCP ACK number (0x%08x) = scaled (0x%08x) "
+			                  "* ack_stride (0x%04x) = residue (0x%04x)",
+			                  decoded->ack_num, decoded->ack_num_scaled,
+			                  decoded->ack_stride, decoded->ack_num_residue);
+		}
+		else
+		{
+			decoded->ack_num_scaled = 0;
+			decoded->ack_num_residue = 0;
 		}
 	}
 
@@ -4158,14 +4181,17 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 	rohc_lsb_set_ref(tcp_context->ack_lsb_ctxt, decoded->ack_num, false);
 	rohc_decomp_debug(context, "ACK number 0x%08x is the new reference",
 	                  decoded->ack_num);
-	if(payload_len != 0)
+	if(decoded->ack_stride != 0)
 	{
 		rohc_lsb_set_ref(tcp_context->ack_scaled_lsb_ctxt,
 		                 decoded->ack_num_scaled, false);
 		rohc_decomp_debug(context, "scaled acknowledgment number 0x%08x is the new "
 		                  "reference", decoded->ack_num_scaled);
+		tcp_context->ack_stride = decoded->ack_stride;
+		rohc_decomp_debug(context, "scaled acknowledgment factor 0x%04x is the new "
+		                  "reference", decoded->ack_stride);
 		tcp_context->ack_num_residue = decoded->ack_num_residue;
-		rohc_decomp_debug(context, "scaled acknowledgment residue 0x%08x is the new "
+		rohc_decomp_debug(context, "scaled acknowledgment residue 0x%04x is the new "
 		                  "reference", decoded->ack_num_residue);
 	}
 

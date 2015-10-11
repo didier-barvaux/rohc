@@ -9,7 +9,7 @@ SUBDIRS = \
 	decompress_padding \
 	decompress_feedback_only \
 	context_reuse \
-	rtp_uo_disambiguation \
+	packet_types \
 	rtp_detection \
 	segment
 

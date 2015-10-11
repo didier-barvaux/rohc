@@ -34,6 +34,7 @@
 #include "d_tcp_opts_list.h"
 #include "rohc_utils.h"
 #include "protocols/ip_numbers.h"
+#include "schemes/rfc4996.h"
 
 #ifndef __KERNEL__
 #  include <string.h>
@@ -509,37 +510,18 @@ static int tcp_parse_dynamic_tcp(const struct rohc_decomp_ctxt *const context,
 	rohc_decomp_debug(context, "TCP urg_ptr = 0x%04x", bits->urg_ptr.bits);
 
 	/* ACK stride */
-	if(tcp_dynamic->ack_stride_flag == 0)
+	ret = d_static_or_irreg16(remain_data, remain_len, tcp_dynamic->ack_stride_flag,
+	                          &bits->ack_stride);
+	if(ret < 0)
 	{
-		bits->ack_stride.bits_nr = 0;
-		rohc_decomp_debug(context, "TCP ack_stride not present");
+		rohc_decomp_warn(context, "malformed TCP dynamic part: "
+		                 "static_or_irreg(ack_stride) failed");
+		goto error;
 	}
-	else
-	{
-		if(remain_len < sizeof(uint16_t))
-		{
-			rohc_decomp_warn(context, "malformed TCP dynamic part: only %zu "
-			                 "bytes available while at least %zu bytes required "
-			                 "for the ACK stride", remain_len, sizeof(uint16_t));
-			goto error;
-		}
-		memcpy(&(bits->ack_stride.bits), remain_data, sizeof(uint16_t));
-		bits->ack_stride.bits = rohc_ntoh16(bits->ack_stride.bits);
-		bits->ack_stride.bits_nr = 16;
-		remain_data += sizeof(uint16_t);
-		remain_len -= sizeof(uint16_t);
-		rohc_decomp_debug(context, "TCP ack_stride = 0x%04x", bits->ack_stride.bits);
-	}
-#if 0 /* TODO: handle ACK stride */
-	if(tcp_context->ack_stride != 0)
-	{
-		// Calculate the Ack Number residue
-		tcp_context->ack_num_residue = tcp_context->ack_num % tcp_context->ack_stride;
-	}
-	rohc_decomp_debug(context, "TCP ack_stride = 0x%04x, ack_number_residue = "
-	                  "0x%04x", tcp_context->ack_stride,
-	                  tcp_context->ack_num_residue);
-#endif
+	rohc_decomp_debug(context, "found %zu bits of ACK stride encoded on "
+	                  "%d bytes", bits->ack_stride.bits_nr, ret);
+	remain_data += ret;
+	remain_len -= ret;
 
 	/* parse the compressed list of TCP options */
 	ret = d_tcp_parse_tcp_opts_list_item(context, remain_data, remain_len, true,

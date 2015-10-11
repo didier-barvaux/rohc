@@ -317,9 +317,12 @@ struct sc_tcp_context
 	struct c_wlsb *ack_wlsb;
 	struct c_wlsb *ack_scaled_wlsb;
 
+	size_t ack_deltas_next;
+	uint16_t ack_deltas_width[20];
 	uint16_t ack_stride;
 	uint32_t ack_num_scaled;
-	uint32_t ack_num_residue;
+	uint16_t ack_num_residue;
+	size_t ack_num_scaling_nr;
 
 	/** The compression context for TCP options */
 	struct c_tcp_opts_ctxt tcp_opts;
@@ -758,6 +761,13 @@ static void tcp_field_descr_present(const struct rohc_comp_ctxt *const context,
                                     const char *const name,
                                     const bool present)
 	__attribute__((nonnull(1, 2)));
+
+static bool tcp_is_ack_scaled_possible(const uint16_t ack_stride,
+                                       const size_t nr_trans)
+	__attribute__((warn_unused_result, const));
+static bool tcp_is_ack_stride_static(const uint16_t ack_stride,
+                                     const size_t nr_trans)
+	__attribute__((warn_unused_result, const));
 
 static bool c_tcp_feedback(struct rohc_comp_ctxt *const context,
                            const enum rohc_feedback_type feedback_type,
@@ -1809,6 +1819,17 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		                "%zu / %u times since the scaling factor or residue "
 		                "changed", tcp_context->seq_num_scaling_nr,
 		                ROHC_INIT_TS_STRIDE_MIN);
+	}
+
+	/* ACK number sent once more, count the number of transmissions to
+	 * know when scaled ACK number is possible */
+	if(tcp_context->ack_stride != 0 &&
+	   tcp_context->ack_num_scaling_nr < ROHC_INIT_TS_STRIDE_MIN)
+	{
+		tcp_context->ack_num_scaling_nr++;
+		rohc_comp_debug(context, "unscaled ACK number was transmitted %zu / %u "
+		                "times since the scaling factor or residue changed",
+		                tcp_context->ack_num_scaling_nr, ROHC_INIT_TS_STRIDE_MIN);
 	}
 
 	return counter;
@@ -3297,19 +3318,25 @@ static int tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *const context,
 	rohc_comp_debug(context, "TCP urg_ptr %spresent",
 	                tcp_dynamic->urp_zero ? "not " : "");
 
-	/* ack_stride */ /* TODO: comparison with new computed ack_stride? */
-	ret = c_static_or_irreg16(false /* TODO */, rohc_hton16(tcp_context->ack_stride),
-	                          rohc_remain_data, rohc_remain_len, &indicator);
-	if(ret < 0)
+	/* ack_stride */
 	{
-		rohc_comp_warn(context, "failed to encode static_or_irreg(ack_stride)");
-		goto error;
+		const bool is_ack_stride_static =
+			tcp_is_ack_stride_static(tcp_context->ack_stride,
+			                         tcp_context->ack_num_scaling_nr);
+		ret = c_static_or_irreg16(rohc_hton16(tcp_context->ack_stride),
+		                          is_ack_stride_static,
+		                          rohc_remain_data, rohc_remain_len, &indicator);
+		if(ret < 0)
+		{
+			rohc_comp_warn(context, "failed to encode static_or_irreg(ack_stride)");
+			goto error;
+		}
+		tcp_dynamic->ack_stride_flag = indicator;
+		rohc_remain_data += ret;
+		rohc_remain_len -= ret;
+		rohc_comp_debug(context, "TCP ack_stride %spresent",
+		                tcp_dynamic->ack_stride_flag ? "" : "not ");
 	}
-	tcp_dynamic->ack_stride_flag = indicator;
-	rohc_remain_data += ret;
-	rohc_remain_len -= ret;
-	rohc_comp_debug(context, "TCP ack_stride %spresent",
-	                tcp_dynamic->ack_stride_flag ? "" : "not ");
 
 	/* list of TCP options */
 	if(tcp->data_offset == min_tcp_hdr_len)
@@ -3922,7 +3949,7 @@ error:
  */
 static int c_tcp_build_rnd_2(const struct rohc_comp_ctxt *const context,
                              const struct sc_tcp_context *const tcp_context,
-                             const struct tcphdr *const tcp __attribute__((unused)),
+                             const struct tcphdr *const tcp,
                              const uint8_t crc,
                              uint8_t *const rohc_data,
                              const size_t rohc_max_len)
@@ -3940,6 +3967,7 @@ static int c_tcp_build_rnd_2(const struct rohc_comp_ctxt *const context,
 	rnd2->discriminator = 0x0c; /* '1100' */
 	rnd2->seq_num_scaled = tcp_context->seq_num_scaled & 0xf;
 	rnd2->msn = tcp_context->msn & 0xf;
+	rnd2->psh_flag = tcp->psh_flag;
 	rnd2->header_crc = crc;
 
 	return sizeof(rnd_2_t);
@@ -4948,21 +4976,27 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 	                "indicator %d", rohc_ntoh32(tcp->ack_num), encoded_ack_len,
 	                co_common->ack_indicator);
 
-	/* ack_stride */ /* TODO: comparison with new computed ack_stride? */
-	ret = c_static_or_irreg16(false /* TODO */, rohc_hton16(tcp_context->ack_stride),
-	                          co_common_opt, rohc_remain_len, &indicator);
-	if(ret < 0)
+	/* ack_stride */
 	{
-		rohc_comp_warn(context, "failed to encode static_or_irreg(ack_stride)");
-		goto error;
+		const bool is_ack_stride_static =
+			tcp_is_ack_stride_static(tcp_context->ack_stride,
+			                         tcp_context->ack_num_scaling_nr);
+		ret = c_static_or_irreg16(rohc_hton16(tcp_context->ack_stride),
+		                          is_ack_stride_static,
+		                          co_common_opt, rohc_remain_len, &indicator);
+		if(ret < 0)
+		{
+			rohc_comp_warn(context, "failed to encode static_or_irreg(ack_stride)");
+			goto error;
+		}
+		co_common->ack_stride_indicator = indicator;
+		co_common_opt += ret;
+		co_common_opt_len += ret;
+		rohc_remain_len -= ret;
+		rohc_comp_debug(context, "ack_stride_indicator = %d, ack_stride 0x%x on "
+		                "%d bytes", co_common->ack_stride_indicator,
+		                tcp_context->ack_stride, ret);
 	}
-	co_common->ack_stride_indicator = indicator;
-	co_common_opt += ret;
-	co_common_opt_len += ret;
-	rohc_remain_len -= ret;
-	rohc_comp_debug(context, "ack_stride_indicator = %d, ack_stride 0x%x on "
-	                "%d bytes", co_common->ack_stride_indicator,
-	                tcp_context->ack_stride, ret);
 
 	/* window */
 	ret = c_static_or_irreg16(tcp->window, !tcp_context->tmp.tcp_window_changed,
@@ -5957,13 +5991,87 @@ static bool tcp_encode_uncomp_tcp_fields(struct rohc_comp_ctxt *const context,
 	}
 
 	/* compute new scaled TCP acknowledgment number */
-	/* TODO: handle transmission count the same way as sequence number */
-	c_field_scaling(&(tcp_context->ack_num_scaled),
-	                &(tcp_context->ack_num_residue),
-	                tcp_context->ack_stride, ack_num_hbo);
-	rohc_comp_debug(context, "ack_number = 0x%x, scaled = 0x%x, factor = %zu, "
-	                "residue = 0x%x", ack_num_hbo, tcp_context->ack_num_scaled,
-	                tcp_context->tmp.payload_len, tcp_context->ack_num_residue);
+	{
+		const uint32_t old_ack_num_hbo = rohc_ntoh32(tcp_context->old_tcphdr.ack_num);
+		const uint32_t ack_delta = ack_num_hbo - old_ack_num_hbo;
+		uint16_t ack_stride = 0;
+		uint32_t ack_num_scaled;
+		uint32_t ack_num_residue;
+
+		/* change ack_stride only if the ACK delta that was most used over the
+		 * sliding window changed */
+		rohc_comp_debug(context, "ACK delta with previous packet = 0x%04x", ack_delta);
+		if(ack_delta == 0)
+		{
+			ack_stride = tcp_context->ack_stride;
+		}
+		else
+		{
+			size_t ack_stride_count = 0;
+			size_t i;
+			size_t j;
+
+			/* TODO: should update context at the very end only */
+			tcp_context->ack_deltas_width[tcp_context->ack_deltas_next] = ack_delta;
+			tcp_context->ack_deltas_next = (tcp_context->ack_deltas_next + 1) % 20;
+
+			for(i = 0; i < 20; i++)
+			{
+				const uint16_t val =
+					tcp_context->ack_deltas_width[(tcp_context->ack_deltas_next + i) % 20];
+				size_t val_count = 1;
+
+				for(j = i + 1; j < 20; j++)
+				{
+					if(val == tcp_context->ack_deltas_width[(tcp_context->ack_deltas_next + j) % 20])
+					{
+						val_count++;
+					}
+				}
+
+				if(val_count > ack_stride_count)
+				{
+					ack_stride = val;
+					ack_stride_count = val_count;
+					if(ack_stride_count > (20/2))
+					{
+						break;
+					}
+				}
+			}
+			rohc_comp_debug(context, "ack_stride 0x%04x was used %zu times in the "
+			                "last 20 packets", ack_stride, ack_stride_count);
+		}
+
+		/* compute new scaled ACK number & residue */
+		c_field_scaling(&ack_num_scaled, &ack_num_residue, ack_stride, ack_num_hbo);
+		rohc_comp_debug(context, "ack_number = 0x%x, scaled = 0x%x, factor = %u, "
+		                "residue = 0x%x", ack_num_hbo, ack_num_scaled,
+		                ack_stride, ack_num_residue);
+
+		if(context->num_sent_packets == 0)
+		{
+			/* no need to transmit the ack_stride until it becomes non-zero */
+			tcp_context->ack_num_scaling_nr = ROHC_INIT_TS_STRIDE_MIN;
+		}
+		else
+		{
+			if(ack_stride != tcp_context->ack_stride ||
+			   ack_num_residue != tcp_context->ack_num_residue)
+			{
+				/* ACK number is not scalable with same parameters any more */
+				tcp_context->ack_num_scaling_nr = 0;
+			}
+			rohc_comp_debug(context, "unscaled ACK number was transmitted at least "
+			                "%zu / %u times since the scaling factor or residue changed",
+			                tcp_context->ack_num_scaling_nr, ROHC_INIT_TS_STRIDE_MIN);
+		}
+
+		/* TODO: should update context at the very end only */
+		tcp_context->ack_num_scaled = ack_num_scaled;
+		tcp_context->ack_num_residue = ack_num_residue;
+		tcp_context->ack_stride = ack_stride;
+	}
 
 	/* how many bits are required to encode the new sequence number? */
 	tcp_context->tmp.tcp_seq_num_changed =
@@ -6003,8 +6111,7 @@ static bool tcp_encode_uncomp_tcp_fields(struct rohc_comp_ctxt *const context,
 		tcp_context->tmp.nr_seq_scaled_bits =
 			wlsb_get_k_32bits(tcp_context->seq_scaled_wlsb, tcp_context->seq_num_scaled);
 		rohc_comp_debug(context, "%zu bits are required to encode new scaled "
-		                "sequence number 0x%08x",
-		                tcp_context->tmp.nr_seq_scaled_bits,
+		                "sequence number 0x%08x", tcp_context->tmp.nr_seq_scaled_bits,
 		                tcp_context->seq_num_scaled);
 	}
 	/* TODO: move this after successful packet compression */
@@ -6044,16 +6151,27 @@ static bool tcp_encode_uncomp_tcp_fields(struct rohc_comp_ctxt *const context,
 	rohc_comp_debug(context, "%zd bits are required to encode new ACK "
 	                "number 0x%08x with p = 63",
 	                tcp_context->tmp.nr_ack_bits_63, ack_num_hbo);
-	tcp_context->tmp.nr_ack_scaled_bits =
-		wlsb_get_k_32bits(tcp_context->ack_scaled_wlsb, tcp_context->ack_num_scaled);
-	rohc_comp_debug(context, "%zu bits are required to encode new scaled "
-	                "ACK number 0x%08x", tcp_context->tmp.nr_ack_scaled_bits,
-	                tcp_context->ack_num_scaled);
+	if(!tcp_is_ack_scaled_possible(tcp_context->ack_stride,
+	                               tcp_context->ack_num_scaling_nr))
+	{
+		tcp_context->tmp.nr_ack_scaled_bits = 32;
+	}
+	else
+	{
+		tcp_context->tmp.nr_ack_scaled_bits =
+			wlsb_get_k_32bits(tcp_context->ack_scaled_wlsb, tcp_context->ack_num_scaled);
+		rohc_comp_debug(context, "%zu bits are required to encode new scaled "
+		                "ACK number 0x%08x", tcp_context->tmp.nr_ack_scaled_bits,
+		                tcp_context->ack_num_scaled);
+	}
 	/* TODO: move this after successful packet compression */
 	c_add_wlsb(tcp_context->ack_wlsb, tcp_context->msn, ack_num_hbo);
-	/* TODO: move this after successful packet compression */
-	c_add_wlsb(tcp_context->ack_scaled_wlsb, tcp_context->msn,
-	           tcp_context->ack_num_scaled);
+	if(tcp_context->ack_stride != 0)
+	{
+		/* TODO: move this after successful packet compression */
+		c_add_wlsb(tcp_context->ack_scaled_wlsb, tcp_context->msn,
+		           tcp_context->ack_num_scaled);
+	}
 
 	/* how many bits are required to encode the new timestamp echo request and
 	 * timestamp echo reply? */
@@ -6303,7 +6421,9 @@ static rohc_packet_t tcp_decide_FO_SO_packet(const struct rohc_comp_ctxt *const 
 	        tcp_context->tmp.tcp_ack_flag_changed ||
 	        tcp_context->tmp.tcp_urg_flag_present ||
 	        tcp_context->tmp.tcp_urg_flag_changed ||
-	        tcp_context->old_tcphdr.urg_ptr != tcp->urg_ptr)
+	        tcp_context->old_tcphdr.urg_ptr != tcp->urg_ptr ||
+	        !tcp_is_ack_stride_static(tcp_context->ack_stride,
+	                                  tcp_context->ack_num_scaling_nr))
 	{
 		TRACE_GOTO_CHOICE;
 		packet_type = ROHC_PACKET_TCP_CO_COMMON;
@@ -6433,6 +6553,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 		}
 		else
 		{
+			/* rnd_7 is not possible, rnd_8 neither so fallback on co_common */
 			TRACE_GOTO_CHOICE;
 			packet_type = ROHC_PACKET_TCP_CO_COMMON;
 		}
@@ -6440,24 +6561,32 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 	else if(tcp->ack_flag == 0 ||
 	        (tcp->ack_flag != 0 && !tcp_context->tmp.tcp_ack_num_changed))
 	{
-		/* seq_1, seq_2 or co_common */
+		/* seq_2, seq_1 or co_common */
 		if(!crc7_at_least &&
-		   tcp_context->tmp.nr_ip_id_bits_3 <= 4 &&
-		   tcp_context->tmp.nr_seq_bits_32767 <= 16)
-		{
-			/* seq_1 is possible */
-			TRACE_GOTO_CHOICE;
-			packet_type = ROHC_PACKET_TCP_SEQ_1;
-		}
-		else if(!crc7_at_least &&
-		        tcp_context->tmp.nr_ip_id_bits_3 <= 7 &&
-		        tcp_context->seq_num_scaling_nr >= ROHC_INIT_TS_STRIDE_MIN &&
-		        tcp_context->tmp.nr_seq_scaled_bits <= 4)
+		   tcp_context->tmp.nr_ip_id_bits_3 <= 7 &&
+		   tcp_context->seq_num_scaling_nr >= ROHC_INIT_TS_STRIDE_MIN &&
+		   tcp_context->tmp.nr_seq_scaled_bits <= 4)
 		{
 			/* seq_2 is possible */
 			TRACE_GOTO_CHOICE;
 			assert(tcp_context->tmp.payload_len > 0);
 			packet_type = ROHC_PACKET_TCP_SEQ_2;
+		}
+		else if(!crc7_at_least &&
+		        tcp_context->tmp.nr_ip_id_bits_3 <= 4 &&
+		        tcp_context->tmp.nr_seq_bits_32767 <= 16)
+		{
+			/* seq_1 is possible */
+			TRACE_GOTO_CHOICE;
+			packet_type = ROHC_PACKET_TCP_SEQ_1;
+		}
+		else if(tcp_context->tmp.nr_ip_id_bits_3 <= 4 &&
+		        true /* TODO: no more than 3 bits of TTL */ &&
+		        tcp_context->tmp.nr_ack_bits_8191 <= 15 &&
+		        tcp_context->tmp.nr_seq_bits_8191 <= 14)
+		{
+			TRACE_GOTO_CHOICE;
+			packet_type = ROHC_PACKET_TCP_SEQ_8;
 		}
 		else
 		{
@@ -6467,21 +6596,30 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 	}
 	else if(!tcp_context->tmp.tcp_seq_num_changed)
 	{
-		/* seq_3, seq_4, or co_common */
+		/* seq_4, seq_3, or co_common */
 		if(!crc7_at_least &&
-		   tcp_context->tmp.nr_ip_id_bits_3 <= 4 &&
-		   tcp_context->tmp.nr_ack_bits_16383 <= 16)
+		   tcp_context->tmp.nr_ip_id_bits_1 <= 3 &&
+		   tcp_is_ack_scaled_possible(tcp_context->ack_stride,
+		                              tcp_context->ack_num_scaling_nr) &&
+		   tcp_context->tmp.nr_ack_scaled_bits <= 4)
+		{
+			TRACE_GOTO_CHOICE;
+			packet_type = ROHC_PACKET_TCP_SEQ_4;
+		}
+		else if(!crc7_at_least &&
+		        tcp_context->tmp.nr_ip_id_bits_3 <= 4 &&
+		        tcp_context->tmp.nr_ack_bits_16383 <= 16)
 		{
 			TRACE_GOTO_CHOICE;
 			packet_type = ROHC_PACKET_TCP_SEQ_3;
 		}
-		else if(!crc7_at_least &&
-		        tcp_context->tmp.nr_ip_id_bits_1 <= 3 &&
-		        tcp_context->ack_stride != 0 &&
-		        tcp_context->tmp.nr_ack_scaled_bits <= 4)
+		else if(tcp_context->tmp.nr_ip_id_bits_3 <= 4 &&
+		        true /* TODO: no more than 3 bits of TTL */ &&
+		        tcp_context->tmp.nr_ack_bits_8191 <= 15 &&
+		        tcp_context->tmp.nr_seq_bits_8191 <= 14)
 		{
 			TRACE_GOTO_CHOICE;
-			packet_type = ROHC_PACKET_TCP_SEQ_4;
+			packet_type = ROHC_PACKET_TCP_SEQ_8;
 		}
 		else
 		{
@@ -6492,24 +6630,24 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 	else
 	{
 		/* sequence and acknowledgment numbers changed:
-		 * seq_5, seq_6, seq_8 or co_common */
+		 * seq_6, seq_5, seq_8 or co_common */
 		if(!crc7_at_least &&
 		   tcp_context->tmp.nr_ip_id_bits_3 <= 4 &&
-		   tcp_context->tmp.nr_ack_bits_16383 <= 16 &&
-		   tcp_context->tmp.nr_seq_bits_32767 <= 16)
-		{
-			TRACE_GOTO_CHOICE;
-			packet_type = ROHC_PACKET_TCP_SEQ_5;
-		}
-		else if(!crc7_at_least &&
-		        tcp_context->tmp.nr_ip_id_bits_3 <= 4 &&
-		        tcp_context->seq_num_scaling_nr >= ROHC_INIT_TS_STRIDE_MIN &&
-		        tcp_context->tmp.nr_seq_scaled_bits <= 4 &&
-		        tcp_context->tmp.nr_ack_bits_16383 <= 16)
+		   tcp_context->seq_num_scaling_nr >= ROHC_INIT_TS_STRIDE_MIN &&
+		   tcp_context->tmp.nr_seq_scaled_bits <= 4 &&
+		   tcp_context->tmp.nr_ack_bits_16383 <= 16)
 		{
 			TRACE_GOTO_CHOICE;
 			assert(tcp_context->tmp.payload_len > 0);
 			packet_type = ROHC_PACKET_TCP_SEQ_6;
+		}
+		else if(!crc7_at_least &&
+		        tcp_context->tmp.nr_ip_id_bits_3 <= 4 &&
+		        tcp_context->tmp.nr_ack_bits_16383 <= 16 &&
+		        tcp_context->tmp.nr_seq_bits_32767 <= 16)
+		{
+			TRACE_GOTO_CHOICE;
+			packet_type = ROHC_PACKET_TCP_SEQ_5;
 		}
 		else if(tcp_context->tmp.nr_ip_id_bits_3 <= 4 &&
 		        true /* TODO: no more than 3 bits of TTL */ &&
@@ -6587,12 +6725,6 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 				packet_type = ROHC_PACKET_TCP_CO_COMMON;
 			}
 		}
-		else if((rohc_ntoh32(tcp->seq_num) & 0xFFFF) !=
-		        (rohc_ntoh32(tcp_context->old_tcphdr.seq_num) & 0xFFFF))
-		{
-			TRACE_GOTO_CHOICE;
-			packet_type = ROHC_PACKET_TCP_CO_COMMON;
-		}
 		else if(tcp_context->tmp.tcp_window_changed)
 		{
 			if(!crc7_at_least &&
@@ -6605,61 +6737,49 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 			}
 			else
 			{
-				/* rnd_7 is not possible, fallback on co_common */
+				/* rnd_7 is not possible, rnd_8 neither so fallback on co_common */
 				TRACE_GOTO_CHOICE;
 				packet_type = ROHC_PACKET_TCP_CO_COMMON;
 			}
 		}
-		else if(tcp->ack_flag != 0 && !tcp_context->tmp.tcp_ack_num_changed)
+		else if(!crc7_at_least &&
+		        !tcp_context->tmp.tcp_ack_num_changed &&
+		        tcp_context->tmp.payload_len > 0 &&
+		        tcp_context->seq_num_scaling_nr >= ROHC_INIT_TS_STRIDE_MIN &&
+		        tcp_context->tmp.nr_seq_scaled_bits <= 4)
 		{
-			/* ACK number not present */
-			if(!crc7_at_least &&
-			   tcp_context->tmp.payload_len > 0 &&
-			   tcp_context->ack_stride != 0 &&
-			   !tcp_context->tmp.tcp_seq_num_changed)
-			{
-				/* rnd_4 is possible */
-				TRACE_GOTO_CHOICE;
-				packet_type = ROHC_PACKET_TCP_RND_4;
-			}
-			else if(!crc7_at_least &&
-			        tcp_context->tmp.nr_seq_bits_65535 <= 18)
-			{
-				/* rnd_1 is possible */
-				TRACE_GOTO_CHOICE;
-				packet_type = ROHC_PACKET_TCP_RND_1;
-			}
-			else
-			{
-				TRACE_GOTO_CHOICE;
-				packet_type = ROHC_PACKET_TCP_CO_COMMON;
-			}
+			/* rnd_2 is possible */
+			assert(tcp_context->tmp.payload_len > 0);
+			TRACE_GOTO_CHOICE;
+			packet_type = ROHC_PACKET_TCP_RND_2;
 		}
-		else if(tcp->ack_flag != 0 && !tcp_context->tmp.tcp_seq_num_changed)
+		else if(!crc7_at_least &&
+		        tcp->ack_flag != 0 &&
+		        tcp_is_ack_scaled_possible(tcp_context->ack_stride,
+		                                   tcp_context->ack_num_scaling_nr) &&
+		        tcp_context->tmp.nr_ack_scaled_bits <= 4 &&
+		        !tcp_context->tmp.tcp_seq_num_changed)
 		{
-			/* ACK number present */
-			if(!crc7_at_least &&
-			   tcp_context->tmp.nr_ack_scaled_bits <= 4 &&
-			   tcp_context->ack_stride != 0 &&
-			   !tcp_context->tmp.tcp_seq_num_changed)
-			{
-				/* rnd_4 is possible */
-				TRACE_GOTO_CHOICE;
-				packet_type = ROHC_PACKET_TCP_RND_4;
-			}
-			else if(!crc7_at_least &&
-			        tcp_context->tmp.nr_ack_bits_8191 <= 15 &&
-			        !tcp_context->tmp.tcp_seq_num_changed)
-			{
-				/* rnd_3 is possible */
-				TRACE_GOTO_CHOICE;
-				packet_type = ROHC_PACKET_TCP_RND_3;
-			}
-			else
-			{
-				TRACE_GOTO_CHOICE;
-				packet_type = ROHC_PACKET_TCP_CO_COMMON;
-			}
+			/* rnd_4 is possible */
+			TRACE_GOTO_CHOICE;
+			packet_type = ROHC_PACKET_TCP_RND_4;
+		}
+		else if(!crc7_at_least &&
+		        tcp->ack_flag != 0 &&
+		        !tcp_context->tmp.tcp_seq_num_changed &&
+		        tcp_context->tmp.nr_ack_bits_8191 <= 15)
+		{
+			/* rnd_3 is possible */
+			TRACE_GOTO_CHOICE;
+			packet_type = ROHC_PACKET_TCP_RND_3;
+		}
+		else if(!crc7_at_least &&
+		        tcp_context->tmp.nr_seq_bits_65535 <= 18 &&
+		        !tcp_context->tmp.tcp_ack_num_changed)
+		{
+			/* rnd_1 is possible */
+			TRACE_GOTO_CHOICE;
+			packet_type = ROHC_PACKET_TCP_RND_1;
 		}
 		else if(!crc7_at_least &&
 		        tcp->ack_flag != 0 &&
@@ -6683,36 +6803,17 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 			TRACE_GOTO_CHOICE;
 			packet_type = ROHC_PACKET_TCP_RND_5;
 		}
-		else if(tcp->ack_flag == 0 &&
-		        !tcp_context->tmp.tcp_ack_num_changed &&
-		        tcp_context->tmp.nr_seq_bits_65535 <= 18)
+		else if(/* !tcp_context->tmp.tcp_window_changed && */
+		        tcp_context->tmp.nr_ack_bits_16383 <= 16 &&
+		        tcp_context->tmp.nr_seq_bits_65535 <= 16)
 		{
-			/* ACK number absent */
-			if(!crc7_at_least &&
-			   tcp_context->tmp.payload_len > 0 &&
-			   tcp_context->seq_num_scaling_nr >= ROHC_INIT_TS_STRIDE_MIN &&
-			   tcp_context->tmp.nr_seq_scaled_bits <= 4)
-			{
-				/* rnd_2 is possible */
-				assert(tcp_context->tmp.payload_len > 0);
-				TRACE_GOTO_CHOICE;
-				packet_type = ROHC_PACKET_TCP_RND_2;
-			}
-			else if(!crc7_at_least)
-			{
-				/* rnd_1 is possible */
-				TRACE_GOTO_CHOICE;
-				packet_type = ROHC_PACKET_TCP_RND_1;
-			}
-			else
-			{
-				TRACE_GOTO_CHOICE;
-				packet_type = ROHC_PACKET_TCP_RND_8;
-			}
+			/* fallback on rnd_8 */
+			TRACE_GOTO_CHOICE;
+			packet_type = ROHC_PACKET_TCP_RND_8;
 		}
 		else
 		{
-			/* ACK number absent */
+			/* rnd_8 is not possible, fallback on co_common */
 			TRACE_GOTO_CHOICE;
 			packet_type = ROHC_PACKET_TCP_CO_COMMON;
 		}
@@ -6888,6 +6989,41 @@ static void tcp_field_descr_present(const struct rohc_comp_ctxt *const context,
                                     const bool present)
 {
 	rohc_comp_debug(context, "%s is%s present", name, present ? "" : " not");
+}
+
+
+/**
+ * @brief Whether the ACK number may be transmitted scaled or not
+ *
+ * The ACK number may be transmitted scaled if:
+ *  \li the \e ack_stride scaling factor is non-zero,
+ *  \li both the \e ack_stride scaling factor and the scaling residue didn't
+ *      change in the last few packets
+ *
+ * @param ack_stride  The \e ack_stride scaling factor
+ * @param nr_trans    The number of transmissions since last change
+ * @return            true if the ACK number may be transmitted scaled,
+ *                    false if the ACK number shall be transmitted unscaled
+ */
+static bool tcp_is_ack_scaled_possible(const uint16_t ack_stride,
+                                       const size_t nr_trans)
+{
+	return (ack_stride != 0 && nr_trans >= ROHC_INIT_TS_STRIDE_MIN);
+}
+
+
+/**
+ * @brief Whether the \e ack_stride scaling factor shall be transmitted or not
+ *
+ * @param ack_stride  The \e ack_stride scaling factor
+ * @param nr_trans    The number of transmissions since last change
+ * @return            true if the ACK number may be transmitted scaled,
+ *                    false if the ACK number shall be transmitted unscaled
+ */
+static bool tcp_is_ack_stride_static(const uint16_t ack_stride,
+                                     const size_t nr_trans)
+{
+	return (ack_stride == 0 || nr_trans >= ROHC_INIT_TS_STRIDE_MIN);
 }
 
 

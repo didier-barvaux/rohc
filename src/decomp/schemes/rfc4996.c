@@ -92,9 +92,14 @@ int d_static_or_irreg16(const uint8_t *const rohc_data,
                         const int indicator,
                         struct rohc_lsb_field16 *const lsb)
 {
-	size_t length = 0;
+	size_t length;
 
-	if(indicator == 1)
+	if(indicator == 0)
+	{
+		lsb->bits_nr = 0;
+		length = 0;
+	}
+	else if(indicator == 1)
 	{
 		if(rohc_len < 2)
 		{
@@ -103,7 +108,11 @@ int d_static_or_irreg16(const uint8_t *const rohc_data,
 		memcpy(&(lsb->bits), rohc_data, sizeof(uint16_t));
 		lsb->bits = rohc_ntoh16(lsb->bits);
 		lsb->bits_nr = 16;
-		length += sizeof(uint16_t);
+		length = sizeof(uint16_t);
+	}
+	else
+	{
+		goto error;
 	}
 
 	return length;

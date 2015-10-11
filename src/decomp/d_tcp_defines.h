@@ -291,7 +291,7 @@ struct d_tcp_context
 	struct rohc_lsb_decode *seq_scaled_lsb_ctxt;
 
 	uint16_t ack_stride;
-	uint32_t ack_num_residue;
+	uint16_t ack_num_residue;
 	struct rohc_lsb_decode *ack_lsb_ctxt;
 	struct rohc_lsb_decode *ack_scaled_lsb_ctxt;
 
@@ -457,8 +457,8 @@ struct rohc_tcp_decoded_values
 	uint32_t seq_num_residue;  /**< The residue of the scaled TCP sequence number */
 	uint32_t ack_num;          /**< The TCP acknowledgment number */
 	uint32_t ack_num_scaled;   /**< The scaled TCP acknowledgment number */
-	uint32_t ack_num_residue;  /**< The residue of the scaled TCP ACK number */
-	uint32_t ack_stride;       /**< The ACK stride */
+	uint16_t ack_num_residue;  /**< The residue of the scaled TCP ACK number */
+	uint16_t ack_stride;       /**< The ACK stride */
 
 	/* TCP flags */
 	bool ecn_used;        /**< Whether the TCP ECN flags are used */
