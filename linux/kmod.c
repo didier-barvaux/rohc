@@ -51,6 +51,7 @@ EXPORT_SYMBOL_GPL(rohc_get_mode_descr);
 EXPORT_SYMBOL_GPL(rohc_get_profile_descr);
 EXPORT_SYMBOL_GPL(rohc_get_packet_descr);
 EXPORT_SYMBOL_GPL(rohc_get_ext_descr);
+EXPORT_SYMBOL_GPL(rohc_get_packet_type);
 
 EXPORT_SYMBOL_GPL(rohc_buf_is_malformed);
 EXPORT_SYMBOL_GPL(rohc_buf_is_empty);

@@ -25,6 +25,9 @@
 #include "rohc_packets.h"
 
 #include <assert.h>
+#ifndef __KERNEL__
+#  include <string.h>
+#endif
 
 
 /**
@@ -152,6 +155,139 @@ const char * rohc_get_ext_descr(const rohc_ext_t ext_type)
 		case ROHC_EXT_UNKNOWN:
 		default:
 			return "unknown ROHC extension";
+	}
+}
+
+
+/**
+ * @brief Get the packet type from a packet identifier
+ *
+ * @param packet_id  The identifier of packet (NULL-terminated string)
+ * @return           The corresponding packet type
+ *
+ * @ingroup rohc
+ */
+rohc_packet_t rohc_get_packet_type(const char *const packet_id)
+{
+	if(strcmp(packet_id, "ir") == 0)
+	{
+		return ROHC_PACKET_IR;
+	}
+	else if(strcmp(packet_id, "irdyn") == 0)
+	{
+		return ROHC_PACKET_IR_DYN;
+	}
+	else if(strcmp(packet_id, "uo0") == 0)
+	{
+		return ROHC_PACKET_UO_0;
+	}
+	else if(strcmp(packet_id, "uo1") == 0)
+	{
+		return ROHC_PACKET_UO_1;
+	}
+	else if(strcmp(packet_id, "uo1id") == 0)
+	{
+		return ROHC_PACKET_UO_1_ID;
+	}
+	else if(strcmp(packet_id, "uo1ts") == 0)
+	{
+		return ROHC_PACKET_UO_1_TS;
+	}
+	else if(strcmp(packet_id, "uo1rtp") == 0)
+	{
+		return ROHC_PACKET_UO_1_RTP;
+	}
+	else if(strcmp(packet_id, "uor2") == 0)
+	{
+		return ROHC_PACKET_UOR_2;
+	}
+	else if(strcmp(packet_id, "uor2rtp") == 0)
+	{
+		return ROHC_PACKET_UOR_2_RTP;
+	}
+	else if(strcmp(packet_id, "uor2id") == 0)
+	{
+		return ROHC_PACKET_UOR_2_ID;
+	}
+	else if(strcmp(packet_id, "uor2ts") == 0)
+	{
+		return ROHC_PACKET_UOR_2_TS;
+	}
+	else if(strcmp(packet_id, "uncomp-normal") == 0)
+	{
+		return ROHC_PACKET_NORMAL;
+	}
+	else if(strcmp(packet_id, "tcp-co-common") == 0)
+	{
+		return ROHC_PACKET_TCP_CO_COMMON;
+	}
+	else if(strcmp(packet_id, "tcp-rnd-1") == 0)
+	{
+		return ROHC_PACKET_TCP_RND_1;
+	}
+	else if(strcmp(packet_id, "tcp-rnd-2") == 0)
+	{
+		return ROHC_PACKET_TCP_RND_2;
+	}
+	else if(strcmp(packet_id, "tcp-rnd-3") == 0)
+	{
+		return ROHC_PACKET_TCP_RND_3;
+	}
+	else if(strcmp(packet_id, "tcp-rnd-4") == 0)
+	{
+		return ROHC_PACKET_TCP_RND_4;
+	}
+	else if(strcmp(packet_id, "tcp-rnd-5") == 0)
+	{
+		return ROHC_PACKET_TCP_RND_5;
+	}
+	else if(strcmp(packet_id, "tcp-rnd-6") == 0)
+	{
+		return ROHC_PACKET_TCP_RND_6;
+	}
+	else if(strcmp(packet_id, "tcp-rnd-7") == 0)
+	{
+		return ROHC_PACKET_TCP_RND_7;
+	}
+	else if(strcmp(packet_id, "tcp-rnd-8") == 0)
+	{
+		return ROHC_PACKET_TCP_RND_8;
+	}
+	else if(strcmp(packet_id, "tcp-seq-1") == 0)
+	{
+		return ROHC_PACKET_TCP_SEQ_1;
+	}
+	else if(strcmp(packet_id, "tcp-seq-2") == 0)
+	{
+		return ROHC_PACKET_TCP_SEQ_2;
+	}
+	else if(strcmp(packet_id, "tcp-seq-3") == 0)
+	{
+		return ROHC_PACKET_TCP_SEQ_3;
+	}
+	else if(strcmp(packet_id, "tcp-seq-4") == 0)
+	{
+		return ROHC_PACKET_TCP_SEQ_4;
+	}
+	else if(strcmp(packet_id, "tcp-seq-5") == 0)
+	{
+		return ROHC_PACKET_TCP_SEQ_5;
+	}
+	else if(strcmp(packet_id, "tcp-seq-6") == 0)
+	{
+		return ROHC_PACKET_TCP_SEQ_6;
+	}
+	else if(strcmp(packet_id, "tcp-seq-7") == 0)
+	{
+		return ROHC_PACKET_TCP_SEQ_7;
+	}
+	else if(strcmp(packet_id, "tcp-seq-8") == 0)
+	{
+		return ROHC_PACKET_TCP_SEQ_8;
+	}
+	else
+	{
+		return ROHC_PACKET_UNKNOWN;
 	}
 }
 

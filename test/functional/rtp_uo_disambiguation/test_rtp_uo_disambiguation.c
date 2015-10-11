@@ -146,31 +146,8 @@ int main(int argc, char *argv[])
 	}
 
 	/* parse the packet type */
-	if(strlen(packet_type) == 6 && strcmp(packet_type, "uo1rtp") == 0)
-	{
-		expected_packet = ROHC_PACKET_UO_1_RTP;
-	}
-	else if(strlen(packet_type) == 5 && strcmp(packet_type, "uo1ts") == 0)
-	{
-		expected_packet = ROHC_PACKET_UO_1_TS;
-	}
-	else if(strlen(packet_type) == 5 && strcmp(packet_type, "uo1id") == 0)
-	{
-		expected_packet = ROHC_PACKET_UO_1_ID;
-	}
-	else if(strlen(packet_type) == 7 && strcmp(packet_type, "uor2rtp") == 0)
-	{
-		expected_packet = ROHC_PACKET_UOR_2_RTP;
-	}
-	else if(strlen(packet_type) == 6 && strcmp(packet_type, "uor2ts") == 0)
-	{
-		expected_packet = ROHC_PACKET_UOR_2_TS;
-	}
-	else if(strlen(packet_type) == 6 && strcmp(packet_type, "uor2id") == 0)
-	{
-		expected_packet = ROHC_PACKET_UOR_2_ID;
-	}
-	else
+	expected_packet = rohc_get_packet_type(packet_type);
+	if(expected_packet == ROHC_PACKET_UNKNOWN)
 	{
 		fprintf(stderr, "unknown packet type '%s'\n\n", packet_type);
 		usage();
@@ -203,7 +180,9 @@ static void usage(void)
 	        "  FLOW         The flow of Ethernet frames to compress/decompress\n"
 	        "               (in PCAP format)\n"
 	        "  PACKET_TYPE  The packet type expected for the last packet\n"
-	        "               among: uo1rtp, uo1ts, uo1ts, uor2rtp, uor2ts and uor2ts\n"
+	        "               among: ir, irdyn, uo0, uo1, uo1rtp, uo1ts, uo1ts,\n"
+	        "               uor2, uor2rtp, uor2ts, uor2ts, uncomp-normal,\n"
+	        "               tcp-co-common, tcp-seq-[1-8], and tcp-rnd-[1-8]\n"
 	        "\n"
 	        "options:\n"
 	        "  -h           Print this usage and exit\n");
@@ -301,7 +280,7 @@ static int test_comp_and_decomp(const char *const filename,
 	}
 
 	/* enable profiles */
-	if(!rohc_comp_enable_profiles(comp, ROHC_PROFILE_RTP, -1))
+	if(!rohc_comp_enable_profiles(comp, ROHC_PROFILE_RTP, ROHC_PROFILE_TCP, -1))
 	{
 		fprintf(stderr, "failed to enable the compression profiles\n");
 		goto destroy_comp;
@@ -338,7 +317,7 @@ static int test_comp_and_decomp(const char *const filename,
 	}
 
 	/* enable decompression profiles */
-	if(!rohc_decomp_enable_profile(decomp, ROHC_PROFILE_RTP))
+	if(!rohc_decomp_enable_profiles(decomp, ROHC_PROFILE_RTP, ROHC_PROFILE_TCP, -1))
 	{
 		fprintf(stderr, "failed to enable the decompression profiles\n");
 		goto destroy_decomp;
