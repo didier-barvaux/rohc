@@ -748,6 +748,7 @@ static tcp_ip_id_behavior_t tcp_detect_ip_id_behavior(const uint16_t last_ip_id,
 
 static void tcp_detect_ecn_used_behavior(struct rohc_comp_ctxt *const context,
                                          const uint8_t pkt_ecn_vals,
+                                         const uint8_t pkt_outer_dscp_changed,
                                          const uint8_t pkt_res_val)
 	__attribute__((nonnull(1)));
 
@@ -5238,12 +5239,16 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 	size_t hdrs_len;
 	uint8_t protocol;
 	size_t opts_len;
+	bool pkt_outer_dscp_changed;
+	bool last_pkt_outer_dscp_changed;
 	uint8_t pkt_ecn_vals;
 
 	/* no IPv6 extension got its static part changed at the beginning */
 	tcp_context->tmp.is_ipv6_exts_list_static_changed = false;
 
 	hdrs_len = 0;
+	pkt_outer_dscp_changed = 0;
+	last_pkt_outer_dscp_changed = false;
 	pkt_ecn_vals = 0;
 	ip_hdrs_nr = 0;
 	do
@@ -5255,6 +5260,8 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 		rohc_comp_debug(context, "found IPv%d header #%zu",
 		                ip->version, ip_hdrs_nr + 1);
 
+		pkt_outer_dscp_changed =
+			!!(pkt_outer_dscp_changed || last_pkt_outer_dscp_changed);
 		inner_ip_hdr = remain_data;
 		inner_ip_version = ip->version;
 		*ip_inner_ctxt = ip_context;
@@ -5271,6 +5278,7 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 			}
 
 			protocol = ipv4->protocol;
+			last_pkt_outer_dscp_changed = !!(ipv4->dscp != ip_context->ctxt.vx.dscp);
 			pkt_ecn_vals |= ipv4->ecn;
 
 			remain_data += sizeof(struct ipv4_hdr);
@@ -5280,6 +5288,7 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 		else if(ip->version == IPV6)
 		{
 			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
+			uint8_t dscp;
 			size_t exts_len;
 
 			if(remain_len < sizeof(struct ipv6_hdr))
@@ -5290,6 +5299,8 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 			}
 
 			protocol = ipv6->nh;
+			dscp = (remain_data[1] >> 2) & 0x3f;
+			last_pkt_outer_dscp_changed = !!(dscp != ip_context->ctxt.vx.dscp);
 			pkt_ecn_vals |= remain_data[1] & 0x3;
 
 			remain_data += sizeof(struct ipv6_hdr);
@@ -5311,6 +5322,8 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 			rohc_comp_warn(context, "unknown IP header with version %u", ip->version);
 			goto error;
 		}
+		rohc_comp_debug(context, "  DSCP did%s change",
+		                last_pkt_outer_dscp_changed ? "" : "n't");
 
 		ip_hdrs_nr++;
 	}
@@ -5346,7 +5359,8 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 	hdrs_len += opts_len;
 
 	/* what value for ecn_used? */
-	tcp_detect_ecn_used_behavior(context, pkt_ecn_vals, (*tcp)->res_flags);
+	tcp_detect_ecn_used_behavior(context, pkt_ecn_vals, pkt_outer_dscp_changed,
+	                             (*tcp)->res_flags);
 
 	/* determine the IP-ID behavior of the innermost IPv4 header */
 	if(inner_ip_version == IPV4)
@@ -6875,16 +6889,20 @@ static tcp_ip_id_behavior_t tcp_detect_ip_id_behavior(const uint16_t last_ip_id,
  * What value for ecn_used? The ecn_used controls the presence of IP ECN flags,
  * TCP ECN flags, but also TCP RES flags.
  *
- * @param[in,out] context  The compression context to compare
- * @param pkt_ecn_vals     The values of the IP/ECN flags in the current packet
- * @param pkt_res_val      The TCP RES flags in the current packet
+ * @param[in,out] context         The compression context to compare
+ * @param pkt_ecn_vals            The values of the IP/ECN flags in the current packet
+ * @param pkt_outer_dscp_changed  Whether at least one DSCP changed in the current packet
+ * @param pkt_res_val             The TCP RES flags in the current packet
  */
 static void tcp_detect_ecn_used_behavior(struct rohc_comp_ctxt *const context,
                                          const uint8_t pkt_ecn_vals,
+                                         const uint8_t pkt_outer_dscp_changed,
                                          const uint8_t pkt_res_val)
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
 
+	const bool ecn_used_change_needed_by_outer_dscp =
+		(pkt_outer_dscp_changed && !tcp_context->ecn_used);
 	const bool tcp_res_flag_changed =
 		(pkt_res_val != tcp_context->old_tcphdr.res_flags);
 	const bool ecn_used_change_needed_by_res_flags =
@@ -6894,7 +6912,8 @@ static void tcp_detect_ecn_used_behavior(struct rohc_comp_ctxt *const context,
 	const bool ecn_used_change_needed_by_ecn_flags_set =
 		(pkt_ecn_vals != 0 && !tcp_context->ecn_used);
 	const bool ecn_used_change_needed =
-		(ecn_used_change_needed_by_res_flags ||
+		(ecn_used_change_needed_by_outer_dscp ||
+		 ecn_used_change_needed_by_res_flags ||
 		 ecn_used_change_needed_by_ecn_flags_unset ||
 		 ecn_used_change_needed_by_ecn_flags_set);
 
@@ -6924,7 +6943,8 @@ static void tcp_detect_ecn_used_behavior(struct rohc_comp_ctxt *const context,
 		{
 			rohc_comp_debug(context, "ECN: behavior changed");
 			tcp_context->tmp.ecn_used_changed = true;
-			tcp_context->ecn_used = (pkt_ecn_vals != 0 || tcp_res_flag_changed);
+			tcp_context->ecn_used =
+				!!(pkt_ecn_vals != 0 || tcp_res_flag_changed || pkt_outer_dscp_changed);
 			tcp_context->ecn_used_change_count = 0;
 			tcp_context->ecn_used_zero_count = 0;
 		}

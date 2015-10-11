@@ -100,7 +100,8 @@ TESTS_MAXCONTEXTS0_WLSB4_SMALLCID = \
 	test_non_regression_ipv4_tcp_ip-11-times_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_tcp_ssh-dscp-id-rnd_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_tcp_wlsb-ack-only-for-r-mode-id-rnd_maxcontexts0_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_ipv4_tcp_outer-ip-ttl-variable_maxcontexts0_wlsb4_smallcid.sh
+	test_non_regression_ipv4_ipv4_tcp_outer-ip-ttl-variable_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_tcp_outer-ip-dscp-variable_maxcontexts0_wlsb4_smallcid.sh
 
 
 #
@@ -197,7 +198,8 @@ TESTS_MAXCONTEXTS0_WLSB64_SMALLCID = \
 	test_non_regression_ipv4_tcp_ip-11-times_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_tcp_ssh-dscp-id-rnd_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_tcp_wlsb-ack-only-for-r-mode-id-rnd_maxcontexts0_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_ipv4_tcp_outer-ip-ttl-variable_maxcontexts0_wlsb64_smallcid.sh
+	test_non_regression_ipv4_ipv4_tcp_outer-ip-ttl-variable_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_tcp_outer-ip-dscp-variable_maxcontexts0_wlsb64_smallcid.sh
 
 
 TESTS_MAXCONTEXTS0_SMALLCID = \
@@ -299,7 +301,8 @@ TESTS_MAXCONTEXTS1_WLSB4_SMALLCID = \
 	test_non_regression_ipv4_tcp_ip-11-times_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_tcp_ssh-dscp-id-rnd_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_tcp_wlsb-ack-only-for-r-mode-id-rnd_maxcontexts1_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_ipv4_tcp_outer-ip-ttl-variable_maxcontexts1_wlsb4_smallcid.sh
+	test_non_regression_ipv4_ipv4_tcp_outer-ip-ttl-variable_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_tcp_outer-ip-dscp-variable_maxcontexts1_wlsb4_smallcid.sh
 
 
 #
@@ -396,7 +399,8 @@ TESTS_MAXCONTEXTS1_WLSB64_SMALLCID = \
 	test_non_regression_ipv4_tcp_ip-11-times_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_tcp_ssh-dscp-id-rnd_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_tcp_wlsb-ack-only-for-r-mode-id-rnd_maxcontexts1_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_ipv4_tcp_outer-ip-ttl-variable_maxcontexts1_wlsb64_smallcid.sh
+	test_non_regression_ipv4_ipv4_tcp_outer-ip-ttl-variable_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_tcp_outer-ip-dscp-variable_maxcontexts1_wlsb64_smallcid.sh
 
 
 TESTS_MAXCONTEXTS1_SMALLCID = \
@@ -503,7 +507,8 @@ TESTS_MAXCONTEXTS0_WLSB4_LARGECID = \
 	test_non_regression_ipv4_tcp_ip-11-times_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv4_tcp_ssh-dscp-id-rnd_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv4_tcp_wlsb-ack-only-for-r-mode-id-rnd_maxcontexts0_wlsb4_largecid.sh \
-	test_non_regression_ipv4_ipv4_tcp_outer-ip-ttl-variable_maxcontexts0_wlsb4_largecid.sh
+	test_non_regression_ipv4_ipv4_tcp_outer-ip-ttl-variable_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv4_tcp_outer-ip-dscp-variable_maxcontexts0_wlsb4_largecid.sh
 
 
 #
@@ -600,7 +605,8 @@ TESTS_MAXCONTEXTS0_WLSB64_LARGECID = \
 	test_non_regression_ipv4_tcp_ip-11-times_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv4_tcp_ssh-dscp-id-rnd_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv4_tcp_wlsb-ack-only-for-r-mode-id-rnd_maxcontexts0_wlsb64_largecid.sh \
-	test_non_regression_ipv4_ipv4_tcp_outer-ip-ttl-variable_maxcontexts0_wlsb64_largecid.sh
+	test_non_regression_ipv4_ipv4_tcp_outer-ip-ttl-variable_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_tcp_outer-ip-dscp-variable_maxcontexts0_wlsb64_largecid.sh
 
 
 TESTS_MAXCONTEXTS0_LARGECID = \
@@ -702,7 +708,8 @@ TESTS_MAXCONTEXTS1_WLSB4_LARGECID = \
 	test_non_regression_ipv4_tcp_ip-11-times_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv4_tcp_ssh-dscp-id-rnd_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv4_tcp_wlsb-ack-only-for-r-mode-id-rnd_maxcontexts1_wlsb4_largecid.sh \
-	test_non_regression_ipv4_ipv4_tcp_outer-ip-ttl-variable_maxcontexts1_wlsb4_largecid.sh
+	test_non_regression_ipv4_ipv4_tcp_outer-ip-ttl-variable_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv4_tcp_outer-ip-dscp-variable_maxcontexts1_wlsb4_largecid.sh
 
 
 #
@@ -799,7 +806,8 @@ TESTS_MAXCONTEXTS1_WLSB64_LARGECID = \
 	test_non_regression_ipv4_tcp_ip-11-times_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv4_tcp_ssh-dscp-id-rnd_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv4_tcp_wlsb-ack-only-for-r-mode-id-rnd_maxcontexts1_wlsb64_largecid.sh \
-	test_non_regression_ipv4_ipv4_tcp_outer-ip-ttl-variable_maxcontexts1_wlsb64_largecid.sh
+	test_non_regression_ipv4_ipv4_tcp_outer-ip-ttl-variable_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_tcp_outer-ip-dscp-variable_maxcontexts1_wlsb64_largecid.sh
 
 
 TESTS_MAXCONTEXTS1_LARGECID = \
