@@ -99,5 +99,8 @@ bool rohc_is_tunneling(const uint8_t protocol)
 bool rohc_is_ipv6_opt(const uint8_t protocol)
 	__attribute__((warn_unused_result, const));
 
+const char * rohc_get_ip_proto_descr(const uint8_t protocol)
+	__attribute__((warn_unused_result, const));
+
 #endif
 

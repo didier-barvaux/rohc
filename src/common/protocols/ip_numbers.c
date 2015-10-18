@@ -78,3 +78,56 @@ bool rohc_is_ipv6_opt(const uint8_t protocol)
 	        protocol == ROHC_IPPROTO_RESERVED2);
 }
 
+
+/**
+ * @brief Give a description for the given IP protocol
+ *
+ * @param protocol  The IP protocol to get a description for
+ * @return          A string that describes the given IP protocol
+ */
+const char * rohc_get_ip_proto_descr(const uint8_t protocol)
+{
+	switch(protocol)
+	{
+		case ROHC_IPPROTO_HOPOPTS:
+			return "Hop-by-Hop option";
+		case ROHC_IPPROTO_IPIP:
+			return "IPv4";
+		case ROHC_IPPROTO_TCP:
+			return "TCP";
+		case ROHC_IPPROTO_UDP:
+			return "UDP";
+		case ROHC_IPPROTO_IPV6:
+			return "IPv6";
+		case ROHC_IPPROTO_ROUTING:
+			return "Routing option";
+		case ROHC_IPPROTO_FRAGMENT:
+			return "Fragment option";
+		case ROHC_IPPROTO_GRE:
+			return "GRE";
+		case ROHC_IPPROTO_ESP:
+			return "ESP";
+		case ROHC_IPPROTO_AH:
+			return "AH";
+		case ROHC_IPPROTO_MINE:
+			return "MINE";
+		case ROHC_IPPROTO_DSTOPTS:
+			return "Destination option";
+		case ROHC_IPPROTO_MOBILITY:
+			return "Mobility option";
+		case ROHC_IPPROTO_UDPLITE:
+			return "UDP-Lite";
+		case ROHC_IPPROTO_HIP:
+			return "HIP";
+		case ROHC_IPPROTO_SHIM:
+			return "SHIM";
+		case ROHC_IPPROTO_RESERVED1:
+			return "reserved 1";
+		case ROHC_IPPROTO_RESERVED2:
+			return "reserved 2";
+		case ROHC_IPPROTO_MAX:
+		default:
+			return "unknown IP protocol";
+	}
+}
+

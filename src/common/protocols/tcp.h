@@ -1069,10 +1069,7 @@ static inline char * tcp_ip_id_behavior_get_descr(const tcp_ip_id_behavior_t beh
 		case IP_ID_BEHAVIOR_ZERO:
 			return "constant zero";
 		default:
-			assert(0);
-#if defined(NDEBUG) || defined(__KERNEL__) || defined(ENABLE_DEAD_CODE)
-			return "unknown";
-#endif
+			return "unknown IP-ID behavior";
 	}
 }
 
