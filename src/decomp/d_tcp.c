@@ -2504,6 +2504,20 @@ static void d_tcp_reset_extr_bits(const struct rohc_decomp_ctxt *const context,
 			bits->ip[i].version = tcp_context->ip_contexts[i].version;
 			bits->ip[i].proto = tcp_context->ip_contexts[i].ctxt.vx.next_header;
 			bits->ip[i].proto_nr = 8;
+			if(bits->ip[i].version == IPV6)
+			{
+				size_t j;
+
+				bits->ip[i].opts_nr = tcp_context->ip_contexts[i].opts_nr;
+				bits->ip[i].opts_len = tcp_context->ip_contexts[i].opts_len;
+				for(j = 0; j < bits->ip[i].opts_nr; j++)
+				{
+					bits->ip[i].opts[j].len = tcp_context->ip_contexts[i].opts[j].len;
+					bits->ip[i].opts[j].proto = tcp_context->ip_contexts[i].opts[j].proto;
+					bits->ip[i].opts[j].nh_proto =
+						tcp_context->ip_contexts[i].opts[j].nh_proto;
+				}
+			}
 		}
 		bits->ip_nr = tcp_context->ip_contexts_nr;
 	}
@@ -2888,20 +2902,33 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 	}
 
 	/* extension headers */
+	assert(ip_bits->opts_nr <= ROHC_TCP_MAX_IP_EXT_HDRS);
+	ip_decoded->opts_nr = ip_bits->opts_nr;
+	ip_decoded->opts_len = ip_bits->opts_len;
 	if(ip_bits->version == IPV6)
 	{
-		ip_decoded->opts_nr = ip_bits->opts_nr;
-		ip_decoded->opts_len = ip_bits->opts_len;
-		assert(ip_bits->opts_nr <= ROHC_TCP_MAX_IPV6_EXT_HDRS);
-		memcpy(ip_decoded->opts, ip_bits->opts,
-		       ip_bits->opts_nr * sizeof(ipv6_option_context_t));
+		size_t ext_pos;
+
+		for(ext_pos = 0; ext_pos < ip_decoded->opts_nr; ext_pos++)
+		{
+			switch(ip_bits->opts[ext_pos].proto)
+			{
+				case ROHC_IPPROTO_HOPOPTS:
+				case ROHC_IPPROTO_DSTOPTS:
+				case ROHC_IPPROTO_ROUTING:
+					if(ip_bits->opts[ext_pos].generic.data_len > 0)
+					{
+						memcpy(&(ip_decoded->opts[ext_pos]), &(ip_bits->opts[ext_pos]),
+						       sizeof(ip_option_context_t));
+					}
+					break;
+				default:
+					assert(0);
+					goto error;
+			}
+		}
 		rohc_decomp_debug(context, "  %zu extension headers on %zu bytes",
 		                  ip_decoded->opts_nr, ip_decoded->opts_len);
-	}
-	else /* IPv4 */
-	{
-		assert(ip_bits->opts_nr == 0);
-		assert(ip_bits->opts_len == 0);
 	}
 
 	return true;
@@ -3765,19 +3792,18 @@ static bool d_tcp_build_ipv6_hdr(const struct rohc_decomp_ctxt *const context,
 	all_opts_len = 0;
 	for(i = 0; i < decoded->opts_nr; i++)
 	{
-		const ipv6_option_context_t *const opt = &(decoded->opts[i]);
+		const ip_option_context_t *const opt = &(decoded->opts[i]);
 		rohc_decomp_debug(context, "build %zu-byte IPv6 extension header #%zu",
-		                  opt->generic.option_length, i + 1);
+		                  opt->len, i + 1);
 		uncomp_packet->len += 2;
-		rohc_buf_byte_at(*uncomp_packet, 0) = opt->generic.next_header;
-		assert((opt->generic.option_length % 8) == 0);
-		assert((opt->generic.option_length / 8) > 0);
-		rohc_buf_byte_at(*uncomp_packet, 1) = opt->generic.option_length / 8 - 1;
-		rohc_buf_append(uncomp_packet, opt->generic.data,
-		                opt->generic.option_length - 2);
-		rohc_buf_pull(uncomp_packet, opt->generic.option_length);
-		*ip_hdr_len += opt->generic.option_length;
-		all_opts_len += opt->generic.option_length;
+		rohc_buf_byte_at(*uncomp_packet, 0) = opt->nh_proto;
+		assert((opt->len % 8) == 0);
+		assert((opt->len / 8) > 0);
+		rohc_buf_byte_at(*uncomp_packet, 1) = opt->len / 8 - 1;
+		rohc_buf_append(uncomp_packet, opt->generic.data, opt->len - 2);
+		rohc_buf_pull(uncomp_packet, opt->len);
+		*ip_hdr_len += opt->len;
+		all_opts_len += opt->len;
 	}
 	assert(all_opts_len == ipv6_exts_len);
 
@@ -4119,7 +4145,8 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_nr]);
 		const bool is_inner = !!(ip_hdr_nr == (decoded->ip_nr - 1));
 
-		rohc_decomp_debug(context, "update context for IP header #%zu", ip_hdr_nr + 1);
+		rohc_decomp_debug(context, "update context for IPv%u header #%zu",
+		                  ip_decoded->version, ip_hdr_nr + 1);
 
 		ip_context->version = ip_decoded->version;
 		ip_context->ctxt.vx.version = ip_decoded->version;
@@ -4164,13 +4191,37 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 				rohc_decomp_debug(context, "innermost IP-ID offset 0x%04x is the new "
 				                  "reference", ip_id_offset);
 			}
+
+			/* no extension header for IPv4 */
+			assert(ip_decoded->opts_nr == 0);
+			assert(ip_decoded->opts_len == 0);
+			ip_context->opts_nr = ip_decoded->opts_nr;
+			ip_context->opts_len = ip_decoded->opts_len;
 		}
 		else /* IPv6 */
 		{
+			size_t ext_pos;
+
 			assert((ip_decoded->flowid & 0xfffff) == ip_decoded->flowid);
 			ip_context->ctxt.v6.flow_label = ip_decoded->flowid;
 			memcpy(&ip_context->ctxt.v6.src_addr, ip_decoded->saddr, 16);
 			memcpy(&ip_context->ctxt.v6.dest_addr, ip_decoded->daddr, 16);
+
+			/* remember the extension headers */
+			ip_context->opts_nr = ip_decoded->opts_nr;
+			ip_context->opts_len = ip_decoded->opts_len;
+			for(ext_pos = 0; ext_pos < ip_context->opts_nr; ext_pos++)
+			{
+				const size_t ext_len = ip_decoded->opts[ext_pos].len;
+				const uint8_t ext_proto = ip_decoded->opts[ext_pos].proto;
+
+				rohc_decomp_debug(context, "  update context for the %zu-byte '%s' (%u) "
+				                  "extension header #%zu", ext_len,
+				                  rohc_get_ip_proto_descr(ext_proto), ext_proto,
+				                  ext_pos + 1);
+				memcpy(&(ip_context->opts[ext_pos]), &(ip_decoded->opts[ext_pos]),
+				       sizeof(ip_option_context_t));
+			}
 		}
 	}
 	tcp_context->ip_contexts_nr = decoded->ip_nr;

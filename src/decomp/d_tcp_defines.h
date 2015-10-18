@@ -42,12 +42,10 @@
  * @brief Define the IPv6 option context for Destination, Hop-by-Hop
  *        and Routing option
  */
-typedef struct __attribute__((packed)) ipv6_option_context
+typedef struct __attribute__((packed))
 {
-	size_t option_length;
-	uint8_t next_header;
-	uint8_t length;
-	uint8_t data[(255 + 1) * 8 - 2];
+	size_t data_len;
+	uint8_t data[IPV6_OPT_CTXT_LEN_MAX];
 
 } ipv6_generic_option_context_t;
 
@@ -57,10 +55,6 @@ typedef struct __attribute__((packed)) ipv6_option_context
  */
 typedef struct __attribute__((packed)) ipv6_gre_option_context
 {
-	size_t option_length;
-
-	uint8_t next_header;
-
 	uint8_t c_flag:1;
 	uint8_t k_flag:1;
 	uint8_t s_flag:1;
@@ -78,10 +72,6 @@ typedef struct __attribute__((packed)) ipv6_gre_option_context
  */
 typedef struct __attribute__((packed)) ipv6_mime_option_context
 {
-	size_t option_length;
-
-	uint8_t next_header;
-
 	uint8_t s_bit:1;
 	uint8_t res_bits:7;
 	uint32_t orig_dest;
@@ -95,24 +85,28 @@ typedef struct __attribute__((packed)) ipv6_mime_option_context
  */
 typedef struct __attribute__((packed)) ipv6_ah_option_context
 {
-	size_t option_length;
-
-	uint8_t next_header;
-	uint8_t length;
 	uint32_t spi;
 	uint32_t sequence_number;
 	uint32_t auth_data[1];
 } ipv6_ah_option_context_t;
 
 
-/** The decompression context for one IPv6 extension header */
-typedef union
+/** The decompression context for one IP extension header */
+typedef struct
 {
-	ipv6_generic_option_context_t generic; /**< IPv6 generic extension header */
-	ipv6_gre_option_context_t gre;         /**< IPv6 GRE extension header */
-	ipv6_mime_option_context_t mime;       /**< IPv6 MIME extension header */
-	ipv6_ah_option_context_t ah;           /**< IPv6 AH extension header */
-} ipv6_option_context_t;
+	size_t len;        /**< The length (in bytes) of the extension header */
+	uint8_t proto;     /**< The protocol of the extension header */
+	uint8_t nh_proto;  /**< The protocol of the next header */
+
+	union
+	{
+		ipv6_generic_option_context_t generic; /**< IPv6 generic extension header */
+		ipv6_gre_option_context_t gre;         /**< IPv6 GRE extension header */
+		ipv6_mime_option_context_t mime;       /**< IPv6 MIME extension header */
+		ipv6_ah_option_context_t ah;           /**< IPv6 AH extension header */
+	};
+
+} ip_option_context_t;
 
 
 /**
@@ -182,10 +176,6 @@ typedef struct __attribute__((packed)) ipv6_context
 	uint32_t src_addr[4];
 	uint32_t dest_addr[4];
 
-	size_t opts_nr;
-	size_t opts_len;
-	ipv6_option_context_t opts[ROHC_TCP_MAX_IPV6_EXT_HDRS];
-
 } ipv6_context_t;
 
 
@@ -201,6 +191,10 @@ typedef struct
 		ipv4_context_t v4;
 		ipv6_context_t v6;
 	} ctxt;
+
+	size_t opts_nr;
+	size_t opts_len;
+	ip_option_context_t opts[ROHC_TCP_MAX_IP_EXT_HDRS];
 
 } ip_context_t;
 
@@ -357,8 +351,8 @@ struct rohc_tcp_extr_ip_bits
 	                          chain of IR header */
 	size_t daddr_nr;     /**< The number of source address bits */
 
-	/** The parsed IP extension headers (IPv6 only) */
-	ipv6_option_context_t opts[ROHC_TCP_MAX_IPV6_EXT_HDRS];
+	/** The parsed IP extension headers */
+	ip_option_context_t opts[ROHC_TCP_MAX_IP_EXT_HDRS];
 	size_t opts_nr;  /**< The number of parsed IP extension headers */
 	size_t opts_len; /**< The length of the parsed IP extension headers */
 };
@@ -432,8 +426,8 @@ struct rohc_tcp_decoded_ip_values
 	uint8_t saddr[16];   /**< The decoded source address field */
 	uint8_t daddr[16];   /**< The decoded destination address field */
 
-	/** The decoded IP extension headers (IPv6 only) */
-	ipv6_option_context_t opts[ROHC_TCP_MAX_IPV6_EXT_HDRS];
+	/** The decoded IP extension headers */
+	ip_option_context_t opts[ROHC_TCP_MAX_IP_EXT_HDRS];
 	size_t opts_nr;  /**< The number of decoded IP extension headers */
 	size_t opts_len; /**< The length of the decoded IP extension headers */
 };

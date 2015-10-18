@@ -59,12 +59,12 @@
 
 
 /**
- * @brief The maximum number of IPv6 extension header supported by the TCP profile
+ * @brief The maximum number of IP extension header supported by the TCP profile
  *
  * The limit value was chosen arbitrarily. It should handle most real-life case
  * without hurting performances nor memory footprint.
  */
-#define ROHC_TCP_MAX_IPV6_EXT_HDRS  20U
+#define ROHC_TCP_MAX_IP_EXT_HDRS    20U
 
 
 /**

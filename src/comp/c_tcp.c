@@ -73,6 +73,11 @@ struct tcp_tmp_variables
 	/** Whether at least one of the static part of the IPv6 extensions changed
 	 * in the current packet */
 	bool is_ipv6_exts_list_static_changed;
+	/** Whether at least one of the dynamic part of the IPv6 extensions changed
+	 * in the current packet */
+	bool is_ipv6_exts_list_dyn_changed;
+	/** The new number of IP extensions headers (for every IP header) */
+	size_t ip_exts_nr[ROHC_TCP_MAX_IP_HDRS];
 
 	/* the length of the TCP payload (headers and options excluded) */
 	size_t payload_len;
@@ -157,9 +162,6 @@ struct tcp_tmp_variables
 	bool ecn_used_changed;
 };
 
-#define MAX_IPV6_OPTION_LENGTH        0xffU
-#define MAX_IPV6_CONTEXT_OPTION_SIZE  (2 + ((MAX_IPV6_OPTION_LENGTH + 1) << 3))
-
 
 /**
  * @brief Define the IPv6 generic option context.
@@ -168,8 +170,7 @@ typedef struct __attribute__((packed)) ipv6_generic_option_context
 {
 	size_t option_length;
 	uint8_t next_header;
-	uint8_t length;
-	uint8_t data[(255 + 1) * 8 - 2];
+	uint8_t data[IPV6_OPT_CTXT_LEN_MAX];
 
 } ipv6_generic_option_context_t;
 
@@ -228,7 +229,7 @@ typedef union
 	/* TODO: GRE not yet supported */
 	/* TODO: MINE not yet supported */
 	/* TODO: AH not yet supported */
-} ipv6_option_context_t;
+} ip_option_context_t;
 
 
 /**
@@ -254,9 +255,6 @@ typedef struct __attribute__((packed)) ipv6_context
 	uint32_t src_addr[4];
 	uint32_t dest_addr[4];
 
-	size_t opts_nr;
-	ipv6_option_context_t opts[ROHC_TCP_MAX_IPV6_EXT_HDRS];
-
 } ipv6_context_t;
 
 
@@ -272,6 +270,9 @@ typedef struct
 		ipv4_context_t v4;
 		ipv6_context_t v6;
 	} ctxt;
+
+	size_t opts_nr;
+	ip_option_context_t opts[ROHC_TCP_MAX_IP_EXT_HDRS];
 
 } ip_context_t;
 
@@ -386,8 +387,9 @@ static bool tcp_detect_changes_ipv6_exts(struct rohc_comp_ctxt *const context,
                                          uint8_t *const protocol,
                                          const uint8_t *const exts,
                                          const size_t max_exts_len,
+                                         size_t *const exts_nr,
                                          size_t *const exts_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 6)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 6, 7)));
 
 static void tcp_decide_state(struct rohc_comp_ctxt *const context)
 	__attribute__((nonnull(1)));
@@ -478,12 +480,11 @@ static int tcp_code_dynamic_ipv6_part(const struct rohc_comp_ctxt *const context
                                       const size_t rohc_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 static int tcp_code_dynamic_ipv6_opt_part(const struct rohc_comp_ctxt *const context,
-                                          ipv6_option_context_t *const opt_ctxt,
                                           const struct ipv6_opt *const ipv6_opt,
                                           const uint8_t protocol,
                                           uint8_t *const rohc_data,
                                           const size_t rohc_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 static int tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *const context,
                                      const struct tcphdr *const tcp,
                                      uint8_t *const rohc_data,
@@ -519,7 +520,7 @@ static int tcp_code_irregular_ipv6_part(const struct rohc_comp_ctxt *const conte
                                         const size_t rohc_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 8)));
 static int tcp_code_irregular_ipv6_opt_part(struct rohc_comp_ctxt *const context,
-                                            ipv6_option_context_t *const opt_ctxt,
+                                            ip_option_context_t *const opt_ctxt,
                                             const struct ipv6_opt *const ipv6_opt,
                                             const uint8_t protocol,
                                             uint8_t *const rohc_data,
@@ -815,7 +816,6 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 	size_t remain_len = packet->outer_ip.size;
 	const struct tcphdr *tcp;
 	uint8_t proto;
-	size_t size_option;
 	size_t i;
 
 	/* create the TCP part of the profile context */
@@ -875,7 +875,6 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 				proto = ipv6->nh;
 
 				ip_context->ctxt.v6.ip_id_behavior = IP_ID_BEHAVIOR_RAND;
-				ip_context->ctxt.v6.next_header = proto;
 				ip_context->ctxt.v6.dscp = remain_data[1];
 				ip_context->ctxt.v6.ttl_hopl = ipv6->hl;
 				ip_context->ctxt.v6.flow_label = ipv6_get_flow_label(ipv6);
@@ -888,45 +887,19 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 				remain_len -= sizeof(struct ipv6_hdr);
 
 				rohc_comp_debug(context, "parse IPv6 extension headers");
-				ip_context->ctxt.v6.opts_nr = 0;
 				while(rohc_is_ipv6_opt(proto))
 				{
-					ipv6_option_context_t *const ipv6_opt_ctxt =
-						&(ip_context->ctxt.v6.opts[ip_context->ctxt.v6.opts_nr]);
-
-					switch(proto)
-					{
-						case ROHC_IPPROTO_HOPOPTS:  /* IPv6 Hop-by-Hop options */
-						case ROHC_IPPROTO_ROUTING:  /* IPv6 routing header */
-						case ROHC_IPPROTO_DSTOPTS:  /* IPv6 destination options */
-						{
-							const struct ipv6_opt *const ipv6_opt =
-								(struct ipv6_opt *) remain_data;
-
-							assert(remain_len >= sizeof(struct ipv6_opt));
-
-							size_option = (ipv6_opt->length + 1) << 3;
-							rohc_comp_debug(context, "  IPv6 extension header is %zu-byte long",
-							                size_option);
-							ipv6_opt_ctxt->generic.option_length = size_option;
-							memcpy(&ipv6_opt_ctxt->generic.data, &ipv6_opt->value,
-							       size_option - 2);
-							proto = ipv6_opt->next_header;
-							break;
-						}
-						// case ROHC_IPPROTO_ESP : ???
-						case ROHC_IPPROTO_GRE:  /* TODO: GRE not yet supported */
-						case ROHC_IPPROTO_MINE: /* TODO: MINE not yet supported */
-						case ROHC_IPPROTO_AH:   /* TODO: AH not yet supported */
-						default:
-						{
-							goto free_context;
-						}
-					}
-					remain_data += size_option;
-					remain_len -= size_option;
-					ip_context->ctxt.v6.opts_nr++;
+					const struct ipv6_opt *const ipv6_opt = (struct ipv6_opt *) remain_data;
+					size_t opt_len;
+					assert(remain_len >= sizeof(struct ipv6_opt));
+					opt_len = ipv6_opt_get_length(ipv6_opt);
+					rohc_comp_debug(context, "  IPv6 extension header is %zu-byte long",
+					                opt_len);
+					remain_data += opt_len;
+					remain_len -= opt_len;
+					proto = ipv6_opt->next_header;
 				}
+				ip_context->ctxt.v6.next_header = proto;
 				break;
 			}
 			default:
@@ -1353,7 +1326,7 @@ bad_profile:
  *
  * TCP options are acceptable if:
  *  - the last IPv6 extension header is not truncated,
- *  - no more than \e ROHC_TCP_MAX_IPV6_EXT_HDRS extension headers are present,
+ *  - no more than \e ROHC_TCP_MAX_IP_EXT_HDRS extension headers are present,
  *  - each extension header is present only once (except Destination that may
  *    occur twice).
  *
@@ -1366,7 +1339,7 @@ bad_profile:
  * @return                    true if the IPv6 extension headers are acceptable,
  *                            false if they are not
  *
- * @see ROHC_TCP_MAX_IPV6_EXT_HDRS
+ * @see ROHC_TCP_MAX_IP_EXT_HDRS
  */
 static bool rohc_comp_tcp_are_ipv6_exts_acceptable(const struct rohc_comp *const comp,
                                                    uint8_t *const next_proto,
@@ -1382,7 +1355,7 @@ static bool rohc_comp_tcp_are_ipv6_exts_acceptable(const struct rohc_comp *const
 	(*exts_len) = 0;
 
 	ipv6_ext_nr = 0;
-	while(rohc_is_ipv6_opt(*next_proto) && ipv6_ext_nr < ROHC_TCP_MAX_IPV6_EXT_HDRS)
+	while(rohc_is_ipv6_opt(*next_proto) && ipv6_ext_nr < ROHC_TCP_MAX_IP_EXT_HDRS)
 	{
 		size_t ext_len;
 
@@ -1406,7 +1379,7 @@ static bool rohc_comp_tcp_are_ipv6_exts_acceptable(const struct rohc_comp *const
 					goto bad_exts;
 				}
 
-				ext_len = (ipv6_opt->length + 1) << 3;
+				ext_len = ipv6_opt_get_length(ipv6_opt);
 				if(remain_len < ext_len)
 				{
 					rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -1462,11 +1435,11 @@ static bool rohc_comp_tcp_are_ipv6_exts_acceptable(const struct rohc_comp *const
 
 	/* profile cannot handle the packet if it bypasses internal limit of
 	 * IPv6 extension headers */
-	if(ipv6_ext_nr > ROHC_TCP_MAX_IPV6_EXT_HDRS)
+	if(ipv6_ext_nr > ROHC_TCP_MAX_IP_EXT_HDRS)
 	{
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "IP header got too many IPv6 extension headers for TCP profile "
-		           "(%u headers max)", ROHC_TCP_MAX_IPV6_EXT_HDRS);
+		           "(%u headers max)", ROHC_TCP_MAX_IP_EXT_HDRS);
 		goto bad_exts;
 	}
 
@@ -1613,59 +1586,30 @@ static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
 			}
 			rohc_comp_debug(context, "  same IPv6 flow label");
 
-			/* check next header protocol */
-			next_proto = ipv6->nh;
-			if(next_proto != ip_context->ctxt.v6.next_header)
-			{
-				rohc_comp_debug(context, "  IPv6 not same protocol %d", next_proto);
-				goto bad_context;
-			}
-			rohc_comp_debug(context, "  IPv6 same protocol %d", next_proto);
-
 			/* skip IPv6 base header */
 			remain_data += sizeof(struct ipv6_hdr);
 			remain_len -= sizeof(struct ipv6_hdr);
 
-			/* check IPv6 extension headers */
-			for(ip_ext_pos = 0;
-			    ip_ext_pos < ip_context->ctxt.v6.opts_nr && rohc_is_ipv6_opt(next_proto);
-			    ip_ext_pos++)
+			/* find transport header/protocol, skip any IPv6 extension headers */
+			next_proto = ipv6->nh;
+			for(ip_ext_pos = 0; rohc_is_ipv6_opt(next_proto); ip_ext_pos++)
 			{
-				const ipv6_option_context_t *const opt_ctxt =
-					&(ip_context->ctxt.v6.opts[ip_ext_pos]);
-				const struct ipv6_opt *const ipv6_opt =
-					(struct ipv6_opt *) remain_data;
+				const struct ipv6_opt *const ipv6_opt = (struct ipv6_opt *) remain_data;
 				size_t opt_len;
-
 				assert(remain_len >= sizeof(struct ipv6_opt));
-
-				/* check next header protocol */
-				next_proto = ipv6_opt->next_header;
-				if(next_proto != opt_ctxt->generic.next_header)
-				{
-					rohc_comp_debug(context, "  not same IPv6 option (%d != %d)",
-					                next_proto, opt_ctxt->generic.next_header);
-					goto bad_context;
-				}
-				rohc_comp_debug(context, "  same IPv6 option %d", next_proto);
-
-				/* skip extension header */
-				opt_len = (ipv6_opt->length + 1) << 3;
+				opt_len = ipv6_opt_get_length(ipv6_opt);
 				remain_data += opt_len;
 				remain_len -= opt_len;
+				next_proto = ipv6_opt->next_header;
 			}
-			if(ip_ext_pos < ip_context->ctxt.v6.opts_nr)
+
+			/* check transport header protocol */
+			if(next_proto != ip_context->ctxt.v6.next_header)
 			{
-				rohc_comp_debug(context, "  less IP extension headers (%zu) than "
-				                "context (%zu)", ip_ext_pos, ip_context->ctxt.v6.opts_nr);
+				rohc_comp_debug(context, "  IPv6 not same protocol %u", next_proto);
 				goto bad_context;
 			}
-			if(rohc_is_ipv6_opt(next_proto))
-			{
-				rohc_comp_debug(context, "  more IP extension headers (%zu+) than "
-				                "context (%zu)", ip_ext_pos, ip_context->ctxt.v6.opts_nr);
-				goto bad_context;
-			}
+			rohc_comp_debug(context, "  IPv6 same protocol %u", next_proto);
 		}
 		else
 		{
@@ -1807,6 +1751,22 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	              "current ROHC packet", rohc_pkt, counter);
 
 	rohc_comp_debug(context, "payload_offset = %zu", *payload_offset);
+
+	rohc_comp_debug(context, "update context:");
+
+	/* update the context with the new numbers of IP extension headers */
+	{
+		size_t ip_hdr_pos;
+		for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)
+		{
+			rohc_comp_debug(context, "  update context of IP header #%zu:",
+			                ip_hdr_pos + 1);
+			tcp_context->ip_contexts[ip_hdr_pos].opts_nr =
+				tcp_context->tmp.ip_exts_nr[ip_hdr_pos];
+			rohc_comp_debug(context, "    %zu extension headers",
+			                tcp_context->ip_contexts[ip_hdr_pos].opts_nr);
+		}
+	}
 
 	/* update the context with the new TCP header */
 	memcpy(&(tcp_context->old_tcphdr), tcp, sizeof(struct tcphdr));
@@ -2017,7 +1977,6 @@ static int tcp_code_static_part(struct rohc_comp_ctxt *const context,
 	for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)
 	{
 		const struct ip_hdr *const ip_hdr = (struct ip_hdr *) remain_data;
-		const ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
 		size_t ip_ext_pos;
 
 		/* retrieve IP version */
@@ -2066,15 +2025,15 @@ static int tcp_code_static_part(struct rohc_comp_ctxt *const context,
 			remain_data += sizeof(struct ipv6_hdr);
 			remain_len -= sizeof(struct ipv6_hdr);
 
-			for(ip_ext_pos = 0; ip_ext_pos < ip_context->ctxt.v6.opts_nr; ip_ext_pos++)
+			for(ip_ext_pos = 0;
+			    ip_ext_pos < tcp_context->tmp.ip_exts_nr[ip_hdr_pos];
+			    ip_ext_pos++)
 			{
 				const struct ipv6_opt *const ipv6_opt = (struct ipv6_opt *) remain_data;
-				const ipv6_option_context_t *const opt_ctxt =
-					&(ip_context->ctxt.v6.opts[ip_ext_pos]);
+				const size_t opt_len = ipv6_opt_get_length(ipv6_opt);
 
 				rohc_comp_debug(context, "IPv6 option #%zu: type %u / length %zu",
-				                ip_ext_pos + 1, protocol,
-				                opt_ctxt->generic.option_length);
+				                ip_ext_pos + 1, protocol, opt_len);
 				ret = tcp_code_static_ipv6_opt_part(context, ipv6_opt, protocol,
 				                                    rohc_remain_data, rohc_remain_len);
 				if(ret < 0)
@@ -2087,8 +2046,8 @@ static int tcp_code_static_part(struct rohc_comp_ctxt *const context,
 				rohc_remain_len -= ret;
 
 				protocol = ipv6_opt->next_header;
-				remain_data += opt_ctxt->generic.option_length;
-				remain_len -= opt_ctxt->generic.option_length;
+				remain_data += opt_len;
+				remain_len -= opt_len;
 			}
 		}
 		else
@@ -2216,16 +2175,16 @@ static int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
 			remain_data += sizeof(struct ipv6_hdr);
 			remain_len -= sizeof(struct ipv6_hdr);
 
-			for(ip_ext_pos = 0; ip_ext_pos < ip_context->ctxt.v6.opts_nr; ip_ext_pos++)
+			for(ip_ext_pos = 0;
+			    ip_ext_pos < tcp_context->tmp.ip_exts_nr[ip_hdr_pos];
+			    ip_ext_pos++)
 			{
 				const struct ipv6_opt *const ipv6_opt = (struct ipv6_opt *) remain_data;
-				ipv6_option_context_t *const opt_ctxt =
-					&(ip_context->ctxt.v6.opts[ip_ext_pos]);
+				const size_t opt_len = ipv6_opt_get_length(ipv6_opt);
 
 				rohc_comp_debug(context, "IPv6 option %u", protocol);
-				ret = tcp_code_dynamic_ipv6_opt_part(context, opt_ctxt, ipv6_opt,
-				                                     protocol, rohc_remain_data,
-				                                     rohc_remain_len);
+				ret = tcp_code_dynamic_ipv6_opt_part(context, ipv6_opt, protocol,
+				                                     rohc_remain_data, rohc_remain_len);
 				if(ret < 0)
 				{
 					rohc_comp_warn(context, "failed to build the IPv6 extension "
@@ -2236,8 +2195,8 @@ static int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
 				rohc_remain_len -= ret;
 
 				protocol = ipv6_opt->next_header;
-				remain_data += opt_ctxt->generic.option_length;
-				remain_len -= opt_ctxt->generic.option_length;
+				remain_data += opt_len;
+				remain_len -= opt_len;
 			}
 		}
 		else
@@ -2350,7 +2309,7 @@ static int tcp_code_static_ipv6_opt_part(const struct rohc_comp_ctxt *const cont
 		{
 			ip_rout_opt_static_t *const ip_rout_opt_static =
 				(ip_rout_opt_static_t *) rohc_data;
-			ipv6_opt_static_len = (ipv6_opt->length + 1) << 3;
+			ipv6_opt_static_len = ipv6_opt_get_length(ipv6_opt);
 			if(rohc_max_len < ipv6_opt_static_len)
 			{
 				rohc_comp_warn(context, "ROHC buffer too small for the IPv6 extension "
@@ -2389,7 +2348,6 @@ error:
  * @brief Build the dynamic part of the IPv6 option header
  *
  * @param context         The compression context
- * @param opt_ctxt        The compression context of the IPv6 option
  * @param ipv6_opt        The IPv6 extension header
  * @param protocol        The protocol of the IPv6 extension header
  * @param[out] rohc_data  The ROHC packet being built
@@ -2398,7 +2356,6 @@ error:
  *                        -1 in case of error
  */
 static int tcp_code_dynamic_ipv6_opt_part(const struct rohc_comp_ctxt *const context,
-                                          ipv6_option_context_t *const opt_ctxt,
                                           const struct ipv6_opt *const ipv6_opt,
                                           const uint8_t protocol,
                                           uint8_t *const rohc_data,
@@ -2411,7 +2368,7 @@ static int tcp_code_dynamic_ipv6_opt_part(const struct rohc_comp_ctxt *const con
 		case ROHC_IPPROTO_HOPOPTS: /* IPv6 Hop-by-Hop option */
 		case ROHC_IPPROTO_DSTOPTS: /* IPv6 destination option */
 		{
-			ipv6_opt_dynamic_len = ((ipv6_opt->length + 1) << 3) - 2;
+			ipv6_opt_dynamic_len = ipv6_opt_get_length(ipv6_opt) - 2;
 			if(rohc_max_len < ipv6_opt_dynamic_len)
 			{
 				rohc_comp_warn(context, "ROHC buffer too small for the IPv6 extension "
@@ -2420,8 +2377,6 @@ static int tcp_code_dynamic_ipv6_opt_part(const struct rohc_comp_ctxt *const con
 				goto error;
 			}
 			memcpy(rohc_data, ipv6_opt->value, ipv6_opt_dynamic_len);
-			/* TODO: should not update context there */
-			memcpy(opt_ctxt->generic.data, ipv6_opt->value, ipv6_opt_dynamic_len);
 			break;
 		}
 		case ROHC_IPPROTO_ROUTING: /* IPv6 routing header */
@@ -2467,7 +2422,7 @@ error:
  *                        -1 in case of error
  */
 static int tcp_code_irregular_ipv6_opt_part(struct rohc_comp_ctxt *const context __attribute__((unused)),
-                                            ipv6_option_context_t *const opt_ctxt __attribute__((unused)),
+                                            ip_option_context_t *const opt_ctxt __attribute__((unused)),
                                             const struct ipv6_opt *const ipv6_opt __attribute__((unused)),
                                             const uint8_t protocol,
                                             uint8_t *const rohc_data __attribute__((unused)),
@@ -2877,11 +2832,11 @@ static int tcp_code_irreg_chain(struct rohc_comp_ctxt *const context,
 			remain_len -= sizeof(struct ipv6_hdr);
 
 			/* irregular part for IPv6 extension headers */
-			for(ip_ext_pos = 0; ip_ext_pos < ip_context->ctxt.v6.opts_nr; ip_ext_pos++)
+			for(ip_ext_pos = 0; ip_ext_pos < ip_context->opts_nr; ip_ext_pos++)
 			{
 				const struct ipv6_opt *const ipv6_opt = (struct ipv6_opt *) remain_data;
-				ipv6_option_context_t *const opt_ctxt =
-					&(ip_context->ctxt.v6.opts[ip_ext_pos]);
+				ip_option_context_t *const opt_ctxt =
+					&(ip_context->opts[ip_ext_pos]);
 
 				ret = tcp_code_irregular_ipv6_opt_part(context, opt_ctxt, ipv6_opt,
 				                                       protocol, rohc_remain_data,
@@ -3598,11 +3553,11 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 			remain_len -= sizeof(struct ipv6_hdr);
 
 			/* skip IPv6 extension headers */
-			for(ip_ext_pos = 0; ip_ext_pos < ip_context->ctxt.v6.opts_nr; ip_ext_pos++)
+			for(ip_ext_pos = 0; ip_ext_pos < ip_context->opts_nr; ip_ext_pos++)
 			{
 				const struct ipv6_opt *const ipv6_opt = (struct ipv6_opt *) remain_data;
-				const ipv6_option_context_t *const opt_ctxt =
-					&(ip_context->ctxt.v6.opts[ip_ext_pos]);
+				const ip_option_context_t *const opt_ctxt =
+					&(ip_context->opts[ip_ext_pos]);
 
 				protocol = ipv6_opt->next_header;
 				rohc_comp_debug(context, "skip %zu-byte IPv6 extension header "
@@ -5246,8 +5201,9 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 	bool last_pkt_outer_dscp_changed;
 	uint8_t pkt_ecn_vals;
 
-	/* no IPv6 extension got its static part changed at the beginning */
+	/* no IPv6 extension got its static or dynamic parts changed at the beginning */
 	tcp_context->tmp.is_ipv6_exts_list_static_changed = false;
+	tcp_context->tmp.is_ipv6_exts_list_dyn_changed = false;
 
 	hdrs_len = 0;
 	pkt_outer_dscp_changed = 0;
@@ -5292,6 +5248,7 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 		{
 			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
 			uint8_t dscp;
+			size_t exts_nr;
 			size_t exts_len;
 
 			if(remain_len < sizeof(struct ipv6_hdr))
@@ -5311,13 +5268,15 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 			hdrs_len += sizeof(struct ipv6_hdr);
 
 			if(!tcp_detect_changes_ipv6_exts(context, ip_context, &protocol,
-			                                 remain_data, remain_len, &exts_len))
+			                                 remain_data, remain_len,
+			                                 &exts_nr, &exts_len))
 			{
 				rohc_comp_warn(context, "failed to detect changes in IPv6 extension headers");
 				goto error;
 			}
 			remain_data += exts_len;
 			remain_len -= exts_len;
+			tcp_context->tmp.ip_exts_nr[ip_hdrs_nr] = exts_nr;
 			hdrs_len += exts_len;
 		}
 		else
@@ -5416,6 +5375,7 @@ error:
  *                          out: the protocol type of the transport header
  * @param exts              The beginning of the IPv6 extension headers
  * @param max_exts_len      The maximum length (in bytes) of the extension headers
+ * @param[out] exts_nr      The number of IPv6 extension headers
  * @param[out] exts_len     The length (in bytes) of the IPv6 extension headers
  * @return                  true if changes were successfully detected,
  *                          false if a problem occurred
@@ -5425,6 +5385,7 @@ static bool tcp_detect_changes_ipv6_exts(struct rohc_comp_ctxt *const context,
                                          uint8_t *const protocol,
                                          const uint8_t *const exts,
                                          const size_t max_exts_len,
+                                         size_t *const exts_nr,
                                          size_t *const exts_len)
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
@@ -5432,12 +5393,14 @@ static bool tcp_detect_changes_ipv6_exts(struct rohc_comp_ctxt *const context,
 	size_t remain_len = max_exts_len;
 	size_t ext_pos;
 
+	(*exts_nr) = 0;
 	(*exts_len) = 0;
 
-	ext_pos = 0;
-	while(rohc_is_ipv6_opt(*protocol))
+	for(ext_pos = 0;
+	    rohc_is_ipv6_opt(*protocol) && ext_pos < ROHC_TCP_MAX_IP_EXT_HDRS;
+	    ext_pos++)
 	{
-		ipv6_option_context_t *const opt_ctxt = &(ip_context->ctxt.v6.opts[ext_pos]);
+		ip_option_context_t *const opt_ctxt = &(ip_context->opts[ext_pos]);
 		const struct ipv6_opt *const ext = (struct ipv6_opt *) remain_data;
 		size_t ext_len;
 
@@ -5449,7 +5412,7 @@ static bool tcp_detect_changes_ipv6_exts(struct rohc_comp_ctxt *const context,
 			               "data too small for minimal IPv6 header");
 			goto error;
 		}
-		ext_len = (ext->length + 1) << 3;
+		ext_len = ipv6_opt_get_length(ext);
 		if(remain_len < ext_len)
 		{
 			rohc_comp_warn(context, "malformed IPv6 extension header: remaining "
@@ -5462,35 +5425,56 @@ static bool tcp_detect_changes_ipv6_exts(struct rohc_comp_ctxt *const context,
 			case ROHC_IPPROTO_HOPOPTS: /* IPv6 Hop-by-Hop option */
 			case ROHC_IPPROTO_ROUTING: /* IPv6 routing header */
 			case ROHC_IPPROTO_DSTOPTS: /* IPv6 destination option */
-				if(context->num_sent_packets > 0 &&
-				   ext->length == opt_ctxt->generic.length &&
-				   memcmp(ext->value, opt_ctxt->generic.data,
-				          opt_ctxt->generic.option_length - 2) == 0)
+				/* - for Hop-by-Hop and Destination options, static chain is required
+				 *   only if option length changed
+				 * - for Routing option, static chain is required if option length
+				 *   changed or content changed */
+				if(context->num_sent_packets == 0 ||
+				   ext_pos >= ip_context->opts_nr)
 				{
-					rohc_comp_debug(context, "  IPv6 option %u did not change",
-					                *protocol);
+					rohc_comp_debug(context, "  IPv6 option %u is new", *protocol);
+					tcp_context->tmp.is_ipv6_exts_list_static_changed = true;
+
+					/* record option in context */
+					/* TODO: should not update context there */
+					opt_ctxt->generic.option_length = ext_len;
+					memcpy(opt_ctxt->generic.data, ext->value, ext_len - 2);
+
 				}
-				else
+				else if(ext_len != opt_ctxt->generic.option_length)
 				{
 					rohc_comp_debug(context, "  IPv6 option %u changed of length "
-					                "and/or content (%u -> %u)", *protocol,
-					                opt_ctxt->generic.length, ext->length);
+					                "(%zu -> %zu bytes)", *protocol,
+					                opt_ctxt->generic.option_length, ext_len);
+					tcp_context->tmp.is_ipv6_exts_list_static_changed = true;
 
-					/* static chain is required if option length changed */
-					if(ext->length != opt_ctxt->generic.length)
+					/* record option in context */
+					/* TODO: should not update context there */
+					opt_ctxt->generic.option_length = ext_len;
+					memcpy(opt_ctxt->generic.data, ext->value, ext_len - 2);
+				}
+				else if(memcmp(ext->value, opt_ctxt->generic.data, ext_len - 2) != 0)
+				{
+					rohc_comp_debug(context, "  IPv6 option %u changed of content",
+					                *protocol);
+					if((*protocol) == ROHC_IPPROTO_ROUTING)
 					{
-						rohc_comp_debug(context, "  IPv6 option %u changed of "
-						                "length, static chain is required", *protocol);
 						tcp_context->tmp.is_ipv6_exts_list_static_changed = true;
+					}
+					else
+					{
+						tcp_context->tmp.is_ipv6_exts_list_dyn_changed = true;
 					}
 
 					/* record option in context */
 					/* TODO: should not update context there */
-					assert(ext->length < MAX_IPV6_OPTION_LENGTH);
 					opt_ctxt->generic.option_length = ext_len;
-					opt_ctxt->generic.length = ext->length;
-					memcpy(opt_ctxt->generic.data, ext->value,
-					       opt_ctxt->generic.option_length - 2);
+					memcpy(opt_ctxt->generic.data, ext->value, ext_len - 2);
+				}
+				else
+				{
+					rohc_comp_debug(context, "  IPv6 option %u did not change",
+					                *protocol);
 				}
 				break;
 			case ROHC_IPPROTO_GRE:  /* TODO: GRE not yet supported */
@@ -5505,8 +5489,40 @@ static bool tcp_detect_changes_ipv6_exts(struct rohc_comp_ctxt *const context,
 		remain_data += ext_len;
 		remain_len -= ext_len;
 
+		(*exts_nr)++;
 		(*exts_len) += ext_len;
-		ext_pos++;
+	}
+	assert(!rohc_is_ipv6_opt(*protocol));
+	assert((*exts_nr) <= ROHC_TCP_MAX_IP_EXT_HDRS);
+
+	/* more or less IP extension headers than previous packet? */
+	if(context->num_sent_packets == 0 || (*exts_nr) < ip_context->opts_nr)
+	{
+		rohc_comp_debug(context, "  less IP extension headers (%zu) than "
+		                "context (%zu)", *exts_nr, ip_context->opts_nr);
+		tcp_context->tmp.is_ipv6_exts_list_static_changed = true;
+	}
+	else if((*exts_nr) > ip_context->opts_nr)
+	{
+		rohc_comp_debug(context, "  more IP extension headers (%zu+) than "
+		                "context (%zu)", *exts_nr, ip_context->opts_nr);
+		tcp_context->tmp.is_ipv6_exts_list_static_changed = true;
+	}
+
+	if(tcp_context->tmp.is_ipv6_exts_list_static_changed)
+	{
+		rohc_comp_debug(context, "  IPv6 extension headers changed too much, static "
+		                "chain is required");
+	}
+	else if(tcp_context->tmp.is_ipv6_exts_list_dyn_changed)
+	{
+		rohc_comp_debug(context, "  IPv6 extension headers changed too much, dynamic "
+		                "chain is required");
+	}
+	else
+	{
+		rohc_comp_debug(context, "  IPv6 extension headers did not change too much, "
+		                "neither static nor dynamic chain is required");
 	}
 
 	return true;
@@ -5748,18 +5764,15 @@ static bool tcp_encode_uncomp_ip_fields(struct rohc_comp_ctxt *const context,
 			remain_len -= sizeof(struct ipv6_hdr);
 
 			/* skip IPv6 extension headers */
-			for(ip_ext_pos = 0; ip_ext_pos < ip_context->ctxt.v6.opts_nr; ip_ext_pos++)
+			for(ip_ext_pos = 0; rohc_is_ipv6_opt(protocol); ip_ext_pos++)
 			{
 				const struct ipv6_opt *const ipv6_opt = (struct ipv6_opt *) remain_data;
-				const ipv6_option_context_t *const opt_ctxt =
-					&(ip_context->ctxt.v6.opts[ip_ext_pos]);
-
-				rohc_comp_debug(context, "skip %zu-byte IPv6 extension header "
-				                "with Next Header 0x%02x",
-				                opt_ctxt->generic.option_length, protocol);
+				const size_t opt_len = ipv6_opt_get_length(ipv6_opt);
+				rohc_comp_debug(context, "  skip %zu-byte IPv6 extension header "
+				                "with Next Header 0x%02x", opt_len, protocol);
+				remain_data += opt_len;
+				remain_len -= opt_len;
 				protocol = ipv6_opt->next_header;
-				remain_data += opt_ctxt->generic.option_length;
-				remain_len -= opt_ctxt->generic.option_length;
 			}
 		}
 		else
@@ -6405,8 +6418,14 @@ static rohc_packet_t tcp_decide_FO_SO_packet(const struct rohc_comp_ctxt *const 
 	if(tcp_context->tmp.is_ipv6_exts_list_static_changed)
 	{
 		rohc_comp_debug(context, "force packet IR because at least one IPv6 option "
-		                "changed of length");
+		                "changed its static part");
 		packet_type = ROHC_PACKET_IR;
+	}
+	else if(tcp_context->tmp.is_ipv6_exts_list_dyn_changed)
+	{
+		rohc_comp_debug(context, "force packet IR-DYN because at least one IPv6 option "
+		                "changed its dynamic part");
+		packet_type = ROHC_PACKET_IR_DYN;
 	}
 	else if((tcp_context->tcp_opts.tmp.nr_opt_ts_req_bits_minus_1 > ROHC_SDVL_MAX_BITS_IN_2_BYTES &&
 	         tcp_context->tcp_opts.tmp.nr_opt_ts_req_bits_0x40000 > ROHC_SDVL_MAX_BITS_IN_3_BYTES &&
