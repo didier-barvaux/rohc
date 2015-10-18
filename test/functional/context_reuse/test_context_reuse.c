@@ -362,6 +362,16 @@ static int test_comp_and_decomp(const char *filename)
 			goto destroy_decomp;
 		}
 		fprintf(stderr, "\tdecompression is successful\n");
+
+		/* compare input and output */
+		if(ip_packet.len != decomp_packet.len ||
+		   memcmp(rohc_buf_data(ip_packet), rohc_buf_data(decomp_packet),
+		          ip_packet.len) != 0)
+		{
+			fprintf(stderr, "\toutput packet does not match input packet\n");
+			goto destroy_decomp;
+		}
+		fprintf(stderr, "\toutput packet matches input packet\n");
 	}
 
 	/* everything went fine */
