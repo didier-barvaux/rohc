@@ -37,6 +37,7 @@ rohc.pc
 coverage.info
 coverage.info.filtered
 coverage-report
+coverage-report.log
 test/report_code_coverage.sh.log
 test/report_code_coverage.sh.trs
 doc/doxygen.conf
