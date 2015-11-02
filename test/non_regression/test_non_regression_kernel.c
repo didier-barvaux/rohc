@@ -337,6 +337,7 @@ static int test_run(const char *input_filename,
 		else
 		{
 			compare_packet = NULL;
+			memset(&compare_header, 0, sizeof(struct pcap_pkthdr));
 		}
 
 		/* compress & decompress with ROHC couple #1 */
