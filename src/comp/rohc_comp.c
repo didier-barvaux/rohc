@@ -1808,18 +1808,6 @@ static bool __rohc_comp_deliver_feedback(struct rohc_comp *const comp,
 	rohc_cid_t cid;
 	size_t cid_len;
 
-	/* sanity check */
-	if(comp == NULL)
-	{
-		goto error;
-	}
-	if(packet == NULL)
-	{
-		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		             "failed to deliver feedback: packet is NULL");
-		goto error;
-	}
-
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	           "deliver %zu byte(s) of feedback to the right context", size);
 
