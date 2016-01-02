@@ -29,16 +29,24 @@ from RohcDecompressor import *
 
 RTP_PAYLOAD = 'hello, Python world!'
 
-verbose = False
-if len(sys.argv) != 2 and len(sys.argv) != 3:
-    print "usage: example.py packets_number [verbose]"
+verbose_level = 0
+verbose_rohc = False
+if len(sys.argv) != 2 and len(sys.argv) != 3 and len(sys.argv) != 4:
+    print "usage: example.py packets_number [verbose [verbose]]"
     sys.exit(1)
 packets_nr = int(sys.argv[1])
 if len(sys.argv) >= 3:
     if sys.argv[2] != 'verbose':
-        print "usage: example.py packets_number [verbose]"
+        print "usage: example.py packets_number [verbose [verbose]]"
+        sys.exit(1)
+    if len(sys.argv) < 4:
+        verbose_level = 1
     else:
-        verbose = True
+        if sys.argv[3] != 'verbose':
+            print "usage: example.py packets_number [verbose [verbose]]"
+            sys.exit(1)
+        verbose_level = 2
+        verbose_rohc = True
 
 # create a stream of IPv4/UDP/RTP packets
 print "create a stream of RTP packets"
@@ -50,14 +58,16 @@ print "%i %i-byte RTP packets created with %i-byte payload" % \
 
 # create one ROHC compressor
 print "create ROHC compressor"
-comp = RohcCompressor(profiles=[ROHC_PROFILE_RTP])
+comp = RohcCompressor(cid_type=ROHC_LARGE_CID, profiles=[ROHC_PROFILE_RTP], \
+        verbose=verbose_rohc)
 if comp is None:
     print "failed to create the ROHC compressor"
     sys.exit(1)
 
 # create one ROHC decompressor
 print "create ROHC decompressor"
-decomp = RohcDecompressor(profiles=[ROHC_PROFILE_RTP])
+decomp = RohcDecompressor(cid_type=ROHC_LARGE_CID, profiles=[ROHC_PROFILE_RTP], \
+        verbose=verbose_rohc)
 if decomp is None:
     print "failed to create the ROHC decompressor"
     sys.exit(1)
@@ -70,31 +80,31 @@ for uncomp_pkt in uncomp_pkts:
     pkts_nr += 1
     uncomp_len += len(str(uncomp_pkt))
 
-    if verbose is not True:
+    if verbose_level == 0:
         sys.stdout.write('.')
         sys.stdout.flush()
 
     # compression
-    if verbose is True:
+    if verbose_level >= 1:
         print "compress   packet #%i: %i bytes ->" % (pkts_nr, len(str(uncomp_pkt))),
     (status, comp_pkt) = comp.compress(str(uncomp_pkt))
     if status != ROHC_STATUS_OK:
         print "failed to compress packet: %s (%i)" % \
               (rohc_strerror(status), status)
         sys.exit(1)
-    if verbose is True:
+    if verbose_level >= 1:
         print "%i bytes" % len(comp_pkt)
     comp_len += len(comp_pkt)
 
     # decompression
-    if verbose is True:
+    if verbose_level >= 1:
         print "decompress packet #%i: %i bytes ->" % (pkts_nr, len(comp_pkt)),
     (status, decomp_pkt, _, _) = decomp.decompress(comp_pkt)
     if status != ROHC_STATUS_OK:
         print "failed to decompress packet: %s (%i)" % \
               (rohc_strerror(status), status)
         sys.exit(1)
-    if verbose is True:
+    if verbose_level >= 1:
         print "%i bytes" % len(decomp_pkt)
 
     # compare the decompressed packet with the original one
@@ -102,7 +112,7 @@ for uncomp_pkt in uncomp_pkts:
         print "decompressed packet does not match original packet"
         sys.exit(1)
 
-if verbose is not True:
+if verbose_level == 0:
     print
 print "all %i packets were successfully compressed" % pkts_nr
 
