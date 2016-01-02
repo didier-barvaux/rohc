@@ -118,7 +118,9 @@ print "all %i packets were successfully compressed" % pkts_nr
 
 gain = uncomp_len - comp_len
 gain_percent = 100 - comp_len * 100 / uncomp_len
-if gain > 0:
+if gain == 0:
+    print "no byte saved by compression"
+elif gain > 0:
     print "%i bytes (%i%%) saved by compression" % (gain, gain_percent)
 else:
     print "%i bytes (%i%%) lost by compression" % (abs(gain), abs(gain_percent))
