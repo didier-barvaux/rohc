@@ -126,6 +126,7 @@ cppcheck:
 		 --suppress=useClosedFile:test/non_regression/test_non_regression_kernel.c:589 \
 		 --suppress=useClosedFile:test/non_regression/test_non_regression_kernel.c:590 \
 		 --suppress=useClosedFile:test/non_regression/test_non_regression_kernel.c:591 \
+		 --suppress=useClosedFile:test/non_regression/test_non_regression_kernel.c:592 \
 		 --suppress=unusedFunction:src/decomp/schemes/test/test_wlsb.c:40 \
 		 .
 
