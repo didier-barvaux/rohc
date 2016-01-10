@@ -22,6 +22,16 @@ Example that shows how to compress, then decompress a sequence of packets
 """
 
 from __future__ import print_function
+from __future__ import division
+from __future__ import unicode_literals
+from __future__ import absolute_import
+
+from builtins import range
+from builtins import int
+from builtins import bytes
+
+from future import standard_library
+standard_library.install_aliases()
 
 import sys
 import struct
@@ -124,7 +134,10 @@ for uncomp_pkt in uncomp_pkts:
     uncomp_len += len(uncomp_pkt)
 
     if verbose_level == 0:
-        print('.', flush=True, end='')
+        # once python2 support is not needed anymore
+        #print('.', flush=True, end='')
+        print('.', end='')
+        sys.stdout.flush()
 
     # compression
     if verbose_level >= 1:

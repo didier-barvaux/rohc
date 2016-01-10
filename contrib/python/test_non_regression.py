@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 #
 # Copyright 2015,2016 Didier Barvaux
 #
@@ -73,6 +73,15 @@ packets of flow A and flow B on stdout. It also outputs the log of the
 different processes (startup, compression, decompression, comparison and
 shutdown).
 """
+
+from __future__ import print_function
+from __future__ import division
+from __future__ import unicode_literals
+from __future__ import absolute_import
+from builtins import range
+from builtins import int
+from future import standard_library
+standard_library.install_aliases()
 
 import sys
 import pcap
@@ -195,6 +204,14 @@ def parse_opts(opts):
 
 
 def dump_packet(descr, data):
+    if isinstance(data, str) is True:
+        dump_packet__str(descr, data)
+    elif isinstance(data, bytes) is True:
+        dump_packet__bytes(descr, data)
+    else:
+        raise NotImplementedError()
+
+def dump_packet__bytes(descr, data):
     data_len = len(data)
     max_len = 100
     if data_len < max_len:
@@ -202,6 +219,23 @@ def dump_packet(descr, data):
     print(descr, "(%i bytes, max %i bytes):" % (data_len, max_len))
     for i in range(0, max_len):
         print("%02x " % data[i], end='')
+        if (i + 1) % 16 == 0:
+            print()
+        elif (i + 1) % 8 == 0:
+            print(" ", end='')
+        else:
+            print(end='')
+    if max_len % 16 != 0:
+        print()
+
+def dump_packet__str(descr, data):
+    data_len = len(data)
+    max_len = 100
+    if data_len < max_len:
+        max_len = data_len
+    print(descr, "(%i bytes, max %i bytes):" % (data_len, max_len))
+    for i in range(0, max_len):
+        print("%02x " % ord(data[i]), end='')
         if (i + 1) % 16 == 0:
             print()
         elif (i + 1) % 8 == 0:
@@ -251,6 +285,14 @@ def do_packet_match(buf1_descr, buf1, buf2_descr, buf2):
 
 
 def remove_padding(pkt):
+    if isinstance(pkt, str) is True:
+        return remove_padding__str(pkt)
+    elif isinstance(pkt, bytes) is True:
+        return remove_padding__bytes(pkt)
+    else:
+        raise NotImplementedError()
+
+def remove_padding__bytes(pkt):
     if len(pkt) == (ETHER_FRAME_MIN_LEN - ETHER_HDR_LEN):
         ip_version = (pkt[0] & 0xf0) >> 4
         if ip_version == 4:
@@ -259,6 +301,19 @@ def remove_padding(pkt):
             pkt = pkt[:ip_len]
         elif ip_version == 6:
             ip_len = 40 + (pkt[4] << 8) + pkt[5]
+            print("%i bytes of padding removed" % (len(pkt) - ip_len))
+            pkt = pkt[:ip_len]
+    return pkt
+
+def remove_padding__str(pkt):
+    if len(pkt) == (ETHER_FRAME_MIN_LEN - ETHER_HDR_LEN):
+        ip_version = (ord(pkt[0]) & 0xf0) >> 4
+        if ip_version == 4:
+            ip_len = (ord(pkt[2]) << 8) + ord(pkt[3])
+            print("%i bytes of padding removed" % (len(pkt) - ip_len))
+            pkt = pkt[:ip_len]
+        elif ip_version == 6:
+            ip_len = 40 + (ord(pkt[4]) << 8) + ord(pkt[5])
             print("%i bytes of padding removed" % (len(pkt) - ip_len))
             pkt = pkt[:ip_len]
     return pkt

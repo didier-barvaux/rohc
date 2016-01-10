@@ -20,6 +20,14 @@
 Compress network packets with the RObust Header Compression (ROHC) scheme
 """
 
+from __future__ import print_function
+from __future__ import unicode_literals
+from __future__ import division
+from __future__ import absolute_import
+from builtins import range
+from future import standard_library
+standard_library.install_aliases()
+
 from rohc import ROHC_SMALL_CID, ROHC_SMALL_CID_MAX, \
                  ROHC_PROFILE_UNCOMPRESSED, \
                  ROHC_STATUS_OK, ROHC_STATUS_ERROR, \

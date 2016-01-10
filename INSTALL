@@ -79,25 +79,25 @@ Python binding
 As of version 2.0.0, a Python binding was added. It is located in the
 contrib/python/ sub-directory.
 
-Notes:
-* The Python binding is not as CPU performant as the C library, so it is only
-  recommended for testing or rapid prototyping.
-* The Python binding currently only supports Python 2.x. The Python module
-  does not work correctly with Python 3.x for the moment.
+The Python binding is not as CPU performant as the C library, so it is only
+recommended for testing or rapid prototyping.
+
+Install required dependencies:
+ # pip2 install future         # for Python 2
+ # pip3 install future         # for Python 3
 
 Build the Python binding:
-
  $ cd contrib/python/
- $ python setup.py build
+ $ python2 setup.py build      # for Python 2
+ $ python3 setup.py build      # for Python 3
 
 Install the Python binding:
-
- $ python setup.py install
+ $ python2 setup.py install    # for Python 2
+ $ python3 setup.py install    # for Python 3
 
 An example is provided in contrib/python/example.py. You may execute it to test
 the Python binding (once it was installed on your system):
-
- $ ./contrib/python/example.py 10
+ $ python3 ./contrib/python/example.py 10
  create a stream of RTP packets
  10 60-byte RTP packets created with 20-byte payload
  create ROHC compressor
@@ -106,9 +106,14 @@ the Python binding (once it was installed on your system):
  all 10 packets were successfully compressed
  232 bytes (39%) saved by compression
 
-You may also run the non-regression tests for the Python binding:
+You may also compute test coverage with:
+ $ cd contrib/python/
+ $ ./coverage 2.7             # for Python 2.7
+ $ ./coverage 3.4             # for Python 3.4
 
- $ USE_PYTHON=yes make -C test/non_regression/ check
+You may also run the non-regression tests for the Python binding:
+ $ USE_PYTHON=2.7 make -C test/non_regression/ check    # for Python 2.7
+ $ USE_PYTHON=3.4 make -C test/non_regression/ check    # for Python 3.4
 
 
 Developers

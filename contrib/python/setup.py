@@ -46,9 +46,10 @@ setup(name             = 'rohc',
       author_email     = '<didier@barvaux.org>',
       description      = """Python binding for the ROHC library""",
       license          = 'LGPL version 2.1 or later',
-      url              = 'http://rohc-lib.org/',
+      url              = 'https://rohc-lib.org/',
       ext_modules      = [rohc_module],
       py_modules       = ['rohc', 'RohcCompressor', 'RohcDecompressor'],
+      install_requires = ['future'],
       classifiers      = [
           'Topic :: System :: Networking',
           'Topic :: Software Development :: Libraries',
@@ -56,6 +57,7 @@ setup(name             = 'rohc',
           'Intended Audience :: Developers',
           'Development Status :: 4 - Beta',
           'License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)',
+          'Programming Language :: Python :: 2',
           'Programming Language :: Python :: 3'
       ]
 )

@@ -40,7 +40,7 @@
 #
 # Environment variables:
 #    USE_VALGRIND=yes|no   run the tests within Valgrind or not
-#    USE_PYTHON=yes|no     run the tests of the Python binding or not
+#    USE_PYTHON=<version>  run the tests of the Python binding or not
 #
 
 # skip test in case of cross-compilation
@@ -60,11 +60,11 @@ VERBOSE="$1"
 if [ "x$MAKELEVEL" != "x" ] ; then
 	BASEDIR="${srcdir}"
 	APP="../test_non_regression${KERNEL_SUFFIX}${CROSS_COMPILATION_EXEEXT}"
-	APP_PYTHON="python3.4 ../../../contrib/python/test_non_regression.py"
+	APP_PYTHON="python${USE_PYTHON} ../../../contrib/python/test_non_regression.py"
 else
 	BASEDIR=$( dirname "${SCRIPT}" )
 	APP="${BASEDIR}/../test_non_regression${KERNEL_SUFFIX}${CROSS_COMPILATION_EXEEXT}"
-	APP_PYTHON="python3.4 ${BASEDIR}/../../../contrib/python/test_non_regression.py"
+	APP_PYTHON="python${USE_PYTHON} ${BASEDIR}/../../../contrib/python/test_non_regression.py"
 fi
 
 # extract the CID type and capture name from the name of the script
@@ -135,8 +135,8 @@ fi
 # source valgrind-related functions
 . ${BASEDIR}/../../valgrind.sh
 
-# C or Pyhton test?
-if [ -z "${USE_PYTHON}" ] || [ "${USE_PYTHON}" != "yes" ] ; then
+# C or Python test?
+if [ -z "${USE_PYTHON}" ] ; then
 	# run C tests
 
 	# run without valgrind
@@ -152,7 +152,7 @@ if [ -z "${USE_PYTHON}" ] || [ "${USE_PYTHON}" != "yes" ] ; then
 		run_test_with_valgrind ${BASEDIR}/../../valgrind.xsl ${CMD} || exit $?
 	fi
 
-elif [ "${USE_PYTHON}" = "yes" ] ; then
+else
 	# run Python tests
 
 	# tests with Python are not possible in the Linux kernel
@@ -162,12 +162,9 @@ elif [ "${USE_PYTHON}" = "yes" ] ; then
 
 	# run python bindings without valgrind
 	root_dir="${BASEDIR}/../../../"
-	export LD_LIBRARY_PATH="${root_dir}/src/.libs/:${root_dir}/contrib/python/build/lib.linux-x86_64-3.4"
-	export PYTHONPATH="${root_dir}/contrib/python/build/lib.linux-x86_64-3.4"
+	export LD_LIBRARY_PATH="${root_dir}/src/.libs/:${root_dir}/contrib/python/build/lib.linux-x86_64-${USE_PYTHON}"
+	export PYTHONPATH="${root_dir}/contrib/python/build/lib.linux-x86_64-${USE_PYTHON}"
 	run_test_without_valgrind ${CMD_PYTHON} || exit $?
 
-else
-	# not C nor Python: unknown tests
-	exit 77
 fi
 

@@ -59,8 +59,7 @@ As of version 2.0.0, a Python binding was added. It is not as CPU performant as
 the C library, so it is only recommended for testing or rapid prototyping. See
 the INSTALL file to learn building and installing the Python binding.
 
-The Python binding currently only supports Python 2.x. The Python module does
-not work correctly with Python 3.x for the moment.
+The Python binding supports both Python 2.7 and Python 3.x.
 
 
 References
