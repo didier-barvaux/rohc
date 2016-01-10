@@ -60,11 +60,11 @@ VERBOSE="$1"
 if [ "x$MAKELEVEL" != "x" ] ; then
 	BASEDIR="${srcdir}"
 	APP="../test_non_regression${KERNEL_SUFFIX}${CROSS_COMPILATION_EXEEXT}"
-	APP_PYTHON="../../../contrib/python/test_non_regression.py"
+	APP_PYTHON="python3.4 ../../../contrib/python/test_non_regression.py"
 else
 	BASEDIR=$( dirname "${SCRIPT}" )
 	APP="${BASEDIR}/../test_non_regression${KERNEL_SUFFIX}${CROSS_COMPILATION_EXEEXT}"
-	APP_PYTHON="${BASEDIR}/../../../contrib/python/test_non_regression.py"
+	APP_PYTHON="python3.4 ${BASEDIR}/../../../contrib/python/test_non_regression.py"
 fi
 
 # extract the CID type and capture name from the name of the script
@@ -162,8 +162,8 @@ elif [ "${USE_PYTHON}" = "yes" ] ; then
 
 	# run python bindings without valgrind
 	root_dir="${BASEDIR}/../../../"
-	export LD_LIBRARY_PATH="${root_dir}/src/.libs/:${root_dir}/contrib/python/build/lib.linux-x86_64-2.7"
-	export PYTHONPATH="${root_dir}/contrib/python/build/lib.linux-x86_64-2.7"
+	export LD_LIBRARY_PATH="${root_dir}/src/.libs/:${root_dir}/contrib/python/build/lib.linux-x86_64-3.4"
+	export PYTHONPATH="${root_dir}/contrib/python/build/lib.linux-x86_64-3.4"
 	run_test_without_valgrind ${CMD_PYTHON} || exit $?
 
 else

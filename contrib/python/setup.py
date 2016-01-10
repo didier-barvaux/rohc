@@ -49,7 +49,6 @@ setup(name             = 'rohc',
       url              = 'http://rohc-lib.org/',
       ext_modules      = [rohc_module],
       py_modules       = ['rohc', 'RohcCompressor', 'RohcDecompressor'],
-#      install_requires = ['scapy'],
       classifiers      = [
           'Topic :: System :: Networking',
           'Topic :: Software Development :: Libraries',
@@ -57,7 +56,7 @@ setup(name             = 'rohc',
           'Intended Audience :: Developers',
           'Development Status :: 4 - Beta',
           'License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)',
-          'Programming Language :: Python :: 2.7'
+          'Programming Language :: Python :: 3'
       ]
 )
 

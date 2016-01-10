@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Didier Barvaux
+ * Copyright 2015,2016 Didier Barvaux
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -57,10 +57,14 @@
    }
 };
 
+%typemap(in) (uint8_t *data, size_t max_len) %{
+   $1 = PyBytes_AsString($input);
+   $2 = PyBytes_Size($input);
+%}
 %include "rohc/rohc_buf.h"
 %extend rohc_buf
 {
-   rohc_buf(char *data, size_t max_len, size_t len, struct rohc_ts *ts)
+   rohc_buf(uint8_t *data, size_t max_len, size_t len, struct rohc_ts *ts)
    {
       struct rohc_buf *buf;
       buf = (struct rohc_buf *) malloc(sizeof(struct rohc_buf));

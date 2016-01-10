@@ -1,5 +1,5 @@
 #
-# Copyright 2015 Didier Barvaux
+# Copyright 2015,2016 Didier Barvaux
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -42,9 +42,9 @@ class RohcDecompressor(object):
     verbose = None
 
     _buf_max_len = 0xffff
-    _buf1 = ""
-    _buf2 = ""
-    _buf3 = ""
+    _buf1 = b""
+    _buf2 = b""
+    _buf3 = b""
 
     def __init__(self, cid_type=ROHC_SMALL_CID, cid_max=ROHC_SMALL_CID_MAX, \
                  mode=ROHC_U_MODE, profiles=[ROHC_PROFILE_UNCOMPRESSED], \
@@ -83,15 +83,15 @@ class RohcDecompressor(object):
                 return None
 
         # create the output buffers
-        self._buf1 = ""
+        self._buf1 = b""
         for _ in range(0, self._buf_max_len):
-            self._buf1 += '\0'
-        self._buf2 = ""
+            self._buf1 += b'\0'
+        self._buf2 = b""
         for _ in range(0, self._buf_max_len):
-            self._buf2 += '\0'
-        self._buf3 = ""
+            self._buf2 += b'\0'
+        self._buf3 = b""
         for _ in range(0, self._buf_max_len):
-            self._buf3 += '\0'
+            self._buf3 += b'\0'
 
     def decompress(self, comp_pkt):
         """ Decompress the given compressed ROHC packet
@@ -110,25 +110,24 @@ class RohcDecompressor(object):
         timestamp = rohc_ts(0, 0)
 
         # create the input buffer for the compressed ROHC packet
-        if isinstance(comp_pkt, str) is True:
-            packet_data = comp_pkt
-        else:
-            packet_data = str(comp_pkt)
-        packet_len = len(packet_data)
-        buf_comp = rohc_buf(packet_data, packet_len, packet_len, timestamp)
+        if isinstance(comp_pkt, bytes) is not True:
+            raise TypeError("compress(): argument 'comp_pkt' shall be "\
+                            "'bytes' not '%s'" % type(comp_pkt))
+        comp_pkt_len = len(comp_pkt)
+        buf_comp = rohc_buf(comp_pkt, comp_pkt_len, timestamp)
         if buf_comp is None:
             return (status, None, None, None)
 
         # create the output buffer for the decompressed packet
-        buf_decomp = rohc_buf(self._buf1, self._buf_max_len, 0, timestamp)
+        buf_decomp = rohc_buf(self._buf1, 0, timestamp)
         if buf_decomp is None:
             return (status, None, None, None)
 
         # create the buffers for feedbacks
-        buf_feedback_recv = rohc_buf(self._buf2, self._buf_max_len, 0, timestamp)
+        buf_feedback_recv = rohc_buf(self._buf2, 0, timestamp)
         if buf_feedback_recv is None:
             return (status, None, None, None)
-        buf_feedback_to_send = rohc_buf(self._buf3, self._buf_max_len, 0, timestamp)
+        buf_feedback_to_send = rohc_buf(self._buf3, 0, timestamp)
         if buf_feedback_to_send is None:
             return (status, None, None, None)
 
@@ -138,18 +137,7 @@ class RohcDecompressor(object):
         if status != ROHC_STATUS_OK:
             return (status, None, None, None)
 
-        # convert the packets to strings
-        decomp_pkt = ""
-        for i in range(0, buf_decomp.len):
-            decomp_pkt = pack('%isB' % i, decomp_pkt, buf_decomp.get(i))
-        feedback_recv = ""
-        for i in range(0, buf_feedback_recv.len):
-            feedback_recv = pack('%isB' % i, feedback_recv, \
-                                 buf_feedback_recv.get(i))
-        feedback_to_send = ""
-        for i in range(0, buf_feedback_to_send.len):
-            feedback_to_send = pack('%isB' % i, feedback_to_send, \
-                                    buf_feedback_to_send.get(i))
-
-        return (status, decomp_pkt, feedback_recv, feedback_to_send)
+        return (status, self._buf1[:buf_decomp.len], \
+                self._buf2[:buf_feedback_recv.len], \
+                self._buf3[:buf_feedback_to_send.len])
 
