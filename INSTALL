@@ -82,7 +82,12 @@ contrib/python/ sub-directory.
 The Python binding is not as CPU performant as the C library, so it is only
 recommended for testing or rapid prototyping.
 
-Install required dependencies:
+Install required system dependencies:
+ # yum install swig            # for RHEL/CentOS
+ # apt-get install swig        # for Debian/Ubuntu
+ # emerge -av swig             # for Gentoo
+
+Install required Python dependencies:
  # pip2 install future         # for Python 2
  # pip3 install future         # for Python 3
 
