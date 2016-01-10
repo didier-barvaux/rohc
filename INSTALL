@@ -115,6 +115,7 @@ You may also compute test coverage with:
  $ cd contrib/python/
  $ ./coverage 2.7             # for Python 2.7
  $ ./coverage 3.4             # for Python 3.4
+(install Python coverage module before)
 
 You may also run the non-regression tests for the Python binding:
  $ USE_PYTHON=2.7 make -C test/non_regression/ check    # for Python 2.7
