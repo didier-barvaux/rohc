@@ -41,7 +41,7 @@ else
 fi
 AC_SUBST(PACKAGE_REVNO)
 AC_DEFINE_UNQUOTED([PACKAGE_REVNO], ["$PACKAGE_REVNO"],
-                   [Bazaar revision number])
+                   [VCS revision number])
 
 # Define library versioning:
 #
