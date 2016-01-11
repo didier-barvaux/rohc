@@ -52,6 +52,16 @@ See the INSTALL file to learn how to use the statistics application and the
 generate_statistics.sh script.
 
 
+Python binding
+--------------
+
+As of version 2.0.0, a Python binding was added. It is not as CPU performant as
+the C library, so it is only recommended for testing or rapid prototyping. See
+the INSTALL file to learn building and installing the Python binding.
+
+The Python binding supports both Python 2.7 and Python 3.x.
+
+
 References
 ----------
 

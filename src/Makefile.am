@@ -24,7 +24,8 @@ librohc_la_LDFLAGS = \
 	-export-symbols $(srcdir)/librohc.symbols \
 	-no-undefined \
 	-version-info $(ROHC_API_CURRENT):$(ROHC_API_REVISION):$(ROHC_API_AGE)
-librohc_la_CFLAGS =
+librohc_la_CFLAGS = \
+	$(configure_cflags)
 librohc_la_CPPFLAGS =
 librohc_la_DEPENDENCIES = \
 	$(builddir)/common/librohc_common.la \

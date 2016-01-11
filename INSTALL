@@ -73,6 +73,55 @@ Add option --enable-rohc-tests-valgrind if you want to run tests within
 valgrind.
 
 
+Python binding
+--------------
+
+As of version 2.0.0, a Python binding was added. It is located in the
+contrib/python/ sub-directory.
+
+The Python binding is not as CPU performant as the C library, so it is only
+recommended for testing or rapid prototyping.
+
+Install required system dependencies:
+ # yum install swig            # for RHEL/CentOS
+ # apt-get install swig        # for Debian/Ubuntu
+ # emerge -av swig             # for Gentoo
+
+Install required Python dependencies:
+ # pip2 install future         # for Python 2
+ # pip3 install future         # for Python 3
+
+Build the Python binding:
+ $ cd contrib/python/
+ $ python2 setup.py build      # for Python 2
+ $ python3 setup.py build      # for Python 3
+
+Install the Python binding:
+ $ python2 setup.py install    # for Python 2
+ $ python3 setup.py install    # for Python 3
+
+An example is provided in contrib/python/example.py. You may execute it to test
+the Python binding (once it was installed on your system):
+ $ python3 ./contrib/python/example.py 10
+ create a stream of RTP packets
+ 10 60-byte RTP packets created with 20-byte payload
+ create ROHC compressor
+ create ROHC decompressor
+ ..........
+ all 10 packets were successfully compressed
+ 232 bytes (39%) saved by compression
+
+You may also compute test coverage with:
+ $ cd contrib/python/
+ $ ./coverage 2.7             # for Python 2.7
+ $ ./coverage 3.4             # for Python 3.4
+(install Python coverage module before)
+
+You may also run the non-regression tests for the Python binding:
+ $ USE_PYTHON=2.7 make -C test/non_regression/ check    # for Python 2.7
+ $ USE_PYTHON=3.4 make -C test/non_regression/ check    # for Python 3.4
+
+
 Developers
 -----------
 
