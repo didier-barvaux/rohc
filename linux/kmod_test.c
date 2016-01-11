@@ -185,7 +185,8 @@ bool rohc_comp_rtp_cb(const unsigned char *const ip __attribute__((unused)),
 	memcpy(&udp_dport, udp + 2, sizeof(uint16_t));
 
 	/* is the UDP destination port in the list of ports reserved for RTP
-	 * traffic by default (for compatibility reasons) */
+	 * traffic by default (for compatibility reasons)
+	 */
 	for (i = 0; i < default_rtp_ports_nr; i++) {
 		if (ntohs(udp_dport) == default_rtp_ports[i]) {
 			is_rtp = true;
@@ -277,7 +278,8 @@ int rohc_couple_init_phase2(struct rohc_couple *couple, int index)
 	rohc_info("init ROHC couple #%d (phase 2)\n", index + 1);
 
 	/* create the decompressor and associate it with the compressor
-	   of the other ROHC couple */
+	 * of the other ROHC couple
+	 */
 	couple->decomp = rohc_decomp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
 					  ROHC_O_MODE);
 	if (couple->decomp == NULL) {
@@ -296,24 +298,22 @@ int rohc_couple_init_phase2(struct rohc_couple *couple, int index)
 	rohc_info("\ttrace callback for ROHC decompressor successfully set\n");
 
 	/* allocate memory for the ROHC packet generated from IP packet and
-	   init all the related lengths and pointers */
+	 * init all the related lengths and pointers
+	 */
 	couple->rohc_pkt_out = kmalloc(MAX_ROHC_SIZE, GFP_KERNEL);
-	if (couple->rohc_pkt_out == NULL) {
-		rohc_err("\tfailed to allocate memory for ROHC packets\n");
+	if (couple->rohc_pkt_out == NULL)
 		goto free_decompressor;
-	}
 	couple->rohc_size_out = 0;
 	couple->ip_pkt_in = NULL;
 	couple->ip_size_total_in = 0;
 	couple->ip_size_current_in = 0;
 
 	/* allocate memory for the IP packet generated from ROHC packet and
-	   init all the related lengths and pointers */
+	 * init all the related lengths and pointers
+	 */
 	couple->ip_pkt_out = kmalloc(MAX_ROHC_SIZE, GFP_KERNEL);
-	if (couple->ip_pkt_out == NULL) {
-		rohc_err("\tfailed to allocate memory for IP packets\n");
+	if (couple->ip_pkt_out == NULL)
 		goto free_rohc_packet;
-	}
 	couple->ip_size_out = 0;
 	couple->rohc_pkt_in = NULL;
 	couple->rohc_size_total_in = 0;
@@ -399,7 +399,8 @@ static int rohc_proc_open(struct inode *inode, struct file *file)
 	rohc_info("proc file '%s' opened\n", file->f_path.dentry->d_name.name);
 
 	/* initialize the ROHC couples only if this is the first /proc file
-	 * opened since the last close() */
+	 * opened since the last close()
+	 */
 	if (couples_ref_nr == 0) {
 		int ret;
 
@@ -478,7 +479,8 @@ ssize_t rohc_proc_comp_write(struct file *file,
 	WARN_ON(couples_ref_nr == 0);
 
 	/* do we receive data of a new packet or
-	   a chunk of a yet-partially-received packet ? */
+	 * a chunk of a yet-partially-received packet ?
+	 */
 	if (couple->ip_size_total_in == 0) {
 		/* new packet */
 		couple->ip_size_total_in = *((uint16_t *) buffer);
@@ -592,7 +594,8 @@ ssize_t rohc_proc_decomp_write(struct file *file,
 	WARN_ON(couples_ref_nr == 0);
 
 	/* do we receive data of a new packet or
-	   a chunk of a yet-partially-received packet ? */
+	 * a chunk of a yet-partially-received packet ?
+	 */
 	if (couple->rohc_size_total_in == 0) {
 		/* new packet */
 		couple->rohc_size_total_in = *((uint16_t *) buffer);
@@ -711,7 +714,8 @@ ssize_t rohc_proc_comp_read(struct file *file,
 	}
 
 	/* userspace should provides a buffer that is large enough
-	   for the whole compressed packet */
+	 * for the whole compressed packet
+	 */
 	if (count < couple->rohc_size_out) {
 		rohc_err("cannot send ROHC packet to userspace: too large\n");
 		goto error;
@@ -760,7 +764,8 @@ ssize_t rohc_proc_decomp_read(struct file *file,
 	}
 
 	/* userspace should provides a buffer that is large enough
-	   for the whole compressed packet */
+	 * for the whole compressed packet
+	 */
 	if (count < couple->ip_size_out) {
 		rohc_err("cannot send decompressed IP packet to userspace: too large\n");
 		goto error;
