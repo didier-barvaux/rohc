@@ -499,7 +499,7 @@ size_t wlsb_ack(struct c_wlsb *const wlsb,
 
 	if(sn_bits_nr < 32)
 	{
-		sn_mask = (1 << sn_bits_nr) - 1;
+		sn_mask = (1U << sn_bits_nr) - 1;
 	}
 	else
 	{

@@ -135,7 +135,7 @@ struct rohc_interval32 rohc_f_32bits(const uint32_t v_ref,
 	}
 	else
 	{
-		interval_width = (1 << k) - 1; /* (1 << k) = 2^k */
+		interval_width = (1U << k) - 1; /* (1 << k) = 2^k */
 	}
 
 	/* determine the real p value to use */

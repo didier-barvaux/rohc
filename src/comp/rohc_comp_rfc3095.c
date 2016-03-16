@@ -3333,7 +3333,7 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 			rtp_context->tmp.nr_ts_bits_ext3 =
 				sdvl_get_min_len(rtp_context->tmp.nr_ts_bits_more_than_2, 0);
 			assert(rtp_context->tmp.nr_ts_bits_ext3 < 32);
-			rtp_context->tmp.ts_send &= (1 << rtp_context->tmp.nr_ts_bits_ext3) - 1;
+			rtp_context->tmp.ts_send &= (1U << rtp_context->tmp.nr_ts_bits_ext3) - 1;
 			rohc_comp_debug(context, "%zu bits of TS (0 in header, %zu in EXT3)",
 			                rtp_context->tmp.nr_ts_bits_more_than_2,
 			                rtp_context->tmp.nr_ts_bits_ext3);
@@ -3932,7 +3932,7 @@ static int code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
 
 			/* part 2: 5 bits of 6-bit TS */
 			/* (be sure not to send bad TS bits because of the shift) */
-			ts_mask = 0x1f & (((uint32_t) (1 << (32 - 1))) - 1);
+			ts_mask = 0x1f & (((uint32_t) (1U << (32 - 1))) - 1);
 			*f_byte |= (ts_send >> 1) & ts_mask;
 			rohc_comp_debug(context, "5 bits of 6-bit TS in 1st byte = 0x%x",
 			                (*f_byte) & 0x1f);
@@ -3960,7 +3960,7 @@ static int code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
 
 			/* part 2: 5 bits of 9-bit TS */
 			/* (be sure not to send bad TS bits because of the shift) */
-			ts_mask = 0x1f & ((1 << (32 - 3 - 1)) - 1);
+			ts_mask = 0x1f & ((1U << (32 - 3 - 1)) - 1);
 			*f_byte |= (ts_send >> 4) & ts_mask;
 			rohc_comp_debug(context, "5 bits of 9-bit TS in 1st byte = 0x%x",
 			                (*f_byte) & 0x1f);
@@ -3988,7 +3988,7 @@ static int code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
 
 			/* part 2: 5 bits of 17-bit TS */
 			/* (be sure not to send bad TS bits because of the shift) */
-			ts_mask = 0x1f & ((1 << (32 - 12 - 1)) - 1);
+			ts_mask = 0x1f & ((1U << (32 - 12 - 1)) - 1);
 			*f_byte |= (ts_send >> 12) & ts_mask;
 			rohc_comp_debug(context, "5 bits of 17-bit TS in 1st byte = 0x%x",
 			                (*f_byte) & 0x1f);
@@ -4016,7 +4016,7 @@ static int code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
 
 			/* part 2: 5 bits of 25-bit TS */
 			/* (be sure not to send bad TS bits because of the shift) */
-			ts_mask = 0x1f & ((1 << (32 - 19 - 1)) - 1);
+			ts_mask = 0x1f & ((1U << (32 - 19 - 1)) - 1);
 			*f_byte |= (ts_send >> 20) & ts_mask;
 			rohc_comp_debug(context, "5 bits of 25-bit TS in 1st byte = 0x%x",
 			                (*f_byte) & 0x1f);
@@ -4058,7 +4058,7 @@ static int code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
 			 *  - the 5-bit mask (0x1f) for the 5-bit field
 			 *  - the variable-length mask (depending on the number of TS bits in UOR-2-RTP)
 			 *    to avoid sending more than 32 bits of TS in all TS fields */
-			ts_mask = 0x1f & ((1 << (32 - nr_ts_bits_ext3 - 1)) - 1);
+			ts_mask = 0x1f & ((1U << (32 - nr_ts_bits_ext3 - 1)) - 1);
 			ts_bits_for_f_byte = (ts_send >> (nr_ts_bits_ext3 + 1)) & ts_mask;
 			*f_byte |= ts_bits_for_f_byte;
 			rohc_comp_debug(context, "5 bits of %zd-bit TS in 1st byte = 0x%x "
@@ -4091,7 +4091,7 @@ static int code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
 
 			/* compute TS to send in extension 3 and its length */
 			assert(nr_ts_bits_ext3 < 32);
-			rtp_context->tmp.ts_send &= (1 << nr_ts_bits_ext3) - 1;
+			rtp_context->tmp.ts_send &= (1U << nr_ts_bits_ext3) - 1;
 			rtp_context->tmp.nr_ts_bits_ext3 = nr_ts_bits_ext3;
 
 			break;
@@ -4321,7 +4321,7 @@ static int code_UOR2_TS_bytes(const struct rohc_comp_ctxt *const context,
 			else
 			{
 				assert(nr_ts_bits_ext3 < 32);
-				ts_mask = 0x1f & ((1 << (32 - nr_ts_bits_ext3)) - 1);
+				ts_mask = 0x1f & ((1U << (32 - nr_ts_bits_ext3)) - 1);
 			}
 			ts_bits_for_f_byte = (ts_send >> nr_ts_bits_ext3) & ts_mask;
 			*f_byte |= ts_bits_for_f_byte;
@@ -4353,7 +4353,7 @@ static int code_UOR2_TS_bytes(const struct rohc_comp_ctxt *const context,
 
 			/* compute TS to send in extension 3 and its length */
 			assert(nr_ts_bits_ext3 < 32);
-			rtp_context->tmp.ts_send &= (1 << nr_ts_bits_ext3) - 1;
+			rtp_context->tmp.ts_send &= (1U << nr_ts_bits_ext3) - 1;
 			rtp_context->tmp.nr_ts_bits_ext3 = rohc_min(nr_ts_bits_ext3, nr_ts_bits);
 
 			break;
@@ -4601,7 +4601,7 @@ static int code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
 			/* compute TS to send in extension 3 and its length */
 			nr_ts_bits_ext3 = sdvl_get_min_len(nr_ts_bits, 0);
 			assert(nr_ts_bits_ext3 < 32);
-			rtp_context->tmp.ts_send &= (1 << nr_ts_bits_ext3) - 1;
+			rtp_context->tmp.ts_send &= (1U << nr_ts_bits_ext3) - 1;
 			rtp_context->tmp.nr_ts_bits_ext3 = nr_ts_bits_ext3;
 			rohc_comp_debug(context, "will put %zd bits of TS = 0x%x in EXT3",
 			                nr_ts_bits_ext3, rtp_context->tmp.ts_send);
@@ -5242,7 +5242,7 @@ static int code_EXT3_rtp_packet(struct rohc_comp_ctxt *const context,
 				/* retrieve unscaled TS because we lost it when the UO* base
 				 * header was built */
 				ts_send = get_ts_unscaled(&rtp_context->ts_sc);
-				ts_send &= (1 << nr_ts_bits_ext3) - 1;
+				ts_send &= (1U << nr_ts_bits_ext3) - 1;
 			}
 			break;
 		default:
