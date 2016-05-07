@@ -124,10 +124,10 @@ static inline uint16_t swab16(const uint16_t value)
 }
 
 
-#ifdef __i386__
+#if defined(__i386__) || defined(__x86_64__)
 
 static inline uint16_t ip_fast_csum(const uint8_t *iph,
-                                    size_t ihl)
+                                    const size_t ihl)
 	__attribute__((nonnull(1), warn_unused_result, pure));
 
 /**
@@ -142,8 +142,9 @@ static inline uint16_t ip_fast_csum(const uint8_t *iph,
  * @return    The IPv4 checksum
  */
 static inline uint16_t ip_fast_csum(const uint8_t *iph,
-                                    size_t ihl)
+                                    const size_t ihl)
 {
+	uint32_t __ihl = ihl;
 	uint32_t sum;
 
 	__asm__ __volatile__(
@@ -169,8 +170,8 @@ static inline uint16_t ip_fast_csum(const uint8_t *iph,
 	   /* Since the input registers which are loaded with iph and ihl
 	      are modified, we must also specify them as outputs, or gcc
 	      will assume they contain their original values. */
-		: "=r" (sum), "=r" (iph), "=r" (ihl)
-		: "1" (iph), "2" (ihl)
+		: "=r" (sum), "=r" (iph), "=r" (__ihl)
+		: "1" (iph), "2" (__ihl)
 		: "memory");
 
 	return (uint16_t) (sum & 0xffff);
@@ -275,7 +276,7 @@ out:
 }
 
 
-#endif /* !__i386__ */
+#endif /* !__i386__ && !__x86_64__ */
 
 #else /* !__KERNEL__ */
 #  include <asm/checksum.h>
