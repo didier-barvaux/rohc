@@ -493,43 +493,12 @@ static rohc_packet_t c_rtp_decide_FO_packet(const struct rohc_comp_ctxt *context
 		 * in base header + 8 bits in extension 3): determine which UOR-2*
 		 * packet to choose */
 
-		const int is_ip_v4 = (rfc3095_ctxt->outer_ip_flags.version == IPV4);
-		const int is_rnd = rfc3095_ctxt->outer_ip_flags.info.v4.rnd;
-		const size_t nr_ip_id_bits = rfc3095_ctxt->tmp.nr_ip_id_bits;
-		const bool is_outer_ipv4_non_rnd = (is_ip_v4 && !is_rnd);
-		size_t nr_ipv4_non_rnd;
-		size_t nr_ipv4_non_rnd_with_bits;
+		/* how many IP headers are IPv4 headers with non-random IP-IDs */
+		const size_t nr_ipv4_non_rnd = get_nr_ipv4_non_rnd(rfc3095_ctxt);
+		const size_t nr_ipv4_non_rnd_with_bits = get_nr_ipv4_non_rnd_with_bits(rfc3095_ctxt);
 
 		rohc_comp_debug(context, "choose one UOR-2-* packet because less than 14 "
 		                "SN bits must be transmitted");
-
-		/* how many IP headers are IPv4 headers with non-random IP-IDs */
-		nr_ipv4_non_rnd = 0;
-		nr_ipv4_non_rnd_with_bits = 0;
-		if(is_outer_ipv4_non_rnd)
-		{
-			nr_ipv4_non_rnd++;
-			if(nr_ip_id_bits > 0)
-			{
-				nr_ipv4_non_rnd_with_bits++;
-			}
-		}
-		if(nr_of_ip_hdr >= 1)
-		{
-			const int is_ip2_v4 = rfc3095_ctxt->inner_ip_flags.version == IPV4;
-			const int is_rnd2 = rfc3095_ctxt->inner_ip_flags.info.v4.rnd;
-			const size_t nr_ip_id_bits2 = rfc3095_ctxt->tmp.nr_ip_id_bits2;
-			const bool is_inner_ipv4_non_rnd = (is_ip2_v4 && !is_rnd2);
-
-			if(is_inner_ipv4_non_rnd)
-			{
-				nr_ipv4_non_rnd++;
-				if(nr_ip_id_bits2 > 0)
-				{
-					nr_ipv4_non_rnd_with_bits++;
-				}
-			}
-		}
 
 		/* what UOR-2* packet do we choose? */
 		/* TODO: the 3 next if/else could be merged with the ones from

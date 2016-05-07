@@ -579,7 +579,7 @@ static int time_compress_packet(struct rohc_comp *comp,
 		/* update the length of the IP packet if padding is present */
 		if(tot_len < ip_packet.len)
 		{
-			fprintf(stderr, "packet %lu: the Ethernet frame has %zd "
+			fprintf(stderr, "packet %lu: the Ethernet frame has %zu "
 			        "bytes of padding after the %u-byte IP packet!\n",
 			        num_packet, ip_packet.len - tot_len, tot_len);
 			ip_packet.len = tot_len;

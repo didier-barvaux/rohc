@@ -693,7 +693,7 @@ static test_result_t test_run_one_step(test_context_t context,
 		/* update the length of the IP packet if padding is present */
 		if(tot_len < ip_size)
 		{
-			fprintf(stderr, "Ethernet frame has %u bytes of padding after "
+			fprintf(stderr, "Ethernet frame has %d bytes of padding after "
 			        "the %u-byte IP packet!\n", ip_size - tot_len, tot_len);
 			ip_size = tot_len;
 		}

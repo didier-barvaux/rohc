@@ -159,10 +159,10 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 		{ 0xfffffff + 3,  4, 3 },
 		{ 0xfffffff + 4,  1, 1 },
 		{ 0xffffffff,     4, 3 },
-		{ 0xffffffff + 1, 4, 3 },
-		{ 0xffffffff + 2, 4, 3 },
-		{ 0xffffffff + 3, 4, 3 },
-		{ 0xffffffff + 4, 1, 1 },
+		{ 0,              4, 3 }, /* 0xffffffff + 1 */
+		{ 1,              4, 3 }, /* 0xffffffff + 2 */
+		{ 2,              4, 3 }, /* 0xffffffff + 3 */
+		{ 3,              1, 1 }, /* 0xffffffff + 4 */
 		{ 0,              0, 4 }  /* stopper */
 	};
 
