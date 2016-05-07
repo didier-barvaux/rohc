@@ -131,7 +131,7 @@ typedef enum
  * @see rohc_c_set_max_cid
  * @see rohc_decomp_set_max_cid
  */
-#define ROHC_LARGE_CID_MAX  ((1 << 14) - 1) /* 2^14 - 1 = 16383 */
+#define ROHC_LARGE_CID_MAX  ((1U << 14) - 1) /* 2^14 - 1 = 16383 */
 
 
 /**
@@ -147,7 +147,7 @@ typedef enum
  * \snippet simple_rohc_program.c define ROHC compressor
  * \snippet simple_rohc_program.c create ROHC compressor
  */
-#define ROHC_SMALL_CID_MAX  15
+#define ROHC_SMALL_CID_MAX  15U
 
 
 /**

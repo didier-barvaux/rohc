@@ -36,7 +36,7 @@
  */
 
 int code_cid_values(const rohc_cid_type_t cid_type,
-                    const int cid,
+                    const rohc_cid_t cid,
                     uint8_t *const dest,
                     const size_t dest_size,
                     size_t *const first_position)
