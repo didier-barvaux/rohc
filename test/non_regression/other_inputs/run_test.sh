@@ -61,145 +61,112 @@ print_processing_time()
 
 
 curdir=$( dirname "$0" )
-
-nr_all=0
-nr_pass=0
-nr_skip=0
-nr_malformed=0
-nr_fail=0
-global_processing_time=0
+capture="$1"
+ignore_malformed="$2"
 
 options="--no-comparison --ignore-malformed --max-contexts 450 largecid"
-test_dirs=""
-if [ "$1" = "personal" ] ; then
-	test_dirs="${test_dirs} ${curdir}/personal_inputs/"
-elif [ "$1" == "external" ] ; then
-	test_dirs="${test_dirs} ${curdir}/external_inputs/"
-elif [ "$1" == "all" ] ; then
-	test_dirs="${test_dirs} ${curdir}/personal_inputs/"
-	test_dirs="${test_dirs} ${curdir}/external_inputs/"
-else
-	echo "usage: $0 personal|external|all" >&2
-	exit 1
+
+echo -n "$( basename "${capture}" ): "
+
+
+# determine file type
+mime=$( file --brief --mime-type "${capture}" )
+ret=$?
+if [ ${ret} -ne 0 ] ; then
+	print_yellow "FAIL (unknown MIME type, code ${ret})"
+	echo
+	exit ${ret}
 fi
-captures=$( find -L ${test_dirs}/ -type f -or -type l 2>/dev/null | sort )
-nr_captures=$( echo -e "${captures}" | wc -l )
-
-count=0
-for capture in ${captures} ; do
-
-	count=$(( ${count} + 1 ))
-
-	echo -n "${count}/${nr_captures} - $( basename "${capture}" ): "
-	nr_all=$(( ${nr_all} + 1 ))
-
+if [ "${mime}" = "inode/symlink" ] ; then
+	new_capture="$( readlink "${capture}" )"
+	echo "${new_capture}" | grep -q '^/'
+	if [ $? -eq 0 ] ; then
+		capture="${new_capture}"
+	else
+		capture="$( dirname "${capture}" )/${new_capture}"
+	fi
 	mime=$( file --brief --mime-type "${capture}" )
 	ret=$?
 	if [ ${ret} -ne 0 ] ; then
 		print_yellow "FAIL (unknown MIME type, code ${ret})"
 		echo
-		nr_fail=$(( ${nr_fail} + 1 ))
-		continue
+		exit ${ret}
 	fi
-	if [ "${mime}" = "inode/symlink" ] ; then
-		new_capture="$( readlink "${capture}" )"
-		echo "${new_capture}" | grep -q '^/'
-		if [ $? -eq 0 ] ; then
-			capture="${new_capture}"
-		else
-			capture="$( dirname "${capture}" )/${new_capture}"
-		fi
-		mime=$( file --brief --mime-type "${capture}" )
-		ret=$?
-		if [ ${ret} -ne 0 ] ; then
-			print_yellow "FAIL (unknown MIME type, code ${ret})"
-			echo
-			nr_fail=$(( ${nr_fail} + 1 ))
-			continue
-		fi
-	fi
-	file_type=$( file --brief "${capture}" )
-	ret=$?
-	if [ ${ret} -ne 0 ] ; then
-		print_yellow "FAIL (unknown file type, code ${ret})"
-		echo
-		nr_fail=$(( ${nr_fail} + 1 ))
-		continue
-	fi
-
-	is_file_supported=0
-	if [ "${mime}" = "application/vnd.tcpdump.pcap" ] ; then
-		is_file_supported=1
-	elif [ "${mime}" = "application/octet-stream" ] ; then
-		echo "${file_type}" | grep -Eq "^extended tcpdump capture file"
-		etcpdump=$?
-		echo "${file_type}" | grep -Eq "^pcap-ng capture file"
-		pcapng=$?
-		if [ ${etcpdump} -eq 0 ] || \
-		   [ ${pcapng} -eq 0 ] ; then
-			is_file_supported=1
-		fi
-		unset etcpdump
-		unset pcapng
-	fi
-	if [ ${is_file_supported} -ne 1 ] ; then
-		print_yellow "SKIP (unsupported MIME type '${mime}' ; file type '${file_type}')"
-		echo
-		nr_skip=$(( ${nr_skip} + 1 ))
-		continue
-	fi
-	unset is_file_supported
-	unset file_type
-	unset mime
-
-	# print capture size
-	echo -n "[$( ls -lh "${capture}" | gawk '{print $5}' )] "
-
-	# test the capture, compute the processing time
-	date_start=$( date +%s )
-	${curdir}/../test_non_regression ${options} "${capture}" \
-		>/dev/null 2>&1
-	ret=$?
-	date_end=$( date +%s )
-	processing_time=$(( ${date_end} - ${date_start} ))
-	global_processing_time=$(( ${global_processing_time} + ${processing_time} ))
-	unset date_start
-	unset date_end
-
-	# print the test results
-	if [ ${ret} -eq 0 ] ; then
-		print_green "PASS"
-		nr_pass=$(( ${nr_pass} + 1 ))
-	elif [ ${ret} -eq 77 ] ; then
-		print_yellow "SKIP"
-		nr_skip=$(( ${nr_skip} + 1 ))
-	else
-		print_red "FAIL (${ret})"
-		nr_fail=$(( ${nr_fail} + 1 ))
-	fi
-	print_processing_time ${processing_time}
+fi
+file_type=$( file --brief "${capture}" )
+ret=$?
+if [ ${ret} -ne 0 ] ; then
+	print_yellow "FAIL (unknown file type, code ${ret})"
 	echo
-
-	unset ret
-	unset processing_time
-done
-
-# print summary of results
-echo -n "${nr_all} processed captures in "
-print_processing_time ${global_processing_time}
-echo
-echo "${nr_pass} captures successfully compressed/decompressed"
-echo "${nr_fail} captures with compression/decompression errors"
-echo "${nr_skip} unsupported captures"
-echo
-
-if [ ${nr_fail} -ne 0 ] ; then
-	global_ret=1
-elif [ ${nr_skip} -ne 0 ] ; then
-	global_ret=77
-else
-	global_ret=0
+	exit ${ret}
 fi
 
-exit ${global_ret}
+
+# is file type supported?
+is_file_supported=0
+if [ "${mime}" = "application/vnd.tcpdump.pcap" ] ; then
+	is_file_supported=1
+elif [ "${mime}" = "application/octet-stream" ] ; then
+	echo "${file_type}" | grep -Eq "^extended tcpdump capture file"
+	etcpdump=$?
+	echo "${file_type}" | grep -Eq "^pcap-ng capture file"
+	pcapng=$?
+	if [ ${etcpdump} -eq 0 ] || \
+	   [ ${pcapng} -eq 0 ] ; then
+		is_file_supported=1
+	fi
+	unset etcpdump
+	unset pcapng
+fi
+if [ ${is_file_supported} -ne 1 ] ; then
+	print_yellow "SKIP (unsupported MIME type '${mime}' ; file type '${file_type}')"
+	echo
+	if [ "${ignore_malformed}" = "--ignore-malformed" ] ; then
+		exit 0
+	else
+		exit 77
+	fi
+fi
+unset is_file_supported
+unset file_type
+unset mime
+
+
+# print capture size
+echo -n "[$( ls -lh "${capture}" | gawk '{print $5}' )] "
+
+
+# test the capture, compute the processing time
+date_start=$( date +%s )
+${curdir}/../test_non_regression ${options} "${capture}" \
+	>/dev/null 2>&1
+ret=$?
+date_end=$( date +%s )
+processing_time=$(( ${date_end} - ${date_start} ))
+unset date_start
+unset date_end
+
+
+# print the test results
+if [ ${ret} -eq 0 ] ; then
+	print_green "PASS"
+	test_status=0
+elif [ ${ret} -eq 77 ] ; then
+	print_yellow "SKIP"
+	if [ "${ignore_malformed}" = "--ignore-malformed" ] ; then
+		test_status=0
+	else
+		test_status=77
+	fi
+else
+	print_red "FAIL (${ret})"
+	test_status=${ret}
+fi
+print_processing_time ${processing_time}
+echo
+
+unset ret
+unset processing_time
+
+exit ${test_status}
 
