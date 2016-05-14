@@ -95,8 +95,6 @@ static bool rohc_comp_rtp_cb(const unsigned char *const ip __attribute__((unused
                              const unsigned int payload_size __attribute__((unused)),
                              void *const rtp_private __attribute__((unused)))
 {
-	const size_t default_rtp_ports_nr = 6;
-	unsigned int default_rtp_ports[] = { 1234, 36780, 33238, 5020, 5002, 5006 };
 	uint16_t udp_dport;
 	bool is_rtp = false;
 	size_t i;
@@ -111,9 +109,9 @@ static bool rohc_comp_rtp_cb(const unsigned char *const ip __attribute__((unused
 
 	/* is the UDP destination port in the list of ports reserved for RTP
 	 * traffic by default (for compatibility reasons) */
-	for(i = 0; i < default_rtp_ports_nr; i++)
+	for(i = 0; i < RTP_PORTS_MAX_NR; i++)
 	{
-		if(ntohs(udp_dport) == default_rtp_ports[i])
+		if(rtp_ports[i] != 0 && ntohs(udp_dport) == rtp_ports[i])
 		{
 			is_rtp = true;
 			break;

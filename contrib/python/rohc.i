@@ -32,6 +32,7 @@
 #include "rohc/rohc_comp.h"
 #include "rohc/rohc_decomp.h"
 
+#include "rohc_helpers2.h"
 #include "rohc_helpers.h"
 %}
 
@@ -98,6 +99,8 @@
 %include "rohc/rohc_traces.h"
 %include "rohc/rohc_comp.h"
 %include "rohc/rohc_decomp.h"
+
+%include "rohc_helpers2.h"
 
 %constant void print_rohc_traces(void *const, const rohc_trace_level_t, const rohc_trace_entity_t, const int, const char *const, ...);
 %constant int gen_false_random_num(const struct rohc_comp *const, void *const);

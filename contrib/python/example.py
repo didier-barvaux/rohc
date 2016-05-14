@@ -109,6 +109,13 @@ for i in range(0, packets_nr):
 print("%i %i-byte RTP packets created with %i-byte payload" \
       % (len(uncomp_pkts), len(uncomp_pkts[0]), len(RTP_PAYLOAD)))
 
+# setup the list of UDP ports for RTP streams
+for udp_port in [1234, 36780, 33238, 5020, 5002, 5006]:
+    ret = rohc_comp_add_rtp_port(udp_port)
+    if ret is not True:
+        print("failed to add the UDP port %i for RTP streams" % udp_port)
+        sys.exit(1)
+
 # create one ROHC compressor
 print("create ROHC compressor")
 comp = RohcCompressor(cid_type=ROHC_LARGE_CID, profiles=[ROHC_PROFILE_RTP], \

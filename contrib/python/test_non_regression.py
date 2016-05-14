@@ -321,6 +321,13 @@ def remove_padding__str(pkt):
 
 def create_comp_decomp(cid_type, cid_max, wlsb_width, profiles, verbose):
 
+    # setup the list of UDP ports for RTP streams
+    for udp_port in [1234, 36780, 33238, 5020, 5002, 5006]:
+        ret = rohc_comp_add_rtp_port(udp_port)
+        if ret is not True:
+            print("failed to add the UDP port %i for RTP streams" % udp_port)
+            return (False, None, None, None, None)
+
     print("\ncreate ROHC compressor 1")
     comp1 = RohcCompressor(cid_type, cid_max, wlsb_width, profiles, verbose)
     if comp1 is None:
