@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Didier Barvaux
+ * Copyright 2013,2016 Didier Barvaux
  * Copyright 2013,2014 Mikhail Gruzdev
  * Copyright 2009,2010 Thales Communications
  * Copyright 2013,2014 Viveris Technologies
@@ -24,6 +24,7 @@
  * @brief  Export the ROHC library to the Linux kernel
  * @author Mikhail Gruzdev <michail.gruzdev@gmail.com>
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  */
 
 #include <linux/module.h>
