@@ -117,6 +117,7 @@ cppcheck:
 		 -I /usr/include/ \
 		 -i linux/ \
 		 -D__clang_analyzer__ \
+		 --suppress=*:contrib/python/rohc_wrap.c \
 		 --suppress=unusedStructMember:src/comp/c_tcp.c:184 \
 		 --suppress=unusedStructMember:src/comp/c_tcp.c:206 \
 		 --suppress=unusedStructMember:src/comp/c_tcp.c:241 \
