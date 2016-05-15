@@ -991,11 +991,11 @@ void __exit rohc_test_exit(void)
 }
 
 
-MODULE_VERSION("0.0.1");
+MODULE_VERSION(PACKAGE_VERSION PACKAGE_REVNO);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Didier Barvaux, Thales Communications, Viveris Technologies");
 MODULE_DESCRIPTION("Module for testing " PACKAGE_NAME " "
-	PACKAGE_VERSION " (" PACKAGE_URL ")");
+	PACKAGE_VERSION PACKAGE_REVNO " (" PACKAGE_URL ")");
 
 module_init(rohc_test_init);
 module_exit(rohc_test_exit);

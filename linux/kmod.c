@@ -34,11 +34,11 @@
 #include "rohc_decomp.h"
 
 
-MODULE_VERSION(PACKAGE_VERSION);
+MODULE_VERSION(PACKAGE_VERSION PACKAGE_REVNO);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Didier Barvaux, Mikhail Gruzdev, Thales Communications, Viveris Technologies");
 MODULE_DESCRIPTION(PACKAGE_NAME
-	", version " PACKAGE_VERSION " (" PACKAGE_URL ")");
+	", version " PACKAGE_VERSION PACKAGE_REVNO " (" PACKAGE_URL ")");
 
 
 /*
