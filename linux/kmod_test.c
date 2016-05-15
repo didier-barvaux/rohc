@@ -257,12 +257,12 @@ int rohc_couple_init_phase1(struct rohc_couple *couple, int index)
 	is_ok = rohc_comp_enable_profiles(couple->comp,
 			ROHC_PROFILE_UNCOMPRESSED, ROHC_PROFILE_RTP,
 			ROHC_PROFILE_UDP, ROHC_PROFILE_ESP, ROHC_PROFILE_IP,
-			ROHC_PROFILE_UDPLITE, -1);
+			ROHC_PROFILE_TCP, ROHC_PROFILE_UDPLITE, -1);
 	if (!is_ok) {
 		rohc_err("\tfailed to enabled all compression profiles\n");
 		goto free_compressor;
 	}
-	rohc_info("\tUncompressed, RTP, UDP, ESP, IP and UDP-Lite profiles enabled for ROHC compressor successfully set\n");
+	rohc_info("\tUncompressed, RTP, UDP, ESP, IP, TCP and UDP-Lite profiles enabled for ROHC compressor successfully set\n");
 
 	/* set UDP ports dedicated to RTP traffic */
 	if (!rohc_comp_set_rtp_detection_cb(couple->comp, rohc_comp_rtp_cb,
@@ -322,12 +322,12 @@ int rohc_couple_init_phase2(struct rohc_couple *couple, int index)
 	is_ok = rohc_decomp_enable_profiles(couple->decomp,
 			ROHC_PROFILE_UNCOMPRESSED, ROHC_PROFILE_RTP,
 			ROHC_PROFILE_UDP, ROHC_PROFILE_ESP, ROHC_PROFILE_IP,
-			ROHC_PROFILE_UDPLITE, -1);
+			ROHC_PROFILE_TCP, ROHC_PROFILE_UDPLITE, -1);
 	if (!is_ok) {
 		rohc_err("\tfailed to enabled all decompression profiles\n");
 		goto free_decompressor;
 	}
-	rohc_info("\tUncompressed, RTP, UDP, ESP, IP and UDP-Lite profiles enabled for ROHC decompressor successfully set\n");
+	rohc_info("\tUncompressed, RTP, UDP, ESP, IP, TCP and UDP-Lite profiles enabled for ROHC decompressor successfully set\n");
 
 	/* allocate memory for the ROHC packet generated from IP packet and
 	 * init all the related lengths and pointers
