@@ -56,7 +56,6 @@ DISTCHECK_CONFIGURE_FLAGS = \
 	--enable-fortify-sources \
 	--enable-app-performance \
 	--enable-app-sniffer \
-	--enable-app-tunnel \
 	--enable-rohc-tests \
 	--disable-doc \
 	--disable-examples
