@@ -39,9 +39,12 @@ SUBDIRS = \
 
 dist_doc_DATA = \
 	README \
+	README.md \
 	INSTALL \
+	INSTALL.md \
 	COPYING \
 	AUTHORS \
+	AUTHORS.md \
 	ChangeLog
 
 pkgconfigdir = $(libdir)/pkgconfig
