@@ -52,6 +52,18 @@ EXPORT_SYMBOL_GPL(rohc_get_profile_descr);
 EXPORT_SYMBOL_GPL(rohc_get_packet_descr);
 EXPORT_SYMBOL_GPL(rohc_get_ext_descr);
 
+EXPORT_SYMBOL_GPL(rohc_buf_is_malformed);
+EXPORT_SYMBOL_GPL(rohc_buf_is_empty);
+EXPORT_SYMBOL_GPL(rohc_buf_push);
+EXPORT_SYMBOL_GPL(rohc_buf_pull);
+EXPORT_SYMBOL_GPL(rohc_buf_avail_len);
+EXPORT_SYMBOL_GPL(rohc_buf_data_at);
+EXPORT_SYMBOL_GPL(rohc_buf_data);
+EXPORT_SYMBOL_GPL(rohc_buf_prepend);
+EXPORT_SYMBOL_GPL(rohc_buf_append);
+EXPORT_SYMBOL_GPL(rohc_buf_append_buf);
+EXPORT_SYMBOL_GPL(rohc_buf_reset);
+
 
 /*
  * Compression API
