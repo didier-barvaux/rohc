@@ -25,15 +25,17 @@
 #ifndef ROHC_FEEDBACK_H
 #define ROHC_FEEDBACK_H
 
-#include <stdbool.h>
-#include <stdint.h>
-#include <stddef.h>
+#include "rohc.h"
 
 #ifdef __KERNEL__
 #  include <endian.h>
 #else
 #  include "config.h" /* for WORDS_BIGENDIAN */
 #endif
+
+#include <stdbool.h>
+#include <stdint.h>
+#include <stddef.h>
 
 
 /** The type of ROHC feedback */
