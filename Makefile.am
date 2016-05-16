@@ -143,6 +143,15 @@ checkpatch:
 		--ignore EXPORT_SYMBOL \
 		--file `find linux/ -name \*.h -or -name \*.c`
 
+# check spelling mistakes with codespell in source files, but also in Markdown
+# files and man pages
+# https://github.com/lucasdemarchi/codespell
+codespell:
+	$(AM_V_GEN)codespell.py \
+		`find . -name \*.md -or -name \*.7.in -or -name ChangeLog -or -name README` \
+		`find . -name configure.ac -or -name Makefile.am` \
+		`find . -name \*.c -or -name \*.h`
+
 # run all Q&A tests
-qa: cppcheck complexity checkpatch
+qa: cppcheck complexity checkpatch codespell
 
