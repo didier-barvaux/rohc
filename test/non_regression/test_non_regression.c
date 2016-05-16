@@ -1186,7 +1186,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 		   link_layer_type_cmp != DLT_RAW &&
 		   link_layer_type_cmp != DLT_NULL)
 		{
-			trace("link layer type %d not supported in comparision dump "
+			trace("link layer type %d not supported in comparison dump "
 			      "(supported = %d, %d, %d, %d)\n", link_layer_type_cmp,
 			      DLT_EN10MB, DLT_LINUX_SLL, DLT_RAW, DLT_NULL);
 			status = 77; /* skip test */

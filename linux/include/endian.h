@@ -18,7 +18,7 @@
 
 /**
  * @file   kernel/include/endian.h
- * @brief  Define the endianess defines for the Linux kernel
+ * @brief  Define the endianness defines for the Linux kernel
  * @author Mikhail Gruzdev <michail.gruzdev@gmail.com>
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  */

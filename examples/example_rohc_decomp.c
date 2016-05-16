@@ -221,7 +221,7 @@ int main(int argc, char **argv)
 release_decompressor:
 	rohc_decomp_free(decompressor);
 error:
-	fprintf(stderr, "an error occured during program execution, "
+	fprintf(stderr, "an error occurred during program execution, "
 	        "abort program\n");
 	return 1;
 }

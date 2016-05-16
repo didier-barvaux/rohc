@@ -56,7 +56,7 @@ struct list_decomp
 	/** All the possible named lists, indexed by gen_id */
 	struct rohc_list lists[ROHC_LIST_GEN_ID_MAX + 1];
 
-	/** The temporary packet list (not persistent accross packets) */
+	/** The temporary packet list (not persistent across packets) */
 	struct rohc_list pkt_list;
 
 

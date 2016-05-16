@@ -6134,11 +6134,11 @@ static int changed_static_both_hdr(struct rohc_comp_ctxt *const context,
  * not checked for change for both IPv4 and IPv6. The Flow Label is not checked
  * for IPv6.
  *
- * Althought not classified as STATIC-DEF, the Version field is the same for
+ * Although not classified as STATIC-DEF, the Version field is the same for
  * all packets in a stream (ie. a profile context) and therefore does not need
  * to be checked for change neither for IPv4 nor IPv6.
  *
- * Althought classified as STATIC, the IPv4 Don't Fragment flag is not part of
+ * Although classified as STATIC, the IPv4 Don't Fragment flag is not part of
  * the static initialization, but of the dynamic initialization.
  *
  * Summary:
@@ -6221,7 +6221,7 @@ static int changed_dynamic_both_hdr(struct rohc_comp_ctxt *const context,
  *
  * The IP-ID changes are managed outside of this function.
  *
- * Althought classified as STATIC, the IPv4 Don't Fragment flag is not part of
+ * Although classified as STATIC, the IPv4 Don't Fragment flag is not part of
  * the static initialization, but of the dynamic initialization. It needs to be
  * checked for change.
  *

@@ -246,7 +246,7 @@ int main(int argc, char **argv)
 release_compressor:
 	rohc_comp_free(compressor);
 error:
-	fprintf(stderr, "an error occured during program execution, "
+	fprintf(stderr, "an error occurred during program execution, "
 	        "abort program\n");
 	return 1;
 }

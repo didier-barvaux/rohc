@@ -3476,7 +3476,7 @@ error:
  * @param ts               The TS bits extracted from the ROHC packet
  * @param[out] ts_decoded  The decoded TS field (in HBO)
  * @return                 true if TS field was successfully decoded,
- *                         false if a problem occured during decoding
+ *                         false if a problem occurred during decoding
  */
 static bool d_tcp_decode_opt_ts_field(const struct rohc_decomp_ctxt *const context,
                                       const char *const descr,

@@ -346,7 +346,7 @@ static bool c_rtp_check_profile(const struct rohc_comp *const comp,
 	else
 	{
 		/* no callback for advanced RTP stream detection and no UDP
-		   destination port reserved for RTP trafic, so the IP/UDP packet will
+		   destination port reserved for RTP traffic, so the IP/UDP packet will
 		   be compressed with another profile (the IP/UDP one probably) */
 		goto bad_profile;
 	}
