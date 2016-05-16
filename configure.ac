@@ -379,7 +379,7 @@ AC_ARG_WITH(libpcap_libraries,
             [with_libpcap_libraries="$withval"],
             [with_libpcap_libraries="no"])
 if test "x$with_libpcap_libraries" != "xno"; then
-	configure_ldflags="${configure_ldflags}  -L${with_libpcap_libraries}"
+	configure_ldflags="${configure_ldflags} -L${with_libpcap_libraries}"
 fi
 
 
@@ -550,6 +550,11 @@ if test "x$enable_rohc_tests" = "xyes" || \
 		pcap_lib_url="http://www.tcpdump.org/"
 	fi
 
+	old_CFLAGS="$CFLAGS"
+	CFLAGS="$CFLAGS ${libpcap_includes}"
+	old_LDFLAGS="$LDFLAGS"
+	LDFLAGS="${LDFLAGS} -L${with_libpcap_libraries}"
+
 	# check for libpcap header presence
 	AC_CHECK_HEADERS([pcap.h pcap/pcap.h])
 	if test "x$ac_cv_header_pcap_h" != "xyes" &&
@@ -602,6 +607,10 @@ if test "x$enable_rohc_tests" = "xyes" || \
 		AC_DEFINE([DLT_LINUX_SLL], [113],
 		          [Define DLT_LINUX_SLL if not defined by the system])
 	fi
+
+	CFLAGS="${old_CFLAGS}"
+	LDFLAGS="${old_LDFLAGS}"
+
 fi
 
 
