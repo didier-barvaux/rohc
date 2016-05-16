@@ -92,7 +92,9 @@ LT_INIT([disable-static win32-dll])
 configure_cflags="-g -Wall -Wstrict-prototypes -Wextra -Wunreachable-code"
 configure_cflags="${configure_cflags} -Wunused-function -Wunused-variable"
 configure_cflags="${configure_cflags} -Wshadow"
-configure_cflags_for_lib="-Wframe-larger-than=1024"
+# -Wframe-larger-than is not praticable without -O1 or greater
+# (may be overloaded with CFLAGS environment variable)
+configure_cflags_for_lib="-O2 -Wframe-larger-than=1024"
 configure_ldflags=""
 
 # Checks for programs.
