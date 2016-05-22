@@ -27,7 +27,6 @@
  */
 
 #include "rohc_traces_internal.h"
-#include "rohc_buf.h"
 #include "rohc_utils.h"
 
 #include <stdio.h> /* for snprintf(3) */

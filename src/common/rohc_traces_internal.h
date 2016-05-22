@@ -31,7 +31,7 @@
 #define ROHC_TRACES_INTERNAL_H
 
 #include "rohc_traces.h"
-#include "rohc_buf.h"
+#include <rohc/rohc_buf.h>
 
 #include <stdlib.h>
 #include <assert.h>

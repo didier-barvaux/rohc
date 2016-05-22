@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Didier Barvaux
+ * Copyright 2015,2016 Didier Barvaux
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -23,6 +23,7 @@
  */
 
 #include "rohc.h"
+#include <rohc/rohc_buf.h>
 #include "rohc_packets.h"
 #include "protocols/ip_numbers.h"
 #include "protocols/tcp.h"
@@ -312,6 +313,148 @@ int main(int argc, char *argv[])
 		CHECK(strcmp(tcp_opt_get_descr(TCP_OPT_MAX), "generic") == 0);
 	}
 
+	/* rohc_buf_*() */
+	{
+		const struct rohc_ts time2 = { .sec = 1, .nsec = 2 };
+		const size_t buf1_max_len = 300;
+		uint8_t buf1[buf1_max_len];
+		const size_t buf2_max_len = 300;
+		const size_t buf2_len = 100;
+		uint8_t buf2[buf2_max_len];
+
+		memset(buf1, 0, buf1_max_len);
+		memset(buf2, 0, buf2_max_len);
+
+		/* rohc_buf_init_empty() */
+		struct rohc_buf rbuf1 = rohc_buf_init_empty(buf1, buf1_max_len);
+		CHECK(rbuf1.time.sec == 0);
+		CHECK(rbuf1.time.nsec == 0);
+		CHECK(rbuf1.data == buf1);
+		CHECK(rbuf1.max_len == buf1_max_len);
+		CHECK(rbuf1.offset == 0);
+		CHECK(rbuf1.len == 0);
+
+		/* rohc_buf_init_full() */
+		memset(buf2, 2, buf2_len);
+		struct rohc_buf rbuf2 = rohc_buf_init_full(buf2, buf2_max_len, time2);
+		CHECK(rbuf2.time.sec == 1);
+		CHECK(rbuf2.time.nsec == 2);
+		CHECK(rbuf2.data == buf2);
+		CHECK(rbuf2.max_len == buf2_max_len);
+		CHECK(rbuf2.offset == 0);
+		CHECK(rbuf2.len == buf2_max_len);
+		rbuf2.len = buf2_len;
+		CHECK(rbuf2.len == buf2_len);
+
+		/* rohc_buf_byte_at() */
+		CHECK(rohc_buf_byte_at(rbuf1, 0) == 0);
+		CHECK(rohc_buf_byte_at(rbuf1, rbuf1.max_len - 1) == 0);
+		CHECK(rohc_buf_byte_at(rbuf2, 0) == 2);
+		CHECK(rohc_buf_byte_at(rbuf2, rbuf2.len - 1) == 2);
+		CHECK(rohc_buf_byte_at(rbuf2, rbuf2.len) == 0);
+		CHECK(rohc_buf_byte_at(rbuf2, rbuf2.max_len - 1) == 0);
+
+		/* rohc_buf_byte() */
+		CHECK(rohc_buf_byte(rbuf1) == rohc_buf_byte_at(rbuf1, 0));
+		CHECK(rohc_buf_byte(rbuf2) == rohc_buf_byte_at(rbuf2, 0));
+
+		/* rohc_buf_data_at() */
+		CHECK(rohc_buf_data_at(rbuf1, 0) == buf1);
+		CHECK(rohc_buf_data_at(rbuf1, rbuf1.max_len - 1) == (buf1 + buf1_max_len - 1));
+		CHECK(rohc_buf_data_at(rbuf2, 0) == buf2);
+		CHECK(rohc_buf_data_at(rbuf2, rbuf2.len - 1) == (buf2 + buf2_len - 1));
+		CHECK(rohc_buf_data_at(rbuf2, rbuf2.len) == (buf2 + buf2_len));
+		CHECK(rohc_buf_data_at(rbuf2, rbuf2.max_len - 1) == (buf2 + buf1_max_len - 1));
+
+		/* rohc_buf_data() */
+		CHECK(rohc_buf_data(rbuf1) == rohc_buf_data_at(rbuf1, 0));
+		CHECK(rohc_buf_data(rbuf2) == rohc_buf_data_at(rbuf2, 0));
+
+		/* rohc_buf_is_malformed() */
+		CHECK(rohc_buf_is_malformed(rbuf1) == false);
+		rbuf1.len = rbuf1.max_len + 1;
+		CHECK(rohc_buf_is_malformed(rbuf1) == true);
+		rbuf1.len = 0;
+		CHECK(rohc_buf_is_malformed(rbuf1) == false);
+		CHECK(rohc_buf_is_malformed(rbuf2) == false);
+		{
+			const size_t buf3_max_len = 3;
+			uint8_t buf3[buf3_max_len];
+			struct rohc_buf rbuf3 = rohc_buf_init_full(buf3, buf3_max_len, time2);
+			CHECK(rohc_buf_is_malformed(rbuf3) == false);
+			rbuf3.data = NULL;
+			CHECK(rohc_buf_is_malformed(rbuf3) == true);
+			rbuf3.data = buf3;
+			CHECK(rohc_buf_is_malformed(rbuf3) == false);
+			rbuf3.max_len = 0;
+			CHECK(rohc_buf_is_malformed(rbuf3) == true);
+			rbuf3.max_len = buf3_max_len;
+			CHECK(rohc_buf_is_malformed(rbuf3) == false);
+			rbuf3.offset = 2;
+			rbuf3.len = 2;
+			CHECK(rohc_buf_is_malformed(rbuf3) == true);
+			rbuf3.offset = 2;
+			rbuf3.len = 1;
+			CHECK(rohc_buf_is_malformed(rbuf3) == false);
+			rbuf3.data = NULL;
+			rbuf3.max_len = 0;
+			rbuf3.offset = 2;
+			rbuf3.len = 2;
+			CHECK(rohc_buf_is_malformed(rbuf3) == true);
+		}
+
+		/* rohc_buf_is_empty() */
+		CHECK(rohc_buf_is_empty(rbuf1) == true);
+		CHECK(rohc_buf_is_empty(rbuf2) == false);
+
+		/* rohc_buf_pull() / rohc_buf_push() / rohc_buf_avail_len() */
+		rohc_buf_pull(&rbuf2, 1);
+		CHECK(rbuf2.len == (buf2_len - 1));
+		CHECK(rohc_buf_avail_len(rbuf2) == (buf2_max_len - 1));
+		CHECK(rohc_buf_data(rbuf2) == (buf2 + 1));
+		rohc_buf_pull(&rbuf2, buf2_len - 1);
+		CHECK(rbuf2.len == 0);
+		CHECK(rohc_buf_avail_len(rbuf2) == (buf2_max_len - buf2_len));
+		CHECK(rohc_buf_data(rbuf2) == (buf2 + buf2_len));
+		rohc_buf_push(&rbuf2, buf2_len);
+		CHECK(rbuf2.len == buf2_len);
+		CHECK(rohc_buf_avail_len(rbuf2) == buf2_max_len);
+		CHECK(rohc_buf_data(rbuf2) == buf2);
+
+		/* rohc_buf_prepend() */
+		const uint8_t data[] = { 1, 2, 3, 4, 5 };
+		const size_t data_len = sizeof(data) / sizeof(uint8_t);
+		rohc_buf_pull(&rbuf2, data_len);
+		CHECK(rbuf2.len == (buf2_len - data_len));
+		rohc_buf_prepend(&rbuf2, data, data_len);
+		CHECK(rbuf2.len == buf2_len);
+		CHECK(memcmp(rohc_buf_data(rbuf2), data, data_len) == 0);
+		CHECK(rohc_buf_byte_at(rbuf2, data_len) == 2);
+
+		/* rohc_buf_append() */
+		rohc_buf_append(&rbuf2, data, data_len);
+		CHECK(rbuf2.len == (buf2_len + data_len));
+		CHECK(memcmp(rohc_buf_data(rbuf2), data, data_len) == 0);
+		CHECK(rohc_buf_byte_at(rbuf2, data_len) == 2);
+		CHECK(rohc_buf_byte_at(rbuf2, buf2_len - 1) == 2);
+		CHECK(memcmp(rohc_buf_data_at(rbuf2, buf2_len), data, data_len) == 0);
+
+		/* rohc_buf_append_buf() */
+		const struct rohc_buf rdata = rohc_buf_init_full((uint8_t *) data, data_len, time2);
+		rohc_buf_append_buf(&rbuf2, rdata);
+		CHECK(rbuf2.len == (buf2_len + data_len * 2));
+		CHECK(memcmp(rohc_buf_data(rbuf2), data, data_len) == 0);
+		CHECK(rohc_buf_byte_at(rbuf2, data_len) == 2);
+		CHECK(rohc_buf_byte_at(rbuf2, buf2_len - 1) == 2);
+		CHECK(memcmp(rohc_buf_data_at(rbuf2, buf2_len), data, data_len) == 0);
+		CHECK(memcmp(rohc_buf_data_at(rbuf2, buf2_len + data_len), data, data_len) == 0);
+
+		/* rohc_buf_reset() */
+		rohc_buf_reset(&rbuf1);
+		CHECK(rohc_buf_is_empty(rbuf1) == true);
+		rohc_buf_reset(&rbuf2);
+		CHECK(rohc_buf_is_empty(rbuf2) == true);
+	}
 
 	/* test succeeds */
 	trace(verbose, "all tests are successful\n");

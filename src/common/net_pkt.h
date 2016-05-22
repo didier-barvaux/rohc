@@ -26,7 +26,7 @@
 #ifndef ROHC_COMMON_NET_PKT_H
 #define ROHC_COMMON_NET_PKT_H
 
-#include "rohc_buf.h"
+#include <rohc/rohc_buf.h>
 #include "ip.h"
 #include "rohc_traces.h"
 
