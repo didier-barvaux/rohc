@@ -116,11 +116,15 @@ struct sniffer_stats_t
 	unsigned long comp_pre_nr_units;
 	/** Cumulative number of bytes before ROHC compression */
 	unsigned long comp_pre_nr_bytes;
+	/** Cumulative number of header bytes before ROHC compression */
+	unsigned long comp_pre_nr_hdr_bytes;
 
 	/** Cumulative number of units after ROHC compression */
 	unsigned long comp_post_nr_units;
 	/** Cumulative number of bytes after ROHC compression */
 	unsigned long comp_post_nr_bytes;
+	/** Cumulative number of header bytes after ROHC compression */
+	unsigned long comp_post_nr_hdr_bytes;
 
 	/** Cumulative number of packets per ROHC profile */
 	unsigned long comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE + 1];
@@ -745,29 +749,31 @@ static void sniffer_print_stats(int signum __attribute__((unused)))
 	SNIFFER_LOG(LOG_INFO, "compression gain:");
 	if(sniffer_stats.comp_unit_size == 1)
 	{
-		SNIFFER_LOG(LOG_INFO, "  pre-compress: %lu bytes",
-		            sniffer_stats.comp_pre_nr_bytes);
+		SNIFFER_LOG(LOG_INFO, "  pre-compress: %lu bytes (incl. %lu KB of headers)",
+		            sniffer_stats.comp_pre_nr_bytes, sniffer_stats.comp_pre_nr_hdr_bytes / 1000);
 	}
 	else
 	{
-		SNIFFER_LOG(LOG_INFO, "  pre-compress: %lu %s",
+		SNIFFER_LOG(LOG_INFO, "  pre-compress: %lu %s (incl. %lu KB of headers)",
 		            sniffer_stats.comp_pre_nr_units,
 		            sniffer_stats.comp_unit_size == 1000 ? "KB" :
 		            (sniffer_stats.comp_unit_size == 1000*1000 ? "MB" :
-		             (sniffer_stats.comp_unit_size == 1000*1000*1000 ? "GB" : "?")));
+		             (sniffer_stats.comp_unit_size == 1000*1000*1000 ? "GB" : "?")),
+		            sniffer_stats.comp_pre_nr_hdr_bytes / 1000);
 	}
 	if(sniffer_stats.comp_unit_size == 1)
 	{
-		SNIFFER_LOG(LOG_INFO, "  post-compress: %lu bytes",
-		            sniffer_stats.comp_post_nr_bytes);
+		SNIFFER_LOG(LOG_INFO, "  post-compress: %lu bytes (incl. %lu KB of headers)",
+		            sniffer_stats.comp_post_nr_bytes, sniffer_stats.comp_post_nr_hdr_bytes / 1000);
 	}
 	else
 	{
-		SNIFFER_LOG(LOG_INFO, "  post-compress: %lu %s",
+		SNIFFER_LOG(LOG_INFO, "  post-compress: %lu %s (incl. %lu KB of headers)",
 		            sniffer_stats.comp_post_nr_units,
 		            sniffer_stats.comp_unit_size == 1000 ? "KB" :
 		            (sniffer_stats.comp_unit_size == 1000*1000 ? "MB" :
-		             (sniffer_stats.comp_unit_size == 1000*1000*1000 ? "GB" : "?")));
+		             (sniffer_stats.comp_unit_size == 1000*1000*1000 ? "GB" : "?")),
+		            sniffer_stats.comp_post_nr_hdr_bytes / 1000);
 	}
 	if(sniffer_stats.comp_unit_size == 1)
 	{
@@ -778,11 +784,15 @@ static void sniffer_print_stats(int signum __attribute__((unused)))
 	}
 	else
 	{
-		SNIFFER_LOG(LOG_INFO, "  compress ratio: %llu%% of total, ie. %llu%% "
-		            "of gain",
+		SNIFFER_LOG(LOG_INFO, "  compress ratio: %llu%% of total packets, ie. %llu%% "
+		            "of gain on full packets",
 		            compute_percent(sniffer_stats.comp_post_nr_units, sniffer_stats.comp_pre_nr_units),
 		            100 - compute_percent(sniffer_stats.comp_post_nr_units, sniffer_stats.comp_pre_nr_units));
 	}
+	SNIFFER_LOG(LOG_INFO, "  compress ratio: %llu%% of total headers, ie. %llu%% "
+	            "of gain on headers alone",
+	            compute_percent(sniffer_stats.comp_post_nr_hdr_bytes, sniffer_stats.comp_pre_nr_hdr_bytes),
+	            100 - compute_percent(sniffer_stats.comp_post_nr_hdr_bytes, sniffer_stats.comp_pre_nr_hdr_bytes));
 	SNIFFER_LOG(LOG_INFO, "  used and re-used contexts: %lu",
 	            sniffer_stats.comp_nr_reused_cid);
 
@@ -1292,7 +1302,9 @@ static int compress_decompress(struct rohc_comp *comp,
 		goto error;
 	}
 	stats->comp_pre_nr_bytes += ip_packet.len;
+	stats->comp_pre_nr_hdr_bytes += comp_last_packet_info.header_last_uncomp_size;
 	stats->comp_post_nr_bytes += rohc_packet.len;
+	stats->comp_post_nr_hdr_bytes += comp_last_packet_info.header_last_comp_size;
 	possible_unit = stats->comp_unit_size;
 	if(stats->comp_unit_size == 1)
 	{
@@ -1326,10 +1338,10 @@ static int compress_decompress(struct rohc_comp *comp,
 			unsigned long rest;
 			rest = stats->comp_pre_nr_units % 1000;
 			stats->comp_pre_nr_units /= 1000;
-			stats->comp_pre_nr_bytes += rest * possible_unit;
+			stats->comp_pre_nr_bytes += rest * stats->comp_unit_size;
 			rest = stats->comp_post_nr_units % 1000;
 			stats->comp_post_nr_units /= 1000;
-			stats->comp_post_nr_bytes += rest * possible_unit;
+			stats->comp_post_nr_bytes += rest * stats->comp_unit_size;
 		}
 		stats->comp_unit_size = possible_unit;
 	}
