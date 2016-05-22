@@ -110,6 +110,9 @@ int main(int argc, char *argv[])
 		const uint8_t feedback_7[] = { 0xf7, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
 		rohc_buf_reset(&feedback);
+		CHECK(rohc_feedback_get_size(feedback, &feedback_hdr_len, &feedback_data_len) == false);
+
+		rohc_buf_reset(&feedback);
 		rohc_buf_append(&feedback, feedback_0, 10);
 		CHECK(rohc_feedback_get_size(feedback, &feedback_hdr_len, &feedback_data_len));
 		CHECK(feedback_hdr_len == 2);
