@@ -48,7 +48,7 @@
 #endif
 #include <assert.h>
 
-#include "config.h" /* for ROHC_EXTRA_DEBUG definition */
+#include "config.h"
 
 
 /*

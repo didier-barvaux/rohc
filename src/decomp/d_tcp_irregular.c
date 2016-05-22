@@ -28,8 +28,6 @@
 
 #include "d_tcp_irregular.h"
 
-#include "config.h" /* for ROHC_EXTRA_DEBUG */
-
 #include "d_tcp_defines.h"
 #include "d_tcp_opts_list.h"
 #include "rohc_utils.h"
@@ -218,9 +216,7 @@ static int tcp_parse_irregular_ip(const struct rohc_decomp_ctxt *const context,
 		goto error;
 	}
 
-#if ROHC_EXTRA_DEBUG == 1
 	rohc_decomp_dump_buf(context, "IP irregular part", rohc_data, ret);
-#endif
 
 	return ret;
 

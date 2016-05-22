@@ -47,8 +47,7 @@
 #include "protocols/ip_numbers.h"
 #include "crc.h"
 
-#include "config.h" /* for WORDS_BIGENDIAN, ROHC_EXTRA_DEBUG and
-                       ROHC_RFC_STRICT_DECOMPRESSOR */
+#include "config.h" /* for WORDS_BIGENDIAN and ROHC_RFC_STRICT_DECOMPRESSOR */
 
 #ifndef __KERNEL__
 #  include <string.h>
@@ -4006,14 +4005,12 @@ static rohc_status_t d_tcp_build_hdrs(const struct rohc_decomp *const decomp,
 			                 rohc_get_packet_descr(packet_type),
 			                 rohc_decomp_get_state_descr(context->state),
 			                 rohc_get_mode_descr(context->mode));
-#if ROHC_EXTRA_DEBUG == 1
 			if((decomp->features & ROHC_DECOMP_FEATURE_DUMP_PACKETS) != 0)
 			{
 				rohc_dump_packet(decomp->trace_callback, decomp->trace_callback_priv,
 				                 ROHC_TRACE_DECOMP, ROHC_TRACE_WARNING,
 				                 "uncompressed headers", *uncomp_hdrs);
 			}
-#endif
 			goto error_crc;
 		}
 	}

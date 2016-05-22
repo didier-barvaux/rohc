@@ -28,8 +28,6 @@
 
 #include "d_tcp_static.h"
 
-#include "config.h" /* for ROHC_EXTRA_DEBUG */
-
 #include "d_tcp_defines.h"
 #include "rohc_bit_ops.h"
 #include "rohc_utils.h"
@@ -418,9 +416,7 @@ static int tcp_parse_static_ipv6_option(const struct rohc_decomp_ctxt *const con
 	}
 	ip_bits->opts_len += opt_context->len;
 
-#if ROHC_EXTRA_DEBUG == 1
 	rohc_decomp_dump_buf(context, "IPv6 option static part", rohc_packet, size);
-#endif
 
 	return size;
 

@@ -52,7 +52,7 @@
 #  include <string.h>
 #endif
 
-#include "config.h" /* for WORDS_BIGENDIAN and ROHC_EXTRA_DEBUG */
+#include "config.h" /* for WORDS_BIGENDIAN */
 
 
 #define TRACE_GOTO_CHOICE \
@@ -2318,10 +2318,8 @@ static int tcp_code_static_ipv6_opt_part(const struct rohc_comp_ctxt *const cont
 		}
 	}
 
-#if ROHC_EXTRA_DEBUG == 1
 	rohc_comp_dump_buf(context, "IPv6 option static part",
 	                   rohc_data, ipv6_opt_static_len);
-#endif
 
 	return ipv6_opt_static_len;
 
@@ -2381,10 +2379,8 @@ static int tcp_code_dynamic_ipv6_opt_part(const struct rohc_comp_ctxt *const con
 		}
 	}
 
-#if ROHC_EXTRA_DEBUG == 1
 	rohc_comp_dump_buf(context, "IPv6 option dynamic part",
 	                   rohc_data, ipv6_opt_dynamic_len);
-#endif
 
 	return ipv6_opt_dynamic_len;
 
@@ -2425,10 +2421,8 @@ static int tcp_code_irregular_ipv6_opt_part(struct rohc_comp_ctxt *const context
 			break;
 	}
 
-#if ROHC_EXTRA_DEBUG == 1
 	rohc_comp_dump_buf(context, "IPv6 option irregular part",
 	                   rohc_data, irreg_ipv6_opt_len);
-#endif
 
 	return irreg_ipv6_opt_len;
 }
@@ -2467,9 +2461,7 @@ static int tcp_code_static_ipv4_part(const struct rohc_comp_ctxt *const context,
 	ipv4_static->src_addr = ipv4->saddr;
 	ipv4_static->dst_addr = ipv4->daddr;
 
-#if ROHC_EXTRA_DEBUG == 1
 	rohc_comp_dump_buf(context, "IPv4 static part", rohc_data, ipv4_static_len);
-#endif
 
 	return ipv4_static_len;
 
@@ -2540,9 +2532,7 @@ static int tcp_code_static_ipv6_part(const struct rohc_comp_ctxt *const context,
 	}
 	rohc_comp_debug(context, "IPv6 next header = %u", ipv6->nh);
 
-#if ROHC_EXTRA_DEBUG == 1
 	rohc_comp_dump_buf(context, "IPv6 static part", rohc_data, ipv6_static_len);
-#endif
 
 	return ipv6_static_len;
 
@@ -2652,9 +2642,7 @@ static int tcp_code_dynamic_ipv4_part(const struct rohc_comp_ctxt *const context
 	ip_context->ctxt.v4.df = ipv4->df;
 	ip_context->ctxt.v4.last_ip_id = rohc_ntoh16(ipv4->id);
 
-#if ROHC_EXTRA_DEBUG == 1
 	rohc_comp_dump_buf(context, "IPv4 dynamic part", rohc_data, ipv4_dynamic_len);
-#endif
 
 	return ipv4_dynamic_len;
 
@@ -2702,9 +2690,7 @@ static int tcp_code_dynamic_ipv6_part(const struct rohc_comp_ctxt *const context
 	ip_context->ctxt.v6.dscp = dscp;
 	ip_context->ctxt.v6.ttl_hopl = ipv6->hl;
 
-#if ROHC_EXTRA_DEBUG == 1
 	rohc_comp_dump_buf(context, "IP dynamic part", rohc_data, ipv6_dynamic_len);
-#endif
 
 	return ipv6_dynamic_len;
 
@@ -2948,10 +2934,8 @@ static int tcp_code_irregular_ipv4_part(const struct rohc_comp_ctxt *const conte
 		}
 	}
 
-#if ROHC_EXTRA_DEBUG == 1
 	rohc_comp_dump_buf(context, "IP irregular part", rohc_data,
 	                   rohc_max_len - rohc_remain_len);
-#endif
 
 	return (rohc_max_len - rohc_remain_len);
 
@@ -3036,10 +3020,8 @@ static int tcp_code_irregular_ipv6_part(const struct rohc_comp_ctxt *const conte
 		}
 	}
 
-#if ROHC_EXTRA_DEBUG == 1
 	rohc_comp_dump_buf(context, "IP irregular part", rohc_data,
 	                   rohc_max_len - rohc_remain_len);
-#endif
 
 	return (rohc_max_len - rohc_remain_len);
 
@@ -3369,10 +3351,8 @@ static int tcp_code_irregular_tcp_part(const struct rohc_comp_ctxt *const contex
 #endif
 	rohc_remain_len -= ret;
 
-#if ROHC_EXTRA_DEBUG == 1
 	rohc_comp_dump_buf(context, "TCP irregular part", rohc_data,
 	                   rohc_max_len - rohc_remain_len);
-#endif
 
 	return (rohc_max_len - rohc_remain_len);
 
