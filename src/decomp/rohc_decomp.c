@@ -3574,21 +3574,20 @@ static bool rohc_decomp_decode_cid(struct rohc_decomp *decomp,
 		*large_cid_len = 0;
 
 		/* if add-CID is present, extract the CID value */
-		if(rohc_add_cid_is_present(packet))
+		*cid = rohc_add_cid_decode(packet, len);
+		if((*cid) == UINT8_MAX)
 		{
-			*add_cid_len = 1;
-			*cid = rohc_add_cid_decode(packet);
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			           "add-CID present (0x%x) contains CID = %zu",
-			           packet[0], *cid);
+			           "no add-CID found, CID defaults to 0");
+			*add_cid_len = 0;
+			*cid = 0;
 		}
 		else
 		{
-			/* no add-CID, CID defaults to 0 */
-			*add_cid_len = 0;
-			*cid = 0;
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			           "no add-CID found, CID defaults to 0");
+			           "add-CID present (0x%x) contains CID = %zu",
+			           packet[0], *cid);
+			*add_cid_len = 1;
 		}
 	}
 	else if(decomp->medium.cid_type == ROHC_LARGE_CID)

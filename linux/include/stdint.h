@@ -31,5 +31,7 @@
 
 #include <linux/types.h>
 
+#define UINT8_MAX  0xffU
+
 #endif /* STDINT_H_ */
 

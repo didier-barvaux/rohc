@@ -2743,15 +2743,15 @@ static bool rohc_comp_feedback_parse_cid(const struct rohc_comp *const comp,
 	else
 	{
 		/* decode small CID if present */
-		if(feedback_len > 1 && GET_BIT_6_7(feedback) == 0x3)
+		*cid = rohc_add_cid_decode(feedback, feedback_len);
+		if((*cid) == UINT8_MAX)
 		{
-			*cid = rohc_add_cid_decode(feedback);
-			*cid_len = 1;
+			*cid_len = 0;
+			*cid = 0;
 		}
 		else
 		{
-			*cid = 0;
-			*cid_len = 0;
+			*cid_len = 1;
 		}
 	}
 
