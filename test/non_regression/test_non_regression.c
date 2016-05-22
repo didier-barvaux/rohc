@@ -120,6 +120,9 @@ for ./configure ? If yes, check configure output and config.log"
 #include <rohc_comp.h>
 #include <rohc_decomp.h>
 
+/** The maximum number of source PCAP dump files */
+#define SRC_FILENAMES_MAX_NR  2U
+
 /** print text on console if not in quiet mode */
 #define trace(format, ...) \
 	do { \
@@ -135,7 +138,8 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
                                 const size_t max_contexts,
                                 const bool no_comparison,
                                 const bool ignore_malformed,
-                                char *src_filename,
+                                const char *const src_filenames[],
+                                const size_t src_filenames_nr,
                                 char *ofilename,
                                 char *cmp_filename,
                                 const char *rohc_size_ofilename);
@@ -145,7 +149,7 @@ static int compress_decompress(struct rohc_comp *comp,
                                int num_comp,
                                int num_packet,
                                struct pcap_pkthdr header,
-                               unsigned char *packet,
+                               const uint8_t *const packet,
                                int link_len_src,
                                const bool no_comparison,
                                const bool ignore_malformed,
@@ -183,6 +187,17 @@ static bool rohc_comp_rtp_cb(const unsigned char *const ip,
                              const unsigned int payload_size,
                              void *const rtp_private)
 	__attribute__((warn_unused_result));
+
+static pcap_t * open_pcap_file(const char *const filename, size_t *const link_len)
+	__attribute__((nonnull(1, 2), warn_unused_result));
+static bool get_next_packet(pcap_t **const pcap_handle,
+                            const char *const src_filenames[],
+                            const size_t src_filenames_nr,
+                            size_t *const src_filenames_id,
+                            struct pcap_pkthdr *const header,
+                            size_t *const link_len,
+                            const uint8_t **const packet)
+	__attribute__((nonnull(1, 2, 4, 5, 6, 7), warn_unused_result));
 
 static void show_rohc_stats(struct rohc_comp *comp1, struct rohc_decomp *decomp1,
                             struct rohc_comp *comp2, struct rohc_decomp *decomp2);
@@ -229,7 +244,8 @@ int main(int argc, char *argv[])
 {
 	char *cid_type_name = NULL;
 	char *rohc_size_ofilename = NULL;
-	char *src_filename = NULL;
+	size_t src_filenames_nr = 0;
+	char *src_filenames[SRC_FILENAMES_MAX_NR] = { NULL };
 	char *ofilename = NULL;
 	char *cmp_filename = NULL;
 	int max_contexts = ROHC_SMALL_CID_MAX + 1;
@@ -361,11 +377,19 @@ int main(int argc, char *argv[])
 			/* get the type of CID to use within the ROHC library */
 			cid_type_name = argv[0];
 		}
-		else if(src_filename == NULL)
+		else if(src_filenames[0] == NULL)
 		{
 			/* get the name of the file that contains the packets to
 			 * compress/decompress */
-			src_filename = argv[0];
+			src_filenames[src_filenames_nr] = argv[0];
+			src_filenames_nr++;
+		}
+		else if(src_filenames[1] == NULL)
+		{
+			/* get the name of the file that contains the packets to
+			 * compress/decompress */
+			src_filenames[src_filenames_nr] = argv[0];
+			src_filenames_nr++;
 		}
 		else
 		{
@@ -423,8 +447,8 @@ int main(int argc, char *argv[])
 		goto error;
 	}
 
-	/* the source filename is mandatory */
-	if(src_filename == NULL)
+	/* at least one source filename is mandatory */
+	if(src_filenames[0] == NULL)
 	{
 		fprintf(stderr, "FLOW is a mandatory parameter\n\n");
 		usage();
@@ -434,7 +458,8 @@ int main(int argc, char *argv[])
 	/* test ROHC compression/decompression with the packets from the file */
 	status = test_comp_and_decomp(cid_type, wlsb_width, max_contexts,
 	                              no_comparison, ignore_malformed,
-	                              src_filename, ofilename, cmp_filename,
+	                              (const char *const *) src_filenames, src_filenames_nr,
+	                              ofilename, cmp_filename,
 	                              rohc_size_ofilename);
 
 	trace("=== number of warnings/errors emitted by the library: %zu\n",
@@ -465,7 +490,7 @@ static void usage(void)
 	        "ROHC non-regression tool: test the ROHC library with a flow\n"
 	        "                          of IP packets\n"
 	        "\n"
-	        "usage: test_non_regression [OPTIONS] CID_TYPE FLOW\n"
+	        "usage: test_non_regression [OPTIONS] CID_TYPE FLOW [FLOW]\n"
 	        "\n"
 	        "with:\n"
 	        "  CID_TYPE                The type of CID to use among 'smallcid'\n"
@@ -774,7 +799,7 @@ static int compress_decompress(struct rohc_comp *comp,
                                int num_comp,
                                int num_packet,
                                struct pcap_pkthdr header,
-                               unsigned char *packet,
+                               const uint8_t *const packet,
                                int link_len_src,
                                const bool no_comparison,
                                const bool ignore_malformed,
@@ -793,7 +818,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	/* the buffer that will contain the initial uncompressed packet */
 	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
 	struct rohc_buf ip_packet =
-		rohc_buf_init_full(packet, header.caplen, arrival_time);
+		rohc_buf_init_full((uint8_t *) packet, header.caplen, arrival_time);
 
 	/* the buffer that will contain the compressed ROHC packet */
 	uint8_t rohc_buffer[l2_hdr_max_len + MAX_ROHC_SIZE];
@@ -1053,7 +1078,7 @@ exit:
  * @param max_contexts         The maximum number of ROHC contexts to use
  * @param no_comparison        Whether to handle comparison as fatal for test or not
  * @param ignore_malformed     Whether to handle malformed packets as fatal for test
- * @param src_filename         The name of the PCAP file that contains the
+ * @param src_filenames        The names of the PCAP files that contain the
  *                             IP packets
  * @param ofilename            The name of the PCAP file to output the ROHC
  *                             packets
@@ -1070,23 +1095,25 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
                                 const size_t max_contexts,
                                 const bool no_comparison,
                                 const bool ignore_malformed,
-                                char *src_filename,
+                                const char *const src_filenames[],
+                                const size_t src_filenames_nr,
                                 char *ofilename,
                                 char *cmp_filename,
                                 const char *rohc_size_ofilename)
 {
 	char errbuf[PCAP_ERRBUF_SIZE];
+	size_t src_filenames_id = 0;
 	pcap_t *handle;
 	pcap_t *cmp_handle;
 	pcap_dumper_t *dumper;
-	int link_layer_type_src, link_layer_type_cmp;
-	int link_len_src, link_len_cmp = 0;
+	size_t link_len_src = 0;
+	size_t link_len_cmp = 0;
 	struct pcap_pkthdr header;
 	struct pcap_pkthdr cmp_header;
 
 	FILE *rohc_size_output_file;
 
-	unsigned char *packet;
+	const uint8_t *packet;
 	unsigned char *cmp_packet;
 
 	int counter;
@@ -1113,43 +1140,11 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 	trace("=== initialization:\n");
 
 	/* open the source dump file */
-	handle = pcap_open_offline(src_filename, errbuf);
+	handle = open_pcap_file(src_filenames[0], &link_len_src);
 	if(handle == NULL)
 	{
-		trace("failed to open the source pcap file: %s\n", errbuf);
 		status = 77; /* skip test */
 		goto error;
-	}
-
-	/* link layer in the source dump must be Ethernet */
-	link_layer_type_src = pcap_datalink(handle);
-	if(link_layer_type_src != DLT_EN10MB &&
-	   link_layer_type_src != DLT_LINUX_SLL &&
-	   link_layer_type_src != DLT_RAW &&
-	   link_layer_type_src != DLT_NULL)
-	{
-		trace("link layer type %d not supported in source dump (supported = "
-		      "%d, %d, %d, %d)\n", link_layer_type_src, DLT_EN10MB,
-		      DLT_LINUX_SLL, DLT_RAW, DLT_NULL);
-		status = 77; /* skip test */
-		goto close_input;
-	}
-
-	if(link_layer_type_src == DLT_EN10MB)
-	{
-		link_len_src = ETHER_HDR_LEN;
-	}
-	else if(link_layer_type_src == DLT_LINUX_SLL)
-	{
-		link_len_src = LINUX_COOKED_HDR_LEN;
-	}
-	else if(link_layer_type_src == DLT_NULL)
-	{
-		link_len_src = BSD_LOOPBACK_HDR_LEN;
-	}
-	else /* DLT_RAW */
-	{
-		link_len_src = 0;
 	}
 
 	/* open the network dump file for ROHC storage if asked */
@@ -1171,43 +1166,11 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 	/* open the ROHC comparison dump file if asked */
 	if(cmp_filename != NULL)
 	{
-		cmp_handle = pcap_open_offline(cmp_filename, errbuf);
+		cmp_handle = open_pcap_file(cmp_filename, &link_len_cmp);
 		if(cmp_handle == NULL)
 		{
-			trace("failed to open the comparison pcap file: %s\n", errbuf);
 			status = 77; /* skip test */
 			goto close_output;
-		}
-
-		/* link layer in the rohc_comparison dump must be Ethernet */
-		link_layer_type_cmp = pcap_datalink(cmp_handle);
-		if(link_layer_type_cmp != DLT_EN10MB &&
-		   link_layer_type_cmp != DLT_LINUX_SLL &&
-		   link_layer_type_cmp != DLT_RAW &&
-		   link_layer_type_cmp != DLT_NULL)
-		{
-			trace("link layer type %d not supported in comparison dump "
-			      "(supported = %d, %d, %d, %d)\n", link_layer_type_cmp,
-			      DLT_EN10MB, DLT_LINUX_SLL, DLT_RAW, DLT_NULL);
-			status = 77; /* skip test */
-			goto close_comparison;
-		}
-
-		if(link_layer_type_cmp == DLT_EN10MB)
-		{
-			link_len_cmp = ETHER_HDR_LEN;
-		}
-		else if(link_layer_type_cmp == DLT_LINUX_SLL)
-		{
-			link_len_cmp = LINUX_COOKED_HDR_LEN;
-		}
-		else if(link_layer_type_cmp == DLT_NULL)
-		{
-			link_len_cmp = BSD_LOOPBACK_HDR_LEN;
-		}
-		else /* DLT_RAW */
-		{
-			link_len_cmp = 0;
 		}
 	}
 	else
@@ -1268,7 +1231,8 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 
 	/* for each packet in the dump */
 	counter = 0;
-	while((packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
+	while(get_next_packet(&handle, src_filenames, src_filenames_nr,
+	                      &src_filenames_id, &header, &link_len_src, &packet))
 	{
 		counter++;
 
@@ -1407,7 +1371,10 @@ close_output:
 		pcap_dump_close(dumper);
 	}
 close_input:
-	pcap_close(handle);
+	if(handle != NULL)
+	{
+		pcap_close(handle);
+	}
 error:
 	return status;
 }
@@ -1637,6 +1604,120 @@ static bool rohc_comp_rtp_cb(const unsigned char *const ip __attribute__((unused
 	}
 
 	return is_rtp;
+}
+
+
+/**
+ * @brief Open a PCAP dump file
+ *
+ * @param filename  The file name of the PCAP dump file to open
+ * @return          The handle on the opened PCAP dump file in case of success,
+ *                  NULL in case of error
+ */
+static pcap_t * open_pcap_file(const char *const filename, size_t *const link_len)
+{
+	char errbuf[PCAP_ERRBUF_SIZE];
+	int link_layer_type;
+	pcap_t *handle;
+
+	/* open the source dump file */
+	handle = pcap_open_offline(filename, errbuf);
+	if(handle == NULL)
+	{
+		trace("failed to open the source pcap file: %s\n", errbuf);
+		goto error;
+	}
+
+	/* link layer in the source dump must be Ethernet */
+	link_layer_type = pcap_datalink(handle);
+	if(link_layer_type != DLT_EN10MB &&
+	   link_layer_type != DLT_LINUX_SLL &&
+	   link_layer_type != DLT_RAW &&
+	   link_layer_type != DLT_NULL)
+	{
+		trace("link layer type %d not supported in source dump (supported = "
+		      "%d, %d, %d, %d)\n", link_layer_type, DLT_EN10MB,
+		      DLT_LINUX_SLL, DLT_RAW, DLT_NULL);
+		goto close_input;
+	}
+
+	if(link_layer_type == DLT_EN10MB)
+	{
+		*link_len = ETHER_HDR_LEN;
+	}
+	else if(link_layer_type == DLT_LINUX_SLL)
+	{
+		*link_len = LINUX_COOKED_HDR_LEN;
+	}
+	else if(link_layer_type == DLT_NULL)
+	{
+		*link_len = BSD_LOOPBACK_HDR_LEN;
+	}
+	else /* DLT_RAW */
+	{
+		*link_len = 0;
+	}
+
+	return handle;
+
+close_input:
+	pcap_close(handle);
+error:
+	return NULL;
+}
+
+
+/**
+ * @brief Get the next packet from source captures
+ *
+ */
+static bool get_next_packet(pcap_t **const pcap_handle,
+                            const char *const src_filenames[],
+                            const size_t src_filenames_nr,
+                            size_t *const src_filenames_id,
+                            struct pcap_pkthdr *const header,
+                            size_t *const link_len,
+                            const uint8_t **const packet)
+{
+	assert((*pcap_handle) != NULL);
+
+	/* get the next packet in the current PCAP dump */
+	*packet = (const uint8_t *) pcap_next(*pcap_handle, header);
+
+	/* if there is no more packet in the current PCAP dump file, try next one */
+	if((*packet) == NULL)
+	{
+		/* close current PCAP dump file */
+		pcap_close(*pcap_handle);
+		*pcap_handle = NULL;
+
+		/* is there another PCAP dump file? */
+		(*src_filenames_id)++;
+		if((*src_filenames_id) >= src_filenames_nr)
+		{
+			goto no_more_packet;
+		}
+
+		/* open next PCAP dump file */
+		*pcap_handle = open_pcap_file(src_filenames[*src_filenames_id], link_len);
+		if((*pcap_handle) == NULL)
+		{
+			goto error;
+		}
+
+		/* get the next packet in the current PCAP dump */
+		*packet = (const uint8_t *) pcap_next(*pcap_handle, header);
+		if((*packet) == NULL)
+		{
+			goto no_more_packet;
+		}
+	}
+
+	return true;
+
+no_more_packet:
+error:
+	return false;
 }
 
 
