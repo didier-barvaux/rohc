@@ -241,6 +241,35 @@ int main(int argc, char *argv[])
 		CHECK(strcmp(rohc_get_ext_descr(ROHC_EXT_NONE + 1), unknown) == 0);
 	}
 
+	/* rohc_get_packet_type() */
+	{
+		const char *const packet_type_names[ROHC_PACKET_MAX] = {
+			"ir", "irdyn",
+			"uo0", "uo1",
+			"uo1id", "uo1ts", "uo1rtp",
+			"uor2", "uor2rtp", "uor2id", "uor2ts",
+			"xxx", "xxx",
+			"uncomp-normal",
+			"unknown",
+			"tcp-co-common",
+			"tcp-rnd-1", "tcp-rnd-2", "tcp-rnd-3", "tcp-rnd-4",
+			"tcp-rnd-5", "tcp-rnd-6", "tcp-rnd-7", "tcp-rnd-8",
+			"tcp-seq-1", "tcp-seq-2", "tcp-seq-3", "tcp-seq-4",
+			"tcp-seq-5", "tcp-seq-6", "tcp-seq-7", "tcp-seq-8",
+		};
+		rohc_packet_t packet_type;
+
+		for(packet_type = ROHC_PACKET_IR;
+		    packet_type < ROHC_PACKET_MAX;
+		    packet_type++)
+		{
+			if(packet_type != 11 && packet_type != 12)
+			{
+				CHECK(rohc_get_packet_type(packet_type_names[packet_type]) == packet_type);
+			}
+		}
+	}
+
 	/* not a public API, but best place to test: rohc_get_ip_proto_descr() */
 	{
 		const char unknown[] = "unknown IP protocol";
