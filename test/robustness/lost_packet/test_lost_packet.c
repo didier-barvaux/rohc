@@ -566,13 +566,47 @@ static int test_comp_and_decomp(const char *const filename,
 		        context_info.corrected_wrong_sn_updates);
 		corrected_wrong_sn_updates += context_info.corrected_wrong_sn_updates;
 	}
-	fprintf(stderr, "global stats:\n");
+	fprintf(stderr, "global stats (from rohc_decomp_get_context_info):\n");
 	fprintf(stderr, "\tprocessed packets          = %lu\n", packets_nr);
 	fprintf(stderr, "\tcompressed bytes           = %lu\n", comp_bytes_nr);
 	fprintf(stderr, "\tdecompressed bytes         = %lu\n", uncomp_bytes_nr);
 	fprintf(stderr, "\tcorrected CRC failures     = %lu\n", corrected_crc_failures);
 	fprintf(stderr, "\tcorrected SN wraparounds   = %lu\n", corrected_sn_wraparounds);
 	fprintf(stderr, "\tcorrected wrong SN updates = %lu\n", corrected_wrong_sn_updates);
+
+	/* get some statistics about the decompressor */
+	{
+		rohc_decomp_general_info_t general_info;
+
+		general_info.version_major = 0;
+		general_info.version_minor = 1;
+		if(!rohc_decomp_get_general_info(decomp, &general_info))
+		{
+			fprintf(stderr, "failed to get general information for decompressor\n");
+			goto destroy_decomp;
+		}
+
+		fprintf(stderr, "global stats (from rohc_decomp_get_general_info):\n");
+		fprintf(stderr, "\tprocessed packets          = %lu\n",
+		        general_info.packets_nr);
+		fprintf(stderr, "\tcompressed bytes           = %lu\n",
+		        general_info.comp_bytes_nr);
+		fprintf(stderr, "\tdecompressed bytes         = %lu\n",
+		        general_info.uncomp_bytes_nr);
+		fprintf(stderr, "\tcorrected CRC failures     = %lu\n",
+		        general_info.corrected_crc_failures);
+		fprintf(stderr, "\tcorrected SN wraparounds   = %lu\n",
+		        general_info.corrected_sn_wraparounds);
+		fprintf(stderr, "\tcorrected wrong SN updates = %lu\n",
+		        general_info.corrected_wrong_sn_updates);
+
+		assert(general_info.packets_nr == packets_nr);
+		assert(general_info.comp_bytes_nr == comp_bytes_nr);
+		assert(general_info.uncomp_bytes_nr == uncomp_bytes_nr);
+		assert(general_info.corrected_crc_failures == corrected_crc_failures);
+		assert(general_info.corrected_sn_wraparounds == corrected_sn_wraparounds);
+		assert(general_info.corrected_wrong_sn_updates == corrected_wrong_sn_updates);
+	}
 
 	/* everything went fine */
 	fprintf(stderr, "all non-lost packets were successfully decompressed\n");

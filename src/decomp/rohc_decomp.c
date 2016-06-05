@@ -1566,13 +1566,16 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 			rohc_decomp_warn(context, "CID %zu: CRC repair: correction is "
 			                 "successful, keep packet", context->cid);
 			context->corrected_crc_failures++;
+			decomp->stats.corrected_crc_failures++;
 			switch(context->crc_corr.algo)
 			{
 				case ROHC_DECOMP_CRC_CORR_SN_WRAP:
 					context->corrected_sn_wraparounds++;
+					decomp->stats.corrected_sn_wraparounds++;
 					break;
 				case ROHC_DECOMP_CRC_CORR_SN_UPDATES:
 					context->corrected_wrong_sn_updates++;
+					decomp->stats.corrected_wrong_sn_updates++;
 					break;
 				case ROHC_DECOMP_CRC_CORR_SN_NONE:
 				default:
@@ -2378,6 +2381,9 @@ static void rohc_decomp_reset_stats(struct rohc_decomp *const decomp)
 	decomp->stats.failed_decomp = 0;
 	decomp->stats.total_compressed_size = 0;
 	decomp->stats.total_uncompressed_size = 0;
+	decomp->stats.corrected_crc_failures = 0;
+	decomp->stats.corrected_sn_wraparounds = 0;
+	decomp->stats.corrected_wrong_sn_updates = 0;
 }
 
 
@@ -2650,12 +2656,24 @@ bool rohc_decomp_get_general_info(const struct rohc_decomp *const decomp,
 		info->uncomp_bytes_nr = decomp->stats.total_uncompressed_size;
 
 		/* new fields added by minor versions */
-		if(info->version_minor > 0)
+		switch(info->version_minor)
 		{
-			rohc_error(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			           "unsupported minor version (%u) of the structure for "
-			           "general information", info->version_minor);
-			goto error;
+			case 0:
+				/* nothing to add */
+				break;
+			case 1:
+				/* new fields in 0.1 */
+				info->corrected_crc_failures = decomp->stats.corrected_crc_failures;
+				info->corrected_sn_wraparounds =
+					decomp->stats.corrected_sn_wraparounds;
+				info->corrected_wrong_sn_updates =
+					decomp->stats.corrected_wrong_sn_updates;
+				break;
+			default:
+				rohc_error(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+				           "unsupported minor version (%u) of the structure for "
+				           "general information", info->version_minor);
+				goto error;
 		}
 	}
 	else

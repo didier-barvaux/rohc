@@ -90,6 +90,15 @@ struct d_statistics
 	unsigned long total_compressed_size;
 	/** The cumulative size of the uncompressed packets */
 	unsigned long total_uncompressed_size;
+
+	/** The cumulative number of successful corrections upon CRC failure */
+	unsigned long corrected_crc_failures;
+	/** The cumulative number of successful corrections of SN wraparound
+	 *  upon CRC failure */
+	unsigned long corrected_sn_wraparounds;
+	/** The cumulative number of successful corrections of incorrect SN updates
+	 *  upon CRC failure */
+	unsigned long corrected_wrong_sn_updates;
 };
 
 

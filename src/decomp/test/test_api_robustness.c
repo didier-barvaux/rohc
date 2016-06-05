@@ -323,6 +323,8 @@ int main(int argc, char *argv[])
 		CHECK(rohc_decomp_get_last_packet_info(decomp, &info) == false);
 		info.version_minor = 0;
 		CHECK(rohc_decomp_get_last_packet_info(decomp, &info) == true);
+		info.version_minor = 1;
+		CHECK(rohc_decomp_get_last_packet_info(decomp, &info) == true);
 	}
 
 	/* rohc_decomp_get_general_info() */
@@ -337,6 +339,8 @@ int main(int argc, char *argv[])
 		info.version_minor = 0xffff;
 		CHECK(rohc_decomp_get_general_info(decomp, &info) == false);
 		info.version_minor = 0;
+		CHECK(rohc_decomp_get_general_info(decomp, &info) == true);
+		info.version_minor = 1;
 		CHECK(rohc_decomp_get_general_info(decomp, &info) == true);
 	}
 

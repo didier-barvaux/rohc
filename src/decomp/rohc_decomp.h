@@ -257,6 +257,17 @@ typedef struct
 	unsigned long comp_bytes_nr;
 	/** The number of uncompressed bytes produced by the decompressor */
 	unsigned long uncomp_bytes_nr;
+
+	/* added in 0.1 */
+	/** The cumulative number of successful corrections upon CRC failure */
+	unsigned long corrected_crc_failures;
+	/** The cumulative number of successful corrections of SN wraparound
+	 *  upon CRC failure */
+	unsigned long corrected_sn_wraparounds;
+	/** The cumulative number of successful corrections of incorrect SN updates
+	 *  upon CRC failure */
+	unsigned long corrected_wrong_sn_updates;
+
 } __attribute__((packed)) rohc_decomp_general_info_t;
 
 

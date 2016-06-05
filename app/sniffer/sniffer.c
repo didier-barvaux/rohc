@@ -1427,7 +1427,7 @@ static int compress_decompress(struct rohc_comp *comp,
 
 	/* get some statistics about the last decompressed packet */
 	decomp_last_packet_info.version_major = 0;
-	decomp_last_packet_info.version_minor = 0;
+	decomp_last_packet_info.version_minor = 1;
 	if(!rohc_decomp_get_last_packet_info(decomp, &decomp_last_packet_info))
 	{
 		SNIFFER_LOG(LOG_WARNING, "failed to get decompression info");

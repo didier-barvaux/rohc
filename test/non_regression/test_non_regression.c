@@ -680,7 +680,7 @@ static bool show_rohc_decomp_stats(const struct rohc_decomp *const decomp,
 
 	/* general information */
 	general_info.version_major = 0;
-	general_info.version_minor = 0;
+	general_info.version_minor = 1;
 	if(!rohc_decomp_get_general_info(decomp, &general_info))
 	{
 		fprintf(stderr, "failed to get general information for decompressor\n");
