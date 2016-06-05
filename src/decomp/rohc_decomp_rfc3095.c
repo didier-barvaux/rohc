@@ -5428,6 +5428,8 @@ bool rfc3095_decomp_attempt_repair(const struct rohc_decomp *const decomp,
 	/* do not try to repair packet/context if repair is already in action */
 	if(crc_corr->algo != ROHC_DECOMP_CRC_CORR_SN_NONE)
 	{
+		rohc_decomp_warn(context, "CID %zu: CRC repair: repair already in action",
+		                 context->cid);
 		goto skip;
 	}
 
@@ -5488,6 +5490,8 @@ bool rfc3095_decomp_attempt_repair(const struct rohc_decomp *const decomp,
 		 *   If the decompressed header generated in b. does not pass the CRC
 		 *   test and SN curr2 is the same as SN curr1, an additional
 		 *   decompression attempt is not useful and is not attempted. */
+		rohc_decomp_warn(context, "CID %zu: CRC repair: repair is not useful",
+		                 context->cid);
 		goto skip;
 	}
 

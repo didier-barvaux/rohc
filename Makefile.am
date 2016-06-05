@@ -135,7 +135,7 @@ cppcheck:
 
 # run GNU complexity on all sources and apps, but not tests
 complexity:
-	$(AM_V_GEN)complexity --threshold=20 --horrid-threshold=30 \
+	$(AM_V_GEN)complexity --threshold=20 --horrid-threshold=32 \
 		`find src/ app/ -name \*.c -or -name \*.h`
 
 # run Linux checkpatch.pl script on kernel modules, but ignore warnings about

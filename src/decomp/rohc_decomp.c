@@ -1475,6 +1475,12 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 			{
 				rohc_decomp_debug(context, "CRC is correct");
 			}
+			else if((*packet_type) == ROHC_PACKET_IR)
+			{
+				rohc_decomp_debug(context, "CRC is correct, stop CRC repair");
+				context->crc_corr.algo = ROHC_DECOMP_CRC_CORR_SN_NONE;
+				context->crc_corr.counter = 0;
+			}
 			else
 			{
 				rohc_decomp_debug(context, "CID %zu: CRC repair: CRC is correct",
