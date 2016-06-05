@@ -301,16 +301,16 @@ struct rohc_decomp_ctxt
 	rohc_packet_t packet_type;
 
 	/** The average size of the uncompressed packets */
-	int total_uncompressed_size;
+	unsigned long total_uncompressed_size;
 	/** The average size of the compressed packets */
-	int total_compressed_size;
+	unsigned long total_compressed_size;
 	/** The average size of the uncompressed headers */
-	int header_uncompressed_size;
+	unsigned long header_uncompressed_size;
 	/** The average size of the compressed headers */
-	int header_compressed_size;
+	unsigned long header_compressed_size;
 
 	/* The number of received packets */
-	int num_recv_packets;
+	unsigned long num_recv_packets;
 	/** The number of successful corrections upon CRC failure */
 	unsigned long corrected_crc_failures;
 	/** The number of successful corrections of SN wraparound upon CRC failure */

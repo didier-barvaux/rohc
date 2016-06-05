@@ -154,6 +154,63 @@ typedef struct
 
 
 /**
+ * @brief Some information about one decompression context
+ *
+ * The structure is used by the \ref rohc_decomp_get_context_info function
+ * to store some information about one decompression context.
+ *
+ * Versioning works as follow:
+ *  - The \e version_major field defines the compatibility level. If the major
+ *    number given by user does not match the one expected by the library,
+ *    an error is returned.
+ *  - The \e version_minor field defines the extension level. If the minor
+ *    number given by user does not match the one expected by the library,
+ *    only the fields supported in that minor version will be filled by
+ *    \ref rohc_decomp_get_context_info.
+ *
+ * Notes for developers:
+ *  - Increase the major version if a field is removed.
+ *  - Increase the major version if a field is added at the beginning or in
+ *    the middle of the structure.
+ *  - Increase the minor version if a field is added at the very end of the
+ *    structure.
+ *  - The version_major and version_minor fields must be located at the very
+ *    beginning of the structure.
+ *  - The structure must be packed.
+ *
+ * Supported versions:
+ *  - Major 0 / Minor 0 contains: version_major, version_minor, packets_nr,
+ *    comp_bytes_nr, uncomp_bytes_nr, corrected_crc_failures,
+ *    corrected_sn_wraparounds, and corrected_wrong_sn_updates.
+ *
+ * @ingroup rohc_decomp
+ *
+ * @see rohc_decomp_get_context_info
+ */
+typedef struct
+{
+	/** The major version of this structure */
+	unsigned short version_major;
+	/** The minor version of this structure */
+	unsigned short version_minor;
+	/** The number of packets processed by the context */
+	unsigned long packets_nr;
+	/** The number of compressed bytes received by the context */
+	unsigned long comp_bytes_nr;
+	/** The number of uncompressed bytes produced by the context */
+	unsigned long uncomp_bytes_nr;
+	/** The number of successful corrections upon CRC failure */
+	unsigned long corrected_crc_failures;
+	/** The number of successful corrections of SN wraparound upon CRC failure */
+	unsigned long corrected_sn_wraparounds;
+	/** The number of successful corrections of incorrect SN updates upon CRC
+	 *  failure */
+	unsigned long corrected_wrong_sn_updates;
+
+} __attribute__((packed)) rohc_decomp_context_info_t;
+
+
+/**
  * @brief Some general information about the decompressor
  *
  * The structure is used by the \ref rohc_decomp_get_general_info function
@@ -258,6 +315,11 @@ const char * ROHC_EXPORT rohc_decomp_get_state_descr(const rohc_decomp_state_t s
 
 bool ROHC_EXPORT rohc_decomp_get_general_info(const struct rohc_decomp *const decomp,
                                               rohc_decomp_general_info_t *const info)
+	__attribute__((warn_unused_result));
+
+bool ROHC_EXPORT rohc_decomp_get_context_info(const struct rohc_decomp *const decomp,
+                                              const rohc_cid_t cid,
+                                              rohc_decomp_context_info_t *const info)
 	__attribute__((warn_unused_result));
 
 bool ROHC_EXPORT rohc_decomp_get_last_packet_info(const struct rohc_decomp *const decomp,

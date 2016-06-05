@@ -59,5 +59,6 @@ rohc_decomp_disable_profile
 rohc_decomp_disable_profiles
 rohc_decomp_profile_enabled
 rohc_decomp_get_last_packet_info
+rohc_decomp_get_context_info
 rohc_decomp_get_general_info
 rohc_decomp_get_state_descr

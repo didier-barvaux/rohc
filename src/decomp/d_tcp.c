@@ -624,7 +624,7 @@ static rohc_packet_t tcp_detect_packet_type(const struct rohc_decomp_ctxt *const
 		/* detect the version and IP-ID behavior of the innermost IP header */
 		{
 			const ip_context_t *innermost_hdr_ctxt;
-			if(context->num_recv_packets <= 0)
+			if(context->num_recv_packets == 0)
 			{
 				rohc_decomp_warn(context, "non IR(-DYN) packet received without "
 				                 "initialized context: cannot determine the packet "

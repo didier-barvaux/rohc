@@ -2508,6 +2508,103 @@ error:
 
 
 /**
+ * @brief Get some information about the given decompression context
+ *
+ * Get some information about the given decompression context.
+ *
+ * To use the function, call it with a pointer on a pre-allocated
+ * \ref rohc_decomp_context_info_t structure with the \e version_major
+ * and \e version_minor fields set to one of the following supported
+ * versions:
+ *  - Major 0, minor 0
+ *
+ * See \ref rohc_decomp_context_info_t for details about fields that
+ * are supported in the above versions.
+ *
+ * @param decomp        The ROHC decompressor to get information from
+ * @param cid           The Context ID to get information for
+ * @param[in,out] info  The structure where information will be stored
+ * @return              true in case of success, false otherwise
+ *
+ * @ingroup rohc_decomp
+ *
+ * @see rohc_decomp_context_info_t
+ */
+bool rohc_decomp_get_context_info(const struct rohc_decomp *const decomp,
+                                  const rohc_cid_t cid,
+                                  rohc_decomp_context_info_t *const info)
+{
+	if(decomp == NULL)
+	{
+		goto error;
+	}
+
+	if(cid > decomp->medium.max_cid)
+	{
+		rohc_error(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		           "decompressor does not handle CID %zu since MAX_CID is %zu",
+		           cid, decomp->medium.max_cid);
+		goto error;
+	}
+
+	if(info == NULL)
+	{
+		rohc_error(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		           "structure for context information is not valid");
+		goto error;
+	}
+
+	/* check compatibility version */
+	if(info->version_major == 0)
+	{
+		/* base fields for major version 0 */
+		if(decomp->contexts[cid] == NULL)
+		{
+			info->packets_nr = 0;
+			info->comp_bytes_nr = 0;
+			info->uncomp_bytes_nr = 0;
+			info->corrected_crc_failures = 0;
+			info->corrected_sn_wraparounds = 0;
+			info->corrected_wrong_sn_updates = 0;
+		}
+		else
+		{
+			info->packets_nr = decomp->contexts[cid]->num_recv_packets;
+			info->comp_bytes_nr = decomp->contexts[cid]->total_compressed_size;
+			info->uncomp_bytes_nr = decomp->contexts[cid]->total_uncompressed_size;
+			info->corrected_crc_failures =
+				decomp->contexts[cid]->corrected_crc_failures;
+			info->corrected_sn_wraparounds =
+				decomp->contexts[cid]->corrected_sn_wraparounds;
+			info->corrected_wrong_sn_updates =
+				decomp->contexts[cid]->corrected_wrong_sn_updates;
+		}
+
+		/* new fields added by minor versions */
+		if(info->version_minor > 0)
+		{
+			rohc_error(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+			           "unsupported minor version (%u) of the structure for "
+			           "context information", info->version_minor);
+			goto error;
+		}
+	}
+	else
+	{
+		rohc_error(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		           "unsupported major version (%u) of the structure for context"
+		           "information", info->version_major);
+		goto error;
+	}
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
  * @brief Get some general information about the decompressor
  *
  * Get some general information about the decompressor.

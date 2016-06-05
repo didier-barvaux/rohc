@@ -526,6 +526,54 @@ static int test_comp_and_decomp(const char *const filename,
 		}
 	}
 
+	/* get some statistics about the decompression contexts */
+	unsigned long packets_nr = 0;
+	unsigned long comp_bytes_nr = 0;
+	unsigned long uncomp_bytes_nr = 0;
+	unsigned long corrected_crc_failures = 0;
+	unsigned long corrected_sn_wraparounds = 0;
+	unsigned long corrected_wrong_sn_updates = 0;
+	for(rohc_cid_t cid = 0; cid <= ROHC_SMALL_CID_MAX; cid++)
+	{
+		rohc_decomp_context_info_t context_info;
+
+		fprintf(stderr, "decompression contexts CID %zu:\n", cid);
+
+		context_info.version_major = 0;
+		context_info.version_minor = 0;
+		if(!rohc_decomp_get_context_info(decomp, cid, &context_info))
+		{
+			fprintf(stderr, "failed to get decompression context info");
+			goto destroy_decomp;
+		}
+
+		fprintf(stderr, "\tprocessed packets          = %lu\n",
+		        context_info.packets_nr);
+		packets_nr += context_info.packets_nr;
+		fprintf(stderr, "\tcompressed bytes           = %lu\n",
+		        context_info.comp_bytes_nr);
+		comp_bytes_nr += context_info.comp_bytes_nr;
+		fprintf(stderr, "\tdecompressed bytes         = %lu\n",
+		        context_info.uncomp_bytes_nr);
+		uncomp_bytes_nr += context_info.uncomp_bytes_nr;
+		fprintf(stderr, "\tcorrected CRC failures     = %lu\n",
+		        context_info.corrected_crc_failures);
+		corrected_crc_failures += context_info.corrected_crc_failures;
+		fprintf(stderr, "\tcorrected SN wraparounds   = %lu\n",
+		        context_info.corrected_sn_wraparounds);
+		corrected_sn_wraparounds += context_info.corrected_sn_wraparounds;
+		fprintf(stderr, "\tcorrected wrong SN updates = %lu\n",
+		        context_info.corrected_wrong_sn_updates);
+		corrected_wrong_sn_updates += context_info.corrected_wrong_sn_updates;
+	}
+	fprintf(stderr, "global stats:\n");
+	fprintf(stderr, "\tprocessed packets          = %lu\n", packets_nr);
+	fprintf(stderr, "\tcompressed bytes           = %lu\n", comp_bytes_nr);
+	fprintf(stderr, "\tdecompressed bytes         = %lu\n", uncomp_bytes_nr);
+	fprintf(stderr, "\tcorrected CRC failures     = %lu\n", corrected_crc_failures);
+	fprintf(stderr, "\tcorrected SN wraparounds   = %lu\n", corrected_sn_wraparounds);
+	fprintf(stderr, "\tcorrected wrong SN updates = %lu\n", corrected_wrong_sn_updates);
+
 	/* everything went fine */
 	fprintf(stderr, "all non-lost packets were successfully decompressed\n");
 	is_failure = 0;

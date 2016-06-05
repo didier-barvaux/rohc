@@ -118,6 +118,7 @@ EXPORT_SYMBOL_GPL(rohc_decompress3);
 /* statistics */
 EXPORT_SYMBOL_GPL(rohc_decomp_get_state_descr);
 EXPORT_SYMBOL_GPL(rohc_decomp_get_general_info);
+EXPORT_SYMBOL_GPL(rohc_decomp_get_context_info);
 EXPORT_SYMBOL_GPL(rohc_decomp_get_last_packet_info);
 
 /* configuration */
