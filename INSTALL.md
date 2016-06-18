@@ -17,7 +17,7 @@ flags require external resources:
   * a Linux kernel
 * `--enable-doc` requires:
   * `doxygen` binary
-  * a `latex` distribution
+  * the `dot` binary from the `graphviz` project
 * `--enable-doc-man` requires:
   * `--enable-doc` option
   * `doxy2man` binary
