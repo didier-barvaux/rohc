@@ -1,12 +1,14 @@
-.TH rohc_library 7 2013-09-15 "ROHC" "ROHC library Programmer's Manual"
+.TH rohc_library 7 2016-06-19 "ROHC" "ROHC library Programmer's Manual"
 .SH "NAME"
-rohc_library \- The ROHC library
+rohc_library \(hy The ROHC library
 
 .SH SYNOPSIS
 .nf
 .B #include <rohc/rohc.h>
 .B #include <rohc/rohc_traces.h>
 .B #include <rohc/rohc_packets.h>
+.B #include <rohc/rohc_time.h>
+.B #include <rohc/rohc_buf.h>
 .B #include <rohc/rohc_comp.h>
 .B #include <rohc/rohc_decomp.h>
 .fi
@@ -57,7 +59,7 @@ with the following command:
 .PP
 .RS 2
 .nf
-$ gcc -o example -Wall -g $( pkg-config --cflags --libs rohc ) example.c
+$ gcc \-o example \-Wall \-g $( pkg\-config \-\-cflags \-\-libs rohc ) example.c
 .fi
 .RE
 .PP
@@ -174,9 +176,9 @@ int main(int argc, char **argv)
 	                              ROHC_PROFILE_UNCOMPRESSED,
 	                              ROHC_PROFILE_IP,
 	                              ROHC_PROFILE_UDP,
-	                              ROHC_PROFILE_UDPLITE, -1))
+	                              ROHC_PROFILE_UDPLITE, \-1))
 	{
-		fprintf(stderr, "failed to enable the IP/UDP and IP/UDP-Lite "
+		fprintf(stderr, "failed to enable the IP/UDP and IP/UDP\-Lite "
 		        "profiles\\n");
 		goto release_compressor;
 	}
@@ -187,12 +189,12 @@ int main(int argc, char **argv)
 	printf("build a fake IP packet\\n");
 	rohc_buf_byte_at(ip_packet, 0) = 4 << 4; /* IP version 4 */
 	rohc_buf_byte_at(ip_packet, 0) |= 5; /* IHL: min. IPv4 header length
-	                                        (in 32-bit words) */
+	                                        (in 32\-bit words) */
 	rohc_buf_byte_at(ip_packet, 1) = 0; /* TOS */
 	ip_packet.len = 5 * 4 + strlen(FAKE_PAYLOAD);
 	rohc_buf_byte_at(ip_packet, 2) = (ip_packet.len >> 8) & 0xff; /* Total Length */
 	rohc_buf_byte_at(ip_packet, 3) = ip_packet.len & 0xff;
-	rohc_buf_byte_at(ip_packet, 4) = 0; /* IP-ID */
+	rohc_buf_byte_at(ip_packet, 4) = 0; /* IP\-ID */
 	rohc_buf_byte_at(ip_packet, 5) = 0;
 	rohc_buf_byte_at(ip_packet, 6) = 0; /* Fragment Offset and IP flags */
 	rohc_buf_byte_at(ip_packet, 7) = 0;
@@ -212,7 +214,7 @@ int main(int argc, char **argv)
 	/* copy the payload just after the IP header */
 	memcpy(rohc_buf_data_at(ip_packet, 5 * 4), FAKE_PAYLOAD, strlen(FAKE_PAYLOAD));
 
-	/* dump the newly-created IP packet on terminal */
+	/* dump the newly\-created IP packet on terminal */
 	for(i = 0; i < ip_packet.len; i++)
 	{
 		printf("0x%02x ", rohc_buf_byte_at(ip_packet, i));

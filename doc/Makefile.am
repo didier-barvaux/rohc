@@ -164,7 +164,9 @@ rohc_common_sources = \
 	$(top_srcdir)/src/common/rohc.h \
 	$(top_srcdir)/src/common/rohc_packets.c \
 	$(top_srcdir)/src/common/rohc_packets.h \
-	$(top_srcdir)/src/common/rohc_traces.h
+	$(top_srcdir)/src/common/rohc_traces.h \
+	$(top_srcdir)/src/common/rohc_time.h \
+	$(top_srcdir)/src/common/rohc_buf.h
 
 if BUILD_DOC_MAN
 $(rohc_common_man): $(rohc_common_sources) $(rohc_examples_sources) | doxygen

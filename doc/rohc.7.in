@@ -1,6 +1,6 @@
-.TH rohc 7 2013-09-15 "ROHC" "ROHC library Programmer's Manual"
+.TH rohc 7 2016-06-19 "ROHC" "ROHC library Programmer's Manual"
 .SH "NAME"
-rohc \- The ROHC protocol and library
+rohc \(hy The ROHC protocol and library
 
 .SH DESCRIPTION
 .PP
@@ -22,7 +22,7 @@ for network headers. It does not act on the network payload in any way.
 .PP
 The \fBROHC protocol\fP is very efficient for compressing \fBVoIP streams\fP
 that use \fBRTP\fP as transport protocol. \fBROHC\fP is also suitable for
-compressing \fBIPv4\fP, \fBIPv6\fP, \fBUDP\fP, \fBUDP-Lite\fP, \fBESP\fP, and
+compressing \fBIPv4\fP, \fBIPv6\fP, \fBUDP\fP, \fBUDP\-Lite\fP, \fBESP\fP, and
 \fBTCP\fP headers of Internet packets.
 .PP
 See
