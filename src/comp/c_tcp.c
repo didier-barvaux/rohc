@@ -67,8 +67,12 @@
  * Private function prototypes.
  */
 
-static bool c_tcp_create(struct rohc_comp_ctxt *const context,
-                         const struct net_pkt *const packet)
+static bool c_tcp_create_from_ctxt(struct rohc_comp_ctxt *const ctxt,
+                                   const struct rohc_comp_ctxt *const base_ctxt)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
+
+static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
+                                  const struct net_pkt *const packet)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static void c_tcp_destroy(struct rohc_comp_ctxt *const context)
@@ -79,8 +83,9 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
-                                const struct net_pkt *const packet)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+                                const struct net_pkt *const packet,
+                                size_t *const cr_score)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int c_tcp_encode(struct rohc_comp_ctxt *const context,
                         const struct net_pkt *const uncomp_pkt,
@@ -409,6 +414,66 @@ static void c_tcp_feedback_ack(struct rohc_comp_ctxt *const context,
 
 
 /**
+ * @brief Create a new TCP context and initialize it thanks to the given context
+ *
+ * This function is one of the functions that must exist in one profile for the
+ * framework to work.
+ *
+ * @param ctxt       The compression context to create
+ * @param base_ctxt  The base context given to initialize the new context
+ * @return           true if successful, false otherwise
+ */
+static bool c_tcp_create_from_ctxt(struct rohc_comp_ctxt *const ctxt,
+                                   const struct rohc_comp_ctxt *const base_ctxt)
+{
+	const struct rohc_comp *const comp = ctxt->compressor;
+	const struct sc_tcp_context *const base_tcp_ctxt = base_ctxt->specific;
+	const size_t wlsb_size = sizeof(struct c_wlsb);
+	struct sc_tcp_context *tcp_ctxt;
+
+	/* create the TCP part of the profile context */
+	tcp_ctxt = malloc(sizeof(struct sc_tcp_context));
+	if(tcp_ctxt == NULL)
+	{
+		rohc_error(ctxt->compressor, ROHC_TRACE_COMP, ctxt->profile->id,
+		           "no memory for the TCP part of the profile context");
+		goto error;
+	}
+	ctxt->specific = tcp_ctxt;
+	memcpy(ctxt->specific, base_ctxt->specific, sizeof(struct sc_tcp_context));
+
+	/* MSN */
+	memcpy(&tcp_ctxt->msn_wlsb, &base_tcp_ctxt->msn_wlsb, wlsb_size);
+	/* IP-ID offset */
+	memcpy(&tcp_ctxt->ip_id_wlsb, &base_tcp_ctxt->ip_id_wlsb, wlsb_size);
+	/* innermost IPv4 TTL or IPv6 Hop Limit */
+	memcpy(&tcp_ctxt->ttl_hopl_wlsb, &base_tcp_ctxt->ttl_hopl_wlsb, wlsb_size);
+	/* TCP window */
+	memcpy(&tcp_ctxt->window_wlsb, &base_tcp_ctxt->window_wlsb, wlsb_size);
+	/* TCP sequence number */
+	memcpy(&tcp_ctxt->seq_wlsb, &base_tcp_ctxt->seq_wlsb, wlsb_size);
+	memcpy(&tcp_ctxt->seq_scaled_wlsb, &base_tcp_ctxt->seq_scaled_wlsb, wlsb_size);
+	/* TCP acknowledgment (ACK) number */
+	memcpy(&tcp_ctxt->ack_wlsb, &base_tcp_ctxt->ack_wlsb, wlsb_size);
+	memcpy(&tcp_ctxt->ack_scaled_wlsb, &base_tcp_ctxt->ack_scaled_wlsb, wlsb_size);
+
+	/* init the Master Sequence Number to a random value */
+	tcp_ctxt->msn = comp->random_cb(comp, comp->random_cb_ctxt) & 0xffff;
+	rohc_comp_debug(ctxt, "MSN = 0x%04x / %u", tcp_ctxt->msn, tcp_ctxt->msn);
+
+	/* TCP option Timestamp (request) */
+	memcpy(&tcp_ctxt->tcp_opts.ts_req_wlsb, &base_tcp_ctxt->tcp_opts.ts_req_wlsb, wlsb_size);
+	/* TCP option Timestamp (reply) */
+	memcpy(&tcp_ctxt->tcp_opts.ts_reply_wlsb, &base_tcp_ctxt->tcp_opts.ts_reply_wlsb, wlsb_size);
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
  * @brief Create a new TCP context and initialize it thanks to the given IP/TCP
  *        packet.
  *
@@ -422,8 +487,8 @@ static void c_tcp_feedback_ack(struct rohc_comp_ctxt *const context,
  * @todo TODO: the code that parses IP headers in IP/UDP/RTP profiles could
  *             probably be re-used (and maybe enhanced if needed)
  */
-static bool c_tcp_create(struct rohc_comp_ctxt *const context,
-                         const struct net_pkt *const packet)
+static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
+                                  const struct net_pkt *const packet)
 {
 	const struct rohc_comp *const comp = context->compressor;
 	struct sc_tcp_context *tcp_context;
@@ -1004,16 +1069,18 @@ bad_exts:
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param context  The compression context
- * @param packet   The IP/TCP packet to check
- * @return         true if the IP/TCP packet belongs to the context
- *                 false if it does not belong to the context
+ * @param context        The compression context
+ * @param packet         The IP/TCP packet to check
+ * @param[out] cr_score  The score of the context for Context Replication (CR)
+ * @return               true if the IP/TCP packet belongs to the context
+ *                       false if it does not belong to the context
  *
  * @todo TODO: the code that parses IP headers in IP/UDP/RTP profiles could
  *             probably be re-used (and maybe enhanced if needed)
  */
 static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
-                                const struct net_pkt *const packet)
+                                const struct net_pkt *const packet,
+                                size_t *const cr_score)
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
 	const uint8_t *remain_data = packet->outer_ip.data;
@@ -1021,7 +1088,13 @@ static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
 	size_t ip_hdr_pos;
 	uint8_t next_proto = ROHC_IPPROTO_IPIP;
 	const struct tcphdr *tcp;
-	bool is_tcp_same;
+
+	/* Context Replication is possible only if the chain of IP headers is
+	 * unchanged on some aspects:
+	 *  - same number and order of IP headers,
+	 *  - IP versions,
+	 *  - IP addresses */
+	(*cr_score) = 0;
 
 	/* parse the IP headers (lengths already checked while checking profile) */
 	for(ip_hdr_pos = 0;
@@ -1047,14 +1120,21 @@ static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
 
 			assert(remain_len >= sizeof(struct ipv4_hdr));
 
-			/* check source and destination addresses */
-			if(ipv4->saddr != ip_context->ctxt.v4.src_addr ||
-			   ipv4->daddr != ip_context->ctxt.v4.dst_addr)
+			/* check source address */
+			if(ipv4->saddr != ip_context->ctxt.v4.src_addr)
 			{
-				rohc_comp_debug(context, "  not same IPv4 addresses");
+				rohc_comp_debug(context, "  not same IPv4 source addresses");
 				goto bad_context;
 			}
-			rohc_comp_debug(context, "  same IPv4 addresses");
+			rohc_comp_debug(context, "  same IPv4 source addresses");
+
+			/* check destination address */
+			if(ipv4->daddr != ip_context->ctxt.v4.dst_addr)
+			{
+				rohc_comp_debug(context, "  not same IPv4 destination addresses");
+				goto bad_context;
+			}
+			rohc_comp_debug(context, "  same IPv4 destination addresses");
 
 			/* check transport protocol */
 			next_proto = ipv4->protocol;
@@ -1075,16 +1155,23 @@ static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
 
 			assert(remain_len >= sizeof(struct ipv6_hdr));
 
-			/* check source and destination addresses */
+			/* check source address */
 			if(memcmp(&ipv6->saddr, ip_context->ctxt.v6.src_addr,
-			          sizeof(struct ipv6_addr)) != 0 ||
-			   memcmp(&ipv6->daddr, ip_context->ctxt.v6.dest_addr,
 			          sizeof(struct ipv6_addr)) != 0)
 			{
-				rohc_comp_debug(context, "  not same IPv6 addresses");
+				rohc_comp_debug(context, "  not same IPv6 source addresses");
 				goto bad_context;
 			}
-			rohc_comp_debug(context, "  same IPv6 addresses");
+			rohc_comp_debug(context, "  same IPv6 source addresses");
+
+			/* check destination address */
+			if(memcmp(&ipv6->daddr, ip_context->ctxt.v6.dest_addr,
+			          sizeof(struct ipv6_addr)) != 0)
+			{
+				rohc_comp_debug(context, "  not same IPv6 destination addresses");
+				goto bad_context;
+			}
+			rohc_comp_debug(context, "  same IPv6 destination addresses");
 
 			/* check Flow Label */
 			if(ipv6_get_flow_label(ipv6) != ip_context->ctxt.v6.flow_label)
@@ -1140,14 +1227,31 @@ static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
 		goto bad_context;
 	}
 
+	/* the packet matches the context enough to use Context Replication */
+	(*cr_score)++;
+
 	assert(remain_len >= sizeof(struct tcphdr));
 	tcp = (struct tcphdr *) remain_data;
-	is_tcp_same = tcp_context->old_tcphdr.src_port == tcp->src_port &&
-	              tcp_context->old_tcphdr.dst_port == tcp->dst_port;
-	rohc_comp_debug(context, "  TCP %ssame Source and Destination ports",
-	                is_tcp_same ? "" : "not ");
 
-	return is_tcp_same;
+	/* check TCP source port */
+	if(tcp_context->old_tcphdr.src_port != tcp->src_port)
+	{
+		rohc_comp_debug(context, "  not same TCP source ports");
+		goto bad_context;
+	}
+	rohc_comp_debug(context, "  same TCP source ports");
+	(*cr_score)++;
+
+	/* check TCP destination port */
+	if(tcp_context->old_tcphdr.dst_port != tcp->dst_port)
+	{
+		rohc_comp_debug(context, "  not same TCP destination ports");
+		goto bad_context;
+	}
+	rohc_comp_debug(context, "  same TCP destination ports");
+	(*cr_score)++;
+
+	return true;
 
 bad_context:
 	return false;
@@ -5388,7 +5492,8 @@ const struct rohc_comp_profile c_tcp_profile =
 {
 	.id             = ROHC_PROFILE_TCP, /* profile ID (see 8 in RFC 3095) */
 	.protocol       = ROHC_IPPROTO_TCP, /* IP protocol */
-	.create         = c_tcp_create,     /* profile handlers */
+	.create         = c_tcp_create_from_pkt,     /* profile handlers */
+	.clone          = c_tcp_create_from_ctxt,
 	.destroy        = c_tcp_destroy,
 	.check_profile  = c_tcp_check_profile,
 	.check_context  = c_tcp_check_context,

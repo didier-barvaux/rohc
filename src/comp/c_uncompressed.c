@@ -50,8 +50,9 @@ static bool c_uncompressed_check_profile(const struct rohc_comp *const comp,
 
 /* check whether a packet belongs to a context */
 static bool c_uncompressed_check_context(const struct rohc_comp_ctxt *const context,
-                                         const struct net_pkt *const packet)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+                                         const struct net_pkt *const packet,
+                                         size_t *const cr_score)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 /* encode uncompressed packets */
 static int c_uncompressed_encode(struct rohc_comp_ctxt *const context,
@@ -174,14 +175,17 @@ static bool c_uncompressed_check_profile(const struct rohc_comp *const comp __at
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param context  The compression context
- * @param packet   The packet to check
- * @return         Always return true to tell that the packet belongs
- *                 to the context
+ * @param context        The compression context
+ * @param packet         The packet to check
+ * @param[out] cr_score  The score of the context for Context Replication (CR)
+ * @return               Always return true to tell that the packet belongs
+ *                       to the context
  */
 static bool c_uncompressed_check_context(const struct rohc_comp_ctxt *const context __attribute__((unused)),
-                                         const struct net_pkt *const packet __attribute__((unused)))
+                                         const struct net_pkt *const packet __attribute__((unused)),
+                                         size_t *const cr_score)
 {
+	*cr_score = 0; /* Context Replication is useless from Uncompressed profile */
 	return true;
 }
 

@@ -121,7 +121,9 @@ static struct rohc_comp_ctxt *
 	c_create_context(struct rohc_comp *const comp,
 	                 const struct rohc_comp_profile *const profile,
 	                 const struct net_pkt *const packet,
-	                 const struct rohc_ts arrival_time)
+	                 const struct rohc_ts arrival_time,
+	                 const bool do_ctxt_replication,
+	                 const rohc_cid_t cid_for_replication)
 	__attribute__((nonnull(1, 2, 3), warn_unused_result));
 static struct rohc_comp_ctxt *
 	rohc_comp_find_ctxt(struct rohc_comp *const comp,
@@ -2391,13 +2393,17 @@ static const struct rohc_comp_profile *
  * @param packet        The packet to create a compression context for
  * @param arrival_time  The time at which packet was received (0 if unknown,
  *                      or to disable time-related features in ROHC protocol)
+ * @param do_ctxt_replication  Are we able to replicate an existing context?
+ * @param cid_for_replication  The context to replicate if any
  * @return              The compression context if successful, NULL otherwise
  */
 static struct rohc_comp_ctxt *
 	c_create_context(struct rohc_comp *const comp,
 	                 const struct rohc_comp_profile *const profile,
 	                 const struct net_pkt *const packet,
-	                 const struct rohc_ts arrival_time)
+	                 const struct rohc_ts arrival_time,
+	                 const bool do_ctxt_replication,
+	                 const rohc_cid_t cid_for_replication)
 {
 	struct rohc_comp_ctxt *c;
 	rohc_cid_t cid_to_use;
@@ -2487,15 +2493,39 @@ static struct rohc_comp_ctxt *
 	c->cid = cid_to_use;
 	c->profile = profile;
 
+	/* context replication */
+	if(do_ctxt_replication && cid_to_use != cid_for_replication)
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "create context with CID = %zu as a replication of context "
+		           "with CID %zu", cid_to_use, cid_for_replication);
+		c->do_ctxt_replication = true;
+		c->cr_base_cid = cid_for_replication;
+	}
+	else
+	{
+		c->do_ctxt_replication = false;
+	}
+
 	c->mode = ROHC_U_MODE;
 	c->state = ROHC_COMP_STATE_IR;
 
 	c->compressor = comp;
 
 	/* create profile-specific context */
-	if(!profile->create(c, packet))
+	if(c->do_ctxt_replication)
 	{
-		return NULL;
+		if(!profile->clone(c, &(comp->contexts[cid_for_replication])))
+		{
+			return NULL;
+		}
+	}
+	else
+	{
+		if(!profile->create(c, packet))
+		{
+			return NULL;
+		}
 	}
 
 	/* if creation is successful, mark the context as used */
@@ -2535,6 +2565,10 @@ static struct rohc_comp_ctxt *
 	size_t num_used_ctxt_seen = 0;
 	rohc_cid_t i;
 
+	size_t best_cr_score = 0;
+	bool do_ctxt_replication = false;
+	rohc_cid_t best_ctxt_for_replication = ROHC_LARGE_CID_MAX + 1;
+
 	/* use the suggested profile if any, otherwise find the best profile for
 	 * the packet */
 	if(profile_id_hint < 0)
@@ -2558,6 +2592,11 @@ static struct rohc_comp_ctxt *
 	/* get the context using help from the profile we just found */
 	for(i = 0; i <= comp->medium.max_cid; i++)
 	{
+		bool is_feedback_channel_available;
+		bool is_static_part_transmitted;
+		bool is_ctxt_established;
+		size_t cr_score = 0;
+
 		context = &comp->contexts[i];
 
 		/* don't even look at unused contexts */
@@ -2574,11 +2613,34 @@ static struct rohc_comp_ctxt *
 		}
 
 		/* ask the profile whether the packet matches the context */
-		if(context->profile->check_context(context, packet))
+		if(context->profile->check_context(context, packet, &cr_score))
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "using context CID = %zu", context->cid);
+			do_ctxt_replication = false;
 			break;
+		}
+		rohc_comp_debug(context, "context CID %zu scores %zu for Context Replication",
+		                context->cid, cr_score);
+
+		/* several contexts may be used as basis for context replication:
+		 *  - drop the ones that are not fully established with decompressor (fully
+		 *    established means that the static part of the context was explicitely
+		 *    acknowledged by the decompressor through one ACK protected by a CRC),
+		 *  - keep the one that is the nearest from the new stream (more bytes
+		 *    in common) */
+		is_feedback_channel_available = !!(context->mode > ROHC_U_MODE);
+		is_static_part_transmitted = !!(context->state == ROHC_COMP_STATE_FO ||
+		                                context->state == ROHC_COMP_STATE_SO);
+		is_ctxt_established =
+			(is_feedback_channel_available && is_static_part_transmitted);
+		if(is_ctxt_established && cr_score > best_cr_score)
+		{
+			do_ctxt_replication = true;
+			best_ctxt_for_replication = context->cid;
+			best_cr_score = cr_score;
+			rohc_comp_debug(context, "context CID %zu is best for Context Replication",
+			                context->cid);
 		}
 
 		/* if all used contexts were checked, no need go search further */
@@ -2595,7 +2657,8 @@ static struct rohc_comp_ctxt *
 		/* context not found, create a new one */
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "no existing context found for packet, create a new one");
-		context = c_create_context(comp, profile, packet, arrival_time);
+		context = c_create_context(comp, profile, packet, arrival_time,
+		                           do_ctxt_replication, best_ctxt_for_replication);
 		if(context == NULL)
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,

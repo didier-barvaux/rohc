@@ -244,10 +244,18 @@ struct rohc_comp_profile
 
 	/**
 	 * @brief The handler used to create the profile-specific part of the
-	 *        compression context
+	 *        compression context from a given packet
 	 */
 	bool (*create)(struct rohc_comp_ctxt *const context,
 	               const struct net_pkt *const packet)
+		__attribute__((warn_unused_result, nonnull(1, 2)));
+
+	/**
+	 * @brief The handler used to create the profile-specific part of the
+	 *        compression context from a given context
+	 */
+	bool (*clone)(struct rohc_comp_ctxt *const ctxt,
+                 const struct rohc_comp_ctxt *const base_ctxt)
 		__attribute__((warn_unused_result, nonnull(1, 2)));
 
 	/**
@@ -270,8 +278,9 @@ struct rohc_comp_profile
 	 *        belongs to a context or not
 	 */
 	bool (*check_context)(const struct rohc_comp_ctxt *const context,
-	                      const struct net_pkt *const packet)
-		__attribute__((warn_unused_result, nonnull(1, 2)));
+	                      const struct net_pkt *const packet,
+	                      size_t *const cr_score)
+		__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 	/**
 	 * @brief The handler used to encode uncompressed IP packets
@@ -336,6 +345,11 @@ struct rohc_comp_ctxt
 	const struct rohc_comp_profile *profile;
 	/** Profile-specific data, defined by the profiles */
 	void *specific;
+
+	/** Whether Context Replication (CR) may be used */
+	bool do_ctxt_replication;
+	/** The base context for Context Replication (CR) */
+	rohc_cid_t cr_base_cid;
 
 	/** The operation mode in which the context operates among:
 	 *  ROHC_U_MODE, ROHC_O_MODE, ROHC_R_MODE */
