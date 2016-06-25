@@ -70,9 +70,9 @@ static int tcp_parse_irregular_tcp(const struct rohc_decomp_ctxt *const context,
                                    struct rohc_tcp_extr_ip_bits *const ip_inner_bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
 
-static inline bool d_tcp_is_ecn_used(const struct d_tcp_context tcp_ctxt,
-                                     const struct rohc_tcp_extr_bits bits)
-	__attribute__((warn_unused_result, const, always_inline));
+static inline bool d_tcp_is_ecn_used(const struct d_tcp_context *const tcp_ctxt,
+                                     const struct rohc_tcp_extr_bits *const bits)
+	__attribute__((warn_unused_result, nonnull(1, 2), pure, always_inline));
 
 
 /**
@@ -107,7 +107,7 @@ bool tcp_parse_irreg_chain(const struct rohc_decomp_ctxt *const context,
 	(*parsed_len) = 0;
 
 	rohc_decomp_debug(context, "parse the irregular chain with ecn_used = %d",
-	                  d_tcp_is_ecn_used(*tcp_context, *bits));
+	                  d_tcp_is_ecn_used(tcp_context, bits));
 
 	/* parse irregular IP part (IPv4/IPv6 headers and extension headers) */
 	for(ip_contexts_nr = 0; ip_contexts_nr < tcp_context->ip_contexts_nr;
@@ -288,7 +288,7 @@ static int tcp_parse_irregular_ipv4(const struct rohc_decomp_ctxt *const context
 	/* ipv4_outer_with_ttl_irregular or ipv4_outer_without_ttl_irregular */
 
 	/* parse DSCP and ECN flags if present */
-	if(d_tcp_is_ecn_used(*tcp_context, *bits))
+	if(d_tcp_is_ecn_used(tcp_context, bits))
 	{
 		if(remain_len < 1)
 		{
@@ -368,7 +368,7 @@ static int tcp_parse_irregular_ipv6(const struct rohc_decomp_ctxt *const context
 	/* ipv6_outer_without_ttl_irregular or ipv6_outer_with_ttl_irregular */
 
 	/* parse DSCP and ECN flags if present */
-	if(d_tcp_is_ecn_used(*tcp_context, *bits))
+	if(d_tcp_is_ecn_used(tcp_context, bits))
 	{
 		if(remain_len < 1)
 		{
@@ -439,7 +439,7 @@ static int tcp_parse_irregular_tcp(const struct rohc_decomp_ctxt *const context,
 	rohc_decomp_debug(context, "decode TCP irregular chain");
 
 	/* parse IP ECN flags, RES flags, and TCP ECN flags if present */
-	if(d_tcp_is_ecn_used(*tcp_context, *bits))
+	if(d_tcp_is_ecn_used(tcp_context, bits))
 	{
 		if(remain_len < 1)
 		{
@@ -514,9 +514,9 @@ error:
  * @return           true if the TCP ECN flags are used by the compressed
  *                   TCP packet or not, false if they are not
  */
-static inline bool d_tcp_is_ecn_used(const struct d_tcp_context tcp_ctxt,
-                                     const struct rohc_tcp_extr_bits bits)
+static inline bool d_tcp_is_ecn_used(const struct d_tcp_context *const tcp_ctxt,
+                                     const struct rohc_tcp_extr_bits *const bits)
 {
-	return ((bits.ecn_used_bits_nr > 0) ? (!!bits.ecn_used_bits) : tcp_ctxt.ecn_used);
+	return ((bits->ecn_used_bits_nr > 0) ? (!!bits->ecn_used_bits) : tcp_ctxt->ecn_used);
 }
 
