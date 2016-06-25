@@ -25,6 +25,7 @@
 #ifndef ROHC_HELPERS_H
 #define ROHC_HELPERS_H
 
+#include <arpa/inet.h> /* for ntohs() and co */
 #include <stdarg.h>
 
 

@@ -79,22 +79,22 @@ int main(int argc, char *argv[])
 	}
 
 	/* sdvl_can_value_be_encoded() */
-	CHECK(sdvl_can_value_be_encoded(0) == true);
-	CHECK(sdvl_can_value_be_encoded(1) == true);
-	CHECK(sdvl_can_value_be_encoded(1 << 5) == true);
-	CHECK(sdvl_can_value_be_encoded(1 << 6) == true);
-	CHECK(sdvl_can_value_be_encoded(1 << 7) == true);
-	CHECK(sdvl_can_value_be_encoded(1 << 12) == true);
-	CHECK(sdvl_can_value_be_encoded(1 << 13) == true);
-	CHECK(sdvl_can_value_be_encoded(1 << 14) == true);
-	CHECK(sdvl_can_value_be_encoded(1 << 19) == true);
-	CHECK(sdvl_can_value_be_encoded(1 << 20) == true);
-	CHECK(sdvl_can_value_be_encoded(1 << 21) == true);
-	CHECK(sdvl_can_value_be_encoded(1 << 27) == true);
-	CHECK(sdvl_can_value_be_encoded(1 << 28) == true);
-	CHECK(sdvl_can_value_be_encoded(1 << 29) == false);
-	CHECK(sdvl_can_value_be_encoded(1 << 30) == false);
-	CHECK(sdvl_can_value_be_encoded(1 << 31) == false);
+	CHECK(sdvl_can_value_be_encoded(0U) == true);
+	CHECK(sdvl_can_value_be_encoded(1U) == true);
+	CHECK(sdvl_can_value_be_encoded(1U << 5) == true);
+	CHECK(sdvl_can_value_be_encoded(1U << 6) == true);
+	CHECK(sdvl_can_value_be_encoded(1U << 7) == true);
+	CHECK(sdvl_can_value_be_encoded(1U << 12) == true);
+	CHECK(sdvl_can_value_be_encoded(1U << 13) == true);
+	CHECK(sdvl_can_value_be_encoded(1U << 14) == true);
+	CHECK(sdvl_can_value_be_encoded(1U << 19) == true);
+	CHECK(sdvl_can_value_be_encoded(1U << 20) == true);
+	CHECK(sdvl_can_value_be_encoded(1U << 21) == true);
+	CHECK(sdvl_can_value_be_encoded(1U << 27) == true);
+	CHECK(sdvl_can_value_be_encoded(1U << 28) == true);
+	CHECK(sdvl_can_value_be_encoded(1U << 29) == false);
+	CHECK(sdvl_can_value_be_encoded(1U << 30) == false);
+	CHECK(sdvl_can_value_be_encoded(1U << 31) == false);
 	CHECK(sdvl_can_value_be_encoded(UINT32_MAX) == false);
 
 	/* sdvl_can_length_be_encoded() */
@@ -170,22 +170,22 @@ int main(int argc, char *argv[])
 	CHECK(sdvl_get_min_len(29, 32) == 0);
 
 	/* sdvl_get_encoded_len() */
-	CHECK(sdvl_get_encoded_len(0) == 1);
-	CHECK(sdvl_get_encoded_len(1) == 1);
-	CHECK(sdvl_get_encoded_len(1 << 5) == 1);
-	CHECK(sdvl_get_encoded_len(1 << 6) == 1);
-	CHECK(sdvl_get_encoded_len(1 << 7) == 2);
-	CHECK(sdvl_get_encoded_len(1 << 12) == 2);
-	CHECK(sdvl_get_encoded_len(1 << 13) == 2);
-	CHECK(sdvl_get_encoded_len(1 << 14) == 3);
-	CHECK(sdvl_get_encoded_len(1 << 19) == 3);
-	CHECK(sdvl_get_encoded_len(1 << 20) == 3);
-	CHECK(sdvl_get_encoded_len(1 << 21) == 4);
-	CHECK(sdvl_get_encoded_len(1 << 27) == 4);
-	CHECK(sdvl_get_encoded_len(1 << 28) == 4);
-	CHECK(sdvl_get_encoded_len(1 << 29) == 5);
-	CHECK(sdvl_get_encoded_len(1 << 30) == 5);
-	CHECK(sdvl_get_encoded_len(1 << 31) == 5);
+	CHECK(sdvl_get_encoded_len(0U) == 1);
+	CHECK(sdvl_get_encoded_len(1U) == 1);
+	CHECK(sdvl_get_encoded_len(1U << 5) == 1);
+	CHECK(sdvl_get_encoded_len(1U << 6) == 1);
+	CHECK(sdvl_get_encoded_len(1U << 7) == 2);
+	CHECK(sdvl_get_encoded_len(1U << 12) == 2);
+	CHECK(sdvl_get_encoded_len(1U << 13) == 2);
+	CHECK(sdvl_get_encoded_len(1U << 14) == 3);
+	CHECK(sdvl_get_encoded_len(1U << 19) == 3);
+	CHECK(sdvl_get_encoded_len(1U << 20) == 3);
+	CHECK(sdvl_get_encoded_len(1U << 21) == 4);
+	CHECK(sdvl_get_encoded_len(1U << 27) == 4);
+	CHECK(sdvl_get_encoded_len(1U << 28) == 4);
+	CHECK(sdvl_get_encoded_len(1U << 29) == 5);
+	CHECK(sdvl_get_encoded_len(1U << 30) == 5);
+	CHECK(sdvl_get_encoded_len(1U << 31) == 5);
 
 	/* sdvl_encode() / sdvl_encode_full() / sdvl_decode() */
 	{
