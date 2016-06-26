@@ -337,7 +337,7 @@ static int test_comp_and_decomp(const char *filename)
 
 			if(tot_len < ip_packet.len)
 			{
-				fprintf(stderr, "the Ethernet frame has %zd bytes of padding "
+				fprintf(stderr, "the Ethernet frame has %zu bytes of padding "
 				        "after the %zu byte IP packet!\n",
 				        ip_packet.len - tot_len, tot_len);
 				ip_packet.len = tot_len;

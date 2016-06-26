@@ -449,7 +449,7 @@ int main(int argc, char *argv[])
 	if(strlen(device_name) >= IFNAMSIZ)
 	{
 		SNIFFER_LOG(LOG_WARNING, "DEVICE name too long, should be strictly less "
-		            "than %u characters", IFNAMSIZ);
+		            "than %zu characters", (size_t) IFNAMSIZ);
 		goto error;
 	}
 
@@ -1228,7 +1228,7 @@ static int compress_decompress(struct rohc_comp *comp,
 
 		if(tot_len < ip_packet.len)
 		{
-			SNIFFER_LOG(LOG_INFO, "the Ethernet frame has %zd bytes of "
+			SNIFFER_LOG(LOG_INFO, "the Ethernet frame has %zu bytes of "
 			            "padding after the %u byte IP packet!",
 			            ip_packet.len - tot_len, tot_len);
 			ip_packet.len = tot_len;
@@ -1876,7 +1876,7 @@ static bool is_path_correct(const char *const path)
 	else if(strlen(path) >= PATH_MAX)
 	{
 		SNIFFER_LOG(LOG_WARNING, "file path too long, should be strictly "
-		            "less than %u characters but it is %zu", PATH_MAX,
+		            "less than %zu characters but it is %zu", (size_t) PATH_MAX,
 		            strlen(path));
 		return false;
 	}
@@ -1900,7 +1900,7 @@ static bool is_path_correct(const char *const path)
 	else if(strlen(filename) >= NAME_MAX)
 	{
 		SNIFFER_LOG(LOG_WARNING, "file name too long, should be strictly "
-		            "less than %u characters but it is %zu", NAME_MAX,
+		            "less than %zu characters but it is %zu", (size_t) NAME_MAX,
 		            strlen(filename));
 		return false;
 	}

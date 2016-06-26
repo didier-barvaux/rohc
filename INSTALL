@@ -4,10 +4,8 @@ Requirements
 The library itself does not require external resources. Optional configure
 flags require external resources:
 
- --enable-app-fuzzer           requires libpcap.
  --enable-app-performance      requires libpcap.
  --enable-app-sniffer          requires libpcap.
- --enable-app-tunnel           requires TUN support.
  --enable-app-stats            requires libpcap, gnuplot, grep, sed, awk, sort,
                                and tr.
  --enable-linux-kernel-module  requires a Linux kernel

@@ -5568,7 +5568,7 @@ static bool is_sn_wraparound(const struct rohc_ts cur_arrival_time,
 	}
 	min_interval = ((1 << k) - rohc_interval_compute_p(k, p)) * avg_interval;
 
-	/* substract 10% to handle problems related to clock precision */
+	/* subtract 10% to handle problems related to clock precision */
 	min_interval -= min_interval * 10 / 100;
 
 	/* enough time elapsed for SN wraparound? */

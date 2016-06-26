@@ -738,7 +738,7 @@ static bool udp_lite_send_cce_packet(const struct rohc_comp_ctxt *const context,
 	}
 	else if(udp_lite_context->cfp == 0 && udp_lite_context->cfi == 0)
 	{
-		if(is_coverage_inferred || (!is_coverage_inferred && !is_coverage_same))
+		if(is_coverage_inferred || !is_coverage_same)
 		{
 			if(udp_lite_context->sent_cce_only_count < MAX_IR_COUNT)
 			{

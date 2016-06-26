@@ -339,5 +339,131 @@ bool rohc_comp_rfc3095_is_sn_possible(const struct rohc_comp_rfc3095_ctxt *const
                                       const size_t add_bits_nr)
 	__attribute__((warn_unused_result, nonnull(1), pure));
 
+
+/**
+ * @brief Does the outer IP header require to transmit no non-random IP-ID bit?
+ *
+ * @param ctxt  The generic decompression context
+ * @return      true if no required outer IP-ID bit shall be transmitted,
+ *              false otherwise
+ */
+static inline bool no_outer_ip_id_bits_required(const struct rohc_comp_rfc3095_ctxt *const ctxt)
+{
+	return (ctxt->outer_ip_flags.version != IPV4 ||
+	        ctxt->outer_ip_flags.info.v4.rnd == 1 ||
+	        ctxt->tmp.nr_ip_id_bits == 0);
+}
+
+
+/**
+ * @brief May the outer IP header transmit the required non-random IP-ID bits?
+ *
+ * @param ctxt               The generic decompression context
+ * @param max_ip_id_bits_nr  The maximum number of IP-ID bits that may be transmitted
+ * @return                   true if the required IP-ID bits may be transmitted,
+ *                           false otherwise
+ */
+static inline bool is_outer_ip_id_bits_possible(const struct rohc_comp_rfc3095_ctxt *const ctxt,
+                                                const size_t max_ip_id_bits_nr)
+{
+	return (ctxt->outer_ip_flags.version == IPV4 &&
+	        ctxt->outer_ip_flags.info.v4.rnd != 1 &&
+	        ctxt->tmp.nr_ip_id_bits <= max_ip_id_bits_nr);
+}
+
+
+/**
+ * @brief Does the inner IP header require to transmit no non-random IP-ID bit?
+ *
+ * @param ctxt  The generic decompression context
+ * @return      true if no required inner IP-ID bit shall be transmitted,
+ *              false otherwise
+ */
+static inline bool no_inner_ip_id_bits_required(const struct rohc_comp_rfc3095_ctxt *const ctxt)
+{
+	return (ctxt->inner_ip_flags.version != IPV4 ||
+	        ctxt->inner_ip_flags.info.v4.rnd == 1 ||
+	        ctxt->tmp.nr_ip_id_bits2 == 0);
+}
+
+
+/**
+ * @brief May the inner IP header transmit the required non-random IP-ID bits?
+ *
+ * @param ctxt               The generic decompression context
+ * @param max_ip_id_bits_nr  The maximum number of IP-ID bits that may be transmitted
+ * @return                   true if the required IP-ID bits may be transmitted,
+ *                           false otherwise
+ */
+static inline bool is_inner_ip_id_bits_possible(const struct rohc_comp_rfc3095_ctxt *const ctxt,
+                                                const size_t max_ip_id_bits_nr)
+{
+	return (ctxt->inner_ip_flags.version == IPV4 &&
+	        ctxt->inner_ip_flags.info.v4.rnd != 1 &&
+	        ctxt->tmp.nr_ip_id_bits2 <= max_ip_id_bits_nr);
+}
+
+
+/**
+ * @brief How many IP headers are IPv4 headers with non-random IP-IDs ?
+ *
+ * @param ctxt  The generic decompression context
+ * @return      The number of IPv4 headers with non-random IP-ID fields
+ */
+static inline size_t get_nr_ipv4_non_rnd(const struct rohc_comp_rfc3095_ctxt *const ctxt)
+{
+	size_t nr_ipv4_non_rnd = 0;
+
+	/* outer IP header */
+	if(ctxt->outer_ip_flags.version == IPV4 && ctxt->outer_ip_flags.info.v4.rnd != 1)
+	{
+		nr_ipv4_non_rnd++;
+	}
+
+	/* optional inner IP header */
+	if(ctxt->ip_hdr_nr >= 1 &&
+	   ctxt->inner_ip_flags.version == IPV4 &&
+	   ctxt->inner_ip_flags.info.v4.rnd != 1)
+	{
+		nr_ipv4_non_rnd++;
+	}
+
+	return nr_ipv4_non_rnd;
+}
+
+
+/**
+ * @brief How many IP headers are IPv4 headers with non-random IP-IDs and some
+ *        bits to transmit ?
+ *
+ * @param ctxt  The generic decompression context
+ * @return      The number of IPv4 headers with non-random IP-ID fields and some
+ *              bits to transmit
+ */
+static inline size_t get_nr_ipv4_non_rnd_with_bits(const struct rohc_comp_rfc3095_ctxt *const ctxt)
+{
+	size_t nr_ipv4_non_rnd_with_bits = 0;
+
+	/* outer IP header */
+	if(ctxt->outer_ip_flags.version == IPV4 &&
+	   ctxt->outer_ip_flags.info.v4.rnd != 1 &&
+	   ctxt->tmp.nr_ip_id_bits > 0)
+	{
+		nr_ipv4_non_rnd_with_bits++;
+	}
+
+	/* optional inner IP header */
+	if(ctxt->ip_hdr_nr >= 1 &&
+	   ctxt->inner_ip_flags.version == IPV4 &&
+	   ctxt->inner_ip_flags.info.v4.rnd != 1 &&
+	   ctxt->tmp.nr_ip_id_bits2 > 0)
+	{
+		nr_ipv4_non_rnd_with_bits++;
+	}
+
+	return nr_ipv4_non_rnd_with_bits;
+}
+
+
 #endif
 

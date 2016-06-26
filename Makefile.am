@@ -56,7 +56,6 @@ DISTCHECK_CONFIGURE_FLAGS = \
 	--enable-fortify-sources \
 	--enable-app-performance \
 	--enable-app-sniffer \
-	--enable-app-tunnel \
 	--enable-rohc-tests \
 	--disable-doc \
 	--disable-examples
@@ -117,6 +116,7 @@ cppcheck:
 		 -I /usr/include/ \
 		 -i linux/ \
 		 -D__clang_analyzer__ \
+		 --suppress=*:contrib/python/rohc_wrap.c \
 		 --suppress=unusedStructMember:src/comp/c_tcp.c:184 \
 		 --suppress=unusedStructMember:src/comp/c_tcp.c:206 \
 		 --suppress=unusedStructMember:src/comp/c_tcp.c:241 \
@@ -143,6 +143,15 @@ checkpatch:
 		--ignore EXPORT_SYMBOL \
 		--file `find linux/ -name \*.h -or -name \*.c`
 
+# check spelling mistakes with codespell in source files, but also in Markdown
+# files and man pages
+# https://github.com/lucasdemarchi/codespell
+codespell:
+	$(AM_V_GEN)codespell.py \
+		`find . -name \*.md -or -name \*.7.in -or -name ChangeLog -or -name README` \
+		`find . -name configure.ac -or -name Makefile.am` \
+		`find . -name \*.c -or -name \*.h`
+
 # run all Q&A tests
-qa: cppcheck complexity checkpatch
+qa: cppcheck complexity checkpatch codespell
 

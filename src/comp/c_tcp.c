@@ -6543,8 +6543,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 			packet_type = ROHC_PACKET_TCP_CO_COMMON;
 		}
 	}
-	else if(tcp->ack_flag == 0 ||
-	        (tcp->ack_flag != 0 && !tcp_context->tmp.tcp_ack_num_changed))
+	else if(tcp->ack_flag == 0 || !tcp_context->tmp.tcp_ack_num_changed)
 	{
 		/* seq_2, seq_1 or co_common */
 		if(!crc7_at_least &&
