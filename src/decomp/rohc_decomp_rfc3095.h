@@ -504,14 +504,14 @@ uint32_t rohc_decomp_rfc3095_get_sn(const struct rohc_decomp_ctxt *const context
  */
 
 
-static inline bool is_ipv4_pkt(const struct rohc_extr_ip_bits bits)
-	__attribute__((warn_unused_result, const, always_inline));
+static inline bool is_ipv4_pkt(const struct rohc_extr_ip_bits *const bits)
+	__attribute__((warn_unused_result, pure, always_inline));
 
-static inline bool is_ipv4_rnd_pkt(const struct rohc_extr_ip_bits bits)
-	__attribute__((warn_unused_result, const, always_inline));
+static inline bool is_ipv4_rnd_pkt(const struct rohc_extr_ip_bits *const bits)
+	__attribute__((warn_unused_result, pure, always_inline));
 
-static inline bool is_ipv4_non_rnd_pkt(const struct rohc_extr_ip_bits bits)
-	__attribute__((warn_unused_result, const, always_inline));
+static inline bool is_ipv4_non_rnd_pkt(const struct rohc_extr_ip_bits *const bits)
+	__attribute__((warn_unused_result, pure, always_inline));
 
 
 /**
@@ -520,9 +520,9 @@ static inline bool is_ipv4_non_rnd_pkt(const struct rohc_extr_ip_bits bits)
  * @param bits  The bits extracted from packet
  * @return      true if IPv4, false if IPv6
  */
-static inline bool is_ipv4_pkt(const struct rohc_extr_ip_bits bits)
+static inline bool is_ipv4_pkt(const struct rohc_extr_ip_bits *const bits)
 {
-	return (bits.version == IPV4);
+	return (bits->version == IPV4);
 }
 
 
@@ -532,9 +532,9 @@ static inline bool is_ipv4_pkt(const struct rohc_extr_ip_bits bits)
  * @param bits  The bits extracted from packet
  * @return      true if IPv4 and random, false otherwise
  */
-static inline bool is_ipv4_rnd_pkt(const struct rohc_extr_ip_bits bits)
+static inline bool is_ipv4_rnd_pkt(const struct rohc_extr_ip_bits *const bits)
 {
-	return (is_ipv4_pkt(bits) && bits.rnd == 1);
+	return (is_ipv4_pkt(bits) && bits->rnd == 1);
 }
 
 
@@ -544,9 +544,9 @@ static inline bool is_ipv4_rnd_pkt(const struct rohc_extr_ip_bits bits)
  * @param bits  The bits extracted from packet
  * @return      true if IPv4 and non-random, false otherwise
  */
-static inline bool is_ipv4_non_rnd_pkt(const struct rohc_extr_ip_bits bits)
+static inline bool is_ipv4_non_rnd_pkt(const struct rohc_extr_ip_bits *const bits)
 {
-	return (is_ipv4_pkt(bits) && bits.rnd == 0);
+	return (is_ipv4_pkt(bits) && bits->rnd == 0);
 }
 
 

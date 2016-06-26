@@ -92,6 +92,7 @@ LT_INIT([disable-static win32-dll])
 configure_cflags="-g -Wall -Wstrict-prototypes -Wextra -Wunreachable-code"
 configure_cflags="${configure_cflags} -Wunused-function -Wunused-variable"
 configure_cflags="${configure_cflags} -Wshadow"
+configure_cflags_for_lib="-Wframe-larger-than=1024"
 configure_ldflags=""
 
 # Checks for programs.
@@ -933,6 +934,7 @@ AM_CONDITIONAL([BUILD_EXAMPLES], [test "x$build_examples" = "xyes"])
 AC_SUBST([TESTS_ENVIRONMENT], [$tests_environment])
 AC_SUBST([libpcap_includes], [$libpcap_includes])
 AC_SUBST([configure_cflags], [$configure_cflags])
+AC_SUBST([configure_cflags_for_lib], [$configure_cflags_for_lib])
 AC_SUBST([configure_ldflags], [$configure_ldflags])
 
 AM_DEP_TRACK

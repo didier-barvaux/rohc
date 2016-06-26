@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Didier Barvaux
+ * Copyright 2015,2016 Didier Barvaux
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -18,7 +18,7 @@
 
 /**
  * @file   feedback.h
- * @brief  ROHC feedback defintions and formats
+ * @brief  ROHC feedback definitions and formats
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
@@ -29,7 +29,11 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include "config.h" /* for WORDS_BIGENDIAN */
+#ifdef __KERNEL__
+#  include <endian.h>
+#else
+#  include "config.h" /* for WORDS_BIGENDIAN */
+#endif
 
 
 /** The type of ROHC feedback */
@@ -79,7 +83,7 @@ enum rohc_feedback_opt
 /** The ROHC FEEDBACK-2 format as defined in RFC3095 */
 struct rohc_feedback_2_rfc3095
 {
-#ifdef WORDS_BIGENDIAN
+#if WORDS_BIGENDIAN == 1
 	uint8_t ack_type:2; /**< The type of acknowledgement \see rohc_feedback_ack_type */
 	uint8_t mode:2;     /**< The decompression context mode */
 	uint8_t sn1:4;      /**< The 4 first LSB bits of the SN being acked */
@@ -95,7 +99,7 @@ struct rohc_feedback_2_rfc3095
 /** The ROHC FEEDBACK-2 format as defined in RFC6846 */
 struct rohc_feedback_2_rfc6846
 {
-#ifdef WORDS_BIGENDIAN
+#if WORDS_BIGENDIAN == 1
 	uint8_t ack_type:2; /**< The type of acknowledgement \see rohc_feedback_ack_type */
 	uint8_t sn1:6;      /**< The 6 first LSB bits of the SN being acked */
 #else

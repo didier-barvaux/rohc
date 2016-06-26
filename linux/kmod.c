@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Didier Barvaux
+ * Copyright 2013,2016 Didier Barvaux
  * Copyright 2013,2014 Mikhail Gruzdev
  * Copyright 2009,2010 Thales Communications
  * Copyright 2013,2014 Viveris Technologies
@@ -24,6 +24,7 @@
  * @brief  Export the ROHC library to the Linux kernel
  * @author Mikhail Gruzdev <michail.gruzdev@gmail.com>
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  */
 
 #include <linux/module.h>
@@ -34,11 +35,11 @@
 #include "rohc_decomp.h"
 
 
-MODULE_VERSION(PACKAGE_VERSION);
+MODULE_VERSION(PACKAGE_VERSION PACKAGE_REVNO);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Didier Barvaux, Mikhail Gruzdev, Thales Communications, Viveris Technologies");
 MODULE_DESCRIPTION(PACKAGE_NAME
-	", version " PACKAGE_VERSION " (" PACKAGE_URL ")");
+	", version " PACKAGE_VERSION PACKAGE_REVNO " (" PACKAGE_URL ")");
 
 
 /*
@@ -50,6 +51,18 @@ EXPORT_SYMBOL_GPL(rohc_get_mode_descr);
 EXPORT_SYMBOL_GPL(rohc_get_profile_descr);
 EXPORT_SYMBOL_GPL(rohc_get_packet_descr);
 EXPORT_SYMBOL_GPL(rohc_get_ext_descr);
+
+EXPORT_SYMBOL_GPL(rohc_buf_is_malformed);
+EXPORT_SYMBOL_GPL(rohc_buf_is_empty);
+EXPORT_SYMBOL_GPL(rohc_buf_push);
+EXPORT_SYMBOL_GPL(rohc_buf_pull);
+EXPORT_SYMBOL_GPL(rohc_buf_avail_len);
+EXPORT_SYMBOL_GPL(rohc_buf_data_at);
+EXPORT_SYMBOL_GPL(rohc_buf_data);
+EXPORT_SYMBOL_GPL(rohc_buf_prepend);
+EXPORT_SYMBOL_GPL(rohc_buf_append);
+EXPORT_SYMBOL_GPL(rohc_buf_append_buf);
+EXPORT_SYMBOL_GPL(rohc_buf_reset);
 
 
 /*

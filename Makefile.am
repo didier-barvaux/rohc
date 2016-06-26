@@ -135,6 +135,14 @@ complexity:
 	$(AM_V_GEN)complexity --threshold=20 --horrid-threshold=35 \
 		`find src/ app/ -name \*.c -or -name \*.h`
 
+# run Linux checkpatch.pl script on kernel modules, but ignore warnings about
+# EXPORT_SYMBOL(foo) not following the function declaration because I don't
+# want to duplicate function declarations in lib and kmod.
+checkpatch:
+	$(AM_V_GEN)/usr/src/linux/scripts/checkpatch.pl \
+		--ignore EXPORT_SYMBOL \
+		--file `find linux/ -name \*.h -or -name \*.c`
+
 # run all Q&A tests
-qa: cppcheck complexity
+qa: cppcheck complexity checkpatch
 

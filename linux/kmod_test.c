@@ -1,5 +1,5 @@
 /*
- * Copyright 2013,2014 Didier Barvaux
+ * Copyright 2013,2014,2016 Didier Barvaux
  * Copyright 2009,2010 Thales Communications
  * Copyright 2013 Viveris Technologies
  *
@@ -23,6 +23,7 @@
  * @brief   A small module for the Linux kernel to test ROHC (de)compression
  * @author  Thales Communications
  * @author  Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author  Didier Barvaux <didier@barvaux.org>
  */
 
 #include <linux/module.h>
@@ -61,6 +62,8 @@
 /** A couple of ROHC compressor/decompressor and the related buffers */
 struct rohc_couple {
 
+	unsigned int index;
+
 	/** The ROHC compressor created by the module */
 	struct rohc_comp *comp;
 
@@ -88,6 +91,20 @@ struct rohc_couple {
 	size_t rohc_size_total_in;
 	/** The size of data currently stored in the buffer \ref rohc_pkt_in */
 	size_t rohc_size_curr_in;
+
+	/** The buffer that will contain the feedback data received by the
+	 * decompressor from the remote peer for the same-side associated ROHC
+	 * compressor through the feedback channel
+	 */
+	unsigned char *rcvd_feedback_buffer;
+	/** The buffer that will contain the feedback to send to the remote
+	 * decompressor long with the ROHC bytes
+	 */
+	unsigned char *feedback_to_send_buffer;
+	/** The feedback to send to the remote decompressor long
+	 * with the ROHC bytes
+	 */
+	struct rohc_buf feedback_to_send;
 
 	/** The file to write IP packets on to compressor */
 	struct proc_dir_entry *proc_file_comp_in;
@@ -172,8 +189,10 @@ bool rohc_comp_rtp_cb(const unsigned char *const ip __attribute__((unused)),
 		      const unsigned int payload_size __attribute__((unused)),
 		      void *const rtp_private __attribute__((unused)))
 {
-	const size_t default_rtp_ports_nr = 5;
-	unsigned int default_rtp_ports[] = { 1234, 36780, 33238, 5020, 5002 };
+	const size_t default_rtp_ports_nr = 6;
+	unsigned int default_rtp_ports[] = {
+		1234, 36780, 33238, 5020, 5002, 5006
+	};
 	uint16_t udp_dport;
 	bool is_rtp = false;
 	size_t i;
@@ -185,7 +204,8 @@ bool rohc_comp_rtp_cb(const unsigned char *const ip __attribute__((unused)),
 	memcpy(&udp_dport, udp + 2, sizeof(uint16_t));
 
 	/* is the UDP destination port in the list of ports reserved for RTP
-	 * traffic by default (for compatibility reasons) */
+	 * traffic by default (for compatibility reasons)
+	 */
 	for (i = 0; i < default_rtp_ports_nr; i++) {
 		if (ntohs(udp_dport) == default_rtp_ports[i]) {
 			is_rtp = true;
@@ -214,6 +234,8 @@ int rohc_couple_init_phase1(struct rohc_couple *couple, int index)
 
 	memset(couple, 0, sizeof(struct rohc_couple));
 
+	couple->index = index;
+
 	/* create the compressor */
 	couple->comp = rohc_comp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
 				      gen_false_random_num, NULL);
@@ -235,12 +257,12 @@ int rohc_couple_init_phase1(struct rohc_couple *couple, int index)
 	is_ok = rohc_comp_enable_profiles(couple->comp,
 			ROHC_PROFILE_UNCOMPRESSED, ROHC_PROFILE_RTP,
 			ROHC_PROFILE_UDP, ROHC_PROFILE_ESP, ROHC_PROFILE_IP,
-			ROHC_PROFILE_UDPLITE, -1);
+			ROHC_PROFILE_TCP, ROHC_PROFILE_UDPLITE, -1);
 	if (!is_ok) {
 		rohc_err("\tfailed to enabled all compression profiles\n");
 		goto free_compressor;
 	}
-	rohc_info("\tUncompressed, RTP, UDP, ESP, IP and UDP-Lite profiles enabled for ROHC compressor successfully set\n");
+	rohc_info("\tUncompressed, RTP, UDP, ESP, IP, TCP and UDP-Lite profiles enabled for ROHC compressor successfully set\n");
 
 	/* set UDP ports dedicated to RTP traffic */
 	if (!rohc_comp_set_rtp_detection_cb(couple->comp, rohc_comp_rtp_cb,
@@ -277,7 +299,8 @@ int rohc_couple_init_phase2(struct rohc_couple *couple, int index)
 	rohc_info("init ROHC couple #%d (phase 2)\n", index + 1);
 
 	/* create the decompressor and associate it with the compressor
-	   of the other ROHC couple */
+	 * of the other ROHC couple
+	 */
 	couple->decomp = rohc_decomp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
 					  ROHC_O_MODE);
 	if (couple->decomp == NULL) {
@@ -295,35 +318,62 @@ int rohc_couple_init_phase2(struct rohc_couple *couple, int index)
 	}
 	rohc_info("\ttrace callback for ROHC decompressor successfully set\n");
 
-	/* allocate memory for the ROHC packet generated from IP packet and
-	   init all the related lengths and pointers */
-	couple->rohc_pkt_out = kmalloc(MAX_ROHC_SIZE, GFP_KERNEL);
-	if (couple->rohc_pkt_out == NULL) {
-		rohc_err("\tfailed to allocate memory for ROHC packets\n");
+	/* activate all the decompression profiles */
+	is_ok = rohc_decomp_enable_profiles(couple->decomp,
+			ROHC_PROFILE_UNCOMPRESSED, ROHC_PROFILE_RTP,
+			ROHC_PROFILE_UDP, ROHC_PROFILE_ESP, ROHC_PROFILE_IP,
+			ROHC_PROFILE_TCP, ROHC_PROFILE_UDPLITE, -1);
+	if (!is_ok) {
+		rohc_err("\tfailed to enabled all decompression profiles\n");
 		goto free_decompressor;
 	}
+	rohc_info("\tUncompressed, RTP, UDP, ESP, IP, TCP and UDP-Lite profiles enabled for ROHC decompressor successfully set\n");
+
+	/* allocate memory for the ROHC packet generated from IP packet and
+	 * init all the related lengths and pointers
+	 */
+	couple->rohc_pkt_out = kmalloc(MAX_ROHC_SIZE, GFP_KERNEL);
+	if (couple->rohc_pkt_out == NULL)
+		goto free_decompressor;
 	couple->rohc_size_out = 0;
 	couple->ip_pkt_in = NULL;
 	couple->ip_size_total_in = 0;
 	couple->ip_size_current_in = 0;
 
 	/* allocate memory for the IP packet generated from ROHC packet and
-	   init all the related lengths and pointers */
+	 * init all the related lengths and pointers
+	 */
 	couple->ip_pkt_out = kmalloc(MAX_ROHC_SIZE, GFP_KERNEL);
-	if (couple->ip_pkt_out == NULL) {
-		rohc_err("\tfailed to allocate memory for IP packets\n");
+	if (couple->ip_pkt_out == NULL)
 		goto free_rohc_packet;
-	}
 	couple->ip_size_out = 0;
 	couple->rohc_pkt_in = NULL;
 	couple->rohc_size_total_in = 0;
 	couple->rohc_size_curr_in = 0;
+
+	/* allocate memory for the feedback buffers */
+	couple->rcvd_feedback_buffer = kmalloc(MAX_ROHC_SIZE, GFP_KERNEL);
+	if (couple->rcvd_feedback_buffer == NULL)
+		goto free_ip_packet;
+	couple->feedback_to_send_buffer = kmalloc(MAX_ROHC_SIZE, GFP_KERNEL);
+	if (couple->feedback_to_send_buffer == NULL)
+		goto free_rcvd_feedback;
+	couple->feedback_to_send.time.sec = 0;
+	couple->feedback_to_send.time.nsec = 0;
+	couple->feedback_to_send.data = couple->feedback_to_send_buffer;
+	couple->feedback_to_send.max_len = MAX_ROHC_SIZE;
+	couple->feedback_to_send.offset = 0;
+	couple->feedback_to_send.len = 0;
 
 	rohc_info("\tROHC couple #%d successfully initialized (phase 2)\n",
 		  index + 1);
 
 	return 0;
 
+free_rcvd_feedback:
+	kfree(couple->rcvd_feedback_buffer);
+free_ip_packet:
+	kfree(couple->ip_pkt_out);
 free_rohc_packet:
 	kfree(couple->rohc_pkt_out);
 free_decompressor:
@@ -370,6 +420,16 @@ void rohc_couple_release(struct rohc_couple *couple, int index)
 	couple->rohc_size_total_in = 0;
 	couple->rohc_size_curr_in = 0;
 
+	/* free/reset resources for feedbacks */
+	if (couple->rcvd_feedback_buffer != NULL) {
+		kfree(couple->rcvd_feedback_buffer);
+		couple->rcvd_feedback_buffer = NULL;
+	}
+	if (couple->feedback_to_send_buffer != NULL) {
+		kfree(couple->feedback_to_send_buffer);
+		couple->feedback_to_send_buffer = NULL;
+	}
+
 	/* free (de)compressor */
 	if (couple->comp != NULL)
 		rohc_comp_free(couple->comp);
@@ -399,7 +459,8 @@ static int rohc_proc_open(struct inode *inode, struct file *file)
 	rohc_info("proc file '%s' opened\n", file->f_path.dentry->d_name.name);
 
 	/* initialize the ROHC couples only if this is the first /proc file
-	 * opened since the last close() */
+	 * opened since the last close()
+	 */
 	if (couples_ref_nr == 0) {
 		int ret;
 
@@ -478,7 +539,8 @@ ssize_t rohc_proc_comp_write(struct file *file,
 	WARN_ON(couples_ref_nr == 0);
 
 	/* do we receive data of a new packet or
-	   a chunk of a yet-partially-received packet ? */
+	 * a chunk of a yet-partially-received packet ?
+	 */
 	if (couple->ip_size_total_in == 0) {
 		/* new packet */
 		couple->ip_size_total_in = *((uint16_t *) buffer);
@@ -535,15 +597,35 @@ ssize_t rohc_proc_comp_write(struct file *file,
 
 		rohc_info("IP packet is complete, compress it now\n");
 
+		/* copy the feedback data that needs to be piggybacked along
+		 * the ROHC packet
+		 */
+		rohc_info("copy %zu bytes of feedback data before ROHC packet\n",
+			  couple->feedback_to_send.len);
+		if (couple->feedback_to_send.len >
+		    rohc_buf_avail_len(rohc_packet)) {
+			rohc_err("ROHC buffer is too small for %zu bytes of feedback data\n",
+				 couple->feedback_to_send.len);
+			goto error;
+		}
+		/* copy then skip feedback */
+		rohc_buf_append_buf(&rohc_packet, couple->feedback_to_send);
+		rohc_buf_pull(&rohc_packet, couple->feedback_to_send.len);
+
+		/* compress the IP packet */
 		status = rohc_compress4(couple->comp, ip_packet, &rohc_packet);
 		if (status != ROHC_STATUS_OK) {
 			rohc_err("failed to compress the IP packet\n");
 			goto error;
 		}
-		couple->rohc_size_out = rohc_packet.len;
 
+		/* unhide feedback data */
+		rohc_buf_push(&rohc_packet, couple->feedback_to_send.len);
+
+		couple->rohc_size_out = rohc_packet.len;
 		rohc_info("IP packet successfully compressed\n");
 
+		rohc_buf_reset(&couple->feedback_to_send);
 		kfree(couple->ip_pkt_in);
 		couple->ip_pkt_in = NULL;
 		couple->ip_size_total_in = 0;
@@ -592,7 +674,8 @@ ssize_t rohc_proc_decomp_write(struct file *file,
 	WARN_ON(couples_ref_nr == 0);
 
 	/* do we receive data of a new packet or
-	   a chunk of a yet-partially-received packet ? */
+	 * a chunk of a yet-partially-received packet ?
+	 */
 	if (couple->rohc_size_total_in == 0) {
 		/* new packet */
 		couple->rohc_size_total_in = *((uint16_t *) buffer);
@@ -646,11 +729,21 @@ ssize_t rohc_proc_decomp_write(struct file *file,
 		struct rohc_buf ip_packet =
 			rohc_buf_init_empty(couple->ip_pkt_out,
 					    MAX_ROHC_SIZE);
+		struct rohc_buf rcvd_feedback =
+			rohc_buf_init_empty(couple->rcvd_feedback_buffer,
+					    MAX_ROHC_SIZE);
+		const unsigned int other_couple = (couple->index + 1) % 2;
+		struct rohc_buf *feedback_to_send;
+		struct rohc_comp *comp_associated;
 
 		rohc_info("ROHC packet is complete, decompress it now\n");
 
+		feedback_to_send = &(couples[other_couple].feedback_to_send);
+		comp_associated = couples[other_couple].comp;
+
 		status = rohc_decompress3(couple->decomp, rohc_packet,
-					  &ip_packet, NULL, NULL);
+					  &ip_packet, &rcvd_feedback,
+					  feedback_to_send);
 		if (status != ROHC_STATUS_OK) {
 			rohc_err("failed to decompress the ROHC packet\n");
 			goto error;
@@ -659,6 +752,18 @@ ssize_t rohc_proc_decomp_write(struct file *file,
 
 		rohc_info("ROHC packet successfully decompressed\n");
 
+		/* deliver any received feedback data to the associated
+		 * compressor: the compressor will take it into account and
+		 * update the mode/state of the related compression contexts
+		 * in consequence
+		 */
+		rohc_info("deliver %zu-byte received feedback to compressor\n",
+			  rcvd_feedback.len);
+		if (!rohc_comp_deliver_feedback2(comp_associated,
+						 rcvd_feedback)) {
+			rohc_err("failed to deliver received feedback to comp.\n");
+			goto error;
+		}
 		kfree(couple->rohc_pkt_in);
 		couple->rohc_pkt_in = NULL;
 		couple->rohc_size_total_in = 0;
@@ -711,7 +816,8 @@ ssize_t rohc_proc_comp_read(struct file *file,
 	}
 
 	/* userspace should provides a buffer that is large enough
-	   for the whole compressed packet */
+	 * for the whole compressed packet
+	 */
 	if (count < couple->rohc_size_out) {
 		rohc_err("cannot send ROHC packet to userspace: too large\n");
 		goto error;
@@ -760,7 +866,8 @@ ssize_t rohc_proc_decomp_read(struct file *file,
 	}
 
 	/* userspace should provides a buffer that is large enough
-	   for the whole compressed packet */
+	 * for the whole compressed packet
+	 */
 	if (count < couple->ip_size_out) {
 		rohc_err("cannot send decompressed IP packet to userspace: too large\n");
 		goto error;
@@ -986,11 +1093,11 @@ void __exit rohc_test_exit(void)
 }
 
 
-MODULE_VERSION("0.0.1");
+MODULE_VERSION(PACKAGE_VERSION PACKAGE_REVNO);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Didier Barvaux, Thales Communications, Viveris Technologies");
 MODULE_DESCRIPTION("Module for testing " PACKAGE_NAME " "
-	PACKAGE_VERSION " (" PACKAGE_URL ")");
+	PACKAGE_VERSION PACKAGE_REVNO " (" PACKAGE_URL ")");
 
 module_init(rohc_test_init);
 module_exit(rohc_test_exit);

@@ -62,7 +62,8 @@ librohc_common_la_LIBADD = \
 librohc_common_la_LDFLAGS = \
 	$(configure_ldflags)
 librohc_common_la_CFLAGS = \
-	$(configure_cflags)
+	$(configure_cflags) \
+	$(configure_cflags_for_lib)
 librohc_common_la_CPPFLAGS = \
 	-I$(top_srcdir)/src
 librohc_common_la_DEPENDENCIES = \
