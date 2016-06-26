@@ -72,7 +72,8 @@ int c_tcp_opt_sack_code(const struct rohc_comp_ctxt *const context,
 	size_t i;
 	int ret;
 
-	rohc_comp_debug(context, "TCP option SACK (reference ACK = 0x%08x)", ack_value);
+	rohc_comp_debug(context, "%schanged TCP option SACK (reference ACK = 0x%08x)",
+	                (is_unchanged ? "un" : ""), ack_value);
 	rohc_dump_buf(context->compressor->trace_callback,
 	              context->compressor->trace_callback_priv,
 	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG, "TCP option SACK",
@@ -95,6 +96,8 @@ int c_tcp_opt_sack_code(const struct rohc_comp_ctxt *const context,
 	}
 	else
 	{
+		uint32_t reference;
+
 		/* determine the number of SACK blocks
 		 * (integer division checked by \ref c_tcp_check_profile ) */
 		blocks_nr = length / sizeof(sack_block_t);
@@ -102,13 +105,18 @@ int c_tcp_opt_sack_code(const struct rohc_comp_ctxt *const context,
 		rohc_remain_data++;
 		rohc_remain_len--;
 
-		/* compress every SACK block, one by one */
-		for(i = 0, block = sack_blocks; i < blocks_nr; i++, block++)
+		/* compress every SACK block, one by one:
+		 *  - first block uses ACK as reference
+		 *  - next block uses current block end as reference */
+		for(i = 0, reference = ack_value, block = sack_blocks;
+		    i < blocks_nr;
+		    i++, reference = rohc_ntoh32(block->block_end), block++)
 		{
-			rohc_comp_debug(context, "block of SACK option: start = 0x%08x, "
-			                "end = 0x%08x", rohc_ntoh32(block->block_start),
+			rohc_comp_debug(context, "block of SACK option: reference = 0x%08x, "
+			                "start = 0x%08x, end = 0x%08x", reference,
+			                rohc_ntoh32(block->block_start),
 			                rohc_ntoh32(block->block_end));
-			ret = c_tcp_sack_code_block(context, ack_value, block,
+			ret = c_tcp_sack_code_block(context, reference, block,
 			                            rohc_remain_data, rohc_remain_len);
 			if(ret < 0)
 			{

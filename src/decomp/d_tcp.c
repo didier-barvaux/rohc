@@ -3550,14 +3550,20 @@ static void d_tcp_decode_opt_sack(const struct rohc_decomp_ctxt *const context,
 	}
 	else if(bits.blocks_nr > 0)
 	{
+		uint32_t reference;
 		size_t i;
 
 		rohc_decomp_debug(context, "  decode SACK option (%zu blocks retrieved "
 		                  "from packet)", bits.blocks_nr);
 
-		for(i = 0; i < bits.blocks_nr; i++)
+		/* decode every SACK block, one by one:
+		 *  - first block uses ACK as reference
+		 *  - next block uses current block end as reference */
+		for(i = 0, reference = ack_num;
+		    i < bits.blocks_nr;
+		    reference = rohc_ntoh32(decoded->blocks[i].block_end), i++)
 		{
-			const uint32_t block_start = ack_num + bits.blocks[i].block_start;
+			const uint32_t block_start = reference + bits.blocks[i].block_start;
 			const uint32_t block_end = block_start + bits.blocks[i].block_end;
 			decoded->blocks[i].block_start = rohc_hton32(block_start);
 			decoded->blocks[i].block_end = rohc_hton32(block_end);

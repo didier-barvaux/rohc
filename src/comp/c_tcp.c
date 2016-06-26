@@ -6473,6 +6473,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet(const struct rohc_comp_ctxt *const 
 		 *  - use common if too many LSB of innermost TTL/Hop Limit are required
 		 *  - use common if window changed */
 		if(ip_inner_context->ctxt.vx.ip_id_behavior <= IP_ID_BEHAVIOR_SEQ_SWAP &&
+		   tcp_context->tmp.nr_ip_id_bits_3 <= 4 &&
 		   tcp_context->tmp.nr_seq_bits_8191 <= 14 &&
 		   tcp_context->tmp.nr_ack_bits_8191 <= 15 &&
 		   tcp_context->tmp.nr_ttl_hopl_bits <= 3 &&
@@ -6558,11 +6559,11 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 		 *  - at most 15 LSB of the TCP ACK number are required,
 		 *  - at most 4 LSBs of IP-ID must be transmitted
 		 * otherwise use co_common packet */
-		if(!tcp_context->tmp.tcp_window_changed &&
-		   tcp_context->tmp.nr_ip_id_bits_3 <= 4 &&
-		   true /* TODO: no more than 3 bits of TTL */ &&
+		if(tcp_context->tmp.nr_ip_id_bits_3 <= 4 &&
 		   tcp_context->tmp.nr_seq_bits_8191 <= 14 &&
-		   tcp_context->tmp.nr_ack_bits_8191 <= 15)
+		   tcp_context->tmp.nr_ack_bits_8191 <= 15 &&
+		   tcp_context->tmp.nr_ttl_hopl_bits <= 3 &&
+		   !tcp_context->tmp.tcp_window_changed)
 		{
 			/* seq_8 is possible */
 			TRACE_GOTO_CHOICE;
@@ -6686,9 +6687,10 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 			packet_type = ROHC_PACKET_TCP_SEQ_5;
 		}
 		else if(tcp_context->tmp.nr_ip_id_bits_3 <= 4 &&
-		        true /* TODO: no more than 3 bits of TTL */ &&
+		        tcp_context->tmp.nr_seq_bits_8191 <= 14 &&
 		        tcp_context->tmp.nr_ack_bits_8191 <= 15 &&
-		        tcp_context->tmp.nr_seq_bits_8191 <= 14)
+		        tcp_context->tmp.nr_ttl_hopl_bits <= 3 &&
+		        !tcp_context->tmp.tcp_window_changed)
 		{
 			TRACE_GOTO_CHOICE;
 			packet_type = ROHC_PACKET_TCP_SEQ_8;

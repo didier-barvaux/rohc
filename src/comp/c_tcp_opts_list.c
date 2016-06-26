@@ -1060,6 +1060,11 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 		rohc_comp_debug(context, "irregular chain: added %zu bytes of irregular "
 		                "content for TCP option %u", comp_opt_len, opt_type);
 		comp_opts_len += comp_opt_len;
+
+		/* save the option in context */
+		/* TODO: move at the very end of compression to avoid altering
+		 *       context in case of compression failure */
+		c_tcp_opt_record(opts_ctxt, opt_idx, opts + opts_offset, opts_len - opts_offset);
 	}
 
 	return comp_opts_len;
