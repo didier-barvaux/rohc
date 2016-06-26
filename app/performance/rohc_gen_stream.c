@@ -74,7 +74,7 @@ static bool build_stream(const char *const filename,
                          const unsigned long max_packets,
                          const int use_large_cid,
                          const size_t wlsb_width,
-                         const unsigned int max_contexts)
+                         const size_t max_contexts)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static void print_rohc_traces(void *const priv_ctxt,
@@ -212,7 +212,7 @@ int main(int argc, char *argv[])
 		use_large_cid = 0;
 
 		/* the maximum number of ROHC contexts should be valid */
-		if(max_contexts < 1 || max_contexts > (ROHC_SMALL_CID_MAX + 1))
+		if(max_contexts < 1 || (size_t) max_contexts > (ROHC_SMALL_CID_MAX + 1))
 		{
 			fprintf(stderr, "the maximum number of ROHC contexts should be "
 			        "between 1 and %u\n\n", ROHC_SMALL_CID_MAX + 1);
@@ -225,7 +225,7 @@ int main(int argc, char *argv[])
 		use_large_cid = 1;
 
 		/* the maximum number of ROHC contexts should be valid */
-		if(max_contexts < 1 || max_contexts > (ROHC_LARGE_CID_MAX + 1))
+		if(max_contexts < 1 || (size_t) max_contexts > (ROHC_LARGE_CID_MAX + 1))
 		{
 			fprintf(stderr, "the maximum number of ROHC contexts should be "
 			        "between 1 and %u\n\n", ROHC_LARGE_CID_MAX + 1);
@@ -340,7 +340,7 @@ static bool build_stream(const char *const filename,
                          const unsigned long max_packets,
                          const int use_large_cid,
                          const size_t wlsb_width,
-                         const unsigned int max_contexts)
+                         const size_t max_contexts)
 {
 	const rohc_cid_type_t cid_type =
 		(use_large_cid ? ROHC_LARGE_CID : ROHC_SMALL_CID);

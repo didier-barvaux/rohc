@@ -251,7 +251,7 @@ static bool rohc_lsb_decode32(const struct rohc_lsb_decode *const lsb,
 	}
 	else
 	{
-		mask = ((1 << k) - 1);
+		mask = (1U << k) - 1;
 	}
 	assert((m & mask) == m);
 

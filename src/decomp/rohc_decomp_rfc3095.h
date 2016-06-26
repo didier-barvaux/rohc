@@ -455,7 +455,7 @@ bool rohc_decomp_rfc3095_create(const struct rohc_decomp_ctxt *const context,
                                 rohc_trace_callback2_t trace_cb,
                                 void *const trace_cb_priv,
                                 const int profile_id)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 void rohc_decomp_rfc3095_destroy(struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt,
                                  const struct rohc_decomp_volat_ctxt *const volat_ctxt)

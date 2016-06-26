@@ -405,7 +405,7 @@ int main(int argc, char *argv[])
 		cid_type = ROHC_SMALL_CID;
 
 		/* the maximum number of ROHC contexts should be valid */
-		if(max_contexts < 1 || max_contexts > (ROHC_SMALL_CID_MAX + 1))
+		if(max_contexts < 1 || (size_t) max_contexts > (ROHC_SMALL_CID_MAX + 1))
 		{
 			SNIFFER_LOG(LOG_WARNING, "the maximum number of ROHC contexts "
 			            "should be between 1 and %u", ROHC_SMALL_CID_MAX + 1);
@@ -418,7 +418,7 @@ int main(int argc, char *argv[])
 		cid_type = ROHC_LARGE_CID;
 
 		/* the maximum number of ROHC contexts should be valid */
-		if(max_contexts < 1 || max_contexts > (ROHC_LARGE_CID_MAX + 1))
+		if(max_contexts < 1 || (size_t) max_contexts > (ROHC_LARGE_CID_MAX + 1))
 		{
 			SNIFFER_LOG(LOG_WARNING, "the maximum number of ROHC contexts "
 			            "should be between 1 and %u", ROHC_LARGE_CID_MAX + 1);
@@ -613,6 +613,7 @@ static void sniffer_interrupt(int signum)
 	if(signum == SIGSEGV || signum == SIGABRT)
 	{
 		int i;
+		size_t j;
 
 		if(signum == SIGSEGV)
 		{
@@ -626,12 +627,12 @@ static void sniffer_interrupt(int signum)
 		}
 
 		/* close PCAP dumpers */
-		for(i = 0; i <= ROHC_LARGE_CID_MAX; i++)
+		for(j = 0; j <= ROHC_LARGE_CID_MAX; j++)
 		{
-			if(sniffer_dumpers[i] != NULL)
+			if(sniffer_dumpers[j] != NULL)
 			{
-				SNIFFER_LOG(LOG_INFO, "close dump file for context with ID %d", i);
-				pcap_dump_close(sniffer_dumpers[i]);
+				SNIFFER_LOG(LOG_INFO, "close dump file for context with ID %zu", j);
+				pcap_dump_close(sniffer_dumpers[j]);
 			}
 		}
 

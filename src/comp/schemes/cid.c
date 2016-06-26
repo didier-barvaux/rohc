@@ -35,7 +35,7 @@
  * Prototypes of private functions
  */
 
-static uint8_t c_add_cid(const int cid)
+static uint8_t c_add_cid(const rohc_cid_t cid)
 	__attribute__((warn_unused_result, const));
 
 
@@ -57,7 +57,7 @@ static uint8_t c_add_cid(const int cid)
  *                       in case of success, -1 in case of error
  */
 int code_cid_values(const rohc_cid_type_t cid_type,
-                    const int cid,
+                    const rohc_cid_t cid,
                     uint8_t *const dest,
                     const size_t dest_size,
                     size_t *const first_position)
@@ -130,11 +130,11 @@ error:
  * @param cid The small CID to set
  * @return    The add-CID byte
  */
-static uint8_t c_add_cid(const int cid)
+static uint8_t c_add_cid(const rohc_cid_t cid)
 {
 	const uint8_t add_cid_type = 0xe0;
 
-	assert(cid >= 0 && cid <= ROHC_SMALL_CID_MAX);
+	assert(cid <= ROHC_SMALL_CID_MAX);
 
 	return (add_cid_type | (cid & 0x0f));
 }
