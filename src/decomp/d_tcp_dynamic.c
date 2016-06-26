@@ -34,6 +34,7 @@
 #include "d_tcp_opts_list.h"
 #include "rohc_utils.h"
 #include "protocols/ip_numbers.h"
+#include "schemes/rfc4996.h"
 
 #ifndef __KERNEL__
 #  include <string.h>
@@ -46,11 +47,10 @@ static int tcp_parse_dynamic_ip(const struct rohc_decomp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
 static int tcp_parse_dynamic_ipv6_option(const struct rohc_decomp_ctxt *const context,
-                                         ipv6_option_context_t *const opt_context,
-                                         const uint8_t protocol,
+                                         ip_option_context_t *const opt_context,
                                          const uint8_t *const rohc_packet,
                                          const size_t rohc_length)
-	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int tcp_parse_dynamic_tcp(const struct rohc_decomp_ctxt *const context,
                                  const uint8_t *const rohc_packet,
@@ -102,6 +102,9 @@ bool tcp_parse_dyn_chain(const struct rohc_decomp_ctxt *const context,
 		remain_len -= ret;
 		(*parsed_len) += ret;
 	}
+
+	/* TTL/HL values of outer IP headers are included in the dynamic chain */
+	bits->ttl_dyn_chain_flag = true;
 
 	/* parse TCP dynamic part */
 	ret = tcp_parse_dynamic_tcp(context, remain_data, remain_len, bits);
@@ -210,7 +213,6 @@ static int tcp_parse_dynamic_ip(const struct rohc_decomp_ctxt *const context,
 	{
 		const ipv6_dynamic_t *const ipv6_dynamic =
 			(ipv6_dynamic_t *) remain_data;
-		uint8_t protocol;
 		size_t opts_nr;
 
 		if(remain_len < sizeof(ipv6_dynamic_t))
@@ -237,13 +239,11 @@ static int tcp_parse_dynamic_ip(const struct rohc_decomp_ctxt *const context,
 		                  "extension headers", ip_bits->opts_nr);
 
 		assert(ip_bits->proto_nr == 8);
-		protocol = ip_bits->proto;
 		for(opts_nr = 0; opts_nr < ip_bits->opts_nr; opts_nr++)
 		{
-			ipv6_option_context_t *const opt = &(ip_bits->opts[opts_nr]);
+			ip_option_context_t *const opt = &(ip_bits->opts[opts_nr]);
 
-			ret = tcp_parse_dynamic_ipv6_option(context, opt, protocol,
-			                                    remain_data, remain_len);
+			ret = tcp_parse_dynamic_ipv6_option(context, opt, remain_data, remain_len);
 			if(ret < 0)
 			{
 				rohc_decomp_warn(context, "malformed ROHC packet: malformed "
@@ -257,7 +257,6 @@ static int tcp_parse_dynamic_ip(const struct rohc_decomp_ctxt *const context,
 			remain_data += ret;
 			remain_len -= ret;
 
-			protocol = opt->generic.next_header;
 		}
 	}
 
@@ -278,40 +277,38 @@ error:
  *
  * @param context        The decompression context
  * @param opt_context    The specific IPv6 option decompression context
- * @param protocol       The IPv6 protocol option
  * @param rohc_packet    The remaining part of the ROHC packet
  * @param rohc_length    The remaining length (in bytes) of the ROHC packet
  * @return               The length of dynamic IP header
- *                       0 if an error occurs
+ *                       -1 if an error occurs
  */
 static int tcp_parse_dynamic_ipv6_option(const struct rohc_decomp_ctxt *const context,
-                                         ipv6_option_context_t *const opt_context,
-                                         const uint8_t protocol,
+                                         ip_option_context_t *const opt_context,
                                          const uint8_t *const rohc_packet,
                                          const size_t rohc_length)
 {
 	size_t remain_len = rohc_length;
-	size_t size = 0;
+	size_t size;
 
-	assert(context != NULL);
-	assert(rohc_packet != NULL);
+	rohc_decomp_debug(context, "parse dynamic part of the %zu-byte IPv6 extension "
+	                  "header '%s' (%u)", opt_context->len,
+	                  rohc_get_ip_proto_descr(opt_context->proto), opt_context->proto);
 
-	rohc_decomp_debug(context, "parse dynamic part of IPv6 extension header");
-
-	switch(protocol)
+	switch(opt_context->proto)
 	{
 		case ROHC_IPPROTO_HOPOPTS:  // IPv6 Hop-by-Hop options
 		case ROHC_IPPROTO_DSTOPTS:  // IPv6 destination options
 		{
-			size += ((opt_context->generic.length + 1) << 3) - 2;
+			size = opt_context->len - 2;
 			if(remain_len < size)
 			{
 				rohc_decomp_warn(context, "malformed IPv6 option: malformed "
 				                 "option %u: %zu bytes available while %zu bytes "
-				                 "required", protocol, remain_len, size);
+				                 "required", opt_context->proto, remain_len, size);
 				goto error;
 			}
-			memcpy(opt_context->generic.data, rohc_packet, size);
+			opt_context->generic.data_len = size;
+			memcpy(&opt_context->generic.data, rohc_packet, size);
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 			remain_len -= size;
 #endif
@@ -319,6 +316,7 @@ static int tcp_parse_dynamic_ipv6_option(const struct rohc_decomp_ctxt *const co
 		}
 		case ROHC_IPPROTO_ROUTING:  // IPv6 routing header
 		{
+			size = 0;
 			break;
 		}
 		case ROHC_IPPROTO_GRE:  /* TODO: GRE not yet supported */
@@ -338,7 +336,8 @@ static int tcp_parse_dynamic_ipv6_option(const struct rohc_decomp_ctxt *const co
 		}
 		default:
 		{
-			break;
+			rohc_decomp_warn(context, "unknown extension header not supported yet");
+			goto error;
 		}
 	}
 
@@ -509,37 +508,18 @@ static int tcp_parse_dynamic_tcp(const struct rohc_decomp_ctxt *const context,
 	rohc_decomp_debug(context, "TCP urg_ptr = 0x%04x", bits->urg_ptr.bits);
 
 	/* ACK stride */
-	if(tcp_dynamic->ack_stride_flag == 0)
+	ret = d_static_or_irreg16(remain_data, remain_len, tcp_dynamic->ack_stride_flag,
+	                          &bits->ack_stride);
+	if(ret < 0)
 	{
-		bits->ack_stride.bits_nr = 0;
-		rohc_decomp_debug(context, "TCP ack_stride not present");
+		rohc_decomp_warn(context, "malformed TCP dynamic part: "
+		                 "static_or_irreg(ack_stride) failed");
+		goto error;
 	}
-	else
-	{
-		if(remain_len < sizeof(uint16_t))
-		{
-			rohc_decomp_warn(context, "malformed TCP dynamic part: only %zu "
-			                 "bytes available while at least %zu bytes required "
-			                 "for the ACK stride", remain_len, sizeof(uint16_t));
-			goto error;
-		}
-		memcpy(&(bits->ack_stride.bits), remain_data, sizeof(uint16_t));
-		bits->ack_stride.bits = rohc_ntoh16(bits->ack_stride.bits);
-		bits->ack_stride.bits_nr = 16;
-		remain_data += sizeof(uint16_t);
-		remain_len -= sizeof(uint16_t);
-		rohc_decomp_debug(context, "TCP ack_stride = 0x%04x", bits->ack_stride.bits);
-	}
-#if 0 /* TODO: handle ACK stride */
-	if(tcp_context->ack_stride != 0)
-	{
-		// Calculate the Ack Number residue
-		tcp_context->ack_num_residue = tcp_context->ack_num % tcp_context->ack_stride;
-	}
-	rohc_decomp_debug(context, "TCP ack_stride = 0x%04x, ack_number_residue = "
-	                  "0x%04x", tcp_context->ack_stride,
-	                  tcp_context->ack_num_residue);
-#endif
+	rohc_decomp_debug(context, "found %zu bits of ACK stride encoded on "
+	                  "%d bytes", bits->ack_stride.bits_nr, ret);
+	remain_data += ret;
+	remain_len -= ret;
 
 	/* parse the compressed list of TCP options */
 	ret = d_tcp_parse_tcp_opts_list_item(context, remain_data, remain_len, true,

@@ -94,11 +94,17 @@ struct c_tcp_opts_ctxt_tmp
 	 *  echo request with p = 0x40000 */
 	size_t nr_opt_ts_req_bits_0x40000;
 	/** The minimal number of bits required to encode the TCP option timestamp
+	 *  echo request with p = 0x4000000 */
+	size_t nr_opt_ts_req_bits_0x4000000;
+	/** The minimal number of bits required to encode the TCP option timestamp
 	 *  echo reply with p = -1 */
 	size_t nr_opt_ts_reply_bits_minus_1;
 	/** The minimal number of bits required to encode the TCP option timestamp
 	 *  echo reply with p = 0x40000 */
 	size_t nr_opt_ts_reply_bits_0x40000;
+	/** The minimal number of bits required to encode the TCP option timestamp
+	 *  echo reply with p = 0x4000000 */
+	size_t nr_opt_ts_reply_bits_0x4000000;
 };
 
 

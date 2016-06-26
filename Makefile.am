@@ -117,9 +117,9 @@ cppcheck:
 		 -I /usr/include/ \
 		 -i linux/ \
 		 -D__clang_analyzer__ \
-		 --suppress=unusedStructMember:src/comp/c_tcp.c:185 \
-		 --suppress=unusedStructMember:src/comp/c_tcp.c:207 \
-		 --suppress=unusedStructMember:src/comp/c_tcp.c:242 \
+		 --suppress=unusedStructMember:src/comp/c_tcp.c:184 \
+		 --suppress=unusedStructMember:src/comp/c_tcp.c:206 \
+		 --suppress=unusedStructMember:src/comp/c_tcp.c:241 \
 		 --suppress=unusedStructMember:src/comp/c_tcp_opts_list.c:46 \
 		 --suppress=unusedStructMember:src/comp/c_tcp_opts_list.c:47 \
 		 --suppress=unusedStructMember:src/comp/c_tcp_opts_list.c:48 \
@@ -132,7 +132,7 @@ cppcheck:
 
 # run GNU complexity on all sources and apps, but not tests
 complexity:
-	$(AM_V_GEN)complexity --threshold=20 --horrid-threshold=35 \
+	$(AM_V_GEN)complexity --threshold=20 --horrid-threshold=30 \
 		`find src/ app/ -name \*.c -or -name \*.h`
 
 # run Linux checkpatch.pl script on kernel modules, but ignore warnings about

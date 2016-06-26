@@ -89,8 +89,8 @@ test/functional/decompress_feedback_only/test_decompress_feedback_only
 test/functional/decompress_feedback_only/test_decompress_feedback_only.exe
 test/functional/context_reuse/test_context_reuse
 test/functional/context_reuse/test_context_reuse.exe
-test/functional/rtp_uo_disambiguation/test_rtp_uo_disambiguation
-test/functional/rtp_uo_disambiguation/test_rtp_uo_disambiguation.exe
+test/functional/packet_types/test_packet_types
+test/functional/packet_types/test_packet_types.exe
 test/functional/rtp_detection/test_rtp_ports
 test/functional/rtp_detection/test_rtp_ports.exe
 test/functional/rtp_detection/test_rtp_callback

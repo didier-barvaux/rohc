@@ -24,6 +24,8 @@
 
 #include "rohc.h"
 #include "rohc_packets.h"
+#include "protocols/ip_numbers.h"
+#include "protocols/tcp.h"
 
 #include "config.h" /* for VERSION and PACKAGE_REVNO */
 
@@ -237,6 +239,79 @@ int main(int argc, char *argv[])
 
 		CHECK(strcmp(rohc_get_ext_descr(ROHC_EXT_NONE + 1), unknown) == 0);
 	}
+
+	/* not a public API, but best place to test: rohc_get_ip_proto_descr() */
+	{
+		const char unknown[] = "unknown IP protocol";
+
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_HOPOPTS), "") != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_HOPOPTS), unknown) != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_IPIP), "") != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_IPIP), unknown) != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_TCP), "") != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_TCP), unknown) != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_UDP), "") != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_UDP), unknown) != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_IPV6), "") != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_IPV6), unknown) != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_ROUTING), "") != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_ROUTING), unknown) != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_FRAGMENT), "") != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_FRAGMENT), unknown) != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_GRE), "") != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_GRE), unknown) != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_ESP), "") != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_ESP), unknown) != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_AH), "") != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_AH), unknown) != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_MINE), "") != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_MINE), unknown) != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_DSTOPTS), "") != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_DSTOPTS), unknown) != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_MOBILITY), "") != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_MOBILITY), unknown) != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_UDPLITE), "") != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_UDPLITE), unknown) != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_HIP), "") != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_HIP), unknown) != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_SHIM), "") != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_SHIM), unknown) != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_RESERVED1), "") != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_RESERVED1), unknown) != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_RESERVED2), "") != 0);
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_RESERVED2), unknown) != 0);
+
+		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_MAX), unknown) == 0);
+	}
+
+	/* not a public API, but best place to test: tcp_ip_id_behavior_get_descr() */
+	{
+		const char unknown[] = "unknown IP-ID behavior";
+
+		CHECK(strcmp(tcp_ip_id_behavior_get_descr(IP_ID_BEHAVIOR_SEQ), "") != 0);
+		CHECK(strcmp(tcp_ip_id_behavior_get_descr(IP_ID_BEHAVIOR_SEQ), unknown) != 0);
+		CHECK(strcmp(tcp_ip_id_behavior_get_descr(IP_ID_BEHAVIOR_SEQ_SWAP), "") != 0);
+		CHECK(strcmp(tcp_ip_id_behavior_get_descr(IP_ID_BEHAVIOR_SEQ_SWAP), unknown) != 0);
+		CHECK(strcmp(tcp_ip_id_behavior_get_descr(IP_ID_BEHAVIOR_RAND), "") != 0);
+		CHECK(strcmp(tcp_ip_id_behavior_get_descr(IP_ID_BEHAVIOR_RAND), unknown) != 0);
+		CHECK(strcmp(tcp_ip_id_behavior_get_descr(IP_ID_BEHAVIOR_ZERO), "") != 0);
+		CHECK(strcmp(tcp_ip_id_behavior_get_descr(IP_ID_BEHAVIOR_ZERO), unknown) != 0);
+
+		CHECK(strcmp(tcp_ip_id_behavior_get_descr(IP_ID_BEHAVIOR_ZERO + 1), unknown) == 0);
+	}
+
+	/* not a public API, but best place to test: tcp_opt_get_descr() */
+	{
+		CHECK(strcmp(tcp_opt_get_descr(TCP_OPT_EOL), "EOL") == 0);
+		CHECK(strcmp(tcp_opt_get_descr(TCP_OPT_NOP), "NOP") == 0);
+		CHECK(strcmp(tcp_opt_get_descr(TCP_OPT_MSS), "MSS") == 0);
+		CHECK(strcmp(tcp_opt_get_descr(TCP_OPT_WS), "Window Scale") == 0);
+		CHECK(strcmp(tcp_opt_get_descr(TCP_OPT_SACK_PERM), "SACK permitted") == 0);
+		CHECK(strcmp(tcp_opt_get_descr(TCP_OPT_SACK), "SACK") == 0);
+		CHECK(strcmp(tcp_opt_get_descr(TCP_OPT_TS), "Timestamp") == 0);
+		CHECK(strcmp(tcp_opt_get_descr(TCP_OPT_MAX), "generic") == 0);
+	}
+
 
 	/* test succeeds */
 	trace(verbose, "all tests are successful\n");

@@ -1,0 +1,9 @@
+Capture retrieved from https://wiki.wireshark.org/SampleCaptures
+
+  RawPacketIPv6Tunnel-UK6x.cap (libpcap) - Some IPv6 packets captured from the
+  'sit1' interface on Linux. The IPv6 packets are carried over the UK's UK6x
+  network, but what makes this special, is the fact that it has a Link-Layer
+  type of "Raw packet data" - which is something that you don't see everyday.
+
+What makes this capture special for the ROHC library is the IPv6/TCP flow with
+a non-zero Flow Label.

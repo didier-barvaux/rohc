@@ -1716,8 +1716,18 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 
 	/* part 2: type of packet and D flag if dynamic part is included */
 	type = 0xfc;
-	type |= 1; /* D flag */
-	rohc_comp_debug(context, "type of packet + D flag = 0x%02x", type);
+	/* D flag is available for RTP profile only, other profiles shall put 0 in
+	 * the reserved bit */
+	if(context->profile->id == ROHC_PROFILE_RTP)
+	{
+		type |= 1;
+		rohc_comp_debug(context, "type of packet + D flag = 0x%02x", type);
+	}
+	else
+	{
+		type &= 0xfe;
+		rohc_comp_debug(context, "type of packet = 0x%02x", type);
+	}
 	rohc_pkt[first_position] = type;
 
 	/* is ROHC buffer large enough for parts 4 and 5 ? */

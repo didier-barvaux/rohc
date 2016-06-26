@@ -123,6 +123,9 @@ struct rohc_extr_bits
 	bool sn_ref_offset;         /**< Optional offset to add to the reference SN
 	                                 (used for context repair after CRC failure) */
 
+	/** Whether there are multiple IP headers or only one single IP header */
+	bool multiple_ip;
+
 	/** bits related to outer IP header */
 	struct rohc_extr_ip_bits outer_ip;
 
@@ -258,6 +261,8 @@ struct rohc_decoded_values
 
 	rohc_mode_t mode;  /**< The operation mode asked by compressor */
 
+	/** Whether there are multiple IP headers or only one single IP header */
+	bool multiple_ip;
 	/** The decoded values for the outer IP header */
 	struct rohc_decoded_ip_values outer_ip;
 	/** The decoded values for the inner IP header */

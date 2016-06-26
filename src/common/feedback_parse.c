@@ -80,7 +80,7 @@ bool rohc_feedback_get_size(const struct rohc_buf rohc_data,
 	else
 	{
 		/* extract the size octet */
-		if(rohc_data.len < 1)
+		if(rohc_data.len < 2)
 		{
 			goto error;
 		}

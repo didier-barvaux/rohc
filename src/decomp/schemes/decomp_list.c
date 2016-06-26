@@ -113,6 +113,19 @@ static size_t rohc_list_get_xi_len(const size_t xi_nr,
                                    const int ps)
 	__attribute__((warn_unused_result, const));
 
+static uint8_t rohc_list_get_xi_type_0(const int ps,
+                                       const size_t xi_index,
+                                       const uint8_t *const data,
+                                       bool *const is_item_present)
+	__attribute__((warn_unused_result, nonnull(3, 4)));
+
+static uint8_t rohc_list_get_xi_type_2or3(const int ps,
+                                          const size_t xi_index,
+                                          const uint8_t xi_1,
+                                          const uint8_t *const data,
+                                          bool *const is_item_present)
+	__attribute__((warn_unused_result, nonnull(4, 5)));
+
 static uint8_t rohc_get_bit(const uint8_t byte, const size_t pos)
 	__attribute__((warn_unused_result, const));
 
@@ -459,47 +472,23 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 	item_read_len = 0;
 	for(xi_index = 0; xi_index < m; xi_index++)
 	{
-		unsigned int xi_x_value; /* the value of the X field in one XI field */
-		unsigned int xi_index_value; /* the value of the Index field in one XI field */
+		bool is_item_present;
+		uint8_t xi_value;
 
 		/* extract the value of the XI index */
-		if(!ps)
-		{
-			/* 4-bit XI */
-			if((xi_index % 2) == 0)
-			{
-				/* 4-bit XI is stored in MSB */
-				xi_x_value = GET_BIT_7(packet + xi_index / 2);
-				xi_index_value = GET_BIT_4_6(packet + xi_index / 2);
-			}
-			else
-			{
-				/* 4-bit XI is stored in LSB */
-				xi_x_value = GET_BIT_3(packet + xi_index / 2);
-				xi_index_value = GET_BIT_0_2(packet + xi_index / 2);
-			}
-			rd_list_debug(decomp, "0x%02x: XI #%u got index %u",
-			              packet[xi_index / 2], xi_index, xi_index_value);
-		}
-		else
-		{
-			/* 8-bit XI */
-			xi_x_value = GET_BIT_7(packet + xi_index);
-			xi_index_value = GET_BIT_0_6(packet + xi_index);
-			rd_list_debug(decomp, "0x%02x: XI #%u got index %u",
-			              packet[xi_index], xi_index, xi_index_value);
-		}
+		xi_value = rohc_list_get_xi_type_0(ps, xi_index, packet, &is_item_present);
+		rd_list_debug(decomp, "XI #%u got index %u", xi_index, xi_value);
 
 		/* is the XI index valid? */
-		if(!decomp->check_item(decomp, xi_index_value))
+		if(!decomp->check_item(decomp, xi_value))
 		{
 			rd_list_warn(decomp, "XI #%u got invalid index %u", xi_index,
-			             xi_index_value);
+			             xi_value);
 			goto error;
 		}
 
 		/* is there a corresponding item in packet after the XI list? */
-		if(xi_x_value)
+		if(is_item_present)
 		{
 			const uint8_t *const xi_item = packet + xi_len + item_read_len;
 			const size_t xi_item_max_len = packet_len - xi_len - item_read_len;
@@ -509,8 +498,8 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 
 			/* create (or update if it already exists) the corresponding item
 			 * with the item transmitted in the ROHC header */
-			if(!rohc_decomp_list_create_item(decomp, xi_index, xi_index_value,
-			                                 xi_item, xi_item_max_len, &item_len))
+			if(!rohc_decomp_list_create_item(decomp, xi_index, xi_value, xi_item,
+			                                 xi_item_max_len, &item_len))
 			{
 				rd_list_warn(decomp, "failed to create XI item #%u from packet",
 				             xi_index);
@@ -524,10 +513,10 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 		{
 			/* X bit not set in XI, so item is not provided in ROHC header,
 			 * it must already be known by decompressor */
-			if(!decomp->trans_table[xi_index_value].known)
+			if(!decomp->trans_table[xi_value].known)
 			{
 				rd_list_warn(decomp, "list item with index #%u referenced by XI "
-				             "#%d is not known yet", xi_index_value, xi_index);
+				             "#%d is not known yet", xi_value, xi_index);
 				goto error;
 			}
 		}
@@ -535,11 +524,11 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 		/* record the structure of the list of the current packet */
 		assert(decomp->pkt_list.items_nr < ROHC_LIST_ITEMS_MAX);
 		decomp->pkt_list.items[decomp->pkt_list.items_nr] =
-			&decomp->trans_table[xi_index_value];
+			&decomp->trans_table[xi_value];
 		decomp->pkt_list.items_nr++;
 		rd_list_debug(decomp, "  XI #%u: use item of type 0x%02x (index %u in "
 		              "translation table) in list", xi_index,
-		              decomp->trans_table[xi_index_value].type, xi_index_value);
+		              decomp->trans_table[xi_value].type, xi_value);
 	}
 
 	/* ensure that in case of an odd number of 4-bit XIs, the 4 bits of padding
@@ -930,6 +919,7 @@ static int rohc_list_parse_insertion_scheme(struct list_decomp *const decomp,
 	size_t mask_len; /* length (in bits) of the removal mask */
 	size_t item_read_len; /* the amount of bytes currently read in the item field */
 	size_t ref_list_cur_pos; /* current position in reference list */
+	int ref_list_miss; /* the index of the first missing item in reference list */
 	size_t xi_index; /* the index of the current XI in XI list */
 	size_t xi_len; /* the length (in bytes) of the XI list */
 	size_t k; /* the number of ones in insertion mask and the number of elements in XI list */
@@ -977,6 +967,7 @@ static int rohc_list_parse_insertion_scheme(struct list_decomp *const decomp,
 	xi_index = 0;
 	item_read_len = 0;
 	ref_list_cur_pos = 0;
+	ref_list_miss = -1;
 	for(i = 0; i < mask_len; i++)
 	{
 		uint8_t new_item_to_insert;
@@ -997,7 +988,7 @@ static int rohc_list_parse_insertion_scheme(struct list_decomp *const decomp,
 		if(!new_item_to_insert)
 		{
 			/* take the next item from reference list (if there no more item in
-			   reference list, do nothing) */
+			   reference list and no more new item, complain but do nothing) */
 			if(ref_list_cur_pos < ref_list->items_nr)
 			{
 				/* new list, insert the item from reference list */
@@ -1009,54 +1000,43 @@ static int rohc_list_parse_insertion_scheme(struct list_decomp *const decomp,
 				/* skip item in removal list */
 				ref_list_cur_pos++;
 			}
+			else
+			{
+				ref_list_miss = i;
+
+				if(xi_index < k)
+				{
+					rd_list_warn(decomp, "malformed compressed list based on reference "
+					             "list with %zu existing items and %zu additional new "
+					             "items: bit #%zu is not set in insertion mask, "
+					             "reference list do not contain item any more, but "
+					             "there is still new %zu item(s) to insert", items_nr,
+					             k, i + 1, k - xi_index);
+#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
+					goto error;
+#endif
+				}
+			}
 		}
 		else
 		{
-			unsigned int xi_x_value; /* the value of the X field in one XI field */
-			unsigned int xi_index_value; /* the value of the Index field in one XI field */
+			bool is_item_present; /* the value of the X field in one XI field */
+			uint8_t xi_value; /* the value of the Index field in one XI field */
 
 			/* new item to insert in list, parse the related XI field */
-			if(!ps)
-			{
-				/* ROHC header contains 4-bit XIs */
-
-				/* which type of XI do we parse ? first one, odd one or even one ? */
-				if(xi_index == 0)
-				{
-					/* first XI is stored in the first byte of the header */
-					xi_x_value = GET_BIT_3(&xi_1);
-					xi_index_value = GET_BIT_0_2(&xi_1);
-				}
-				else if((xi_index % 2) != 0)
-				{
-					/* handle odd XI, ie. XI stored in MSB */
-					xi_x_value = GET_BIT_7(packet + (xi_index - 1) / 2);
-					xi_index_value = GET_BIT_4_6(packet + (xi_index - 1) / 2);
-				}
-				else
-				{
-					/* handle even XI, ie. XI stored in LSB */
-					xi_x_value = GET_BIT_3(packet + (xi_index - 1) / 2);
-					xi_index_value = GET_BIT_0_2(packet + (xi_index - 1) / 2);
-				}
-			}
-			else
-			{
-				/* ROHC header contains 8-bit XIs */
-				xi_x_value = GET_BIT_7(packet + xi_index);
-				xi_index_value = GET_BIT_0_6(packet + xi_index);
-			}
+			xi_value = rohc_list_get_xi_type_2or3(ps, xi_index, xi_1, packet,
+			                                      &is_item_present);
 
 			/* is the XI index valid? */
-			if(!decomp->check_item(decomp, xi_index_value))
+			if(!decomp->check_item(decomp, xi_value))
 			{
 				rd_list_warn(decomp, "XI #%zu got invalid index %u", xi_index,
-				             xi_index_value);
+				             xi_value);
 				goto error;
 			}
 
 			/* parse the corresponding item if present */
-			if(xi_x_value)
+			if(is_item_present)
 			{
 				const uint8_t *const xi_item = packet + xi_len + item_read_len;
 				const size_t xi_item_max_len = packet_len - xi_len - item_read_len;
@@ -1066,9 +1046,8 @@ static int rohc_list_parse_insertion_scheme(struct list_decomp *const decomp,
 
 				/* create (or update if it already exists) the corresponding
 				 * item with the item transmitted in the ROHC header */
-				if(!rohc_decomp_list_create_item(decomp, xi_index, xi_index_value,
-				                                 xi_item, xi_item_max_len,
-				                                 &item_len))
+				if(!rohc_decomp_list_create_item(decomp, xi_index, xi_value, xi_item,
+				                                 xi_item_max_len, &item_len))
 				{
 					rd_list_warn(decomp, "failed to create XI item #%zu from "
 					             "packet", xi_index);
@@ -1082,20 +1061,33 @@ static int rohc_list_parse_insertion_scheme(struct list_decomp *const decomp,
 			{
 				/* X bit not set in XI, so item is not provided in ROHC header,
 				 * it must already be known by decompressor */
-				if(!decomp->trans_table[xi_index_value].known)
+				if(!decomp->trans_table[xi_value].known)
 				{
 					rd_list_warn(decomp, "list item with index #%u referenced by "
-					             "XI #%zu is not known yet", xi_index_value,
-					             xi_index);
+					             "XI #%zu is not known yet", xi_value, xi_index);
 					goto error;
 				}
 			}
 
 			/* use new item from packet */
 			rd_list_debug(decomp, "use new item #%zu into current list (index "
-			              "%zu)", xi_index, i);
-			ins_list->items[i] = &(decomp->trans_table[xi_index_value]);
-			ins_list->items_nr++;
+			              "%zu)", xi_index + 1, i);
+			if(ref_list_miss >= 0)
+			{
+				rd_list_warn(decomp, "malformed compressed list based on reference "
+				             "list with %zu existing items and %zu additional new "
+				             "items: bit #%zu is set in insertion mask but bit #%d "
+				             "was not set and reference list did not contain item "
+				             "any more", items_nr, k, i + 1, ref_list_miss + 1);
+#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
+				goto error;
+#endif
+			}
+			else
+			{
+				ins_list->items[i] = &(decomp->trans_table[xi_value]);
+				ins_list->items_nr++;
+			}
 
 			/* skip the XI we have just parsed */
 			xi_index++;
@@ -1358,6 +1350,108 @@ static size_t rohc_list_get_xi_len(const size_t xi_nr,
 	}
 
 	return xi_len;
+}
+
+
+/**
+ * @brief Get the XI information, ie. the X bit and the index value
+ *
+ * @param ps                    The PS bit
+ * @param xi_index              The index of the XI
+ * @param data                  The data to parse
+ * @param[out] is_item_present  Whether the XI item shall be present or not
+ * @return                      The value of the XI index
+ */
+static uint8_t rohc_list_get_xi_type_0(const int ps,
+                                       const size_t xi_index,
+                                       const uint8_t *const data,
+                                       bool *const is_item_present)
+{
+	uint8_t xi_value;
+
+	/* extract the value of the XI index */
+	if(ps == 1)
+	{
+		/* ROHC header contains 8-bit XIs */
+		*is_item_present = GET_BOOL(GET_BIT_7(data + xi_index));
+		xi_value = GET_BIT_0_6(data + xi_index);
+	}
+	else
+	{
+		/* ROHC header contains 4-bit XIs: encoding type 0 stores XI #1
+		 * with all other XIs */
+
+		/* which type of XI do we parse ? even or odd one ? */
+		if((xi_index % 2) == 0)
+		{
+			/* handle even XI, ie. XI stored in MSB */
+			*is_item_present = GET_BOOL(GET_BIT_7(data + xi_index / 2));
+			xi_value = GET_BIT_4_6(data + xi_index / 2);
+		}
+		else
+		{
+			/* handle odd XI, ie. XI stored in LSB */
+			*is_item_present = GET_BOOL(GET_BIT_3(data + xi_index / 2));
+			xi_value = GET_BIT_0_2(data + xi_index / 2);
+		}
+	}
+
+	return xi_value;
+}
+
+
+/**
+ * @brief Get the XI information, ie. the X bit and the index value
+ *
+ * @param ps                    The PS bit
+ * @param xi_index              The index of the XI
+ * @param xi_1                  The XI 1 field if PS = 1 (4-bit XI)
+ * @param data                  The data to parse
+ * @param[out] is_item_present  Whether the XI item shall be present or not
+ * @return                      The value of the XI index
+ */
+static uint8_t rohc_list_get_xi_type_2or3(const int ps,
+                                          const size_t xi_index,
+                                          const uint8_t xi_1,
+                                          const uint8_t *const data,
+                                          bool *const is_item_present)
+{
+	uint8_t xi_value;
+
+	/* extract the value of the XI index */
+	if(ps == 1)
+	{
+		/* ROHC header contains 8-bit XIs */
+		*is_item_present = GET_BOOL(GET_BIT_7(data + xi_index));
+		xi_value = GET_BIT_0_6(data + xi_index);
+	}
+	else
+	{
+		/* ROHC header contains 4-bit XIs: encoding type 2 and 3 store XI #1
+		 * in their first byte, so next XIs are shifted by 4 bits */
+
+		/* which type of XI do we parse ? first one, odd one or even one ? */
+		if(xi_index == 0)
+		{
+			/* first XI is stored in the first byte of the header */
+			*is_item_present = GET_BOOL(GET_BIT_3(&xi_1));
+			xi_value = GET_BIT_0_2(&xi_1);
+		}
+		else if((xi_index % 2) != 0)
+		{
+			/* handle odd XI, ie. XI stored in MSB */
+			*is_item_present = GET_BOOL(GET_BIT_7(data + (xi_index - 1) / 2));
+			xi_value = GET_BIT_4_6(data + (xi_index - 1) / 2);
+		}
+		else
+		{
+			/* handle even XI, ie. XI stored in LSB */
+			*is_item_present = GET_BOOL(GET_BIT_3(data + (xi_index - 1) / 2));
+			xi_value = GET_BIT_0_2(data + (xi_index - 1) / 2);
+		}
+	}
+
+	return xi_value;
 }
 
 

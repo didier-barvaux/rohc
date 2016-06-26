@@ -72,6 +72,11 @@ if [ ! -r "${CAPTURE_SOURCE}" ] ; then
 fi
 
 CMD="${CROSS_COMPILATION_EMULATOR} ${APP} ${CAPTURE_SOURCE} ${FAILURE_START}"
+if [ "${CAPTURE_NAME}" = "afl12_ipv6_ext_list_malformed_ins_mask" ] ; then
+	CMD="${CMD} --cid-type large"
+else
+	CMD="${CMD} --cid-type small"
+fi
 
 # source valgrind-related functions
 . ${BASEDIR}/../../valgrind.sh
@@ -79,7 +84,7 @@ CMD="${CROSS_COMPILATION_EMULATOR} ${APP} ${CAPTURE_SOURCE} ${FAILURE_START}"
 # run without valgrind in verbose mode or quiet mode
 if [ "${VERBOSE}" = "verbose" ] ; then
 	if [ "${VERY_VERBOSE}" = "verbose" ] ; then
-		run_test_without_valgrind ${CMD} || exit $?
+		run_test_without_valgrind ${CMD} -v || exit $?
 	else
 		run_test_without_valgrind ${CMD} >/dev/null || exit $?
 	fi

@@ -2504,11 +2504,26 @@ static void d_tcp_reset_extr_bits(const struct rohc_decomp_ctxt *const context,
 			bits->ip[i].version = tcp_context->ip_contexts[i].version;
 			bits->ip[i].proto = tcp_context->ip_contexts[i].ctxt.vx.next_header;
 			bits->ip[i].proto_nr = 8;
+			if(bits->ip[i].version == IPV6)
+			{
+				size_t j;
+
+				bits->ip[i].opts_nr = tcp_context->ip_contexts[i].opts_nr;
+				bits->ip[i].opts_len = tcp_context->ip_contexts[i].opts_len;
+				for(j = 0; j < bits->ip[i].opts_nr; j++)
+				{
+					bits->ip[i].opts[j].len = tcp_context->ip_contexts[i].opts[j].len;
+					bits->ip[i].opts[j].proto = tcp_context->ip_contexts[i].opts[j].proto;
+					bits->ip[i].opts[j].nh_proto =
+						tcp_context->ip_contexts[i].opts[j].nh_proto;
+				}
+			}
 		}
 		bits->ip_nr = tcp_context->ip_contexts_nr;
 	}
 
-	/* by default there is no TTL/HL field in the irregular chain */
+	/* by default there is no TTL/HL field in the dynamic/irregular chain */
+	bits->ttl_dyn_chain_flag = false;
 	bits->ttl_irreg_chain_flag = false;
 
 	/* default constant LSB shift parameters */
@@ -2573,6 +2588,11 @@ static bool d_tcp_decode_bits(const struct rohc_decomp_ctxt *const context,
 		rohc_decomp_debug(context, "decoded MSN = 0x%04x (%zu bits 0x%x)",
 		                  decoded->msn, bits->msn.bits_nr, bits->msn.bits);
 	}
+
+	/* flag telling whether the dynamic/irregular chains contain the TTL/HL
+	 * values of the outer IP headers */
+	decoded->ttl_dyn_chain_flag = bits->ttl_dyn_chain_flag;
+	decoded->ttl_irreg_chain_flag = bits->ttl_irreg_chain_flag;
 
 	/* decode IP headers */
 	if(!d_tcp_decode_bits_ip_hdrs(context, bits, decoded))
@@ -2731,6 +2751,11 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 			rohc_decomp_debug(context, "  IP-ID = 0x%04x (decoded from "
 			                  "%zu-bit 0x%x with p = %d)", ip_decoded->id,
 			                  ip_bits->id.bits_nr, ip_bits->id.bits, ip_bits->id.p);
+
+			if(ip_id_behavior == IP_ID_BEHAVIOR_SEQ_SWAP)
+			{
+				ip_decoded->id = swab16(ip_decoded->id);
+			}
 		}
 		else if(ip_id_behavior == IP_ID_BEHAVIOR_ZERO)
 		{
@@ -2746,7 +2771,7 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 		goto error;
 	}
 
-	/* decode innermost TTL/HL */
+	/* decode TTL/HL */
 	if(ip_bits->ttl_hl.bits_nr == 8)
 	{
 		ip_decoded->ttl = ip_bits->ttl_hl.bits;
@@ -2830,8 +2855,7 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 		}
 		else
 		{
-			ip_decoded->flowid = (ip_context->ctxt.v6.flow_label1 << 16) |
-			                     ip_context->ctxt.v6.flow_label2;
+			ip_decoded->flowid = ip_context->ctxt.v6.flow_label;
 			rohc_decomp_debug(context, "  flow label = 0x%05x taken from context",
 			                  ip_decoded->flowid);
 		}
@@ -2878,20 +2902,33 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 	}
 
 	/* extension headers */
+	assert(ip_bits->opts_nr <= ROHC_TCP_MAX_IP_EXT_HDRS);
+	ip_decoded->opts_nr = ip_bits->opts_nr;
+	ip_decoded->opts_len = ip_bits->opts_len;
 	if(ip_bits->version == IPV6)
 	{
-		ip_decoded->opts_nr = ip_bits->opts_nr;
-		ip_decoded->opts_len = ip_bits->opts_len;
-		assert(ip_bits->opts_nr <= ROHC_TCP_MAX_IPV6_EXT_HDRS);
-		memcpy(ip_decoded->opts, ip_bits->opts,
-		       ip_bits->opts_nr * sizeof(ipv6_option_context_t));
+		size_t ext_pos;
+
+		for(ext_pos = 0; ext_pos < ip_decoded->opts_nr; ext_pos++)
+		{
+			switch(ip_bits->opts[ext_pos].proto)
+			{
+				case ROHC_IPPROTO_HOPOPTS:
+				case ROHC_IPPROTO_DSTOPTS:
+				case ROHC_IPPROTO_ROUTING:
+					if(ip_bits->opts[ext_pos].generic.data_len > 0)
+					{
+						memcpy(&(ip_decoded->opts[ext_pos]), &(ip_bits->opts[ext_pos]),
+						       sizeof(ip_option_context_t));
+					}
+					break;
+				default:
+					assert(0);
+					goto error;
+			}
+		}
 		rohc_decomp_debug(context, "  %zu extension headers on %zu bytes",
 		                  ip_decoded->opts_nr, ip_decoded->opts_len);
-	}
-	else /* IPv4 */
-	{
-		assert(ip_bits->opts_nr == 0);
-		assert(ip_bits->opts_len == 0);
 	}
 
 	return true;
@@ -2954,6 +2991,13 @@ static bool d_tcp_decode_bits_tcp_hdr(const struct rohc_decomp_ctxt *const conte
 	if(bits->seq_scaled.bits_nr > 0)
 	{
 		/* decode scaled sequence number from packet bits and context */
+		if(!rohc_lsb_is_ready(tcp_context->seq_scaled_lsb_ctxt))
+		{
+			rohc_decomp_warn(context, "failed to decode %zu scaled sequence number "
+			                 "bits 0x%x: scaled sequence number not initialized yet",
+			                 bits->seq_scaled.bits_nr, bits->seq_scaled.bits);
+			goto error;
+		}
 		if(!rohc_lsb_decode(tcp_context->seq_scaled_lsb_ctxt, ROHC_LSB_REF_0, 0,
 		                    bits->seq_scaled.bits, bits->seq_scaled.bits_nr,
 		                    bits->seq_scaled.p, &decoded->seq_num_scaled))
@@ -3032,16 +3076,12 @@ static bool d_tcp_decode_bits_tcp_hdr(const struct rohc_decomp_ctxt *const conte
 	 * but not both */
 	assert(bits->ack.bits_nr == 0 || bits->ack_scaled.bits_nr == 0);
 
-	/* TCP ACK stride */
-	if(bits->ack_stride.bits_nr > 0)
-	{
-		assert(bits->ack_stride.bits_nr == 16);
-		decoded->ack_stride = bits->ack_stride.bits;
-	}
-
 	/* TCP unscaled & scaled acknowledgement number */
 	if(bits->ack_scaled.bits_nr > 0)
 	{
+		/* ack_stride is never transmitted in same packet as scaled ACK */
+		assert(bits->ack_stride.bits_nr == 0);
+
 		/* decode scaled acknowledgement number from packet bits and context */
 		if(!rohc_lsb_decode(tcp_context->ack_scaled_lsb_ctxt, ROHC_LSB_REF_0, 0,
 		                    bits->ack_scaled.bits, bits->ack_scaled.bits_nr,
@@ -3057,19 +3097,24 @@ static bool d_tcp_decode_bits_tcp_hdr(const struct rohc_decomp_ctxt *const conte
 		                  bits->ack_scaled.bits_nr, bits->ack_scaled.bits,
 		                  bits->ack_scaled.p);
 
+		/* TCP ACK stride
+		 * (ack_stride is never transmitted in same packet as scaled ACK) */
+		decoded->ack_stride = tcp_context->ack_stride;
+		decoded->ack_num_residue = tcp_context->ack_num_residue;
+
 		/* decode acknowledgement number from scaled acknowledgement number */
-		if(payload_len == 0)
+		if(decoded->ack_stride == 0)
 		{
 			rohc_decomp_warn(context, "cannot use scaled TCP acknowledgement "
-			                 "numnber for a packet with an empty payload");
+			                 "number for a packet with a zero ack_stride");
 			goto error;
 		}
-		decoded->ack_num = decoded->ack_num_scaled * payload_len +
-		                   tcp_context->ack_num_residue;
-		rohc_decomp_debug(context, "  ack_number_scaled = 0x%x, payload size = %zu, "
-		                  "ack_number_residue = 0x%x -> ack_number = 0x%x",
-		                  decoded->ack_num_scaled, payload_len,
-		                  tcp_context->ack_num_residue, decoded->ack_num);
+		decoded->ack_num = decoded->ack_num_scaled * decoded->ack_stride +
+		                   decoded->ack_num_residue;
+		rohc_decomp_debug(context, "  ack_number_scaled = 0x%08x, ack_stride = 0x%04x, "
+		                  "ack_number_residue = 0x%04x -> ack_number = 0x%08x",
+		                  decoded->ack_num_scaled, decoded->ack_stride,
+		                  decoded->ack_num_residue, decoded->ack_num);
 	}
 	else
 	{
@@ -3105,15 +3150,37 @@ static bool d_tcp_decode_bits_tcp_hdr(const struct rohc_decomp_ctxt *const conte
 			decoded->ack_num = old_ack;
 		}
 
-		/* compute scaled acknowledgement number & residue */
-		if(payload_len != 0)
+		/* TCP ACK stride
+		 * (ack_stride is never transmitted in same packet as scaled ACK) */
+		if(bits->ack_stride.bits_nr > 0)
 		{
-			decoded->ack_num_scaled = decoded->ack_num / payload_len;
-			decoded->ack_num_residue = decoded->ack_num % payload_len;
-			rohc_decomp_debug(context, "  TCP ACK number (0x%08x) = scaled (0x%x) "
-			                  "* payload size (%zu) + residue (0x%x)",
-			                  decoded->seq_num, decoded->ack_num_scaled, payload_len,
-			                  decoded->ack_num_residue);
+			/* when transmitted, ack_stride is always transmitted in full */
+			assert(bits->ack_stride.bits_nr == 16);
+			decoded->ack_stride = bits->ack_stride.bits;
+			rohc_decomp_debug(context, "  TCP ACK stride = 0x%04x (decoded from 16-bit "
+			                  "0x%02x)", decoded->ack_stride, bits->ack_stride.bits);
+		}
+		else
+		{
+			decoded->ack_stride = tcp_context->ack_stride;
+			rohc_decomp_debug(context, "  TCP ACK stride = 0x%04x (taken from context)",
+			                  decoded->ack_stride);
+		}
+
+		/* compute scaled acknowledgement residue */
+		if(decoded->ack_stride != 0)
+		{
+			decoded->ack_num_scaled = decoded->ack_num / decoded->ack_stride;
+			decoded->ack_num_residue = decoded->ack_num % decoded->ack_stride;
+			rohc_decomp_debug(context, "  TCP ACK number (0x%08x) = scaled (0x%08x) "
+			                  "* ack_stride (0x%04x) = residue (0x%04x)",
+			                  decoded->ack_num, decoded->ack_num_scaled,
+			                  decoded->ack_stride, decoded->ack_num_residue);
+		}
+		else
+		{
+			decoded->ack_num_scaled = 0;
+			decoded->ack_num_residue = 0;
 		}
 	}
 
@@ -3639,17 +3706,10 @@ static bool d_tcp_build_ipv4_hdr(const struct rohc_decomp_ctxt *const context,
 	ipv4->dscp = decoded->dscp;
 	ipv4->ecn = decoded->ecn_flags;
 	ipv4->ttl = decoded->ttl;
-	rohc_decomp_debug(context, "    DSCP = 0x%02x, ip_ecn_flags = %d",
-	                  ipv4->dscp, ipv4->ecn);
+	rohc_decomp_debug(context, "    DSCP = 0x%02x, ip_ecn_flags = %d, TTL = %u",
+	                  ipv4->dscp, ipv4->ecn, ipv4->ttl);
 	/* IP-ID */
-	if(decoded->id_behavior == IP_ID_BEHAVIOR_SEQ_SWAP)
-	{
-		ipv4->id = rohc_hton16(swab16(decoded->id));
-	}
-	else
-	{
-		ipv4->id = rohc_hton16(decoded->id);
-	}
+	ipv4->id = rohc_hton16(decoded->id);
 	rohc_decomp_debug(context, "    %s IP-ID = 0x%04x",
 	                  tcp_ip_id_behavior_get_descr(decoded->id_behavior),
 	                  rohc_ntoh16(ipv4->id));
@@ -3718,6 +3778,8 @@ static bool d_tcp_build_ipv6_hdr(const struct rohc_decomp_ctxt *const context,
 	/* dynamic part */
 	ipv6_set_dscp_ecn(ipv6, decoded->dscp, decoded->ecn_flags);
 	ipv6->hl = decoded->ttl;
+	rohc_decomp_debug(context, "    DSCP = 0x%02x, ip_ecn_flags = %d, HL = %u",
+	                  decoded->dscp, decoded->ecn_flags, ipv6->hl);
 
 	/* total length will be computed once all headers are built */
 
@@ -3730,19 +3792,18 @@ static bool d_tcp_build_ipv6_hdr(const struct rohc_decomp_ctxt *const context,
 	all_opts_len = 0;
 	for(i = 0; i < decoded->opts_nr; i++)
 	{
-		const ipv6_option_context_t *const opt = &(decoded->opts[i]);
+		const ip_option_context_t *const opt = &(decoded->opts[i]);
 		rohc_decomp_debug(context, "build %zu-byte IPv6 extension header #%zu",
-		                  opt->generic.option_length, i + 1);
+		                  opt->len, i + 1);
 		uncomp_packet->len += 2;
-		rohc_buf_byte_at(*uncomp_packet, 0) = opt->generic.next_header;
-		assert((opt->generic.option_length % 8) == 0);
-		assert((opt->generic.option_length / 8) > 0);
-		rohc_buf_byte_at(*uncomp_packet, 1) = opt->generic.option_length / 8 - 1;
-		rohc_buf_append(uncomp_packet, opt->generic.data,
-		                opt->generic.option_length - 2);
-		rohc_buf_pull(uncomp_packet, opt->generic.option_length);
-		*ip_hdr_len += opt->generic.option_length;
-		all_opts_len += opt->generic.option_length;
+		rohc_buf_byte_at(*uncomp_packet, 0) = opt->nh_proto;
+		assert((opt->len % 8) == 0);
+		assert((opt->len / 8) > 0);
+		rohc_buf_byte_at(*uncomp_packet, 1) = opt->len / 8 - 1;
+		rohc_buf_append(uncomp_packet, opt->generic.data, opt->len - 2);
+		rohc_buf_pull(uncomp_packet, opt->len);
+		*ip_hdr_len += opt->len;
+		all_opts_len += opt->len;
 	}
 	assert(all_opts_len == ipv6_exts_len);
 
@@ -4084,17 +4145,27 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_nr]);
 		const bool is_inner = !!(ip_hdr_nr == (decoded->ip_nr - 1));
 
-		rohc_decomp_debug(context, "update context for IP header #%zu", ip_hdr_nr + 1);
+		rohc_decomp_debug(context, "update context for IPv%u header #%zu",
+		                  ip_decoded->version, ip_hdr_nr + 1);
 
 		ip_context->version = ip_decoded->version;
 		ip_context->ctxt.vx.version = ip_decoded->version;
 		ip_context->ctxt.vx.dscp = ip_decoded->dscp;
 		ip_context->ctxt.vx.ip_ecn_flags = ip_decoded->ecn_flags;
 		ip_context->ctxt.vx.next_header = ip_decoded->proto;
-		ip_context->ctxt.vx.ttl_hopl = ip_decoded->ttl;
-		if(is_inner)
+
+		/* update context with new TTL/HL for the innermost IP header and for :
+		 *  - for the innermost IP header,
+		 *  - for the outer IP headers if TTL/HL was transmitted in dynamic chain
+		 * do not update context with new TTL/HL:
+		 *  - for the outer IP headers if TTL/HL was transmitted in irregular chain */
+		if(is_inner || decoded->ttl_dyn_chain_flag)
 		{
-			rohc_lsb_set_ref(tcp_context->ttl_hl_lsb_ctxt, ip_decoded->ttl, false);
+			ip_context->ctxt.vx.ttl_hopl = ip_decoded->ttl;
+			if(is_inner)
+			{
+				rohc_lsb_set_ref(tcp_context->ttl_hl_lsb_ctxt, ip_decoded->ttl, false);
+			}
 		}
 		ip_context->ctxt.vx.ip_id_behavior = ip_decoded->id_behavior;
 
@@ -4107,16 +4178,50 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 
 			if(is_inner)
 			{
-				const uint16_t ip_id_offset = ip_context->ctxt.v4.ip_id - msn;
+				uint16_t ip_id_offset;
+				if(ip_decoded->id_behavior == IP_ID_BEHAVIOR_SEQ_SWAP)
+				{
+					ip_id_offset = swab16(ip_context->ctxt.v4.ip_id) - msn;
+				}
+				else
+				{
+					ip_id_offset = ip_context->ctxt.v4.ip_id - msn;
+				}
 				rohc_lsb_set_ref(tcp_context->ip_id_lsb_ctxt, ip_id_offset, false);
 				rohc_decomp_debug(context, "innermost IP-ID offset 0x%04x is the new "
 				                  "reference", ip_id_offset);
 			}
+
+			/* no extension header for IPv4 */
+			assert(ip_decoded->opts_nr == 0);
+			assert(ip_decoded->opts_len == 0);
+			ip_context->opts_nr = ip_decoded->opts_nr;
+			ip_context->opts_len = ip_decoded->opts_len;
 		}
 		else /* IPv6 */
 		{
+			size_t ext_pos;
+
+			assert((ip_decoded->flowid & 0xfffff) == ip_decoded->flowid);
+			ip_context->ctxt.v6.flow_label = ip_decoded->flowid;
 			memcpy(&ip_context->ctxt.v6.src_addr, ip_decoded->saddr, 16);
 			memcpy(&ip_context->ctxt.v6.dest_addr, ip_decoded->daddr, 16);
+
+			/* remember the extension headers */
+			ip_context->opts_nr = ip_decoded->opts_nr;
+			ip_context->opts_len = ip_decoded->opts_len;
+			for(ext_pos = 0; ext_pos < ip_context->opts_nr; ext_pos++)
+			{
+				const size_t ext_len = ip_decoded->opts[ext_pos].len;
+				const uint8_t ext_proto = ip_decoded->opts[ext_pos].proto;
+
+				rohc_decomp_debug(context, "  update context for the %zu-byte '%s' (%u) "
+				                  "extension header #%zu", ext_len,
+				                  rohc_get_ip_proto_descr(ext_proto), ext_proto,
+				                  ext_pos + 1);
+				memcpy(&(ip_context->opts[ext_pos]), &(ip_decoded->opts[ext_pos]),
+				       sizeof(ip_option_context_t));
+			}
 		}
 	}
 	tcp_context->ip_contexts_nr = decoded->ip_nr;
@@ -4144,14 +4249,17 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 	rohc_lsb_set_ref(tcp_context->ack_lsb_ctxt, decoded->ack_num, false);
 	rohc_decomp_debug(context, "ACK number 0x%08x is the new reference",
 	                  decoded->ack_num);
-	if(payload_len != 0)
+	if(decoded->ack_stride != 0)
 	{
 		rohc_lsb_set_ref(tcp_context->ack_scaled_lsb_ctxt,
 		                 decoded->ack_num_scaled, false);
 		rohc_decomp_debug(context, "scaled acknowledgment number 0x%08x is the new "
 		                  "reference", decoded->ack_num_scaled);
+		tcp_context->ack_stride = decoded->ack_stride;
+		rohc_decomp_debug(context, "scaled acknowledgment factor 0x%04x is the new "
+		                  "reference", decoded->ack_stride);
 		tcp_context->ack_num_residue = decoded->ack_num_residue;
-		rohc_decomp_debug(context, "scaled acknowledgment residue 0x%08x is the new "
+		rohc_decomp_debug(context, "scaled acknowledgment residue 0x%04x is the new "
 		                  "reference", decoded->ack_num_residue);
 	}
 

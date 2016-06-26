@@ -59,12 +59,12 @@
 
 
 /**
- * @brief The maximum number of IPv6 extension header supported by the TCP profile
+ * @brief The maximum number of IP extension header supported by the TCP profile
  *
  * The limit value was chosen arbitrarily. It should handle most real-life case
  * without hurting performances nor memory footprint.
  */
-#define ROHC_TCP_MAX_IPV6_EXT_HDRS  20U
+#define ROHC_TCP_MAX_IP_EXT_HDRS    20U
 
 
 /**
@@ -1069,10 +1069,7 @@ static inline char * tcp_ip_id_behavior_get_descr(const tcp_ip_id_behavior_t beh
 		case IP_ID_BEHAVIOR_ZERO:
 			return "constant zero";
 		default:
-			assert(0);
-#if defined(NDEBUG) || defined(__KERNEL__) || defined(ENABLE_DEAD_CODE)
-			return "unknown";
-#endif
+			return "unknown IP-ID behavior";
 	}
 }
 

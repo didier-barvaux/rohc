@@ -34,10 +34,11 @@ bool c_tcp_ts_lsb_code(const struct rohc_comp_ctxt *const context,
                        const uint32_t timestamp,
                        const size_t nr_bits_minus_1,
                        const size_t nr_bits_0x40000,
+                       const size_t nr_bits_0x4000000,
                        uint8_t *const rohc_data,
                        const size_t rohc_max_len,
                        size_t *const rohc_len)
-	__attribute__((warn_unused_result, nonnull(1, 5, 7)));
+	__attribute__((warn_unused_result, nonnull(1, 6, 8)));
 
 #endif /* ROHC_COMP_SCHEMES_TCP_TS_H */
 

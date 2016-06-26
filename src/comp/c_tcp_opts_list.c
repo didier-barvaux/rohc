@@ -706,7 +706,8 @@ int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
                                   const size_t comp_opts_max_len)
 {
 	const uint8_t *options = ((uint8_t *) tcp) + sizeof(struct tcphdr);
-	const size_t options_length = (tcp->data_offset << 2) - sizeof(struct tcphdr);
+	const size_t data_offset_bytes = (tcp->data_offset << 2);
+	const size_t options_length = data_offset_bytes - sizeof(struct tcphdr);
 
 	uint8_t *xi_remain_data = comp_opts;
 	size_t xi_remain_len = comp_opts_max_len;
@@ -722,6 +723,8 @@ int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
 	size_t comp_opts_len = 0; /* no compressed option at the beginning */
 	int ret;
 	int i;
+
+	assert(data_offset_bytes >= sizeof(struct tcphdr));
 
 	/* dump TCP options */
 	rohc_dump_buf(context->compressor->trace_callback,
@@ -946,6 +949,7 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 			is_ok = c_tcp_ts_lsb_code(context, rohc_ntoh32(opt_ts->ts),
 			                          opts_ctxt->tmp.nr_opt_ts_req_bits_minus_1,
 			                          opts_ctxt->tmp.nr_opt_ts_req_bits_0x40000,
+			                          opts_ctxt->tmp.nr_opt_ts_req_bits_0x4000000,
 			                          rohc_remain_data, rohc_remain_len,
 			                          &encoded_ts_lsb_len);
 			if(!is_ok)
@@ -962,6 +966,7 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 			is_ok = c_tcp_ts_lsb_code(context, rohc_ntoh32(opt_ts->ts_reply),
 			                          opts_ctxt->tmp.nr_opt_ts_reply_bits_minus_1,
 			                          opts_ctxt->tmp.nr_opt_ts_reply_bits_0x40000,
+			                          opts_ctxt->tmp.nr_opt_ts_reply_bits_0x4000000,
 			                          rohc_remain_data, rohc_remain_len,
 			                          &encoded_ts_lsb_len);
 			if(!is_ok)

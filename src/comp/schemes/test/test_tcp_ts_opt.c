@@ -55,75 +55,75 @@ static void test_tcp_ts_opt(void **state __attribute__((unused)))
 	ts = rand() & UINT32_MAX;
 
 	/* 1 byte with prefix '0' */
-	is_ok = c_tcp_ts_lsb_code(&context, ts, 0, 0, rohc_data, 0, &rohc_len);
+	is_ok = c_tcp_ts_lsb_code(&context, ts, 0, 0, 0, rohc_data, 0, &rohc_len);
 	assert_true(is_ok == false);
-	is_ok = c_tcp_ts_lsb_code(&context, ts, 0, 0, rohc_data, 1, &rohc_len);
+	is_ok = c_tcp_ts_lsb_code(&context, ts, 0, 0, 0, rohc_data, 1, &rohc_len);
 	assert_true(is_ok == true);
 	assert_true(rohc_len == 1);
 	assert_true((rohc_data[0] & 0x80) == 0);
-	is_ok = c_tcp_ts_lsb_code(&context, ts, 1, 0, rohc_data, 1, &rohc_len);
+	is_ok = c_tcp_ts_lsb_code(&context, ts, 1, 0, 0, rohc_data, 1, &rohc_len);
 	assert_true(is_ok == true);
 	assert_true(rohc_len == 1);
 	assert_true((rohc_data[0] & 0x80) == 0);
-	is_ok = c_tcp_ts_lsb_code(&context, ts, 7, 0, rohc_data, 1, &rohc_len);
+	is_ok = c_tcp_ts_lsb_code(&context, ts, 7, 0, 0, rohc_data, 1, &rohc_len);
 	assert_true(is_ok == true);
 	assert_true(rohc_len == 1);
 	assert_true((rohc_data[0] & 0x80) == 0);
 
 	/* 2 bytes with prefix '10' */
-	is_ok = c_tcp_ts_lsb_code(&context, ts, 8, 0, rohc_data, 0, &rohc_len);
+	is_ok = c_tcp_ts_lsb_code(&context, ts, 8, 0, 0, rohc_data, 0, &rohc_len);
 	assert_true(is_ok == false);
-	is_ok = c_tcp_ts_lsb_code(&context, ts, 8, 0, rohc_data, 1, &rohc_len);
+	is_ok = c_tcp_ts_lsb_code(&context, ts, 8, 0, 0, rohc_data, 1, &rohc_len);
 	assert_true(is_ok == false);
-	is_ok = c_tcp_ts_lsb_code(&context, ts, 8, 0, rohc_data, 2, &rohc_len);
+	is_ok = c_tcp_ts_lsb_code(&context, ts, 8, 0, 0, rohc_data, 2, &rohc_len);
 	assert_true(is_ok == true);
 	assert_true(rohc_len == 2);
 	assert_true((rohc_data[0] & 0xc0) == 0x80);
-	is_ok = c_tcp_ts_lsb_code(&context, ts, 14, 0, rohc_data, 2, &rohc_len);
+	is_ok = c_tcp_ts_lsb_code(&context, ts, 14, 0, 0, rohc_data, 2, &rohc_len);
 	assert_true(is_ok == true);
 	assert_true(rohc_len == 2);
 	assert_true((rohc_data[0] & 0xc0) == 0x80);
 
 	/* 3 bytes with prefix '110' */
-	is_ok = c_tcp_ts_lsb_code(&context, ts, 15, 0, rohc_data, 0, &rohc_len);
+	is_ok = c_tcp_ts_lsb_code(&context, ts, 15, 0, 0, rohc_data, 0, &rohc_len);
 	assert_true(is_ok == false);
-	is_ok = c_tcp_ts_lsb_code(&context, ts, 15, 0, rohc_data, 1, &rohc_len);
+	is_ok = c_tcp_ts_lsb_code(&context, ts, 15, 0, 0, rohc_data, 1, &rohc_len);
 	assert_true(is_ok == false);
-	is_ok = c_tcp_ts_lsb_code(&context, ts, 15, 0, rohc_data, 2, &rohc_len);
+	is_ok = c_tcp_ts_lsb_code(&context, ts, 15, 0, 0, rohc_data, 2, &rohc_len);
 	assert_true(is_ok == false);
-	is_ok = c_tcp_ts_lsb_code(&context, ts, 15, 0, rohc_data, 3, &rohc_len);
+	is_ok = c_tcp_ts_lsb_code(&context, ts, 15, 0, 0, rohc_data, 3, &rohc_len);
 	assert_true(is_ok == true);
 	assert_true(rohc_len == 3);
 	assert_true((rohc_data[0] & 0xe0) == 0xc0);
-	is_ok = c_tcp_ts_lsb_code(&context, ts, 15, 21, rohc_data, 3, &rohc_len);
+	is_ok = c_tcp_ts_lsb_code(&context, ts, 15, 21, 0, rohc_data, 3, &rohc_len);
 	assert_true(is_ok == true);
 	assert_true(rohc_len == 3);
 	assert_true((rohc_data[0] & 0xe0) == 0xc0);
 
 	/* 4 bytes with prefix '111' */
-	is_ok = c_tcp_ts_lsb_code(&context, ts, 15, 22, rohc_data, 0, &rohc_len);
+	is_ok = c_tcp_ts_lsb_code(&context, ts, 15, 22, 0, rohc_data, 0, &rohc_len);
 	assert_true(is_ok == false);
-	is_ok = c_tcp_ts_lsb_code(&context, ts, 15, 22, rohc_data, 1, &rohc_len);
+	is_ok = c_tcp_ts_lsb_code(&context, ts, 15, 22, 0, rohc_data, 1, &rohc_len);
 	assert_true(is_ok == false);
-	is_ok = c_tcp_ts_lsb_code(&context, ts, 15, 22, rohc_data, 2, &rohc_len);
+	is_ok = c_tcp_ts_lsb_code(&context, ts, 15, 22, 0, rohc_data, 2, &rohc_len);
 	assert_true(is_ok == false);
-	is_ok = c_tcp_ts_lsb_code(&context, ts, 15, 22, rohc_data, 3, &rohc_len);
+	is_ok = c_tcp_ts_lsb_code(&context, ts, 15, 22, 0, rohc_data, 3, &rohc_len);
 	assert_true(is_ok == false);
-	is_ok = c_tcp_ts_lsb_code(&context, ts, 15, 22, rohc_data, 4, &rohc_len);
+	is_ok = c_tcp_ts_lsb_code(&context, ts, 15, 22, 0, rohc_data, 4, &rohc_len);
 	assert_true(is_ok == true);
 	assert_true(rohc_len == 4);
 	assert_true((rohc_data[0] & 0xe0) == 0xe0);
-	is_ok = c_tcp_ts_lsb_code(&context, ts, 15, 29, rohc_data, 4, &rohc_len);
+	is_ok = c_tcp_ts_lsb_code(&context, ts, 15, 22, 29, rohc_data, 4, &rohc_len);
 	assert_true(is_ok == true);
 	assert_true(rohc_len == 4);
 	assert_true((rohc_data[0] & 0xe0) == 0xe0);
 
 	/* more than 29 bits of TS */
-	is_ok = c_tcp_ts_lsb_code(&context, ts, 15, 30, rohc_data, 4, &rohc_len);
+	is_ok = c_tcp_ts_lsb_code(&context, ts, 15, 22, 30, rohc_data, 4, &rohc_len);
 	assert_true(is_ok == false);
-	is_ok = c_tcp_ts_lsb_code(&context, ts, 15, 31, rohc_data, 4, &rohc_len);
+	is_ok = c_tcp_ts_lsb_code(&context, ts, 15, 22, 31, rohc_data, 4, &rohc_len);
 	assert_true(is_ok == false);
-	is_ok = c_tcp_ts_lsb_code(&context, ts, 15, 32, rohc_data, 4, &rohc_len);
+	is_ok = c_tcp_ts_lsb_code(&context, ts, 15, 22, 32, rohc_data, 4, &rohc_len);
 	assert_true(is_ok == false);
 }
 
