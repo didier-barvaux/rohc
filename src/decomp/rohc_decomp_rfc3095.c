@@ -5110,9 +5110,12 @@ rohc_status_t rfc3095_decomp_build_hdrs(const struct rohc_decomp *const decomp,
 			                 rohc_decomp_get_state_descr(context->state),
 			                 rohc_get_mode_descr(context->mode));
 #if ROHC_EXTRA_DEBUG == 1
-			rohc_dump_buf(decomp->trace_callback, decomp->trace_callback_priv,
-			              ROHC_TRACE_DECOMP, ROHC_TRACE_WARNING,
-			              "uncompressed headers", outer_ip_hdr, *uncomp_hdrs_len);
+			if((decomp->features & ROHC_DECOMP_FEATURE_DUMP_PACKETS) != 0)
+			{
+				rohc_dump_buf(decomp->trace_callback, decomp->trace_callback_priv,
+				              ROHC_TRACE_DECOMP, ROHC_TRACE_WARNING,
+				              "uncompressed headers", outer_ip_hdr, *uncomp_hdrs_len);
+			}
 #endif
 			goto error_crc;
 		}

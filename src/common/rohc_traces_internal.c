@@ -51,7 +51,12 @@ void rohc_dump_packet(const rohc_trace_callback2_t trace_cb,
                       const char *const descr,
                       const struct rohc_buf packet)
 {
-	assert(descr != NULL);
+	/* leave early if no trace callback was defined */
+	if(trace_cb == NULL)
+	{
+		return;
+	}
+
 	assert(!rohc_buf_is_malformed(packet));
 
 	rohc_dump_buf(trace_cb, trace_cb_priv, trace_entity, trace_level, descr,
@@ -78,8 +83,11 @@ void rohc_dump_buf(const rohc_trace_callback2_t trace_cb,
                    const uint8_t *const packet,
                    const size_t length)
 {
-	assert(descr != NULL);
-	assert(packet != NULL);
+	/* leave early if no trace callback was defined */
+	if(trace_cb == NULL)
+	{
+		return;
+	}
 
 	if(length == 0)
 	{

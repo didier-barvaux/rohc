@@ -782,9 +782,12 @@ rohc_status_t rohc_decompress3(struct rohc_decomp *const decomp,
 
 #if ROHC_EXTRA_DEBUG == 1
 	/* print compressed bytes */
-	rohc_dump_packet(decomp->trace_callback, decomp->trace_callback_priv,
-	                 ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
-	                 "compressed data, max 100 bytes", rohc_packet);
+	if((decomp->features & ROHC_DECOMP_FEATURE_DUMP_PACKETS) != 0)
+	{
+		rohc_dump_packet(decomp->trace_callback, decomp->trace_callback_priv,
+		                 ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
+		                 "compressed data, max 100 bytes", rohc_packet);
+	}
 #endif
 
 	/* decode ROHC header */
@@ -1412,10 +1415,13 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 			rohc_decomp_warn(context, "CRC detected a transmission failure for "
 			                 "%s packet", rohc_get_packet_descr(*packet_type));
 #if ROHC_EXTRA_DEBUG == 1
-			rohc_dump_buf(decomp->trace_callback, decomp->trace_callback_priv,
-			              ROHC_TRACE_DECOMP, ROHC_TRACE_WARNING, "ROHC header",
-			              rohc_buf_data(rohc_packet) - add_cid_len,
-			              rohc_hdr_len + add_cid_len);
+			if((decomp->features & ROHC_DECOMP_FEATURE_DUMP_PACKETS) != 0)
+			{
+				rohc_dump_buf(decomp->trace_callback, decomp->trace_callback_priv,
+				              ROHC_TRACE_DECOMP, ROHC_TRACE_WARNING, "ROHC header",
+				              rohc_buf_data(rohc_packet) - add_cid_len,
+				              rohc_hdr_len + add_cid_len);
+			}
 #endif
 #ifndef ROHC_NO_IR_CRC_CHECK
 			goto error_crc;
@@ -1493,9 +1499,12 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 			rohc_decomp_warn(context, "CID %zu: failed to build uncompressed "
 			                 "headers", context->cid);
 #if ROHC_EXTRA_DEBUG == 1
-			rohc_dump_packet(decomp->trace_callback, decomp->trace_callback_priv,
-			                 ROHC_TRACE_DECOMP, ROHC_TRACE_WARNING,
-			                 "compressed headers", rohc_packet);
+			if((decomp->features & ROHC_DECOMP_FEATURE_DUMP_PACKETS) != 0)
+			{
+				rohc_dump_packet(decomp->trace_callback, decomp->trace_callback_priv,
+				                 ROHC_TRACE_DECOMP, ROHC_TRACE_WARNING,
+				                 "compressed headers", rohc_packet);
+			}
 #endif
 			goto error;
 		}
@@ -1524,9 +1533,12 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 				rohc_decomp_warn(context, "CID %zu: failed to build uncompressed "
 				                 "headers (CRC failure)", context->cid);
 #if ROHC_EXTRA_DEBUG == 1
-				rohc_dump_packet(decomp->trace_callback, decomp->trace_callback_priv,
-				                 ROHC_TRACE_DECOMP, ROHC_TRACE_WARNING,
-				                 "compressed headers", rohc_packet);
+				if((decomp->features & ROHC_DECOMP_FEATURE_DUMP_PACKETS) != 0)
+				{
+					rohc_dump_packet(decomp->trace_callback, decomp->trace_callback_priv,
+					                 ROHC_TRACE_DECOMP, ROHC_TRACE_WARNING,
+					                 "compressed headers", rohc_packet);
+				}
 #endif
 				goto error_crc;
 			}
@@ -3093,7 +3105,9 @@ error:
 bool rohc_decomp_set_features(struct rohc_decomp *const decomp,
                               const rohc_decomp_features_t features)
 {
-	const rohc_decomp_features_t all_features = ROHC_DECOMP_FEATURE_CRC_REPAIR;
+	const rohc_decomp_features_t all_features =
+		ROHC_DECOMP_FEATURE_CRC_REPAIR |
+		ROHC_DECOMP_FEATURE_DUMP_PACKETS;
 
 	/* decompressor must be valid */
 	if(decomp == NULL)

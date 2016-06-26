@@ -260,10 +260,7 @@ static int tcp_parse_dynamic_ip(const struct rohc_decomp_ctxt *const context,
 		}
 	}
 
-	rohc_dump_buf(context->decompressor->trace_callback,
-	              context->decompressor->trace_callback_priv,
-	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
-	              "IP dynamic part", rohc_packet, size);
+	rohc_decomp_dump_buf(context, "IP dynamic part", rohc_packet, size);
 
 	return size;
 
@@ -342,10 +339,7 @@ static int tcp_parse_dynamic_ipv6_option(const struct rohc_decomp_ctxt *const co
 	}
 
 #if ROHC_EXTRA_DEBUG == 1
-	rohc_dump_buf(context->decompressor->trace_callback,
-	              context->decompressor->trace_callback_priv,
-	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
-	              "IPv6 option dynamic part", rohc_packet, size);
+	rohc_decomp_dump_buf(context, "IPv6 option dynamic part", rohc_packet, size);
 #endif
 
 	return size;
@@ -537,10 +531,9 @@ static int tcp_parse_dynamic_tcp(const struct rohc_decomp_ctxt *const context,
 	remain_len -= ret;
 
 	assert(remain_len <= rohc_length);
-	rohc_dump_buf(context->decompressor->trace_callback,
-	              context->decompressor->trace_callback_priv,
-	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG, "TCP dynamic part",
-	              (const uint8_t *const ) tcp_dynamic, rohc_length - remain_len);
+	rohc_decomp_dump_buf(context, "TCP dynamic part",
+	                     (const uint8_t *const ) tcp_dynamic,
+	                     rohc_length - remain_len);
 
 	return (rohc_length - remain_len);
 

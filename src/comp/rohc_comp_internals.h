@@ -90,6 +90,17 @@
 	           (context)->profile->id, \
 	           format, ##__VA_ARGS__)
 
+/** Dump a buffer for the given compression context */
+#define rohc_comp_dump_buf(context, descr, buf, buf_len) \
+	do { \
+		if(((context)->compressor->features & ROHC_COMP_FEATURE_DUMP_PACKETS) != 0) { \
+			rohc_dump_buf((context)->compressor->trace_callback, \
+			              (context)->compressor->trace_callback_priv, \
+			              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG, \
+			              descr, buf, buf_len); \
+		} \
+	} while(0)
+
 
 /*
  * Declare ROHC compression structures that are defined at the end of this

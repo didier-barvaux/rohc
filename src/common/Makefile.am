@@ -21,7 +21,6 @@ sources = \
 	rohc_packets.c \
 	rohc_traces_internal.c \
 	rohc_utils.c \
-	rohc_buf.c \
 	crc.c \
 	rohc_add_cid.c \
 	interval.c \

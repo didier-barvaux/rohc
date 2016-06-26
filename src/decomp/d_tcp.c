@@ -1130,10 +1130,8 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 		rohc_remain_len -= co_pkt_len;
 		(*rohc_hdr_len) += co_pkt_len;
 	}
-	rohc_dump_buf(context->decompressor->trace_callback,
-	              context->decompressor->trace_callback_priv,
-	              ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
-	              "ROHC base header", packed_rohc_packet, *rohc_hdr_len);
+	rohc_decomp_dump_buf(context, "ROHC base header", packed_rohc_packet,
+	                     *rohc_hdr_len);
 
 	/* innermost IP-ID behavior */
 	if(inner_ip_bits->id_behavior_nr > 0)
@@ -4009,17 +4007,23 @@ static rohc_status_t d_tcp_build_hdrs(const struct rohc_decomp *const decomp,
 			                 rohc_decomp_get_state_descr(context->state),
 			                 rohc_get_mode_descr(context->mode));
 #if ROHC_EXTRA_DEBUG == 1
-			rohc_dump_packet(decomp->trace_callback, decomp->trace_callback_priv,
-			                 ROHC_TRACE_DECOMP, ROHC_TRACE_WARNING,
-			                 "uncompressed headers", *uncomp_hdrs);
+			if((decomp->features & ROHC_DECOMP_FEATURE_DUMP_PACKETS) != 0)
+			{
+				rohc_dump_packet(decomp->trace_callback, decomp->trace_callback_priv,
+				                 ROHC_TRACE_DECOMP, ROHC_TRACE_WARNING,
+				                 "uncompressed headers", *uncomp_hdrs);
+			}
 #endif
 			goto error_crc;
 		}
 	}
 
-	rohc_dump_packet(decomp->trace_callback, decomp->trace_callback_priv,
-	                 ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
-	                 "IP/TCP headers", *uncomp_hdrs);
+	if((decomp->features & ROHC_DECOMP_FEATURE_DUMP_PACKETS) != 0)
+	{
+		rohc_dump_packet(decomp->trace_callback, decomp->trace_callback_priv,
+		                 ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
+		                 "IP/TCP headers", *uncomp_hdrs);
+	}
 
 	return ROHC_STATUS_OK;
 

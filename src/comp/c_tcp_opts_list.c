@@ -727,10 +727,7 @@ int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
 	assert(data_offset_bytes >= sizeof(struct tcphdr));
 
 	/* dump TCP options */
-	rohc_dump_buf(context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv,
-	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
-	              "TCP options", options, options_length);
+	rohc_comp_dump_buf(context, "TCP options", options, options_length);
 
 	/* what type of XI fields to use? */
 	ps = c_tcp_opt_compute_ps(opts_ctxt->tmp.idx_max);
@@ -853,10 +850,7 @@ int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
 		goto error;
 	}
 
-	rohc_dump_buf(context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv,
-	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
-	              "TCP compressed options", comp_opts, comp_opts_len);
+	rohc_comp_dump_buf(context, "TCP compressed options", comp_opts, comp_opts_len);
 
 	return comp_opts_len;
 

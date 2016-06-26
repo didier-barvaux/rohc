@@ -232,6 +232,8 @@ typedef enum
 	ROHC_COMP_FEATURE_COMPAT_1_6_x    = (1 << 0),
 	/** Do not check IP checksums at compressor */
 	ROHC_COMP_FEATURE_NO_IP_CHECKSUMS = (1 << 2),
+	/** Dump content of packets in traces (beware: performance impact) */
+	ROHC_COMP_FEATURE_DUMP_PACKETS    = (1 << 3),
 
 } rohc_comp_features_t;
 

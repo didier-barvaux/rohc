@@ -253,6 +253,14 @@ int rohc_couple_init_phase1(struct rohc_couple *couple, int index)
 	}
 	rohc_info("\ttrace callback for ROHC compressor successfully set\n");
 
+	/* enable packet dump */
+	is_ok = rohc_comp_set_features(couple->comp,
+				       ROHC_COMP_FEATURE_DUMP_PACKETS);
+	if (!is_ok) {
+		rohc_err("\tfailed to enable packet dumps\n");
+		goto free_compressor;
+	}
+
 	/* activate all the compression profiles */
 	is_ok = rohc_comp_enable_profiles(couple->comp,
 			ROHC_PROFILE_UNCOMPRESSED, ROHC_PROFILE_RTP,
@@ -317,6 +325,14 @@ int rohc_couple_init_phase2(struct rohc_couple *couple, int index)
 		goto free_decompressor;
 	}
 	rohc_info("\ttrace callback for ROHC decompressor successfully set\n");
+
+	/* enable packet dump */
+	is_ok = rohc_decomp_set_features(couple->decomp,
+					 ROHC_DECOMP_FEATURE_DUMP_PACKETS);
+	if (!is_ok) {
+		rohc_err("\tfailed to enable packet dumps\n");
+		goto free_decompressor;
+	}
 
 	/* activate all the decompression profiles */
 	is_ok = rohc_decomp_enable_profiles(couple->decomp,
