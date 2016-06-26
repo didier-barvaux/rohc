@@ -32,7 +32,14 @@ if test -d "$srcdir/.git/" ; then
 	if test $? -ne 0 ; then
 		PACKAGE_REVNO="~unknown"
 	else
-		PACKAGE_REVNO="~`${git_bin} rev-parse --short @{0}`"
+		GIT_TAG="`${git_bin} tag --points-at @`"
+		if test "x${GIT_TAG}" != "x" ; then
+			# git revno matches a tag, revno is thus useless
+			PACKAGE_REVNO=""
+		else
+			# git revno is not a well-known version, revno is useful
+			PACKAGE_REVNO="~`${git_bin} rev-parse --short @`"
+		fi
 	fi
 elif test -f "$srcdir/git_ref" ; then
 	PACKAGE_REVNO="`cat $srcdir/git_ref`"
