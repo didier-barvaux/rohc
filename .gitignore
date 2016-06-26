@@ -48,6 +48,9 @@ doc/rohc.7
 doc/rohc_protocol.7
 doc/rohc_library.7
 doc/man
+src/common/test/test_sdvl
+src/common/test/test_sdvl.exe
+src/common/test/test_sdvl.log
 src/common/test/test_feedback_parse
 src/common/test/test_api_robustness
 src/comp/schemes/test/test_rfc4996

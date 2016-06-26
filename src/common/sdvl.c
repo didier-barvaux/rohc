@@ -1,5 +1,5 @@
 /*
- * Copyright 2010,2011,2012,2013 Didier Barvaux
+ * Copyright 2010,2011,2012,2013,2016 Didier Barvaux
  * Copyright 2007,2009,2010,2012 Viveris Technologies
  *
  * This library is free software; you can redistribute it and/or
@@ -361,7 +361,7 @@ size_t sdvl_decode(const uint8_t *const data,
 		*bits_nr = ROHC_SDVL_MAX_BITS_IN_3_BYTES;
 		sdvl_len = 3;
 	}
-	else if(GET_BIT_5_7(data) == (0xe >> 1)) /* bits == 0b111 */
+	else /* bits == 0b111 */
 	{
 		if(length < 4)
 		{
@@ -374,11 +374,6 @@ size_t sdvl_decode(const uint8_t *const data,
 		          GET_BIT_0_7(data + 3));
 		*bits_nr = ROHC_SDVL_MAX_BITS_IN_4_BYTES;
 		sdvl_len = 4;
-	}
-	else
-	{
-		/* bad SDVL-encoded field length */
-		goto error;
 	}
 
 	return sdvl_len;

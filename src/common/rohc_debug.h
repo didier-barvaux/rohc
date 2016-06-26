@@ -31,14 +31,11 @@
  */
 
 #include <stdlib.h> /* for free(3) */
-#include "config.h" /* for ROHC_EXTRA_DEBUG definition */
 
 
 /*
  * Debug macros
  */
-
-#if ROHC_EXTRA_DEBUG == 1
 
 /** Free a pointer plus set it to NULL to avoid hidden bugs */
 #define zfree(pointer) \
@@ -46,16 +43,6 @@
 		free(pointer); \
 		pointer = NULL; \
 	} while(0)
-
-#else /* not ROHC_DEBUG */
-
-#define zfree(pointer) \
-	do { \
-		free(pointer); \
-	} while(0)
-
-#endif
-
 
 #endif
 

@@ -6,13 +6,27 @@
 
 
 TESTS = \
+	test_sdvl.sh \
 	test_feedback_parse.sh \
 	test_api_robustness.sh
 
 
 check_PROGRAMS = \
+	test_sdvl \
 	test_feedback_parse \
 	test_api_robustness
+
+
+test_sdvl_SOURCES = \
+	test_sdvl.c
+test_sdvl_LDADD = \
+	$(top_builddir)/src/common/librohc_common.la
+test_sdvl_LDFLAGS = \
+	$(configure_ldflags)
+test_sdvl_CFLAGS = \
+	$(configure_cflags)
+test_sdvl_CPPFLAGS = \
+	-I$(top_srcdir)/src/common
 
 
 test_feedback_parse_SOURCES = \
@@ -39,6 +53,7 @@ test_api_robustness_CPPFLAGS = \
 
 
 EXTRA_DIST = \
+	test_sdvl.sh \
 	test_feedback_parse.sh \
 	test_api_robustness.sh
 

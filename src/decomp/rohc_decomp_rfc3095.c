@@ -41,7 +41,7 @@
 #include "sdvl.h"
 #include "crc.h"
 
-#include "config.h" /* for ROHC_EXTRA_DEBUG definition */
+#include "config.h" /* for WORDS_BIGENDIAN definition */
 
 #ifndef __KERNEL__
 #  include <string.h>
@@ -5109,14 +5109,12 @@ rohc_status_t rfc3095_decomp_build_hdrs(const struct rohc_decomp *const decomp,
 			                 rohc_get_packet_descr(packet_type),
 			                 rohc_decomp_get_state_descr(context->state),
 			                 rohc_get_mode_descr(context->mode));
-#if ROHC_EXTRA_DEBUG == 1
 			if((decomp->features & ROHC_DECOMP_FEATURE_DUMP_PACKETS) != 0)
 			{
 				rohc_dump_buf(decomp->trace_callback, decomp->trace_callback_priv,
 				              ROHC_TRACE_DECOMP, ROHC_TRACE_WARNING,
 				              "uncompressed headers", outer_ip_hdr, *uncomp_hdrs_len);
 			}
-#endif
 			goto error_crc;
 		}
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Didier Barvaux
+ * Copyright 2014,2016 Didier Barvaux
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -37,7 +37,7 @@ extern "C"
 #  define ROHC_EXPORT
 #endif
 
-#include "rohc_time.h" /* for struct rohc_ts */
+#include <rohc/rohc_time.h> /* for struct rohc_ts */
 
 #include <stdbool.h>
 #include <stdlib.h>

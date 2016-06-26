@@ -28,20 +28,8 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#ifdef __KERNEL__
-#  include <linux/types.h>
-#else
-#  include <stdbool.h>
-#endif
 
-/*
- * Function prototypes
- */
-
-bool rohc_add_cid_is_present(const uint8_t *const data)
-	__attribute__((warn_unused_result, nonnull(1), pure));
-
-uint8_t rohc_add_cid_decode(const uint8_t *const data)
+uint8_t rohc_add_cid_decode(const uint8_t *const data, const size_t len)
 	__attribute__((warn_unused_result, nonnull(1), pure));
 
 #endif

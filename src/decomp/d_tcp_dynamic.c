@@ -28,8 +28,6 @@
 
 #include "d_tcp_dynamic.h"
 
-#include "config.h" /* for ROHC_EXTRA_DEBUG */
-
 #include "d_tcp_defines.h"
 #include "d_tcp_opts_list.h"
 #include "rohc_utils.h"
@@ -338,9 +336,7 @@ static int tcp_parse_dynamic_ipv6_option(const struct rohc_decomp_ctxt *const co
 		}
 	}
 
-#if ROHC_EXTRA_DEBUG == 1
 	rohc_decomp_dump_buf(context, "IPv6 option dynamic part", rohc_packet, size);
-#endif
 
 	return size;
 

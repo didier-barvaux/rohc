@@ -574,7 +574,6 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 		goto error;
 	}
 
-#if ROHC_EXTRA_DEBUG == 1
 	/* print uncompressed bytes */
 	if((comp->features & ROHC_COMP_FEATURE_DUMP_PACKETS) != 0)
 	{
@@ -582,7 +581,6 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 		                 ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
 		                 "uncompressed data, max 100 bytes", uncomp_packet);
 	}
-#endif
 
 	/* parse the uncompressed packet */
 	if(!net_pkt_parse(&ip_pkt, uncomp_packet, comp->trace_callback,
@@ -2745,15 +2743,15 @@ static bool rohc_comp_feedback_parse_cid(const struct rohc_comp *const comp,
 	else
 	{
 		/* decode small CID if present */
-		if(feedback_len > 1 && GET_BIT_6_7(feedback) == 0x3)
+		*cid = rohc_add_cid_decode(feedback, feedback_len);
+		if((*cid) == UINT8_MAX)
 		{
-			*cid = rohc_add_cid_decode(feedback);
-			*cid_len = 1;
+			*cid_len = 0;
+			*cid = 0;
 		}
 		else
 		{
-			*cid = 0;
-			*cid_len = 0;
+			*cid_len = 1;
 		}
 	}
 
