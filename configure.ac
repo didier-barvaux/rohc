@@ -475,7 +475,7 @@ if test "x$enable_rohc_tests" = "xyes" ; then
 				cross_compiling_sysroot="`${CC} -print-sysroot`"
 				cross_compiling_emulator_name="qemu-arm"
 				cross_compiling_emulator_cmd="qemu-arm -B 1048576 \
-				                              ${cross_compiling_sysroot}/lib/ld-linux.so.2 \
+				                              ${cross_compiling_sysroot}/lib/ld-linux.so.3 \
 				                              --library-path ${cross_compiling_sysroot}/lib:${cross_compiling_sysroot}/usr/lib:${cross_compiling_libgcc_dir}"
 			fi
 		elif test "x$host_cpu" = "xpowerpc" && \
