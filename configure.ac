@@ -21,8 +21,8 @@
 #          Mikhail Gruzdev <michail.gruzdev@gmail.com>
 #
 
-AC_INIT([ROHC library], 2.1.0, [http://rohc-lib.org/],
-        [rohc], [http://rohc-lib.org/])
+AC_INIT([ROHC library], 2.1.0, [https://rohc-lib.org/],
+        [rohc], [https://rohc-lib.org/])
 AC_CONFIG_SRCDIR([src])
 AM_CONFIG_HEADER([config.h])
 
@@ -73,9 +73,9 @@ AC_SUBST([ROHC_API_AGE], 0)
 
 # Define a package homepage in a way compatible with autoconf < 2.64
 m4_ifndef([AC_PACKAGE_URL],
-          [AC_DEFINE([PACKAGE_URL], ["http://rohc-lib.org/"],
+          [AC_DEFINE([PACKAGE_URL], ["https://rohc-lib.org/"],
                      [Define to home page for this package])
-           AC_SUBST([PACKAGE_URL], ["http://rohc-lib.org/"])])
+           AC_SUBST([PACKAGE_URL], ["https://rohc-lib.org/"])])
 
 # Init automake with:
 #  - silent rules enabled to make 'make' less verbose, but do not call the
