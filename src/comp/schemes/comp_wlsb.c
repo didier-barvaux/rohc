@@ -96,21 +96,21 @@ static size_t rohc_g_8bits(const uint8_t v_ref,
                            const uint8_t v,
                            const rohc_lsb_shift_t p,
                            const size_t bits_nr)
-	__attribute__((warn_unused_result));
+	__attribute__((warn_unused_result, const));
 
 static size_t rohc_g_16bits(const uint16_t v_ref,
                             const uint16_t v,
                             const size_t min_k,
                             const rohc_lsb_shift_t p,
                             const size_t bits_nr)
-	__attribute__((warn_unused_result));
+	__attribute__((warn_unused_result, const));
 
 static size_t rohc_g_32bits(const uint32_t v_ref,
                             const uint32_t v,
                             const size_t min_k,
                             const rohc_lsb_shift_t p,
                             const size_t bits_nr)
-	__attribute__((warn_unused_result));
+	__attribute__((warn_unused_result, const));
 
 
 /*
