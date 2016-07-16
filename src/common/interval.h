@@ -133,17 +133,17 @@ static inline int32_t rohc_interval_compute_p(const size_t k,
 struct rohc_interval8 rohc_f_8bits(const uint8_t v_ref,
                                    const size_t k,
                                    const rohc_lsb_shift_t p)
-	__attribute__((warn_unused_result));
+	__attribute__((warn_unused_result, const));
 
 struct rohc_interval16 rohc_f_16bits(const uint16_t v_ref,
                                      const size_t k,
                                      const rohc_lsb_shift_t p)
-	__attribute__((warn_unused_result));
+	__attribute__((warn_unused_result, const));
 
 struct rohc_interval32 rohc_f_32bits(const uint32_t v_ref,
                                      const size_t k,
                                      const rohc_lsb_shift_t p)
-	__attribute__((warn_unused_result));
+	__attribute__((warn_unused_result, const));
 
 
 /**
