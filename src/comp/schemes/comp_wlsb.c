@@ -180,10 +180,6 @@ void c_add_wlsb(struct c_wlsb *const wlsb,
                 const uint32_t sn,
                 const uint32_t value)
 {
-	assert(wlsb != NULL);
-	assert(wlsb->window != NULL);
-	assert(wlsb->next < wlsb->window_width);
-
 	/* if window is full, an entry is overwritten */
 	if(wlsb->count == wlsb->window_width)
 	{
@@ -259,7 +255,6 @@ size_t wlsb_get_kp_8bits(const struct c_wlsb *const wlsb,
 			}
 		}
 	}
-	assert(bits_nr <= 8);
 
 	return bits_nr;
 }
@@ -366,7 +361,6 @@ size_t wlsb_get_minkp_16bits(const struct c_wlsb *const wlsb,
 			}
 		}
 	}
-	assert(bits_nr <= 16);
 
 	return bits_nr;
 }
@@ -447,9 +441,6 @@ static size_t wlsb_get_minkp_32bits(const struct c_wlsb *const wlsb,
 {
 	size_t bits_nr;
 
-	assert(wlsb->window != NULL);
-	assert(value <= 0xffffffff);
-
 	/* use all bits if the window contains no value */
 	if(wlsb->count == 0)
 	{
@@ -476,7 +467,6 @@ static size_t wlsb_get_minkp_32bits(const struct c_wlsb *const wlsb,
 			}
 		}
 	}
-	assert(bits_nr <= 32);
 
 	return bits_nr;
 }
@@ -509,7 +499,6 @@ size_t wlsb_ack(struct c_wlsb *const wlsb,
 	{
 		sn_mask = 0xffffffffUL;
 	}
-	assert((sn_bits & sn_mask) == sn_bits);
 
 	/* search for the window entry that matches the given SN LSB
 	 * starting from the one */
@@ -620,8 +609,6 @@ static size_t rohc_g_8bits(const uint8_t v_ref,
 	struct rohc_interval8 interval;
 	size_t k;
 
-	assert(bits_nr <= 8);
-
 	for(k = 0; k < bits_nr; k++)
 	{
 		interval = rohc_f_8bits(v_ref, k, p);
@@ -672,9 +659,6 @@ static size_t rohc_g_16bits(const uint16_t v_ref,
 	struct rohc_interval16 interval;
 	size_t k;
 
-	assert(bits_nr <= 16);
-	assert(min_k <= bits_nr);
-
 	for(k = min_k; k < bits_nr; k++)
 	{
 		interval = rohc_f_16bits(v_ref, k, p);
@@ -724,9 +708,6 @@ static size_t rohc_g_32bits(const uint32_t v_ref,
 {
 	struct rohc_interval32 interval;
 	size_t k;
-
-	assert(bits_nr <= 32);
-	assert(min_k < bits_nr);
 
 	for(k = min_k; k < bits_nr; k++)
 	{

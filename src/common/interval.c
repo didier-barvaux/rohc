@@ -52,9 +52,6 @@ struct rohc_interval8 rohc_f_8bits(const uint8_t v_ref,
 	struct rohc_interval32 interval32;
 	struct rohc_interval8 interval8;
 
-	/* do not accept more bits than the field may contain */
-	assert(k <= 8);
-
 	/* use the function for 32-bit fields, then ensure that nothing is greater
 	 * than 0xff */
 	interval32 = rohc_f_32bits(v_ref, k, p);
@@ -87,9 +84,6 @@ struct rohc_interval16 rohc_f_16bits(const uint16_t v_ref,
 {
 	struct rohc_interval32 interval32;
 	struct rohc_interval16 interval16;
-
-	/* do not accept more bits than the field may contain */
-	assert(k <= 16);
 
 	/* use the function for 32-bit fields, then ensure that nothing is greater
 	 * than 0xffff */
@@ -124,9 +118,6 @@ struct rohc_interval32 rohc_f_32bits(const uint32_t v_ref,
 	struct rohc_interval32 interval32;
 	uint32_t interval_width;
 	int32_t computed_p;
-
-	/* accept at most 32 bits */
-	assert(k <= 32);
 
 	/* compute the interval width = 2^k - 1 */
 	if(k == 32)
