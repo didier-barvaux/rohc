@@ -441,39 +441,39 @@ static size_t wlsb_get_minkp_32bits(const struct c_wlsb *const wlsb,
 	}
 	else
 	{
-		size_t entry;
-		size_t i;
+		size_t k;
 
 		bits_nr = min_k;
 
-		/* find the minimal number of bits of the value required to be able
-		 * to recreate it thanks to ANY value in the window */
-		for(i = wlsb->count, entry = wlsb->oldest;
-		    i > 0;
-		    i--, entry = (entry + 1) & wlsb->window_mask)
+		for(k = bits_nr; k < wlsb->bits; k++)
 		{
-			const uint32_t v_ref = wlsb->window[entry].value;
-			size_t k;
+			uint32_t interval_width;
+			int32_t computed_p;
+			size_t entry;
+			size_t i;
 
-			for(k = bits_nr; k < wlsb->bits; k++)
+			/* compute the interval width = 2^k - 1 */
+			if(k == 32)
 			{
-				uint32_t interval_width;
-				int32_t computed_p;
+				interval_width = 0xffffffff;
+			}
+			else
+			{
+				interval_width = (1U << k) - 1; /* (1 << k) = 2^k */
+			}
+
+			/* determine the real p value to use */
+			computed_p = rohc_interval_compute_p(k, p);
+
+			/* find the minimal number of bits of the value required to be able
+			 * to recreate it thanks to ANY value in the window */
+			for(i = wlsb->count, entry = wlsb->oldest;
+			    i > 0;
+			    i--, entry = (entry + 1) & wlsb->window_mask)
+			{
+				const uint32_t v_ref = wlsb->window[entry].value;
 				uint32_t min;
 				uint32_t max;
-
-				/* compute the interval width = 2^k - 1 */
-				if(k == 32)
-				{
-					interval_width = 0xffffffff;
-				}
-				else
-				{
-					interval_width = (1U << k) - 1; /* (1 << k) = 2^k */
-				}
-
-				/* determine the real p value to use */
-				computed_p = rohc_interval_compute_p(k, p);
 
 				/* compute the minimal and maximal values of the interval:
 				 *   min = v_ref - p
@@ -488,7 +488,7 @@ static size_t wlsb_get_minkp_32bits(const struct c_wlsb *const wlsb,
 				{
 					/* interpretation interval does not straddle field boundaries,
 					 * check if value is in [min, max] */
-					if(value >= min && value <= max)
+					if(value < min || value > max)
 					{
 						break;
 					}
@@ -497,18 +497,21 @@ static size_t wlsb_get_minkp_32bits(const struct c_wlsb *const wlsb,
 				{
 					/* the interpretation interval does straddle the field boundaries,
 					 * check if value is in [min, 0xffff] or [0, max] */
-					if(value >= min || value <= max)
+					if(value < min && value > max)
 					{
 						break;
 					}
 				}
 			}
 
-			if(k > bits_nr)
+
+			if(i == 0)
 			{
 				bits_nr = k;
+				break;
 			}
 		}
+		bits_nr = k;
 	}
 
 	return bits_nr;
