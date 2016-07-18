@@ -444,7 +444,7 @@ static size_t wlsb_get_minkp_32bits(const struct c_wlsb *const wlsb,
 		size_t entry;
 		size_t i;
 
-		bits_nr = 0;
+		bits_nr = min_k;
 
 		/* find the minimal number of bits of the value required to be able
 		 * to recreate it thanks to ANY value in the window */
@@ -455,7 +455,7 @@ static size_t wlsb_get_minkp_32bits(const struct c_wlsb *const wlsb,
 			const uint32_t v_ref = wlsb->window[entry].value;
 			size_t k;
 
-			for(k = min_k; k < wlsb->bits; k++)
+			for(k = bits_nr; k < wlsb->bits; k++)
 			{
 				uint32_t interval_width;
 				int32_t computed_p;
