@@ -105,13 +105,6 @@ static size_t rohc_g_16bits(const uint16_t v_ref,
                             const size_t bits_nr)
 	__attribute__((warn_unused_result, const));
 
-static size_t rohc_g_32bits(const uint32_t v_ref,
-                            const uint32_t v,
-                            const size_t min_k,
-                            const rohc_lsb_shift_t p,
-                            const size_t bits_nr)
-	__attribute__((warn_unused_result, const));
-
 
 /*
  * Public functions
@@ -459,8 +452,58 @@ static size_t wlsb_get_minkp_32bits(const struct c_wlsb *const wlsb,
 		    i > 0;
 		    i--, entry = (entry + 1) & wlsb->window_mask)
 		{
-			const size_t k =
-				rohc_g_32bits(wlsb->window[entry].value, value, min_k, p, wlsb->bits);
+			const uint32_t v_ref = wlsb->window[entry].value;
+			size_t k;
+
+			for(k = min_k; k < wlsb->bits; k++)
+			{
+				uint32_t interval_width;
+				int32_t computed_p;
+				uint32_t min;
+				uint32_t max;
+
+				/* compute the interval width = 2^k - 1 */
+				if(k == 32)
+				{
+					interval_width = 0xffffffff;
+				}
+				else
+				{
+					interval_width = (1U << k) - 1; /* (1 << k) = 2^k */
+				}
+
+				/* determine the real p value to use */
+				computed_p = rohc_interval_compute_p(k, p);
+
+				/* compute the minimal and maximal values of the interval:
+				 *   min = v_ref - p
+				 *   max = v_ref + interval_with - p
+				 *
+				 * Straddling the lower and upper wraparound boundaries
+				 * is handled without additional operation */
+				min = v_ref - computed_p;
+				max = v_ref + interval_width - computed_p;
+
+				if(min <= max)
+				{
+					/* interpretation interval does not straddle field boundaries,
+					 * check if value is in [min, max] */
+					if(value >= min && value <= max)
+					{
+						break;
+					}
+				}
+				else
+				{
+					/* the interpretation interval does straddle the field boundaries,
+					 * check if value is in [min, 0xffff] or [0, max] */
+					if(value >= min || value <= max)
+					{
+						break;
+					}
+				}
+			}
+
 			if(k > bits_nr)
 			{
 				bits_nr = k;
@@ -662,56 +705,6 @@ static size_t rohc_g_16bits(const uint16_t v_ref,
 	for(k = min_k; k < bits_nr; k++)
 	{
 		interval = rohc_f_16bits(v_ref, k, p);
-		if(interval.min <= interval.max)
-		{
-			/* interpretation interval does not straddle field boundaries,
-			 * check if value is in [min, max] */
-			if(v >= interval.min && v <= interval.max)
-			{
-				break;
-			}
-		}
-		else
-		{
-			/* the interpretation interval does straddle the field boundaries,
-			 * check if value is in [min, 0xffff] or [0, max] */
-			if(v >= interval.min || v <= interval.max)
-			{
-				break;
-			}
-		}
-	}
-
-	return k;
-}
-
-
-/**
- * @brief The g function as defined in LSB encoding for 32-bit fields
- *
- * Find the minimal k value so that v falls into the interval given by
- * f(v_ref, k). See 4.5.1 in the RFC 3095.
- *
- * @param v_ref    The reference value
- * @param v        The value to encode
- * @param min_k    The minimum number of bits to find out
- * @param p        The shift parameter
- * @param bits_nr  The number of bits that may be used to represent the
- *                 LSB-encoded value
- * @return         The minimal k value as defined by the LSB algorithm
- */
-static size_t rohc_g_32bits(const uint32_t v_ref,
-                            const uint32_t v,
-                            const size_t min_k,
-                            const rohc_lsb_shift_t p,
-                            const size_t bits_nr)
-{
-	struct rohc_interval32 interval;
-	size_t k;
-
-	for(k = min_k; k < bits_nr; k++)
-	{
-		interval = rohc_f_32bits(v_ref, k, p);
 		if(interval.min <= interval.max)
 		{
 			/* interpretation interval does not straddle field boundaries,
