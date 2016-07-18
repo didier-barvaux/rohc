@@ -430,6 +430,8 @@ bool rohc_decomp_rfc3095_create(const struct rohc_decomp_ctxt *const context,
 	/* default CRC computation */
 	rfc3095_ctxt->compute_crc_static = compute_crc_static;
 	rfc3095_ctxt->compute_crc_dynamic = compute_crc_dynamic;
+	rfc3095_ctxt->is_crc_static_3_cached_valid = false;
+	rfc3095_ctxt->is_crc_static_7_cached_valid = false;
 
 	/* volatile part of the decompression context */
 	volat_ctxt->crc.type = ROHC_CRC_TYPE_NONE;
@@ -917,6 +919,10 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 
 	/* sanity checks */
 	assert((*rohc_hdr_len) <= rohc_length);
+
+	/* invalid CRC-STATIC cache since some STATIC fields may have changed */
+	rfc3095_ctxt->is_crc_static_3_cached_valid = false;
+	rfc3095_ctxt->is_crc_static_7_cached_valid = false;
 
 	/* IR packet was successfully parsed */
 	return true;
@@ -2237,6 +2243,10 @@ static bool parse_uo1id(const struct rohc_decomp_ctxt *const context,
 				                                    rohc_remain_len, *packet_type,
 				                                    bits);
 
+				/* invalid CRC-STATIC cache since some STATIC fields may have changed */
+				rfc3095_ctxt->is_crc_static_3_cached_valid = false;
+				rfc3095_ctxt->is_crc_static_7_cached_valid = false;
+
 				break;
 			}
 
@@ -2571,7 +2581,7 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
                        struct rohc_extr_bits *const bits,
                        size_t *const rohc_hdr_len)
 {
-	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
+	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	size_t rohc_remainder_len;
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
@@ -2758,6 +2768,11 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
 				ext_size = rfc3095_ctxt->parse_ext3(context, rohc_remain_data,
 				                                    rohc_remain_len, *packet_type,
 				                                    bits);
+
+				/* invalid CRC-STATIC cache since some STATIC fields may have changed */
+				rfc3095_ctxt->is_crc_static_3_cached_valid = false;
+				rfc3095_ctxt->is_crc_static_7_cached_valid = false;
+
 				break;
 			}
 
@@ -3034,7 +3049,7 @@ static bool parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
                                size_t *const rohc_hdr_len,
                                bool *const need_reparse)
 {
-	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
+	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	size_t rohc_remainder_len;
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
@@ -3211,6 +3226,11 @@ static bool parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
 				ext_size = rfc3095_ctxt->parse_ext3(context, rohc_remain_data,
 				                                    rohc_remain_len, packet_type,
 				                                    bits);
+
+				/* invalid CRC-STATIC cache since some STATIC fields may have changed */
+				rfc3095_ctxt->is_crc_static_3_cached_valid = false;
+				rfc3095_ctxt->is_crc_static_7_cached_valid = false;
+
 				break;
 			}
 
@@ -3489,7 +3509,7 @@ static bool parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
                               size_t *const rohc_hdr_len,
                               bool *const need_reparse)
 {
-	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
+	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	size_t rohc_remainder_len;
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
@@ -3677,6 +3697,10 @@ static bool parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
 				ext_size = rfc3095_ctxt->parse_ext3(context, rohc_remain_data,
 				                                    rohc_remain_len, packet_type,
 				                                    bits);
+
+				/* invalid CRC-STATIC cache since some STATIC fields may have changed */
+				rfc3095_ctxt->is_crc_static_3_cached_valid = false;
+				rfc3095_ctxt->is_crc_static_7_cached_valid = false;
 
 				break;
 			}
@@ -3956,7 +3980,7 @@ static bool parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
                               size_t *const rohc_hdr_len,
                               bool *const need_reparse)
 {
-	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
+	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	size_t rohc_remainder_len;
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
@@ -4146,6 +4170,11 @@ static bool parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
 				ext_size = rfc3095_ctxt->parse_ext3(context, rohc_remain_data,
 				                                    rohc_remain_len, packet_type,
 				                                    bits);
+
+				/* invalid CRC-STATIC cache since some STATIC fields may have changed */
+				rfc3095_ctxt->is_crc_static_3_cached_valid = false;
+				rfc3095_ctxt->is_crc_static_7_cached_valid = false;
+
 				break;
 			}
 
@@ -4550,6 +4579,10 @@ static bool parse_irdyn(const struct rohc_decomp_ctxt *const context,
 #endif
 		*rohc_hdr_len += size;
 	}
+
+	/* invalid CRC-STATIC cache since some STATIC fields may have changed */
+	rfc3095_ctxt->is_crc_static_3_cached_valid = false;
+	rfc3095_ctxt->is_crc_static_7_cached_valid = false;
 
 	return true;
 
@@ -5365,10 +5398,41 @@ static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
 			goto error;
 	}
 
-	/* compute the CRC from built uncompressed headers */
-	crc_computed = rfc3095_ctxt->compute_crc_static(outer_ip_hdr, inner_ip_hdr,
-	                                                next_header, crc_type,
-	                                                crc_computed, crc_table);
+	/* compute the CRC on CRC-STATIC fields of built uncompressed headers */
+	if(rfc3095_ctxt->is_crc_static_3_cached_valid && crc_type == ROHC_CRC_TYPE_3)
+	{
+		crc_computed = rfc3095_ctxt->crc_static_3_cached;
+		rohc_decomp_debug(context, "use CRC-STATIC-3 = 0x%x from cache", crc_computed);
+	}
+	else if(rfc3095_ctxt->is_crc_static_7_cached_valid && crc_type == ROHC_CRC_TYPE_7)
+	{
+		crc_computed = rfc3095_ctxt->crc_static_7_cached;
+		rohc_decomp_debug(context, "use CRC-STATIC-7 = 0x%x from cache", crc_computed);
+	}
+	else
+	{
+		crc_computed = rfc3095_ctxt->compute_crc_static(outer_ip_hdr, inner_ip_hdr,
+		                                                next_header, crc_type,
+		                                                crc_computed, crc_table);
+		rohc_decomp_debug(context, "compute CRC-STATIC-%d = 0x%x from packet",
+		                  crc_type, crc_computed);
+
+		switch(crc_type)
+		{
+			case ROHC_CRC_TYPE_3:
+				rfc3095_ctxt->crc_static_3_cached = crc_computed;
+				rfc3095_ctxt->is_crc_static_3_cached_valid = true;
+				break;
+			case ROHC_CRC_TYPE_7:
+				rfc3095_ctxt->crc_static_7_cached = crc_computed;
+				rfc3095_ctxt->is_crc_static_7_cached_valid = true;
+				break;
+			default:
+				break;
+		}
+	}
+
+	/* compute the CRC on CRC-DYNAMIC fields of built uncompressed headers */
 	crc_computed = rfc3095_ctxt->compute_crc_dynamic(outer_ip_hdr, inner_ip_hdr,
 	                                                 next_header, crc_type,
 	                                                 crc_computed, crc_table);

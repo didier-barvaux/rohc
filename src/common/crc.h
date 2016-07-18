@@ -388,7 +388,7 @@ uint8_t rtp_compute_crc_dynamic(const uint8_t *const outer_ip,
 	/* get the start of RTP header */
 	rtp = (struct rtphdr *) (next_header + sizeof(struct udphdr));
 
-	/* bytes 2-8 (Payload Type, Sequence Number, Timestamp) */
+	/* bytes 2-8 (Marker, Payload Type, Sequence Number, Timestamp) */
 	crc = crc_calculate(crc_type, ((uint8_t *) rtp) + 1, 7,
 	                    crc, crc_table);
 
