@@ -451,7 +451,7 @@ static bool build_stream(const char *const filename,
 		ipv4->version = 4;
 		ipv4->ihl = 5;
 		ipv4->tos = 0;
-		ipv4->tot_len = htons(packet.len);
+		ipv4->tot_len = htons(packet_len);
 		ipv4->id = htons(42 + counter);
 		ipv4->frag_off = 0;
 		ipv4->ttl = 64;
@@ -467,7 +467,7 @@ static bool build_stream(const char *const filename,
 		udp = (struct udphdr *) rohc_buf_data(packet);
 		udp->source = htons(1234);
 		udp->dest = htons(1234);
-		udp->len = htons(packet.len);
+		udp->len = htons(packet_len - sizeof(struct ipv4_hdr));
 		udp->check = 0; /* UDP checksum disabled */
 		rohc_buf_pull(&packet, sizeof(struct udphdr));
 
@@ -523,7 +523,7 @@ static bool build_stream(const char *const filename,
 			/* build Linux cooked header */
 			rohc_buf_push(&packet, ETHER_HDR_LEN);
 			memset(rohc_buf_data(packet), 0, ETHER_HDR_LEN);
-			rohc_buf_byte_at(packet, ETHER_HDR_LEN - 2) = 0x80;
+			rohc_buf_byte_at(packet, ETHER_HDR_LEN - 2) = 0x08;
 			rohc_buf_byte_at(packet, ETHER_HDR_LEN - 1) = 0x00;
 
 			/* write the packet in the PCAP dump */
