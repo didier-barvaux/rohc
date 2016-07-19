@@ -72,6 +72,7 @@ static void usage(void);
 static bool build_stream(const char *const filename,
                          const char *const stream_type,
                          const unsigned long max_packets,
+                         const unsigned long streams_nr,
                          const int use_large_cid,
                          const size_t wlsb_width,
                          const size_t max_contexts)
@@ -119,6 +120,7 @@ int main(int argc, char *argv[])
 	char *cid_type = NULL;
 	int max_contexts = ROHC_SMALL_CID_MAX + 1;
 	int wlsb_width = 4;
+	int streams_nr = 1;
 	int is_failure = 1;
 	int use_large_cid;
 	int args_used;
@@ -188,6 +190,12 @@ int main(int argc, char *argv[])
 				goto error;
 			}
 			wlsb_width = atoi(argv[1]);
+			args_used++;
+		}
+		else if(!strcmp(*argv, "--streams-nr"))
+		{
+			/* get the number of RTP streams the test should generate */
+			streams_nr = atoi(argv[1]);
 			args_used++;
 		}
 		else if(stream_type == NULL)
@@ -290,7 +298,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* test ROHC compression/decompression with the packets from the file */
-	if(!build_stream(filename, stream_type, max_packets,
+	if(!build_stream(filename, stream_type, max_packets, streams_nr,
 	                 use_large_cid, wlsb_width, max_contexts))
 	{
 		fprintf(stderr, "failed to build stream\n");
@@ -319,6 +327,7 @@ static void usage(void)
 	       "General options:\n"
 	       "  -h, --help              Print this usage and exit\n"
 	       "  -v, --version           Print the application version and exit\n"
+	       "      --streams-nr        The number of streams to generate\n"
 	       "Compression options:\n"
 	       "      --cid-type TYPE     The type of CID to use among 'smallcid'\n"
 	       "                          and 'largecid'\n"
@@ -347,6 +356,7 @@ static void usage(void)
  * @param filename       The name of the PCAP file to output the stream
  * @param stream_type    The type of stream to generate: uncomp or comp
  * @param max_packets    The number of packets to generate
+ * @param streams_nr     The number of streams to generate
  * @param use_large_cid  Whether the compressor shall use large CIDs
  * @param max_contexts   The maximum number of ROHC contexts to use
  * @param wlsb_width     The width of the WLSB window to use
@@ -356,6 +366,7 @@ static void usage(void)
 static bool build_stream(const char *const filename,
                          const char *const stream_type,
                          const unsigned long max_packets,
+                         const unsigned long streams_nr,
                          const int use_large_cid,
                          const size_t wlsb_width,
                          const size_t max_contexts)
@@ -470,7 +481,7 @@ static bool build_stream(const char *const filename,
 		ipv4->ihl = 5;
 		ipv4->tos = 0;
 		ipv4->tot_len = htons(packet_len);
-		ipv4->id = htons(42 + counter);
+		ipv4->id = htons(42 + counter / streams_nr);
 		ipv4->frag_off = 0;
 		ipv4->ttl = 64;
 		ipv4->protocol = IPPROTO_UDP;
@@ -483,7 +494,7 @@ static bool build_stream(const char *const filename,
 		/* build UDP header */
 		packet.len += sizeof(struct udphdr);
 		udp = (struct udphdr *) rohc_buf_data(packet);
-		udp->source = htons(1234);
+		udp->source = htons(1234 + (counter % streams_nr));
 		udp->dest = htons(1234);
 		udp->len = htons(packet_len - sizeof(struct ipv4_hdr));
 		udp->check = 0; /* UDP checksum disabled */
@@ -498,9 +509,9 @@ static bool build_stream(const char *const filename,
 		rtp->cc = 0;
 		rtp->m = 0;
 		rtp->pt = 0x72; /* speex */
-		rtp->sn = htons(counter);
-		rtp->timestamp = htonl(500000 + counter * 160);
-		rtp->ssrc = htonl(0x42424242);
+		rtp->sn = htons(counter / streams_nr);
+		rtp->timestamp = htonl(500000 + (counter / streams_nr) * 160);
+		rtp->ssrc = htonl(0x42424242 + (counter % streams_nr));
 		rohc_buf_pull(&packet, sizeof(struct rtphdr));
 
 		/* build RTP payload */
