@@ -134,14 +134,13 @@ static bool d_esp_create(const struct rohc_decomp_ctxt *const context,
 	rfc3095_ctxt = *persist_ctxt;
 
 	/* create the ESP-specific part of the context */
-	esp_context = malloc(sizeof(struct d_esp_context));
+	esp_context = calloc(1, sizeof(struct d_esp_context));
 	if(esp_context == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "cannot allocate memory for the ESP-specific context");
 		goto destroy_context;
 	}
-	memset(esp_context, 0, sizeof(struct d_esp_context));
 	rfc3095_ctxt->specific = esp_context;
 
 	/* create the LSB decoding context for SN (same shift value as RTP) */
@@ -168,7 +167,7 @@ static bool d_esp_create(const struct rohc_decomp_ctxt *const context,
 
 	/* create the ESP-specific part of the header changes */
 	rfc3095_ctxt->outer_ip_changes->next_header_len = sizeof(struct esphdr);
-	rfc3095_ctxt->outer_ip_changes->next_header = malloc(sizeof(struct esphdr));
+	rfc3095_ctxt->outer_ip_changes->next_header = calloc(1, sizeof(struct esphdr));
 	if(rfc3095_ctxt->outer_ip_changes->next_header == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
@@ -176,10 +175,9 @@ static bool d_esp_create(const struct rohc_decomp_ctxt *const context,
 		           "outer IP header changes");
 		goto free_lsb_sn;
 	}
-	memset(rfc3095_ctxt->outer_ip_changes->next_header, 0, sizeof(struct esphdr));
 
 	rfc3095_ctxt->inner_ip_changes->next_header_len = sizeof(struct esphdr);
-	rfc3095_ctxt->inner_ip_changes->next_header = malloc(sizeof(struct esphdr));
+	rfc3095_ctxt->inner_ip_changes->next_header = calloc(1, sizeof(struct esphdr));
 	if(rfc3095_ctxt->inner_ip_changes->next_header == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
@@ -187,7 +185,6 @@ static bool d_esp_create(const struct rohc_decomp_ctxt *const context,
 		           "inner IP header changes");
 		goto free_outer_ip_changes_next_header;
 	}
-	memset(rfc3095_ctxt->inner_ip_changes->next_header, 0, sizeof(struct esphdr));
 
 	/* set next header to ESP */
 	rfc3095_ctxt->next_header_proto = ROHC_IPPROTO_ESP;

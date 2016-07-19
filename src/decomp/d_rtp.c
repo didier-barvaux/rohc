@@ -192,14 +192,13 @@ static bool d_rtp_create(const struct rohc_decomp_ctxt *const context,
 	rfc3095_ctxt = *persist_ctxt;
 
 	/* create the RTP-specific part of the context */
-	rtp_context = malloc(sizeof(struct d_rtp_context));
+	rtp_context = calloc(1, sizeof(struct d_rtp_context));
 	if(rtp_context == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "cannot allocate memory for the RTP-specific context");
 		goto destroy_context;
 	}
-	memset(rtp_context, 0, sizeof(struct d_rtp_context));
 	rfc3095_ctxt->specific = rtp_context;
 
 	/* create the LSB decoding context for SN */
@@ -230,7 +229,7 @@ static bool d_rtp_create(const struct rohc_decomp_ctxt *const context,
 
 	/* create the UDP-specific part of the header changes */
 	rfc3095_ctxt->outer_ip_changes->next_header_len = nh_len;
-	rfc3095_ctxt->outer_ip_changes->next_header = malloc(nh_len);
+	rfc3095_ctxt->outer_ip_changes->next_header = calloc(1, nh_len);
 	if(rfc3095_ctxt->outer_ip_changes->next_header == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
@@ -238,10 +237,9 @@ static bool d_rtp_create(const struct rohc_decomp_ctxt *const context,
 		           "outer IP header changes");
 		goto free_lsb_sn;
 	}
-	memset(rfc3095_ctxt->outer_ip_changes->next_header, 0, nh_len);
 
 	rfc3095_ctxt->inner_ip_changes->next_header_len = nh_len;
-	rfc3095_ctxt->inner_ip_changes->next_header = malloc(nh_len);
+	rfc3095_ctxt->inner_ip_changes->next_header = calloc(1, nh_len);
 	if(rfc3095_ctxt->inner_ip_changes->next_header == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
@@ -249,7 +247,6 @@ static bool d_rtp_create(const struct rohc_decomp_ctxt *const context,
 		           "inner IP header changes");
 		goto free_outer_ip_changes_next_header;
 	}
-	memset(rfc3095_ctxt->inner_ip_changes->next_header, 0, nh_len);
 
 	/* set next header to UDP */
 	rfc3095_ctxt->next_header_proto = ROHC_IPPROTO_UDP;

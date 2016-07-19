@@ -434,14 +434,13 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 	size_t i;
 
 	/* create the TCP part of the profile context */
-	tcp_context = malloc(sizeof(struct sc_tcp_context));
+	tcp_context = calloc(1, sizeof(struct sc_tcp_context));
 	if(tcp_context == NULL)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		           "no memory for the TCP part of the profile context");
 		goto error;
 	}
-	memset(tcp_context, 0, sizeof(struct sc_tcp_context));
 	context->specific = tcp_context;
 
 	/* create contexts for IP headers and their extensions */

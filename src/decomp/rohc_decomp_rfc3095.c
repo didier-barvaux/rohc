@@ -369,7 +369,7 @@ bool rohc_decomp_rfc3095_create(const struct rohc_decomp_ctxt *const context,
 	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 
 	/* allocate memory for the generic context */
-	*persist_ctxt = malloc(sizeof(struct rohc_decomp_rfc3095_ctxt));
+	*persist_ctxt = calloc(1, sizeof(struct rohc_decomp_rfc3095_ctxt));
 	if((*persist_ctxt) == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
@@ -377,7 +377,6 @@ bool rohc_decomp_rfc3095_create(const struct rohc_decomp_ctxt *const context,
 		goto quit;
 	}
 	rfc3095_ctxt = *persist_ctxt;
-	memset(rfc3095_ctxt, 0, sizeof(struct rohc_decomp_rfc3095_ctxt));
 
 	/* create the Offset IP-ID decoding context for outer IP header */
 	rfc3095_ctxt->outer_ip_id_offset_ctxt = ip_id_offset_new();
@@ -399,30 +398,28 @@ bool rohc_decomp_rfc3095_create(const struct rohc_decomp_ctxt *const context,
 		goto free_outer_ip_id_offset_ctxt;
 	}
 
-	rfc3095_ctxt->outer_ip_changes = malloc(sizeof(struct rohc_decomp_rfc3095_changes));
+	rfc3095_ctxt->outer_ip_changes = calloc(2, sizeof(struct rohc_decomp_rfc3095_changes));
 	if(rfc3095_ctxt->outer_ip_changes == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "cannot allocate memory for the outer IP header changes");
 		goto free_inner_ip_id_offset_ctxt;
 	}
-	memset(rfc3095_ctxt->outer_ip_changes, 0, sizeof(struct rohc_decomp_rfc3095_changes));
 
-	rfc3095_ctxt->inner_ip_changes = malloc(sizeof(struct rohc_decomp_rfc3095_changes));
+	rfc3095_ctxt->inner_ip_changes = calloc(1, sizeof(struct rohc_decomp_rfc3095_changes));
 	if(rfc3095_ctxt->inner_ip_changes == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "cannot allocate memory for the inner IP header changes");
 		goto free_outer_ip_changes;
 	}
-	memset(rfc3095_ctxt->inner_ip_changes, 0, sizeof(struct rohc_decomp_rfc3095_changes));
 
 	/* init the context used to compress the list of IPv6 extension headers
 	 * for the outer and inner IP headers */
-	rohc_decomp_list_ipv6_new(&rfc3095_ctxt->list_decomp1,
-	                          trace_cb, trace_cb_priv, profile_id);
-	rohc_decomp_list_ipv6_new(&rfc3095_ctxt->list_decomp2,
-	                          trace_cb, trace_cb_priv, profile_id);
+	rohc_decomp_list_ipv6_init(&rfc3095_ctxt->list_decomp1,
+	                           trace_cb, trace_cb_priv, profile_id);
+	rohc_decomp_list_ipv6_init(&rfc3095_ctxt->list_decomp2,
+	                           trace_cb, trace_cb_priv, profile_id);
 
 	/* no default next header */
 	rfc3095_ctxt->next_header_proto = 0;
@@ -493,11 +490,6 @@ void rohc_decomp_rfc3095_destroy(struct rohc_decomp_rfc3095_ctxt *const rfc3095_
 	/* destroy the information about the IP headers */
 	zfree(rfc3095_ctxt->outer_ip_changes);
 	zfree(rfc3095_ctxt->inner_ip_changes);
-
-	/* destroy contexts used to decompress the lists of IPv6 extension headers
-	 * for outer and inner IP headers */
-	rohc_decomp_list_ipv6_free(&rfc3095_ctxt->list_decomp1);
-	rohc_decomp_list_ipv6_free(&rfc3095_ctxt->list_decomp2);
 
 	/* destroy profile-specific part */
 	zfree(rfc3095_ctxt->specific);

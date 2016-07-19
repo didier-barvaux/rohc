@@ -369,7 +369,7 @@ static bool d_tcp_create(const struct rohc_decomp_ctxt *const context,
 	struct d_tcp_context *tcp_context;
 
 	/* allocate memory for the context */
-	*persist_ctxt = malloc(sizeof(struct d_tcp_context));
+	*persist_ctxt = calloc(1, sizeof(struct d_tcp_context));
 	if((*persist_ctxt) == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
@@ -377,7 +377,6 @@ static bool d_tcp_create(const struct rohc_decomp_ctxt *const context,
 		goto quit;
 	}
 	tcp_context = *persist_ctxt;
-	memset(tcp_context, 0, sizeof(struct d_tcp_context));
 
 	/* create the LSB decoding context for the MSN */
 	tcp_context->msn_lsb_ctxt = rohc_lsb_new(16);
@@ -2528,16 +2527,6 @@ static void d_tcp_reset_extr_bits(const struct rohc_decomp_ctxt *const context,
 	for(i = 0; i < ROHC_TCP_MAX_IP_HDRS; i++)
 	{
 		bits->ip[i].ttl_hl.p = ROHC_LSB_SHIFT_TCP_TTL;
-	}
-
-	/* no parsed TCP options at the beginning */
-	bits->tcp_opts.nr = 0;
-	memset(bits->tcp_opts.bits, 0,
-	       (MAX_TCP_OPTION_INDEX + 1) * sizeof(struct d_tcp_opt_ctxt));
-	for(i = 0; i < ROHC_TCP_OPTS_MAX; i++)
-	{
-		bits->tcp_opts.expected_dynamic[i] = false;
-		bits->tcp_opts.found[i] = false;
 	}
 }
 

@@ -548,14 +548,13 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 	rohc_comp_debug(context, "new generic context required for a new stream");
 
 	/* allocate memory for the generic part of the context */
-	rfc3095_ctxt = malloc(sizeof(struct rohc_comp_rfc3095_ctxt));
+	rfc3095_ctxt = calloc(1, sizeof(struct rohc_comp_rfc3095_ctxt));
 	if(rfc3095_ctxt == NULL)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		           "no memory for generic part of the profile context");
 		goto quit;
 	}
-	memset(rfc3095_ctxt, 0, sizeof(struct rohc_comp_rfc3095_ctxt));
 	context->specific = rfc3095_ctxt;
 
 	/* initialize some context variables:

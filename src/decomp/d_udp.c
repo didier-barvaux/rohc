@@ -128,14 +128,13 @@ static bool d_udp_create(const struct rohc_decomp_ctxt *const context,
 	rfc3095_ctxt = *persist_ctxt;
 
 	/* create the UDP-specific part of the context */
-	udp_context = malloc(sizeof(struct d_udp_context));
+	udp_context = calloc(1, sizeof(struct d_udp_context));
 	if(udp_context == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "cannot allocate memory for the UDP-specific context");
 		goto destroy_context;
 	}
-	memset(udp_context, 0, sizeof(struct d_udp_context));
 	rfc3095_ctxt->specific = udp_context;
 
 	/* create the LSB decoding context for SN */
@@ -166,7 +165,7 @@ static bool d_udp_create(const struct rohc_decomp_ctxt *const context,
 
 	/* create the UDP-specific part of the header changes */
 	rfc3095_ctxt->outer_ip_changes->next_header_len = sizeof(struct udphdr);
-	rfc3095_ctxt->outer_ip_changes->next_header = malloc(sizeof(struct udphdr));
+	rfc3095_ctxt->outer_ip_changes->next_header = calloc(1, sizeof(struct udphdr));
 	if(rfc3095_ctxt->outer_ip_changes->next_header == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
@@ -174,10 +173,9 @@ static bool d_udp_create(const struct rohc_decomp_ctxt *const context,
 		           "outer IP header changes");
 		goto free_lsb_sn;
 	}
-	memset(rfc3095_ctxt->outer_ip_changes->next_header, 0, sizeof(struct udphdr));
 
 	rfc3095_ctxt->inner_ip_changes->next_header_len = sizeof(struct udphdr);
-	rfc3095_ctxt->inner_ip_changes->next_header = malloc(sizeof(struct udphdr));
+	rfc3095_ctxt->inner_ip_changes->next_header = calloc(1, sizeof(struct udphdr));
 	if(rfc3095_ctxt->inner_ip_changes->next_header == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
@@ -185,7 +183,6 @@ static bool d_udp_create(const struct rohc_decomp_ctxt *const context,
 		           "inner IP header changes");
 		goto free_outer_ip_changes_next_header;
 	}
-	memset(rfc3095_ctxt->inner_ip_changes->next_header, 0, sizeof(struct udphdr));
 
 	/* set next header to UDP */
 	rfc3095_ctxt->next_header_proto = ROHC_IPPROTO_UDP;
