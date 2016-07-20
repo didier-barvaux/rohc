@@ -462,8 +462,6 @@ static size_t wlsb_get_minkp_32bits(const struct c_wlsb *const wlsb,
 			    i--, entry = (entry + 1) & wlsb->window_mask)
 			{
 				const uint32_t v_ref = wlsb->window[entry].value;
-				uint32_t min;
-				uint32_t max;
 
 				/* compute the minimal and maximal values of the interval:
 				 *   min = v_ref - p
@@ -471,8 +469,8 @@ static size_t wlsb_get_minkp_32bits(const struct c_wlsb *const wlsb,
 				 *
 				 * Straddling the lower and upper wraparound boundaries
 				 * is handled without additional operation */
-				min = v_ref - computed_p;
-				max = min + interval_width;
+				const uint32_t min = v_ref - computed_p;
+				const uint32_t max = min + interval_width;
 
 				if(min <= max)
 				{
