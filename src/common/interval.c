@@ -58,8 +58,8 @@ struct rohc_interval8 rohc_f_8bits(const uint8_t v_ref,
 	/* use the function for 32-bit fields, then ensure that nothing is greater
 	 * than 0xff */
 	interval32 = rohc_f_32bits(v_ref, k, p);
-	interval8.min = interval32.min & 0xfff;
-	interval8.max = interval32.max & 0xfff;
+	interval8.min = interval32.min & 0xff;
+	interval8.max = interval32.max & 0xff;
 
 	return interval8;
 }
@@ -94,8 +94,8 @@ struct rohc_interval16 rohc_f_16bits(const uint16_t v_ref,
 	/* use the function for 32-bit fields, then ensure that nothing is greater
 	 * than 0xffff */
 	interval32 = rohc_f_32bits(v_ref, k, p);
-	interval16.min = interval32.min & 0xfffff;
-	interval16.max = interval32.max & 0xfffff;
+	interval16.min = interval32.min & 0xffff;
+	interval16.max = interval32.max & 0xffff;
 
 	return interval16;
 }
