@@ -92,19 +92,6 @@ static size_t wlsb_get_next_older(const size_t entry, const size_t max)
 static size_t wlsb_ack_remove(struct c_wlsb *const wlsb, const size_t pos)
 	__attribute__((warn_unused_result, nonnull(1)));
 
-static size_t rohc_g_8bits(const uint8_t v_ref,
-                           const uint8_t v,
-                           const rohc_lsb_shift_t p,
-                           const size_t bits_nr)
-	__attribute__((warn_unused_result, const));
-
-static size_t rohc_g_16bits(const uint16_t v_ref,
-                            const uint16_t v,
-                            const size_t min_k,
-                            const rohc_lsb_shift_t p,
-                            const size_t bits_nr)
-	__attribute__((warn_unused_result, const));
-
 
 /*
  * Public functions
@@ -229,24 +216,59 @@ size_t wlsb_get_kp_8bits(const struct c_wlsb *const wlsb,
 	}
 	else
 	{
-		size_t entry;
-		size_t i;
+		size_t k;
 
 		bits_nr = 0;
 
-		/* find the minimal number of bits of the value required to be able
-		 * to recreate it thanks to ANY value in the window */
-		for(i = wlsb->count, entry = wlsb->oldest;
-		    i > 0;
-		    i--, entry = (entry + 1) & wlsb->window_mask)
+		for(k = bits_nr; k < wlsb->bits; k++)
 		{
-			const size_t k =
-				rohc_g_8bits(wlsb->window[entry].value, value, p, wlsb->bits);
-			if(k > bits_nr)
+			const uint8_t interval_width = (1U << k) - 1; /* interval width = 2^k - 1 */
+			size_t entry;
+			size_t i;
+
+			/* find the minimal number of bits of the value required to be able
+			 * to recreate it thanks to ANY value in the window */
+			for(i = wlsb->count, entry = wlsb->oldest;
+			    i > 0;
+			    i--, entry = (entry + 1) & wlsb->window_mask)
 			{
-				bits_nr = k;
+				const uint8_t v_ref = wlsb->window[entry].value;
+
+				/* compute the minimal and maximal values of the interval:
+				 *   min = v_ref - p
+				 *   max = v_ref + interval_with - p
+				 *
+				 * Straddling the lower and upper wraparound boundaries
+				 * is handled without additional operation */
+				const uint8_t min = v_ref - p;
+				const uint8_t max = min + interval_width;
+
+				if(min <= max)
+				{
+					/* interpretation interval does not straddle field boundaries,
+					 * check if value is in [min, max] */
+					if(value < min || value > max)
+					{
+						break;
+					}
+				}
+				else
+				{
+					/* the interpretation interval does straddle the field boundaries,
+					 * check if value is in [min, 0xffff] or [0, max] */
+					if(value < min && value > max)
+					{
+						break;
+					}
+				}
+			}
+
+			if(i == 0)
+			{
+				break;
 			}
 		}
+		bits_nr = k;
 	}
 
 	return bits_nr;
@@ -335,24 +357,63 @@ size_t wlsb_get_minkp_16bits(const struct c_wlsb *const wlsb,
 	}
 	else
 	{
-		size_t entry;
-		size_t i;
+		size_t k;
 
-		bits_nr = 0;
+		bits_nr = min_k;
 
-		/* find the minimal number of bits of the value required to be able
-		 * to recreate it thanks to ANY value in the window */
-		for(i = wlsb->count, entry = wlsb->oldest;
-		    i > 0;
-		    i--, entry = (entry + 1) & wlsb->window_mask)
+		for(k = bits_nr; k < wlsb->bits; k++)
 		{
-			const size_t k =
-				rohc_g_16bits(wlsb->window[entry].value, value, min_k, p, wlsb->bits);
-			if(k > bits_nr)
+			const uint16_t interval_width = (1U << k) - 1; /* interval width = 2^k - 1 */
+			int16_t computed_p;
+			size_t entry;
+			size_t i;
+
+			/* determine the real p value to use */
+			computed_p = rohc_interval_compute_p(k, p);
+
+			/* find the minimal number of bits of the value required to be able
+			 * to recreate it thanks to ANY value in the window */
+			for(i = wlsb->count, entry = wlsb->oldest;
+			    i > 0;
+			    i--, entry = (entry + 1) & wlsb->window_mask)
 			{
-				bits_nr = k;
+				const uint16_t v_ref = wlsb->window[entry].value;
+
+				/* compute the minimal and maximal values of the interval:
+				 *   min = v_ref - p
+				 *   max = v_ref + interval_with - p
+				 *
+				 * Straddling the lower and upper wraparound boundaries
+				 * is handled without additional operation */
+				const uint16_t min = v_ref - computed_p;
+				const uint16_t max = min + interval_width;
+
+				if(min <= max)
+				{
+					/* interpretation interval does not straddle field boundaries,
+					 * check if value is in [min, max] */
+					if(value < min || value > max)
+					{
+						break;
+					}
+				}
+				else
+				{
+					/* the interpretation interval does straddle the field boundaries,
+					 * check if value is in [min, 0xffff] or [0, max] */
+					if(value < min && value > max)
+					{
+						break;
+					}
+				}
+			}
+
+			if(i == 0)
+			{
+				break;
 			}
 		}
+		bits_nr = k;
 	}
 
 	return bits_nr;
@@ -617,103 +678,5 @@ static size_t wlsb_ack_remove(struct c_wlsb *const wlsb, const size_t pos)
 	}
 
 	return acked_nr;
-}
-
-
-/**
- * @brief The g function as defined in LSB encoding for 8-bit fields
- *
- * Find the minimal k value so that v falls into the interval given by
- * f(v_ref, k). See 4.5.1 in the RFC 3095.
- *
- * @param v_ref    The reference value
- * @param v        The value to encode
- * @param p        The shift parameter
- * @param bits_nr  The number of bits that may be used to represent the
- *                 LSB-encoded value
- * @return         The minimal k value as defined by the LSB algorithm
- */
-static size_t rohc_g_8bits(const uint8_t v_ref,
-                           const uint8_t v,
-                           const rohc_lsb_shift_t p,
-                           const size_t bits_nr)
-{
-	struct rohc_interval8 interval;
-	size_t k;
-
-	for(k = 0; k < bits_nr; k++)
-	{
-		interval = rohc_f_8bits(v_ref, k, p);
-		if(interval.min <= interval.max)
-		{
-			/* interpretation interval does not straddle field boundaries,
-			 * check if value is in [min, max] */
-			if(v >= interval.min && v <= interval.max)
-			{
-				break;
-			}
-		}
-		else
-		{
-			/* the interpretation interval does straddle the field boundaries,
-			 * check if value is in [min, 0xffff] or [0, max] */
-			if(v >= interval.min || v <= interval.max)
-			{
-				break;
-			}
-		}
-	}
-
-	return k;
-}
-
-
-/**
- * @brief The g function as defined in LSB encoding for 16-bit fields
- *
- * Find the minimal k value so that v falls into the interval given by
- * f(v_ref, k). See 4.5.1 in the RFC 3095.
- *
- * @param v_ref    The reference value
- * @param v        The value to encode
- * @param min_k    The minimum number of bits to find out
- * @param p        The shift parameter
- * @param bits_nr  The number of bits that may be used to represent the
- *                 LSB-encoded value
- * @return         The minimal k value as defined by the LSB algorithm
- */
-static size_t rohc_g_16bits(const uint16_t v_ref,
-                            const uint16_t v,
-                            const size_t min_k,
-                            const rohc_lsb_shift_t p,
-                            const size_t bits_nr)
-{
-	struct rohc_interval16 interval;
-	size_t k;
-
-	for(k = min_k; k < bits_nr; k++)
-	{
-		interval = rohc_f_16bits(v_ref, k, p);
-		if(interval.min <= interval.max)
-		{
-			/* interpretation interval does not straddle field boundaries,
-			 * check if value is in [min, max] */
-			if(v >= interval.min && v <= interval.max)
-			{
-				break;
-			}
-		}
-		else
-		{
-			/* the interpretation interval does straddle the field boundaries,
-			 * check if value is in [min, 0xffff] or [0, max] */
-			if(v >= interval.min || v <= interval.max)
-			{
-				break;
-			}
-		}
-	}
-
-	return k;
 }
 
