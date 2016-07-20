@@ -128,7 +128,7 @@ static bool c_udp_create(struct rohc_comp_ctxt *const context,
 	const struct udphdr *udp;
 
 	/* create and initialize the generic part of the profile context */
-	if(!rohc_comp_rfc3095_create(context, ROHC_LSB_SHIFT_SN, packet))
+	if(!rohc_comp_rfc3095_create(context, 16, ROHC_LSB_SHIFT_SN, packet))
 	{
 		rohc_comp_warn(context, "generic context creation failed");
 		goto quit;

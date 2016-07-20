@@ -536,6 +536,7 @@ static void c_init_tmp_variables(struct generic_tmp_vars *const tmp_vars)
  * @return          bool if successful, false otherwise
  */
 bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
+                              const size_t sn_bits_nr,
                               const rohc_lsb_shift_t sn_shift,
                               const struct net_pkt *const packet)
 {
@@ -567,10 +568,10 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 	 */
 
 	/* step 1 */
-	rohc_comp_debug(context, "use shift parameter %d for LSB-encoding of SN",
-	                sn_shift);
+	rohc_comp_debug(context, "use shift parameter %d for LSB-encoding of the "
+	                "%zu-bit SN", sn_shift, sn_bits_nr);
 	rfc3095_ctxt->sn_window =
-		c_create_wlsb(16, context->compressor->wlsb_window_width, sn_shift);
+		c_create_wlsb(sn_bits_nr, context->compressor->wlsb_window_width, sn_shift);
 	if(rfc3095_ctxt->sn_window == NULL)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -1674,7 +1675,10 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	int crc_position;
 	int ret;
 
-	assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 16);
+	if(context->profile->id != ROHC_PROFILE_ESP)
+	{
+		assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 16);
+	}
 	assert((ip_get_version(&uncomp_pkt->outer_ip) == IPV4 &&
 	        rfc3095_ctxt->tmp.nr_ip_id_bits <= 16) ||
 	       (ip_get_version(&uncomp_pkt->outer_ip) != IPV4 &&
@@ -6654,18 +6658,24 @@ static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		                rfc3095_ctxt->sn);
 
 		/* how many bits are required to encode the new SN ? */
-		if(context->profile->id == ROHC_PROFILE_RTP ||
-		   context->profile->id == ROHC_PROFILE_ESP)
+		if(context->profile->id == ROHC_PROFILE_RTP)
+		{
+			rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 =
+				wlsb_get_mink_16bits(rfc3095_ctxt->sn_window, rfc3095_ctxt->sn, 5);
+			rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 =
+				wlsb_get_k_16bits(rfc3095_ctxt->sn_window, rfc3095_ctxt->sn);
+		}
+		else if(context->profile->id == ROHC_PROFILE_ESP)
 		{
 			rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 =
 				wlsb_get_mink_32bits(rfc3095_ctxt->sn_window, rfc3095_ctxt->sn, 5);
 			rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 =
-				wlsb_get_kp_32bits(rfc3095_ctxt->sn_window, rfc3095_ctxt->sn, 1);
+				wlsb_get_k_32bits(rfc3095_ctxt->sn_window, rfc3095_ctxt->sn);
 		}
 		else
 		{
 			rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 =
-				wlsb_get_k_32bits(rfc3095_ctxt->sn_window, rfc3095_ctxt->sn);
+				wlsb_get_k_16bits(rfc3095_ctxt->sn_window, rfc3095_ctxt->sn);
 			rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 =
 				rfc3095_ctxt->tmp.nr_sn_bits_more_than_4;
 		}
