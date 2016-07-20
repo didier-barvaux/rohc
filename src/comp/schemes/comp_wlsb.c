@@ -447,20 +447,10 @@ static size_t wlsb_get_minkp_32bits(const struct c_wlsb *const wlsb,
 
 		for(k = bits_nr; k < wlsb->bits; k++)
 		{
-			uint32_t interval_width;
+			const uint32_t interval_width = (1U << k) - 1; /* interval width = 2^k - 1 */
 			int32_t computed_p;
 			size_t entry;
 			size_t i;
-
-			/* compute the interval width = 2^k - 1 */
-			if(k == 32)
-			{
-				interval_width = 0xffffffff;
-			}
-			else
-			{
-				interval_width = (1U << k) - 1; /* (1 << k) = 2^k */
-			}
 
 			/* determine the real p value to use */
 			computed_p = rohc_interval_compute_p(k, p);
