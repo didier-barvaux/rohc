@@ -472,7 +472,7 @@ static size_t wlsb_get_minkp_32bits(const struct c_wlsb *const wlsb,
 				 * Straddling the lower and upper wraparound boundaries
 				 * is handled without additional operation */
 				min = v_ref - computed_p;
-				max = v_ref + interval_width - computed_p;
+				max = min + interval_width;
 
 				if(min <= max)
 				{
@@ -494,10 +494,8 @@ static size_t wlsb_get_minkp_32bits(const struct c_wlsb *const wlsb,
 				}
 			}
 
-
 			if(i == 0)
 			{
-				bits_nr = k;
 				break;
 			}
 		}
