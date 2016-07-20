@@ -2488,7 +2488,58 @@ static void d_tcp_reset_extr_bits(const struct rohc_decomp_ctxt *const context,
 	size_t i;
 
 	/* set every bits and sizes to 0 */
-	memset(bits, 0, sizeof(struct rohc_tcp_extr_bits));
+	for(i = 0; i < ROHC_TCP_MAX_IP_HDRS; i++)
+	{
+		size_t j;
+
+		bits->ip[i].version = 0;
+		bits->ip[i].dscp_bits_nr = 0;
+		bits->ip[i].ecn_flags_bits_nr = 0;
+		bits->ip[i].id_behavior_nr = 0;
+		bits->ip[i].id.bits_nr = 0;
+		bits->ip[i].df_nr = 0;
+		bits->ip[i].ttl_hl.bits_nr = 0;
+		bits->ip[i].proto_nr = 0;
+		bits->ip[i].flowid_nr = 0;
+		bits->ip[i].saddr_nr = 0;
+		bits->ip[i].daddr_nr = 0;
+		for(j = 0; j < ROHC_TCP_MAX_IP_EXT_HDRS; j++)
+		{
+			bits->ip[i].opts[j].len = 0;
+		}
+		bits->ip[i].opts_nr = 0;
+		bits->ip[i].opts_len = 0;
+	}
+	bits->ip_nr = 0;
+	bits->msn.bits_nr = 0;
+	bits->src_port_nr = 0;
+	bits->dst_port_nr = 0;
+	bits->seq.bits_nr = 0;
+	bits->seq_scaled.bits_nr = 0;
+	bits->ack.bits_nr = 0;
+	bits->ack_stride.bits_nr = 0;
+	bits->ack_scaled.bits_nr = 0;
+	bits->ecn_used_bits_nr = 0;
+	bits->res_flags_bits_nr = 0;
+	bits->ecn_flags_bits_nr = 0;
+	bits->urg_flag_bits_nr = 0;
+	bits->ack_flag_bits_nr = 0;
+	bits->psh_flag_bits_nr = 0;
+	bits->rsf_flags_bits_nr = 0;
+	bits->psh_flag_bits_nr = 0;
+	bits->rsf_flags_bits_nr = 0;
+	bits->window.bits_nr = 0;
+	bits->urg_ptr.bits_nr = 0;
+	bits->tcp_opts.nr = 0;
+	for(i = 0; i < ROHC_TCP_OPTS_MAX; i++)
+	{
+		bits->tcp_opts.expected_dynamic[i] = false;
+		bits->tcp_opts.found[i] = false;
+	}
+	for(i = 0; i <= MAX_TCP_OPTION_INDEX; i++)
+	{
+		bits->tcp_opts.bits[i].used = false;
+	}
 
 	/* if context handled at least one packet, init the list of IP headers */
 	if(context->num_recv_packets >= 1)
