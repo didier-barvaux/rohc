@@ -27,7 +27,6 @@
 
 #include <stdlib.h>
 #include <stdint.h>
-#include <assert.h>
 
 
 /**
@@ -150,53 +149,20 @@ static inline int32_t rohc_interval_compute_p(const size_t k,
 	int32_t computed_p;
 
 	/* determine the real p value to use */
-	switch(p)
+	if(p == ROHC_LSB_SHIFT_RTP_TS)
 	{
-		case ROHC_LSB_SHIFT_RTP_TS: /* special computation for RTP TS encoding */
-		{
-			if(k <= 2)
-			{
-				computed_p = 0;
-			}
-			else
-			{
-				computed_p = (1 << (k - 2)) - 1;
-			}
-		}
-		break;
-
+		/* special computation for RTP TS encoding */
+		computed_p = (k <= 2 ? 0 : (1 << (k - 2)) - 1);
+	}
+	else if(p == ROHC_LSB_SHIFT_RTP_SN || p == ROHC_LSB_SHIFT_ESP_SN)
+	{
 		/* special computation for RTP and ESP SN encoding */
-		case ROHC_LSB_SHIFT_RTP_SN:
-		case ROHC_LSB_SHIFT_ESP_SN:
-		{
-			if(k <= 4)
-			{
-				computed_p = 1;
-			}
-			else
-			{
-				computed_p = (1 << (k - 5)) - 1;
-			}
-		}
-		break;
-
-		case ROHC_LSB_SHIFT_VAR:
-			assert(0); /* should not happen */
-			computed_p = p;
-			break;
-
-		case ROHC_LSB_SHIFT_SN:
-		case ROHC_LSB_SHIFT_IP_ID:
-		case ROHC_LSB_SHIFT_TCP_TTL:
-		case ROHC_LSB_SHIFT_TCP_SN:
-		case ROHC_LSB_SHIFT_TCP_SEQ_SCALED:
-		case ROHC_LSB_SHIFT_TCP_WINDOW:
-		case ROHC_LSB_SHIFT_TCP_TS_3B:
-		case ROHC_LSB_SHIFT_TCP_TS_4B:
-		default: /* otherwise: use the p value given as parameter */
-		{
-			computed_p = p;
-		}
+		computed_p = (k <= 4 ? 1 : (1 << (k - 5)) - 1);
+	}
+	else
+	{
+		/* otherwise: use the p value given as parameter */
+		computed_p = p;
 	}
 
 	return computed_p;
