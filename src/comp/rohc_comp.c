@@ -598,7 +598,15 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 		                   &packet_type, &payload_offset);
 	if(rohc_hdr_size < 0)
 	{
-		/* error while compressing, use the Uncompressed profile */
+		/* error while compressing, use the Uncompressed profile
+		 * (except if we were already using the Uncompressed profile) */
+		if(c->profile->id == ROHC_PROFILE_UNCOMPRESSED)
+		{
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "error while compressing with uncompressed profile, "
+			             "giving up");
+			goto error_free_new_context;
+		}
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		             "error while compressing with the profile, using "
 		             "uncompressed profile");
