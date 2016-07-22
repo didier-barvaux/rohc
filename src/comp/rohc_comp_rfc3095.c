@@ -722,7 +722,7 @@ bool rohc_comp_rfc3095_check_profile(const struct rohc_comp *const comp,
 
 	/* if outer header is IPv4, check the presence of options */
 	if(version == IPV4 &&
-	   ip_get_hdrlen(&packet->outer_ip) != sizeof(struct ipv4_hdr))
+	   ipv4_get_hdrlen(&packet->outer_ip) != sizeof(struct ipv4_hdr))
 	{
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "the outer IPv4 packet is not supported by the profile: "
@@ -774,7 +774,7 @@ bool rohc_comp_rfc3095_check_profile(const struct rohc_comp *const comp,
 
 		/* if inner header is IPv4, check the presence of options */
 		if(version == IPV4 &&
-		   ip_get_hdrlen(&packet->inner_ip) != sizeof(struct ipv4_hdr))
+		   ipv4_get_hdrlen(&packet->inner_ip) != sizeof(struct ipv4_hdr))
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "the inner IPv4 packet is not supported by the profile: "
