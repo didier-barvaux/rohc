@@ -42,6 +42,8 @@ The following people are/were involved in the project:
 * [Mikhail Gruzdev](mailto:michail.gruzdev@gmail.com): support for Linux kernel
 * [Raman Gupta](mailto:ramangupta16@gmail.com): support for ROHC-over-Ethernet tunnel
 * [Klaus Warnke](mailto:klaus.warnke@acticom.de): bugfixes on TCP profile
+* [Steven Brown](mailto:swbrown@variadic.org): reduce librohc.so size
+* [Simon Paillard](mailto:spaillard@debian.org): fix doc and copyright info
 
 
 ## History
