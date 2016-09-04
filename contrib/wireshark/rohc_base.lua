@@ -98,6 +98,14 @@ local f_payload         = ProtoField.bytes("rohc_lua.payload", "ROHC payload")
 local f_payload_trailer = ProtoField.bytes("rohc_lua.payload.trailer",
                                            "Remaining bytes after ROHC payload")
 
+-- metadata
+local f_rohc_cid     = ProtoField.uint16("rohc_lua.cid", "ROHC Context ID (CID)",
+                                         base.DEC)
+local f_rohc_profile = ProtoField.uint16("rohc_lua.profile", "ROHC profile ID",
+                                         base.HEX, profiles_long_descr)
+local f_rohc_packet  = ProtoField.string("rohc_lua.packet_type", "ROHC packet type")
+local f_rohc_hdr_len = ProtoField.uint32("rohc_lua.header_length", "ROHC header length",
+                                         base.DEC)
 
 rohc_protocol.fields = {
 	f_padding,
@@ -107,18 +115,9 @@ rohc_protocol.fields = {
 	f_pkt_profile, f_pkt_crc8,
 	f_pkt_ir, f_pkt_ir_type, f_pkt_ir_x,
 	f_pkt_irdyn, f_pkt_irdyn_type, f_pkt_irdyn_x,
-	f_payload, f_payload_trailer
+	f_payload, f_payload_trailer,
+	f_rohc_cid, f_rohc_profile, f_rohc_packet, f_rohc_hdr_len,
 }
-
-local ef_cid     = ProtoExpert.new("rohc_lua.cid", "ROHC CID",
-                                   expert.group.PROTOCOL, expert.severity.NOTE)
-local ef_profile = ProtoExpert.new("rohc_lua.profile", "ROHC profile ID",
-                                   expert.group.PROTOCOL, expert.severity.NOTE)
-local ef_packet  = ProtoExpert.new("rohc_lua.packet", "ROHC packet type",
-                                   expert.group.PROTOCOL, expert.severity.NOTE)
-local ef_hdr_len = ProtoExpert.new("rohc_lua.header_length", "ROHC header length",
-                                   expert.group.PROTOCOL, expert.severity.NOTE)
-rohc_protocol.experts = { ef_cid, ef_profile, ef_packet, ef_hdr_len }
 
 
 -- list of ROHC contexts, indexed per CID
@@ -415,14 +414,13 @@ function rohc_protocol.dissector(tvbuf, pktinfo, root)
 	tree:set_len(offset)
 
 	-- add expert info for CID, profile ID and packet type
-	tree:add_proto_expert_info(ef_cid, "CID = "..cid)
+	tree:add(f_rohc_cid, cid)
 	pktinfo.cols.info:append(", CID "..cid)
-	tree:add_proto_expert_info(ef_profile, "ROHC profile ID = "..profile_id)
+	tree:add(f_rohc_profile, profile_id)
 	pktinfo.cols.info:append(", "..profiles_short_descr[profile_id].." profile")
-	tree:add_proto_expert_info(ef_packet, "ROHC packet type = "..
-	                           pktinfo.private["rohc_packet_type"])
+	tree:add(f_rohc_packet, pktinfo.private["rohc_packet_type"])
 	pktinfo.cols.info:append(", "..pktinfo.private["rohc_packet_type"].." packet")
-	tree:add_proto_expert_info(ef_hdr_len, "ROHC header length = "..offset)
+	tree:add(f_rohc_hdr_len, offset)
 	pktinfo.cols.info:append(", "..offset.."B header, "..(tvbuf:len() - offset).."B payload")
 
 	-- ROHC payload
