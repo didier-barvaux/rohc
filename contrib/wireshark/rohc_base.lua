@@ -31,7 +31,7 @@ local rohc_protocol_info = {
 set_plugin_info(rohc_protocol_info)
 
 -- ROHC profiles
-local profile_ids = {
+local profiles_long_descr = {
 	[0x0000] = "ROHCv1 Uncompressed profile (RFC 3095)",
 	[0x0001] = "ROHCv1 IP/UDP/RTP profile (RFC 3095)",
 	[0x0002] = "ROHCv1 IP/UDP profile (RFC 3095)",
@@ -41,6 +41,17 @@ local profile_ids = {
 	[0x0006] = "ROHCv1 IP/TCP profile (RFC 6846)",
 	[0x0007] = "ROHCv1 IP/UDP-Lite/RTP profile (RFC 4019)",
 	[0x0008] = "ROHCv1 IP/UDP-Lite profile (RFC 4019)"
+}
+local profiles_short_descr = {
+	[0x0000] = "Uncompressed",
+	[0x0001] = "IP/UDP/RTP",
+	[0x0002] = "IP/UDP",
+	[0x0003] = "IP/ESP",
+	[0x0004] = "IP-only",
+	[0x0005] = "IP/UDP/RTP LLA",
+	[0x0006] = "IP/TCP",
+	[0x0007] = "IP/UDP-Lite/RTP",
+	[0x0008] = "IP/UDP-Lite"
 }
 local rohc_profiles = DissectorTable.new("rohc.profiles", "ROHC profiles",
                                          ftypes.UINT16, base.HEX)
@@ -70,7 +81,7 @@ local f_segment   = ProtoField.bytes("rohc_lua.segment", "Segment")
 
 -- common fields for IR and IR-DYN packets
 local f_pkt_profile = ProtoField.uint8("rohc_lua.pkt.profile", "Profile",
-                                       base.HEX, profile_ids)
+                                       base.HEX, profiles_long_descr)
 local f_pkt_crc8    = ProtoField.uint8("rohc_lua.pkt.crc8", "CRC-8", base.HEX)
 -- IR packet
 local f_pkt_ir      = ProtoField.bytes("rohc_lua.pkt.ir", "IR")
@@ -99,9 +110,13 @@ rohc_protocol.fields = {
 	f_payload, f_payload_trailer
 }
 
-local ef_cid = ProtoExpert.new("rohc_lua.cid", "CID",
-                               expert.group.PROTOCOL, expert.severity.NOTE)
-rohc_protocol.experts = { ef_cid }
+local ef_cid     = ProtoExpert.new("rohc_lua.cid", "ROHC CID",
+                                   expert.group.PROTOCOL, expert.severity.NOTE)
+local ef_profile = ProtoExpert.new("rohc_lua.profile", "ROHC profile ID",
+                                   expert.group.PROTOCOL, expert.severity.NOTE)
+local ef_packet  = ProtoExpert.new("rohc_lua.packet", "ROHC packet type",
+                                    expert.group.PROTOCOL, expert.severity.NOTE)
+rohc_protocol.experts = { ef_cid, ef_profile, ef_packet }
 
 
 -- list of ROHC contexts, indexed per CID
@@ -199,20 +214,21 @@ local function dissect_pkt_ir(ir_pkt, pktinfo, ir_tree)
 	offset = offset + 1
 	-- profile ID
 	local profile_id = ir_pkt:range(offset, 1):uint()
-	pktinfo.cols.info:append(" profile="..profile_ids[profile_id])
 	ir_tree:add(f_pkt_profile, ir_pkt:range(offset, 1))
 	offset = offset + 1
 	-- CRC
 	ir_tree:add(f_pkt_crc8, ir_pkt:range(offset, 1))
 	offset = offset + 1
 	-- remaining bytes are specific to the ROHC profile
-	pktinfo.private["rohc_packet_type"] = 1
+	pktinfo.private["rohc_packet_type"] = "IR"
 	pktinfo.private["rohc_profile_id"] = profile_id
 	local ir_remain_bytes = ir_pkt:range(offset, ir_pkt:len() - offset)
 	local profiles = DissectorTable.get("rohc.profiles")
 	local profile_part_len = profiles:try(profile_id, ir_remain_bytes:tvb(), pktinfo, ir_tree)
 	offset = offset + profile_part_len
-	return offset, profile_id, protocol
+
+	ir_tree:set_len(offset)
+	return offset, profile_id
 end
 
 -- dissect IR-DYN packet
@@ -223,20 +239,21 @@ local function dissect_pkt_irdyn(irdyn_pkt, pktinfo, irdyn_tree)
 	offset = offset + 1
 	-- profile ID
 	local profile_id = irdyn_pkt:range(offset, 1):uint()
-	pktinfo.cols.info:append(" profile="..profile_ids[profile_id])
 	irdyn_tree:add(f_pkt_profile, irdyn_pkt:range(offset, 1))
 	offset = offset + 1
 	-- CRC
 	irdyn_tree:add(f_pkt_crc8, irdyn_pkt:range(offset, 1))
 	offset = offset + 1
 	-- remaining bytes are specific to the ROHC profile
-	pktinfo.private["rohc_packet_type"] = 2
+	pktinfo.private["rohc_packet_type"] = "IR-DYN"
 	pktinfo.private["rohc_profile_id"] = profile_id
 	local irdyn_remain_bytes = irdyn_pkt:range(offset, irdyn_pkt:len() - offset)
 	local profiles = DissectorTable.get("rohc.profiles")
 	local profile_part_len =
 		profiles:try(profile_id, irdyn_remain_bytes:tvb(), pktinfo, irdyn_tree)
 	offset = offset + profile_part_len
+
+	irdyn_tree:set_len(offset)
 	return offset, profile_id
 end
 
@@ -330,13 +347,12 @@ function rohc_protocol.dissector(tvbuf, pktinfo, root)
 	else
 		cid = 0
 	end
-	tree:add_proto_expert_info(ef_cid, "CID = "..cid)
-	pktinfo.cols.info:append(" CID="..cid)
 
 	-- packet type?
 	print("packet type = 0x"..tvbuf:range(offset, 1))
 	local profile_id
 	local protocol
+	local udp_dport
 	local hdr_len
 	if tvbuf:range(offset, 1):bitfield(0, 7) == 0x7e then
 		-- IR packet
@@ -344,15 +360,22 @@ function rohc_protocol.dissector(tvbuf, pktinfo, root)
 		local ir_tree = tree:add(f_pkt_ir, ir_pkt)
 		hdr_len, profile_id = dissect_pkt_ir(ir_pkt, pktinfo, ir_tree)
 		protocol = tonumber(pktinfo.private["rohc_embedded_protocol"])
+		udp_dport = tonumber(pktinfo.private["rohc_embedded_udp_dport"])
+		ip_hdrs_nr = tonumber(pktinfo.private["rohc_ip_hdrs_nr"])
 	elseif tvbuf:range(offset, 1):uint() == 0xf8 then
 		-- IR-DYN packet
 		local irdyn_pkt = tvbuf:range(offset, tvbuf:len() - offset)
 		local irdyn_tree = tree:add(f_pkt_irdyn, irdyn_pkt)
-		hdr_len, profile_id = dissect_pkt_irdyn(irdyn_pkt, pktinfo, irdyn_tree)
 		protocol = rohc_contexts[cid]["protocol"]
+		udp_dport = rohc_contexts[cid]["udp_dport"]
+		ip_hdrs_nr = rohc_contexts[cid]["ip_hdrs_nr"]
+		pktinfo.private["rohc_ip_hdrs_nr"] = ip_hdrs_nr
+		hdr_len, profile_id = dissect_pkt_irdyn(irdyn_pkt, pktinfo, irdyn_tree)
 	else
 		profile_id = rohc_contexts[cid]["profile"]
 		protocol = rohc_contexts[cid]["protocol"]
+		udp_dport = rohc_contexts[cid]["udp_dport"]
+		ip_hdrs_nr = rohc_contexts[cid]["ip_hdrs_nr"]
 		print("CID "..cid.." uses profile ID 0x"..profile_id.." and protocol "..protocol)
 
 		-- remaining bytes are specific to the ROHC profile
@@ -362,27 +385,50 @@ function rohc_protocol.dissector(tvbuf, pktinfo, root)
 	end
 	offset = offset + hdr_len
 
+	-- add expert info for CID, profile ID and packet type
+	tree:add_proto_expert_info(ef_cid, "CID = "..cid)
+	pktinfo.cols.info:append(", CID "..cid)
+	tree:add_proto_expert_info(ef_profile, "profile ID = "..profile_id)
+	pktinfo.cols.info:append(", "..profiles_short_descr[profile_id].." profile")
+	tree:add_proto_expert_info(ef_packet, "packet type = "..pktinfo.private["rohc_packet_type"])
+	pktinfo.cols.info:append(", "..pktinfo.private["rohc_packet_type"].." packet")
+
 	-- ROHC payload
+	print((tvbuf:len()-offset).."-byte payload starts at offset "..offset)
 	local payload_bytes = tvbuf:range(offset, tvbuf:len() - offset)
 	print("profile ID = "..profile_id)
 	print("protocol = "..protocol)
 	if profile_id == 0x0004 then
+		-- protocol transported by IP
 		-- TODO: handle IPv6
+		print("try to call a dissector for IP payload (protocol "..protocol..")")
 		local ip_tables = DissectorTable.get("ip.proto")
 		local ipv4_payload_len =
 			ip_tables:try(protocol, payload_bytes:tvb(), pktinfo, root)
 		offset = offset + ipv4_payload_len
+	elseif profile_id == 0x0002 then
+		-- protocol transported by UDP
+		print("try to call a dissector for UDP payload (UDP destination port "..udp_dport..")")
+		local udp_tables = DissectorTable.get("udp.port")
+		local udp_payload_len =
+			udp_tables:try(udp_dport, payload_bytes:tvb(), pktinfo, root)
+		offset = offset + udp_payload_len
 	else
 		-- TODO: handle RTP, UDP, ESP, TCP
 		local payload_tree = root:add(f_payload, payload_bytes)
-		offset = offset + payload_bytes
+		offset = offset + payload_bytes:len()
 	end
 	if offset ~= tvbuf:len() then
 		root:add(f_payload_trailer, tvbuf:range(offset, tvbuf:len() - offset))
 	end
 
 	-- remember the context information
-	rohc_contexts[cid] = { ["profile"] = profile_id, ["protocol"] = protocol }
+	rohc_contexts[cid] = {
+		["profile"] = profile_id,
+		["protocol"] = protocol,
+		["udp_dport"] = udp_dport,
+		["ip_hdrs_nr"] = ip_hdrs_nr
+	}
 end
 
 local ethertype_table = DissectorTable.get("ethertype")

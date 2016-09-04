@@ -34,6 +34,12 @@ local f_chain_static_ipv4_srcaddr  = ProtoField.ipv4("rohc_lua.pkt.chain.static.
                                                      "Source address")
 local f_chain_static_ipv4_dstaddr  = ProtoField.ipv4("rohc_lua.pkt.chain.static.ipv4.daddr",
                                                      "Destination address")
+-- UDP part
+local f_chain_static_udp = ProtoField.bytes("rohc_lua.pkt.chain.static.udp", "UDP static chain")
+local f_chain_static_udp_srcport = ProtoField.uint16("rohc_lua.pkt.chain.static.udp.sport",
+                                                     "Source port")
+local f_chain_static_udp_dstport = ProtoField.uint16("rohc_lua.pkt.chain.static.udp.dport",
+                                                     "Destination port")
 
 -- dynamic chain
 local f_chain_dyn = ProtoField.bytes("rohc_lua.pkt.chain.dynamic", "Dynamic chain")
@@ -53,6 +59,12 @@ local f_chain_dyn_ipv4_nbo     = ProtoField.uint8("rohc_lua.pkt.chain.dynamic.ip
                                                   "Network Byte Order (NBO)", base.DEC, nil, 0x20)
 local f_chain_dyn_ipv4_padding = ProtoField.uint8("rohc_lua.pkt.chain.dynamic.ipv4.padding",
                                                   "Padding", base.HEX, nil, 0x0f)
+-- UDP part
+local f_chain_dyn_udp = ProtoField.bytes("rohc_lua.pkt.chain.dynamic.udp", "UDP dynamic chain")
+local f_chain_dyn_udp_check = ProtoField.uint16("rohc_lua.pkt.chain.dynamic.udp.checksum",
+                                                "Checksum", base.HEX)
+local f_chain_dyn_udp_sn    = ProtoField.uint16("rohc_lua.pkt.chain.dynamic.udp.sn",
+                                                "Sequence Number (SN)", base.DEC)
 
 -- UO-0 packet
 local f_pkt_uo0      = ProtoField.bytes("rohc_lua.pkt.uo0", "UO-0")
@@ -160,9 +172,11 @@ rohc_protocol_rfc3095_fields = {
 	f_chain_static,
 	f_chain_static_ipv4, f_chain_static_ipv4_version, f_chain_static_ipv4_padding,
 	f_chain_static_ipv4_protocol, f_chain_static_ipv4_srcaddr, f_chain_static_ipv4_dstaddr,
+	f_chain_static_udp, f_chain_static_udp_srcport, f_chain_static_udp_dstport,
 	f_chain_dyn,
 	f_chain_dyn_ipv4, f_chain_dyn_ipv4_tos, f_chain_dyn_ipv4_ttl, f_chain_dyn_ipv4_id,
 	f_chain_dyn_ipv4_df, f_chain_dyn_ipv4_rnd, f_chain_dyn_ipv4_nbo, f_chain_dyn_ipv4_padding,
+	f_chain_dyn_udp, f_chain_dyn_udp_check, f_chain_dyn_udp_sn,
 	f_pkt_uo0, f_pkt_uo0_type, f_pkt_uo0_sn, f_pkt_uo0_crc3,
 	f_pkt_uo1, f_pkt_uo1_type, f_pkt_uo1_ip_id, f_pkt_uo1_sn, f_pkt_uo1_crc3,
 	f_pkt_uor2, f_pkt_uor2_type, f_pkt_uor2_sn, f_pkt_uor2_x, f_pkt_uor2_crc7,
@@ -206,12 +220,36 @@ local function dissect_static_chain_ip(static_chain, pktinfo, tree)
 	ipv4_tree:add(f_chain_static_ipv4_dstaddr, static_chain:range(offset, 4))
 	offset = offset + 4
 
-	return offset, protocol
+	ipv4_tree:set_len(offset)
+	return offset
+end
+
+-- dissect static chain, UDP part
+local function dissect_static_chain_udp(static_chain, pktinfo, tree)
+	local offset = 0
+
+	local udp_tree = tree:add(f_chain_static_udp, static_chain)
+
+	-- UDP source port
+	local sport = static_chain:range(offset, 2):uint()
+	udp_tree:add(f_chain_static_udp_srcport, sport)
+	pktinfo.private["rohc_embedded_udp_sport"] = sport
+	offset = offset + 2
+
+	-- UDP destination port
+	local dport = static_chain:range(offset, 2):uint()
+	udp_tree:add(f_chain_static_udp_dstport, dport)
+	pktinfo.private["rohc_embedded_udp_dport"] = dport
+	offset = offset + 2
+
+	udp_tree:set_len(offset)
+	return offset
 end
 
 -- dissect static chain
 local function dissect_static_chain(static_chain, pktinfo, rohc_tree, profile_id)
 	local chain_static_tree = rohc_tree:add(f_chain_static, static_chain)
+	local remain_data = static_chain
 	local offset = 0
 	local protocol
 
@@ -219,12 +257,27 @@ local function dissect_static_chain(static_chain, pktinfo, rohc_tree, profile_id
 	if profile_id == 0x0001 or profile_id == 0x0002 or profile_id == 0x0003 or
 	   profile_id == 0x0004 or profile_id == 0x0006 or profile_id == 0x0008 or
 	   profile_id == 0x0007 then
-		local ip_part_len = dissect_static_chain_ip(static_chain, pktinfo, chain_static_tree)
+		-- dissect inner IP header
+		local ip_part_len = dissect_static_chain_ip(remain_data, pktinfo, chain_static_tree)
 		offset = offset + ip_part_len
+		remain_data = remain_data:range(ip_part_len, remain_data:len() - ip_part_len)
+		-- dissect outer IP header (if any)
+		if pktinfo.private["rohc_embedded_protocol"] == "4" or
+		   pktinfo.private["rohc_embedded_protocol"] == "41" then
+			pktinfo.private["rohc_ip_hdrs_nr"] = 2
+			ip_part_len = dissect_static_chain_ip(remain_data, pktinfo, chain_static_tree)
+			offset = offset + ip_part_len
+			remain_data = remain_data:range(ip_part_len, remain_data:len() - ip_part_len)
+		else
+			pktinfo.private["rohc_ip_hdrs_nr"] = 1
+		end
 	end
 
 	if profile_id == 0x0001 or profile_id == 0x0002 then
 		-- dissect UDP part
+		local udp_part_len = dissect_static_chain_udp(remain_data, pktinfo, chain_static_tree)
+		offset = offset + udp_part_len
+		remain_data = remain_data:range(udp_part_len, remain_data:len() - udp_part_len)
 	elseif profile_id == 0x0003 then
 		-- dissect ESP part
 	elseif profile_id == 0x0006 then
@@ -237,6 +290,7 @@ local function dissect_static_chain(static_chain, pktinfo, rohc_tree, profile_id
 		-- dissect RTP part
 	end
 
+	chain_static_tree:set_len(offset)
 	return offset
 end
 
@@ -259,24 +313,56 @@ local function dissect_dynamic_chain_ip(dyn_chain, pktinfo, tree)
 	offset = offset + 1
 	-- TODO: handle generic extension header list
 
+	ipv4_tree:set_len(offset)
+	return offset
+end
+
+-- dissect dynamic chain, UDP part
+local function dissect_dynamic_chain_udp(dyn_chain, pktinfo, tree, profile_id)
+	local offset = 0
+
+	local udp_tree = tree:add(f_chain_dyn_udp, dyn_chain)
+	-- UDP checksum
+	udp_tree:add(f_chain_dyn_udp_check, dyn_chain:range(offset, 2))
+	offset = offset + 2
+	-- SN for non-RTP profiles
+	if profile_id == 0x0002 then
+		udp_tree:add(f_chain_dyn_udp_sn, dyn_chain:range(offset, 2))
+		offset = offset + 2
+	end
+
+	udp_tree:set_len(offset)
 	return offset
 end
 
 -- dissect dynamic chain
 local function dissect_dynamic_chain(dyn_chain, pktinfo, rohc_tree, profile_id)
 	local chain_dyn_tree = rohc_tree:add(f_chain_dyn, dyn_chain)
+	local remain_data = dyn_chain
 	local offset = 0
 
 	-- dissect IP part
 	if profile_id == 0x0001 or profile_id == 0x0002 or profile_id == 0x0003 or
 	   profile_id == 0x0004 or profile_id == 0x0006 or profile_id == 0x0008 or
 	   profile_id == 0x0007 then
-		local ip_part_len = dissect_dynamic_chain_ip(dyn_chain, pktinfo, chain_dyn_tree)
+		-- dissect inner IP header
+		local ip_part_len = dissect_dynamic_chain_ip(remain_data, pktinfo, chain_dyn_tree)
 		offset = offset + ip_part_len
+		remain_data = remain_data:range(ip_part_len, remain_data:len() - ip_part_len)
+		-- dissect outer IP header (if any)
+		if pktinfo.private["rohc_ip_hdrs_nr"] == "2" then
+			ip_part_len = dissect_dynamic_chain_ip(remain_data, pktinfo, chain_dyn_tree)
+			offset = offset + ip_part_len
+			remain_data = remain_data:range(ip_part_len, remain_data:len() - ip_part_len)
+		end
 	end
 
 	if profile_id == 0x0001 or profile_id == 0x0002 then
 		-- dissect UDP part
+		local udp_part_len =
+			dissect_dynamic_chain_udp(remain_data, pktinfo, chain_dyn_tree, profile_id)
+		offset = offset + udp_part_len
+		remain_data = remain_data:range(udp_part_len, remain_data:len() - udp_part_len)
 	elseif profile_id == 0x0003 then
 		-- dissect ESP part
 	elseif profile_id == 0x0006 then
@@ -289,6 +375,7 @@ local function dissect_dynamic_chain(dyn_chain, pktinfo, rohc_tree, profile_id)
 		-- dissect RTP part
 	end
 
+	chain_dyn_tree:set_len(offset)
 	return offset
 end
 
@@ -325,6 +412,7 @@ local function dissect_pkt_uor_ext0(uor_pkt, pktinfo, rohc_tree)
 	ext_tree:add(f_pkt_uor_ext0_sn,    uor_pkt:range(offset, 1))
 	ext_tree:add(f_pkt_uor_ext0_ip_id, uor_pkt:range(offset, 1))
 	offset = offset + 1
+	ext_tree:set_len(offset)
 	return offset
 end
 
@@ -336,6 +424,7 @@ local function dissect_pkt_uor_ext1(uor_pkt, pktinfo, rohc_tree)
 	ext_tree:add(f_pkt_uor_ext1_sn,    uor_pkt:range(offset, 1))
 	ext_tree:add(f_pkt_uor_ext1_ip_id, uor_pkt:range(offset, 2))
 	offset = offset + 2
+	ext_tree:set_len(offset)
 	return offset
 end
 
@@ -349,6 +438,7 @@ local function dissect_pkt_uor_ext2(uor_pkt, pktinfo, rohc_tree)
 	offset = offset + 2
 	ext_tree:add(f_pkt_uor_ext2_ip_id, uor_pkt:range(offset, 1))
 	offset = offset + 1
+	ext_tree:set_len(offset)
 	return offset
 end
 
@@ -440,7 +530,7 @@ local function dissect_pkt_uor_ext3(uor_pkt, pktinfo, rohc_tree)
 		end
 		if ext3_ip_ipx == 1 then
 			error("UOR extension 3: unsupported IPX flag is set for inner IP")
-			return -1
+			return nil
 		end
 	end
 	-- inner IP-ID
@@ -468,7 +558,7 @@ local function dissect_pkt_uor_ext3(uor_pkt, pktinfo, rohc_tree)
 		end
 		if ext3_ip2_ipx == 1 then
 			error("UOR extension 3: unsupported IPX flag is set for outer IP")
-			return -1
+			return nil
 		end
 		if ext3_I2 == 1 then
 			ext_outer_fields_tree:add(f_pkt_uor_ext3_outer_ip_id, uor_pkt:range(offset, 2))
@@ -477,6 +567,7 @@ local function dissect_pkt_uor_ext3(uor_pkt, pktinfo, rohc_tree)
 	end
 	-- TODO: RTP header flags and fields
 
+	ext_tree:set_len(offset)
 	return offset
 end
 
@@ -504,6 +595,7 @@ local function dissect_pkt_uo0(uo0_pkt, pktinfo, rohc_tree)
 	uo0_tree:add(f_pkt_uo0_sn,   uo0_pkt:range(offset, 1))
 	uo0_tree:add(f_pkt_uo0_crc3, uo0_pkt:range(offset, 1))
 	offset = offset + 1
+	uo0_tree:set_len(offset)
 	return offset
 end
 
@@ -517,6 +609,7 @@ local function dissect_pkt_uo1(uo1_pkt, pktinfo, rohc_tree)
 	uo1_tree:add(f_pkt_uo1_sn,    uo1_pkt:range(offset, 1))
 	uo1_tree:add(f_pkt_uo1_crc3,  uo1_pkt:range(offset, 1))
 	offset = offset + 1
+	uo1_tree:set_len(offset)
 	return offset
 end
 
@@ -534,9 +627,10 @@ local function dissect_pkt_uor2(uor2_pkt, pktinfo, rohc_tree)
 	-- extensions
 	if ext == 1 then
 		local ext_bytes = uor2_pkt:range(offset, uor2_pkt:len() - offset)
-		local ext_len = dissect_pkt_uor_ext(ext_bytes, pktinfo, rohc_tree)
+		local ext_len = dissect_pkt_uor_ext(ext_bytes, pktinfo, uor2_tree)
 		offset = offset + ext_len
 	end
+	uor2_tree:set_len(offset)
 	return offset
 end
 
@@ -546,12 +640,15 @@ function rohc_rfc3095_dissect_pkt_uor(uor_pkt, pktinfo, rohc_tree)
 
 	if uor_pkt:range(offset, 1):bitfield(0, 1) == 0x0 then
 		-- UO-0
+		pktinfo.private["rohc_packet_type"] = "UO-0"
 		hdr_len = dissect_pkt_uo0(uor_pkt, pktinfo, rohc_tree)
 	elseif uor_pkt:range(offset, 1):bitfield(0, 2) == 0x2 then
 		-- UO-1
+		pktinfo.private["rohc_packet_type"] = "UO-1"
 		hdr_len = dissect_pkt_uo1(uor_pkt, pktinfo, rohc_tree)
 	elseif uor_pkt:range(offset, 1):bitfield(0, 3) == 0x6 then
 		-- UOR-2
+		pktinfo.private["rohc_packet_type"] = "UOR-2"
 		hdr_len = dissect_pkt_uor2(uor_pkt, pktinfo, rohc_tree)
 	else
 		error("unsupported ROHC packet")
