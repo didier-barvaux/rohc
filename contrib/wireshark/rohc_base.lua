@@ -115,8 +115,10 @@ local ef_cid     = ProtoExpert.new("rohc_lua.cid", "ROHC CID",
 local ef_profile = ProtoExpert.new("rohc_lua.profile", "ROHC profile ID",
                                    expert.group.PROTOCOL, expert.severity.NOTE)
 local ef_packet  = ProtoExpert.new("rohc_lua.packet", "ROHC packet type",
-                                    expert.group.PROTOCOL, expert.severity.NOTE)
-rohc_protocol.experts = { ef_cid, ef_profile, ef_packet }
+                                   expert.group.PROTOCOL, expert.severity.NOTE)
+local ef_hdr_len = ProtoExpert.new("rohc_lua.header_length", "ROHC header length",
+                                   expert.group.PROTOCOL, expert.severity.NOTE)
+rohc_protocol.experts = { ef_cid, ef_profile, ef_packet, ef_hdr_len }
 
 
 -- list of ROHC contexts, indexed per CID
@@ -362,6 +364,11 @@ function rohc_protocol.dissector(tvbuf, pktinfo, root)
 		protocol = tonumber(pktinfo.private["rohc_embedded_protocol"])
 		udp_dport = tonumber(pktinfo.private["rohc_embedded_udp_dport"])
 		ip_hdrs_nr = tonumber(pktinfo.private["rohc_ip_hdrs_nr"])
+		ip_hdr_1_version = tonumber(pktinfo.private["rohc_ip_hdr_1_version"])
+		ip_hdr_2_version = tonumber(pktinfo.private["rohc_ip_hdr_2_version"])
+		rnd_outer_ip_id = tonumber(pktinfo.private["rnd_outer_ip_id"])
+		rnd_inner_ip_id = tonumber(pktinfo.private["rnd_inner_ip_id"])
+		udp_check = tonumber(pktinfo.private["udp_check"])
 	elseif tvbuf:range(offset, 1):uint() == 0xf8 then
 		-- IR-DYN packet
 		local irdyn_pkt = tvbuf:range(offset, tvbuf:len() - offset)
@@ -370,12 +377,33 @@ function rohc_protocol.dissector(tvbuf, pktinfo, root)
 		udp_dport = rohc_contexts[cid]["udp_dport"]
 		ip_hdrs_nr = rohc_contexts[cid]["ip_hdrs_nr"]
 		pktinfo.private["rohc_ip_hdrs_nr"] = ip_hdrs_nr
+		ip_hdr_1_version = rohc_contexts[cid]["ip_hdr_1_version"]
+		pktinfo.private["rohc_ip_hdr_1_version"] = ip_hdr_1_version
+		ip_hdr_2_version = rohc_contexts[cid]["ip_hdr_2_version"]
+		pktinfo.private["rohc_ip_hdr_2_version"] = ip_hdr_2_version
+		rnd_outer_ip_id = rohc_contexts[cid]["rnd_outer_ip_id"]
+		pktinfo.private["rnd_outer_ip_id"] = rnd_outer_ip_id
+		rnd_inner_ip_id = rohc_contexts[cid]["rnd_inner_ip_id"]
+		pktinfo.private["rnd_inner_ip_id"] = rnd_inner_ip_id
+		udp_check = rohc_contexts[cid]["udp_check"]
+		pktinfo.private["udp_check"] = udp_check
 		hdr_len, profile_id = dissect_pkt_irdyn(irdyn_pkt, pktinfo, irdyn_tree)
 	else
 		profile_id = rohc_contexts[cid]["profile"]
 		protocol = rohc_contexts[cid]["protocol"]
 		udp_dport = rohc_contexts[cid]["udp_dport"]
 		ip_hdrs_nr = rohc_contexts[cid]["ip_hdrs_nr"]
+		pktinfo.private["rohc_ip_hdrs_nr"] = ip_hdrs_nr
+		ip_hdr_1_version = rohc_contexts[cid]["ip_hdr_1_version"]
+		pktinfo.private["rohc_ip_hdr_1_version"] = ip_hdr_1_version
+		ip_hdr_2_version = rohc_contexts[cid]["ip_hdr_2_version"]
+		pktinfo.private["rohc_ip_hdr_2_version"] = ip_hdr_2_version
+		rnd_outer_ip_id = rohc_contexts[cid]["rnd_outer_ip_id"]
+		pktinfo.private["rnd_outer_ip_id"] = rnd_outer_ip_id
+		rnd_inner_ip_id = rohc_contexts[cid]["rnd_inner_ip_id"]
+		pktinfo.private["rnd_inner_ip_id"] = rnd_inner_ip_id
+		udp_check = rohc_contexts[cid]["udp_check"]
+		pktinfo.private["udp_check"] = udp_check
 		print("CID "..cid.." uses profile ID 0x"..profile_id.." and protocol "..protocol)
 
 		-- remaining bytes are specific to the ROHC profile
@@ -384,14 +412,18 @@ function rohc_protocol.dissector(tvbuf, pktinfo, root)
 		hdr_len = profiles:try(profile_id, rohc_remain_bytes:tvb(), pktinfo, tree)
 	end
 	offset = offset + hdr_len
+	tree:set_len(offset)
 
 	-- add expert info for CID, profile ID and packet type
 	tree:add_proto_expert_info(ef_cid, "CID = "..cid)
 	pktinfo.cols.info:append(", CID "..cid)
-	tree:add_proto_expert_info(ef_profile, "profile ID = "..profile_id)
+	tree:add_proto_expert_info(ef_profile, "ROHC profile ID = "..profile_id)
 	pktinfo.cols.info:append(", "..profiles_short_descr[profile_id].." profile")
-	tree:add_proto_expert_info(ef_packet, "packet type = "..pktinfo.private["rohc_packet_type"])
+	tree:add_proto_expert_info(ef_packet, "ROHC packet type = "..
+	                           pktinfo.private["rohc_packet_type"])
 	pktinfo.cols.info:append(", "..pktinfo.private["rohc_packet_type"].." packet")
+	tree:add_proto_expert_info(ef_hdr_len, "ROHC header length = "..offset)
+	pktinfo.cols.info:append(", "..offset.."B header, "..(tvbuf:len() - offset).."B payload")
 
 	-- ROHC payload
 	print((tvbuf:len()-offset).."-byte payload starts at offset "..offset)
@@ -427,7 +459,12 @@ function rohc_protocol.dissector(tvbuf, pktinfo, root)
 		["profile"] = profile_id,
 		["protocol"] = protocol,
 		["udp_dport"] = udp_dport,
-		["ip_hdrs_nr"] = ip_hdrs_nr
+		["ip_hdrs_nr"] = ip_hdrs_nr,
+		["ip_hdr_1_version"] = ip_hdr_1_version,
+		["ip_hdr_2_version"] = ip_hdr_2_version,
+		["rnd_outer_ip_id"] = rnd_outer_ip_id,
+		["rnd_inner_ip_id"] = rnd_inner_ip_id,
+		["udp_check"] = udp_check,
 	}
 end
 
