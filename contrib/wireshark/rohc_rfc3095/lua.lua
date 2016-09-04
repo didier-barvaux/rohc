@@ -97,6 +97,7 @@ local f_list_xi_4bp  = ProtoField.uint8("rohc_lua.pkt.list.xi_4b_padding", "XI p
                                                base.HEX, nil, 0x0f)
 local f_list_xi_8b   = ProtoField.uint8("rohc_lua.pkt.list.xi0", "XI (PS = 1)", base.HEX)
 local f_list_items   = ProtoField.bytes("rohc_lua.pkt.list.items", "List items")
+local f_list_item    = ProtoField.bytes("rohc_lua.pkt.list.items.item", "List item")
 local f_list_type_0_gp     = ProtoField.uint8("rohc_lua.pkt.list.gp", "gen_id present (GP)",
                                               base.DEC, nil, 0x20)
 local f_list_type_0_ps     = ProtoField.uint8("rohc_lua.pkt.list.ps", "Size of XI fields",
@@ -104,6 +105,21 @@ local f_list_type_0_ps     = ProtoField.uint8("rohc_lua.pkt.list.ps", "Size of X
 local f_list_type_0_m      = ProtoField.uint8("rohc_lua.pkt.list.m", "Number of XI fields",
                                               base.DEC, nil, 0x0f)
 local f_list_type_0_gen_id = ProtoField.uint8("rohc_lua.pkt.list.gen_id", "gen_id", base.DEC)
+
+-- IPv6 options
+local ipv6_opt_types = {
+	[0]   = "Hop-by-Hop option",
+	[43]  = "IPv6 Routing header",
+	[44]  = "IPv6 Fragment header",
+	[60]  = "IPv6 destination option",
+	[135] = "Mobility header",
+}
+local f_ipv6_opt_type = ProtoField.uint8("rohc_lua.pkt.list.items.item.ipv6_opt.type",
+                                         "IPv6 option type", base.DEC, ipv6_opt_types)
+local f_ipv6_opt_len = ProtoField.uint8("rohc_lua.pkt.list.items.item.ipv6_opt.len",
+                                         "IPv6 option data length", base.DEC)
+local f_ipv6_opt_data = ProtoField.bytes("rohc_lua.pkt.list.items.item.ipv6_opt.data",
+                                         "IPv6 option data")
 
 -- UO-0 packet
 local f_pkt_uo0      = ProtoField.bytes("rohc_lua.pkt.uo0", "UO-0")
@@ -231,7 +247,8 @@ rohc_protocol_rfc3095_fields = {
 	f_chain_dyn_udp, f_chain_dyn_udp_check, f_chain_dyn_udp_sn,
 	f_list, f_list_et,
 	f_list_xi, f_list_xi_4be, f_list_xi_4bo, f_list_xi_4bp, f_list_xi_8b,
-	f_list_items,
+	f_list_items, f_list_item,
+	f_ipv6_opt_type, f_ipv6_opt_len, f_ipv6_opt_data,
 	f_list_type_0_gp, f_list_type_0_ps, f_list_type_0_m, f_list_type_0_gen_id,
 	f_pkt_uo0, f_pkt_uo0_type, f_pkt_uo0_sn, f_pkt_uo0_crc3,
 	f_pkt_uo1, f_pkt_uo1_type, f_pkt_uo1_ip_id, f_pkt_uo1_sn, f_pkt_uo1_crc3,
@@ -415,7 +432,7 @@ local function dissect_dynamic_chain_ip_exts(list, pktinfo, tree)
 					items_nr = items_nr + list:range(offset, 1):bitfield(0, 1)
 				else
 					xi_tree:add(f_list_xi_4be, list:range(offset, 1)) -- even
-					items_nr = items_nr + list:range(offset, 1):bitfield(3, 1)
+					items_nr = items_nr + list:range(offset, 1):bitfield(4, 1)
 					offset = offset + 1
 				end
 			else
@@ -434,6 +451,15 @@ local function dissect_dynamic_chain_ip_exts(list, pktinfo, tree)
 		local items_tree = list_tree:add(f_list_items, list:range(offset, list:len() - offset))
 		local items_len = 0
 		for i = 1, items_nr do
+			local ipv6_opt_len = (list:range(offset + 1, 1):uint() + 1) * 8
+			local item_tree = items_tree:add(f_list_item, list:range(offset, ipv6_opt_len))
+			item_tree:add(f_ipv6_opt_type, list:range(offset, 1))
+			offset = offset + 1
+			item_tree:add(f_ipv6_opt_len, list:range(offset, 1))
+			offset = offset + 1
+			item_tree:add(f_ipv6_opt_data, list:range(offset, ipv6_opt_len - 2))
+			offset = offset + ipv6_opt_len - 2
+			items_len = items_len + ipv6_opt_len
 		end
 		items_tree:set_len(items_len)
 	elseif et == 1 then

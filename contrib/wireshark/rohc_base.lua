@@ -430,12 +430,11 @@ function rohc_protocol.dissector(tvbuf, pktinfo, root)
 	print("protocol = "..protocol)
 	if profile_id == 0x0004 then
 		-- protocol transported by IP
-		-- TODO: handle IPv6
 		print("try to call a dissector for IP payload (protocol "..protocol..")")
 		local ip_tables = DissectorTable.get("ip.proto")
-		local ipv4_payload_len =
+		local ip_payload_len =
 			ip_tables:try(protocol, payload_bytes:tvb(), pktinfo, root)
-		offset = offset + ipv4_payload_len
+		offset = offset + ip_payload_len
 	elseif profile_id == 0x0002 then
 		-- protocol transported by UDP
 		print("try to call a dissector for UDP payload (UDP destination port "..udp_dport..")")
