@@ -223,10 +223,18 @@ local function dissect_pkt_ir(ir_pkt, pktinfo, ir_tree)
 	-- remaining bytes are specific to the ROHC profile
 	pktinfo.private["rohc_packet_type"] = "IR"
 	pktinfo.private["rohc_profile_id"] = profile_id
-	local ir_remain_bytes = ir_pkt:range(offset, ir_pkt:len() - offset)
-	local profiles = DissectorTable.get("rohc.profiles")
-	local profile_part_len = profiles:try(profile_id, ir_remain_bytes:tvb(), pktinfo, ir_tree)
-	offset = offset + profile_part_len
+	local ir_remain_len = ir_pkt:len() - offset
+	if ir_remain_len > 0 then
+		local ir_remain_bytes = ir_pkt:range(offset, ir_remain_len)
+		local profiles = DissectorTable.get("rohc.profiles")
+		local profile_part_len = profiles:try(profile_id, ir_remain_bytes:tvb(), pktinfo, ir_tree)
+		if profile_id == 0x0000 then
+			profile_part_len = profile_part_len - 1
+		end
+		offset = offset + profile_part_len
+	else
+		pktinfo.private["rohc_embedded_protocol"] = nil
+	end
 
 	ir_tree:set_len(offset)
 	return offset, profile_id
@@ -409,6 +417,9 @@ function rohc_protocol.dissector(tvbuf, pktinfo, root)
 		local rohc_remain_bytes = tvbuf:range(offset, tvbuf:len() - offset)
 		local profiles = DissectorTable.get("rohc.profiles")
 		hdr_len = profiles:try(profile_id, rohc_remain_bytes:tvb(), pktinfo, tree)
+		if profile_id == 0x0000 then
+			hdr_len = hdr_len - 1
+		end
 	end
 	offset = offset + hdr_len
 	tree:set_len(offset)
@@ -427,8 +438,19 @@ function rohc_protocol.dissector(tvbuf, pktinfo, root)
 	print((tvbuf:len()-offset).."-byte payload starts at offset "..offset)
 	local payload_bytes = tvbuf:range(offset, tvbuf:len() - offset)
 	print("profile ID = "..profile_id)
-	print("protocol = "..protocol)
-	if profile_id == 0x0004 then
+	if protocol ~= nil then
+		print("protocol = "..protocol)
+	else
+		print("protocol = <unknown>")
+	end
+	if profile_id == 0x0000 and protocol ~= nil then
+		-- protocol transported by layer 2
+		print("try to call a dissector for layer 2 payload (protocol "..protocol..")")
+		local ether_tables = DissectorTable.get("ethertype")
+		local ether_payload_len =
+			ether_tables:try(protocol, payload_bytes:tvb(), pktinfo, root)
+		offset = offset + ether_payload_len
+	elseif profile_id == 0x0004 then
 		-- protocol transported by IP
 		print("try to call a dissector for IP payload (protocol "..protocol..")")
 		local ip_tables = DissectorTable.get("ip.proto")
