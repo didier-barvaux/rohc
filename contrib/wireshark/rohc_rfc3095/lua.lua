@@ -81,8 +81,9 @@ local f_chain_dyn_ipv6_hl = ProtoField.uint8("rohc_lua.pkt.chain.dynamic.ipv6.hl
 local f_chain_dyn_udp = ProtoField.bytes("rohc_lua.pkt.chain.dynamic.udp", "UDP dynamic chain")
 local f_chain_dyn_udp_check = ProtoField.uint16("rohc_lua.pkt.chain.dynamic.udp.checksum",
                                                 "Checksum", base.HEX)
-local f_chain_dyn_udp_sn    = ProtoField.uint16("rohc_lua.pkt.chain.dynamic.udp.sn",
-                                                "Sequence Number (SN)", base.DEC)
+-- additional SN for non-RTP profiles
+local f_chain_dyn_sn = ProtoField.uint16("rohc_lua.pkt.chain.dynamic.sn",
+                                         "Sequence Number (SN)", base.DEC)
 
 -- List encoding
 local f_list = ProtoField.bytes("rohc_lua.pkt.list", "Compressed list")
@@ -244,7 +245,8 @@ rohc_protocol_rfc3095_fields = {
 	f_chain_dyn_ipv4, f_chain_dyn_ipv4_tos, f_chain_dyn_ipv4_ttl, f_chain_dyn_ipv4_id,
 	f_chain_dyn_ipv4_df, f_chain_dyn_ipv4_rnd, f_chain_dyn_ipv4_nbo, f_chain_dyn_ipv4_padding,
 	f_chain_dyn_ipv6, f_chain_dyn_ipv6_tc, f_chain_dyn_ipv6_hl,
-	f_chain_dyn_udp, f_chain_dyn_udp_check, f_chain_dyn_udp_sn,
+	f_chain_dyn_udp, f_chain_dyn_udp_check,
+	f_chain_dyn_sn,
 	f_list, f_list_et,
 	f_list_xi, f_list_xi_4be, f_list_xi_4bo, f_list_xi_4bp, f_list_xi_8b,
 	f_list_items, f_list_item,
@@ -522,11 +524,6 @@ local function dissect_dynamic_chain_udp(dyn_chain, pktinfo, tree, profile_id)
 	local udp_check = dyn_chain:range(offset, 2):uint()
 	udp_tree:add(f_chain_dyn_udp_check, dyn_chain:range(offset, 2))
 	offset = offset + 2
-	-- SN for non-RTP profiles
-	if profile_id == 0x0002 then
-		udp_tree:add(f_chain_dyn_udp_sn, dyn_chain:range(offset, 2))
-		offset = offset + 2
-	end
 
 	udp_tree:set_len(offset)
 	return offset, udp_check
@@ -577,6 +574,12 @@ local function dissect_dynamic_chain(dyn_chain, pktinfo, rohc_tree, profile_id)
 
 	if profile_id == 0x0001 or profile_id == 0x0007 then
 		-- dissect RTP part
+		error("unsupported ROHC packet: RTP profile is not supported yet")
+	elseif profile_id == 0x0002 or profile_id == 0x0004 then
+		-- SN for non-RTP profiles
+		chain_dyn_tree:add(f_chain_dyn_sn, remain_data:range(0, 2))
+		offset = offset + 2
+		remain_data = remain_data:range(2, remain_data:len() - 2)
 	end
 
 	chain_dyn_tree:set_len(offset)
@@ -804,8 +807,8 @@ local function dissect_uor_remainder(uor_bytes, pktinfo, uor_tree, profile_id)
 		uor_tree:add(f_pkt_uor_rnd_inner_ip_id, uor_bytes:range(offset, 2))
 		offset = offset + 2
 	end
+	-- UDP and RTP profiles: UDP checksum if not zero
 	if profile_id == 0x0001 or profile_id == 0x0002 then
-		-- UDP checksum if not zero
 		if pktinfo.private["udp_check"] ~= "0" then
 			uor_tree:add(f_pkt_uor_udp_check, uor_bytes:range(offset, 2))
 			offset = offset + 2
