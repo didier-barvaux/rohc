@@ -87,8 +87,29 @@ local f_chain_dyn_sn = ProtoField.uint16("rohc_lua.pkt.chain.dynamic.sn",
 
 -- List encoding
 local f_list = ProtoField.bytes("rohc_lua.pkt.list", "Compressed list")
-local f_list_et      = ProtoField.uint8("rohc_lua.pkt.list.et", "Encoding Type (ET)",
-                                        base.DEC, nil, 0xc0)
+---- generic fields
+local f_list_et     = ProtoField.uint8("rohc_lua.pkt.list.et", "Encoding Type (ET)",
+                                       base.DEC, nil, 0xc0)
+local f_list_gp     = ProtoField.uint8("rohc_lua.pkt.list.gp", "gen_id present (GP)",
+                                       base.DEC, nil, 0x20)
+local f_list_ps     = ProtoField.uint8("rohc_lua.pkt.list.ps", "Size of XI fields",
+                                       base.DEC, nil, 0x10)
+local f_list_xi1    = ProtoField.uint8("rohc_lua.pkt.list.xi1", "XI 1",
+                                       base.HEX, nil, 0x0f)
+local f_list_gen_id = ProtoField.uint8("rohc_lua.pkt.list.gen_id", "gen_id", base.DEC)
+local f_list_ref_id = ProtoField.uint8("rohc_lua.pkt.list.ref_id", "ref_id", base.DEC)
+---- insertion/removal bitmasks
+local f_list_bitmask_ins  = ProtoField.bytes("rohc_lua.pkt.list.bitmask.insertion",
+                                             "Insertion bitmask")
+local f_list_bitmask_rem  = ProtoField.bytes("rohc_lua.pkt.list.bitmask.removal",
+                                             "Removal bitmask")
+local f_list_bitmask_type = ProtoField.uint8("rohc_lua.pkt.list.bitmask.type",
+                                             "Bitmask type", base.DEC, nil, 0x80)
+local f_list_bitmask_7b   = ProtoField.uint8("rohc_lua.pkt.list.bitmask.mask.7b",
+                                             "Bitmask (7 bits)", base.HEX, nil, 0x7f)
+local f_list_bitmask_15b  = ProtoField.uint16("rohc_lua.pkt.list.bitmask.mask.15b",
+                                              "Bitmask (15 bits)", base.HEX, nil, 0x7fff)
+---- XI and item lists
 local f_list_xi      = ProtoField.bytes("rohc_lua.pkt.list.xi", "XI fields")
 local f_list_xi_4bo  = ProtoField.uint8("rohc_lua.pkt.list.xi_4b_odd", "XI (PS = 0)",
                                                base.HEX, nil, 0xf0)
@@ -99,13 +120,15 @@ local f_list_xi_4bp  = ProtoField.uint8("rohc_lua.pkt.list.xi_4b_padding", "XI p
 local f_list_xi_8b   = ProtoField.uint8("rohc_lua.pkt.list.xi0", "XI (PS = 1)", base.HEX)
 local f_list_items   = ProtoField.bytes("rohc_lua.pkt.list.items", "List items")
 local f_list_item    = ProtoField.bytes("rohc_lua.pkt.list.items.item", "List item")
-local f_list_type_0_gp     = ProtoField.uint8("rohc_lua.pkt.list.gp", "gen_id present (GP)",
-                                              base.DEC, nil, 0x20)
-local f_list_type_0_ps     = ProtoField.uint8("rohc_lua.pkt.list.ps", "Size of XI fields",
-                                              base.DEC, nil, 0x10)
+---- list encoding type 0
 local f_list_type_0_m      = ProtoField.uint8("rohc_lua.pkt.list.m", "Number of XI fields",
                                               base.DEC, nil, 0x0f)
-local f_list_type_0_gen_id = ProtoField.uint8("rohc_lua.pkt.list.gen_id", "gen_id", base.DEC)
+---- list encoding type 2
+local f_list_type_2_res    = ProtoField.uint8("rohc_lua.pkt.list.res", "Reserved",
+                                              base.DEC, nil, 0x10)
+local f_list_type_2_count  = ProtoField.uint8("rohc_lua.pkt.list.count",
+                                              "Number of elements in reference list",
+                                              base.DEC, nil, 0x0f)
 
 -- IPv6 options
 local ipv6_opt_types = {
@@ -247,11 +270,14 @@ rohc_protocol_rfc3095_fields = {
 	f_chain_dyn_ipv6, f_chain_dyn_ipv6_tc, f_chain_dyn_ipv6_hl,
 	f_chain_dyn_udp, f_chain_dyn_udp_check,
 	f_chain_dyn_sn,
-	f_list, f_list_et,
+	f_list, f_list_et, f_list_gp, f_list_ps, f_list_xi1, f_list_gen_id, f_list_ref_id,
+	f_list_bitmask_ins, f_list_bitmask_rem, f_list_bitmask_type,
+	f_list_bitmask_7b, f_list_bitmask_15b,
 	f_list_xi, f_list_xi_4be, f_list_xi_4bo, f_list_xi_4bp, f_list_xi_8b,
 	f_list_items, f_list_item,
 	f_ipv6_opt_type, f_ipv6_opt_len, f_ipv6_opt_data,
-	f_list_type_0_gp, f_list_type_0_ps, f_list_type_0_m, f_list_type_0_gen_id,
+	f_list_type_0_m,
+	f_list_type_2_res, f_list_type_2_count,
 	f_pkt_uo0, f_pkt_uo0_type, f_pkt_uo0_sn, f_pkt_uo0_crc3,
 	f_pkt_uo1, f_pkt_uo1_type, f_pkt_uo1_ip_id, f_pkt_uo1_sn, f_pkt_uo1_crc3,
 	f_pkt_uor2, f_pkt_uor2_type, f_pkt_uor2_sn, f_pkt_uor2_x, f_pkt_uor2_crc7,
@@ -398,35 +424,113 @@ end
 local function dissect_dynamic_chain_ip_exts(list, pktinfo, tree)
 	local list_tree = tree:add(f_list, list)
 	local offset = 0
+	local remaining_xis_nr
+	local items_nr
 
 	-- List Encoding Type
 	local et = list:range(offset, 1):bitfield(0, 2)
 	list_tree:add(f_list_et, list:range(offset, 1))
 
+	-- gp: is gen_id present?
+	local gp = list:range(0, 1):bitfield(2, 1)
+	list_tree:add(f_list_gp, list:range(offset, 1))
+
+	local ps
 	if et == 0 then
 		-- list flags and number of elements
-		local gp = list:range(0, 1):bitfield(2, 1)
-		list_tree:add(f_list_type_0_gp, list:range(offset, 1))
-		local ps = list:range(0, 1):bitfield(3, 1)
-		list_tree:add(f_list_type_0_ps, list:range(offset, 1))
+		ps = list:range(0, 1):bitfield(3, 1)
+		list_tree:add(f_list_ps, list:range(offset, 1))
 		local m = list:range(0, 1):bitfield(4, 4)
 		list_tree:add(f_list_type_0_m, list:range(offset, 1))
 		offset = offset + 1
-		-- gen_id
-		if gp == 1 then
-			list_tree:add(f_list_type_0_gen_id, list:range(offset, 1))
+		remaining_xis_nr = m
+		items_nr = 0
+	elseif et == 1 then
+		-- list flags and number of elements
+		ps = list:range(0, 1):bitfield(3, 1)
+		list_tree:add(f_list_ps, list:range(offset, 1))
+		list_tree:add(f_list_xi1, list:range(offset, 1))
+		items_nr = list:range(offset, 1):bitfield(4, 1)
+		offset = offset + 1
+	elseif et == 2 then
+		-- list flags and number of elements
+		list_tree:add(f_list_type_2_res, list:range(offset, 1))
+		list_tree:add(f_list_type_2_count, list:range(offset, 1))
+		offset = offset + 1
+		remaining_xis_nr = 0
+		items_nr = 0
+	else -- et == 3
+		-- list flags and number of elements
+		ps = list:range(0, 1):bitfield(3, 1)
+		list_tree:add(f_list_ps, list:range(offset, 1))
+		list_tree:add(f_list_xi1, list:range(offset, 1))
+		items_nr = list:range(offset, 1):bitfield(4, 1)
+		offset = offset + 1
+	end
+
+	-- gen_id
+	if gp == 1 then
+		list_tree:add(f_list_gen_id, list:range(offset, 1))
+		offset = offset + 1
+	end
+
+	-- Encoding Type 1, 2 or 3: ref_id
+	if et == 1 or et == 2 or et == 3 then
+		list_tree:add(f_list_ref_id, list:range(offset, 1))
+		offset = offset + 1
+	end
+
+	-- Encoding Type 2 or 3: removal bitmask
+	if et == 2 or et == 3 then
+		local bitmask_rem_tree =
+			list_tree:add(f_list_bitmask_rem, list:range(offset, list:len() - offset))
+		local bitmask_type = list:range(offset, 1):bitfield(0, 1)
+		bitmask_rem_tree:add(f_list_bitmask_type, list:range(offset, 1))
+		if bitmask_type == 0 then
+			bitmask_rem_tree:add(f_list_bitmask_7b, list:range(offset, 1))
 			offset = offset + 1
+			bitmask_rem_tree:set_len(1)
+		else
+			bitmask_rem_tree:add(f_list_bitmask_8b, list:range(offset, 2))
+			offset = offset + 2
+			bitmask_rem_tree:set_len(2)
 		end
-		-- XI fields
+	end
+
+	-- Encoding Type 1 or 3: insertion bitmask
+	if et == 1 or et == 3 then
+		local bitmask_ins_tree =
+			list_tree:add(f_list_bitmask_ins, list:range(offset, list:len() - offset))
+		local bitmask_type = list:range(offset, 1):bitfield(0, 1)
+		bitmask_ins_tree:add(f_list_bitmask_type, list:range(offset, 1))
+		local ins_bitmask_len
+		if bitmask_type == 0 then
+			ins_bitmask_len = 7
+			bitmask_ins_tree:add(f_list_bitmask_7b, list:range(offset, 1))
+		else
+			ins_bitmask_len = 15
+			bitmask_ins = list:range(offset, 2):bitfield(1, 15)
+			bitmask_ins_tree:add(f_list_bitmask_8b, list:range(offset, 2))
+		end
+		local insertions_nr = 0
+		for i = 1, 7 do
+			insertions_nr = insertions_nr + list:range(offset, 1):bitfield(i, 1)
+		end
+		remaining_xis_nr = insertions_nr - 1
+		offset = offset + (ins_bitmask_len + 1) / 8
+		bitmask_ins_tree:set_len((ins_bitmask_len + 1) / 8)
+	end
+
+	-- XI fields
+	if remaining_xis_nr > 0 then
 		local xi_len
 		if ps == 0 then
-			xi_len = (m + 1) / 2
+			xi_len = (remaining_xis_nr + 1) / 2
 		else
-			xi_len = m
+			xi_len = remaining_xis_nr
 		end
 		local xi_tree = list_tree:add(f_list_xi, list:range(offset, xi_len))
-		local items_nr = 0
-		for i = 1, m do
+		for i = 1, remaining_xis_nr do
 			if ps == 0 then
 				-- 4-bit XI fields
 				if (i % 2) ~= 0 then
@@ -445,11 +549,14 @@ local function dissect_dynamic_chain_ip_exts(list, pktinfo, tree)
 			end
 		end
 		-- 4-bit padding in case of odd number of XI fields
-		if ps == 0 and (m % 2) ~= 0 then
+		if ps == 0 and (remaining_xis_nr % 2) ~= 0 then
 			xi_tree:add(f_list_xi_4bp, list:range(offset, 1))
 			offset = offset + 1
 		end
-		-- items
+	end
+
+	-- items
+	if items_nr > 0 then
 		local items_tree = list_tree:add(f_list_items, list:range(offset, list:len() - offset))
 		local items_len = 0
 		for i = 1, items_nr do
@@ -464,9 +571,6 @@ local function dissect_dynamic_chain_ip_exts(list, pktinfo, tree)
 			items_len = items_len + ipv6_opt_len
 		end
 		items_tree:set_len(items_len)
-	elseif et == 1 then
-	elseif et == 2 then
-	else -- et == 3
 	end
 
 	list_tree:set_len(offset)
