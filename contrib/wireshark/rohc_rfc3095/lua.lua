@@ -596,7 +596,10 @@ local function dissect_dynamic_chain_ip(dyn_chain, pktinfo, tree, ip_version)
 		ipv4_tree:add(f_chain_dyn_ipv4_nbo,     dyn_chain:range(offset, 1))
 		ipv4_tree:add(f_chain_dyn_ipv4_padding, dyn_chain:range(offset, 1))
 		offset = offset + 1
-		-- TODO: handle generic extension header list
+		-- handle generic extension header list
+		local list = dyn_chain:range(offset, dyn_chain:len() - offset)
+		local ip_exts_len = dissect_dynamic_chain_ip_exts(list, pktinfo, ipv4_tree)
+		offset = offset + ip_exts_len
 		ipv4_tree:set_len(offset)
 	elseif ip_version == 6 then
 		local ipv6_tree = tree:add(f_chain_dyn_ipv6, dyn_chain)
