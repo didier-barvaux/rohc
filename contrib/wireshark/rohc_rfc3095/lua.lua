@@ -792,7 +792,7 @@ local function dissect_pkt_uor_ext(uor_pkt, pktinfo, rohc_tree)
 end
 
 -- dissect UOR remainder
-local function dissect_uor_remainder(uor_bytes, pktinfo, uor_tree)
+local function dissect_uor_remainder(uor_bytes, pktinfo, uor_tree, profile_id)
 	local offset = 0
 	-- outer IP-ID if random
 	if pktinfo.private["rnd_outer_ip_id"] == "1" then
@@ -804,10 +804,12 @@ local function dissect_uor_remainder(uor_bytes, pktinfo, uor_tree)
 		uor_tree:add(f_pkt_uor_rnd_inner_ip_id, uor_bytes:range(offset, 2))
 		offset = offset + 2
 	end
-	-- UDP checksum if not zero
-	if pktinfo.private["udp_check"] ~= "0" then
-		uor_tree:add(f_pkt_uor_udp_check, uor_bytes:range(offset, 2))
-		offset = offset + 2
+	if profile_id == 0x0001 or profile_id == 0x0002 then
+		-- UDP checksum if not zero
+		if pktinfo.private["udp_check"] ~= "0" then
+			uor_tree:add(f_pkt_uor_udp_check, uor_bytes:range(offset, 2))
+			offset = offset + 2
+		end
 	end
 	return offset
 end
