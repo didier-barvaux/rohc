@@ -49,9 +49,7 @@
 
 #include "config.h" /* for WORDS_BIGENDIAN and ROHC_RFC_STRICT_DECOMPRESSOR */
 
-#ifndef __KERNEL__
-#  include <string.h>
-#endif
+#include <string.h>
 #include <stdint.h>
 
 

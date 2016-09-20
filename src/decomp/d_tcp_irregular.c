@@ -32,9 +32,7 @@
 #include "d_tcp_opts_list.h"
 #include "rohc_utils.h"
 
-#ifndef __KERNEL__
-#  include <string.h>
-#endif
+#include <string.h>
 
 static int tcp_parse_irregular_ip(const struct rohc_decomp_ctxt *const context,
                                   const ip_context_t *const ip_context,

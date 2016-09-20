@@ -35,9 +35,7 @@
 #include "schemes/decomp_wlsb.h"
 
 #include <stdint.h>
-#ifndef __KERNEL__
-#  include <string.h>
-#endif
+#include <string.h>
 #include <assert.h>
 
 

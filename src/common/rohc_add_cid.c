@@ -27,11 +27,7 @@
 #include "rohc_bit_ops.h"
 
 #include <stdint.h>
-#ifdef __KERNEL__
-#  include <linux/types.h>
-#else
-#  include <stdbool.h>
-#endif
+#include <stdbool.h>
 
 
 /**

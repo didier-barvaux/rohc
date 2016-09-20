@@ -28,9 +28,7 @@
 #include "comp_wlsb.h"
 #include "interval.h" /* for the rohc_f_*bits() functions */
 
-#ifndef __KERNEL__
-#  include <string.h>
-#endif
+#include <string.h>
 #include <assert.h>
 
 

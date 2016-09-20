@@ -27,9 +27,8 @@
 #include "rohc_utils.h"
 #include "protocols/tcp.h"
 
-#ifndef __KERNEL__
-#  include <string.h>
-#else
+#include <string.h>
+#ifdef __KERNEL__
 #  include <bitops.h> /* for __builtin_popcount() in Linux kernel */
 #endif
 #include <assert.h>

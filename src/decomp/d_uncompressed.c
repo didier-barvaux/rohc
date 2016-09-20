@@ -31,9 +31,7 @@
 #include "crc.h"
 #include "rohc_decomp_detect_packet.h" /* for rohc_decomp_packet_is_ir() */
 
-#ifndef __KERNEL__
-#	include <string.h>
-#endif
+#include <string.h>
 
 
 /*

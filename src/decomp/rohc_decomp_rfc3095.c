@@ -43,9 +43,7 @@
 
 #include "config.h" /* for WORDS_BIGENDIAN definition */
 
-#ifndef __KERNEL__
-#  include <string.h>
-#endif
+#include <string.h>
 #include <assert.h>
 
 
