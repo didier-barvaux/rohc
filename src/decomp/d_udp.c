@@ -34,9 +34,7 @@
 #include "crc.h"
 #include "protocols/udp.h"
 
-#ifndef __KERNEL__
-#  include <string.h>
-#endif
+#include <string.h>
 #include <assert.h>
 
 

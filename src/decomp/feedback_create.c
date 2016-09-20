@@ -33,9 +33,7 @@
 #ifdef ROHC_FEEDBACK_DEBUG
 #  include <stdio.h>
 #endif
-#ifndef __KERNEL__
-#  include <string.h>
-#endif
+#include <string.h>
 #include <assert.h>
 
 

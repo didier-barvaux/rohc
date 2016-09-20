@@ -36,9 +36,7 @@
 
 #include "config.h" /* for ROHC_RFC_STRICT_DECOMPRESSOR */
 
-#ifndef __KERNEL__
-#  include <string.h>
-#endif
+#include <string.h>
 
 
 struct d_tcp_opt_index /* TODO */

@@ -27,9 +27,7 @@
 
 #include "rohc_traces_internal.h"
 
-#ifndef __KERNEL__
-#  include <string.h>
-#endif
+#include <string.h>
 
 
 static bool check_ip6_item(const struct list_decomp *const decomp,

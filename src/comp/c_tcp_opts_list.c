@@ -31,9 +31,7 @@
 #include "schemes/tcp_ts.h"
 #include "schemes/tcp_sack.h"
 
-#ifndef __KERNEL__
-#  include <string.h>
-#endif
+#include <string.h>
 
 
 /** The length of the table mapping for TCP options */
