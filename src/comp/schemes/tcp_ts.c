@@ -24,9 +24,7 @@
 
 #include "tcp_ts.h"
 
-#ifndef __KERNEL__
-#  include <string.h>
-#endif
+#include <string.h>
 
 
 /**

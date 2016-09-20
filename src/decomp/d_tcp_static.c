@@ -33,9 +33,7 @@
 #include "rohc_utils.h"
 #include "protocols/ip_numbers.h"
 
-#ifndef __KERNEL__
-#  include <string.h>
-#endif
+#include <string.h>
 
 
 static int tcp_parse_static_ip(const struct rohc_decomp_ctxt *const context,

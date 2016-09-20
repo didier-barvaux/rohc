@@ -32,9 +32,7 @@
 #include "protocols/ipv4.h"
 #include "protocols/ipv6.h"
 
-#ifndef __KERNEL__
-#  include <string.h>
-#endif
+#include <string.h>
 #include <assert.h>
 
 

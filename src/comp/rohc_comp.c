@@ -58,15 +58,9 @@
 
 #include "config.h" /* for PACKAGE_(NAME|URL|VERSION) */
 
-#ifndef __KERNEL__
-#  include <string.h>
-#endif
+#include <string.h>
 #include <stdlib.h>
-#ifdef __KERNEL__
-#  include <linux/types.h>
-#else
-#  include <stdbool.h>
-#endif
+#include <stdbool.h>
 #include <assert.h>
 #include <stdarg.h>
 

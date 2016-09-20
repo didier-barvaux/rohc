@@ -25,9 +25,7 @@
 #include "rohc_packets.h"
 
 #include <assert.h>
-#ifndef __KERNEL__
-#  include <string.h>
-#endif
+#include <string.h>
 
 
 /**

@@ -43,9 +43,7 @@
 #include "crc.h"
 
 #include <stdint.h>
-#ifndef __KERNEL__
-#  include <string.h>
-#endif
+#include <string.h>
 #include <assert.h>
 
 #include "config.h"

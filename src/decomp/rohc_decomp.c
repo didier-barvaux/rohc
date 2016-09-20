@@ -51,9 +51,7 @@
 #include "rohc_decomp_detect_packet.h"
 #include "crc.h"
 
-#ifndef __KERNEL__
-#  include <string.h>
-#endif
+#include <string.h>
 #include <stdarg.h>
 #include <assert.h>
 
