@@ -1,6 +1,5 @@
 /*
- * Copyright 2012,2013 Didier Barvaux
- * Copyright 2007,2009,2010 Viveris Technologies
+ * Copyright 2017 Didier Barvaux
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -14,23 +13,22 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 /**
- * @file   src/comp/schemes/ip_id_offset.h
- * @brief  Offset IP-ID encoding
- * @author Didier Barvaux <didier@barvaux.org>
+ * @file   linux/include/inttypes.h
+ * @brief  Define inttypes.h for the Linux kernel
+ * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  */
 
-#ifndef ROHC_COMP_IP_ID_OFFSET_H
-#define ROHC_COMP_IP_ID_OFFSET_H
+#ifndef ROHC_KERNEL_INTTYPES_H
+#define ROHC_KERNEL_INTTYPES_H
 
-#include <stdint.h>
-#include <stdbool.h>
-
-bool is_ip_id_increasing(const uint16_t old_id, const uint16_t new_id)
-	__attribute__((warn_unused_result, const));
-
+#ifndef __KERNEL__
+#	error "for Linux kernel only!"
 #endif
 
+#include <stdint.h>
+
+#endif /* ROHC_KERNEL_INTTYPES_H */

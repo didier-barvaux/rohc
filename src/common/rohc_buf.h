@@ -41,9 +41,7 @@ extern "C"
 
 #include <stdbool.h>
 #include <stdlib.h>
-#ifndef __KERNEL__
-#  include <string.h>
-#endif
+#include <string.h>
 #include <assert.h>
 
 

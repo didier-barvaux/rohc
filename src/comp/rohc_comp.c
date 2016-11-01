@@ -59,6 +59,7 @@
 #include "config.h" /* for PACKAGE_(NAME|URL|VERSION) */
 
 #include <string.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <assert.h>

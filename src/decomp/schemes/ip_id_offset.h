@@ -31,11 +31,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-#ifdef __KERNEL__
-#  include <linux/types.h>
-#else
-#  include <stdbool.h>
-#endif
+#include <stdbool.h>
 
 
 /* The definition of the Offset IP-ID decoding object is private */

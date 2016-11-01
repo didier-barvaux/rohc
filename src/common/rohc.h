@@ -33,9 +33,7 @@ extern "C"
 #endif
 
 #include <stdlib.h>
-#ifndef __KERNEL__
-#  include <inttypes.h>
-#endif
+#include <stddef.h>
 
 
 /** Macro that handles deprecated declarations gracefully */
