@@ -28,9 +28,9 @@
 
 #include "c_tcp_static.h"
 
+#include "c_tcp_defines.h"
 #include "protocols/ip_numbers.h"
 #include "protocols/ip.h"
-#include "c_tcp_defines.h"
 
 #include <assert.h>
 

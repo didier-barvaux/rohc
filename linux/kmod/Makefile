@@ -46,6 +46,7 @@ rohc_comp_sources = \
 	../../src/comp/c_esp.c \
 	../../src/comp/c_tcp_opts_list.c \
 	../../src/comp/c_tcp_static.c \
+	../../src/comp/c_tcp_dynamic.c \
 	../../src/comp/c_tcp.c
 
 rohc_decomp_sources = \
