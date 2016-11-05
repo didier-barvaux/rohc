@@ -2291,6 +2291,8 @@ const char * rohc_comp_get_state_descr(const rohc_comp_state_t state)
 			return "FO";
 		case ROHC_COMP_STATE_SO:
 			return "SO";
+		case ROHC_COMP_STATE_CR:
+			return "CR";
 		case ROHC_COMP_STATE_UNKNOWN:
 		default:
 			return "no description";

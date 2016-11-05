@@ -70,7 +70,7 @@ struct rohc_comp;
  * @brief The different ROHC compressor states
  *
  * The different ROHC operation states at compressor as defined in section
- * 4.3.1 of RFC 3095.
+ * 4.3.1 of RFC 3095. The CR operation state is defined in RFC 4164.
  *
  * If you add a new compressor state, please also add the corresponding
  * textual description in \ref rohc_comp_get_state_descr.
@@ -89,6 +89,8 @@ typedef enum
 	ROHC_COMP_STATE_FO = 2,
 	/** The Second Order (SO) compressor state */
 	ROHC_COMP_STATE_SO = 3,
+	/** The Context Replication (CR) compressor state */
+	ROHC_COMP_STATE_CR = 4,
 
 } rohc_comp_state_t;
 
