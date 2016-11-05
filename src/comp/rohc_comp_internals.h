@@ -325,9 +325,6 @@ struct rohc_comp_ctxt
 	/** The context unique ID (CID) */
 	rohc_cid_t cid;
 
-	/** The key to help finding the context associated with a packet */
-	rohc_ctxt_key_t key; /* may not be unique */
-
 	/** The associated compressor */
 	struct rohc_comp *compressor;
 
