@@ -633,7 +633,8 @@ static int tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *const context,
 	else
 	{
 		ret = c_tcp_code_tcp_opts_list_item(context, tcp, tcp_context->msn,
-		                                    true, &tcp_context->tcp_opts,
+		                                    ROHC_TCP_CHAIN_DYNAMIC,
+		                                    &tcp_context->tcp_opts,
 		                                    rohc_remain_data, rohc_remain_len);
 		if(ret < 0)
 		{

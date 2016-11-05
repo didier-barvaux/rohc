@@ -2470,6 +2470,23 @@ static struct rohc_comp_ctxt *
 	/* initialize the previously found context */
 	c = &comp->contexts[cid_to_use];
 
+	/* context replication? */
+	if(do_ctxt_replication && cid_to_use != cid_for_replication)
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "create context with CID = %zu as a replication of context "
+		           "with CID %zu", cid_to_use, cid_for_replication);
+
+		/* copy the base context, then reset some parts of it */
+		memcpy(c, &(comp->contexts[cid_for_replication]), sizeof(struct rohc_comp_ctxt));
+		c->do_ctxt_replication = true;
+		c->cr_base_cid = cid_for_replication;
+	}
+	else
+	{
+		c->do_ctxt_replication = false;
+	}
+
 	c->ir_count = 0;
 	c->fo_count = 0;
 	c->so_count = 0;
@@ -2493,22 +2510,17 @@ static struct rohc_comp_ctxt *
 	c->cid = cid_to_use;
 	c->profile = profile;
 
-	/* context replication */
-	if(do_ctxt_replication && cid_to_use != cid_for_replication)
+	c->mode = ROHC_U_MODE;
+
+	/* use Context Replication (CR) compressor state instead of IR */
+	if(c->do_ctxt_replication)
 	{
-		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "create context with CID = %zu as a replication of context "
-		           "with CID %zu", cid_to_use, cid_for_replication);
-		c->do_ctxt_replication = true;
-		c->cr_base_cid = cid_for_replication;
+		c->state = ROHC_COMP_STATE_CR;
 	}
 	else
 	{
-		c->do_ctxt_replication = false;
+		c->state = ROHC_COMP_STATE_IR;
 	}
-
-	c->mode = ROHC_U_MODE;
-	c->state = ROHC_COMP_STATE_IR;
 
 	c->compressor = comp;
 

@@ -141,7 +141,7 @@ bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
                                   const struct tcphdr *const tcp,
                                   const uint16_t msn,
-                                  const bool is_dynamic_chain,
+                                  const rohc_tcp_chain_t chain_type,
                                   struct c_tcp_opts_ctxt *const opts_ctxt,
                                   uint8_t *const comp_opts,
                                   const size_t comp_opts_max_len)

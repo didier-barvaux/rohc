@@ -47,6 +47,7 @@ rohc_comp_sources = \
 	../../src/comp/c_tcp_opts_list.c \
 	../../src/comp/c_tcp_static.c \
 	../../src/comp/c_tcp_dynamic.c \
+	../../src/comp/c_tcp_replicate.c \
 	../../src/comp/c_tcp_irregular.c \
 	../../src/comp/c_tcp.c
 
