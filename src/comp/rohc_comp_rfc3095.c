@@ -530,10 +530,11 @@ static void c_init_tmp_variables(struct generic_tmp_vars *const tmp_vars)
 /**
  * @brief Create a new context and initialize it thanks to the given IP packet.
  *
- * @param context   The compression context
- * @param sn_shift  The shift parameter (p) to use for encoding SN with W-LSB
- * @param packet    The packet given to initialize the new context
- * @return          bool if successful, false otherwise
+ * @param context     The compression context
+ * @param sn_bits_nr  The maximum number of bits used for SN
+ * @param sn_shift    The shift parameter (p) to use for encoding SN with W-LSB
+ * @param packet      The packet given to initialize the new context
+ * @return            true if successful, false otherwise
  */
 bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
                               const rohc_lsb_shift_t sn_shift,
