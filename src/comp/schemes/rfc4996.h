@@ -48,6 +48,12 @@ int c_static_or_irreg16(const uint16_t packet_value,
                         const size_t rohc_max_len,
                         int *const indicator)
 	__attribute__((warn_unused_result, nonnull(3, 5)));
+int c_static_or_irreg32(const uint32_t packet_value,
+                        const bool is_static,
+                        uint8_t *const rohc_data,
+                        const size_t rohc_max_len,
+                        int *const indicator)
+	__attribute__((warn_unused_result, nonnull(3, 5)));
 
 /* zero_or_irreg encoding for 16-bit and 32-bit values */
 int c_zero_or_irreg16(const uint16_t packet_value,

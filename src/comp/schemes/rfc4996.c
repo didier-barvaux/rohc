@@ -124,6 +124,50 @@ error:
 
 
 /**
+ * @brief Compress the 32 bits given, depending of the context value.
+ *
+ * @param packet_value     The packet value
+ * @param is_static        Whether the value is static or not
+ * @param[out] rohc_data   The compressed value
+ * @param rohc_max_len     The max remaining length in the ROHC buffer
+ * @param[out] indicator   The indicator: 1 if present, 0 if not
+ * @return                 The number of ROHC bytes written,
+ *                         -1 if a problem occurs
+ */
+int c_static_or_irreg32(const uint32_t packet_value,
+                        const bool is_static,
+                        uint8_t *const rohc_data,
+                        const size_t rohc_max_len,
+                        int *const indicator)
+{
+	size_t field_len;
+
+	if(is_static)
+	{
+		field_len = 0;
+		*indicator = 0;
+	}
+	else
+	{
+		field_len = sizeof(uint32_t);
+
+		if(rohc_max_len < field_len)
+		{
+			goto error;
+		}
+
+		memcpy(rohc_data, &packet_value, sizeof(uint32_t));
+		*indicator = 1;
+	}
+
+	return field_len;
+
+error:
+	return -1;
+}
+
+
+/**
  * @brief Compress the 16 bits value, regarding if null or not
  *
  * @param packet_value     The packet value

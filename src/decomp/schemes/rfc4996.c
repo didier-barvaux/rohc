@@ -121,6 +121,51 @@ error:
 
 
 /**
+ * @brief Decompress the 32-bit given value, according to the indicator
+ *
+ * @param rohc_data  The ROHC data to parse
+ * @param rohc_len   The length of the ROHC data to parse (in bytes)
+ * @param indicator  The indicator of compression
+ * @param[out] lsb   The LSB bits extracted from the ROHC packet
+ * @return           The length (in bytes) of the compressed value,
+ *                   -1 if ROHC data is malformed
+ */
+int d_static_or_irreg32(const uint8_t *const rohc_data,
+                        const size_t rohc_len,
+                        const int indicator,
+                        struct rohc_lsb_field32 *const lsb)
+{
+	size_t length;
+
+	if(indicator == 0)
+	{
+		lsb->bits_nr = 0;
+		length = 0;
+	}
+	else if(indicator == 1)
+	{
+		if(rohc_len < 4)
+		{
+			goto error;
+		}
+		memcpy(&(lsb->bits), rohc_data, sizeof(uint32_t));
+		lsb->bits = rohc_ntoh32(lsb->bits);
+		lsb->bits_nr = 32;
+		length = sizeof(uint32_t);
+	}
+	else
+	{
+		goto error;
+	}
+
+	return length;
+
+error:
+	return -1;
+}
+
+
+/**
  * @brief Decode the 32 bits value, according to the indicator
  *
  * See RFC4996 page 46
