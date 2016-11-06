@@ -361,6 +361,11 @@ struct rohc_tcp_extr_ip_bits
 /** The bits extracted from ROHC TCP header */
 struct rohc_tcp_extr_bits
 {
+	/** Whether Context Replication (CR) is used */
+	bool do_ctxt_replication;
+	/** The base context for Context Replication (CR) */
+	rohc_cid_t cr_base_cid;
+
 	/** The extracted bits related to the IP headers */
 	struct rohc_tcp_extr_ip_bits ip[ROHC_TCP_MAX_IP_HDRS];
 	size_t ip_nr;   /**< The number of parsed IP headers */
@@ -436,6 +441,11 @@ struct rohc_tcp_decoded_ip_values
 /** The values decoded from the bits extracted from ROHC TCP header */
 struct rohc_tcp_decoded_values
 {
+	/** Whether Context Replication (CR) is used */
+	bool do_ctxt_replication;
+	/** The base context for Context Replication (CR) */
+	rohc_cid_t cr_base_cid;
+
 	/** The decoded values related to the IP headers */
 	struct rohc_tcp_decoded_ip_values ip[ROHC_TCP_MAX_IP_HDRS];
 	size_t ip_nr;  /**< The number of the decoded IP headers */

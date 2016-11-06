@@ -72,6 +72,7 @@ rohc_decomp_sources = \
 	../../src/decomp/d_esp.c \
 	../../src/decomp/d_tcp_static.c \
 	../../src/decomp/d_tcp_dynamic.c \
+	../../src/decomp/d_tcp_replicate.c \
 	../../src/decomp/d_tcp_irregular.c \
 	../../src/decomp/d_tcp_opts_list.c \
 	../../src/decomp/d_tcp.c

@@ -136,6 +136,9 @@ const char * ROHC_EXPORT rohc_get_ext_descr(const rohc_ext_t ext_type)
 rohc_packet_t ROHC_EXPORT rohc_get_packet_type(const char *const packet_id)
 	__attribute__((warn_unused_result, nonnull(1)));
 
+bool ROHC_EXPORT rohc_packet_is_ir(const rohc_packet_t packet_type)
+	__attribute__((warn_unused_result, const));
+
 bool ROHC_EXPORT rohc_packet_carry_static_info(const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, const));
 

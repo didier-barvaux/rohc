@@ -52,6 +52,7 @@ EXPORT_SYMBOL_GPL(rohc_get_profile_descr);
 EXPORT_SYMBOL_GPL(rohc_get_packet_descr);
 EXPORT_SYMBOL_GPL(rohc_get_ext_descr);
 EXPORT_SYMBOL_GPL(rohc_get_packet_type);
+EXPORT_SYMBOL_GPL(rohc_packet_is_ir);
 EXPORT_SYMBOL_GPL(rohc_packet_carry_static_info);
 EXPORT_SYMBOL_GPL(rohc_packet_carry_crc_7_or_8);
 
