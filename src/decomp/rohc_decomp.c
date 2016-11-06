@@ -1391,8 +1391,8 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 
 		crc_ok = rohc_decomp_check_ir_crc(decomp, context,
 		                                  rohc_buf_data(rohc_packet) - add_cid_len,
-		                                  add_cid_len + rohc_hdr_len, large_cid_len,
-		                                  add_cid_len, extr_crc_bits->bits);
+		                                  add_cid_len + rohc_hdr_len, add_cid_len,
+		                                  large_cid_len, extr_crc_bits->bits);
 		if(!crc_ok)
 		{
 			rohc_decomp_warn(context, "CRC detected a transmission failure for "
@@ -1666,7 +1666,6 @@ static bool rohc_decomp_check_ir_crc(const struct rohc_decomp *const decomp,
                                      const size_t large_cid_len,
                                      const uint8_t crc_packet)
 {
-	const size_t rohc_hdr_full_len = add_cid_len + large_cid_len + rohc_hdr_len;
 	const uint8_t *crc_table;
 	const rohc_crc_type_t crc_type = ROHC_CRC_TYPE_8;
 	const uint8_t crc_zero[] = { 0x00 };
@@ -1699,7 +1698,7 @@ static bool rohc_decomp_check_ir_crc(const struct rohc_decomp *const decomp,
 	}
 
 	rohc_decomp_debug(context, "CRC-%d on compressed %zu-byte ROHC header = "
-	                  "0x%x", crc_type, rohc_hdr_full_len, crc_comp);
+	                  "0x%x", crc_type, rohc_hdr_len, crc_comp);
 
 	/* does the computed CRC match the one in packet? */
 	if(crc_comp != crc_packet)
