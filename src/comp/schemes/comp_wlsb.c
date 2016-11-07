@@ -1,5 +1,5 @@
 /*
- * Copyright 2010,2011,2012,2013 Didier Barvaux
+ * Copyright 2010,2011,2012,2013,2016 Didier Barvaux
  * Copyright 2007,2009,2010,2012,2013,2014 Viveris Technologies
  *
  * This library is free software; you can redistribute it and/or
@@ -520,6 +520,37 @@ size_t wlsb_ack(struct c_wlsb *const wlsb,
 	}
 
 	return 0;
+}
+
+
+/**
+ * @brief Whether the given SN is present in the given WLSB window
+ *
+ * @param wlsb  The WLSB in which to search for the SN
+ * @param sn    The SN to search for
+ * @return      true if the SN is found, false if not
+ */
+bool wlsb_is_sn_present(struct c_wlsb *const wlsb, const uint32_t sn)
+{
+	size_t entry = wlsb->next;
+	size_t i;
+
+	/* search for the window entry that matches the given SN LSB
+	 * starting from the one */
+	for(i = 0; i < wlsb->count; i++)
+	{
+		entry = wlsb_get_next_older(entry, wlsb->window_mask);
+		if(sn == wlsb->window[entry].sn)
+		{
+			return true;
+		}
+		else if(sn > wlsb->window[entry].sn)
+		{
+			return false;
+		}
+	}
+
+	return false;
 }
 
 

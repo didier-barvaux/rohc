@@ -579,6 +579,14 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 		           "no memory to allocate W-LSB encoding for SN");
 		goto free_generic_context;
 	}
+	rfc3095_ctxt->msn_non_acked =
+		c_create_wlsb(16, context->compressor->wlsb_window_width, sn_shift);
+	if(rfc3095_ctxt->msn_non_acked == NULL)
+	{
+		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "no memory to allocate W-LSB encoding for non-acknowledged MSN");
+		goto free_sn_window;
+	}
 
 	/* step 3 */
 	if(!ip_header_info_new(&rfc3095_ctxt->outer_ip_flags,
@@ -589,7 +597,7 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 	                       context->compressor->trace_callback_priv,
 	                       context->profile->id))
 	{
-		goto free_sn_window;
+		goto free_msn_wlsb;
 	}
 	if(packet->ip_hdr_nr > 1)
 	{
@@ -634,6 +642,8 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 
 free_header_info:
 	ip_header_info_free(&rfc3095_ctxt->outer_ip_flags);
+free_msn_wlsb:
+	c_destroy_wlsb(rfc3095_ctxt->msn_non_acked);
 free_sn_window:
 	c_destroy_wlsb(rfc3095_ctxt->sn_window);
 free_generic_context:
@@ -661,6 +671,7 @@ void rohc_comp_rfc3095_destroy(struct rohc_comp_ctxt *const context)
 	{
 		ip_header_info_free(&rfc3095_ctxt->inner_ip_flags);
 	}
+	c_destroy_wlsb(rfc3095_ctxt->msn_non_acked);
 	c_destroy_wlsb(rfc3095_ctxt->sn_window);
 
 	zfree(rfc3095_ctxt->specific);
@@ -867,6 +878,12 @@ int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
 
 	/* decide which packet to send */
 	rfc3095_ctxt->tmp.packet_type = decide_packet(context);
+
+	/* does the packet update the decompressor context? */
+	if(rohc_packet_carry_crc_7_or_8(rfc3095_ctxt->tmp.packet_type))
+	{
+		rfc3095_ctxt->msn_of_last_ctxt_updating_pkt = rfc3095_ctxt->sn;
+	}
 
 	/* code the ROHC header (and the extension if needed) */
 	size = code_packet(context, uncomp_pkt, rohc_pkt, rohc_pkt_max_len);
@@ -1115,6 +1132,15 @@ static void rohc_comp_rfc3095_feedback_ack(struct rohc_comp_ctxt *const context,
 {
 	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 
+	/* always ack MSN to detect cases for improved ACK(O) transitions */
+	if(!sn_not_valid)
+	{
+		const size_t acked_nr =
+			wlsb_ack(rfc3095_ctxt->msn_non_acked, sn_bits, sn_bits_nr);
+		rohc_comp_debug(context, "FEEDBACK-2: positive ACK removed %zu values "
+		                "from MSN W-LSB", acked_nr);
+	}
+
 	if(context->mode == ROHC_U_MODE)
 	{
 		/* RFC 3095, §5.3.1.3 and §5.3.2.3: ACK(U) may disable or increase the
@@ -1123,15 +1149,82 @@ static void rohc_comp_rfc3095_feedback_ack(struct rohc_comp_ctxt *const context,
 		rohc_comp_debug(context, "ACK(U) received, but not supported, so periodic "
 		                "IR refreshes are unchanged");
 	}
-	else if(context->mode == ROHC_O_MODE && context->state == ROHC_COMP_STATE_FO)
+	else if(context->mode == ROHC_O_MODE &&
+	        context->state != ROHC_COMP_STATE_SO &&
+	        !sn_not_valid)
 	{
+		uint32_t sn_mask;
+		if(sn_bits_nr < 32)
+		{
+			sn_mask = (1U << sn_bits_nr) - 1;
+		}
+		else
+		{
+			sn_mask = 0xffffffffUL;
+		}
+		assert((sn_bits & sn_mask) == sn_bits);
+
 		/* RFC 3095, §5.4.1.1.2: positive ACKs may be used to acknowledge updates
 		 * transmitted by UOR-2 packets (ie. transit back to SO state more quickly) */
-		/* TODO: not implemented yet, use the SN field to determine if it acknowledges
-		 * one of the UOR-2 packets that was transmitted since the downward transition
-		 * from SO to FO state */
-		rohc_comp_debug(context, "ACK(O) received, but not supported, so do not "
-		                "transit to SO state more quickly");
+		if(!wlsb_is_sn_present(rfc3095_ctxt->msn_non_acked,
+		                       rfc3095_ctxt->msn_of_last_ctxt_updating_pkt) ||
+		   sn_bits == (rfc3095_ctxt->msn_of_last_ctxt_updating_pkt & sn_mask))
+		{
+			/* decompressor acknowledged some SN, so some SNs were removed from the
+			 * W-LSB windows; the SN of the last context-updating packet was part of
+			 * the SNs that were acknowledged, so the compressor is 100% sure that
+			 * the decompressor received the packet and updated its context in
+			 * consequence, so the compressor may transit to a higher compression
+			 * state immediately! */
+			rohc_comp_debug(context, "ACK(O) makes the compressor transit to the "
+			                "SO state more quickly (context-updating packet with "
+			                "SN %u was acknowledged by decompressor)",
+			                rfc3095_ctxt->msn_of_last_ctxt_updating_pkt);
+			rohc_comp_change_state(context, ROHC_COMP_STATE_SO);
+
+			/* do not require any more the transmission of some fields several times */
+			if(rfc3095_ctxt->ip_hdr_nr >= 1)
+			{
+				struct ip_header_info *const hdr_info = &(rfc3095_ctxt->outer_ip_flags);
+				hdr_info->tos_count = MAX_FO_COUNT;
+				hdr_info->ttl_count = MAX_FO_COUNT;
+				hdr_info->tos_count = MAX_FO_COUNT;
+				hdr_info->protocol_count = MAX_FO_COUNT;
+				if(hdr_info->version == IPV4)
+				{
+					hdr_info->info.v4.df_count = MAX_FO_COUNT;
+					hdr_info->info.v4.rnd_count = MAX_FO_COUNT;
+					hdr_info->info.v4.nbo_count = MAX_FO_COUNT;
+				}
+			}
+			if(rfc3095_ctxt->ip_hdr_nr >= 2)
+			{
+				struct ip_header_info *const hdr_info = &(rfc3095_ctxt->inner_ip_flags);
+				hdr_info->tos_count = MAX_FO_COUNT;
+				hdr_info->ttl_count = MAX_FO_COUNT;
+				hdr_info->tos_count = MAX_FO_COUNT;
+				hdr_info->protocol_count = MAX_FO_COUNT;
+				if(hdr_info->version == IPV4)
+				{
+					hdr_info->info.v4.df_count = MAX_FO_COUNT;
+					hdr_info->info.v4.rnd_count = MAX_FO_COUNT;
+					hdr_info->info.v4.nbo_count = MAX_FO_COUNT;
+				}
+			}
+			if(context->profile->id == ROHC_PROFILE_RTP)
+			{
+				struct sc_rtp_context *const rtp_context = rfc3095_ctxt->specific;
+				rtp_context->udp_checksum_change_count = MAX_IR_COUNT;
+				rtp_context->rtp_version_change_count = MAX_IR_COUNT;
+				rtp_context->rtp_padding_change_count = MAX_IR_COUNT;
+				rtp_context->rtp_extension_change_count = MAX_IR_COUNT;
+				rtp_context->rtp_pt_change_count = MAX_IR_COUNT;
+				if(rtp_context->ts_sc.nr_init_stride_packets > 0)
+				{
+					rtp_context->ts_sc.nr_init_stride_packets = ROHC_INIT_TS_STRIDE_MIN;
+				}
+			}
+		}
 	}
 	else if(context->mode == ROHC_R_MODE)
 	{

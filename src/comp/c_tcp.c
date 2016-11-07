@@ -295,6 +295,10 @@ struct sc_tcp_context
 	uint16_t msn;               /**< The Master Sequence Number (MSN) */
 	struct c_wlsb *msn_wlsb;    /**< The W-LSB decoding context for MSN */
 
+	/** The MSN of the last packet that updated the context (used to determine
+	 * if a positive ACK may cause a transition to a higher compression state) */
+	uint16_t msn_of_last_ctxt_updating_pkt;
+
 	struct c_wlsb *ttl_hopl_wlsb;
 	size_t ttl_hopl_change_count;
 
@@ -1710,6 +1714,12 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 
 	/* decide which packet to send */
 	*packet_type = tcp_decide_packet(context, ip_inner_context, tcp);
+
+	/* does the packet update the decompressor context? */
+	if(rohc_packet_carry_crc_7_or_8(*packet_type))
+	{
+		tcp_context->msn_of_last_ctxt_updating_pkt = tcp_context->msn;
+	}
 
 	/* code the chosen packet */
 	if((*packet_type) == ROHC_PACKET_UNKNOWN)
@@ -7198,29 +7208,15 @@ static void c_tcp_feedback_ack(struct rohc_comp_ctxt *const context,
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
 
-	if(context->state != ROHC_COMP_STATE_SO)
-	{
-		/* RFC 6846, §5.2.2.1:
-		 *   The compressor MAY use acknowledgment feedback (ACKs) to move to a
-		 *   higher compression state.
-		 *   Upon reception of an ACK for a context-updating packet, the
-		 *   compressor obtains confidence that the decompressor has received the
-		 *   acknowledged packet and that it has observed changes in the packet
-		 *   flow up to the acknowledged packet. */
-		/* TODO: not implemented yet, use the SN field to determine if it acknowledges
-		 * one of the "context-updating" packets that was transmitted since the context
-		 * last needed updates */
-		rohc_comp_debug(context, "FEEDBACK-2: positive ACK may make the compressor "
-		                "transit to the SO state more quickly, but feature is not "
-		                "implemented yet");
-	}
-
 	/* the W-LSB encoding scheme as defined by function lsb() in RFC4997 use a
 	 * sliding window with a large limited maximum width ; once the feedback channel
 	 * is established, positive ACKs may remove older values from the windows */
 	if(!sn_not_valid)
 	{
 		size_t acked_nr;
+
+		assert(sn_bits_nr <= 16);
+		assert(sn_bits <= 0xffffU);
 
 		/* ack TTL or Hop Limit */
 		acked_nr = wlsb_ack(tcp_context->ttl_hopl_wlsb, sn_bits, sn_bits_nr);
@@ -7259,6 +7255,52 @@ static void c_tcp_feedback_ack(struct rohc_comp_ctxt *const context,
 		acked_nr = wlsb_ack(tcp_context->msn_wlsb, sn_bits, sn_bits_nr);
 		rohc_comp_debug(context, "FEEDBACK-2: positive ACK removed %zu values "
 		                "from SN W-LSB", acked_nr);
+	}
+
+	/* RFC 6846, §5.2.2.1:
+	 *   The compressor MAY use acknowledgment feedback (ACKs) to move to a
+	 *   higher compression state.
+	 *   Upon reception of an ACK for a context-updating packet, the
+	 *   compressor obtains confidence that the decompressor has received the
+	 *   acknowledged packet and that it has observed changes in the packet
+	 *   flow up to the acknowledged packet. */
+	if(context->state != ROHC_COMP_STATE_SO && !sn_not_valid)
+	{
+		uint16_t sn_mask;
+		if(sn_bits_nr < 16)
+		{
+			sn_mask = (1U << sn_bits_nr) - 1;
+		}
+		else
+		{
+			sn_mask = 0xffffU;
+		}
+		assert((sn_bits & sn_mask) == sn_bits);
+
+		if(!wlsb_is_sn_present(tcp_context->msn_wlsb,
+		                       tcp_context->msn_of_last_ctxt_updating_pkt) ||
+		   sn_bits == (tcp_context->msn_of_last_ctxt_updating_pkt & sn_mask))
+		{
+			/* decompressor acknowledged some SN, so some SNs were removed from the
+			 * W-LSB windows; the SN of the last context-updating packet was part of
+			 * the SNs that were acknowledged, so the compressor is 100% sure that
+			 * the decompressor received the packet and updated its context in
+			 * consequence, so the compressor may transit to a higher compression
+			 * state immediately! */
+			rohc_comp_debug(context, "FEEDBACK-2: positive ACK makes the compressor "
+			                "transit to the SO state more quickly (context-updating "
+			                "packet with SN %u was acknowledged by decompressor)",
+			                tcp_context->msn_of_last_ctxt_updating_pkt);
+			rohc_comp_change_state(context, ROHC_COMP_STATE_SO);
+		}
+		else
+		{
+			rohc_comp_debug(context, "FEEDBACK-2: positive ACK DOES NOT make the "
+			                "compressor transit to the SO state more quickly "
+			                "(context-updating packet with SN %u was NOT acknowledged "
+			                "YET by decompressor)",
+			                tcp_context->msn_of_last_ctxt_updating_pkt);
+		}
 	}
 }
 

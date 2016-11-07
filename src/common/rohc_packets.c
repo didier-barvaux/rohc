@@ -1,5 +1,5 @@
 /*
- * Copyright 2012,2013,2014 Didier Barvaux
+ * Copyright 2012,2013,2014,2016 Didier Barvaux
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -291,5 +291,75 @@ rohc_packet_t rohc_get_packet_type(const char *const packet_id)
 	{
 		return ROHC_PACKET_UNKNOWN;
 	}
+}
+
+
+/**
+ * @brief Does packet type carry static information?
+ *
+ * @param packet_type  The type of packet
+ * @return             true if packet carries static information,
+ *                     false if it does not
+ */
+bool rohc_packet_carry_static_info(const rohc_packet_t packet_type)
+{
+	return (packet_type == ROHC_PACKET_IR);
+}
+
+
+/**
+ * @brief Does packet type carry 7- or 8-bit CRC?
+ *
+ * @param packet_type  The type of packet
+ * @return             true if packet carries 7- or 8-bit CRC,
+ *                     false if it does not
+ */
+bool rohc_packet_carry_crc_7_or_8(const rohc_packet_t packet_type)
+{
+	bool carry_crc_7_or_8;
+
+	switch(packet_type)
+	{
+		case ROHC_PACKET_IR:
+		case ROHC_PACKET_IR_DYN:
+		case ROHC_PACKET_UOR_2:
+		case ROHC_PACKET_UOR_2_RTP:
+		case ROHC_PACKET_UOR_2_TS:
+		case ROHC_PACKET_UOR_2_ID:
+		case ROHC_PACKET_TCP_CO_COMMON:
+		case ROHC_PACKET_TCP_SEQ_8:
+		case ROHC_PACKET_TCP_RND_8:
+			carry_crc_7_or_8 = true;
+			break;
+		case ROHC_PACKET_UO_0:
+		case ROHC_PACKET_UO_1:
+		case ROHC_PACKET_UO_1_RTP:
+		case ROHC_PACKET_UO_1_TS:
+		case ROHC_PACKET_UO_1_ID:
+		case ROHC_PACKET_NORMAL:
+		case ROHC_PACKET_TCP_SEQ_1:
+		case ROHC_PACKET_TCP_SEQ_2:
+		case ROHC_PACKET_TCP_SEQ_3:
+		case ROHC_PACKET_TCP_SEQ_4:
+		case ROHC_PACKET_TCP_SEQ_5:
+		case ROHC_PACKET_TCP_SEQ_6:
+		case ROHC_PACKET_TCP_SEQ_7:
+		case ROHC_PACKET_TCP_RND_1:
+		case ROHC_PACKET_TCP_RND_2:
+		case ROHC_PACKET_TCP_RND_3:
+		case ROHC_PACKET_TCP_RND_4:
+		case ROHC_PACKET_TCP_RND_5:
+		case ROHC_PACKET_TCP_RND_6:
+		case ROHC_PACKET_TCP_RND_7:
+			carry_crc_7_or_8 = false;
+			break;
+		case ROHC_PACKET_UNKNOWN:
+		case ROHC_PACKET_MAX:
+		default:
+			carry_crc_7_or_8 = false;
+			break;
+	}
+
+	return carry_crc_7_or_8;
 }
 

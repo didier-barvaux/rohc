@@ -229,11 +229,6 @@ static bool rohc_decomp_feedback_nack(struct rohc_decomp *const decomp,
 static void rohc_decomp_reset_stats(struct rohc_decomp *const decomp)
 	__attribute__((nonnull(1)));
 
-static bool rohc_decomp_packet_carry_static_info(const rohc_packet_t packet_type)
-	__attribute__((warn_unused_result, const));
-static bool rohc_decomp_packet_carry_crc_7_or_8(const rohc_packet_t packet_type)
-	__attribute__((warn_unused_result, const));
-
 
 
 /*
@@ -1188,7 +1183,7 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 	/* only packets that carry static informations can be received in the
 	 * No Context state, other cannot */
 	if(stream->state == ROHC_DECOMP_STATE_NC &&
-	   !rohc_decomp_packet_carry_static_info(stream->packet_type))
+	   !rohc_packet_carry_static_info(stream->packet_type))
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, profile->id,
 		             "packet '%s' (%d) does not carry static information, it cannot "
@@ -1206,7 +1201,7 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 	/* only packets carrying CRC-7 or CRC-8 can be received in the Static Context
 	 * state, other cannot */
 	else if(stream->state == ROHC_DECOMP_STATE_SC &&
-	        !rohc_decomp_packet_carry_crc_7_or_8(stream->packet_type))
+	        !rohc_packet_carry_crc_7_or_8(stream->packet_type))
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, profile->id,
 		             "packet '%s' (%d) does not carry 7- or 8-bit CRC, it cannot "
@@ -1830,7 +1825,7 @@ static bool rohc_decomp_feedback_ack(struct rohc_decomp *const decomp,
 		 *  - when a type 0 or 1 packet is correctly decompressed, no
 		 *    feedback is sent */
 		else if(infos->state != ROHC_DECOMP_STATE_NC &&
-		        rohc_decomp_packet_carry_crc_7_or_8(infos->packet_type))
+		        rohc_packet_carry_crc_7_or_8(infos->packet_type))
 		{
 			do_build_ack = true;
 		}
@@ -2085,7 +2080,7 @@ static bool rohc_decomp_feedback_nack(struct rohc_decomp *const decomp,
 		 *    decide if a STATIC-NACK(O) should be sent */
 		else if(infos->state == ROHC_DECOMP_STATE_SC)
 		{
-			if(!rohc_decomp_packet_carry_crc_7_or_8(infos->packet_type))
+			if(!rohc_packet_carry_crc_7_or_8(infos->packet_type))
 			{
 				ack_type = ROHC_FEEDBACK_NACK;
 				do_downward_transition = true;
@@ -4108,75 +4103,5 @@ static bool rohc_decomp_create_contexts(struct rohc_decomp *const decomp,
 	           "room for %zu decompression contexts created", max_cid + 1);
 
 	return true;
-}
-
-
-/**
- * @brief Does packet type carry static information?
- *
- * @param packet_type  The type of packet
- * @return             true if packet carries static information,
- *                     false if it does not
- */
-static bool rohc_decomp_packet_carry_static_info(const rohc_packet_t packet_type)
-{
-	return (packet_type == ROHC_PACKET_IR);
-}
-
-
-/**
- * @brief Does packet type carry 7- or 8-bit CRC?
- *
- * @param packet_type  The type of packet
- * @return             true if packet carries 7- or 8-bit CRC,
- *                     false if it does not
- */
-static bool rohc_decomp_packet_carry_crc_7_or_8(const rohc_packet_t packet_type)
-{
-	bool carry_crc_7_or_8;
-
-	switch(packet_type)
-	{
-		case ROHC_PACKET_IR:
-		case ROHC_PACKET_IR_DYN:
-		case ROHC_PACKET_UOR_2:
-		case ROHC_PACKET_UOR_2_RTP:
-		case ROHC_PACKET_UOR_2_TS:
-		case ROHC_PACKET_UOR_2_ID:
-		case ROHC_PACKET_TCP_CO_COMMON:
-		case ROHC_PACKET_TCP_SEQ_8:
-		case ROHC_PACKET_TCP_RND_8:
-			carry_crc_7_or_8 = true;
-			break;
-		case ROHC_PACKET_UO_0:
-		case ROHC_PACKET_UO_1:
-		case ROHC_PACKET_UO_1_RTP:
-		case ROHC_PACKET_UO_1_TS:
-		case ROHC_PACKET_UO_1_ID:
-		case ROHC_PACKET_NORMAL:
-		case ROHC_PACKET_TCP_SEQ_1:
-		case ROHC_PACKET_TCP_SEQ_2:
-		case ROHC_PACKET_TCP_SEQ_3:
-		case ROHC_PACKET_TCP_SEQ_4:
-		case ROHC_PACKET_TCP_SEQ_5:
-		case ROHC_PACKET_TCP_SEQ_6:
-		case ROHC_PACKET_TCP_SEQ_7:
-		case ROHC_PACKET_TCP_RND_1:
-		case ROHC_PACKET_TCP_RND_2:
-		case ROHC_PACKET_TCP_RND_3:
-		case ROHC_PACKET_TCP_RND_4:
-		case ROHC_PACKET_TCP_RND_5:
-		case ROHC_PACKET_TCP_RND_6:
-		case ROHC_PACKET_TCP_RND_7:
-			carry_crc_7_or_8 = false;
-			break;
-		case ROHC_PACKET_UNKNOWN:
-		case ROHC_PACKET_MAX:
-		default:
-			carry_crc_7_or_8 = false;
-			break;
-	}
-
-	return carry_crc_7_or_8;
 }
 
