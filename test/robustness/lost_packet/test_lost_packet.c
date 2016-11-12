@@ -344,7 +344,7 @@ static int test_comp_and_decomp(const char *const filename,
 	if(!do_repair)
 	{
 		/* set the default timeouts for periodic refreshes of contexts */
-		if(!rohc_comp_set_periodic_refreshes(comp, 121, 120))
+		if(!rohc_comp_set_periodic_refreshes(comp, 122, 121))
 		{
 			fprintf(stderr, "failed to set timeouts for periodic refreshes\n");
 			goto destroy_comp;
