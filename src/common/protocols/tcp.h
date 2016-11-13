@@ -55,7 +55,7 @@
  * The limit value was chosen arbitrarily. It should handle most real-life case
  * without hurting performances nor memory footprint.
  */
-#define ROHC_TCP_MAX_IP_HDRS        10U
+#define ROHC_TCP_MAX_IP_HDRS        2U
 
 
 /**
@@ -64,7 +64,7 @@
  * The limit value was chosen arbitrarily. It should handle most real-life case
  * without hurting performances nor memory footprint.
  */
-#define ROHC_TCP_MAX_IP_EXT_HDRS    20U
+#define ROHC_TCP_MAX_IP_EXT_HDRS    5U
 
 
 /**
