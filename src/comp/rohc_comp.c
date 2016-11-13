@@ -1840,7 +1840,8 @@ bool rohc_comp_set_features(struct rohc_comp *const comp,
 {
 	const rohc_comp_features_t all_features =
 		ROHC_COMP_FEATURE_NO_IP_CHECKSUMS |
-		ROHC_COMP_FEATURE_DUMP_PACKETS;
+		ROHC_COMP_FEATURE_DUMP_PACKETS |
+		ROHC_COMP_FEATURE_TIME_BASED_REFRESHES;
 
 	/* compressor must be valid */
 	if(comp == NULL)
@@ -2408,7 +2409,9 @@ static struct rohc_comp_ctxt *
 	c->fo_count = 0;
 	c->so_count = 0;
 	c->go_back_fo_count = 0;
+	c->go_back_fo_time = arrival_time;
 	c->go_back_ir_count = 0;
+	c->go_back_ir_time = arrival_time;
 
 	c->total_uncompressed_size = 0;
 	c->total_compressed_size = 0;
@@ -2724,10 +2727,14 @@ void rohc_comp_change_state(struct rohc_comp_ctxt *const context,
  * @brief Periodically change the context state after a certain number
  *        of packets.
  *
- * @param context The compression context
+ * @param context   The compression context
+ * @param pkt_time  The time of packet arrival
  */
-void rohc_comp_periodic_down_transition(struct rohc_comp_ctxt *const context)
+void rohc_comp_periodic_down_transition(struct rohc_comp_ctxt *const context,
+                                        const struct rohc_ts pkt_time)
 {
+	rohc_comp_state_t next_state;
+
 	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 	           "CID %zu: timeouts for periodic refreshes: FO = %zu / %zu, "
 	           "IR = %zu / %zu", context->cid, context->go_back_fo_count,
@@ -2735,31 +2742,65 @@ void rohc_comp_periodic_down_transition(struct rohc_comp_ctxt *const context)
 	           context->go_back_ir_count,
 	           context->compressor->periodic_refreshes_ir_timeout);
 
-	if(context->go_back_fo_count >=
-	   context->compressor->periodic_refreshes_fo_timeout)
-	{
-		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		          "CID %zu: periodic change to FO state", context->cid);
-		context->go_back_fo_count = 0;
-		rohc_comp_change_state(context, ROHC_COMP_STATE_FO);
-	}
-	else if(context->go_back_ir_count >=
-	        context->compressor->periodic_refreshes_ir_timeout)
+	if(context->go_back_ir_count >=
+	   context->compressor->periodic_refreshes_ir_timeout)
 	{
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		          "CID %zu: periodic change to IR state", context->cid);
 		context->go_back_ir_count = 0;
-		rohc_comp_change_state(context, ROHC_COMP_STATE_IR);
+		next_state = ROHC_COMP_STATE_IR;
 	}
+	else if((context->compressor->features & ROHC_COMP_FEATURE_TIME_BASED_REFRESHES) != 0 &&
+	        rohc_time_interval(context->go_back_ir_time, pkt_time) >= 1000 * 1000)
+	{
+		const uint64_t interval_since_ir_refresh =
+			rohc_time_interval(context->go_back_ir_time, pkt_time);
+		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		          "CID %zu: force IR refresh since %" PRIu64 " us elapsed since "
+		          "last IR packet", context->cid, interval_since_ir_refresh);
+		context->go_back_ir_count = 0;
+		next_state = ROHC_COMP_STATE_IR;
+	}
+	else if(context->go_back_fo_count >=
+	        context->compressor->periodic_refreshes_fo_timeout)
+	{
+		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		          "CID %zu: periodic change to FO state", context->cid);
+		context->go_back_fo_count = 0;
+		next_state = ROHC_COMP_STATE_FO;
+	}
+	else if((context->compressor->features & ROHC_COMP_FEATURE_TIME_BASED_REFRESHES) != 0 &&
+	        rohc_time_interval(context->go_back_fo_time, pkt_time) >= 500 * 1000)
+	{
+		const uint64_t interval_since_fo_refresh =
+			rohc_time_interval(context->go_back_fo_time, pkt_time);
+		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		          "CID %zu: force FO refresh since %" PRIu64 " us elapsed since "
+		          "last FO packet", context->cid, interval_since_fo_refresh);
+		context->go_back_fo_count = 0;
+		next_state = ROHC_COMP_STATE_FO;
+	}
+	else
+	{
+		next_state = context->state;
+	}
+
+	rohc_comp_change_state(context, next_state);
 
 	if(context->state == ROHC_COMP_STATE_SO)
 	{
+		context->go_back_ir_count++;
 		context->go_back_fo_count++;
 	}
-	if(context->state == ROHC_COMP_STATE_SO ||
-	   context->state == ROHC_COMP_STATE_FO)
+	else if(context->state == ROHC_COMP_STATE_FO)
 	{
 		context->go_back_ir_count++;
+		context->go_back_fo_time = pkt_time;
+	}
+	else /* ROHC_COMP_STATE_IR */
+	{
+		context->go_back_fo_time = pkt_time;
+		context->go_back_ir_time = pkt_time;
 	}
 }
 

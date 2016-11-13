@@ -457,6 +457,14 @@ static int test_compression_perfs(const bool is_verbose,
 		goto free_compresssor;
 	}
 
+	/* enable periodic refreshes based on inter-packet delay */
+	if(!rohc_comp_set_features(comp, ROHC_COMP_FEATURE_TIME_BASED_REFRESHES))
+	{
+		fprintf(stderr, "failed to enable periodic refreshes of contexts based "
+		        "on inter-packet delay\n");
+		goto free_compresssor;
+	}
+
 	/* activate all the compression profiles */
 	if(!rohc_comp_enable_profiles(comp, ROHC_PROFILE_UNCOMPRESSED,
 	                              ROHC_PROFILE_RTP, ROHC_PROFILE_UDP,
