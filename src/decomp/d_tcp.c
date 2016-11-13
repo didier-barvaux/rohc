@@ -978,8 +978,6 @@ error:
  * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
  * @return                   true if parsing was successful,
  *                           false if packet was malformed
- *
- * @todo TODO: avoid malloc/free of packed_rohc_packet
  */
 static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
                            const uint8_t *const rohc_packet,
@@ -990,8 +988,17 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
                            struct rohc_tcp_extr_bits *const bits,
                            size_t *const rohc_hdr_len)
 {
-	const size_t packed_rohc_packet_max_len = 0xffff + 100;
-	uint8_t *packed_rohc_packet = malloc(packed_rohc_packet_max_len); // TODO: change that
+	const size_t packed_rohc_packet_max_len =
+		sizeof(co_common_t) + /* base header */
+		sizeof(uint32_t) + /* seq_number */
+		sizeof(uint32_t) + /* ack_number */
+		sizeof(uint16_t) + /* ack_stride */
+		sizeof(uint16_t) + /* window */
+		sizeof(uint16_t) + /* ip_id */
+		sizeof(uint16_t) + /* urg_ptr */
+		sizeof(uint8_t)  + /* dscp */
+		sizeof(uint8_t);   /* ttl_hopl */
+	uint8_t packed_rohc_packet[packed_rohc_packet_max_len];
 	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
 	int ret;
 
@@ -1039,18 +1046,13 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 		goto error;
 	}
 
-	/* copy the first byte of header over the last byte of the large CID field
+	/* copy the first bytes of header in a contiguous buffer
 	 * to be able to map packet strutures to the ROHC bytes */
-	if((rohc_remain_len - large_cid_len) > packed_rohc_packet_max_len)
-	{
-		rohc_decomp_warn(context, "internal problem: internal buffer too small");
-		goto error;
-	}
 	packed_rohc_packet[0] = rohc_packet[0];
 	memcpy(packed_rohc_packet + 1, rohc_packet + 1 + large_cid_len,
-	       rohc_remain_len - 1 - large_cid_len);
+	       rohc_min(rohc_remain_len - large_cid_len, packed_rohc_packet_max_len) - 1);
 	rohc_remain_data = packed_rohc_packet;
-	rohc_remain_len -= large_cid_len;
+	rohc_remain_len = rohc_min(rohc_remain_len - large_cid_len, packed_rohc_packet_max_len);
 	*rohc_hdr_len = 0;
 
 	/* parse the packet type we detected earlier */
@@ -1129,6 +1131,10 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 	rohc_decomp_dump_buf(context, "ROHC base header", packed_rohc_packet,
 	                     *rohc_hdr_len);
 
+	/* revert the buffer trick since the base header is parsed */
+	rohc_remain_data = rohc_packet + large_cid_len + (*rohc_hdr_len);
+	rohc_remain_len = rohc_length - large_cid_len - (*rohc_hdr_len);
+
 	/* innermost IP-ID behavior */
 	if(inner_ip_bits->id_behavior_nr > 0)
 	{
@@ -1202,11 +1208,9 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 	*rohc_hdr_len += large_cid_len;
 	assert((*rohc_hdr_len) <= rohc_length);
 
-	free(packed_rohc_packet);
 	return true;
 
 error:
-	free(packed_rohc_packet);
 	return false;
 }
 

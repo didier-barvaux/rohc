@@ -612,7 +612,7 @@ typedef struct
 typedef struct
 {
 #if WORDS_BIGENDIAN == 1
-	uint16_t discriminator:1;   /**< '0'                                    [  4 ] */
+	uint8_t discriminator:1;    /**< '0'                                    [  1 ] */
 	uint8_t ack_num1:7;         /**< lsb(15, 8191)                          [ 15 ] */
 	uint8_t ack_num2;           /**< sequel of \e ack_num1                  [  - ] */
 	uint8_t msn:4;              /**< lsb(4, 4)                              [  4 ] */
