@@ -233,6 +233,9 @@ static enum
 /** The number of warnings emitted by the ROHC library */
 static size_t nr_rohc_warnings = 0;
 
+/** The stats about packet sizes */
+static size_t nr_pkts_per_size[MAX_ROHC_SIZE + 1] = { 0 };
+
 
 /**
  * @brief Main function for the ROHC test program
@@ -258,6 +261,7 @@ int main(int argc, char *argv[])
 	bool no_comparison = false;
 	bool ignore_malformed = false;
 	bool assert_on_error = false;
+	bool print_stats = false;
 	int status = 1;
 	rohc_cid_type_t cid_type;
 	int args_used;
@@ -389,6 +393,11 @@ int main(int argc, char *argv[])
 			padding_up_to = atoi(argv[1]);
 			args_used++;
 		}
+		else if(!strcmp(*argv, "--print-stats"))
+		{
+			/* print some stats at the very end of the test */
+			print_stats = true;
+		}
 		else if(cid_type_name == NULL)
 		{
 			/* get the type of CID to use within the ROHC library */
@@ -501,6 +510,22 @@ int main(int argc, char *argv[])
 		assert(status == 0 || status == 77);
 	}
 
+	/* print stats about packet sizes */
+	if(print_stats)
+	{
+		size_t i;
+		for(i = 0; i <= 1600; i++)
+		{
+			size_t j;
+			printf("%zu ", i);
+			for(j = 0; j < nr_pkts_per_size[i] / 100; j++)
+			{
+				printf("*");
+			}
+			printf(" %zu\n", nr_pkts_per_size[i]);
+		}
+	}
+
 error:
 	return status;
 }
@@ -534,6 +559,7 @@ static void usage(void)
 	        "  --max-contexts NUM      The maximum number of ROHC contexts to\n"
 	        "                          simultaneously use during the test\n"
 	        "  --wlsb-width NUM        The width of the WLSB window to use\n"
+	        "  --print-stats           Print some stats at the end of test\n"
 	        "  --no-comparison         Is comparison with ROHC reference optional for test\n"
 	        "  --ignore-malformed      Ignore malformed packets for test\n"
 	        "  --assert-on-error       Stop the test after the very first encountered error\n"
@@ -1009,7 +1035,6 @@ static int compress_decompress(struct rohc_comp *comp,
 	}
 
 	/* output the size of the ROHC packet to the output file if asked */
-	if(size_output_file != NULL)
 	{
 		rohc_comp_last_packet_info2_t last_packet_info;
 
@@ -1022,10 +1047,14 @@ static int compress_decompress(struct rohc_comp *comp,
 			status = -1;
 			goto exit;
 		}
+		nr_pkts_per_size[last_packet_info.header_last_comp_size]++;
 
-		fprintf(size_output_file, "compressor_num = %d\tpacket_num = %d\t"
-		        "rohc_size = %zu\tpacket_type = %d\n", num_comp, num_packet,
-		        rohc_packet.len, last_packet_info.packet_type);
+		if(size_output_file != NULL)
+		{
+			fprintf(size_output_file, "compressor_num = %d\tpacket_num = %d\t"
+			        "rohc_size = %zu\tpacket_type = %d\n", num_comp, num_packet,
+			        rohc_packet.len, last_packet_info.packet_type);
+		}
 	}
 
 	/* compare the ROHC packets with the ones given by the user if asked */
