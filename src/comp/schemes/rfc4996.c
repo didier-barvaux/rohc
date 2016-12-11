@@ -30,6 +30,7 @@
 #ifndef __KERNEL__
 #  include <string.h>
 #else
+#  include <linux/string.h>
 #  include <bitops.h> /* for __builtin_popcount() in Linux kernel */
 #endif
 #include <assert.h>

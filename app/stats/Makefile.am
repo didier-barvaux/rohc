@@ -7,6 +7,9 @@
 bin_PROGRAMS = \
 	rohc_stats
 
+bin_SCRIPTS = \
+	rohc_stats.sh
+
 man_MANS = \
 	rohc_stats.1
 
@@ -45,6 +48,6 @@ endif
 
 # extra files for releases
 EXTRA_DIST = \
-	rohc_stats.sh \
+	$(bin_SCRIPTS) \
 	$(man_MANS)
 

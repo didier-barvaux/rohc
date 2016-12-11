@@ -21,8 +21,8 @@
 #          Mikhail Gruzdev <michail.gruzdev@gmail.com>
 #
 
-AC_INIT([ROHC library], 2.1.0, [http://rohc-lib.org/],
-        [rohc], [http://rohc-lib.org/])
+AC_INIT([ROHC library], 2.1.0, [https://rohc-lib.org/],
+        [rohc], [https://rohc-lib.org/])
 AC_CONFIG_SRCDIR([src])
 AM_CONFIG_HEADER([config.h])
 
@@ -73,9 +73,9 @@ AC_SUBST([ROHC_API_AGE], 0)
 
 # Define a package homepage in a way compatible with autoconf < 2.64
 m4_ifndef([AC_PACKAGE_URL],
-          [AC_DEFINE([PACKAGE_URL], ["http://rohc-lib.org/"],
+          [AC_DEFINE([PACKAGE_URL], ["https://rohc-lib.org/"],
                      [Define to home page for this package])
-           AC_SUBST([PACKAGE_URL], ["http://rohc-lib.org/"])])
+           AC_SUBST([PACKAGE_URL], ["https://rohc-lib.org/"])])
 
 # Init automake with:
 #  - silent rules enabled to make 'make' less verbose, but do not call the
@@ -733,17 +733,19 @@ fi
 # gnuplot, grep, sort, and tr are mandatory if ROHC statistics are enabled
 if test "x$enable_app_stats" = "xyes" ; then
 
-	# check for the gnuplot binary and abort if it is not found
+	# check for the gnuplot binary and warn user if it is not found
 	AC_CHECK_PROG(is_gnuplot_found, gnuplot, "yes", "no")
 	if test "x$is_gnuplot_found" != "xyes"; then
 		echo
-		echo "ERROR: gnuplot binary not found"
+		echo "WARNING: gnuplot binary not found"
 		echo
-		echo "gnuplot is required in order to generate compression statistics."
+		echo "gnuplot is not required to build the ROHC library and tools, but it "
+		echo "is required to generate compression statistics once library and tools"
+		echo "are installed. You are advised to install it."
 		echo
 		echo "Go get it from http://www.gnuplot.info/ or use your package manager "
 		echo "to install it on your system."
-		exit 1
+		echo
 	fi
 
 	# check for grep and abort if it is not found
@@ -1006,6 +1008,7 @@ AC_CONFIG_FILES([ \
 	doc/rohc_library.7 \
 	contrib/Makefile \
 	contrib/rohc.spec \
+	contrib/python/Makefile \
 	rohc.pc \
 ])
 
