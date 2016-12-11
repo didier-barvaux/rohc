@@ -818,7 +818,10 @@ static int compress_decompress(struct rohc_comp *comp,
 	struct ether_header *eth_header;
 
 	/* the buffer that will contain the initial uncompressed packet */
-	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
+	const struct rohc_ts arrival_time = {
+		.sec = header.ts.tv_sec,
+		.nsec = header.ts.tv_usec * 1000
+	};
 	struct rohc_buf ip_packet =
 		rohc_buf_init_full((uint8_t *) packet, header.caplen, arrival_time);
 
@@ -843,6 +846,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	rohc_status_t ret;
 
 	trace("=== compressor/decompressor #%d, packet #%d:\n", num_comp, num_packet);
+	trace("=== arrival time %lu seconds %lu us\n", header.ts.tv_sec, header.ts.tv_usec);
 
 	/* check Ethernet frame length */
 	if(header.len <= link_len_src || header.len != header.caplen)

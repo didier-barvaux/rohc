@@ -32,6 +32,7 @@
 #include <linux/types.h>
 
 #define UINT8_MAX  0xffU
+#define PRIu64     "llu"
 
 #endif /* STDINT_H_ */
 
