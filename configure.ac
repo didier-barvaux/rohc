@@ -733,17 +733,19 @@ fi
 # gnuplot, grep, sort, and tr are mandatory if ROHC statistics are enabled
 if test "x$enable_app_stats" = "xyes" ; then
 
-	# check for the gnuplot binary and abort if it is not found
+	# check for the gnuplot binary and warn user if it is not found
 	AC_CHECK_PROG(is_gnuplot_found, gnuplot, "yes", "no")
 	if test "x$is_gnuplot_found" != "xyes"; then
 		echo
-		echo "ERROR: gnuplot binary not found"
+		echo "WARNING: gnuplot binary not found"
 		echo
-		echo "gnuplot is required in order to generate compression statistics."
+		echo "gnuplot is not required to build the ROHC library and tools, but it "
+		echo "is required to generate compression statistics once library and tools"
+		echo "are installed. You are advised to install it."
 		echo
 		echo "Go get it from http://www.gnuplot.info/ or use your package manager "
 		echo "to install it on your system."
-		exit 1
+		echo
 	fi
 
 	# check for grep and abort if it is not found
