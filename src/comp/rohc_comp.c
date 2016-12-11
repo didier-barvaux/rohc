@@ -60,6 +60,7 @@
 
 #ifndef __KERNEL__
 #  include <string.h>
+#  include <inttypes.h>
 #endif
 #include <stdlib.h>
 #ifdef __KERNEL__
@@ -2349,8 +2350,8 @@ static struct rohc_comp_ctxt *
 	comp->num_contexts_used++;
 
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "context (CID = %zu) created (num_used = %zu)",
-	           c->cid, comp->num_contexts_used);
+	           "context (CID = %zu) created at %" PRIu64 " seconds (num_used = %zu)",
+	           c->cid, c->latest_used, comp->num_contexts_used);
 	return c;
 }
 
@@ -2456,6 +2457,9 @@ static struct rohc_comp_ctxt *
 	{
 		/* matching context found, update use timestamp */
 		context->latest_used = arrival_time.sec;
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "context (CID = %zu) used at %" PRIu64 " seconds",
+		           context->cid, context->latest_used);
 	}
 
 	return context;
