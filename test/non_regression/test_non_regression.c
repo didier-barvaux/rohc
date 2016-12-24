@@ -188,8 +188,10 @@ static bool rohc_comp_rtp_cb(const unsigned char *const ip,
                              void *const rtp_private)
 	__attribute__((warn_unused_result));
 
-static pcap_t * open_pcap_file(const char *const filename, size_t *const link_len)
-	__attribute__((nonnull(1, 2), warn_unused_result));
+static pcap_t * open_pcap_file(const char *const descr,
+                               const char *const filename,
+                               size_t *const link_len)
+	__attribute__((nonnull(1, 2, 3), warn_unused_result));
 static bool get_next_packet(pcap_t **const pcap_handle,
                             const char *const src_filenames[],
                             const size_t src_filenames_nr,
@@ -1140,7 +1142,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 	trace("=== initialization:\n");
 
 	/* open the source dump file */
-	handle = open_pcap_file(src_filenames[0], &link_len_src);
+	handle = open_pcap_file("source", src_filenames[0], &link_len_src);
 	if(handle == NULL)
 	{
 		status = 77; /* skip test */
@@ -1153,7 +1155,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 		dumper = pcap_dump_open(handle, ofilename);
 		if(dumper == NULL)
 		{
-			trace("failed to open dump file: %s\n", errbuf);
+			trace("failed to open dump file '%s': %s\n", ofilename, errbuf);
 			status = 77; /* skip test */
 			goto close_input;
 		}
@@ -1166,7 +1168,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 	/* open the ROHC comparison dump file if asked */
 	if(cmp_filename != NULL)
 	{
-		cmp_handle = open_pcap_file(cmp_filename, &link_len_cmp);
+		cmp_handle = open_pcap_file("comparison", cmp_filename, &link_len_cmp);
 		if(cmp_handle == NULL)
 		{
 			status = 77; /* skip test */
@@ -1610,11 +1612,16 @@ static bool rohc_comp_rtp_cb(const unsigned char *const ip __attribute__((unused
 /**
  * @brief Open a PCAP dump file
  *
- * @param filename  The file name of the PCAP dump file to open
- * @return          The handle on the opened PCAP dump file in case of success,
- *                  NULL in case of error
+ * @param descr          A description for the PCAP dump to open
+ * @param filename       The file name of the PCAP dump file to open
+ * @param[out] link_len  The length of the link layer detected in the PCAP dump
+ *                       in case of success
+ * @return               The handle on the opened PCAP dump file in case of success,
+ *                       NULL in case of error
  */
-static pcap_t * open_pcap_file(const char *const filename, size_t *const link_len)
+static pcap_t * open_pcap_file(const char *const descr,
+                               const char *const filename,
+                               size_t *const link_len)
 {
 	char errbuf[PCAP_ERRBUF_SIZE];
 	int link_layer_type;
@@ -1624,7 +1631,7 @@ static pcap_t * open_pcap_file(const char *const filename, size_t *const link_le
 	handle = pcap_open_offline(filename, errbuf);
 	if(handle == NULL)
 	{
-		trace("failed to open the source pcap file: %s\n", errbuf);
+		trace("failed to open the %s pcap file: %s\n", descr, errbuf);
 		goto error;
 	}
 
@@ -1635,8 +1642,8 @@ static pcap_t * open_pcap_file(const char *const filename, size_t *const link_le
 	   link_layer_type != DLT_RAW &&
 	   link_layer_type != DLT_NULL)
 	{
-		trace("link layer type %d not supported in source dump (supported = "
-		      "%d, %d, %d, %d)\n", link_layer_type, DLT_EN10MB,
+		trace("link layer type %d not supported in %s dump (supported = "
+		      "%d, %d, %d, %d)\n", link_layer_type, descr, DLT_EN10MB,
 		      DLT_LINUX_SLL, DLT_RAW, DLT_NULL);
 		goto close_input;
 	}
@@ -1699,7 +1706,8 @@ static bool get_next_packet(pcap_t **const pcap_handle,
 		}
 
 		/* open next PCAP dump file */
-		*pcap_handle = open_pcap_file(src_filenames[*src_filenames_id], link_len);
+		*pcap_handle = open_pcap_file("source", src_filenames[*src_filenames_id],
+		                              link_len);
 		if((*pcap_handle) == NULL)
 		{
 			goto error;
