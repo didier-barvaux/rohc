@@ -1097,6 +1097,31 @@ TESTS = \
 	$(TESTS_SMALLCID) \
 	$(TESTS_LARGECID)
 
+XFAIL_TESTS = \
+	test_non_regression_ipv4-with-options_ipv4-empty-afl25_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4-with-options_ipv4-empty-afl25_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4-with-options_ipv4-empty-afl25_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4-with-options_ipv4-empty-afl25_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4-with-options_ipv4-empty-afl25_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4-with-options_ipv4-empty-afl25_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4-with-options_ipv4-empty-afl25_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4-with-options_ipv4-empty-afl25_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_afl31-variable-udp-checksum-behavior_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_afl31-variable-udp-checksum-behavior_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_afl31-variable-udp-checksum-behavior_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_afl31-variable-udp-checksum-behavior_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_afl31-variable-udp-checksum-behavior_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_afl31-variable-udp-checksum-behavior_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_afl31-variable-udp-checksum-behavior_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_afl31-variable-udp-checksum-behavior_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_afl35-rtp-version-changing_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_afl35-rtp-version-changing_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_afl35-rtp-version-changing_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_afl35-rtp-version-changing_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_afl35-rtp-version-changing_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_afl35-rtp-version-changing_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_afl35-rtp-version-changing_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_afl35-rtp-version-changing_maxcontexts1_wlsb64_largecid.sh
 
 
 check_PROGRAMS = \
