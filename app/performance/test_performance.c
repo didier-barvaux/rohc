@@ -1,5 +1,5 @@
 /*
- * Copyright 2010,2012,2013,2014 Didier Barvaux
+ * Copyright 2010,2012,2013,2014,2017 Didier Barvaux
  * Copyright 2010,2012,2013,2017 Viveris Technologies
  *
  * This library is free software; you can redistribute it and/or
@@ -110,10 +110,18 @@ for ./configure ? If yes, check configure output and config.log"
 #define ETHER_FRAME_MIN_LEN  60U
 
 
+/** Whether the application runs in verbose mode or not */
+static enum
+{
+	VERBOSITY_NONE,
+	VERBOSITY_NORMAL,
+	VERBOSITY_FULL
+} verbosity = VERBOSITY_NORMAL;
+
+
 static void usage(void);
 
-static int test_compression_perfs(const bool is_verbose,
-                                  char *filename,
+static int test_compression_perfs(char *filename,
                                   const rohc_cid_type_t cid_type,
                                   const size_t wlsb_width,
                                   const size_t max_contexts,
@@ -124,8 +132,7 @@ static int time_compress_packet(struct rohc_comp *comp,
                                 unsigned char *packet,
                                 size_t link_len);
 
-static int test_decompression_perfs(const bool is_verbose,
-                                    char *filename,
+static int test_decompression_perfs(char *filename,
                                     const rohc_cid_type_t cid_type,
                                     const size_t max_contexts,
                                     unsigned long *packet_count);
@@ -136,7 +143,7 @@ static int time_decompress_packet(struct rohc_decomp *decomp,
                                   size_t link_len,
                                   const struct rohc_ts arrival_time);
 
-static void print_rohc_traces(void *const is_verbose__,
+static void print_rohc_traces(void *const priv_ctxt,
                               const rohc_trace_level_t level,
                               const rohc_trace_entity_t entity,
                               const int profile,
@@ -174,9 +181,11 @@ int main(int argc, char *argv[])
 	char *filename = NULL; /* the name of the PCAP capture used as input */
 	rohc_cid_type_t cid_type;
 	unsigned long packet_count = 0;
-	bool is_verbose = false; /* set to quiet mode by default */
 	int status = 1;
 	int ret;
+
+	/* set to normal mode by default */
+	verbosity = VERBOSITY_NORMAL;
 
 	/* parse program arguments, print the help message in case of failure */
 	if(argc <= 2)
@@ -202,7 +211,12 @@ int main(int argc, char *argv[])
 		else if(!strcmp(*argv, "--verbose"))
 		{
 			/* enable verbose mode */
-			is_verbose = true;
+			verbosity = VERBOSITY_FULL;
+		}
+		else if(!strcmp(*argv, "--quiet"))
+		{
+			/* enable quiet mode */
+			verbosity = VERBOSITY_NONE;
 		}
 		else if(!strcmp(*argv, "--max-contexts"))
 		{
@@ -307,14 +321,14 @@ int main(int argc, char *argv[])
 	if(strcmp(test_type, "comp") == 0)
 	{
 		/* test ROHC compression with the packets from the capture */
-		ret = test_compression_perfs(is_verbose, filename, cid_type, wlsb_width,
-		                             max_contexts, &packet_count);
+		ret = test_compression_perfs(filename, cid_type, wlsb_width, max_contexts,
+		                             &packet_count);
 	}
 	else if(strcmp(test_type, "decomp") == 0)
 	{
 		/* test ROHC decompression with the packets from the capture */
-		ret = test_decompression_perfs(is_verbose, filename, cid_type,
-		                               max_contexts, &packet_count);
+		ret = test_decompression_perfs(filename, cid_type, max_contexts,
+		                               &packet_count);
 	}
 	else
 	{
@@ -330,8 +344,11 @@ int main(int argc, char *argv[])
 	}
 
 	/* print performance statistics */
-	fprintf(stderr, "%scompression: %lu packets\n",
-	        (strcmp(test_type, "comp") == 0 ? "" : "de"), packet_count);
+	if(verbosity != VERBOSITY_NONE)
+	{
+		fprintf(stderr, "%scompressed %lu packets\n",
+		        (strcmp(test_type, "comp") == 0 ? "" : "de"), packet_count);
+	}
 
 	/* everything went fine */
 	status = 0;
@@ -365,6 +382,7 @@ static void usage(void)
 		"  -v, --version           Print version information and exit\n"
 		"ROHC options:\n"
 		"      --verbose           Tell the application to be more verbose\n"
+		"      --quiet             Tell the application to be even less verbose\n"
 		"      --wlsb-width NUM    The width of the WLSB window to use\n"
 		"      --max-contexts NUM  The maximum number of ROHC contexts to\n"
 		"                          simultaneously use during the test\n"
@@ -381,7 +399,6 @@ static void usage(void)
  * @brief Test the compression performance of the ROHC library
  *        with a flow of IP packets
  *
- * @param is_verbose    Whether the test is run in verbose mode or not
  * @param filename      The name of the PCAP file that contains the IP packets
  * @param cid_type      The type of CIDs the compressor shall use
  * @param wlsb_width    The width of the WLSB window to use
@@ -390,8 +407,7 @@ static void usage(void)
  *                      compression failed
  * @return              0 in case of success, 1 otherwise
  */
-static int test_compression_perfs(const bool is_verbose,
-                                  char *filename,
+static int test_compression_perfs(char *filename,
                                   const rohc_cid_type_t cid_type,
                                   const size_t wlsb_width,
                                   const size_t max_contexts,
@@ -450,10 +466,11 @@ static int test_compression_perfs(const bool is_verbose,
 		goto close_input;
 	}
 
-	/* set the callback for traces */
-	if(is_verbose)
+	/* enable traces in verbose mode */
+	if(verbosity == VERBOSITY_FULL)
 	{
-		if(!rohc_comp_set_traces_cb2(comp, print_rohc_traces, (void *) &is_verbose))
+		/* set the callback for traces on compressor */
+		if(!rohc_comp_set_traces_cb2(comp, print_rohc_traces, NULL))
 		{
 			fprintf(stderr, "failed to set the callback for traces\n");
 			goto free_compresssor;
@@ -492,17 +509,26 @@ static int test_compression_perfs(const bool is_verbose,
 		goto free_compresssor;
 	}
 
-	fflush(stderr);
+	/* print some progress info if not in quiet mode */
+	if(verbosity != VERBOSITY_NONE)
+	{
+		fflush(stderr);
+	}
 
 	/* for each packet in the dump */
 	*packet_count = 0;
 	while((packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
 	{
 		(*packet_count)++;
-		if((*packet_count) != 0 && ((*packet_count) % 100000) == 0)
+
+		/* print some progress info if not in quiet mode */
+		if(verbosity != VERBOSITY_NONE)
 		{
-			fprintf(stderr, "compression: packet #%lu\r", *packet_count);
-			fflush(stderr);
+			if((*packet_count) != 0 && ((*packet_count) % 100000) == 0)
+			{
+				fprintf(stderr, "compression: packet #%lu\r", *packet_count);
+				fflush(stderr);
+			}
 		}
 
 		/* compress the IP packet */
@@ -629,7 +655,6 @@ error:
  * @brief Test the decompression performance of the ROHC library
  *        with a flow of IP packets
  *
- * @param is_verbose    Whether the test is run in verbose mode or not
  * @param filename      The name of the PCAP file that contains the ROHC packets
  * @param cid_type      The type of CIDs the decompressor shall use
  * @param max_contexts  The maximum number of ROHC contexts to use
@@ -637,8 +662,7 @@ error:
  *                      decompression failed
  * @return              0 in case of success, 1 otherwise
  */
-static int test_decompression_perfs(const bool is_verbose,
-                                    char *filename,
+static int test_decompression_perfs(char *filename,
                                     const rohc_cid_type_t cid_type,
                                     const size_t max_contexts,
                                     unsigned long *packet_count)
@@ -697,10 +721,11 @@ static int test_decompression_perfs(const bool is_verbose,
 		goto close_input;
 	}
 
-	/* set trace callback for decompressor in verbose mode */
-	if(is_verbose)
+	/* enable traces in verbose mode */
+	if(verbosity == VERBOSITY_FULL)
 	{
-		if(!rohc_decomp_set_traces_cb2(decomp, print_rohc_traces, (void *) &is_verbose))
+		/* set the callback for traces on decompressor */
+		if(!rohc_decomp_set_traces_cb2(decomp, print_rohc_traces, NULL))
 		{
 			fprintf(stderr, "cannot set trace callback for decompressor\n");
 			goto free_decompressor;
@@ -717,7 +742,11 @@ static int test_decompression_perfs(const bool is_verbose,
 		goto free_decompressor;
 	}
 
-	fflush(stderr);
+	/* print some progress info if not in quiet mode */
+	if(verbosity != VERBOSITY_NONE)
+	{
+		fflush(stderr);
+	}
 
 	/* for each packet in the dump */
 	*packet_count = 0;
@@ -813,7 +842,7 @@ error:
 /**
  * @brief Print traces emitted by the ROHC library in verbose mode
  *
- * @param is_verbose__  Whether the test run in verbose mode or not
+ * @param priv_ctxt     An optional private context, may be NULL
  * @param level         The priority level of the trace
  * @param entity        The entity that emitted the trace among:
  *                      \li ROHC_TRACE_COMP
@@ -822,7 +851,7 @@ error:
  *                      the trace is related to
  * @param format        The format string of the trace
  */
-static void print_rohc_traces(void *const is_verbose__ __attribute__((unused)),
+static void print_rohc_traces(void *const priv_ctxt __attribute__((unused)),
                               const rohc_trace_level_t level __attribute__((unused)),
                               const rohc_trace_entity_t entity __attribute__((unused)),
                               const int profile __attribute__((unused)),
