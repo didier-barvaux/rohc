@@ -80,6 +80,12 @@ struct c_wlsb
  * Private function prototypes:
  */
 
+static size_t wlsb_get_minkp_32bits(const struct c_wlsb *const wlsb,
+                                    const uint32_t value,
+                                    const size_t min_k,
+                                    const rohc_lsb_shift_t p)
+	__attribute__((warn_unused_result, nonnull(1)));
+
 static size_t wlsb_get_next_older(const size_t entry, const size_t max)
 	__attribute__((warn_unused_result, const));
 
@@ -434,10 +440,10 @@ size_t wlsb_get_kp_32bits(const struct c_wlsb *const wlsb,
  * @param p      The shift parameter p
  * @return       The number of bits required to uniquely recreate the value
  */
-size_t wlsb_get_minkp_32bits(const struct c_wlsb *const wlsb,
-                             const uint32_t value,
-                             const size_t min_k,
-                             const rohc_lsb_shift_t p)
+static size_t wlsb_get_minkp_32bits(const struct c_wlsb *const wlsb,
+                                    const uint32_t value,
+                                    const size_t min_k,
+                                    const rohc_lsb_shift_t p)
 {
 	size_t bits_nr;
 
