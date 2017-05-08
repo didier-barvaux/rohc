@@ -986,7 +986,7 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 		           "failed to create W-LSB context for TCP sequence number");
 		goto free_wlsb_window;
 	}
-	tcp_context->seq_scaled_wlsb = c_create_wlsb(32, 4, 7);
+	tcp_context->seq_scaled_wlsb = c_create_wlsb(32, comp->wlsb_window_width, 7);
 	if(tcp_context->seq_scaled_wlsb == NULL)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -1005,7 +1005,7 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 		           "failed to create W-LSB context for TCP ACK number");
 		goto free_wlsb_seq_scaled;
 	}
-	tcp_context->ack_scaled_wlsb = c_create_wlsb(32, 4, 3);
+	tcp_context->ack_scaled_wlsb = c_create_wlsb(32, comp->wlsb_window_width, 3);
 	if(tcp_context->ack_scaled_wlsb == NULL)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
