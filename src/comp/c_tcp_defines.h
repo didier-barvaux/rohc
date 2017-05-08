@@ -65,21 +65,6 @@ struct tcp_tmp_variables
 
 	/** Whether the TCP sequence number changed or not */
 	bool tcp_seq_num_changed;
-	/** The minimal number of bits required to encode the TCP sequence number
-	 *  with p = 65535 */
-	size_t nr_seq_bits_65535;
-	/** The minimal number of bits required to encode the TCP sequence number
-	 *  with p = 32767 */
-	size_t nr_seq_bits_32767;
-	/** The minimal number of bits required to encode the TCP sequence number
-	 *  with p = 16383 */
-	size_t nr_seq_bits_16383;
-	/** The minimal number of bits required to encode the TCP sequence number
-	 *  with p = 8191 */
-	size_t nr_seq_bits_8191;
-	/** The minimal number of bits required to encode the TCP sequence number
-	 *  with p = 63 */
-	size_t nr_seq_bits_63;
 	/** The minimal number of bits required to encode the TCP scaled sequence
 	 *  number */
 	size_t nr_seq_scaled_bits;
@@ -87,20 +72,8 @@ struct tcp_tmp_variables
 	/** Whether the ACK number changed or not */
 	bool tcp_ack_num_changed;
 	/** The minimal number of bits required to encode the TCP ACK number
-	 *  with p = 65535 */
-	size_t nr_ack_bits_65535;
-	/** The minimal number of bits required to encode the TCP ACK number
-	 *  with p = 32767 */
-	size_t nr_ack_bits_32767;
-	/** The minimal number of bits required to encode the TCP ACK number
 	 *  with p = 16383 */
 	size_t nr_ack_bits_16383;
-	/** The minimal number of bits required to encode the TCP ACK number
-	 *  with p = 8191 */
-	size_t nr_ack_bits_8191;
-	/** The minimal number of bits required to encode the TCP ACK number
-	 *  with p = 63 */
-	size_t nr_ack_bits_63;
 	/** The minimal number of bits required to encode the TCP scaled ACK
 	 * number */
 	size_t nr_ack_scaled_bits;
