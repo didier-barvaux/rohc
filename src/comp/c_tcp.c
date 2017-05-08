@@ -5431,7 +5431,12 @@ static bool tcp_detect_changes_ipv6_exts(struct rohc_comp_ctxt *const context,
 	assert((*exts_nr) <= ROHC_TCP_MAX_IP_EXT_HDRS);
 
 	/* more or less IP extension headers than previous packet? */
-	if(context->num_sent_packets == 0 || (*exts_nr) < ip_context->opts_nr)
+	if(context->num_sent_packets == 0)
+	{
+		rohc_comp_debug(context, "  IP extension headers not sent yet");
+		tcp_context->tmp.is_ipv6_exts_list_static_changed = true;
+	}
+	else if((*exts_nr) < ip_context->opts_nr)
 	{
 		rohc_comp_debug(context, "  less IP extension headers (%zu) than "
 		                "context (%zu)", *exts_nr, ip_context->opts_nr);
