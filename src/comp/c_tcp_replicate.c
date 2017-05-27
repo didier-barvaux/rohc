@@ -500,7 +500,7 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
 	tcp_replicate->urg_flag = tcp->urg_flag;
 	tcp_replicate->ack_flag = tcp->ack_flag;
 	tcp_replicate->psh_flag = tcp->psh_flag;
-	tcp_replicate->rsf_flags = tcp->rsf_flags;
+	tcp_replicate->rsf_flags = rsf_index_enc(tcp->rsf_flags);
 	tcp_replicate->ecn_used = tcp_context->ecn_used;
 
 	/* MSN */
