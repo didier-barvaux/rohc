@@ -3919,9 +3919,9 @@ static rohc_status_t rohc_decomp_find_context(struct rohc_decomp *const decomp,
 			           rohc_get_profile_descr((*context)->profile->id),
 			           (*context)->profile->id,
 			           rohc_get_profile_descr(*profile_id), *profile_id);
-			if(is_packet_ir)
+			if(is_packet_ir || is_packet_ir_cr)
 			{
-				/* IR packet: profile switching is handled by re-creating the
+				/* IR(-CR) packets: profile switching is handled by re-creating the
 				 * context from scratch */
 				new_context_needed = true;
 			}
