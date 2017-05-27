@@ -217,6 +217,9 @@ typedef struct
 		ipv6_context_t v6;
 	} ctxt;
 
+	/* Context Replication */
+	bool cr_ttl_hopl_present;
+
 	size_t opts_nr;
 	ip_option_context_t opts[ROHC_TCP_MAX_IP_EXT_HDRS];
 
@@ -272,6 +275,11 @@ struct sc_tcp_context
 	uint32_t ack_num_scaled;
 	uint16_t ack_num_residue;
 	size_t ack_num_scaling_nr;
+
+	/* Context Replication */
+	bool cr_tcp_window_present;
+	bool cr_tcp_urg_ptr_present;
+	bool cr_tcp_ack_num_present;
 
 	/** The compression context for TCP options */
 	struct c_tcp_opts_ctxt tcp_opts;

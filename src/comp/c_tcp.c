@@ -3324,22 +3324,25 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 		                ipv4->dscp, ret);
 
 		/* ttl_hopl */
-		ret = c_static_or_irreg8(inner_ip_ctxt->ctxt.vx.ttl_hopl,
-		                         tcp_context->tmp.ttl_hopl, co_common_opt,
-		                         rohc_remain_len, &indicator);
-		if(ret < 0)
 		{
-			rohc_comp_warn(context, "failed to encode static_or_irreg(ttl_hopl)");
-			goto error;
+			const bool is_ttl_hopl_static =
+				(inner_ip_ctxt->ctxt.vx.ttl_hopl == tcp_context->tmp.ttl_hopl);
+			ret = c_static_or_irreg8(tcp_context->tmp.ttl_hopl, is_ttl_hopl_static,
+			                         co_common_opt, rohc_remain_len, &indicator);
+			if(ret < 0)
+			{
+				rohc_comp_warn(context, "failed to encode static_or_irreg(ttl_hopl)");
+				goto error;
+			}
+			rohc_comp_debug(context, "TTL = 0x%02x -> 0x%02x",
+			                inner_ip_ctxt->ctxt.vx.ttl_hopl, tcp_context->tmp.ttl_hopl);
+			co_common->ttl_hopl_present = indicator;
+			co_common_opt += ret;
+			co_common_opt_len += ret;
+			rohc_remain_len -= ret;
+			rohc_comp_debug(context, "ttl_hopl_present = %d (TTL encoded on %d bytes)",
+			                co_common->ttl_hopl_present, ret);
 		}
-		rohc_comp_debug(context, "TTL = 0x%02x -> 0x%02x",
-		                inner_ip_ctxt->ctxt.vx.ttl_hopl, tcp_context->tmp.ttl_hopl);
-		co_common->ttl_hopl_present = indicator;
-		co_common_opt += ret;
-		co_common_opt_len += ret;
-		rohc_remain_len -= ret;
-		rohc_comp_debug(context, "ttl_hopl_present = %d (TTL encoded on %d bytes)",
-		                co_common->ttl_hopl_present, ret);
 
 		// =:= dont_fragment(version.UVALUE) [ 1 ];
 		co_common->df = ipv4->df;
@@ -3367,22 +3370,25 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 		                dscp, ret);
 
 		/* ttl_hopl */
-		ret = c_static_or_irreg8(inner_ip_ctxt->ctxt.vx.ttl_hopl,
-		                         tcp_context->tmp.ttl_hopl, co_common_opt,
-		                         rohc_remain_len, &indicator);
-		if(ret < 0)
 		{
-			rohc_comp_warn(context, "failed to encode static_or_irreg(ttl_hopl)");
-			goto error;
+			const bool is_ttl_hopl_static =
+				(inner_ip_ctxt->ctxt.vx.ttl_hopl == tcp_context->tmp.ttl_hopl);
+			ret = c_static_or_irreg8(tcp_context->tmp.ttl_hopl, is_ttl_hopl_static,
+			                         co_common_opt, rohc_remain_len, &indicator);
+			if(ret < 0)
+			{
+				rohc_comp_warn(context, "failed to encode static_or_irreg(ttl_hopl)");
+				goto error;
+			}
+			rohc_comp_debug(context, "HOPL = 0x%02x -> 0x%02x",
+			                inner_ip_ctxt->ctxt.vx.ttl_hopl, tcp_context->tmp.ttl_hopl);
+			co_common->ttl_hopl_present = indicator;
+			co_common_opt += ret;
+			co_common_opt_len += ret;
+			rohc_remain_len -= ret;
+			rohc_comp_debug(context, "ttl_hopl_present = %d (HOPL encoded on %d bytes)",
+			                co_common->ttl_hopl_present, ret);
 		}
-		rohc_comp_debug(context, "HOPL = 0x%02x -> 0x%02x",
-		                inner_ip_ctxt->ctxt.vx.ttl_hopl, tcp_context->tmp.ttl_hopl);
-		co_common->ttl_hopl_present = indicator;
-		co_common_opt += ret;
-		co_common_opt_len += ret;
-		rohc_remain_len -= ret;
-		rohc_comp_debug(context, "ttl_hopl_present = %d (HOPL encoded on %d bytes)",
-		                co_common->ttl_hopl_present, ret);
 
 		// =:= dont_fragment(version.UVALUE) [ 1 ];
 		co_common->df = 0;

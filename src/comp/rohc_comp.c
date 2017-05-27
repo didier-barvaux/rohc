@@ -2624,11 +2624,14 @@ static struct rohc_comp_ctxt *
 			continue;
 		}
 
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "check context CID = %zu with same profile", context->cid);
+
 		/* ask the profile whether the packet matches the context */
 		if(context->profile->check_context(context, packet, &cr_score))
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "using context CID = %zu", context->cid);
+			           "re-using context CID = %zu", context->cid);
 			do_ctxt_replication = false;
 			break;
 		}

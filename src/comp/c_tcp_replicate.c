@@ -298,18 +298,25 @@ static int tcp_code_replicate_ipv4_part(const struct rohc_comp_ctxt *const conte
 	}
 
 	/* ttl_hopl */
-	ret = c_static_or_irreg8(ip_context->ctxt.v4.ttl_hopl, tcp_context->tmp.ttl_hopl,
-	                         rohc_data + ipv4_replicate_len,
-	                         rohc_max_len - ipv4_replicate_len, &ttl_hopl_indicator);
-	if(ret < 0)
 	{
-		rohc_comp_warn(context, "failed to encode static_or_irreg(ttl_hopl)");
-		goto error;
+		const bool is_ttl_hopl_static =
+			(ip_context->ctxt.vx.ttl_hopl == tcp_context->tmp.ttl_hopl);
+		const bool cr_ttl_hopl_needed =
+			(!is_ttl_hopl_static || ip_context->cr_ttl_hopl_present);
+		ret = c_static_or_irreg8(tcp_context->tmp.ttl_hopl, !cr_ttl_hopl_needed,
+		                         rohc_data + ipv4_replicate_len,
+		                         rohc_max_len - ipv4_replicate_len, &ttl_hopl_indicator);
+		if(ret < 0)
+		{
+			rohc_comp_warn(context, "failed to encode static_or_irreg(ttl_hopl)");
+			goto error;
+		}
+		ipv4_replicate_len += ret;
+		rohc_comp_debug(context, "TTL = 0x%02x -> 0x%02x",
+		                ip_context->ctxt.v4.ttl_hopl, tcp_context->tmp.ttl_hopl);
+		ipv4_replicate->ttl_flag = ttl_hopl_indicator;
+		ip_context->cr_ttl_hopl_present = !!ttl_hopl_indicator;
 	}
-	ipv4_replicate_len += ret;
-	rohc_comp_debug(context, "TTL = 0x%02x -> 0x%02x",
-	                ip_context->ctxt.v4.ttl_hopl, tcp_context->tmp.ttl_hopl);
-	ipv4_replicate->ttl_flag = ttl_hopl_indicator;
 
 	/* TODO: should not update context there */
 	ip_context->ctxt.v4.dscp = ipv4->dscp;
@@ -548,53 +555,68 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
 	                tcp_replicate->dst_port_presence ? "" : "not ");
 
 	/* window */
-	ret = c_static_or_irreg16(tcp->window, !tcp_context->tmp.tcp_window_changed,
-	                          rohc_remain_data, rohc_remain_len, &indicator);
-	if(ret < 0)
 	{
-		rohc_comp_warn(context, "failed to encode static_or_irreg(window)");
-		goto error;
+		const bool cr_tcp_window_needed = (tcp_context->tmp.tcp_window_changed ||
+		                                   tcp_context->cr_tcp_window_present);
+		ret = c_static_or_irreg16(tcp->window, !cr_tcp_window_needed,
+		                          rohc_remain_data, rohc_remain_len, &indicator);
+		if(ret < 0)
+		{
+			rohc_comp_warn(context, "failed to encode static_or_irreg(window)");
+			goto error;
+		}
+		tcp_replicate->window_presence = indicator;
+		tcp_context->cr_tcp_window_present = !!indicator;
+		rohc_remain_data += ret;
+		rohc_remain_len -= ret;
+		rohc_comp_debug(context, "window_indicator = %d, window = 0x%x on %d bytes",
+		                tcp_replicate->window_presence, rohc_ntoh16(tcp->window), ret);
 	}
-	tcp_replicate->window_presence = indicator;
-	rohc_remain_data += ret;
-	rohc_remain_len -= ret;
-	rohc_comp_debug(context, "window_indicator = %d, window = 0x%x on %d bytes",
-	                tcp_replicate->window_presence, rohc_ntoh16(tcp->window), ret);
 
 	/* urp_presence flag and URG pointer: always check for the URG pointer value
 	 * even if the URG flag is not set in the uncompressed TCP header, this is
 	 * important to transmit all packets without any change, even if those
 	 * bits will be ignored at reception */
-	ret = c_static_or_irreg16(tcp->urg_ptr,
-	                          !!(tcp_context->old_tcphdr.urg_ptr == tcp->urg_ptr),
-	                          rohc_remain_data, rohc_remain_len, &indicator);
-	if(ret < 0)
 	{
-		rohc_comp_warn(context, "failed to encode zero_or_irreg(urg_ptr)");
-		goto error;
+		const bool cr_tcp_urg_ptr_needed =
+			(tcp_context->old_tcphdr.urg_ptr != tcp->urg_ptr ||
+			 tcp_context->cr_tcp_urg_ptr_present);
+		ret = c_static_or_irreg16(tcp->urg_ptr, !cr_tcp_urg_ptr_needed,
+		                          rohc_remain_data, rohc_remain_len, &indicator);
+		if(ret < 0)
+		{
+			rohc_comp_warn(context, "failed to encode zero_or_irreg(urg_ptr)");
+			goto error;
+		}
+		tcp_replicate->urp_presence = indicator;
+		tcp_context->cr_tcp_urg_ptr_present = indicator;
+		rohc_remain_data += ret;
+		rohc_remain_len -= ret;
+		rohc_comp_debug(context, "urg_ptr_present = %d (URG pointer encoded on %d "
+		                "bytes)", tcp_replicate->urp_presence, ret);
 	}
-	tcp_replicate->urp_presence = indicator;
-	rohc_remain_data += ret;
-	rohc_remain_len -= ret;
-	rohc_comp_debug(context, "urg_ptr_present = %d (URG pointer encoded on %d bytes)",
-	                tcp_replicate->urp_presence, ret);
 
 	/* ack_presence flag and ACK number: always check for the ACK number value even
 	 * if the ACK flag is not set in the uncompressed TCP header, this is
 	 * important to transmit all packets without any change, even if those bits
 	 * will be ignored at reception */
-	ret = c_static_or_irreg32(tcp->ack_num, !tcp_context->tmp.tcp_ack_num_changed,
-	                          rohc_remain_data, rohc_remain_len, &indicator);
-	if(ret < 0)
 	{
-		rohc_comp_warn(context, "failed to encode zero_or_irreg(ack_number)");
-		goto error;
+		const bool cr_tcp_ack_num_needed = (tcp_context->tmp.tcp_ack_num_changed ||
+		                                    tcp_context->cr_tcp_ack_num_present);
+		ret = c_static_or_irreg32(tcp->ack_num, !cr_tcp_ack_num_needed,
+		                          rohc_remain_data, rohc_remain_len, &indicator);
+		if(ret < 0)
+		{
+			rohc_comp_warn(context, "failed to encode zero_or_irreg(ack_number)");
+			goto error;
+		}
+		tcp_replicate->ack_presence = indicator;
+		tcp_context->cr_tcp_ack_num_present = !!indicator;
+		rohc_remain_data += ret;
+		rohc_remain_len -= ret;
+		rohc_comp_debug(context, "TCP ack_number %spresent",
+		                tcp_replicate->ack_presence ? "" : "not ");
 	}
-	tcp_replicate->ack_presence = indicator;
-	rohc_remain_data += ret;
-	rohc_remain_len -= ret;
-	rohc_comp_debug(context, "TCP ack_number %spresent",
-	                tcp_replicate->ack_presence ? "" : "not ");
 
 	/* ecn_padding + tcp_res_flags + tcp_ecn_flags */
 	if(tcp_context->ecn_used)
