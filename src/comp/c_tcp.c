@@ -1238,7 +1238,7 @@ static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
 	if(tcp_context->old_tcphdr.src_port != tcp->src_port)
 	{
 		rohc_comp_debug(context, "  not same TCP source ports");
-		goto bad_context;
+		goto bad_context_check_tcp_rsf_flags;
 	}
 	rohc_comp_debug(context, "  same TCP source ports");
 	(*cr_score)++;
@@ -1247,13 +1247,21 @@ static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
 	if(tcp_context->old_tcphdr.dst_port != tcp->dst_port)
 	{
 		rohc_comp_debug(context, "  not same TCP destination ports");
-		goto bad_context;
+		goto bad_context_check_tcp_rsf_flags;
 	}
 	rohc_comp_debug(context, "  same TCP destination ports");
 	(*cr_score)++;
 
 	return true;
 
+bad_context_check_tcp_rsf_flags:
+	/* Context Replication is not possible if TCP RSF flags are abnormal: indeed
+	 * the IR-CR packet encodes TCP RSF flags with the rsf_index_enc() method
+	 * that does not support combination of RST, SYN or FIN flags */
+	if(!rsf_index_enc_possible(tcp->rsf_flags))
+	{
+		(*cr_score) = 0;
+	}
 bad_context:
 	return false;
 }
