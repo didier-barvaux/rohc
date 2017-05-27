@@ -991,7 +991,8 @@ static bool d_tcp_parse_ir_cr(const struct rohc_decomp_ctxt *const context,
 	bits->cr_base_cid = base_cid;
 
 	/* parse replicate chain */
-	if(!tcp_parse_replicate_chain(context, remain_data, remain_len,
+	/* TODO: base_context shall not be used for logs */
+	if(!tcp_parse_replicate_chain(base_context, remain_data, remain_len,
 	                              bits, &replicate_chain_len))
 	{
 		rohc_decomp_warn(context, "failed to parse the replicate chain");
@@ -3576,7 +3577,7 @@ static bool d_tcp_decode_bits_tcp_opts(const struct rohc_decomp_ctxt *const cont
 	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
 	size_t tcp_opt_id;
 
-	rohc_decomp_debug(context, "decode TCP options");
+	rohc_decomp_debug(context, "decode %zu TCP options", bits->tcp_opts.nr);
 
 	/* copy the informations collected on TCP options */
 	memcpy(&decoded->tcp_opts, &bits->tcp_opts, sizeof(struct d_tcp_opts_ctxt));

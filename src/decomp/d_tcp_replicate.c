@@ -464,6 +464,7 @@ static int tcp_parse_replicate_tcp(const struct rohc_decomp_ctxt *const context,
                                    const size_t rohc_length,
                                    struct rohc_tcp_extr_bits *const bits)
 {
+	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
 	const uint8_t *remain_data = rohc_packet;
 	size_t remain_len = rohc_length;
 	const tcp_replicate_t *tcp_replicate;
@@ -690,7 +691,12 @@ static int tcp_parse_replicate_tcp(const struct rohc_decomp_ctxt *const context,
 	remain_len -= ret;
 
 	/* parse the compressed list of TCP options */
-	if(tcp_replicate->list_present == 1)
+	if(tcp_replicate->list_present == 0)
+	{
+		/* same list as in base context */
+		memcpy(&bits->tcp_opts, &tcp_context->tcp_opts, sizeof(struct d_tcp_opts_ctxt));
+	}
+	else
 	{
 		ret = d_tcp_parse_tcp_opts_list_item(context, remain_data, remain_len, false,
 		                                     &bits->tcp_opts);
