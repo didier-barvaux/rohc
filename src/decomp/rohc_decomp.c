@@ -1151,6 +1151,8 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 	decomp->last_context = stream->context;
 	sn_feedback_min_bits = rohc_min(decomp->sn_feedback_min_bits,
 	                                profile->msn_max_bits);
+	rohc_decomp_debug(stream->context, "decode packet with profile '%s' (0x%04x)",
+	                  rohc_get_profile_descr(profile->id), profile->id);
 
 	/* collect information for sending feedback to decompressor */
 	stream->context_found = true;

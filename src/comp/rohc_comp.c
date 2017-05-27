@@ -2481,6 +2481,7 @@ static struct rohc_comp_ctxt *
 		memcpy(c, &(comp->contexts[cid_for_replication]), sizeof(struct rohc_comp_ctxt));
 		c->do_ctxt_replication = true;
 		c->cr_base_cid = cid_for_replication;
+		c->cr_count = 0;
 	}
 	else
 	{
