@@ -2522,11 +2522,13 @@ static int c_tcp_build_rnd_8(const struct rohc_comp_ctxt *const context,
 	{
 		/* the structure of the list of TCP options changed or at least one of
 		 * the static option changed, compress them */
+		bool no_item_needed;
 		rnd8->list_present = 1;
 		ret = c_tcp_code_tcp_opts_list_item(context, tcp, tcp_context->msn,
 		                                    ROHC_TCP_CHAIN_CO, &tcp_context->tcp_opts,
 		                                    rnd8->options,
-		                                    rohc_max_len - sizeof(rnd_8_t));
+		                                    rohc_max_len - sizeof(rnd_8_t),
+		                                    &no_item_needed);
 		if(ret < 0)
 		{
 			rohc_comp_warn(context, "failed to compress TCP options");
@@ -3060,11 +3062,13 @@ static int c_tcp_build_seq_8(const struct rohc_comp_ctxt *const context,
 	{
 		/* the structure of the list of TCP options changed or at least one of
 		 * the static option changed, compress them */
+		bool no_item_needed;
 		seq8->list_present = 1;
 		ret = c_tcp_code_tcp_opts_list_item(context, tcp, tcp_context->msn,
 		                                    ROHC_TCP_CHAIN_CO, &tcp_context->tcp_opts,
 		                                    seq8->options,
-		                                    rohc_max_len - sizeof(seq_8_t));
+		                                    rohc_max_len - sizeof(seq_8_t),
+		                                    &no_item_needed);
 		if(ret < 0)
 		{
 			rohc_comp_warn(context, "failed to compress TCP options");
@@ -3406,10 +3410,12 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 	{
 		/* the structure of the list of TCP options changed or at least one of
 		 * the static option changed, compress them */
+		bool no_item_needed;
 		co_common->list_present = 1;
 		ret = c_tcp_code_tcp_opts_list_item(context, tcp, tcp_context->msn,
 		                                    ROHC_TCP_CHAIN_CO, &tcp_context->tcp_opts,
-		                                    co_common_opt, rohc_remain_len);
+		                                    co_common_opt, rohc_remain_len,
+		                                    &no_item_needed);
 		if(ret < 0)
 		{
 			rohc_comp_warn(context, "failed to compress TCP options");

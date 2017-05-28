@@ -489,6 +489,7 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
 	tcp_replicate_t *const tcp_replicate = (tcp_replicate_t *) rohc_data;
 	const size_t tcp_replicate_len = sizeof(tcp_replicate_t);
 
+	bool no_item_needed;
 	int indicator;
 	int ret;
 
@@ -669,30 +670,31 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
 		                tcp_replicate->ack_stride_flag ? "" : "not ");
 	}
 
-	/* include the list of TCP options if the structure of the list changed
-	 * or if some static options changed (replicate chain cannot transmit
-	 * static options) */
-	if(tcp_context->tcp_opts.tmp.do_list_struct_changed ||
-	   tcp_context->tcp_opts.tmp.do_list_static_changed)
+	/* the structure of the list of TCP options changed or at least one of
+	 * the option changed, compress them */
+	ret = c_tcp_code_tcp_opts_list_item(context, tcp, tcp_context->msn,
+	                                    ROHC_TCP_CHAIN_REPLICATE,
+	                                    &tcp_context->tcp_opts,
+	                                    rohc_remain_data, rohc_remain_len,
+	                                    &no_item_needed);
+	if(ret < 0)
 	{
-		/* the structure of the list of TCP options changed or at least one of
-		 * the static option changed, compress them */
+		rohc_comp_warn(context, "failed to compress TCP options");
+		goto error;
+	}
+	if(tcp_context->tcp_opts.tmp.do_list_struct_changed ||
+	   tcp_context->tcp_opts.tmp.do_list_static_changed ||
+	   !no_item_needed)
+	{
+		rohc_comp_debug(context, "compressed list of TCP options: list present");
 		tcp_replicate->list_present = 1;
-		ret = c_tcp_code_tcp_opts_list_item(context, tcp, tcp_context->msn,
-		                                    ROHC_TCP_CHAIN_REPLICATE,
-		                                    &tcp_context->tcp_opts,
-		                                    rohc_remain_data, rohc_remain_len);
-		if(ret < 0)
-		{
-			rohc_comp_warn(context, "failed to compress TCP options");
-			goto error;
-		}
 		rohc_remain_data += ret;
 		rohc_remain_len -= ret;
 	}
 	else
 	{
-		/* the structure of the list of TCP options didn't change */
+		/* the structure of the list of TCP options did not change, and no
+		 * option changed, so remove the compressed list */
 		rohc_comp_debug(context, "compressed list of TCP options: list not present");
 		tcp_replicate->list_present = 0;
 	}

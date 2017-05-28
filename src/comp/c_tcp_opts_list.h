@@ -144,8 +144,9 @@ int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
                                   const rohc_tcp_chain_t chain_type,
                                   struct c_tcp_opts_ctxt *const opts_ctxt,
                                   uint8_t *const comp_opts,
-                                  const size_t comp_opts_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6)));
+                                  const size_t comp_opts_max_len,
+                                  bool *const no_item_needed)
+	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6, 8)));
 
 int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
                               const struct tcphdr *const tcp,

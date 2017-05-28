@@ -687,6 +687,7 @@ error:
  * @param[in,out] opts_ctxt  The compression context for TCP options
  * @param[out] comp_opts     The compressed TCP options
  * @param comp_opts_max_len  The max remaining length in the ROHC buffer
+ * @param[out] no_item_needed Whether no item was needed at all
  * @return                   The length (in bytes) of compressed TCP options
  *                           in case of success, -1 in case of failure
  */
@@ -696,7 +697,8 @@ int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
                                   const rohc_tcp_chain_t chain_type,
                                   struct c_tcp_opts_ctxt *const opts_ctxt,
                                   uint8_t *const comp_opts,
-                                  const size_t comp_opts_max_len)
+                                  const size_t comp_opts_max_len,
+                                  bool *const no_item_needed)
 {
 	const uint8_t *options = ((uint8_t *) tcp) + sizeof(struct tcphdr);
 	const size_t data_offset_bytes = (tcp->data_offset << 2);
@@ -716,6 +718,8 @@ int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
 	size_t comp_opts_len = 0; /* no compressed option at the beginning */
 	int ret;
 	int i;
+
+	(*no_item_needed) = true;
 
 	assert(data_offset_bytes >= sizeof(struct tcphdr));
 
@@ -785,6 +789,7 @@ int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
 		 *       context in case of compression failure */
 		if(item_needed)
 		{
+			(*no_item_needed) = false;
 			c_tcp_opt_record(opts_ctxt, opt_idx, options, opt_len);
 		}
 
