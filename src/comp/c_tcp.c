@@ -4751,7 +4751,7 @@ static int c_tcp_build_seq_8(const struct rohc_comp_ctxt *const context,
 		ret = c_tcp_code_tcp_opts_list_item(context, tcp, tcp_context->msn,
 		                                    false, &tcp_context->tcp_opts,
 		                                    seq8->options,
-		                                    rohc_max_len - sizeof(rnd_8_t));
+		                                    rohc_max_len - sizeof(seq_8_t));
 		if(ret < 0)
 		{
 			rohc_comp_warn(context, "failed to compress TCP options");
