@@ -3913,7 +3913,9 @@ static bool d_tcp_build_ipv4_hdr(const struct rohc_decomp_ctxt *const context,
 	rohc_decomp_debug(context, "    ihl = %u", ipv4->ihl);
 	ipv4->protocol = decoded->proto;
 	memcpy(&ipv4->saddr, decoded->saddr, 4);
+	rohc_decomp_debug(context, "    src addr = 0x%08x", rohc_hton32(ipv4->saddr));
 	memcpy(&ipv4->daddr, decoded->daddr, 4);
+	rohc_decomp_debug(context, "    dst addr = 0x%08x", rohc_hton32(ipv4->daddr));
 
 	/* dynamic part */
 	ipv4->frag_off = 0;

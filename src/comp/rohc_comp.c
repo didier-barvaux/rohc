@@ -2631,10 +2631,46 @@ static struct rohc_comp_ctxt *
 		/* ask the profile whether the packet matches the context */
 		if(context->profile->check_context(context, packet, &cr_score))
 		{
+			const struct rohc_comp_ctxt *base_ctxt;
+			size_t cr_score_base_ctxt = 0;
+			bool base_ctxt_equals_ctxt;
+
+			/* hmmm, looks like we could re-use that context ; if Context Replication
+			 * is in action, check that the base context didn't change too much */
+			if(!context->do_ctxt_replication ||
+			   context->state != ROHC_COMP_STATE_CR ||
+			   context->cr_count >= MAX_CR_COUNT)
+			{
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "re-using context CID = %zu", context->cid);
+				break;
+			}
+			/* check whether the base context changed too much to be re-used or not */
+			base_ctxt = &(comp->contexts[context->cr_base_cid]);
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "re-using context CID = %zu", context->cid);
-			do_ctxt_replication = false;
-			break;
+			           "Context Replication in action (%zu/%u packets sent): check "
+			           "for CID %zu whether base context with CID %zu changed too much",
+			           context->cr_count, MAX_CR_COUNT, context->cid, base_ctxt->cid);
+			base_ctxt_equals_ctxt =
+				context->profile->check_context(base_ctxt, packet, &cr_score_base_ctxt);
+			/* there are two ways the base context may have changed:
+			 *   - the base context now matches exactly the replicated context
+			 *   - the base context does not share enough with the replicated context */
+			if(!base_ctxt_equals_ctxt && cr_score_base_ctxt > 0)
+			{
+				/* no large change, we may continue the Context Replication */
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "re-using context CID = %zu as a replication of context "
+				           "CID %zu", context->cid, base_ctxt->cid);
+				break;
+			}
+			/* too much change, we need to interrupt the Context Replication */
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "cannot re-use context CID = %zu as replication of context "
+			           "CID %zu, the base context changed too much", context->cid,
+			           base_ctxt->cid);
+			cr_score = 0;
+			/* TODO: destroy that half-opened context */
 		}
 		rohc_comp_debug(context, "context CID %zu scores %zu for Context Replication",
 		                context->cid, cr_score);
