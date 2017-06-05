@@ -119,6 +119,10 @@ cppcheck:
 		 -I /usr/include/ \
 		 -i linux/ \
 		 -D__clang_analyzer__ \
+		 -DHAVE_PCAP_PCAP_H \
+		 -DPY_VERSION_HEX=0x02000001 \
+		 -D_ENDIAN_H \
+		 -DHAVE_CMOCKA_RUN_GROUP_TESTS=1 \
 		 --suppress=*:contrib/python/rohc_wrap.c \
 		 --suppress=unusedStructMember:src/comp/c_tcp.c:184 \
 		 --suppress=unusedStructMember:src/comp/c_tcp.c:206 \

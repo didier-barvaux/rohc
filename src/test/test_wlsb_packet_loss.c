@@ -82,7 +82,15 @@ int main(int argc, char *argv[])
 	int is_failure = 1; /* test fails by default */
 
 	const size_t win_size = ROHC_WLSB_WINDOW_WIDTH;
-	assert(win_size > 0);
+
+/* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
+#if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
+     (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
+      (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
+_Static_assert(ROHC_WLSB_WINDOW_WIDTH > 0,
+               "W-LSB window width shall be at least 1");
+#endif
+
 	const size_t loss_nr = win_size - 1;
 
 	/* do we run in verbose mode ? */
