@@ -846,7 +846,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	rohc_status_t ret;
 
 	trace("=== compressor/decompressor #%d, packet #%d:\n", num_comp, num_packet);
-	trace("=== arrival time %lu seconds %lu us\n", header.ts.tv_sec, header.ts.tv_usec);
+	trace("=== arrival time %ld seconds %ld us\n", header.ts.tv_sec, header.ts.tv_usec);
 
 	/* check Ethernet frame length */
 	if(header.len <= link_len_src || header.len != header.caplen)
