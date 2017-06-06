@@ -121,10 +121,12 @@ test/non_regression/other_inputs/download/*
 test/non_regression/other_inputs/external_inputs/*
 test/non_regression/other_inputs/personal_inputs/*
 test/non_regression/other_inputs/logs/*
+test/non_regression/other_inputs/run_tests.log
 test/interop/test_interop
 test/interop/test_interop.exe
 !linux/kmod/Makefile
 linux/.tmp_versions/
+linux/.kmod.o.d
 linux/kmod/*.ko.cmd
 linux/kmod/.tmp_versions/
 linux/kmod/Module.symvers
