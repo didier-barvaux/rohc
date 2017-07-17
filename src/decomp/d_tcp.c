@@ -425,7 +425,38 @@ static void d_tcp_create_from_ctxt(struct rohc_decomp_ctxt *const ctxt,
 	tcp_ctxt->tcp_src_port = base_tcp_ctxt->tcp_src_port;
 	tcp_ctxt->tcp_dst_port = base_tcp_ctxt->tcp_dst_port;
 
-	/* keep the volatile parts of the decompression context */
+	/* keep the volatile parts of the decompression context,
+	 * but reset the ACK rate-limiting */
+	ctxt->last_pkts_errors = 0;
+	ctxt->last_pkt_feedbacks[ROHC_FEEDBACK_ACK].needed = 0;
+	ctxt->last_pkt_feedbacks[ROHC_FEEDBACK_ACK].sent = 0;
+	ctxt->last_pkt_feedbacks[ROHC_FEEDBACK_NACK].needed = 0;
+	ctxt->last_pkt_feedbacks[ROHC_FEEDBACK_NACK].sent = 0;
+	ctxt->last_pkt_feedbacks[ROHC_FEEDBACK_STATIC_NACK].needed = 0;
+	ctxt->last_pkt_feedbacks[ROHC_FEEDBACK_STATIC_NACK].sent = 0;
+
+	/* init the context for packet/context corrections upon CRC failures */
+	/* at the beginning, no attempt to correct CRC failure */
+	ctxt->crc_corr.algo = ROHC_DECOMP_CRC_CORR_SN_NONE;
+	ctxt->crc_corr.counter = 0;
+	/* arrival times for correction upon CRC failure */
+	memset(ctxt->crc_corr.arrival_times, 0,
+	       sizeof(struct rohc_ts) * ROHC_MAX_ARRIVAL_TIMES);
+	ctxt->crc_corr.arrival_times_nr = 0;
+	ctxt->crc_corr.arrival_times_index = 0;
+
+	/* init some statistics */
+	ctxt->num_recv_packets = 0;
+	ctxt->total_uncompressed_size = 0;
+	ctxt->total_compressed_size = 0;
+	ctxt->header_uncompressed_size = 0;
+	ctxt->header_compressed_size = 0;
+	ctxt->corrected_crc_failures = 0;
+	ctxt->corrected_sn_wraparounds = 0;
+	ctxt->corrected_wrong_sn_updates = 0;
+	ctxt->nr_lost_packets = 0;
+	ctxt->nr_misordered_packets = 0;
+	ctxt->is_duplicated = 0;
 }
 
 
