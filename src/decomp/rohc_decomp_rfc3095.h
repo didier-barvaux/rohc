@@ -120,8 +120,8 @@ struct rohc_extr_bits
 	bool is_sn_enc;      /**< Whether value(SN) is encoded with W-LSB or not */
 	rohc_lsb_ref_t lsb_ref_type; /**< The reference to use for LSB decoding
 	                                  (used for context repair after CRC failure) */
-	bool sn_ref_offset;         /**< Optional offset to add to the reference SN
-	                                 (used for context repair after CRC failure) */
+	uint32_t sn_ref_offset;      /**< Optional offset to add to the reference SN
+	                                  (used for context repair after CRC failure) */
 
 	/** Whether there are multiple IP headers or only one single IP header */
 	bool multiple_ip;
