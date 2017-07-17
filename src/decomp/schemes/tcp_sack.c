@@ -136,25 +136,27 @@ static int d_tcp_sack_block(const struct rohc_decomp_ctxt *const context,
 {
 	const uint8_t *remain_data = data;
 	size_t remain_len = data_len;
+	uint32_t block_start;
+	uint32_t block_end;
 	int ret;
 
 	/* parse block start */
-	ret = d_tcp_sack_pure_lsb(context, remain_data, remain_len,
-	                          &sack_block->block_start);
+	ret = d_tcp_sack_pure_lsb(context, remain_data, remain_len, &block_start);
 	if(ret < 0)
 	{
 		goto error;
 	}
+	memcpy(&sack_block->block_start, &block_start, sizeof(uint32_t));
 	remain_data += ret;
 	remain_len -= ret;
 
 	/* parse block end */
-	ret = d_tcp_sack_pure_lsb(context, remain_data, remain_len,
-	                          &sack_block->block_end);
+	ret = d_tcp_sack_pure_lsb(context, remain_data, remain_len, &block_end);
 	if(ret < 0)
 	{
 		goto error;
 	}
+	memcpy(&sack_block->block_end, &block_end, sizeof(uint32_t));
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	remain_data += ret;
 #endif
