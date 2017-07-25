@@ -98,7 +98,7 @@ for ./configure ? If yes, check configure output and config.log"
 #define APP_VERSION "ROHC performance test application, version 0.1"
 
 /** The maximal size for the ROHC packets */
-#define MAX_ROHC_SIZE  (5 * 1024)
+#define MAX_ROHC_SIZE  0xffffU
 
 /** The length of the Linux Cooked Sockets header */
 #define LINUX_COOKED_HDR_LEN  16U
