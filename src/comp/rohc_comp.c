@@ -1089,8 +1089,6 @@ error:
  *
  * The width of the W-LSB window is set to 4 by default.
  *
- * @warning The value must be a power of 2
- *
  * @warning The value can not be modified after library initialization
  *
  * @param comp   The ROHC compressor
@@ -1102,25 +1100,18 @@ error:
 bool rohc_comp_set_wlsb_window_width(struct rohc_comp *const comp,
                                      const size_t width)
 {
-	/* we need a valid compressor and a positive non-zero window width */
+	/* we need a valid compressor */
 	if(comp == NULL)
 	{
 		return false;
 	}
-	if(width == 0)
-	{
-		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "failed to "
-		             "set width of W-LSB sliding window to %zd: window width "
-		             "must be a non-null positive integer", width);
-		return false;
-	}
 
-	/* window width must be a power of 2 */
-	if((width & (width - 1)) != 0)
+	/* the window width shall be in range ]0;ROHC_WLSB_WIDTH_MAX] */
+	if(width == 0 || width > ROHC_WLSB_WIDTH_MAX)
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "failed to "
 		             "set width of W-LSB sliding window to %zd: window width "
-		             "must be a power of 2", width);
+		             "must be in range ]0;%u]", width, ROHC_WLSB_WIDTH_MAX);
 		return false;
 	}
 

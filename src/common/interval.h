@@ -29,6 +29,10 @@
 #include <stdint.h>
 
 
+/** The maximum width of the W-LSB window (implementation specific) */
+#define ROHC_WLSB_WIDTH_MAX  64U
+
+
 /**
  * @brief the different values of the shift parameter of the LSB algorithm
  *
