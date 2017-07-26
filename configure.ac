@@ -32,8 +32,8 @@ if test -d "$srcdir/.git/" ; then
 	if test $? -ne 0 ; then
 		PACKAGE_REVNO="~unknown"
 	else
-		GIT_TAG="`${git_bin} tag --points-at @`"
-		if test "x${GIT_TAG}" != "x" ; then
+		GIT_TAG="`${git_bin} describe --tags`"
+		if test $? -eq 0 ; then
 			# git revno matches a tag, revno is thus useless
 			PACKAGE_REVNO=""
 		else
