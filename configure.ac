@@ -96,7 +96,7 @@ LT_PREREQ([2.2.0])
 LT_INIT([disable-static win32-dll])
 
 # CFLAGS/LDFLAGS default values, more will be added on purpose
-configure_cflags="-g -Wall -Wstrict-prototypes -Wextra -Wunreachable-code"
+configure_cflags="-g -Wall -Wstrict-prototypes -Wextra"
 configure_cflags="${configure_cflags} -Wunused-function -Wunused-variable"
 configure_cflags="${configure_cflags} -Wshadow"
 # -Wframe-larger-than is not praticable without -O1 or greater
