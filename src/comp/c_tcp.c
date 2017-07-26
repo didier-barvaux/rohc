@@ -4839,6 +4839,12 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 	                             tcp_context->tmp.nr_seq_bits_63,
 	                             tcp_context->tmp.nr_seq_bits_16383,
 	                             co_common_opt, rohc_remain_len, &indicator);
+	if(ret < 0)
+	{
+		rohc_comp_warn(context, "ROHC buffer too small for the encoded sequence "
+		               "number");
+		goto error;
+	}
 	co_common->seq_indicator = indicator;
 	encoded_seq_len = ret;
 	co_common_opt += encoded_seq_len;
@@ -4854,6 +4860,11 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 	                             tcp_context->tmp.nr_ack_bits_63,
 	                             tcp_context->tmp.nr_ack_bits_16383,
 	                             co_common_opt, rohc_remain_len, &indicator);
+	if(ret < 0)
+	{
+		rohc_comp_warn(context, "ROHC buffer too small for the encoded ACK number");
+		goto error;
+	}
 	co_common->ack_indicator = indicator;
 	encoded_ack_len = ret;
 	co_common_opt += encoded_ack_len;
