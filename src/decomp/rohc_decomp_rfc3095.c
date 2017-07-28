@@ -451,7 +451,7 @@ bool rohc_decomp_rfc3095_create(const struct rohc_decomp_ctxt *const context,
 		goto free_extr_bits;
 	}
 
-	return rfc3095_ctxt;
+	return true;
 
 free_extr_bits:
 	zfree(volat_ctxt->extr_bits);
@@ -466,7 +466,7 @@ free_outer_ip_id_offset_ctxt:
 free_context:
 	zfree(rfc3095_ctxt);
 quit:
-	return NULL;
+	return false;
 }
 
 
