@@ -1491,9 +1491,13 @@ static int compare_packets(const struct rohc_buf pkt1,
 {
 	int valid = 1;
 	size_t min_size;
-	size_t i, j, k;
-	char str1[4][7], str2[4][7];
-	char sep1, sep2;
+	size_t i;
+	size_t j;
+	size_t k;
+	char str1[4][7];
+	char str2[4][7];
+	char sep1;
+	char sep2;
 	size_t tcp_padding_bytes;
 
 	/* do not compare more than the shortest of the 2 packets */

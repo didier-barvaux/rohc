@@ -58,13 +58,13 @@
 #include <assert.h>
 
 
-extern const struct rohc_decomp_profile d_uncomp_profile,
-                                        d_udp_profile,
-                                        d_ip_profile,
-                                        d_udplite_profile,
-                                        d_esp_profile,
-                                        d_rtp_profile,
-                                        d_tcp_profile;
+extern const struct rohc_decomp_profile d_uncomp_profile;
+extern const struct rohc_decomp_profile d_udp_profile;
+extern const struct rohc_decomp_profile d_ip_profile;
+extern const struct rohc_decomp_profile d_udplite_profile;
+extern const struct rohc_decomp_profile d_esp_profile;
+extern const struct rohc_decomp_profile d_rtp_profile;
+extern const struct rohc_decomp_profile d_tcp_profile;
 
 
 /**

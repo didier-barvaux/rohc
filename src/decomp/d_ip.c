@@ -280,7 +280,10 @@ int ip_parse_ext3(const struct rohc_decomp_ctxt *const context,
 {
 	const uint8_t *ip_flags_pos = NULL;
 	const uint8_t *ip2_flags_pos = NULL;
-	uint8_t S, I, ip, ip2;
+	uint8_t S;
+	uint8_t I;
+	uint8_t ip;
+	uint8_t ip2;
 	uint16_t I_bits;
 	int size;
 
@@ -536,8 +539,13 @@ int parse_inner_header_flags(const struct rohc_decomp_ctxt *const context,
                              const size_t length,
                              struct rohc_extr_ip_bits *const bits)
 {
-	uint8_t is_tos, is_ttl, is_pr, is_ipx;
-	uint8_t df, nbo, rnd;
+	uint8_t is_tos;
+	uint8_t is_ttl;
+	uint8_t is_pr;
+	uint8_t is_ipx;
+	uint8_t df;
+	uint8_t nbo;
+	uint8_t rnd;
 	int read = 0;
 
 	assert(context != NULL);

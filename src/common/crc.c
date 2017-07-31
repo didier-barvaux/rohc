@@ -181,7 +181,7 @@ bool rohc_crc_init_table(uint8_t *const table,
 	uint8_t crc;
 	uint8_t polynom;
 	bool is_fine;
-	int i, j;
+	int i;
 
 	/* sanity check */
 	assert(table != NULL);
@@ -196,6 +196,8 @@ bool rohc_crc_init_table(uint8_t *const table,
 	/* fill the CRC table */
 	for(i = 0; i < 256; i++)
 	{
+		int j;
+
 		crc = i;
 
 		for(j = 0; j < 8; j++)

@@ -764,7 +764,9 @@ static int rtp_parse_dynamic_rtp(const struct rohc_decomp_ctxt *const context,
 	/* part 7 */
 	if(rx)
 	{
-		int mode, tis, tss;
+		int mode;
+		int tis;
+		int tss;
 
 		/* check the minimal length to decode the flags that are only present
 		   if RX flag is set */
@@ -895,7 +897,12 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
                           struct rohc_extr_bits *const bits)
 {
 	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
-	uint8_t S, rts, I, ip, rtp, ip2;
+	uint8_t S;
+	uint8_t rts;
+	uint8_t I;
+	uint8_t ip;
+	uint8_t rtp;
+	uint8_t ip2;
 	uint16_t I_bits;
 	size_t inner_outer_flags_len;
 	int size;
@@ -1334,7 +1341,10 @@ static int rtp_parse_rtp_hdr_fields(const struct rohc_decomp_ctxt *const context
 	const uint8_t *rohc_remain_data = rohc_data;
 	size_t rohc_remain_len = rohc_data_len;
 
-	uint8_t rpt, csrc, tss, tis;
+	uint8_t rpt;
+	uint8_t csrc;
+	uint8_t tss;
+	uint8_t tis;
 	uint8_t rtp_m_ext; /* the RTP Marker (M) flag in extension header */
 	size_t rtp_hdr_fields_len;
 

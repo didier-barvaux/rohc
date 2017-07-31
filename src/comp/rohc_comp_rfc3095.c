@@ -5148,8 +5148,10 @@ static int code_EXT3_rtp_packet(struct rohc_comp_ctxt *const context,
 	int S;
 	int rts;     /* R-TS bit */
 	uint8_t tsc; /* Tsc bit */
-	uint8_t I, ip;
-	uint8_t I2, ip2;
+	uint8_t I;
+	uint8_t ip;
+	uint8_t I2;
+	uint8_t ip2;
 	int rtp;     /* RTP bit */
 
 	const struct ip_packet *inner_ip;
@@ -5474,8 +5476,10 @@ static int code_EXT3_nortp_packet(struct rohc_comp_ctxt *const context,
 
 	uint8_t flags;
 	uint8_t S;
-	uint8_t I, ip;
-	uint8_t I2, ip2;
+	uint8_t I;
+	uint8_t ip;
+	uint8_t I2;
+	uint8_t ip2;
 
 	const struct ip_packet *inner_ip;
 	struct ip_header_info *inner_ip_flags; /* TODO: const */

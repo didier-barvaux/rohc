@@ -828,8 +828,10 @@ static bool compare_packets(const uint8_t *const pkt1,
 {
 	size_t min_size;
 	size_t bytes_on_line;
-	char str1[4][7], str2[4][7];
-	char sep1, sep2;
+	char str1[4][7];
+	char str2[4][7];
+	char sep1;
+	char sep2;
 
 	/* do not compare more than the shortest of the 2 packets */
 	min_size = min(pkt1_size, pkt2_size);
