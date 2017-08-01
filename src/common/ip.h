@@ -289,13 +289,13 @@ out:
 
 /* Generic functions */
 
-bool ip_create(struct ip_packet *const ip,
+void ip_create(struct ip_packet *const ip,
                const uint8_t *const packet,
                const size_t size)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
-bool ip_get_inner_packet(const struct ip_packet *const outer,
+	__attribute__((nonnull(1, 2)));
+void ip_get_inner_packet(const struct ip_packet *const outer,
                          struct ip_packet *const inner)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+	__attribute__((nonnull(1, 2)));
 
 const uint8_t * ip_get_raw_data(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));

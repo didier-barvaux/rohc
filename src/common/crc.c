@@ -140,9 +140,9 @@ static uint8_t * ipv6_get_first_extension(const uint8_t *const ip,
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 
-static bool rohc_crc_get_polynom(const rohc_crc_type_t crc_type,
+static void rohc_crc_get_polynom(const rohc_crc_type_t crc_type,
                                  uint8_t *const polynom)
-	__attribute__((nonnull(2), warn_unused_result));
+	__attribute__((nonnull(2)));
 
 
 static inline uint8_t crc_calc_8(const uint8_t *const buf,
@@ -173,25 +173,19 @@ static inline uint8_t crc_calc_3(const uint8_t *const buf,
  *
  * @param table     IN/OUT: The 256-byte table to initialize
  * @param crc_type  The type of CRC to initialize the table for
- * @return          true in case of success, false in case of failure
  */
-bool rohc_crc_init_table(uint8_t *const table,
+void rohc_crc_init_table(uint8_t *const table,
                          const rohc_crc_type_t crc_type)
 {
 	uint8_t crc;
 	uint8_t polynom;
-	bool is_fine;
 	int i;
 
 	/* sanity check */
 	assert(table != NULL);
 
 	/* determine the polynom to use */
-	is_fine = rohc_crc_get_polynom(crc_type, &polynom);
-	if(is_fine != true)
-	{
-		goto error;
-	}
+	rohc_crc_get_polynom(crc_type, &polynom);
 
 	/* fill the CRC table */
 	for(i = 0; i < 256; i++)
@@ -214,12 +208,6 @@ bool rohc_crc_init_table(uint8_t *const table,
 
 		table[i] = crc;
 	}
-
-	/* everything went fine */
-	return true;
-
-error:
-	return false;
 }
 
 
@@ -788,9 +776,8 @@ static uint8_t ipv6_ext_calc_crc_dyn(const uint8_t *const ip,
  *
  * @param crc_type The CRC type
  * @param polynom  IN/OUT: the polynom for the requested CRC type
- * @return         true in case of success, false otherwise
  */
-static bool rohc_crc_get_polynom(const rohc_crc_type_t crc_type,
+static void rohc_crc_get_polynom(const rohc_crc_type_t crc_type,
                                  uint8_t *const polynom)
 {
 	/* sanity check */
@@ -812,14 +799,7 @@ static bool rohc_crc_get_polynom(const rohc_crc_type_t crc_type,
 		default:
 			/* unknown CRC type, should not happen */
 			assert(0);
-			goto error;
 	}
-
-	/* everything went fine */
-	return true;
-
-error:
-	return false;
 }
 
 

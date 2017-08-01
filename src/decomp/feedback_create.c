@@ -308,14 +308,7 @@ static bool f_append_cid(struct d_feedback *const feedback,
 
 		/* determine the number of bits required for the SDVL-encoded large CID */
 		*cid_len = sdvl_get_encoded_len(cid);
-		if((*cid_len) != 1 && (*cid_len) != 2)
-		{
-#ifdef ROHC_FEEDBACK_DEBUG
-			printf("failed to determine the number of bits required to "
-			       "SDVL-encode the large CID %u\n", cid);
-#endif
-			return false;
-		}
+		assert((*cid_len) == 1 || (*cid_len) == 2); /* ensured by SDVL algorithm */
 
 		/* check if the feedback packet can contain a SDVL-encoded large CID */
 		if((feedback->size + (*cid_len)) > FEEDBACK_DATA_MAX_LEN)

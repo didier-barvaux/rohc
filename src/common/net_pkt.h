@@ -56,12 +56,12 @@ struct net_pkt
 };
 
 
-bool net_pkt_parse(struct net_pkt *const packet,
+void net_pkt_parse(struct net_pkt *const packet,
                    const struct rohc_buf data,
                    rohc_trace_callback2_t trace_cb,
                    void *const trace_cb_priv,
                    rohc_trace_entity_t trace_entity)
-	__attribute__((warn_unused_result, nonnull(1)));
+	__attribute__((nonnull(1)));
 
 size_t net_pkt_get_payload_offset(const struct net_pkt *const packet)
 	__attribute__((warn_unused_result, nonnull(1)));

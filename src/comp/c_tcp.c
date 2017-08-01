@@ -6686,22 +6686,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 	}
 	else /* unchanged structure of the list of TCP options */
 	{
-		if(tcp->rsf_flags != 0)
-		{
-			if(!tcp_context->tmp.tcp_window_changed &&
-			   tcp_context->tmp.nr_ack_bits_16383 <= 16 &&
-			   tcp_context->tmp.nr_seq_bits_65535 <= 16)
-			{
-				TRACE_GOTO_CHOICE;
-				packet_type = ROHC_PACKET_TCP_RND_8;
-			}
-			else
-			{
-				TRACE_GOTO_CHOICE;
-				packet_type = ROHC_PACKET_TCP_CO_COMMON;
-			}
-		}
-		else if(tcp_context->tmp.tcp_window_changed)
+		if(tcp_context->tmp.tcp_window_changed)
 		{
 			if(!crc7_at_least &&
 			   !tcp_context->tmp.tcp_seq_num_changed &&

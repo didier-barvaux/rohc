@@ -65,9 +65,8 @@ static bool ext_get_next_header(const uint8_t *const ext,
  * @param ip     OUT: The IP packet to create
  * @param packet The IP packet data
  * @param size   The length of the IP packet data
- * @return       Whether the IP packet was successfully created or not
  */
-bool ip_create(struct ip_packet *const ip,
+void ip_create(struct ip_packet *const ip,
                const uint8_t *const packet,
                const size_t size)
 {
@@ -146,7 +145,7 @@ bool ip_create(struct ip_packet *const ip,
 		goto malformed;
 	}
 
-	return 1;
+	return;
 
 malformed:
 	/* manage the malformed IP packet */
@@ -154,13 +153,10 @@ malformed:
 	{
 		ip->version = IPV4_MALFORMED;
 	}
-	else if(ip->version == IPV6)
-	{
-		ip->version = IPV6_MALFORMED;
-	}
 	else
 	{
-		goto error;
+		assert(ip->version == IPV6);
+		ip->version = IPV6_MALFORMED;
 	}
 	ip->data = packet;
 	ip->size = size;
@@ -170,7 +166,7 @@ malformed:
 	ip->nl.proto = 0;
 	ip->nl.data = NULL;
 	ip->nl.len = 0;
-	return 1;
+	return;
 
 unknown:
 	/* manage the IP packet that the library cannot handle as IPv4 nor IPv6
@@ -184,10 +180,7 @@ unknown:
 	ip->nl.proto = 0;
 	ip->nl.data = NULL;
 	ip->nl.len = 0;
-	return 1;
-
-error:
-	return 0;
+	return;
 }
 
 
@@ -214,13 +207,12 @@ const uint8_t * ip_get_raw_data(const struct ip_packet *const ip)
  *
  * @param outer The outer IP packet to analyze
  * @param inner The inner IP packet to create
- * @return      Whether the inner IP header is successfully created or not
  */
-bool ip_get_inner_packet(const struct ip_packet *const outer,
+void ip_get_inner_packet(const struct ip_packet *const outer,
                          struct ip_packet *const inner)
 {
 	/* create an IP packet with the next header data */
-	return ip_create(inner, outer->nl.data, outer->nl.len);
+	ip_create(inner, outer->nl.data, outer->nl.len);
 }
 
 

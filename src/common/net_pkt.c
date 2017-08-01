@@ -37,11 +37,8 @@
  * @param trace_cb       The function to call for printing traces
  * @param trace_cb_priv  An optional private context, may be NULL
  * @param trace_entity   The entity that emits the traces
- * @return               true if the packet was successfully parsed,
- *                       false if a problem occurred (a malformed packet is
- *                       not considered as an error)
  */
-bool net_pkt_parse(struct net_pkt *const packet,
+void net_pkt_parse(struct net_pkt *const packet,
                    const struct rohc_buf data,
                    rohc_trace_callback2_t trace_cb,
                    void *const trace_cb_priv,
@@ -57,12 +54,7 @@ bool net_pkt_parse(struct net_pkt *const packet,
 	packet->trace_callback_priv = trace_cb_priv;
 
 	/* create the outer IP packet from raw data */
-	if(!ip_create(&packet->outer_ip, rohc_buf_data(data), data.len))
-	{
-		rohc_warning(packet, trace_entity, ROHC_PROFILE_GENERAL,
-		             "cannot create the outer IP header");
-		goto error;
-	}
+	ip_create(&packet->outer_ip, rohc_buf_data(data), data.len);
 	packet->ip_hdr_nr++;
 	rohc_debug(packet, trace_entity, ROHC_PROFILE_GENERAL,
 	           "outer IP header: %u bytes", ip_get_totlen(&packet->outer_ip));
@@ -108,12 +100,7 @@ bool net_pkt_parse(struct net_pkt *const packet,
 	if(rohc_is_tunneling(packet->transport->proto))
 	{
 		/* create the second IP header */
-		if(!ip_get_inner_packet(&packet->outer_ip, &packet->inner_ip))
-		{
-			rohc_warning(packet, trace_entity, ROHC_PROFILE_GENERAL,
-			             "cannot create the inner IP header");
-			goto error;
-		}
+		ip_get_inner_packet(&packet->outer_ip, &packet->inner_ip);
 		packet->ip_hdr_nr++;
 		rohc_debug(packet, trace_entity, ROHC_PROFILE_GENERAL,
 		           "inner IP header: %u bytes", ip_get_totlen(&packet->inner_ip));
@@ -135,11 +122,6 @@ bool net_pkt_parse(struct net_pkt *const packet,
 		/* get the transport protocol */
 		packet->transport = &packet->inner_ip.nl;
 	}
-
-	return true;
-
-error:
-	return false;
 }
 
 

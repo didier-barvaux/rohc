@@ -66,9 +66,9 @@ typedef enum
  * Function prototypes.
  */
 
-bool rohc_crc_init_table(uint8_t *const table,
+void rohc_crc_init_table(uint8_t *const table,
                          const rohc_crc_type_t crc_type)
-	__attribute__((nonnull(1), warn_unused_result));
+	__attribute__((nonnull(1)));
 
 uint8_t crc_calculate(const rohc_crc_type_t crc_type,
                       const uint8_t *const data,

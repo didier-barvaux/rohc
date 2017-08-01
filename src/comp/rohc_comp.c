@@ -317,21 +317,9 @@ struct rohc_comp * rohc_comp_new2(const rohc_cid_type_t cid_type,
 	}
 
 	/* init the tables for fast CRC computation */
-	is_fine = rohc_crc_init_table(comp->crc_table_3, ROHC_CRC_TYPE_3);
-	if(is_fine != true)
-	{
-		goto destroy_comp;
-	}
-	is_fine = rohc_crc_init_table(comp->crc_table_7, ROHC_CRC_TYPE_7);
-	if(is_fine != true)
-	{
-		goto destroy_comp;
-	}
-	is_fine = rohc_crc_init_table(comp->crc_table_8, ROHC_CRC_TYPE_8);
-	if(is_fine != true)
-	{
-		goto destroy_comp;
-	}
+	rohc_crc_init_table(comp->crc_table_3, ROHC_CRC_TYPE_3);
+	rohc_crc_init_table(comp->crc_table_7, ROHC_CRC_TYPE_7);
+	rohc_crc_init_table(comp->crc_table_8, ROHC_CRC_TYPE_8);
 
 	/* create the MAX_CID + 1 contexts */
 	if(!c_create_contexts(comp))
@@ -584,13 +572,8 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 	}
 
 	/* parse the uncompressed packet */
-	if(!net_pkt_parse(&ip_pkt, uncomp_packet, comp->trace_callback,
-	                  comp->trace_callback_priv, ROHC_TRACE_COMP))
-	{
-		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		             "failed to parse uncompressed packet");
-		goto error;
-	}
+	net_pkt_parse(&ip_pkt, uncomp_packet, comp->trace_callback,
+	              comp->trace_callback_priv, ROHC_TRACE_COMP);
 
 	/* find the best context for the packet */
 	c = rohc_comp_find_ctxt(comp, &ip_pkt, -1, uncomp_packet.time);

@@ -545,29 +545,15 @@ struct rohc_decomp * rohc_decomp_new2(const rohc_cid_type_t cid_type,
 	decomp->mrru = 0;
 
 	/* init the tables for fast CRC computation */
-	is_fine = rohc_crc_init_table(decomp->crc_table_3, ROHC_CRC_TYPE_3);
-	if(is_fine != true)
-	{
-		goto destroy_contexts;
-	}
-	is_fine = rohc_crc_init_table(decomp->crc_table_7, ROHC_CRC_TYPE_7);
-	if(is_fine != true)
-	{
-		goto destroy_contexts;
-	}
-	is_fine = rohc_crc_init_table(decomp->crc_table_8, ROHC_CRC_TYPE_8);
-	if(is_fine != true)
-	{
-		goto destroy_contexts;
-	}
+	rohc_crc_init_table(decomp->crc_table_3, ROHC_CRC_TYPE_3);
+	rohc_crc_init_table(decomp->crc_table_7, ROHC_CRC_TYPE_7);
+	rohc_crc_init_table(decomp->crc_table_8, ROHC_CRC_TYPE_8);
 
 	/* reset the decompressor statistics */
 	rohc_decomp_reset_stats(decomp);
 
 	return decomp;
 
-destroy_contexts:
-	free(decomp->contexts);
 destroy_decomp:
 	free(decomp);
 error:

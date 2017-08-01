@@ -418,12 +418,10 @@ int c_optional_ip_id_lsb(const int behavior,
 		case IP_ID_BEHAVIOR_RAND:
 		case IP_ID_BEHAVIOR_ZERO:
 			*indicator = 0;
-			length = 0;
 			break;
 		default:
 			assert(0); /* should never happen */
 			*indicator = 0;
-			length = 0;
 			break;
 	}
 

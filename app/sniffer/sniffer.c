@@ -1605,7 +1605,7 @@ static size_t get_tcp_opt_padding(const struct rohc_buf packet)
 {
 	struct tcphdr *tcp;
 	size_t opt_len;
-	size_t nr_eol_found = 0;
+	size_t nr_eol_found;
 	size_t ip_len;
 	size_t i;
 

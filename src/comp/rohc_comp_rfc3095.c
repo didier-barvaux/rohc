@@ -5708,7 +5708,7 @@ static int rtp_header_flags_and_fields(const struct rohc_comp_ctxt *const contex
 	       rtp_context->rtp_pt_change_count < MAX_IR_COUNT ||
 	       rtp_context->tmp.padding_bit_changed ||
 	       rtp_context->rtp_padding_change_count < MAX_IR_COUNT);
-	tss = rtp_context->ts_sc.state == INIT_STRIDE;
+	tss = (rtp_context->ts_sc.state == INIT_STRIDE);
 	byte = 0;
 	byte |= (context->mode & 0x03) << 6;
 	byte |= (rpt & 0x01) << 5;
@@ -5760,24 +5760,21 @@ static int rtp_header_flags_and_fields(const struct rohc_comp_ctxt *const contex
 		                "bit(s)", ts_stride, ts_stride, sdvl_size);
 
 		/* do we transmit the scaled RTP Timestamp (TS) in the next packet ? */
-		if(rtp_context->ts_sc.state == INIT_STRIDE)
+		rtp_context->ts_sc.nr_init_stride_packets++;
+		if(rtp_context->ts_sc.nr_init_stride_packets >= ROHC_INIT_TS_STRIDE_MIN)
 		{
-			rtp_context->ts_sc.nr_init_stride_packets++;
-			if(rtp_context->ts_sc.nr_init_stride_packets >= ROHC_INIT_TS_STRIDE_MIN)
-			{
-				rohc_comp_debug(context, "TS_STRIDE transmitted at least %u "
-				                "times, so change from state INIT_STRIDE to "
-				                "SEND_SCALED", ROHC_INIT_TS_STRIDE_MIN);
-				rtp_context->ts_sc.state = SEND_SCALED;
-			}
-			else
-			{
-				rohc_comp_debug(context, "TS_STRIDE transmitted only %zd times, "
-				                "so stay in state INIT_STRIDE (at least %u times "
-				                "are required to change to state SEND_SCALED)",
-				                rtp_context->ts_sc.nr_init_stride_packets,
-				                ROHC_INIT_TS_STRIDE_MIN);
-			}
+			rohc_comp_debug(context, "TS_STRIDE transmitted at least %u times, so "
+			                "change from state INIT_STRIDE to SEND_SCALED",
+			                ROHC_INIT_TS_STRIDE_MIN);
+			rtp_context->ts_sc.state = SEND_SCALED;
+		}
+		else
+		{
+			rohc_comp_debug(context, "TS_STRIDE transmitted only %zd times, so stay "
+			                "in state INIT_STRIDE (at least %u times are required to "
+			                "change to state SEND_SCALED)",
+			                rtp_context->ts_sc.nr_init_stride_packets,
+			                ROHC_INIT_TS_STRIDE_MIN);
 		}
 	}
 

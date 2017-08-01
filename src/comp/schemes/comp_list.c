@@ -1517,8 +1517,7 @@ static size_t rohc_list_compute_ins_mask(const struct list_comp *const comp,
 	rohc_data[0] = 0;
 	if(m <= 7)
 	{
-		/* 7-bit mask is enough, so set first bit to 0 */
-		rohc_data[0] &= ~(1 << 7);
+		/* 7-bit mask is enough, so set first bit to 0 (nothing to do) */
 		ins_mask_len = 1;
 	}
 	else
@@ -1656,8 +1655,7 @@ static size_t rohc_list_compute_rem_mask(const struct list_comp *const comp,
 	}
 	else
 	{
-		/* 15-bit mask is required, so set first bit to 1 */
-		rohc_data[0] |= 1 << 7;
+		/* 15-bit mask is required, so set first bit to 1 (nothing to do) */
 		rem_mask_len = 2;
 	}
 	if(rohc_max_len < rem_mask_len)
