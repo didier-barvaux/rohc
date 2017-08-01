@@ -182,6 +182,7 @@ static int get_index_ipv6_table(const uint8_t next_header_type,
 		default:
 			/* unknown extension */
 			index_table = -1;
+			break;
 	}
 
 	/* either we didn't find an index or we should have one that stand in the
