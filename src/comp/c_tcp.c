@@ -292,8 +292,6 @@ struct sc_tcp_context
 	/** The number of times the ECN fields were not needed */
 	size_t ecn_used_zero_count;
 
-	uint32_t tcp_last_seq_num;
-
 	uint16_t msn;               /**< The Master Sequence Number (MSN) */
 	struct c_wlsb *msn_wlsb;    /**< The W-LSB decoding context for MSN */
 
@@ -928,7 +926,6 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 	tcp_context->ecn_used = false;
 	tcp_context->ecn_used_change_count = MAX_FO_COUNT;
 	tcp_context->ecn_used_zero_count = 0;
-	tcp_context->tcp_last_seq_num = -1;
 
 	/* TCP header begins just after the IP headers */
 	assert(remain_len >= sizeof(struct tcphdr));
@@ -3160,7 +3157,6 @@ static int tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *const context,
 	rohc_remain_len -= sizeof(tcp_dynamic_t);
 
 	/* TODO: should not update context here */
-	tcp_context->tcp_last_seq_num = rohc_ntoh32(tcp->seq_num);
 	tcp_context->tcp_seq_num_change_count++;
 
 	/* ack_zero flag and ACK number: always check for the ACK number value even

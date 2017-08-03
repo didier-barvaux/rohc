@@ -511,8 +511,8 @@ static void ip_header_info_free(struct ip_header_info *const header_info)
  */
 static void c_init_tmp_variables(struct generic_tmp_vars *const tmp_vars)
 {
-	tmp_vars->changed_fields = -1;
-	tmp_vars->changed_fields2 = -1;
+	tmp_vars->changed_fields = MOD_ERROR;
+	tmp_vars->changed_fields2 = MOD_ERROR;
 	tmp_vars->send_static = -1;
 	tmp_vars->send_dynamic = -1;
 

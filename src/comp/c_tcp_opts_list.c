@@ -986,6 +986,7 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 			const bool is_sack_unchanged =
 				!c_tcp_opt_changed(opts_ctxt, opt_idx, opts + opts_offset, opt_len);
 
+			assert(opt_len > 2);
 			ret = c_tcp_opt_sack_code(context, rohc_ntoh32(tcp->ack_num),
 			                          sack_blocks, opt_len - 2, is_sack_unchanged,
 			                          rohc_remain_data, rohc_remain_len);
@@ -1782,6 +1783,7 @@ static int c_tcp_build_sack_list_item(const struct rohc_comp_ctxt *const context
 	const bool is_sack_unchanged = false; /* unchanged encoding is only supported
 	                                         by irregular chain */
 
+	assert(uncomp_opt_len > 2);
 	return c_tcp_opt_sack_code(context, rohc_ntoh32(tcp->ack_num),
 	                           opt_sack, uncomp_opt_len - 2, is_sack_unchanged,
 	                           comp_opt, comp_opt_max_len);

@@ -92,7 +92,7 @@ int main(int argc, char **argv)
 	rohc_status_t status;
 
 	/* initialize the random generator */
-	seed = time(NULL);
+	seed = (unsigned int) time(NULL);
 	srand(seed);
 
 	/* Create a ROHC compressor with small CIDs and the largest MAX_CID
