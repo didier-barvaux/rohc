@@ -158,6 +158,12 @@ int main(int argc, char *argv[])
 		else if(!strcmp(*argv, "--max-contexts"))
 		{
 			/* get the maximum number of contexts the test should use */
+			if(argc <= 1)
+			{
+				fprintf(stderr, "missing mandatory --max-contexts parameter\n");
+				usage();
+				goto error;
+			}
 			max_contexts = atoi(argv[1]);
 			args_used++;
 		}

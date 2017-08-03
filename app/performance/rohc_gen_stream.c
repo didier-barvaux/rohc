@@ -157,18 +157,36 @@ int main(int argc, char *argv[])
 		else if(!strcmp(*argv, "--cid-type"))
 		{
 			/* get the type of CID to use within the ROHC library */
+			if(argc <= 1)
+			{
+				fprintf(stderr, "missing mandatory --cid-type parameter\n");
+				usage();
+				goto error;
+			}
 			cid_type = argv[1];
 			args_used++;
 		}
 		else if(!strcmp(*argv, "--max-contexts"))
 		{
 			/* get the maximum number of contexts the test should use */
+			if(argc <= 1)
+			{
+				fprintf(stderr, "missing mandatory --max-contexts parameter\n");
+				usage();
+				goto error;
+			}
 			max_contexts = atoi(argv[1]);
 			args_used++;
 		}
 		else if(!strcmp(*argv, "--wlsb-width"))
 		{
 			/* get the width of the WLSB window the test should use */
+			if(argc <= 1)
+			{
+				fprintf(stderr, "missing mandatory --wlsb-width parameter\n");
+				usage();
+				goto error;
+			}
 			wlsb_width = atoi(argv[1]);
 			args_used++;
 		}

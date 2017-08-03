@@ -357,18 +357,36 @@ int main(int argc, char *argv[])
 		else if(!strcmp(*argv, "-p") || !strcmp(*argv, "--pidfile"))
 		{
 			/* get the name of the pidfile */
+			if(argc <= 1)
+			{
+				SNIFFER_LOG(LOG_WARNING, "missing mandatory -p/--pidfile parameter\n");
+				usage();
+				goto error;
+			}
 			pidfilename = argv[1];
 			args_used++;
 		}
 		else if(!strcmp(*argv, "-m") || !strcmp(*argv, "--max-contexts"))
 		{
 			/* get the maximum number of contexts the test should use */
+			if(argc <= 1)
+			{
+				SNIFFER_LOG(LOG_WARNING, "missing mandatory -m/--max-contexts parameter\n");
+				usage();
+				goto error;
+			}
 			max_contexts = atoi(argv[1]);
 			args_used++;
 		}
 		else if(!strcmp(*argv, "--disable"))
 		{
 			/* disable the given ROHC profile */
+			if(argc <= 1)
+			{
+				SNIFFER_LOG(LOG_WARNING, "missing mandatory --disable parameter\n");
+				usage();
+				goto error;
+			}
 			const int rohc_profile = atoi(argv[1]);
 			if(rohc_profile >= ROHC_PROFILE_UNCOMPRESSED &&
 			   rohc_profile <= ROHC_PROFILE_UDPLITE)
