@@ -41,6 +41,10 @@
 #include <assert.h>
 #include <time.h> /* for time(2) */
 #include <stdarg.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <errno.h>
 
 /* includes for network headers */
 #include <protocols/ipv4.h>
@@ -62,8 +66,11 @@ for ./configure ? If yes, check configure output and config.log"
 #include <rohc_comp.h>
 
 
+/** The device MTU */
+#define DEV_MTU  0xffffU
+
 /** The maximal size for the ROHC packets */
-#define MAX_ROHC_SIZE  0xffffU
+#define MAX_ROHC_SIZE  (DEV_MTU + 100U)
 
 /** The length of the Linux Cooked Sockets header */
 #define LINUX_COOKED_HDR_LEN  16U
@@ -111,7 +118,8 @@ static enum
 static void usage(void);
 static int generate_comp_stats_all(const rohc_cid_type_t cid_type,
                                    const unsigned int max_contexts,
-                                   const char *filename);
+                                   const char *source)
+	__attribute__((warn_unused_result, nonnull(3)));
 static int generate_comp_stats_one(struct rohc_comp *comp,
                                    const unsigned long num_packet,
                                    const struct pcap_pkthdr header,
@@ -148,7 +156,7 @@ static bool rohc_comp_rtp_cb(const unsigned char *const ip,
 int main(int argc, char *argv[])
 {
 	char *cid_type_name = NULL;
-	char *source_filename = NULL;
+	char *source_descr = NULL;
 	int status = 1;
 	int max_contexts = ROHC_SMALL_CID_MAX + 1;
 	size_t max_possible_contexts = ROHC_SMALL_CID_MAX + 1;
@@ -226,10 +234,12 @@ int main(int argc, char *argv[])
 				goto error;
 			}
 		}
-		else if(source_filename == NULL)
+		else if(source_descr == NULL)
 		{
-			/* get the name of the file that contains the packets to compress */
-			source_filename = argv[0];
+			/* get the source of packets: either the name of the file that contains
+			 * the packets to compress, or the name of the network device to
+			 * live capture packets from */
+			source_descr = argv[0];
 		}
 		else
 		{
@@ -256,16 +266,16 @@ int main(int argc, char *argv[])
 		goto error;
 	}
 
-	/* the source filename is mandatory */
-	if(source_filename == NULL)
+	/* the source is mandatory */
+	if(source_descr == NULL)
 	{
-		fprintf(stderr, "source filename is mandatory\n");
+		fprintf(stderr, "source is mandatory\n");
 		usage();
 		goto error;
 	}
 
-	/* generate ROHC compression statistics with the packets from the file */
-	status = generate_comp_stats_all(cid_type, max_contexts, source_filename);
+	/* generate ROHC compression statistics with the packets from the source */
+	status = generate_comp_stats_all(cid_type, max_contexts, source_descr);
 
 error:
 	return status;
@@ -297,7 +307,7 @@ static void usage(void)
 	       "The shell script rohc_stats.sh could be used to generate a HTML\n"
 	       "report.\n"
 	       "\n"
-	       "Usage: rohc_stats [OPTIONS] CID_TYPE FLOW\n"
+	       "Usage: rohc_stats [OPTIONS] CID_TYPE SOURCE\n"
 	       "\n"
 	       "Options:\n"
 	       "  -v, --version           Print version information and exit\n"
@@ -308,14 +318,16 @@ static void usage(void)
 	       "                          simultaneously use during the test\n"
 	       "\n"
 	       "With:\n"
-	       "  CID_TYPE                The type of CID to use among 'smallcid'\n"
-	       "                          and 'largecid'\n"
-	       "  FLOW                    The flow of Ethernet frames to compress\n"
-	       "                          (in PCAP format)\n"
+	       "  CID_TYPE  The type of CID to use among 'smallcid'\n"
+	       "            and 'largecid'\n"
+	       "  SOURCE    The source of of Ethernet frames to compress, ie:\n"
+	       "              - the name of a file in PCAP format\n"
+	       "              - the name of a network device\n"
 	       "\n"
 	       "Examples:\n"
-	       "  rohc_stats smallcid /tmp/rtp.pcap   Generate statistics\n"
-	       "  rohc_stats largecid ~/lan.pcap      Generate statistics\n"
+	       "  rohc_stats smallcid /tmp/rtp.pcap   Generate statistics from a file\n"
+	       "  rohc_stats largecid ~/lan.pcap      Generate statistics from a file\n"
+	       "  rohc_stats largecid eth0            Generate statistics from Ethernet device 'eth0'\n"
 	       "\n"
 	       "Report bugs to <" PACKAGE_BUGREPORT ">.\n");
 }
@@ -326,14 +338,17 @@ static void usage(void)
  *
  * @param cid_type       The type of CIDs the compressor shall use
  * @param max_contexts   The maximum number of ROHC contexts to use
- * @param filename       The name of the PCAP file that contains the IP packets
+ * @param source         The source of IP packets
  * @return               0 in case of success,
  *                       1 in case of failure
  */
 static int generate_comp_stats_all(const rohc_cid_type_t cid_type,
                                    const unsigned int max_contexts,
-                                   const char *filename)
+                                   const char *source)
 {
+	struct stat source_stat;
+	int ret;
+
 	char errbuf[PCAP_ERRBUF_SIZE];
 	pcap_t *handle;
 	int link_layer_type;
@@ -347,12 +362,34 @@ static int generate_comp_stats_all(const rohc_cid_type_t cid_type,
 
 	int is_failure = 1;
 
-	/* open the source PCAP file */
-	handle = pcap_open_offline(filename, errbuf);
-	if(handle == NULL)
+	/* open the source */
+	ret = stat(source, &source_stat);
+	if(ret != 0 && errno != ENOENT)
 	{
-		fprintf(stderr, "failed to open the source pcap file: %s\n", errbuf);
+		fprintf(stderr, "failed to get information for file '%s': %s (%d)\n",
+		        source, strerror(errno), errno);
 		goto error;
+	}
+	else if(ret != 0 && errno == ENOENT)
+	{
+		/* open the network device */
+		handle = pcap_open_live(source, DEV_MTU, 0, 0, errbuf);
+		if(handle == NULL)
+		{
+			fprintf(stderr, "failed to open network device '%s': %s",
+			        source, errbuf);
+			goto error;
+		}
+	}
+	else
+	{
+		/* open the source PCAP file */
+		handle = pcap_open_offline(source, errbuf);
+		if(handle == NULL)
+		{
+			fprintf(stderr, "failed to open the source pcap file: %s\n", errbuf);
+			goto error;
+		}
 	}
 
 	/* link layer in the source PCAP file must be Ethernet */
@@ -450,8 +487,6 @@ static int generate_comp_stats_all(const rohc_cid_type_t cid_type,
 	num_packet = 0;
 	while((packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
 	{
-		int ret;
-
 		num_packet++;
 
 		/* compress the packet and generate statistics */
