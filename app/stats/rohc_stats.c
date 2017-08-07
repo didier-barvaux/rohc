@@ -68,11 +68,34 @@ for ./configure ? If yes, check configure output and config.log"
 /** The length of the Linux Cooked Sockets header */
 #define LINUX_COOKED_HDR_LEN  16U
 
+/** The length (in bytes) of the Ethernet address */
+#define ETH_ALEN  6U
+
 /** The length (in bytes) of the Ethernet header */
 #define ETHER_HDR_LEN  14U
 
 /** The minimum Ethernet length (in bytes) */
 #define ETHER_FRAME_MIN_LEN  60U
+
+/** The 10Mb/s ethernet header */
+struct ether_header
+{
+	uint8_t ether_dhost[ETH_ALEN];  /**< destination eth addr */
+	uint8_t ether_shost[ETH_ALEN];  /**< source ether addr */
+	uint16_t ether_type;            /**< packet type ID field */
+} __attribute__((__packed__));
+
+/** The Ethertype for the 802.1q protocol (VLAN) */
+#define ETHERTYPE_8021Q   0x8100U
+/** The Ethertype for the 802.1ad protocol */
+#define ETHERTYPE_8021AD  0x88a8U
+
+/** The VLAN header */
+struct vlan_hdr
+{
+	uint16_t vid;  /**< The PCP, DEI and VID fields */
+	uint16_t type; /**< The Ethertype of the next header */
+} __attribute__((packed));
 
 
 /** Whether the application runs in verbose mode or not */
@@ -93,7 +116,7 @@ static int generate_comp_stats_one(struct rohc_comp *comp,
                                    const unsigned long num_packet,
                                    const struct pcap_pkthdr header,
                                    const unsigned char *packet,
-                                   const int link_len);
+                                   size_t link_len);
 static void print_rohc_traces(void *const priv_ctxt,
                               const rohc_trace_level_t level,
                               const rohc_trace_entity_t entity,
@@ -469,7 +492,7 @@ static int generate_comp_stats_one(struct rohc_comp *comp,
                                    const unsigned long num_packet,
                                    const struct pcap_pkthdr header,
                                    const unsigned char *packet,
-                                   const int link_len)
+                                   size_t link_len)
 {
 	struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
 	struct rohc_buf ip_packet =
@@ -489,6 +512,36 @@ static int generate_comp_stats_one(struct rohc_comp *comp,
 	}
 
 	/* skip the link layer header */
+	if(link_len == ETHER_HDR_LEN)
+	{
+		const struct ether_header *const eth_header =
+			(struct ether_header *) rohc_buf_data(ip_packet);
+		uint16_t proto_type = ntohs(eth_header->ether_type);
+
+		/* skip all 802.1q or 802.1ad headers */
+		while(proto_type == ETHERTYPE_8021Q || proto_type == ETHERTYPE_8021AD)
+		{
+			if(verbosity == VERBOSITY_FULL)
+			{
+				fprintf(stderr, "found one 802.1q or 802.1ad header\n");
+			}
+
+			/* check min length */
+			if(header.len < link_len + sizeof(struct vlan_hdr))
+			{
+				fprintf(stderr, "truncated %u-byte 802.1q or 802.1ad frame\n", header.len);
+				goto error;
+			}
+
+			/* detect next header */
+			const struct vlan_hdr *const vlan_hdr =
+				(struct vlan_hdr *) rohc_buf_data_at(ip_packet, link_len);
+			proto_type = ntohs(vlan_hdr->type);
+
+			/* skip VLAN header */
+			link_len += sizeof(struct vlan_hdr);
+		}
+	}
 	rohc_buf_pull(&ip_packet, link_len);
 
 	/* check for padding after the IP packet in the Ethernet payload */
