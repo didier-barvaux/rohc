@@ -109,6 +109,7 @@ struct c_wlsb * c_create_wlsb(const size_t bits,
                               const rohc_lsb_shift_t p)
 {
 	struct c_wlsb *wlsb;
+	size_t i;
 
 	assert(bits > 0);
 	assert(window_width > 0);
@@ -126,6 +127,11 @@ struct c_wlsb * c_create_wlsb(const size_t bits,
 	wlsb->window_width = window_width;
 	wlsb->bits = bits;
 	wlsb->p = p;
+
+	for(i = 0; i < wlsb->window_width; i++)
+	{
+		wlsb->window[i].used = false;
+	}
 
 	return wlsb;
 
@@ -503,11 +509,10 @@ static size_t wlsb_get_minkp_32bits(const struct c_wlsb *const wlsb,
 
 		bits_nr = min_k;
 
-		for(k = bits_nr; k < wlsb->bits; k++)
+		for(k = bits_nr; k < 32; k++)
 		{
 			const uint32_t interval_width = (1U << k) - 1; /* interval width = 2^k - 1 */
 			int32_t computed_p;
-			size_t entry;
 			size_t i;
 
 			/* determine the real p value to use */
@@ -515,42 +520,44 @@ static size_t wlsb_get_minkp_32bits(const struct c_wlsb *const wlsb,
 
 			/* find the minimal number of bits of the value required to be able
 			 * to recreate it thanks to ANY value in the window */
-			for(i = wlsb->count, entry = wlsb->oldest;
-			    i > 0;
-			    i--, entry = (entry + 1) % wlsb->window_width)
+			for(i = 0; i < wlsb->window_width; i++)
 			{
-				const uint32_t v_ref = wlsb->window[entry].value;
+				const struct c_window *const entry = wlsb->window + i;
 
-				/* compute the minimal and maximal values of the interval:
-				 *   min = v_ref - p
-				 *   max = v_ref + interval_with - p
-				 *
-				 * Straddling the lower and upper wraparound boundaries
-				 * is handled without additional operation */
-				const uint32_t min = v_ref - computed_p;
-				const uint32_t max = min + interval_width;
-
-				if(min <= max)
+				if(entry->used)
 				{
-					/* interpretation interval does not straddle field boundaries,
-					 * check if value is in [min, max] */
-					if(value < min || value > max)
+					const uint32_t v_ref = entry->value;
+
+					/* compute the minimal and maximal values of the interval:
+					 *   min = v_ref - p
+					 *   max = v_ref + interval_with - p
+					 *
+					 * Straddling the lower and upper wraparound boundaries
+					 * is handled without additional operation */
+					const uint32_t min = v_ref - computed_p;
+					const uint32_t max = min + interval_width;
+
+					if(min <= max)
 					{
-						break;
+						/* interpretation interval does not straddle field boundaries,
+						 * check if value is in [min, max] */
+						if(value < min || value > max)
+						{
+							break;
+						}
 					}
-				}
-				else
-				{
-					/* the interpretation interval does straddle the field boundaries,
-					 * check if value is in [min, 0xffff] or [0, max] */
-					if(value < min && value > max)
+					else
 					{
-						break;
+						/* the interpretation interval does straddle the field boundaries,
+						 * check if value is in [min, 0xffff] or [0, max] */
+						if(value < min && value > max)
+						{
+							break;
+						}
 					}
 				}
 			}
-
-			if(i == 0)
+			if(i == wlsb->window_width)
 			{
 				break;
 			}
