@@ -1094,6 +1094,7 @@ static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
 	size_t ip_hdr_pos;
 	uint8_t next_proto = ROHC_IPPROTO_IPIP;
 	const struct tcphdr *tcp;
+	bool at_least_one_ipv6_hl_changed = false;
 
 	/* Context Replication is possible only if the chain of IP headers is
 	 * unchanged on some aspects:
@@ -1211,6 +1212,13 @@ static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
 				goto bad_context;
 			}
 			rohc_comp_debug(context, "  IPv6 same protocol %u", next_proto);
+
+			/* check whether IPv6 HL changed to avoid Context Replication
+			 * (changes for IPv6 HL cannot be transmitted in IR-CR) */
+			if(ipv6->hl != ip_context->ctxt.v6.ttl_hopl)
+			{
+				at_least_one_ipv6_hl_changed = true;
+			}
 		}
 		else
 		{
@@ -1243,7 +1251,7 @@ static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
 	if(tcp_context->old_tcphdr.src_port != tcp->src_port)
 	{
 		rohc_comp_debug(context, "  not same TCP source ports");
-		goto bad_context_check_tcp_rsf_flags;
+		goto bad_context_check_cr;
 	}
 	rohc_comp_debug(context, "  same TCP source ports");
 	(*cr_score)++;
@@ -1252,14 +1260,20 @@ static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
 	if(tcp_context->old_tcphdr.dst_port != tcp->dst_port)
 	{
 		rohc_comp_debug(context, "  not same TCP destination ports");
-		goto bad_context_check_tcp_rsf_flags;
+		goto bad_context_check_cr;
 	}
 	rohc_comp_debug(context, "  same TCP destination ports");
 	(*cr_score)++;
 
 	return true;
 
-bad_context_check_tcp_rsf_flags:
+bad_context_check_cr:
+	/* Context Replication is not possible if the IPv6 HL changed in any
+	 * of the IP headers: indeed the IR-CR cannot transmit the changes */
+	if(at_least_one_ipv6_hl_changed)
+	{
+		(*cr_score) = 0;
+	}
 	/* Context Replication is not possible if TCP RSF flags are abnormal: indeed
 	 * the IR-CR packet encodes TCP RSF flags with the rsf_index_enc() method
 	 * that does not support combination of RST, SYN or FIN flags */
