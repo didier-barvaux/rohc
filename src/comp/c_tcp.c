@@ -3935,15 +3935,9 @@ static bool tcp_encode_uncomp_ip_fields(struct rohc_comp_ctxt *const context,
 		                       tcp_context->tmp.ip_id_behavior_changed, 0);
 
 		/* compute the new IP-ID / SN delta */
-		if(inner_ip_ctxt->ctxt.v4.ip_id_behavior == IP_ID_BEHAVIOR_SEQ)
+		if(inner_ip_ctxt->ctxt.v4.ip_id_behavior == IP_ID_BEHAVIOR_SEQ_SWAP)
 		{
-			tcp_context->tmp.ip_id_delta = ip_id - tcp_context->msn;
-			rohc_comp_debug(context, "new outer IP-ID delta = 0x%x / %u (behavior = %d)",
-			                tcp_context->tmp.ip_id_delta, tcp_context->tmp.ip_id_delta,
-			                inner_ip_ctxt->ctxt.v4.ip_id_behavior);
-		}
-		else if(inner_ip_ctxt->ctxt.v4.ip_id_behavior == IP_ID_BEHAVIOR_SEQ_SWAP)
-		{
+			/* specific case of IP-ID delta for sequential swapped behavior */
 			tcp_context->tmp.ip_id_delta = swab16(ip_id) - tcp_context->msn;
 			rohc_comp_debug(context, "new outer IP-ID delta = 0x%x / %u (behavior = %d)",
 			                tcp_context->tmp.ip_id_delta, tcp_context->tmp.ip_id_delta,
@@ -3951,7 +3945,13 @@ static bool tcp_encode_uncomp_ip_fields(struct rohc_comp_ctxt *const context,
 		}
 		else
 		{
-			tcp_context->tmp.ip_id_delta = 0; /* unused */
+			/* compute delta the same way for sequential, zero or random: it is
+			 * important to always compute the IP-ID delta and record it in W-LSB,
+			 * so that the IP-ID deltas of next packets may be correctly encoded */
+			tcp_context->tmp.ip_id_delta = ip_id - tcp_context->msn;
+			rohc_comp_debug(context, "new outer IP-ID delta = 0x%x / %u (behavior = %d)",
+			                tcp_context->tmp.ip_id_delta, tcp_context->tmp.ip_id_delta,
+			                inner_ip_ctxt->ctxt.v4.ip_id_behavior);
 		}
 
 		/* how many bits are required to encode the new IP-ID / SN delta ? */
