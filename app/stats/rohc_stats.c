@@ -75,8 +75,13 @@ for ./configure ? If yes, check configure output and config.log"
 #define ETHER_FRAME_MIN_LEN  60U
 
 
-/** Whether to run the tool in verbose mode or not */
-static bool is_verbose = false;
+/** Whether the application runs in verbose mode or not */
+static enum
+{
+	VERBOSITY_NONE,
+	VERBOSITY_NORMAL,
+	VERBOSITY_FULL
+} verbosity = VERBOSITY_NORMAL;
 
 
 /* prototypes of private functions */
@@ -127,6 +132,9 @@ int main(int argc, char *argv[])
 	rohc_cid_type_t cid_type = ROHC_SMALL_CID;
 	int args_used;
 
+	/* set to normal mode by default */
+	verbosity = VERBOSITY_NORMAL;
+
 	/* parse program arguments, print the help message in case of failure */
 	if(argc <= 1)
 	{
@@ -153,7 +161,12 @@ int main(int argc, char *argv[])
 		else if(!strcmp(*argv, "--verbose"))
 		{
 			/* be more verbose */
-			is_verbose = true;
+			verbosity = VERBOSITY_FULL;
+		}
+		else if(!strcmp(*argv, "--quiet"))
+		{
+			/* be more quiet */
+			verbosity = VERBOSITY_NONE;
 		}
 		else if(!strcmp(*argv, "--max-contexts"))
 		{
@@ -267,6 +280,7 @@ static void usage(void)
 	       "  -v, --version           Print version information and exit\n"
 	       "  -h, --help              Print this usage and exit\n"
 	       "      --verbose           Be more verbose\n"
+	       "      --quiet             Tell the application to be even less verbose\n"
 	       "      --max-contexts NUM  The maximum number of ROHC contexts to\n"
 	       "                          simultaneously use during the test\n"
 	       "\n"
@@ -355,9 +369,10 @@ static int generate_comp_stats_all(const rohc_cid_type_t cid_type,
 		goto close_input;
 	}
 
-	/* set the callback for traces on compressor only in verbose mode */
-	if(is_verbose)
+	/* enable traces in verbose mode */
+	if(verbosity == VERBOSITY_FULL)
 	{
+		/* set the callback for traces on compressor */
 		if(!rohc_comp_set_traces_cb2(comp, print_rohc_traces, NULL))
 		{
 			fprintf(stderr, "failed to set the callback for traces on "
@@ -391,19 +406,22 @@ static int generate_comp_stats_all(const rohc_cid_type_t cid_type,
 	}
 
 	/* output the statistics columns names */
-	printf("STAT\t"
-	       "\"packet number\"\t"
-	       "\"context mode\"\t"
-	       "\"context mode (string)\"\t"
-	       "\"context state\"\t"
-	       "\"context state (string)\"\t"
-	       "\"packet type\"\t"
-	       "\"packet type (string)\"\t"
-	       "\"uncompressed packet size (bytes)\"\t"
-	       "\"uncompressed header size (bytes)\"\t"
-	       "\"compressed packet size (bytes)\"\t"
-	       "\"compressed header size (bytes)\"\n");
-	fflush(stdout);
+	if(verbosity != VERBOSITY_NONE)
+	{
+		printf("STAT\t"
+		       "\"packet number\"\t"
+		       "\"context mode\"\t"
+		       "\"context mode (string)\"\t"
+		       "\"context state\"\t"
+		       "\"context state (string)\"\t"
+		       "\"packet type\"\t"
+		       "\"packet type (string)\"\t"
+		       "\"uncompressed packet size (bytes)\"\t"
+		       "\"uncompressed header size (bytes)\"\t"
+		       "\"compressed packet size (bytes)\"\t"
+		       "\"compressed header size (bytes)\"\n");
+		fflush(stdout);
+	}
 
 	/* for each packet extracted from the PCAP file */
 	num_packet = 0;
@@ -508,30 +526,33 @@ static int generate_comp_stats_one(struct rohc_comp *comp,
 		goto error;
 	}
 
-	/* get some statistics about the last compressed packet */
-	last_packet_info.version_major = 0;
-	last_packet_info.version_minor = 0;
-	if(!rohc_comp_get_last_packet_info2(comp, &last_packet_info))
+	if(verbosity != VERBOSITY_NONE)
 	{
-		fprintf(stderr, "packet #%lu: cannot get stats about the last compressed "
-		        "packet\n", num_packet);
-		goto error;
-	}
+		/* get some statistics about the last compressed packet */
+		last_packet_info.version_major = 0;
+		last_packet_info.version_minor = 0;
+		if(!rohc_comp_get_last_packet_info2(comp, &last_packet_info))
+		{
+			fprintf(stderr, "packet #%lu: cannot get stats about the last compressed "
+			        "packet\n", num_packet);
+			goto error;
+		}
 
-	/* output some statistics about the last compressed packet */
-	printf("STAT\t%lu\t%d\t%s\t%d\t%s\t%d\t%s\t%lu\t%lu\t%lu\t%lu\n",
-	       num_packet,
-	       last_packet_info.context_mode,
-	       rohc_get_mode_descr(last_packet_info.context_mode),
-	       last_packet_info.context_state,
-	       rohc_comp_get_state_descr(last_packet_info.context_state),
-	       last_packet_info.packet_type,
-	       rohc_get_packet_descr(last_packet_info.packet_type),
-	       last_packet_info.total_last_uncomp_size,
-	       last_packet_info.header_last_uncomp_size,
-	       last_packet_info.total_last_comp_size,
-	       last_packet_info.header_last_comp_size);
-	fflush(stdout);
+		/* output some statistics about the last compressed packet */
+		printf("STAT\t%lu\t%d\t%s\t%d\t%s\t%d\t%s\t%lu\t%lu\t%lu\t%lu\n",
+		       num_packet,
+		       last_packet_info.context_mode,
+		       rohc_get_mode_descr(last_packet_info.context_mode),
+		       last_packet_info.context_state,
+		       rohc_comp_get_state_descr(last_packet_info.context_state),
+		       last_packet_info.packet_type,
+		       rohc_get_packet_descr(last_packet_info.packet_type),
+		       last_packet_info.total_last_uncomp_size,
+		       last_packet_info.header_last_uncomp_size,
+		       last_packet_info.total_last_comp_size,
+		       last_packet_info.header_last_comp_size);
+		fflush(stdout);
+	}
 
 	return 0;
 
