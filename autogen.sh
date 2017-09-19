@@ -71,6 +71,9 @@ fi
 if [ "${USE_VALGRIND}" = yes ] ; then
 	add_opts="${add_opts} --enable-rohc-tests-valgrind"
 fi
+if [ -f "/lib/modules/`uname -r`/build" ] ; then
+	add_opts="${add_opts} --enable-linux-kernel-module"
+fi
 
 # run configure with failure on compiler warnings enabled since autogen.sh
 # is for developpers not users, also enable tests, stats, doc and examples.
@@ -85,7 +88,6 @@ ${NEW_PWD}/configure \
 	--enable-rohc-tests \
 	--enable-doc \
 	--enable-examples \
-	--enable-linux-kernel-module \
 	${add_opts} \
 	$@
 
