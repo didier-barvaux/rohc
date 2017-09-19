@@ -64,6 +64,13 @@ cd "${OLD_PWD}" >/dev/null
 
 # autodetect some dev options
 add_opts=""
+doxygen="$( which doxygen 2>/dev/null )"
+if [ $? -eq 0 ] && [ "x${doxygen}" != "x" ] && [ -x "${doxygen}" ] ; then
+	dot="$( which dot 2>/dev/null )"
+	if [ $? -eq 0 ] && [ "x${dot}" != "x" ] && [ -x "${dot}" ] ; then
+		add_opts="${add_opts} --enable-doc"
+	fi
+fi
 doxy2man="$( which doxy2man 2>/dev/null )"
 if [ $? -eq 0 ] && [ "x${doxy2man}" != "x" ] && [ -x "${doxy2man}" ] ; then
 	add_opts="${add_opts} --enable-doc-man"
@@ -86,7 +93,6 @@ ${NEW_PWD}/configure \
 	--enable-app-sniffer \
 	--enable-app-stats \
 	--enable-rohc-tests \
-	--enable-doc \
 	--enable-examples \
 	${add_opts} \
 	$@
