@@ -67,7 +67,7 @@ bool c_tcp_ts_lsb_code(const struct rohc_comp_ctxt *const context,
 			goto error;
 		}
 		rohc_data[0] = timestamp & 0x7F;
-		rohc_comp_debug(context, "encode timestamp = 0x%04x on 1 byte: 0x%02x",
+		rohc_comp_debug(context, "encode timestamp = 0x%08x on 1 byte: 0x%02x",
 		                timestamp, rohc_data[0]);
 	}
 	else if(nr_bits_minus_1 <= 14)
@@ -83,7 +83,7 @@ bool c_tcp_ts_lsb_code(const struct rohc_comp_ctxt *const context,
 		}
 		rohc_data[0] = 0x80 | ((timestamp >> 8) & 0x3F);
 		rohc_data[1] = timestamp;
-		rohc_comp_debug(context, "encode timestamp = 0x%04x on 2 bytes: 0x%02x "
+		rohc_comp_debug(context, "encode timestamp = 0x%08x on 2 bytes: 0x%02x "
 		                "0x%02x", timestamp, rohc_data[0], rohc_data[1]);
 	}
 	else if(nr_bits_0x40000 <= 21)
@@ -100,7 +100,7 @@ bool c_tcp_ts_lsb_code(const struct rohc_comp_ctxt *const context,
 		rohc_data[0] = 0xC0 | ((timestamp >> 16) & 0x1F);
 		rohc_data[1] = timestamp >> 8;
 		rohc_data[2] = timestamp;
-		rohc_comp_debug(context, "encode timestamp = 0x%04x on 3 bytes: 0x%02x "
+		rohc_comp_debug(context, "encode timestamp = 0x%08x on 3 bytes: 0x%02x "
 		                "0x%02x 0x%02x", timestamp, rohc_data[0], rohc_data[1],
 		                rohc_data[2]);
 	}
@@ -119,7 +119,7 @@ bool c_tcp_ts_lsb_code(const struct rohc_comp_ctxt *const context,
 		rohc_data[1] = timestamp >> 16;
 		rohc_data[2] = timestamp >> 8;
 		rohc_data[3] = timestamp;
-		rohc_comp_debug(context, "encode timestamp = 0x%04x on 4 bytes: 0x%02x "
+		rohc_comp_debug(context, "encode timestamp = 0x%08x on 4 bytes: 0x%02x "
 		                "0x%02x 0x%02x 0x%02x", timestamp, rohc_data[0], rohc_data[1],
 		                rohc_data[2], rohc_data[3]);
 	}
