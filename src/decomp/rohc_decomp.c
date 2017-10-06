@@ -2237,6 +2237,8 @@ static bool rohc_decomp_feedback_nack(struct rohc_decomp *const decomp,
 			             "failed to build the (STATIC-)NACK feedback");
 			goto error;
 		}
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
+		           "FEEDBACK-2 is %d-byte long", sfeedback.size);
 
 		/* use CRC option if mode change requested */
 		if(infos->profile_id == ROHC_PROFILE_TCP)
@@ -2283,8 +2285,9 @@ static bool rohc_decomp_feedback_nack(struct rohc_decomp *const decomp,
 		if(feedback->len > 0)
 		{
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
-			           "decompressor built a %zu-byte negative feedback",
-			           feedback->len);
+			           "decompressor built a %zu-byte negative feedback (%zu bytes "
+			           "of header + %zu bytes of data)", feedback->len,
+			           feedback_hdr_len, feedbacksize);
 		}
 
 		/* destroy the temporary feedback buffer */
@@ -3929,6 +3932,10 @@ static rohc_status_t rohc_decomp_find_context(struct rohc_decomp *const decomp,
 			goto error_no_context;
 		}
 		*context_created = true;
+	}
+	else
+	{
+		*profile_id = (*context)->profile->id;
 	}
 	assert((*context)->profile != NULL);
 
