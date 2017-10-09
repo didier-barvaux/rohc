@@ -309,13 +309,13 @@ struct rohc_decomp_ctxt
 	/** The type of the last decompressed ROHC packet */
 	rohc_packet_t packet_type;
 
-	/** The average size of the uncompressed packets */
+	/** The cumulated size of the uncompressed packets */
 	unsigned long total_uncompressed_size;
-	/** The average size of the compressed packets */
+	/** The cumulated size of the compressed packets */
 	unsigned long total_compressed_size;
-	/** The average size of the uncompressed headers */
+	/** The cumulated size of the uncompressed headers */
 	unsigned long header_uncompressed_size;
-	/** The average size of the compressed headers */
+	/** The cumulated size of the compressed headers */
 	unsigned long header_compressed_size;
 
 	/* The number of received packets */

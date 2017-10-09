@@ -379,13 +379,13 @@ struct rohc_comp_ctxt
 	 */
 	struct rohc_ts go_back_ir_time;
 
-	/** The average size of the uncompressed packets */
+	/** The cumulated size of the uncompressed packets */
 	int total_uncompressed_size;
-	/** The average size of the compressed packets */
+	/** The cumulated size of the compressed packets */
 	int total_compressed_size;
-	/** The average size of the uncompressed headers */
+	/** The cumulated size of the uncompressed headers */
 	int header_uncompressed_size;
-	/** The average size of the compressed headers */
+	/** The cumulated size of the compressed headers */
 	int header_compressed_size;
 
 	/** The total size of the last uncompressed packet */
