@@ -318,6 +318,15 @@ struct rohc_decomp_ctxt
 	/** The cumulated size of the compressed headers */
 	unsigned long header_compressed_size;
 
+	/** The total size of the last uncompressed packet */
+	unsigned long total_last_uncompressed_size;
+	/** The total size of the last compressed packet */
+	unsigned long total_last_compressed_size;
+	/** The header size of the last uncompressed packet */
+	unsigned long header_last_uncompressed_size;
+	/** The header size of the last compressed packet */
+	unsigned long header_last_compressed_size;
+
 	/* The number of received packets */
 	unsigned long num_recv_packets;
 	/** The number of successful corrections upon CRC failure */

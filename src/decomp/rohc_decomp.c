@@ -318,6 +318,10 @@ static struct rohc_decomp_ctxt * context_create(struct rohc_decomp *decomp,
 	context->total_compressed_size = 0;
 	context->header_uncompressed_size = 0;
 	context->header_compressed_size = 0;
+	context->total_last_uncompressed_size = 0;
+	context->total_last_compressed_size = 0;
+	context->header_last_uncompressed_size = 0;
+	context->header_last_compressed_size = 0;
 	context->corrected_crc_failures = 0;
 	context->corrected_sn_wraparounds = 0;
 	context->corrected_wrong_sn_updates = 0;
@@ -844,7 +848,9 @@ rohc_status_t rohc_decompress3(struct rohc_decomp *const decomp,
 			assert(stream.context != NULL);
 			stream.context->num_recv_packets++;
 			stream.context->packet_type = stream.packet_type;
+			stream.context->total_last_uncompressed_size = uncomp_packet->len;
 			stream.context->total_uncompressed_size += uncomp_packet->len;
+			stream.context->total_last_compressed_size = rohc_packet.len;
 			stream.context->total_compressed_size += rohc_packet.len;
 			decomp->stats.total_uncompressed_size += uncomp_packet->len;
 			decomp->stats.total_compressed_size += rohc_packet.len;
@@ -2343,7 +2349,9 @@ static void rohc_decomp_stats_add_success(struct rohc_decomp_ctxt *const context
                                           const size_t comp_hdr_len,
                                           const size_t uncomp_hdr_len)
 {
+	context->header_last_compressed_size = comp_hdr_len;
 	context->header_compressed_size += comp_hdr_len;
+	context->header_last_uncompressed_size = uncomp_hdr_len;
 	context->header_uncompressed_size += uncomp_hdr_len;
 }
 
@@ -2360,8 +2368,8 @@ static void rohc_decomp_reset_stats(struct rohc_decomp *const decomp)
 	decomp->stats.failed_crc = 0;
 	decomp->stats.failed_no_context = 0;
 	decomp->stats.failed_decomp = 0;
-	decomp->stats.total_compressed_size = 0;
 	decomp->stats.total_uncompressed_size = 0;
+	decomp->stats.total_compressed_size = 0;
 	decomp->stats.corrected_crc_failures = 0;
 	decomp->stats.corrected_sn_wraparounds = 0;
 	decomp->stats.corrected_wrong_sn_updates = 0;
@@ -2411,6 +2419,7 @@ const char * rohc_decomp_get_state_descr(const rohc_decomp_state_t state)
  * versions:
  *  - Major 0, minor 0
  *  - Major 0, minor 1
+ *  - Major 0, minor 2
  *
  * See \ref rohc_decomp_last_packet_info_t for details about fields that
  * are supported in the above versions.
@@ -2462,6 +2471,17 @@ bool rohc_decomp_get_last_packet_info(const struct rohc_decomp *const decomp,
 			case 0:
 				/* nothing to add */
 				break;
+			case 2:
+				/* new fields in 0.2 */
+				info->total_last_comp_size =
+					decomp->last_context->total_last_compressed_size;
+				info->header_last_comp_size =
+					decomp->last_context->header_last_compressed_size;
+				info->total_last_uncomp_size =
+					decomp->last_context->total_last_uncompressed_size;
+				info->header_last_uncomp_size =
+					decomp->last_context->header_last_uncompressed_size;
+				/* no break to also add new fields in 0.1 */
 			case 1:
 				/* new fields in 0.1 */
 				info->corrected_crc_failures =

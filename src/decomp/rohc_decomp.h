@@ -150,6 +150,16 @@ typedef struct
 	/** The type of the last decompressed ROHC packet */
 	rohc_packet_t packet_type;
 
+	/* added in 0.2 */
+	/** The compressed size (in bytes) of the last decompressed packet */
+	unsigned long total_last_comp_size;
+	/** The compressed size (in bytes) of the last decompressed header */
+	unsigned long header_last_comp_size;
+	/** The uncompressed size (in bytes) of the last decompressed packet */
+	unsigned long total_last_uncomp_size;
+	/** The uncompressed size (in bytes) of the last decompressed header */
+	unsigned long header_last_uncomp_size;
+
 } __attribute__((packed)) rohc_decomp_last_packet_info_t;
 
 
