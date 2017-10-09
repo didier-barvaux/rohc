@@ -26,21 +26,27 @@
 
 usage()
 {
-	echo "usage: $0 stream.pcap [output-directory [verbose]]" >&2
-	echo "usage: $0 netdevice   [output-directory [verbose]]" >&2
+	echo "usage: $0 comp   stream.pcap [output-directory [verbose]]" >&2
+	echo "usage: $0 comp   netdevice   [output-directory [verbose]]" >&2
+	echo "usage: $0 decomp stream.pcap [output-directory [verbose]]" >&2
+	echo "usage: $0 decomp netdevice   [output-directory [verbose]]" >&2
 }
 
 # parse parameters
-src="$1"
-output_dir="$2"
-verbose="$3"
+action="$1"
+src="$2"
+output_dir="$3"
+verbose="$4"
+if [ "${action}" != "comp" ] && [ "${action}" != "decomp" ] ; then
+	usage $0
+	exit 1
+fi
 if [ -z "${src}" ] ; then
 	usage $0
 	exit 1
 fi
 if [ ! -f "${src}" ] && [ ! -d "/sys/class/net/${src}/" ] ; then
-	echo "usage: $0 stream.pcap [output-directory [verbose]]" >&2
-	echo "usage: $0 netdevice   [output-directory [verbose]]" >&2
+	usage $0
 	exit 1
 fi
 src_name="`basename "${src}" .pcap`"
@@ -88,11 +94,11 @@ trap "cleanup" SIGPIPE
 trap "cleanup" SIGINT
 
 # run the statistics application and retrieve its output
-OUTPUT=$( ${GEN} smallcid ${src} 2>/dev/null )
+OUTPUT=$( ${GEN} ${action} smallcid ${src} 2>/dev/null )
 ret=$?
 if [ ${ret} -ne 0 ] && [ ${ret} -ne $(( 128 + 2 )) ] ; then
 	# compression failure, ignore SIGINT (2) signal
-	echo "compression failed for src '${src}' (code ${ret})" >&2
+	echo "${action}ression failed for src '${src}' (code ${ret})" >&2
 	exit 1
 fi
 
@@ -112,7 +118,7 @@ echo -e "${OUTPUT}" | ${GREP} "^STAT" > ${RAW_OUTPUT} || exit 1
 [ "${verbose}" = "verbose" ] && echo -ne "\tcreate graph with context modes... "
 echo -e "set terminal png\n" \
         "set output '${output_dir}/modes.png'\n" \
-        "set title 'Compression modes for ${src_name}'\n" \
+        "set title '${action}ression modes for ${src_name}'\n" \
         "set xlabel 'packet number'\n" \
         "plot [] [0:4] '${RAW_OUTPUT}' using 2:3:yticlabels(4) title columnhead(3)" \
 	| ${GNUPLOT} 2>/dev/null \
@@ -123,7 +129,7 @@ echo -e "set terminal png\n" \
 [ "${verbose}" = "verbose" ] && echo -ne "\tcreate graph with context states... "
 echo -e "set terminal png\n" \
         "set output '${output_dir}/states.png'\n" \
-        "set title 'Compression states for ${src_name}'\n" \
+        "set title '${action}ression states for ${src_name}'\n" \
         "set xlabel 'packet number'\n" \
         "plot [] [0:4] '${RAW_OUTPUT}' using 2:5:yticlabels(6) title columnhead(5)" \
 	| ${GNUPLOT} 2>/dev/null \
@@ -145,7 +151,7 @@ echo -e "set terminal png\n" \
 [ "${verbose}" = "verbose" ] && echo -ne "\tcreate graph with (un)compressed packet sizes... "
 echo -e "set terminal png\n" \
         "set output '${output_dir}/packet_sizes.png'\n" \
-        "set title 'Packet sizes for compression of ${src_name}'\n" \
+        "set title 'Packet sizes for ${action}ression of ${src_name}'\n" \
         "set xlabel 'packet number'\n" \
         "set ylabel 'packet size (bytes)'\n" \
         "plot '${RAW_OUTPUT}' using 2:9 title columnhead(9) with lines," \
@@ -158,7 +164,7 @@ echo -e "set terminal png\n" \
 [ "${verbose}" = "verbose" ] && echo -ne "\tcreate graph with (un)compressed header sizes... "
 echo -e "set terminal png\n" \
         "set output '${output_dir}/header_sizes.png'\n" \
-        "set title 'Header sizes for compression of ${src_name}'\n" \
+        "set title 'Header sizes for ${action}ression of ${src_name}'\n" \
         "set xlabel 'packet number'\n" \
         "set ylabel 'header size (bytes)'\n" \
         "plot '${RAW_OUTPUT}' using 2:10 title columnhead(10) with lines," \
@@ -236,7 +242,7 @@ echo -e "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www
 echo -e "<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\">" >> ${HTML_OUTPUT}
 echo -e "\t<head>" >> ${HTML_OUTPUT}
 echo -e "\t\t<meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\" />" >> ${HTML_OUTPUT}
-echo -e "\t\t<title>ROHC compression statistics</title>" >> ${HTML_OUTPUT}
+echo -e "\t\t<title>ROHC ${action}ression statistics</title>" >> ${HTML_OUTPUT}
 echo -e "\t\t<style type=\"text/css\">" >> ${HTML_OUTPUT}
 echo -e "\t\t\tbody { font-size: small; }" >> ${HTML_OUTPUT}
 echo -e "\t\t\ttable, tr, th, td { border: solid thin black; border-collapse: collapse; width: 33%; }" >> ${HTML_OUTPUT}
@@ -246,7 +252,7 @@ echo -e "\t\t</style>" >> ${HTML_OUTPUT}
 echo -e "\t</head>" >> ${HTML_OUTPUT}
 echo -e "\t<body>" >> ${HTML_OUTPUT}
 
-echo -e "\t\t<h1>ROHC compression statistics for '${src_name}'</h1>" >> ${HTML_OUTPUT}
+echo -e "\t\t<h1>ROHC ${action}ression statistics for '${src_name}'</h1>" >> ${HTML_OUTPUT}
 
 echo -e "\t\t<table>" >> ${HTML_OUTPUT}
 

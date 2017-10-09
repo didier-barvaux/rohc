@@ -21,6 +21,7 @@
  * @file   rohc_stats.c
  * @brief  ROHC statistics program
  * @author Didier Barvaux <didier@barvaux.org>
+ * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  *
  * The program takes a flow of IP packets as input (in the PCAP format) and
  * generate some ROHC compression statistics with them.
@@ -64,6 +65,7 @@ for ./configure ? If yes, check configure output and config.log"
 #include <rohc.h>
 #include <rohc_packets.h>
 #include <rohc_comp.h>
+#include <rohc_decomp.h>
 
 
 /** The device MTU */
@@ -116,6 +118,7 @@ static enum
 
 /* prototypes of private functions */
 static void usage(void);
+
 static int generate_comp_stats_all(const rohc_cid_type_t cid_type,
                                    const unsigned int max_contexts,
                                    const char *source)
@@ -124,7 +127,20 @@ static int generate_comp_stats_one(struct rohc_comp *comp,
                                    const unsigned long num_packet,
                                    const struct pcap_pkthdr header,
                                    const unsigned char *packet,
-                                   size_t link_len);
+                                   size_t link_len)
+	__attribute__((warn_unused_result, nonnull(1, 4)));
+
+static int generate_decomp_stats_all(const rohc_cid_type_t cid_type,
+                                     const unsigned int max_contexts,
+                                     const char *source)
+	__attribute__((warn_unused_result, nonnull(3)));
+static int generate_decomp_stats_one(struct rohc_decomp *const decomp,
+                                     const unsigned long num_packet,
+                                     const struct pcap_pkthdr header,
+                                     const unsigned char *packet,
+                                     size_t link_len)
+	__attribute__((warn_unused_result, nonnull(1, 4)));
+
 static void print_rohc_traces(void *const priv_ctxt,
                               const rohc_trace_level_t level,
                               const rohc_trace_entity_t entity,
@@ -143,6 +159,10 @@ static bool rohc_comp_rtp_cb(const unsigned char *const ip,
                              void *const rtp_private)
 	__attribute__((warn_unused_result));
 
+static bool detect_vlan_hdrs(const struct rohc_buf *const frame,
+                             size_t *const link_len)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
+
 
 /**
  * @brief Main function for the ROHC statistics program
@@ -155,6 +175,7 @@ static bool rohc_comp_rtp_cb(const unsigned char *const ip,
  */
 int main(int argc, char *argv[])
 {
+	char *test_type = NULL; /* the name of the test to perform */
 	char *cid_type_name = NULL;
 	char *source_descr = NULL;
 	int status = 1;
@@ -211,6 +232,11 @@ int main(int argc, char *argv[])
 			max_contexts = atoi(argv[1]);
 			args_used++;
 		}
+		else if(test_type == NULL)
+		{
+			/* get the name of the test */
+			test_type = argv[0];
+		}
 		else if(cid_type_name == NULL)
 		{
 			/* get the type of CID to use within the ROHC library */
@@ -249,6 +275,14 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	/* check test type */
+	if(test_type == NULL)
+	{
+		fprintf(stderr, "parameter TEST_TYPE is mandatory\n");
+		usage();
+		goto error;
+	}
+
 	/* check CID type */
 	if(cid_type_name == NULL)
 	{
@@ -274,8 +308,22 @@ int main(int argc, char *argv[])
 		goto error;
 	}
 
-	/* generate ROHC compression statistics with the packets from the source */
-	status = generate_comp_stats_all(cid_type, max_contexts, source_descr);
+	/* generate ROHC (de)compression statistics with the packets from the source */
+	if(strcmp(test_type, "comp") == 0)
+	{
+		/* test ROHC compression with the packets from the capture */
+		status = generate_comp_stats_all(cid_type, max_contexts, source_descr);
+	}
+	else if(strcmp(test_type, "decomp") == 0)
+	{
+		/* test ROHC decompression with the packets from the capture */
+		status = generate_decomp_stats_all(cid_type, max_contexts, source_descr);
+	}
+	else
+	{
+		fprintf(stderr, "unexpected test type '%s'\n", test_type);
+		goto error;
+	}
 
 error:
 	return status;
@@ -287,7 +335,7 @@ error:
  */
 static void usage(void)
 {
-	printf("The ROHC stats tool generates statistics about ROHC compression\n"
+	printf("The ROHC stats tool generates statistics about ROHC (de)compression\n"
 	       "\n"
 	       "The rohc_stats tool outputs statistics in CSV format with the\n"
 	       "following tab-separated fields:\n\n"
@@ -307,7 +355,7 @@ static void usage(void)
 	       "The shell script rohc_stats.sh could be used to generate a HTML\n"
 	       "report.\n"
 	       "\n"
-	       "Usage: rohc_stats [OPTIONS] CID_TYPE SOURCE\n"
+	       "Usage: rohc_stats [OPTIONS] ACTION CID_TYPE SOURCE\n"
 	       "\n"
 	       "Options:\n"
 	       "  -v, --version           Print version information and exit\n"
@@ -318,6 +366,8 @@ static void usage(void)
 	       "                          simultaneously use during the test\n"
 	       "\n"
 	       "With:\n"
+	       "  ACTION    Run a compression test with 'comp' or a\n"
+	       "            decompression test with 'decomp'\n"
 	       "  CID_TYPE  The type of CID to use among 'smallcid'\n"
 	       "            and 'largecid'\n"
 	       "  SOURCE    The source of of Ethernet frames to compress, ie:\n"
@@ -325,9 +375,9 @@ static void usage(void)
 	       "              - the name of a network device\n"
 	       "\n"
 	       "Examples:\n"
-	       "  rohc_stats smallcid /tmp/rtp.pcap   Generate statistics from a file\n"
-	       "  rohc_stats largecid ~/lan.pcap      Generate statistics from a file\n"
-	       "  rohc_stats largecid eth0            Generate statistics from Ethernet device 'eth0'\n"
+	       "  rohc_stats comp smallcid /tmp/rtp.pcap  Generate statistics from a file\n"
+	       "  rohc_stats decomp largecid ~/lan.pcap   Generate statistics from a file\n"
+	       "  rohc_stats comp largecid eth0           Generate statistics from Ethernet device 'eth0'\n"
 	       "\n"
 	       "Report bugs to <" PACKAGE_BUGREPORT ">.\n");
 }
@@ -512,8 +562,7 @@ error:
 
 
 /**
- * @brief Compress and decompress one uncompressed IP packet with the given
- *        compressor and decompressor
+ * @brief Generate ROHC compression statistics for one single IP packet
  *
  * @param comp        The compressor to use to compress the IP packet
  * @param num_packet  A number affected to the IP packet to compress
@@ -546,36 +595,11 @@ static int generate_comp_stats_one(struct rohc_comp *comp,
 		goto error;
 	}
 
-	/* skip the link layer header */
-	if(link_len == ETHER_HDR_LEN)
+	/* skip the link layer header (including VLAN headers) */
+	if(!detect_vlan_hdrs(&ip_packet, &link_len))
 	{
-		const struct ether_header *const eth_header =
-			(struct ether_header *) rohc_buf_data(ip_packet);
-		uint16_t proto_type = ntohs(eth_header->ether_type);
-
-		/* skip all 802.1q or 802.1ad headers */
-		while(proto_type == ETHERTYPE_8021Q || proto_type == ETHERTYPE_8021AD)
-		{
-			if(verbosity == VERBOSITY_FULL)
-			{
-				fprintf(stderr, "found one 802.1q or 802.1ad header\n");
-			}
-
-			/* check min length */
-			if(header.len < link_len + sizeof(struct vlan_hdr))
-			{
-				fprintf(stderr, "truncated %u-byte 802.1q or 802.1ad frame\n", header.len);
-				goto error;
-			}
-
-			/* detect next header */
-			const struct vlan_hdr *const vlan_hdr =
-				(struct vlan_hdr *) rohc_buf_data_at(ip_packet, link_len);
-			proto_type = ntohs(vlan_hdr->type);
-
-			/* skip VLAN header */
-			link_len += sizeof(struct vlan_hdr);
-		}
+		fprintf(stderr, "packet #%lu: malformed VLAN header\n", num_packet);
+		goto error;
 	}
 	rohc_buf_pull(&ip_packet, link_len);
 
@@ -633,6 +657,259 @@ static int generate_comp_stats_one(struct rohc_comp *comp,
 		       rohc_get_mode_descr(last_packet_info.context_mode),
 		       last_packet_info.context_state,
 		       rohc_comp_get_state_descr(last_packet_info.context_state),
+		       last_packet_info.packet_type,
+		       rohc_get_packet_descr(last_packet_info.packet_type),
+		       last_packet_info.total_last_uncomp_size,
+		       last_packet_info.header_last_uncomp_size,
+		       last_packet_info.total_last_comp_size,
+		       last_packet_info.header_last_comp_size);
+		fflush(stdout);
+	}
+
+	return 0;
+
+error:
+	return 1;
+}
+
+
+/**
+ * @brief Generate ROHC decompression statistics with a flow of ROHC packets
+ *
+ * @param cid_type       The type of CIDs the compressor shall use
+ * @param max_contexts   The maximum number of ROHC contexts to use
+ * @param source         The source of ROHC packets
+ * @return               0 in case of success,
+ *                       1 in case of failure
+ */
+static int generate_decomp_stats_all(const rohc_cid_type_t cid_type,
+                                     const unsigned int max_contexts,
+                                     const char *source)
+{
+	struct stat source_stat;
+	int ret;
+
+	char errbuf[PCAP_ERRBUF_SIZE];
+	pcap_t *handle;
+	int link_layer_type;
+	int link_len;
+
+	struct rohc_decomp *decomp;
+
+	unsigned long num_packet;
+	struct pcap_pkthdr header;
+	unsigned char *packet;
+
+	int is_failure = 1;
+
+	/* open the source */
+	ret = stat(source, &source_stat);
+	if(ret != 0 && errno != ENOENT)
+	{
+		fprintf(stderr, "failed to get information for file '%s': %s (%d)\n",
+		        source, strerror(errno), errno);
+		goto error;
+	}
+	else if(ret != 0 && errno == ENOENT)
+	{
+		/* open the network device */
+		handle = pcap_open_live(source, DEV_MTU, 0, 0, errbuf);
+		if(handle == NULL)
+		{
+			fprintf(stderr, "failed to open network device '%s': %s",
+			        source, errbuf);
+			goto error;
+		}
+	}
+	else
+	{
+		/* open the source PCAP file */
+		handle = pcap_open_offline(source, errbuf);
+		if(handle == NULL)
+		{
+			fprintf(stderr, "failed to open the source pcap file: %s\n", errbuf);
+			goto error;
+		}
+	}
+
+	/* link layer in the source PCAP file must be Ethernet */
+	link_layer_type = pcap_datalink(handle);
+	if(link_layer_type != DLT_EN10MB &&
+	   link_layer_type != DLT_LINUX_SLL &&
+	   link_layer_type != DLT_RAW)
+	{
+		fprintf(stderr, "link layer type %d not supported in source PCAP file "
+		        "(supported = %d, %d, %d)\n", link_layer_type, DLT_EN10MB,
+		        DLT_LINUX_SLL, DLT_RAW);
+		goto close_input;
+	}
+
+	/* determine the size of the link layer header */
+	if(link_layer_type == DLT_EN10MB)
+	{
+		link_len = ETHER_HDR_LEN;
+	}
+	else if(link_layer_type == DLT_LINUX_SLL)
+	{
+		link_len = LINUX_COOKED_HDR_LEN;
+	}
+	else /* DLT_RAW */
+	{
+		link_len = 0;
+	}
+
+	/* create the ROHC decompressor */
+	decomp = rohc_decomp_new2(cid_type, max_contexts - 1, ROHC_U_MODE);
+	if(decomp == NULL)
+	{
+		fprintf(stderr, "cannot create the ROHC decompressor\n");
+		goto close_input;
+	}
+
+	/* enable traces in verbose mode */
+	if(verbosity == VERBOSITY_FULL)
+	{
+		/* set the callback for traces on decompressor */
+		if(!rohc_decomp_set_traces_cb2(decomp, print_rohc_traces, NULL))
+		{
+			fprintf(stderr, "failed to set the callback for traces on "
+			        "decompressor\n");
+			goto destroy_decomp;
+		}
+
+		/* enable packet dump only in verbose mode */
+		if(!rohc_decomp_set_features(decomp, ROHC_DECOMP_FEATURE_DUMP_PACKETS))
+		{
+			fprintf(stderr, "failed to enable packet dumps\n");
+			goto destroy_decomp;
+		}
+	}
+
+	/* enable profiles */
+	if(!rohc_decomp_enable_profiles(decomp, ROHC_PROFILE_UNCOMPRESSED,
+	                                ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
+	                                ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
+	                                ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
+	{
+		fprintf(stderr, "failed to enable the decompression profiles\n");
+		goto destroy_decomp;
+	}
+
+	/* output the statistics columns names */
+	if(verbosity != VERBOSITY_NONE)
+	{
+		printf("STAT\t"
+		       "\"packet number\"\t"
+		       "\"context mode\"\t"
+		       "\"context mode (string)\"\t"
+		       "\"context state\"\t"
+		       "\"context state (string)\"\t"
+		       "\"packet type\"\t"
+		       "\"packet type (string)\"\t"
+		       "\"uncompressed packet size (bytes)\"\t"
+		       "\"uncompressed header size (bytes)\"\t"
+		       "\"compressed packet size (bytes)\"\t"
+		       "\"compressed header size (bytes)\"\n");
+		fflush(stdout);
+	}
+
+	/* for each packet extracted from the PCAP file */
+	num_packet = 0;
+	while((packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
+	{
+		num_packet++;
+
+		/* decompress the packet and generate statistics */
+		ret = generate_decomp_stats_one(decomp, num_packet, header, packet, link_len);
+		if(ret != 0)
+		{
+			fprintf(stderr, "packet %lu: failed to decompress or generate stats "
+			        "for packet\n", num_packet);
+			goto destroy_decomp;
+		}
+	}
+
+	/* everything went fine */
+	is_failure = 0;
+
+destroy_decomp:
+	rohc_decomp_free(decomp);
+close_input:
+	pcap_close(handle);
+error:
+	return is_failure;
+}
+
+
+/**
+ * @brief Generate ROHC decompression statistics for one single IP packet
+ *
+ * @param comp        The compressor to use to compress the ROHC packet
+ * @param num_packet  A number affected to the ROHC packet to compress
+ * @param header      The PCAP header for the packet
+ * @param packet      The packet to compress (link layer included)
+ * @param link_len    The length of the link layer header before ROHC data
+ * @return            0 in case of success,
+ *                    1 in case of failure
+ */
+static int generate_decomp_stats_one(struct rohc_decomp *const decomp,
+                                     const unsigned long num_packet,
+                                     const struct pcap_pkthdr header,
+                                     const unsigned char *packet,
+                                     size_t link_len)
+{
+	struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
+	struct rohc_buf rohc_packet =
+		rohc_buf_init_full((unsigned char *) packet, header.caplen, arrival_time);
+	uint8_t ip_buffer[MAX_ROHC_SIZE];
+	struct rohc_buf ip_packet =
+		rohc_buf_init_empty(ip_buffer, MAX_ROHC_SIZE);
+	rohc_decomp_last_packet_info_t last_packet_info;
+	rohc_status_t status;
+
+	/* check frame length */
+	if(header.len <= link_len || header.len != header.caplen)
+	{
+		fprintf(stderr, "packet #%lu: bad PCAP packet (len = %u, caplen = %u)\n",
+		        num_packet, header.len, header.caplen);
+		goto error;
+	}
+
+	/* skip the link layer header (including VLAN headers) */
+	if(!detect_vlan_hdrs(&rohc_packet, &link_len))
+	{
+		fprintf(stderr, "packet #%lu: malformed VLAN header\n", num_packet);
+		goto error;
+	}
+	rohc_buf_pull(&rohc_packet, link_len);
+
+	/* decompress the IP packet */
+	status = rohc_decompress3(decomp, rohc_packet, &ip_packet, NULL, NULL);
+	if(status != ROHC_STATUS_OK)
+	{
+		fprintf(stderr, "packet #%lu: compression failed\n", num_packet);
+		goto error;
+	}
+
+	if(verbosity != VERBOSITY_NONE)
+	{
+		/* get some statistics about the last decompressed packet */
+		last_packet_info.version_major = 0;
+		last_packet_info.version_minor = 2;
+		if(!rohc_decomp_get_last_packet_info(decomp, &last_packet_info))
+		{
+			fprintf(stderr, "packet #%lu: cannot get stats about the last "
+			        "decompressed packet\n", num_packet);
+			goto error;
+		}
+
+		/* output some statistics about the last decompressed packet */
+		printf("STAT\t%lu\t%d\t%s\t%d\t%s\t%d\t%s\t%lu\t%lu\t%lu\t%lu\n",
+		       num_packet,
+		       last_packet_info.context_mode,
+		       rohc_get_mode_descr(last_packet_info.context_mode),
+		       last_packet_info.context_state,
+		       rohc_decomp_get_state_descr(last_packet_info.context_state),
 		       last_packet_info.packet_type,
 		       rohc_get_packet_descr(last_packet_info.packet_type),
 		       last_packet_info.total_last_uncomp_size,
@@ -732,5 +1009,55 @@ static bool rohc_comp_rtp_cb(const unsigned char *const ip __attribute__((unused
 	}
 
 	return is_rtp;
+}
+
+
+/**
+ * @brief Detect 802.1q and 802.1ad headers
+ *
+ * @param frame             The frame in which VLAN headers shall be detected
+ * @param[in,out] link_len  in: the length of the link layer identified yet
+ *                          out: the length of the link layer including VLAN headers
+ * @return                  false if VLAN are malformed, true otherwise
+ */
+static bool detect_vlan_hdrs(const struct rohc_buf *const frame,
+                             size_t *const link_len)
+{
+	if((*link_len) == ETHER_HDR_LEN)
+	{
+		const struct ether_header *const eth_header =
+			(struct ether_header *) rohc_buf_data(*frame);
+		uint16_t proto_type = ntohs(eth_header->ether_type);
+
+		/* skip all 802.1q or 802.1ad headers */
+		while(proto_type == ETHERTYPE_8021Q || proto_type == ETHERTYPE_8021AD)
+		{
+			if(verbosity == VERBOSITY_FULL)
+			{
+				fprintf(stderr, "found one 802.1q or 802.1ad header\n");
+			}
+
+			/* check min length */
+			if(frame->len < (*link_len) + sizeof(struct vlan_hdr))
+			{
+				fprintf(stderr, "truncated %zu-byte 802.1q or 802.1ad frame\n",
+				        frame->len);
+				goto error;
+			}
+
+			/* detect next header */
+			const struct vlan_hdr *const vlan_hdr =
+				(struct vlan_hdr *) rohc_buf_data_at(*frame, (*link_len));
+			proto_type = ntohs(vlan_hdr->type);
+
+			/* skip VLAN header */
+			(*link_len) += sizeof(struct vlan_hdr);
+		}
+	}
+
+	return true;
+
+error:
+	return false;
 }
 
