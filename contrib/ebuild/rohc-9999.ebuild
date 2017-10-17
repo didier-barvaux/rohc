@@ -56,7 +56,6 @@ src_configure() {
 	        $(use_enable app-stats)
 	        $(use_enable debug rohc-debug)
 	        $(use_enable doc)
-	        $(use_enable doc doc-man)
 	        $(use_enable examples)
 	        $(use_enable linux-kernel-mod linux-kernel-module)
 	        $(use_enable test rohc-tests)
