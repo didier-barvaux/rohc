@@ -990,7 +990,7 @@ static int compress_decompress(struct rohc_comp *comp,
 
 	/* compare the ROHC packets with the ones given by the user if asked */
 	trace("=== ROHC comparison: start\n");
-	if(cmp_packet != NULL && cmp_size > link_len_cmp)
+	if(!no_comparison && cmp_packet != NULL && cmp_size > link_len_cmp)
 	{
 		if(!compare_packets(cmp_packet + link_len_cmp, cmp_size - link_len_cmp,
 		                    rohc_buf_data(rohc_packet), rohc_packet.len))
