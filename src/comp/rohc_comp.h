@@ -2,7 +2,7 @@
  * Copyright 2010,2012,2013,2014 Didier Barvaux
  * Copyright 2013 Friedrich
  * Copyright 2009,2010 Thales Communications
- * Copyright 2007,2009,2010,2012,2013,2014 Viveris Technologies
+ * Copyright 2007,2009,2010,2012,2013,2014,2017 Viveris Technologies
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -306,6 +306,11 @@ bool ROHC_EXPORT rohc_comp_set_traces_cb2(struct rohc_comp *const comp,
 rohc_status_t ROHC_EXPORT rohc_compress4(struct rohc_comp *const comp,
                                          const struct rohc_buf uncomp_packet,
                                          struct rohc_buf *const rohc_packet)
+	__attribute__((warn_unused_result));
+
+rohc_status_t ROHC_EXPORT rohc_comp_pad(struct rohc_comp *const comp,
+                                        struct rohc_buf *const rohc_packet,
+                                        const size_t min_pkt_len)
 	__attribute__((warn_unused_result));
 
 rohc_status_t ROHC_EXPORT rohc_comp_get_segment2(struct rohc_comp *const comp,
