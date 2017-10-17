@@ -1,5 +1,11 @@
 # ChangeLog for net-libs/rohc
-# Copyright 2016 Didier Barvaux; Distributed under the GPL v2
+# Copyright 2017 Didier Barvaux; Distributed under the GPL v2
+
+*rohc-2.0.0 (17 Oct 2017)
+
+  17 Oct 2017; Didier Barvaux <didier@rohc-lib.org>
+  +rohc-2.0.0.ebuild:
+  Add version 2.0.0.
 
 *rohc-1.7.0 (19 Jun 2016)
 
