@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "http://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+
+	<longdescription lang="en">
+		The ROHC library is an opensource and efficient library that implements
+		the RObust Header Compression (ROHC) protocol as defined by the IETF in
+		RFC 3095.
+		The ROHC protocol is a highly robust and efficient header compression
+		scheme for RTP/UDP/IP, UDP/IP, UDP-Lite/IP, ESP/IP and IP-only streams.
+		Both IPv4 and IPv6 headers are supported.
+	</longdescription>
+	<longdescription lang="fr">
+		La bibliothèque ROHC est une implémentation libre et efficace du protocole
+		RObust Header Compression (ROHC) défini par l'IETF dans la RFC 3095.
+		Le protocole ROHC est un algorithme extrêmement robuste et efficace de
+		compression d'entêtes pour les flux RTP/UDP/IP, UDP/IP, UDP-Lite/IP, ESP/IP
+		et IP seuls. Les entêtes IPv4 and IPv6 sont toutes les deux supportées.
+	</longdescription>
+
+	<use>
+		<flag name="app-perf">Enable the ROHC performance tool</flag>
+		<flag name="app-sniffer">Enable the ROHC sniffer tool</flag>
+		<flag name="app-stats">Enable the ROHC statistics tool</flag>
+		<flag name="debug">
+			Enable extra traces in the ROHC library with potential impacts on
+			performances. Use with care.</flag>
+		<flag name="doc">
+			Install man pages and HTML documentation of the ROHC library API.
+			It requires <pkg>app-doc/doxygen</pkg> with USE="dot".
+		</flag>
+		<flag name="test">
+			Build and run library tests. It requires <pkg>net-libs/libpcap</pkg>.
+		</flag>
+		<flag name="test-valgrind">
+			Run library tests within Valgrind. It requires <pkg>dev-util/valgrind</pkg>.
+		</flag>
+	</use>
+
+	<herd>no-herd</herd>
+	<maintainer>
+		<name>Default assignee for orphaned packages</name>
+		<email>maintainer-needed@gentoo.org</email>
+	</maintainer>
+	<maintainer>
+		<name>Didier Barvaux</name>
+		<email>didier@rohc-lib.org</email>
+		<description lang="en">Proxy maintainer and upstream developer. Please CC him on bugs.</description>
+	</maintainer>
+
+	<upstream>
+		<doc>https://rohc-lib.org/support/documentation/</doc>
+		<changelog>https://raw.githubusercontent.com/didier-barvaux/rohc/master/ChangeLog</changelog>
+		<bugs-to>https://bugs.launchpad.net/rohc</bugs-to>
+		<maintainer status="active">
+			<name>Didier Barvaux</name>
+			<email>didier@rohc-lib.org</email>
+			<description lang="en">main upstream developper</description>
+		</maintainer>
+	</upstream>
+
+</pkgmetadata>
