@@ -4338,6 +4338,75 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 	/* mode did not change */
 	*do_change_mode = false;
 
+	/* TODO: implement !decoded->is_context_reused */
+	/* TODO: fix for RFC3095 and TCP the computation of losses upon wraparound */
+	/* warn if value(MSN) is not context(MSN) + 1 */
+	if(context->num_recv_packets >= 1 /* TODO && !decoded->is_context_reused */)
+	{
+		uint16_t sn_context;
+		uint16_t expected_next_sn;
+
+		/* get context(MSN) */
+		sn_context = context->profile->get_sn(context);
+
+		/* compute the next MSN value we expect in packet */
+		if(sn_context == 0xffff)
+		{
+			expected_next_sn = 0;
+		}
+		else
+		{
+			expected_next_sn = sn_context + 1;
+		}
+
+		/* do we decoded the expected MSN? */
+		if(msn == sn_context)
+		{
+			/* same MSN: duplicated packet detected! */
+			rohc_info(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
+			          "packet seems to be a duplicated packet (MSN = 0x%04x)",
+			          sn_context);
+			context->nr_lost_packets = 0;
+			context->nr_misordered_packets = 0;
+			context->is_duplicated = true;
+		}
+		else if(msn > expected_next_sn)
+		{
+			/* bigger MSN: some packets were lost or failed to be decompressed */
+			rohc_info(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
+			          "%u packets seem to have been lost, damaged, or failed "
+			          "to be decompressed (SN jumped from 0x%04x to 0x%04x)",
+			          msn - expected_next_sn, sn_context, msn);
+			context->nr_lost_packets = msn - expected_next_sn;
+			context->nr_misordered_packets = 0;
+			context->is_duplicated = false;
+		}
+		else if(msn < expected_next_sn)
+		{
+			/* smaller MSN: order was changed on the network channel */
+			rohc_info(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
+			          "packet seems to come late (MSN jumped back from 0x%04x to 0x%04x)",
+			          sn_context, msn);
+			context->nr_lost_packets = 0;
+			context->nr_misordered_packets = expected_next_sn - msn;
+			context->is_duplicated = false;
+		}
+		else
+		{
+			/* MSN is as expected */
+			context->nr_lost_packets = 0;
+			context->nr_misordered_packets = 0;
+			context->is_duplicated = false;
+		}
+	}
+	else
+	{
+		/* no SN reference to detect SN duplicates or SN jumps */
+		context->nr_lost_packets = 0;
+		context->nr_misordered_packets = 0;
+		context->is_duplicated = false;
+	}
+
 	/* MSN */
 	rohc_lsb_set_ref(&tcp_context->msn_lsb_ctxt, msn, false);
 	rohc_decomp_debug(context, "MSN 0x%04x / %u is the new reference", msn, msn);
