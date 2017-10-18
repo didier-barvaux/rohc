@@ -1,6 +1,6 @@
 /*
  * Copyright 2010,2012,2013,2014 Didier Barvaux
- * Copyright 2010,2012,2013 Viveris Technologies
+ * Copyright 2010,2012,2013,2017 Viveris Technologies
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -451,10 +451,13 @@ static int test_compression_perfs(const bool is_verbose,
 	}
 
 	/* set the callback for traces */
-	if(!rohc_comp_set_traces_cb2(comp, print_rohc_traces, (void *) &is_verbose))
+	if(is_verbose)
 	{
-		fprintf(stderr, "failed to set the callback for traces\n");
-		goto free_compresssor;
+		if(!rohc_comp_set_traces_cb2(comp, print_rohc_traces, (void *) &is_verbose))
+		{
+			fprintf(stderr, "failed to set the callback for traces\n");
+			goto free_compresssor;
+		}
 	}
 
 	/* enable periodic refreshes based on inter-packet delay */
@@ -695,10 +698,13 @@ static int test_decompression_perfs(const bool is_verbose,
 	}
 
 	/* set trace callback for decompressor in verbose mode */
-	if(!rohc_decomp_set_traces_cb2(decomp, print_rohc_traces, (void *) &is_verbose))
+	if(is_verbose)
 	{
-		fprintf(stderr, "cannot set trace callback for decompressor\n");
-		goto free_decompressor;
+		if(!rohc_decomp_set_traces_cb2(decomp, print_rohc_traces, (void *) &is_verbose))
+		{
+			fprintf(stderr, "cannot set trace callback for decompressor\n");
+			goto free_decompressor;
+		}
 	}
 
 	/* activate all the decompression profiles */
@@ -816,22 +822,17 @@ error:
  *                      the trace is related to
  * @param format        The format string of the trace
  */
-static void print_rohc_traces(void *const is_verbose__,
+static void print_rohc_traces(void *const is_verbose__ __attribute__((unused)),
                               const rohc_trace_level_t level __attribute__((unused)),
                               const rohc_trace_entity_t entity __attribute__((unused)),
                               const int profile __attribute__((unused)),
                               const char *const format,
                               ...)
 {
-	const bool *const is_verbose = (bool *) is_verbose__;
-
-	if(*is_verbose)
-	{
-		va_list args;
-		va_start(args, format);
-		vprintf(format, args);
-		va_end(args);
-	}
+	va_list args;
+	va_start(args, format);
+	vprintf(format, args);
+	va_end(args);
 }
 
 
