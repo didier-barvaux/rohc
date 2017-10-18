@@ -24,6 +24,7 @@
  */
 
 #include "rfc4996.h"
+#include "rohc_comp_internals.h"
 #include "rohc_utils.h"
 #include "protocols/tcp.h"
 
@@ -474,5 +475,40 @@ int dscp_encode(const uint8_t context_value,
 
 error:
 	return -1;
+}
+
+
+/**
+ * @brief Whether the ACK number may be transmitted scaled or not
+ *
+ * The ACK number may be transmitted scaled if:
+ *  \li the \e ack_stride scaling factor is non-zero,
+ *  \li both the \e ack_stride scaling factor and the scaling residue didn't
+ *      change in the last few packets
+ *
+ * @param ack_stride  The \e ack_stride scaling factor
+ * @param nr_trans    The number of transmissions since last change
+ * @return            true if the ACK number may be transmitted scaled,
+ *                    false if the ACK number shall be transmitted unscaled
+ */
+bool tcp_is_ack_scaled_possible(const uint16_t ack_stride,
+                                const size_t nr_trans)
+{
+	return (ack_stride != 0 && nr_trans >= ROHC_INIT_TS_STRIDE_MIN);
+}
+
+
+/**
+ * @brief Whether the \e ack_stride scaling factor shall be transmitted or not
+ *
+ * @param ack_stride  The \e ack_stride scaling factor
+ * @param nr_trans    The number of transmissions since last change
+ * @return            true if the ACK number may be transmitted scaled,
+ *                    false if the ACK number shall be transmitted unscaled
+ */
+bool tcp_is_ack_stride_static(const uint16_t ack_stride,
+                              const size_t nr_trans)
+{
+	return (ack_stride == 0 || nr_trans >= ROHC_INIT_TS_STRIDE_MIN);
 }
 
