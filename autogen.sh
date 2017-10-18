@@ -78,7 +78,7 @@ fi
 if [ "${USE_VALGRIND}" = yes ] ; then
 	add_opts="${add_opts} --enable-rohc-tests-valgrind"
 fi
-if [ -f "/lib/modules/`uname -r`/build" ] ; then
+if [ -e "/lib/modules/`uname -r`/build" ] ; then
 	add_opts="${add_opts} --enable-linux-kernel-module"
 fi
 
