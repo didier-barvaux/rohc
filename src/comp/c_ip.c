@@ -29,9 +29,7 @@
 #include "rohc_traces_internal.h"
 #include "rohc_utils.h"
 
-#ifndef __KERNEL__
-#  include <string.h>
-#endif
+#include <string.h>
 #include <assert.h>
 
 

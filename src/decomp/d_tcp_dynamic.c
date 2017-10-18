@@ -34,9 +34,7 @@
 #include "protocols/ip_numbers.h"
 #include "schemes/rfc4996.h"
 
-#ifndef __KERNEL__
-#  include <string.h>
-#endif
+#include <string.h>
 
 static int tcp_parse_dynamic_ip(const struct rohc_decomp_ctxt *const context,
                                 const uint8_t *const rohc_packet,

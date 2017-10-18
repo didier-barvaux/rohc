@@ -35,11 +35,7 @@
 #include "net_pkt.h"
 #include "feedback.h"
 
-#ifdef __KERNEL__
-#  include <linux/types.h>
-#else
-#  include <stdbool.h>
-#endif
+#include <stdbool.h>
 
 
 /*

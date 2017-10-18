@@ -36,9 +36,7 @@
 #include "rohc_packets.h"
 #include "rohc_decomp.h"
 
-#ifndef __KERNEL__
-#  include <string.h>
-#endif
+#include <string.h>
 #include <assert.h>
 
 

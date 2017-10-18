@@ -26,9 +26,7 @@
 #include "schemes/comp_list.h"
 #include "rohc_comp_internals.h"
 
-#ifndef __KERNEL__
-#  include <string.h>
-#endif
+#include <string.h>
 
 
 /** Print a warning trace for the given list compression context */

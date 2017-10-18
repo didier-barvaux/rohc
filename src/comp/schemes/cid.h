@@ -29,6 +29,7 @@
 #include "rohc.h"
 
 #include <stdlib.h>
+#include <stdint.h>
 
 
 /*

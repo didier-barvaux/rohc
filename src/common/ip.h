@@ -32,11 +32,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
-#ifdef __KERNEL__
-#  include <linux/types.h>
-#else
-#  include <stdbool.h>
-#endif
+#include <stdbool.h>
 
 
 /** The selected IP header */

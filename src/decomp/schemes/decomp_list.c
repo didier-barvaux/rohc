@@ -27,9 +27,7 @@
 
 #include "rohc_bit_ops.h"
 
-#ifndef __KERNEL__
-#  include <string.h>
-#endif
+#include <string.h>
 #include <assert.h>
 
 

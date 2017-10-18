@@ -25,9 +25,7 @@
 
 #include "schemes/comp_list_ipv6.h"
 
-#ifndef __KERNEL__
-#  include <string.h>
-#endif
+#include <string.h>
 
 
 static int get_index_ipv6_table(const uint8_t next_header_type,

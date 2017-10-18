@@ -32,14 +32,8 @@
 #include "protocols/esp.h"
 #include "rohc_utils.h"
 
-#ifdef __KERNEL__
-#  include <linux/types.h>
-#else
-#  include <stdbool.h>
-#endif
-#ifndef __KERNEL__
-#  include <string.h>
-#endif
+#include <stdbool.h>
+#include <string.h>
 #include <assert.h>
 
 

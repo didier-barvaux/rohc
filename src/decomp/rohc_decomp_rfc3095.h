@@ -42,11 +42,7 @@
 #include "crc.h"
 
 #include <stddef.h>
-#ifdef __KERNEL__
-#  include <linux/types.h>
-#else
-#  include <stdbool.h>
-#endif
+#include <stdbool.h>
 
 
 /** The outer or inner IP bits extracted from ROHC headers */

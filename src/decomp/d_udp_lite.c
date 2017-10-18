@@ -36,9 +36,7 @@
 #include "crc.h"
 #include "protocols/udp_lite.h"
 
-#ifndef __KERNEL__
-#  include <string.h>
-#endif
+#include <string.h>
 
 
 /*
