@@ -140,9 +140,8 @@ static uint8_t * ipv6_get_first_extension(const uint8_t *const ip,
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 
-static void rohc_crc_get_polynom(const rohc_crc_type_t crc_type,
-                                 uint8_t *const polynom)
-	__attribute__((nonnull(2)));
+static char rohc_crc_get_polynom(const rohc_crc_type_t crc_type)
+	__attribute__((warn_unused_result));
 
 
 static inline uint8_t crc_calc_8(const uint8_t *const buf,
@@ -185,7 +184,7 @@ void rohc_crc_init_table(uint8_t *const table,
 	assert(table != NULL);
 
 	/* determine the polynom to use */
-	rohc_crc_get_polynom(crc_type, &polynom);
+	polynom = rohc_crc_get_polynom(crc_type);
 
 	/* fill the CRC table */
 	for(i = 0; i < 256; i++)
@@ -775,31 +774,32 @@ static uint8_t ipv6_ext_calc_crc_dyn(const uint8_t *const ip,
  * @brief Get the polynom for the given CRC type
  *
  * @param crc_type The CRC type
- * @param polynom  IN/OUT: the polynom for the requested CRC type
+ * @return         The polynom for the requested CRC type
  */
-static void rohc_crc_get_polynom(const rohc_crc_type_t crc_type,
-                                 uint8_t *const polynom)
+static char rohc_crc_get_polynom(const rohc_crc_type_t crc_type)
 {
-	/* sanity check */
-	assert(polynom != NULL);
+	char polynom;
 
 	/* determine the polynom for CRC */
 	switch(crc_type)
 	{
 		case ROHC_CRC_TYPE_3:
-			*polynom = 0x6;
+			polynom = 0x6;
 			break;
 		case ROHC_CRC_TYPE_7:
-			*polynom = 0x79;
+			polynom = 0x79;
 			break;
 		case ROHC_CRC_TYPE_8:
-			*polynom = 0xe0;
+			polynom = 0xe0;
 			break;
 		case ROHC_CRC_TYPE_NONE:
 		default:
 			/* unknown CRC type, should not happen */
+			polynom = 0x00;
 			assert(0);
 	}
+
+	return polynom;
 }
 
 
