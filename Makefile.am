@@ -108,7 +108,8 @@ distclean-local:
 # run cppcheck on all sources, apps and tests
 cppcheck:
 	 $(AM_V_GEN)cppcheck \
-		 --quiet --enable=all \
+		 --quiet \
+		 --enable=warning,performance,portability,information,unusedFunction,missingInclude \
 		 --error-exitcode=2 \
 		 --std=c89 --std=c99 --std=c11 \
 		 -I src/common/protocols/ -I src/common/ \
@@ -135,6 +136,7 @@ cppcheck:
 		 --suppress=useClosedFile:test/non_regression/test_non_regression_kernel.c:591 \
 		 --suppress=useClosedFile:test/non_regression/test_non_regression_kernel.c:592 \
 		 --suppress=unusedFunction:src/decomp/schemes/test/test_wlsb.c:40 \
+		 --suppress=*:app/performance/rohc_gen_stream.c:210 \
 		 .
 
 # run GNU complexity on all sources and apps, but not tests
