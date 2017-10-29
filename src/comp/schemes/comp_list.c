@@ -1922,6 +1922,8 @@ static int rohc_list_build_XIs_4(const struct list_comp *const comp,
 	size_t xi_len = 0;
 	size_t k;
 
+	(*first_4b_xi) = 0;
+
 	/* write the m XI items, each XI item is stored on 4 bits */
 	rc_list_debug(comp, "use 4-bit format for the %zu XIs", m);
 	for(k = 0; k < m; k++)

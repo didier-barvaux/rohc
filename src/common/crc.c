@@ -795,7 +795,9 @@ static char rohc_crc_get_polynom(const rohc_crc_type_t crc_type)
 		case ROHC_CRC_TYPE_NONE:
 		default:
 			/* unknown CRC type, should not happen */
+#ifndef __clang_analyzer__ /* silent warning about value never read */
 			polynom = 0x00;
+#endif
 			assert(0);
 	}
 
