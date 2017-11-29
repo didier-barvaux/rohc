@@ -36,6 +36,7 @@ extern "C"
 
 #include <stdlib.h>
 #include <stddef.h>
+#include <stdint.h>
 
 
 /** Macro that handles deprecated declarations gracefully */
@@ -192,7 +193,7 @@ typedef enum
 
 
 /** A ROHC Context ID (CID) */
-typedef size_t rohc_cid_t;
+typedef uint16_t rohc_cid_t;
 
 
 /**

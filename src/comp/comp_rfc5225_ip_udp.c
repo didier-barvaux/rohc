@@ -1704,7 +1704,7 @@ static bool rohc_comp_rfc5225_ip_udp_feedback(struct rohc_comp_ctxt *const ctxt,
 		sn_bits = remain_data[0] & 0xff;
 		sn_bits_nr = 8;
 
-		rohc_comp_debug(ctxt, "ACK received (CID = %zu, %zu-bit SN = 0x%02x)",
+		rohc_comp_debug(ctxt, "ACK received (CID = %u, %zu-bit SN = 0x%02x)",
 		                ctxt->cid, sn_bits_nr, sn_bits);
 
 		/* the compressor received a positive ACK */
@@ -1801,7 +1801,7 @@ static bool rohc_comp_rfc5225_ip_udp_feedback_2(struct rohc_comp_ctxt *const ctx
 			const bool sn_not_valid =
 				!!(opts_present[ROHC_FEEDBACK_OPT_ACKNUMBER_NOT_VALID] > 0);
 
-			rohc_comp_debug(ctxt, "ACK received (CID = %zu, %zu-bit SN = 0x%x, "
+			rohc_comp_debug(ctxt, "ACK received (CID = %u, %zu-bit SN = 0x%x, "
 			                "ACKNUMBER-NOT-VALID = %d)", ctxt->cid, sn_bits_nr,
 			                sn_bits, GET_REAL(sn_not_valid));
 
@@ -1814,7 +1814,7 @@ static bool rohc_comp_rfc5225_ip_udp_feedback_2(struct rohc_comp_ctxt *const ctx
 		{
 			/* RFC5225 §5.2.1: NACKs, downward transition */
 			rohc_info(ctxt->compressor, ROHC_TRACE_COMP, ctxt->profile->id,
-			          "NACK received for CID %zu", ctxt->cid);
+			          "NACK received for CID %u", ctxt->cid);
 			/* the compressor transits back to the FO state */
 			if(ctxt->state == ROHC_COMP_STATE_SO)
 			{
@@ -1828,7 +1828,7 @@ static bool rohc_comp_rfc5225_ip_udp_feedback_2(struct rohc_comp_ctxt *const ctx
 		{
 			/* RFC5225 §5.2.1: STATIC-NACKs, downward transition */
 			rohc_info(ctxt->compressor, ROHC_TRACE_COMP, ctxt->profile->id,
-			          "STATIC-NACK received for CID %zu", ctxt->cid);
+			          "STATIC-NACK received for CID %u", ctxt->cid);
 			/* the compressor transits back to the IR state */
 			rohc_comp_change_state(ctxt, ROHC_COMP_STATE_IR);
 			/* TODO: use the SN field to determine the latest packet successfully
@@ -2359,7 +2359,7 @@ static int rohc_comp_rfc5225_ip_udp_code_IR_pkt(const struct rohc_comp_ctxt *con
 	                      &first_position);
 	if(ret < 1)
 	{
-		rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the %zu-byte "
+		rohc_comp_warn(context, "failed to encode %s CID %u: maybe the %zu-byte "
 		               "ROHC buffer is too small",
 		               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 		               "small" : "large", context->cid, rohc_remain_len);
@@ -2368,7 +2368,7 @@ static int rohc_comp_rfc5225_ip_udp_code_IR_pkt(const struct rohc_comp_ctxt *con
 	rohc_remain_data += ret;
 	rohc_remain_len -= ret;
 	rohc_hdr_len += ret;
-	rohc_comp_debug(context, "%s CID %zu encoded on %d byte(s)",
+	rohc_comp_debug(context, "%s CID %u encoded on %d byte(s)",
 	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 	                "small" : "large", context->cid, ret - 1);
 
@@ -2504,7 +2504,7 @@ static int rohc_comp_rfc5225_ip_udp_code_co_repair_pkt(const struct rohc_comp_ct
 	                      &first_position);
 	if(ret < 1)
 	{
-		rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the %zu-byte "
+		rohc_comp_warn(context, "failed to encode %s CID %u: maybe the %zu-byte "
 		               "ROHC buffer is too small",
 		               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 		               "small" : "large", context->cid, rohc_remain_len);
@@ -2513,7 +2513,7 @@ static int rohc_comp_rfc5225_ip_udp_code_co_repair_pkt(const struct rohc_comp_ct
 	rohc_remain_data += ret;
 	rohc_remain_len -= ret;
 	rohc_hdr_len += ret;
-	rohc_comp_debug(context, "%s CID %zu encoded on %d byte(s)",
+	rohc_comp_debug(context, "%s CID %u encoded on %d byte(s)",
 	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 	                "small" : "large", context->cid, ret - 1);
 
@@ -2663,7 +2663,7 @@ static int rohc_comp_rfc5225_ip_udp_code_CO_pkt(const struct rohc_comp_ctxt *con
 	                      rohc_remain_data, rohc_remain_len, &pos_1st_byte);
 	if(ret < 1)
 	{
-		rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the "
+		rohc_comp_warn(context, "failed to encode %s CID %u: maybe the "
 		               "%zu-byte ROHC buffer is too small",
 		               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 		               "small" : "large", context->cid, rohc_remain_len);
@@ -2672,7 +2672,7 @@ static int rohc_comp_rfc5225_ip_udp_code_CO_pkt(const struct rohc_comp_ctxt *con
 	pos_2nd_byte = ret;
 	rohc_remain_data += ret;
 	rohc_remain_len -= ret;
-	rohc_comp_debug(context, "%s CID %zu encoded on %d byte(s)",
+	rohc_comp_debug(context, "%s CID %u encoded on %d byte(s)",
 	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 	                "small" : "large", context->cid, ret - 1);
 

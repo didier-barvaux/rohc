@@ -156,7 +156,7 @@ struct rohc_decomp
 	/** The array of decompression contexts that use the decompressor */
 	struct rohc_decomp_ctxt **contexts;
 	/** The number of decompression contexts in use */
-	size_t num_contexts_used;
+	uint16_t num_contexts_used;
 	/** The last decompression context used by the decompressor */
 	struct rohc_decomp_ctxt *last_context;
 

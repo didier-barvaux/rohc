@@ -1488,7 +1488,7 @@ bool d_tcp_build_tcp_opts(const struct rohc_decomp_ctxt *const context,
 		*opts_len += opt_len;
 	}
 
-	rohc_decomp_debug(context, "  %zu TCP options built on %zu bytes",
+	rohc_decomp_debug(context, "  %u TCP options built on %zu bytes",
 	                  decoded->tcp_opts.nr, *opts_len);
 
 	/* TCP options shall be aligned on 32-bit words */

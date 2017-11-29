@@ -449,7 +449,7 @@ static int uncompressed_code_IR_packet(const struct rohc_comp_ctxt *context,
 	size_t first_position;
 	int ret;
 
-	rohc_comp_debug(context, "code IR packet (CID = %zu)", context->cid);
+	rohc_comp_debug(context, "code IR packet (CID = %u)", context->cid);
 
 	/* parts 1 and 3:
 	 *  - part 2 will be placed at 'first_position'
@@ -459,14 +459,14 @@ static int uncompressed_code_IR_packet(const struct rohc_comp_ctxt *context,
 	                      rohc_pkt, rohc_pkt_max_len, &first_position);
 	if(ret < 1)
 	{
-		rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the "
+		rohc_comp_warn(context, "failed to encode %s CID %u: maybe the "
 		               "%zu-byte ROHC buffer is too small",
 		               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 		               "small" : "large", context->cid, rohc_pkt_max_len);
 		goto error;
 	}
 	counter = ret;
-	rohc_comp_debug(context, "%s CID %zu encoded on %zu byte(s)",
+	rohc_comp_debug(context, "%s CID %u encoded on %zu byte(s)",
 	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 	                "small" : "large", context->cid, counter - 1);
 
@@ -550,7 +550,7 @@ static int uncompressed_code_normal_packet(const struct rohc_comp_ctxt *context,
 	size_t first_position;
 	int ret;
 
-	rohc_comp_debug(context, "code normal packet (CID = %zu)", context->cid);
+	rohc_comp_debug(context, "code normal packet (CID = %u)", context->cid);
 
 	/* parts 1 and 3:
 	 *  - part 2 will be placed at 'first_position'
@@ -560,14 +560,14 @@ static int uncompressed_code_normal_packet(const struct rohc_comp_ctxt *context,
 	                      rohc_pkt, rohc_pkt_max_len, &first_position);
 	if(ret < 1)
 	{
-		rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the "
+		rohc_comp_warn(context, "failed to encode %s CID %u: maybe the "
 		               "%zu-byte ROHC buffer is too small",
 		               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 		               "small" : "large", context->cid, rohc_pkt_max_len);
 		goto error;
 	}
 	counter = ret;
-	rohc_comp_debug(context, "%s CID %zu encoded on %zu byte(s)",
+	rohc_comp_debug(context, "%s CID %u encoded on %zu byte(s)",
 	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 	                "small" : "large", context->cid, counter - 1);
 

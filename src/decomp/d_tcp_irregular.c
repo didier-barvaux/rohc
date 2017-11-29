@@ -99,7 +99,7 @@ bool tcp_parse_irreg_chain(const struct rohc_decomp_ctxt *const context,
 	size_t remain_len = rohc_length;
 	const ip_context_t *ip_inner_context = NULL;
 	struct rohc_tcp_extr_ip_bits *ip_inner_bits = NULL;
-	size_t ip_contexts_nr;
+	uint8_t ip_contexts_nr;
 	int ret;
 
 	(*parsed_len) = 0;

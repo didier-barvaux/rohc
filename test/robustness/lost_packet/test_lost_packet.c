@@ -537,7 +537,7 @@ static int test_comp_and_decomp(const char *const filename,
 	{
 		rohc_decomp_context_info_t context_info;
 
-		fprintf(stderr, "decompression contexts CID %zu:\n", cid);
+		fprintf(stderr, "decompression contexts CID %u:\n", cid);
 
 		context_info.version_major = 0;
 		context_info.version_minor = 0;

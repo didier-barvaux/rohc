@@ -380,7 +380,7 @@ static uint32_t decomp_rfc5225_ip_esp_get_sn(const struct rohc_decomp_ctxt *cons
 static size_t sdvl_sn_lsb_decode(const uint8_t *const data,
                                  const size_t length,
                                  uint32_t *const sn,
-                                 size_t *const sn_bits_nr)
+                                 uint8_t *const sn_bits_nr)
 	__attribute__((warn_unused_result, nonnull(1, 3, 4)));
 
 
@@ -1342,7 +1342,7 @@ static bool decomp_rfc5225_ip_esp_parse_co_common(const struct rohc_decomp_ctxt 
 			                 "for sdvl_sn_lsb(MSN)");
 			goto error;
 		}
-		rohc_decomp_debug(ctxt, "found %zu bits of MSN %u (0x%x)",
+		rohc_decomp_debug(ctxt, "found %u bits of MSN %u (0x%x)",
 		                  bits->msn.bits_nr, bits->msn.bits, bits->msn.bits);
 		remain_data += sdvl_sn_lsb_len;
 		remain_len -= sdvl_sn_lsb_len;
@@ -1373,7 +1373,7 @@ static bool decomp_rfc5225_ip_esp_parse_co_common(const struct rohc_decomp_ctxt 
 			rohc_decomp_warn(ctxt, "ip_id_sequential_variable() failed");
 			goto error;
 		}
-		rohc_decomp_debug(ctxt, "found %zu bits of innermost IP-ID encoded "
+		rohc_decomp_debug(ctxt, "found %u bits of innermost IP-ID encoded "
 		                  "on %d bytes", innermost_ip_bits->id.bits_nr, ret);
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		remain_data += ret;
@@ -2109,7 +2109,7 @@ static rohc_status_t decomp_rfc5225_ip_esp_decode_bits(const struct rohc_decomp_
 	if(bits->msn.bits_nr == 32)
 	{
 		decoded->msn = bits->msn.bits;
-		rohc_decomp_debug(ctxt, "decoded MSN = 0x%08x (%zu bits 0x%x)",
+		rohc_decomp_debug(ctxt, "decoded MSN = 0x%08x (%u bits 0x%x)",
 		                  decoded->msn, bits->msn.bits_nr, bits->msn.bits);
 	}
 	else
@@ -2124,12 +2124,12 @@ static rohc_status_t decomp_rfc5225_ip_esp_decode_bits(const struct rohc_decomp_
 		                    bits->msn.bits, bits->msn.bits_nr, p_computed,
 		                    &msn_decoded32))
 		{
-			rohc_decomp_warn(ctxt, "failed to decode %zu MSN bits 0x%x",
+			rohc_decomp_warn(ctxt, "failed to decode %u MSN bits 0x%x",
 			                 bits->msn.bits_nr, bits->msn.bits);
 			goto error;
 		}
 		decoded->msn = msn_decoded32;
-		rohc_decomp_debug(ctxt, "decoded MSN = 0x%08x (%zu bits 0x%x)",
+		rohc_decomp_debug(ctxt, "decoded MSN = 0x%08x (%u bits 0x%x)",
 		                  decoded->msn, bits->msn.bits_nr, bits->msn.bits);
 	}
 
@@ -2326,7 +2326,7 @@ static bool decomp_rfc5225_ip_esp_decode_bits_ip_hdr(const struct rohc_decomp_ct
 		if(ip_bits->id.bits_nr == 16)
 		{
 			ip_decoded->id = ip_bits->id.bits;
-			rohc_decomp_debug(ctxt, "  IP-ID = 0x%04x (%zu-bit 0x%x from packet)",
+			rohc_decomp_debug(ctxt, "  IP-ID = 0x%04x (%u-bit 0x%x from packet)",
 			                  ip_decoded->id, ip_bits->id.bits_nr, ip_bits->id.bits);
 		}
 		else if(ip_bits->id.bits_nr > 0)
@@ -2335,7 +2335,7 @@ static bool decomp_rfc5225_ip_esp_decode_bits_ip_hdr(const struct rohc_decomp_ct
 			if(ip_id_behavior > ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
 			{
 				rohc_decomp_warn(ctxt, "packet and context mismatch: received "
-				                 "%zu bits of IP-ID in ROHC packet but IP-ID behavior "
+				                 "%u bits of IP-ID in ROHC packet but IP-ID behavior "
 				                 "is %s according to context", ip_bits->id.bits_nr,
 				                 rohc_ip_id_behavior_get_descr(ip_id_behavior));
 				goto error;
@@ -2346,7 +2346,7 @@ static bool decomp_rfc5225_ip_esp_decode_bits_ip_hdr(const struct rohc_decomp_ct
 			                ip_bits->id.bits, ip_bits->id.bits_nr, ip_bits->id.p,
 			                &ip_decoded->id))
 			{
-				rohc_decomp_warn(ctxt, "failed to decode %zu IP-ID bits "
+				rohc_decomp_warn(ctxt, "failed to decode %u IP-ID bits "
 				                 "0x%x with p = %d", ip_bits->id.bits_nr,
 				                 ip_bits->id.bits, ip_bits->id.p);
 				goto error;
@@ -2356,7 +2356,7 @@ static bool decomp_rfc5225_ip_esp_decode_bits_ip_hdr(const struct rohc_decomp_ct
 				ip_decoded->id = swab16(ip_decoded->id);
 			}
 			rohc_decomp_debug(ctxt, "  IP-ID = 0x%04x (decoded from "
-			                  "%zu-bit 0x%x with p = %d)", ip_decoded->id,
+			                  "%u-bit 0x%x with p = %d)", ip_decoded->id,
 			                  ip_bits->id.bits_nr, ip_bits->id.bits, ip_bits->id.p);
 		}
 		else /* inferred_sequential_ip_id */
@@ -2396,7 +2396,7 @@ static bool decomp_rfc5225_ip_esp_decode_bits_ip_hdr(const struct rohc_decomp_ct
 	}
 	else if(ip_bits->id.bits_nr > 0)
 	{
-		rohc_decomp_warn(ctxt, "packet and context mismatch: received %zu bits "
+		rohc_decomp_warn(ctxt, "packet and context mismatch: received %u bits "
 		                 "of IP-ID in ROHC packet but IP header is not IPv4 according "
 		                 "to context", ip_bits->id.bits_nr);
 		goto error;
@@ -3085,7 +3085,7 @@ static uint32_t decomp_rfc5225_ip_esp_get_sn(const struct rohc_decomp_ctxt *cons
 static size_t sdvl_sn_lsb_decode(const uint8_t *const data,
                                  const size_t length,
                                  uint32_t *const sn,
-                                 size_t *const sn_bits_nr)
+                                 uint8_t *const sn_bits_nr)
 {
 	size_t sdvl_len;
 

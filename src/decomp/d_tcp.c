@@ -617,7 +617,7 @@ static rohc_packet_t tcp_detect_packet_type(const struct rohc_decomp_ctxt *const
 				&(tcp_context->ip_contexts[tcp_context->ip_contexts_nr - 1]);
 			innermost_ip_id_behavior = innermost_hdr_ctxt->ctxt.vx.ip_id_behavior;
 			is_ip_id_seq = (innermost_ip_id_behavior <= ROHC_IP_ID_BEHAVIOR_SEQ_SWAP);
-			rohc_decomp_debug(context, "IPv%u header #%zu is the innermost IP header",
+			rohc_decomp_debug(context, "IPv%u header #%u is the innermost IP header",
 			                  innermost_hdr_ctxt->version, tcp_context->ip_contexts_nr);
 		}
 
@@ -944,7 +944,7 @@ static bool d_tcp_parse_ir_cr(const struct rohc_decomp_ctxt *const context,
 			base_cid = GET_BIT_0_3(remain_data);
 			remain_data++;
 			remain_len--;
-			rohc_decomp_debug(context, "1-byte small base CID = %zu", base_cid);
+			rohc_decomp_debug(context, "1-byte small base CID %u", base_cid);
 		}
 		else /* ROHC_LARGE_CID */
 		{
@@ -961,20 +961,20 @@ static bool d_tcp_parse_ir_cr(const struct rohc_decomp_ctxt *const context,
 				goto error;
 			}
 			base_cid = base_cid_32b & 0xffff;
-			rohc_decomp_debug(context, "%zu-byte large base CID = %zu",
+			rohc_decomp_debug(context, "%zu-byte large base CID %u",
 			                  base_cid_len, base_cid);
 			remain_data += base_cid_len;
 			remain_len -= base_cid_len;
 		}
 	}
-	rohc_decomp_debug(context, "IR-CR asks to replicate the Base CID %zu in the "
-	                  "CID %zu", base_cid, context->cid);
+	rohc_decomp_debug(context, "IR-CR asks to replicate the Base CID %u in the "
+	                  "CID %u", base_cid, context->cid);
 
 	/* check whether the decoded base CID is allowed by the decompressor */
 	if(base_cid > context->decompressor->medium.max_cid)
 	{
-		rohc_decomp_warn(context, "unexpected Base CID %zu received: MAX_CID "
-		                 "was set to %zu", base_cid,
+		rohc_decomp_warn(context, "unexpected Base CID %u received: MAX_CID "
+		                 "was set to %u", base_cid,
 		                 context->decompressor->medium.max_cid);
 		goto error;
 	}
@@ -983,8 +983,8 @@ static bool d_tcp_parse_ir_cr(const struct rohc_decomp_ctxt *const context,
 	/* reject packet if base context is not initialized at all */
 	if(base_context == NULL)
 	{
-		rohc_decomp_warn(context, "Base CID %zu does not exist, so it cannot be "
-		                 "used for Context Replication by CID %zu", base_cid,
+		rohc_decomp_warn(context, "Base CID %u does not exist, so it cannot be "
+		                 "used for Context Replication by CID %u", base_cid,
 		                 context->cid);
 		goto error;
 	}
@@ -993,15 +993,15 @@ static bool d_tcp_parse_ir_cr(const struct rohc_decomp_ctxt *const context,
 	 * candidate for Context Replication */
 	if(base_context->profile->id != context->profile->id)
 	{
-		rohc_decomp_warn(context, "Base CID %zu with profile '%s' cannot be used "
-		                 "for Context Replication by CID %zu with profile '%s'",
+		rohc_decomp_warn(context, "Base CID %u with profile '%s' cannot be used "
+		                 "for Context Replication by CID %u with profile '%s'",
 		                 base_cid, rohc_get_profile_descr(base_context->profile->id),
 		                 context->cid, rohc_get_profile_descr(context->profile->id));
 		goto error;
 	}
 	if(base_context->state < ROHC_DECOMP_STATE_SC)
 	{
-		rohc_decomp_warn(context, "Base CID %zu cannot be used for Context "
+		rohc_decomp_warn(context, "Base CID %u cannot be used for Context "
 		                 "Replication since it didn't receive static information",
 		                 base_cid);
 		goto error;
@@ -2472,7 +2472,7 @@ static bool d_tcp_parse_co_common(const struct rohc_decomp_ctxt *const context,
 		rohc_decomp_warn(context, "variable_length_32(seq_number) failed");
 		goto error;
 	}
-	rohc_decomp_debug(context, "found %zu bits of sequence number encoded "
+	rohc_decomp_debug(context, "found %u bits of sequence number encoded "
 	                  "on %d bytes", bits->seq.bits_nr, ret);
 	rohc_remain_data += ret;
 	rohc_remain_len -= ret;
@@ -2494,7 +2494,7 @@ static bool d_tcp_parse_co_common(const struct rohc_decomp_ctxt *const context,
 		rohc_decomp_warn(context, "variable_length_32(ack_number) failed");
 		goto error;
 	}
-	rohc_decomp_debug(context, "found %zu bits of acknowledgment number "
+	rohc_decomp_debug(context, "found %u bits of acknowledgment number "
 	                  "encoded on %d bytes", bits->ack.bits_nr, ret);
 	rohc_remain_data += ret;
 	rohc_remain_len -= ret;
@@ -2509,7 +2509,7 @@ static bool d_tcp_parse_co_common(const struct rohc_decomp_ctxt *const context,
 		rohc_decomp_warn(context, "static_or_irreg(ack_stride) failed");
 		goto error;
 	}
-	rohc_decomp_debug(context, "found %zu bits of ACK stride encoded on "
+	rohc_decomp_debug(context, "found %u bits of ACK stride encoded on "
 	                  "%d bytes", bits->ack_stride.bits_nr, ret);
 	rohc_remain_data += ret;
 	rohc_remain_len -= ret;
@@ -2523,7 +2523,7 @@ static bool d_tcp_parse_co_common(const struct rohc_decomp_ctxt *const context,
 		rohc_decomp_warn(context, "static_or_irreg(window) failed");
 		goto error;
 	}
-	rohc_decomp_debug(context, "found %zu bits of TCP window encoded on "
+	rohc_decomp_debug(context, "found %u bits of TCP window encoded on "
 	                  "%d bytes", bits->window.bits_nr, ret);
 	rohc_remain_data += ret;
 	rohc_remain_len -= ret;
@@ -2548,7 +2548,7 @@ static bool d_tcp_parse_co_common(const struct rohc_decomp_ctxt *const context,
 		rohc_decomp_warn(context, "optional_ip_id_lsb(ip_id) failed");
 		goto error;
 	}
-	rohc_decomp_debug(context, "found %zu bits of innermost IP-ID encoded "
+	rohc_decomp_debug(context, "found %u bits of innermost IP-ID encoded "
 	                  "on %d bytes", innermost_ip_bits->id.bits_nr, ret);
 	rohc_remain_data += ret;
 	rohc_remain_len -= ret;
@@ -2562,7 +2562,7 @@ static bool d_tcp_parse_co_common(const struct rohc_decomp_ctxt *const context,
 		rohc_decomp_warn(context, "static_or_irreg(urg_ptr) failed");
 		goto error;
 	}
-	rohc_decomp_debug(context, "found %zu bits of TCP URG pointer encoded "
+	rohc_decomp_debug(context, "found %u bits of TCP URG pointer encoded "
 	                  "on %d bytes", bits->urg_ptr.bits_nr, ret);
 	rohc_remain_data += ret;
 	rohc_remain_len -= ret;
@@ -2598,7 +2598,7 @@ static bool d_tcp_parse_co_common(const struct rohc_decomp_ctxt *const context,
 
 		innermost_ip_bits->dscp_bits = (rohc_remain_data[0] >> 2) & 0x3f;
 		innermost_ip_bits->dscp_bits_nr = 6;
-		rohc_decomp_debug(context, "found %zu bits of innermost DSCP encoded "
+		rohc_decomp_debug(context, "found %u bits of innermost DSCP encoded "
 		                  "on 1 byte", innermost_ip_bits->dscp_bits_nr);
 		dscp_padding = rohc_remain_data[0] & 0x3;
 		rohc_remain_data++;
@@ -2621,7 +2621,7 @@ static bool d_tcp_parse_co_common(const struct rohc_decomp_ctxt *const context,
 	{
 		innermost_ip_bits->df = co_common->df;
 		innermost_ip_bits->df_nr = 1;
-		rohc_decomp_debug(context, "found %zu bits of innermost DF = %u",
+		rohc_decomp_debug(context, "found %u bits of innermost DF = %u",
 		                  innermost_ip_bits->df_nr, innermost_ip_bits->df);
 	}
 
@@ -2634,7 +2634,7 @@ static bool d_tcp_parse_co_common(const struct rohc_decomp_ctxt *const context,
 		rohc_decomp_warn(context, "static_or_irreg(ttl) failed");
 		goto error;
 	}
-	rohc_decomp_debug(context, "found %zu bits of innermost TTL/HL encoded "
+	rohc_decomp_debug(context, "found %u bits of innermost TTL/HL encoded "
 	                  "on %d bytes", innermost_ip_bits->ttl_hl.bits_nr, ret);
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	rohc_remain_data += ret;
@@ -2793,7 +2793,7 @@ static rohc_status_t d_tcp_decode_bits(const struct rohc_decomp_ctxt *const cont
 	if(bits->msn.bits_nr == 16)
 	{
 		decoded->msn = bits->msn.bits;
-		rohc_decomp_debug(context, "decoded MSN = 0x%04x (%zu bits 0x%x)",
+		rohc_decomp_debug(context, "decoded MSN = 0x%04x (%u bits 0x%x)",
 		                  decoded->msn, bits->msn.bits_nr, bits->msn.bits);
 	}
 	else
@@ -2806,12 +2806,12 @@ static rohc_status_t d_tcp_decode_bits(const struct rohc_decomp_ctxt *const cont
 		                    bits->msn.bits, bits->msn.bits_nr, bits->msn.p,
 		                    &msn_decoded32))
 		{
-			rohc_decomp_warn(context, "failed to decode %zu MSN bits 0x%x",
+			rohc_decomp_warn(context, "failed to decode %u MSN bits 0x%x",
 			                 bits->msn.bits_nr, bits->msn.bits);
 			goto error;
 		}
 		decoded->msn = (uint16_t) (msn_decoded32 & 0xffff);
-		rohc_decomp_debug(context, "decoded MSN = 0x%04x (%zu bits 0x%x)",
+		rohc_decomp_debug(context, "decoded MSN = 0x%04x (%u bits 0x%x)",
 		                  decoded->msn, bits->msn.bits_nr, bits->msn.bits);
 	}
 
@@ -2951,7 +2951,7 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 		if(ip_bits->id.bits_nr == 16)
 		{
 			ip_decoded->id = ip_bits->id.bits;
-			rohc_decomp_debug(context, "  IP-ID = 0x%04x (%zu-bit 0x%x from packet)",
+			rohc_decomp_debug(context, "  IP-ID = 0x%04x (%u-bit 0x%x from packet)",
 			                  ip_decoded->id, ip_bits->id.bits_nr, ip_bits->id.bits);
 		}
 		else if(ip_bits->id.bits_nr > 0)
@@ -2960,7 +2960,7 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 			if(ip_id_behavior > ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
 			{
 				rohc_decomp_warn(context, "packet and context mismatch: received "
-				                 "%zu bits of IP-ID in ROHC packet but IP-ID behavior "
+				                 "%u bits of IP-ID in ROHC packet but IP-ID behavior "
 				                 "is %s according to context", ip_bits->id.bits_nr,
 				                 rohc_ip_id_behavior_get_descr(ip_id_behavior));
 				goto error;
@@ -2971,7 +2971,7 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 			                ip_bits->id.bits, ip_bits->id.bits_nr, ip_bits->id.p,
 			                &ip_decoded->id))
 			{
-				rohc_decomp_warn(context, "failed to decode %zu IP-ID bits "
+				rohc_decomp_warn(context, "failed to decode %u IP-ID bits "
 				                 "0x%x with p = %d", ip_bits->id.bits_nr,
 				                 ip_bits->id.bits, ip_bits->id.p);
 				goto error;
@@ -2981,7 +2981,7 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 				ip_decoded->id = swab16(ip_decoded->id);
 			}
 			rohc_decomp_debug(context, "  IP-ID = 0x%04x (decoded from "
-			                  "%zu-bit 0x%x with p = %d)", ip_decoded->id,
+			                  "%u-bit 0x%x with p = %d)", ip_decoded->id,
 			                  ip_bits->id.bits_nr, ip_bits->id.bits, ip_bits->id.p);
 		}
 		else if(ip_id_behavior == ROHC_IP_ID_BEHAVIOR_ZERO)
@@ -2992,7 +2992,7 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 	}
 	else if(ip_bits->id.bits_nr > 0)
 	{
-		rohc_decomp_warn(context, "packet and context mismatch: received %zu bits "
+		rohc_decomp_warn(context, "packet and context mismatch: received %u bits "
 		                 "of IP-ID in ROHC packet but IP header is not IPv4 according "
 		                 "to context", ip_bits->id.bits_nr);
 		goto error;
@@ -3002,7 +3002,7 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 	if(ip_bits->ttl_hl.bits_nr == 8)
 	{
 		ip_decoded->ttl = ip_bits->ttl_hl.bits;
-		rohc_decomp_debug(context, "  decoded TTL/HL = 0x%02x (%zu bits 0x%x)",
+		rohc_decomp_debug(context, "  decoded TTL/HL = 0x%02x (%u bits 0x%x)",
 		                  ip_decoded->ttl, ip_bits->ttl_hl.bits_nr,
 		                  ip_bits->ttl_hl.bits);
 	}
@@ -3014,12 +3014,12 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 		                    ip_bits->ttl_hl.bits, ip_bits->ttl_hl.bits_nr,
 		                    ROHC_LSB_SHIFT_TCP_TTL, &decoded32))
 		{
-			rohc_decomp_warn(context, "failed to decode %zu TTL/HL bits 0x%x",
+			rohc_decomp_warn(context, "failed to decode %u TTL/HL bits 0x%x",
 			                 ip_bits->ttl_hl.bits_nr, ip_bits->ttl_hl.bits);
 			goto error;
 		}
 		ip_decoded->ttl = (uint8_t) (decoded32 & 0xff);
-		rohc_decomp_debug(context, "  decoded TTL/HL = 0x%02x (%zu bits 0x%x)",
+		rohc_decomp_debug(context, "  decoded TTL/HL = 0x%02x (%u bits 0x%x)",
 		                  ip_decoded->ttl, ip_bits->ttl_hl.bits_nr,
 		                  ip_bits->ttl_hl.bits);
 	}
@@ -3096,7 +3096,7 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 	if(ip_bits->saddr_nr > 0)
 	{
 		memcpy(ip_decoded->saddr, ip_bits->saddr, ip_bits->saddr_nr / 8);
-		rohc_decomp_debug(context, "  %zu-byte source address (packet)",
+		rohc_decomp_debug(context, "  %u-byte source address (packet)",
 		                  ip_bits->saddr_nr / 8);
 	}
 	else if(ip_decoded->version == IPV4)
@@ -3114,7 +3114,7 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 	if(ip_bits->daddr_nr > 0)
 	{
 		memcpy(ip_decoded->daddr, ip_bits->daddr, ip_bits->daddr_nr / 8);
-		rohc_decomp_debug(context, "  %zu-byte destination address (packet)",
+		rohc_decomp_debug(context, "  %u-byte destination address (packet)",
 		                  ip_bits->daddr_nr / 8);
 	}
 	else if(ip_decoded->version == IPV4)
@@ -3154,7 +3154,7 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 					goto error;
 			}
 		}
-		rohc_decomp_debug(context, "  %zu extension headers on %zu bytes",
+		rohc_decomp_debug(context, "  %u extension headers on %u bytes",
 		                  ip_decoded->opts_nr, ip_decoded->opts_len);
 	}
 
@@ -3220,7 +3220,7 @@ static bool d_tcp_decode_bits_tcp_hdr(const struct rohc_decomp_ctxt *const conte
 		/* decode scaled sequence number from packet bits and context */
 		if(!rohc_lsb_is_ready(&tcp_context->seq_scaled_lsb_ctxt))
 		{
-			rohc_decomp_warn(context, "failed to decode %zu scaled sequence number "
+			rohc_decomp_warn(context, "failed to decode %u scaled sequence number "
 			                 "bits 0x%x: scaled sequence number not initialized yet",
 			                 bits->seq_scaled.bits_nr, bits->seq_scaled.bits);
 			goto error;
@@ -3229,13 +3229,13 @@ static bool d_tcp_decode_bits_tcp_hdr(const struct rohc_decomp_ctxt *const conte
 		                    bits->seq_scaled.bits, bits->seq_scaled.bits_nr,
 		                    bits->seq_scaled.p, &decoded->seq_num_scaled))
 		{
-			rohc_decomp_warn(context, "failed to decode %zu scaled sequence "
+			rohc_decomp_warn(context, "failed to decode %u scaled sequence "
 			                 "number bits 0x%x with p = %d", bits->seq_scaled.bits_nr,
 			                 bits->seq_scaled.bits, bits->seq_scaled.p);
 			goto error;
 		}
 		rohc_decomp_debug(context, "  decoded scaled sequence number = 0x%08x "
-		                  "(%zu bits 0x%x with p = %d)", decoded->seq_num_scaled,
+		                  "(%u bits 0x%x with p = %d)", decoded->seq_num_scaled,
 		                  bits->seq_scaled.bits_nr, bits->seq_scaled.bits,
 		                  bits->seq_scaled.p);
 
@@ -3259,7 +3259,7 @@ static bool d_tcp_decode_bits_tcp_hdr(const struct rohc_decomp_ctxt *const conte
 		{
 			decoded->seq_num = bits->seq.bits;
 			rohc_decomp_debug(context, "  TCP sequence number = 0x%08x (decoded from "
-			                  "%zu-bit 0x%x)", decoded->seq_num, bits->seq.bits_nr,
+			                  "%u-bit 0x%x)", decoded->seq_num, bits->seq.bits_nr,
 			                  bits->seq.bits);
 		}
 		else if(bits->seq.bits_nr > 0)
@@ -3270,12 +3270,12 @@ static bool d_tcp_decode_bits_tcp_hdr(const struct rohc_decomp_ctxt *const conte
 			                    &decoded->seq_num))
 			{
 				rohc_decomp_warn(context, "failed to decode TCP sequence number from "
-				                 "%zu-bit 0x%x with p = %d", bits->seq.bits_nr,
+				                 "%u-bit 0x%x with p = %d", bits->seq.bits_nr,
 				                 bits->seq.bits, bits->seq.p);
 				goto error;
 			}
 			rohc_decomp_debug(context, "  TCP sequence number = 0x%08x (decoded from "
-			                  "%zu-bit 0x%x with p = %d)", decoded->seq_num,
+			                  "%u-bit 0x%x with p = %d)", decoded->seq_num,
 			                  bits->seq.bits_nr, bits->seq.bits, bits->seq.p);
 		}
 		else
@@ -3314,13 +3314,13 @@ static bool d_tcp_decode_bits_tcp_hdr(const struct rohc_decomp_ctxt *const conte
 		                    bits->ack_scaled.bits, bits->ack_scaled.bits_nr,
 		                    bits->ack_scaled.p, &decoded->ack_num_scaled))
 		{
-			rohc_decomp_warn(context, "failed to decode %zu scaled acknowledgement "
+			rohc_decomp_warn(context, "failed to decode %u scaled acknowledgement "
 			                 "number bits 0x%x with p = %d", bits->ack_scaled.bits_nr,
 			                 bits->ack_scaled.bits, bits->ack_scaled.p);
 			goto error;
 		}
 		rohc_decomp_debug(context, "  decoded scaled acknowledgement number = 0x%08x "
-		                  "(%zu bits 0x%x with p = %d)", decoded->ack_num_scaled,
+		                  "(%u bits 0x%x with p = %d)", decoded->ack_num_scaled,
 		                  bits->ack_scaled.bits_nr, bits->ack_scaled.bits,
 		                  bits->ack_scaled.p);
 
@@ -3349,7 +3349,7 @@ static bool d_tcp_decode_bits_tcp_hdr(const struct rohc_decomp_ctxt *const conte
 		{
 			decoded->ack_num = bits->ack.bits;
 			rohc_decomp_debug(context, "  TCP ACK number = 0x%08x (decoded from "
-			                  "%zu-bit 0x%x)", decoded->ack_num, bits->ack.bits_nr,
+			                  "%u-bit 0x%x)", decoded->ack_num, bits->ack.bits_nr,
 			                  bits->ack.bits);
 		}
 		else if(bits->ack.bits_nr > 0)
@@ -3360,12 +3360,12 @@ static bool d_tcp_decode_bits_tcp_hdr(const struct rohc_decomp_ctxt *const conte
 			                    &decoded->ack_num))
 			{
 				rohc_decomp_warn(context, "failed to decode TCP acknowledgement number "
-				                 "from %zu-bit 0x%x with p = %d", bits->ack.bits_nr,
+				                 "from %u-bit 0x%x with p = %d", bits->ack.bits_nr,
 				                 bits->ack.bits, bits->ack.p);
 				goto error;
 			}
 			rohc_decomp_debug(context, "  TCP ACK number = 0x%08x (decoded from "
-			                  "%zu-bit 0x%x with p = %d)", decoded->ack_num,
+			                  "%u-bit 0x%x with p = %d)", decoded->ack_num,
 			                  bits->ack.bits_nr, bits->ack.bits, bits->ack.p);
 		}
 		else
@@ -3418,7 +3418,7 @@ static bool d_tcp_decode_bits_tcp_hdr(const struct rohc_decomp_ctxt *const conte
 	if(bits->window.bits_nr == 16)
 	{
 		decoded->window = bits->window.bits;
-		rohc_decomp_debug(context, "  TCP window = 0x%04x (%zu-bit 0x%x)",
+		rohc_decomp_debug(context, "  TCP window = 0x%04x (%u-bit 0x%x)",
 		                  decoded->window, bits->window.bits_nr, bits->window.bits);
 	}
 	else if(bits->window.bits_nr > 0)
@@ -3430,12 +3430,12 @@ static bool d_tcp_decode_bits_tcp_hdr(const struct rohc_decomp_ctxt *const conte
 		                    bits->window.bits, bits->window.bits_nr, bits->window.p,
 		                    &win_decoded32))
 		{
-			rohc_decomp_warn(context, "failed to decode TCP window from %zu-bit "
+			rohc_decomp_warn(context, "failed to decode TCP window from %u-bit "
 			                 "0x%x", bits->window.bits_nr, bits->window.bits);
 			goto error;
 		}
 		decoded->window = (uint16_t) (win_decoded32 & 0xffff);
-		rohc_decomp_debug(context, "  TCP window = 0x%04x (%zu-bit 0x%x)",
+		rohc_decomp_debug(context, "  TCP window = 0x%04x (%u-bit 0x%x)",
 		                  decoded->window, bits->window.bits_nr, bits->window.bits);
 	}
 	else
@@ -3548,7 +3548,7 @@ static void d_tcp_decode_bits_tcp_flags(const struct rohc_decomp_ctxt *const con
 	}
 	if(!decoded->ack_flag && bits->ack.bits_nr > 0 && decoded->ack_num != 0)
 	{
-		rohc_decomp_debug(context, "ACK flag not set, but %zu bits 0x%x were "
+		rohc_decomp_debug(context, "ACK flag not set, but %u bits 0x%x were "
 		                  "transmitted for ACK number", bits->ack.bits_nr,
 		                  bits->ack.bits);
 	}
@@ -3595,7 +3595,7 @@ static bool d_tcp_decode_bits_tcp_opts(const struct rohc_decomp_ctxt *const cont
 	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
 	size_t tcp_opt_id;
 
-	rohc_decomp_debug(context, "decode %zu TCP options", bits->tcp_opts.nr);
+	rohc_decomp_debug(context, "decode %u TCP options", bits->tcp_opts.nr);
 
 	/* copy the information collected on TCP options */
 	memcpy(&decoded->tcp_opts, &bits->tcp_opts, sizeof(struct d_tcp_opts_ctxt));
@@ -3732,11 +3732,11 @@ static bool d_tcp_decode_opt_ts_field(const struct rohc_decomp_ctxt *const conte
 		if(!rohc_lsb_decode(lsb_ctxt, ROHC_LSB_REF_0, 0, ts.bits, ts.bits_nr, ts.p,
 		                    ts_decoded))
 		{
-			rohc_decomp_warn(context, "failed to decode %zu TimeStamp option %s bits "
+			rohc_decomp_warn(context, "failed to decode %u TimeStamp option %s bits "
 			                 "0x%x with p = %u", ts.bits_nr, descr, ts.bits, ts.p);
 			goto error;
 		}
-		rohc_decomp_debug(context, "decoded TimeStamp option %s = 0x%08x (%zu bits "
+		rohc_decomp_debug(context, "decoded TimeStamp option %s = 0x%08x (%u bits "
 		                  "0x%x with ref 0x%08x and p = %d)", descr, *ts_decoded,
 		                  ts.bits_nr, ts.bits,
 		                  rohc_lsb_get_ref(lsb_ctxt, ROHC_LSB_REF_0), ts.p);
@@ -3771,7 +3771,7 @@ static void d_tcp_decode_opt_sack(const struct rohc_decomp_ctxt *const context,
 
 		/* TCP SACK option didn't change and wasn't transmitted, retrieve it from
 		 * the decompression context */
-		rohc_decomp_debug(context, "  decode SACK option (%zu blocks retrieved "
+		rohc_decomp_debug(context, "  decode SACK option (%u blocks retrieved "
 		                  "from context)", bits.blocks_nr);
 		memcpy(decoded, &tcp_context->opt_sack_blocks, sizeof(struct d_tcp_opt_sack));
 	}
@@ -3780,7 +3780,7 @@ static void d_tcp_decode_opt_sack(const struct rohc_decomp_ctxt *const context,
 		uint32_t reference;
 		size_t i;
 
-		rohc_decomp_debug(context, "  decode SACK option (%zu blocks retrieved "
+		rohc_decomp_debug(context, "  decode SACK option (%u blocks retrieved "
 		                  "from packet)", bits.blocks_nr);
 
 		/* decode every SACK block, one by one:
@@ -3825,7 +3825,7 @@ static bool d_tcp_build_ip_hdrs(const struct rohc_decomp_ctxt *const context,
 
 	assert(decoded->ip_nr > 0);
 
-	rohc_decomp_debug(context, "build the %zu IP headers", decoded->ip_nr);
+	rohc_decomp_debug(context, "build the %u IP headers", decoded->ip_nr);
 
 	*ip_hdrs_len = 0;
 	for(ip_hdr_nr = 0; ip_hdr_nr < decoded->ip_nr; ip_hdr_nr++)
@@ -4028,7 +4028,7 @@ static bool d_tcp_build_ipv6_hdr(const struct rohc_decomp_ctxt *const context,
 	for(i = 0; i < decoded->opts_nr; i++)
 	{
 		const ip_option_context_t *const opt = &(decoded->opts[i]);
-		rohc_decomp_debug(context, "build %zu-byte IPv6 extension header #%zu",
+		rohc_decomp_debug(context, "build %u-byte IPv6 extension header #%zu",
 		                  opt->len, i + 1);
 		uncomp_packet->len += 2;
 		rohc_buf_byte_at(*uncomp_packet, 0) = opt->nh_proto;
@@ -4200,7 +4200,7 @@ static rohc_status_t d_tcp_build_hdrs(const struct rohc_decomp *const decomp,
 	rohc_buf_push(uncomp_hdrs, *uncomp_hdrs_len);
 
 	/* compute payload lengths and checksums for all IP headers */
-	rohc_decomp_debug(context, "compute lengths and checksums for the %zu IP "
+	rohc_decomp_debug(context, "compute lengths and checksums for the %u IP "
 	                  "headers", decoded->ip_nr);
 	assert(decoded->ip_nr > 0);
 	for(ip_hdr_nr = 0; ip_hdr_nr < decoded->ip_nr; ip_hdr_nr++)
@@ -4313,14 +4313,14 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 {
 	struct d_tcp_context *const tcp_context = context->persist_ctxt;
 	const uint16_t msn = decoded->msn;
-	size_t ip_hdr_nr;
+	uint8_t ip_hdr_nr;
 	size_t i;
 
 	/* Context Replication: clone the base context into the new context */
 	if(decoded->do_ctxt_replication)
 	{
 		rohc_decomp_debug(context, "Context Replication: create context with "
-		                  "CID %zu from base context with CID %zu", context->cid,
+		                  "CID %u from base context with CID %u", context->cid,
 		                  decoded->cr_base_cid);
 		d_tcp_create_from_ctxt(context, decoded);
 	}
@@ -4341,7 +4341,7 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_nr]);
 		const bool is_inner = !!(ip_hdr_nr == (decoded->ip_nr - 1));
 
-		rohc_decomp_debug(context, "update context for IPv%u header #%zu",
+		rohc_decomp_debug(context, "update context for IPv%u header #%u",
 		                  ip_decoded->version, ip_hdr_nr + 1);
 
 		ip_context->version = ip_decoded->version;

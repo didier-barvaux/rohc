@@ -295,7 +295,7 @@ static int tcp_parse_static_ip(const struct rohc_decomp_ctxt *const context,
 			*nh_proto = opt->nh_proto;
 			ip_bits->opts_nr++;
 		}
-		rohc_decomp_debug(context, "IPv6 header is followed by %zu extension "
+		rohc_decomp_debug(context, "IPv6 header is followed by %u extension "
 		                  "headers", ip_bits->opts_nr);
 	}
 	rohc_decomp_dump_buf(context, "IP static part", rohc_packet, read);
@@ -355,7 +355,7 @@ static int tcp_parse_static_ipv6_option(const struct rohc_decomp_ctxt *const con
 				goto error;
 			}
 			opt_context->len = ipv6_opt_get_length((struct ipv6_opt *) ip_opt_static);
-			rohc_decomp_debug(context, "  IPv6 option Hop-by-Hop is %zu-byte long",
+			rohc_decomp_debug(context, "  IPv6 option Hop-by-Hop is %u-byte long",
 			                  opt_context->len);
 			break;
 		}
@@ -370,10 +370,9 @@ static int tcp_parse_static_ipv6_option(const struct rohc_decomp_ctxt *const con
 				                 "the static part of the IPv6 Routing option");
 				goto error;
 			}
-			opt_context->len = size;
-			if(opt_context->len > IPV6_OPT_HDR_LEN_MAX)
+			if(size > IPV6_OPT_HDR_LEN_MAX)
 			{
-				rohc_decomp_warn(context, "unexpected IPv6 option: %zu-byte option %u "
+				rohc_decomp_warn(context, "unexpected IPv6 option: %u-byte option %u "
 				                 "is larger than maximum %u bytes that library was "
 				                 "configured to handle", opt_context->len,
 				                 opt_context->proto, IPV6_OPT_HDR_LEN_MAX);
@@ -384,10 +383,11 @@ static int tcp_parse_static_ipv6_option(const struct rohc_decomp_ctxt *const con
 				 * profiles instead (see RFC6846 §8.3.2.4 for more details) */
 				goto error;
 			}
+			opt_context->len = size;
 			opt_context->generic.data_len = size - 2;
 			memcpy(&opt_context->generic.data, &ip_rout_opt_static->value,
 			       opt_context->generic.data_len);
-			rohc_decomp_debug(context, "  IPv6 option Routing is %zu-byte long",
+			rohc_decomp_debug(context, "  IPv6 option Routing is %u-byte long",
 			                  opt_context->len);
 			break;
 		}
@@ -406,7 +406,7 @@ static int tcp_parse_static_ipv6_option(const struct rohc_decomp_ctxt *const con
 				goto error;
 			}
 			opt_context->len = ipv6_opt_get_length((struct ipv6_opt *) ip_opt_static);
-			rohc_decomp_debug(context, "  IPv6 option Destination is %zu-byte long",
+			rohc_decomp_debug(context, "  IPv6 option Destination is %u-byte long",
 			                  opt_context->len);
 			break;
 		}

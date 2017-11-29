@@ -1317,7 +1317,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	                      &first_position);
 	if(ret < 1)
 	{
-		rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the %zu-byte "
+		rohc_comp_warn(context, "failed to encode %s CID %u: maybe the %zu-byte "
 		               "ROHC buffer is too small",
 		               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 		               "small" : "large", context->cid, rohc_remain_len);
@@ -1326,7 +1326,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	rohc_remain_data += ret;
 	rohc_remain_len -= ret;
 	rohc_hdr_len += ret;
-	rohc_comp_debug(context, "%s CID %zu encoded on %d byte(s)",
+	rohc_comp_debug(context, "%s CID %u encoded on %d byte(s)",
 	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 	                "small" : "large", context->cid, ret - 1);
 
@@ -1451,7 +1451,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 				}
 				assert(context->cr_base_cid <= ROHC_SMALL_CID_MAX);
 				rohc_remain_data[0] = context->cr_base_cid;
-				rohc_comp_debug(context, "small Base CID %zu encoded as 0x%02x",
+				rohc_comp_debug(context, "small Base CID %u encoded as 0x%02x",
 				                context->cr_base_cid, rohc_remain_data[0]);
 				rohc_remain_data++;
 				rohc_remain_len--;
@@ -1464,7 +1464,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 				                      rohc_remain_len + 1, &first_position);
 				if(ret < 1)
 				{
-					rohc_comp_warn(context, "failed to encode large base CID %zu: "
+					rohc_comp_warn(context, "failed to encode large base CID %u: "
 					               "maybe the %zu-byte ROHC buffer is too small",
 					               context->cr_base_cid, rohc_remain_len);
 					goto error;
@@ -1473,7 +1473,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 				rohc_remain_data += ret - 1;
 				rohc_remain_len -= ret - 1;
 				rohc_hdr_len += ret - 1;
-				rohc_comp_debug(context, "large Base CID %zu encoded on %d byte(s)",
+				rohc_comp_debug(context, "large Base CID %u encoded on %d byte(s)",
 				                context->cr_base_cid, ret - 1);
 			}
 		}
@@ -1585,7 +1585,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	size_t ip_hdr_pos;
 	int ret;
 
-	rohc_comp_debug(context, "code CO packet (CID = %zu)", context->cid);
+	rohc_comp_debug(context, "code CO packet (CID = %u)", context->cid);
 
 	/* parse the IP headers and their extension headers */
 	rohc_comp_debug(context, "parse the %zu-byte IP packet", remain_len);
@@ -1704,7 +1704,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	                      rohc_remain_data, rohc_remain_len, &pos_1st_byte);
 	if(ret < 1)
 	{
-		rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the "
+		rohc_comp_warn(context, "failed to encode %s CID %u: maybe the "
 		               "%zu-byte ROHC buffer is too small",
 		               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 		               "small" : "large", context->cid, rohc_remain_len);
@@ -1713,7 +1713,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	pos_2nd_byte = ret;
 	rohc_remain_data += ret;
 	rohc_remain_len -= ret;
-	rohc_comp_debug(context, "%s CID %zu encoded on %d byte(s)",
+	rohc_comp_debug(context, "%s CID %u encoded on %d byte(s)",
 	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 	                "small" : "large", context->cid, ret - 1);
 
@@ -5173,7 +5173,7 @@ static bool c_tcp_feedback(struct rohc_comp_ctxt *const context,
 		sn_bits = remain_data[0] & 0xff;
 		sn_bits_nr = 8;
 
-		rohc_comp_debug(context, "ACK received (CID = %zu, %zu-bit SN = 0x%02x)",
+		rohc_comp_debug(context, "ACK received (CID = %u, %zu-bit SN = 0x%02x)",
 		                context->cid, sn_bits_nr, sn_bits);
 
 		/* the compressor received a positive ACK */
@@ -5269,7 +5269,7 @@ static bool c_tcp_feedback_2(struct rohc_comp_ctxt *const context,
 		{
 			const bool sn_not_valid = !!(opts_present[ROHC_FEEDBACK_OPT_SN_NOT_VALID] > 0);
 
-			rohc_comp_debug(context, "ACK received (CID = %zu, %zu-bit SN = 0x%x, "
+			rohc_comp_debug(context, "ACK received (CID = %u, %zu-bit SN = 0x%x, "
 			                "SN-not-valid = %d)", context->cid, sn_bits_nr, sn_bits,
 			                GET_REAL(sn_not_valid));
 
@@ -5281,7 +5281,7 @@ static bool c_tcp_feedback_2(struct rohc_comp_ctxt *const context,
 		{
 			/* RFC3095 §5.4.1.1.1: NACKs, downward transition */
 			rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			          "NACK received for CID %zu", context->cid);
+			          "NACK received for CID %u", context->cid);
 			/* the compressor transits back to the FO state */
 			if(context->state == ROHC_COMP_STATE_SO)
 			{
@@ -5295,7 +5295,7 @@ static bool c_tcp_feedback_2(struct rohc_comp_ctxt *const context,
 		{
 			/* RFC3095 §5.4.1.1.1: NACKs, downward transition */
 			rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			          "STATIC-NACK received for CID %zu", context->cid);
+			          "STATIC-NACK received for CID %u", context->cid);
 			/* the compressor transits back to the IR state */
 			rohc_comp_change_state(context, ROHC_COMP_STATE_IR);
 			/* TODO: use the SN field to determine the latest packet successfully
