@@ -1269,6 +1269,22 @@ static int d_tcp_parse_generic_list_item(const struct rohc_decomp_ctxt *const co
 	}
 	opt_load_len = opt_len - opt_hdr_len;
 
+	/* do not accept options that are larger than the limit that was configured
+	 * for the library */
+	if(opt_load_len > ROHC_TCP_OPT_MAX_LEN)
+	{
+		rohc_decomp_warn(context, "unexpected TCP option: %u-byte option %u is "
+		                 "larger than maximum %u bytes that library was configured "
+		                 "to handle", opt_len, opt_type,
+		                 ROHC_TCP_OPT_MAX_LEN + (uint8_t) opt_hdr_len);
+		/* TODO: send a feedback with the CONTEXT_MEMORY option to warn
+		 * the compressor that the decompressor is not able to decompress
+		 * the TCP flow the way it was compressed, maybe the compressor
+		 * could compress the flow with the IP-only profile instead
+		 * (see RFC6846 §8.3.2.4 for more details) */
+		goto error;
+	}
+
 	/* enough data for the whole option? */
 	if(data_len < opt_len)
 	{
@@ -1376,6 +1392,7 @@ static int d_tcp_parse_generic_irreg(const struct rohc_decomp_ctxt *const contex
 			}
 			opt_ctxt->data.generic.type = TCP_GENERIC_OPT_FULL;
 			opt_ctxt->data.generic.load_len = opt_load_len;
+			assert(opt_load_len <= ROHC_TCP_OPT_MAX_LEN);
 			memcpy(opt_ctxt->data.generic.load, data + read, opt_load_len);
 			read += opt_load_len;
 			rohc_decomp_debug(context, "TCP generic option payload = %zu bytes",

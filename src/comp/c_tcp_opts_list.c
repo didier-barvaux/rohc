@@ -262,6 +262,7 @@ static int c_tcp_type2index[TCP_LIST_ITEM_MAP_LEN] =
  * @brief Whether TCP options are acceptable for TCP profile or not
  *
  * TCP options are acceptable for the TCP profile if:
+ *  - every TCP option is smaller than \e ROHC_TCP_OPT_MAX_LEN
  *  - the last TCP option is not truncated,
  *  - well-known TCP options got the expected length (see below),
  *  - no more than \e ROHC_TCP_OPTS_MAX options are present,
@@ -311,6 +312,15 @@ bool rohc_comp_tcp_are_options_acceptable(const struct rohc_comp *const comp,
 
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "TCP option %u found", opt_type);
+
+		if(opt_len > ROHC_TCP_OPT_MAX_LEN)
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "packet contains at least one %u-byte TCP option larger "
+			           "than the internal maximum of %u bytes", opt_len,
+			           ROHC_TCP_OPT_MAX_LEN);
+			goto bad_opts;
+		}
 
 		if(opt_types_count[opt_type] >= 255)
 		{

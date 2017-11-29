@@ -49,6 +49,15 @@
  * Compressed TCP options                                             *
  ************************************************************************/
 
+
+/**
+ * @brief The maximum length of TCP options supported by the TCP profile
+ *
+ * The SACK option may contain 4 blocks of 8 bytes each, so 2+4*8=34 bytes
+ */
+#define ROHC_TCP_OPT_MAX_LEN 34U
+
+
 /**
  * @brief The largest index that may be used to identify one TCP option
  *

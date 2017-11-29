@@ -79,11 +79,7 @@ struct d_tcp_opt_ctxt /* TODO: doxygen */
 				TCP_GENERIC_OPT_FULL,
 			} type;
 			uint8_t load_len;
-#define ROHC_TCP_OPT_HDR_LEN 2U
-#define ROHC_TCP_OPT_MAX_LEN 0xffU
-#define ROHC_TCP_OPT_GENERIC_DATA_MAX_LEN \
-	(ROHC_TCP_OPT_MAX_LEN - ROHC_TCP_OPT_HDR_LEN)
-			uint8_t load[ROHC_TCP_OPT_GENERIC_DATA_MAX_LEN];
+			uint8_t load[ROHC_TCP_OPT_MAX_LEN];
 		} generic;
 	} data;
 };
