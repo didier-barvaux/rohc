@@ -1047,7 +1047,7 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 	}
 
 	/* copy the first bytes of header in a contiguous buffer
-	 * to be able to map packet strutures to the ROHC bytes */
+	 * to be able to map packet structures to the ROHC bytes */
 	packed_rohc_packet[0] = rohc_packet[0];
 	memcpy(packed_rohc_packet + 1, rohc_packet + 1 + large_cid_len,
 	       rohc_min(rohc_remain_len - large_cid_len, packed_rohc_packet_max_len) - 1);
