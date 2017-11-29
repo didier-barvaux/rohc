@@ -55,7 +55,7 @@
  * The limit value was chosen arbitrarily. It should handle most real-life case
  * without hurting performances nor memory footprint.
  */
-#define ROHC_MAX_IP_EXT_HDRS    5U
+#define ROHC_MAX_IP_EXT_HDRS    3U
 
 
 /** The common IPv4/v6 header */
