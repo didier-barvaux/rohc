@@ -3553,6 +3553,7 @@ static bool tcp_detect_changes_ipv6_exts(struct rohc_comp_ctxt *const context,
 					/* record option in context */
 					/* TODO: should not update context there */
 					opt_ctxt->generic.option_length = ext_len;
+					assert((ext_len - 2) <= IPV6_OPT_CTXT_LEN_MAX);
 					memcpy(opt_ctxt->generic.data, ext->value, ext_len - 2);
 
 				}
@@ -3566,6 +3567,7 @@ static bool tcp_detect_changes_ipv6_exts(struct rohc_comp_ctxt *const context,
 					/* record option in context */
 					/* TODO: should not update context there */
 					opt_ctxt->generic.option_length = ext_len;
+					assert((ext_len - 2) <= IPV6_OPT_CTXT_LEN_MAX);
 					memcpy(opt_ctxt->generic.data, ext->value, ext_len - 2);
 				}
 				else if(memcmp(ext->value, opt_ctxt->generic.data, ext_len - 2) != 0)
@@ -3584,6 +3586,7 @@ static bool tcp_detect_changes_ipv6_exts(struct rohc_comp_ctxt *const context,
 					/* record option in context */
 					/* TODO: should not update context there */
 					opt_ctxt->generic.option_length = ext_len;
+					assert((ext_len - 2) <= IPV6_OPT_CTXT_LEN_MAX);
 					memcpy(opt_ctxt->generic.data, ext->value, ext_len - 2);
 				}
 				else

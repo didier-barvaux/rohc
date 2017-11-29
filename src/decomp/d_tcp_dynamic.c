@@ -301,6 +301,19 @@ static int tcp_parse_dynamic_ipv6_option(const struct rohc_decomp_ctxt *const co
 				                 "required", opt_context->proto, remain_len, size);
 				goto error;
 			}
+			if(opt_context->len > IPV6_OPT_HDR_LEN_MAX)
+			{
+				rohc_decomp_warn(context, "unexpected IPv6 option: %zu-byte option %u "
+				                 "is larger than maximum %u bytes that library was "
+				                 "configured to handle", opt_context->len,
+				                 opt_context->proto, IPV6_OPT_HDR_LEN_MAX);
+				/* TODO: send a feedback with the CONTEXT_MEMORY option to warn
+				 * the compressor that the decompressor is not able to decompress
+				 * the TCP flow the way it was compressed, maybe the compressor
+				 * could compress the flow with the IP-only or the Uncompressed
+				 * profiles instead (see RFC6846 §8.3.2.4 for more details) */
+				goto error;
+			}
 			opt_context->generic.data_len = size;
 			memcpy(&opt_context->generic.data, rohc_packet, size);
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
