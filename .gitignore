@@ -77,6 +77,9 @@ src/decomp/schemes/test/test_tcp_sack_opt.log
 src/decomp/test/test_api_robustness
 src/decomp/test/test_api_robustness.exe
 src/decomp/test/test_api_robustness.log
+src/decomp/test/print_struct_sizes
+src/decomp/test/print_struct_sizes.exe
+src/decomp/test/print_struct_sizes.log
 src/test/test_wlsb_wraparound
 src/test/test_wlsb_wraparound.exe
 src/test/test_wlsb_wraparound.log
