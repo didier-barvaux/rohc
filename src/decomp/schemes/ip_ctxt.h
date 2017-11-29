@@ -45,47 +45,6 @@ typedef struct __attribute__((packed))
 } ipv6_generic_option_context_t;
 
 
-/**
- * @brief Define the IPv6 option context for GRE option
- */
-typedef struct __attribute__((packed)) ipv6_gre_option_context
-{
-	uint8_t c_flag:1;
-	uint8_t k_flag:1;
-	uint8_t s_flag:1;
-	uint8_t protocol:1;
-	uint8_t padding:4;
-
-	uint32_t key;               // if k_flag set
-	uint32_t sequence_number;   // if s_flag set
-
-} ipv6_gre_option_context_t;
-
-
-/**
- * @brief Define the IPv6 option context for MIME option
- */
-typedef struct __attribute__((packed)) ipv6_mime_option_context
-{
-	uint8_t s_bit:1;
-	uint8_t res_bits:7;
-	uint32_t orig_dest;
-	uint32_t orig_src;         // if s_bit set
-
-} ipv6_mime_option_context_t;
-
-
-/**
- * @brief Define the IPv6 option context for AH option
- */
-typedef struct __attribute__((packed)) ipv6_ah_option_context
-{
-	uint32_t spi;
-	uint32_t sequence_number;
-	uint32_t auth_data[1];
-} ipv6_ah_option_context_t;
-
-
 /** The decompression context for one IP extension header */
 typedef struct
 {
@@ -93,13 +52,7 @@ typedef struct
 	uint8_t proto;     /**< The protocol of the extension header */
 	uint8_t nh_proto;  /**< The protocol of the next header */
 
-	union
-	{
-		ipv6_generic_option_context_t generic; /**< IPv6 generic extension header */
-		ipv6_gre_option_context_t gre;         /**< IPv6 GRE extension header */
-		ipv6_mime_option_context_t mime;       /**< IPv6 MIME extension header */
-		ipv6_ah_option_context_t ah;           /**< IPv6 AH extension header */
-	};
+	ipv6_generic_option_context_t generic; /**< IPv6 generic extension header */
 
 } ip_option_context_t;
 
