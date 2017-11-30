@@ -1184,9 +1184,9 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 	   !rohc_packet_carry_static_info(stream->packet_type))
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, profile->id,
-		             "packet '%s' (%d) does not carry static information, it cannot "
-		             "be received in No Context state",
-		             rohc_get_packet_descr(stream->packet_type),
+		             "CID %zu: packet '%s' (%d) does not carry static information, "
+		             "it cannot be received in No Context state",
+		             stream->cid, rohc_get_packet_descr(stream->packet_type),
 		             stream->packet_type);
 		if(is_new_context)
 		{
@@ -1202,9 +1202,9 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 	        !rohc_packet_carry_crc_7_or_8(stream->packet_type))
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, profile->id,
-		             "packet '%s' (%d) does not carry 7- or 8-bit CRC, it cannot "
-		             "be received in Static Context state",
-		             rohc_get_packet_descr(stream->packet_type),
+		             "CID %zu: packet '%s' (%d) does not carry 7- or 8-bit CRC, "
+		             "it cannot be received in Static Context state",
+		             stream->cid, rohc_get_packet_descr(stream->packet_type),
 		             stream->packet_type);
 		if(is_new_context)
 		{
