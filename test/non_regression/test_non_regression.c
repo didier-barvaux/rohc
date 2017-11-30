@@ -1,6 +1,6 @@
 /*
- * Copyright 2010,2011,2012,2013,2014 Didier Barvaux
- * Copyright 2007,2009,2010,2012,2014 Viveris Technologies
+ * Copyright 2010,2011,2012,2013,2014,2017 Didier Barvaux
+ * Copyright 2007,2009,2010,2012,2014,2017 Viveris Technologies
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -136,6 +136,7 @@ static void usage(void);
 static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
                                 const size_t wlsb_width,
                                 const size_t max_contexts,
+                                const size_t padding_up_to,
                                 const bool no_comparison,
                                 const bool ignore_malformed,
                                 const char *const src_filenames[],
@@ -151,6 +152,7 @@ static int compress_decompress(struct rohc_comp *comp,
                                struct pcap_pkthdr header,
                                const uint8_t *const packet,
                                int link_len_src,
+                               const size_t padding_up_to,
                                const bool no_comparison,
                                const bool ignore_malformed,
                                pcap_dumper_t *dumper,
@@ -252,6 +254,7 @@ int main(int argc, char *argv[])
 	char *cmp_filename = NULL;
 	int max_contexts = ROHC_SMALL_CID_MAX + 1;
 	int wlsb_width = 4;
+	int padding_up_to = 0;
 	bool no_comparison = false;
 	bool ignore_malformed = false;
 	bool assert_on_error = false;
@@ -374,6 +377,18 @@ int main(int argc, char *argv[])
 			wlsb_width = atoi(argv[1]);
 			args_used++;
 		}
+		else if(!strcmp(*argv, "--padding-up-to"))
+		{
+			/* get the amount of padding that the test should add */
+			if(argc <= 1)
+			{
+				fprintf(stderr, "option --padding-up-to takes one argument\n\n");
+				usage();
+				goto error;
+			}
+			padding_up_to = atoi(argv[1]);
+			args_used++;
+		}
 		else if(cid_type_name == NULL)
 		{
 			/* get the type of CID to use within the ROHC library */
@@ -449,6 +464,14 @@ int main(int argc, char *argv[])
 		goto error;
 	}
 
+	/* check padding */
+	if(padding_up_to < 0)
+	{
+		fprintf(stderr, "invalid padding amount %d: should be a positive number "
+		        "or 0\n", padding_up_to);
+		goto error;
+	}
+
 	/* at least one source filename is mandatory */
 	if(src_filenames[0] == NULL)
 	{
@@ -459,7 +482,7 @@ int main(int argc, char *argv[])
 
 	/* test ROHC compression/decompression with the packets from the file */
 	status = test_comp_and_decomp(cid_type, wlsb_width, max_contexts,
-	                              no_comparison, ignore_malformed,
+	                              padding_up_to, no_comparison, ignore_malformed,
 	                              (const char *const *) src_filenames, src_filenames_nr,
 	                              ofilename, cmp_filename,
 	                              rohc_size_ofilename);
@@ -779,6 +802,7 @@ static void show_rohc_decomp_profile(const struct rohc_decomp *const decomp,
  * @param header           The PCAP header for the packet
  * @param packet           The packet to compress/decompress (link layer included)
  * @param link_len_src     The length of the link layer header before IP data
+ * @param padding_up_to    The amount of padding to use
  * @param no_comparison    Whether to handle comparison as fatal for test or not
  * @param ignore_malformed Whether to handle malformed packets as fatal for test
  * @param dumper           The PCAP output dump file
@@ -803,6 +827,7 @@ static int compress_decompress(struct rohc_comp *comp,
                                struct pcap_pkthdr header,
                                const uint8_t *const packet,
                                int link_len_src,
+                               const size_t padding_up_to,
                                const bool no_comparison,
                                const bool ignore_malformed,
                                pcap_dumper_t *dumper,
@@ -910,6 +935,10 @@ static int compress_decompress(struct rohc_comp *comp,
 		rohc_buf_byte_at(ip_packet, 11) = 0x00;
 	}
 
+	/* make room for future ROHC padding */
+	rohc_packet.len += padding_up_to;
+	rohc_buf_pull(&rohc_packet, padding_up_to);
+
 	/* copy the feedback data that needs to be piggybacked along the ROHC
 	 * packet */
 	trace("=== ROHC piggybacked feedback: start\n");
@@ -940,6 +969,17 @@ static int compress_decompress(struct rohc_comp *comp,
 
 	/* unhide feedback data */
 	rohc_buf_push(&rohc_packet, feedback_send_by_me.len);
+
+	/* pad the ROHC packet up to 100 bytes */
+	trace("=== ROHC padding: start\n");
+	ret = rohc_comp_pad(comp, &rohc_packet, padding_up_to);
+	if(ret != ROHC_STATUS_OK)
+	{
+		trace("=== ROHC padding: failure\n");
+		status = -1;
+		goto exit;
+	}
+	trace("=== ROHC padding: success\n");
 
 	/* output the ROHC packet to the PCAP dump file if asked */
 	if(dumper != NULL)
@@ -1081,6 +1121,7 @@ exit:
  *
  * @param cid_type             The type of CIDs the compressor shall use
  * @param wlsb_width           The width of the WLSB window to use
+ * @param padding_up_to        The amount of padding to use
  * @param max_contexts         The maximum number of ROHC contexts to use
  * @param no_comparison        Whether to handle comparison as fatal for test or not
  * @param ignore_malformed     Whether to handle malformed packets as fatal for test
@@ -1099,6 +1140,7 @@ exit:
 static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
                                 const size_t wlsb_width,
                                 const size_t max_contexts,
+                                const size_t padding_up_to,
                                 const bool no_comparison,
                                 const bool ignore_malformed,
                                 const char *const src_filenames[],
@@ -1256,7 +1298,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 		/* compress & decompress from compressor 1 to decompressor 1 */
 		ret = compress_decompress(comp1, decomp1, comp2, 1, counter,
 		                          header, packet, link_len_src,
-		                          no_comparison, ignore_malformed,
+		                          padding_up_to, no_comparison, ignore_malformed,
 		                          dumper,
 		                          cmp_packet, cmp_header.caplen, link_len_cmp,
 		                          rohc_size_output_file,
@@ -1300,7 +1342,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 		/* compress & decompress from compressor 2 to decompressor 2 */
 		ret = compress_decompress(comp2, decomp2, comp1, 2, counter,
 		                          header, packet, link_len_src,
-		                          no_comparison, ignore_malformed,
+		                          padding_up_to, no_comparison, ignore_malformed,
 		                          dumper,
 		                          cmp_packet, cmp_header.caplen, link_len_cmp,
 		                          rohc_size_output_file,

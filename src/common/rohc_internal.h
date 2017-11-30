@@ -1,5 +1,6 @@
 /*
  * Copyright 2013 Didier Barvaux
+ * Copyright 2017 Viveris Technologies
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -119,6 +120,24 @@
 
 
 #include "rohc.h"
+
+
+/**
+ * @brief The padding field defined by the ROHC protocol
+ *
+ * See RFC 3095, §5.2:
+ * \verbatim
+
+   Padding Octet
+
+     0   1   2   3   4   5   6   7
+   +---+---+---+---+---+---+---+---+
+   | 1   1   1   0   0   0   0   0 |
+   +---+---+---+---+---+---+---+---+
+
+\endverbatim
+ */
+#define ROHC_PADDING_BYTE  0xe0
 
 
 /**

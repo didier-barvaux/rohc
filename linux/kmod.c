@@ -76,6 +76,7 @@ EXPORT_SYMBOL_GPL(rohc_buf_reset);
 EXPORT_SYMBOL_GPL(rohc_comp_new2);
 EXPORT_SYMBOL_GPL(rohc_comp_free);
 EXPORT_SYMBOL_GPL(rohc_compress4);
+EXPORT_SYMBOL_GPL(rohc_comp_pad);
 EXPORT_SYMBOL_GPL(rohc_comp_force_contexts_reinit);
 
 /* segment */

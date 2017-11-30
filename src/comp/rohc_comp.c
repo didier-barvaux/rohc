@@ -2,7 +2,7 @@
  * Copyright 2010,2011,2012,2013,2014 Didier Barvaux
  * Copyright 2013 Friedrich
  * Copyright 2009,2010 Thales Communications
- * Copyright 2007,2009,2010,2012,2013,2014 Viveris Technologies
+ * Copyright 2007,2009,2010,2012,2013,2014,2017 Viveris Technologies
  * Copyright 2012 WBX
  *
  * This library is free software; you can redistribute it and/or
@@ -772,6 +772,99 @@ error_free_new_context:
 	}
 error:
 	return ROHC_STATUS_ERROR;
+}
+
+
+/**
+ * @brief Pad the given ROHC compressed packet
+ *
+ * Add as many padding bytes as required to get a ROHC packet of the given length.
+ *
+ * @param comp              The ROHC compressor
+ * @param[in,out] rohc_pkt  The compressed ROHC packet to pad up to \e min_pkt_len
+ * @param min_pkt_len       The minimum length of the ROHC packet
+ * @return                  Possible return values:
+ *                          \li \ref ROHC_STATUS_OK if a padded ROHC packet is
+ *                              returned
+ *                          \li \ref ROHC_STATUS_OUTPUT_TOO_SMALL if the
+ *                              buffer is too small for the padded ROHC packet
+ *                          \li \ref ROHC_STATUS_ERROR if an error occurred
+ *
+ * @ingroup rohc_comp
+ *
+ * @see rohc_compress4
+ */
+rohc_status_t rohc_comp_pad(struct rohc_comp *const comp,
+                            struct rohc_buf *const rohc_pkt,
+                            const size_t min_pkt_len)
+{
+	rohc_status_t status = ROHC_STATUS_ERROR; /* error status by default */
+	const uint8_t padding_byte = ROHC_PADDING_BYTE;
+	size_t padding_bytes_nr = 0;
+	size_t i;
+
+	/* check inputs validity */
+	if(comp == NULL)
+	{
+		goto error;
+	}
+	if(rohc_pkt == NULL)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "given rohc_pkt is NULL");
+		goto error;
+	}
+	if(rohc_buf_is_malformed(*rohc_pkt))
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "given rohc_pkt is malformed");
+		goto error;
+	}
+	if(rohc_buf_is_empty(*rohc_pkt))
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "given rohc_pkt is empty");
+		goto error;
+	}
+
+	/* if ROHC packet is already smaller than the minimum length, prepend
+	 * some padding bytes before the ROHC packet up to the minimum length */
+	if(rohc_pkt->len >= min_pkt_len)
+	{
+		padding_bytes_nr = 0;
+	}
+	else
+	{
+		padding_bytes_nr = min_pkt_len - rohc_pkt->len;
+	}
+
+	/* ROHC packet cannot be padded if buffer has not enough room before packet */
+	if(rohc_pkt->offset < padding_bytes_nr)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "%zu-byte ROHC packet cannot be padded up to %zu bytes with "
+		             "%zu bytes: only %zu bytes available in buffer before ROHC "
+		             "data", rohc_pkt->len, min_pkt_len, padding_bytes_nr,
+		             rohc_pkt->offset);
+		status = ROHC_STATUS_OUTPUT_TOO_SMALL;
+		goto error;
+	}
+
+	/* add required padding bytes */
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "pad %zu-byte ROHC packet up to %zu bytes with %zu bytes",
+	           rohc_pkt->len, min_pkt_len, padding_bytes_nr);
+	for(i = 0; i < padding_bytes_nr; i++)
+	{
+		rohc_buf_prepend(rohc_pkt, &padding_byte, 1);
+	}
+	assert(rohc_pkt->len >= min_pkt_len);
+
+	/* everything went fine */
+	status = ROHC_STATUS_OK;
+
+error:
+	return status;
 }
 
 
