@@ -863,7 +863,7 @@ int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
 	rfc3095_ctxt->decide_state(context);
 	if(context->mode == ROHC_U_MODE)
 	{
-		rohc_comp_periodic_down_transition(context);
+		rohc_comp_periodic_down_transition(context, uncomp_pkt->time);
 	}
 
 	/* compute how many bits are needed to send header fields */

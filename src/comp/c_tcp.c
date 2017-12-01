@@ -31,6 +31,7 @@
 #include "rohc_utils.h"
 #include "rohc_packets.h"
 #include "net_pkt.h"
+#include "rohc_time_internal.h"
 #include "protocols/ip_numbers.h"
 #include "protocols/ip.h"
 #include "protocols/ipv4.h"
@@ -113,7 +114,8 @@ static bool tcp_detect_changes_ipv6_exts(struct rohc_comp_ctxt *const context,
                                          size_t *const exts_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 6, 7)));
 
-static void tcp_decide_state(struct rohc_comp_ctxt *const context)
+static void tcp_decide_state(struct rohc_comp_ctxt *const context,
+                             struct rohc_ts pkt_time)
 	__attribute__((nonnull(1)));
 
 static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
@@ -1313,7 +1315,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	}
 
 	/* decide in which state to go */
-	tcp_decide_state(context);
+	tcp_decide_state(context, uncomp_pkt->time);
 
 	/* compute how many bits are needed to send header fields */
 	if(!tcp_encode_uncomp_fields(context, uncomp_pkt, tcp))
@@ -3692,11 +3694,13 @@ static uint16_t c_tcp_get_next_msn(const struct rohc_comp_ctxt *const context)
  *  - First Order (FO),\n
  *  - Second Order (SO).
  *
- * @param context The compression context
+ * @param context   The compression context
+ * @param pkt_time  The time of packet arrival
  */
-static void tcp_decide_state(struct rohc_comp_ctxt *const context)
+static void tcp_decide_state(struct rohc_comp_ctxt *const context,
+                             struct rohc_ts pkt_time)
 {
-	rohc_comp_state_t curr_state = context->state;
+	const rohc_comp_state_t curr_state = context->state;
 	rohc_comp_state_t next_state;
 
 	if(curr_state == ROHC_COMP_STATE_IR)
@@ -3750,7 +3754,7 @@ static void tcp_decide_state(struct rohc_comp_ctxt *const context)
 	/* periodic context refreshes (RFC6846, §5.2.1.2) */
 	if(context->mode == ROHC_U_MODE)
 	{
-		rohc_comp_periodic_down_transition(context);
+		rohc_comp_periodic_down_transition(context, pkt_time);
 	}
 }
 

@@ -202,6 +202,13 @@ int main(int argc, char *argv[])
 	CHECK(rohc_comp_set_periodic_refreshes(comp, 5, 10) == false);
 	CHECK(rohc_comp_set_periodic_refreshes(comp, 10, 5) == true);
 
+	/* rohc_comp_set_periodic_refreshes_time() */
+	CHECK(rohc_comp_set_periodic_refreshes_time(NULL, 1000, 500) == false);
+	CHECK(rohc_comp_set_periodic_refreshes_time(comp, 0, 500) == false);
+	CHECK(rohc_comp_set_periodic_refreshes_time(comp, 1000, 0) == false);
+	CHECK(rohc_comp_set_periodic_refreshes_time(comp, 5, 10) == false);
+	CHECK(rohc_comp_set_periodic_refreshes_time(comp, 10, 5) == true);
+
 	/* rohc_comp_set_list_trans_nr() */
 	CHECK(rohc_comp_set_list_trans_nr(NULL, 5) == false);
 	CHECK(rohc_comp_set_list_trans_nr(comp, 0) == false);
@@ -346,6 +353,8 @@ int main(int argc, char *argv[])
 	/* rohc_comp_set_features */
 	CHECK(rohc_comp_set_features(comp, ROHC_COMP_FEATURE_COMPAT_1_6_x) == false);
 	CHECK(rohc_comp_set_features(comp, ROHC_COMP_FEATURE_NO_IP_CHECKSUMS) == true);
+	CHECK(rohc_comp_set_features(comp, ROHC_COMP_FEATURE_DUMP_PACKETS) == true);
+	CHECK(rohc_comp_set_features(comp, ROHC_COMP_FEATURE_TIME_BASED_REFRESHES) == true);
 	CHECK(rohc_comp_set_features(comp, ROHC_COMP_FEATURE_NONE) == true);
 
 	/* rohc_comp_deliver_feedback2() */

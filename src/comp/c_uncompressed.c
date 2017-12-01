@@ -95,6 +95,7 @@ static bool uncomp_feedback(struct rohc_comp_ctxt *const context,
 
 /* mode and state transitions */
 static void uncompressed_decide_state(struct rohc_comp_ctxt *const context,
+                                      const struct rohc_ts pkt_time,
                                       const ip_version ip_vers)
 	__attribute__((nonnull(1)));
 
@@ -214,7 +215,8 @@ static int c_uncompressed_encode(struct rohc_comp_ctxt *const context,
 	int size;
 
 	/* STEP 1: decide state */
-	uncompressed_decide_state(context, ip_get_version(&uncomp_pkt->outer_ip));
+	uncompressed_decide_state(context, uncomp_pkt->time,
+	                          ip_get_version(&uncomp_pkt->outer_ip));
 
 	/* STEP 2: Code packet */
 	size = uncompressed_code_packet(context, uncomp_pkt,
@@ -315,10 +317,12 @@ error:
  * @brief Decide the state that should be used for the next packet.
  *
  * @param context  The compression context
+ * @param pkt_time The time of packet arrival
  * @param ip_vers  The IP version of the packet among IPV4, IPV6, IP_UNKNOWN,
  *                 IPV4_MALFORMED, or IPV6_MALFORMED.
  */
 static void uncompressed_decide_state(struct rohc_comp_ctxt *const context,
+                                      const struct rohc_ts pkt_time,
                                       const ip_version ip_vers)
 {
 	/* non-IPv4/6 packets cannot be compressed with Normal packets because the
@@ -341,7 +345,7 @@ static void uncompressed_decide_state(struct rohc_comp_ctxt *const context,
 	/* periodic refreshes in U-mode only */
 	if(context->mode == ROHC_U_MODE)
 	{
-		rohc_comp_periodic_down_transition(context);
+		rohc_comp_periodic_down_transition(context, pkt_time);
 	}
 }
 

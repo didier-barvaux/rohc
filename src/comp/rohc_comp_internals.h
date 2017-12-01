@@ -49,9 +49,17 @@
  *  states) before changing back the state to IR (periodic refreshes) */
 #define CHANGE_TO_IR_COUNT  1700
 
+/** The default maximal delay (in ms) spent in > IR states (= FO and SO states)
+ *  before changing back the state to IR (periodic refreshes) */
+#define CHANGE_TO_IR_TIME  1000U
+
 /** The default maximal number of packets sent in > FO states (= SO state)
  *  before changing back the state to FO (periodic refreshes) */
 #define CHANGE_TO_FO_COUNT  700
+
+/** The default maximal delay (in ms) spent in > FO states (= SO state)
+ *  before changing back the state to FO (periodic refreshes) */
+#define CHANGE_TO_FO_TIME  500U
 
 /** The minimal number of packets that must be sent while in IR state before
  *  being able to switch to the FO state */
@@ -189,10 +197,16 @@ struct rohc_comp
 	size_t wlsb_window_width;
 	/** The maximal number of packets sent in > IR states (= FO and SO
 	 *  states) before changing back the state to IR (periodic refreshes) */
-	size_t periodic_refreshes_ir_timeout;
+	size_t periodic_refreshes_ir_timeout_pkts;
+	/** The maximal delay spent in > IR states (= FO and SO states) before
+	 *  changing back the state to IR (periodic refreshes) */
+	uint64_t periodic_refreshes_ir_timeout_time;
 	/** The maximal number of packets sent in > FO states (= SO state)
 	 *  before changing back the state to FO (periodic refreshes) */
-	size_t periodic_refreshes_fo_timeout;
+	size_t periodic_refreshes_fo_timeout_pkts;
+	/** The maximal delay spent in > FO states (= SO state) before changing back
+	 *  the state to FO (periodic refreshes) */
+	uint64_t periodic_refreshes_fo_timeout_time;
 	/** Maximum Reconstructed Reception Unit */
 	size_t mrru;
 	/** The connection type (currently not used) */
@@ -347,11 +361,23 @@ struct rohc_comp_ctxt
 	 */
 	size_t go_back_fo_count;
 	/**
+	 * @brief The last time that the context was in FO state, used for the
+	 *        periodic refreshes of the context
+	 * @see rohc_comp_periodic_down_transition
+	 */
+	struct rohc_ts go_back_fo_time;
+	/**
 	 * @brief The number of packet sent while in FO or SO state, used for the
 	 *        periodic refreshes of the context
 	 * @see rohc_comp_periodic_down_transition
 	 */
 	size_t go_back_ir_count;
+	/**
+	 * @brief The last time that the context was in IR state, used for the
+	 *        periodic refreshes of the context
+	 * @see rohc_comp_periodic_down_transition
+	 */
+	struct rohc_ts go_back_ir_time;
 
 	/** The average size of the uncompressed packets */
 	int total_uncompressed_size;
@@ -384,7 +410,8 @@ void rohc_comp_change_state(struct rohc_comp_ctxt *const context,
                             const rohc_comp_state_t new_state)
 	__attribute__((nonnull(1)));
 
-void rohc_comp_periodic_down_transition(struct rohc_comp_ctxt *const context)
+void rohc_comp_periodic_down_transition(struct rohc_comp_ctxt *const context,
+                                        const struct rohc_ts pkt_time)
 	__attribute__((nonnull(1)));
 
 bool rohc_comp_reinit_context(struct rohc_comp_ctxt *const context)

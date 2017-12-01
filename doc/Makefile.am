@@ -55,6 +55,7 @@ rohc_comp_mans = \
 	man/man3/rohc_comp_get_cid_type.3 \
 	man/man3/rohc_comp_get_max_cid.3 \
 	man/man3/rohc_comp_set_periodic_refreshes.3 \
+	man/man3/rohc_comp_set_periodic_refreshes_time.3 \
 	man/man3/rohc_comp_set_wlsb_window_width.3 \
 	man/man3/rohc_comp_set_list_trans_nr.3 \
 	man/man3/rohc_comp_get_mrru.3 \

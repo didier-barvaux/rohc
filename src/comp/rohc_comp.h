@@ -230,6 +230,8 @@ typedef enum
 	ROHC_COMP_FEATURE_NO_IP_CHECKSUMS = (1 << 2),
 	/** Dump content of packets in traces (beware: performance impact) */
 	ROHC_COMP_FEATURE_DUMP_PACKETS    = (1 << 3),
+	/** Allow periodic refreshes based on inter-packet time */
+	ROHC_COMP_FEATURE_TIME_BASED_REFRESHES = (1 << 4),
 
 } rohc_comp_features_t;
 
@@ -384,6 +386,11 @@ bool ROHC_EXPORT rohc_comp_set_wlsb_window_width(struct rohc_comp *const comp,
 bool ROHC_EXPORT rohc_comp_set_periodic_refreshes(struct rohc_comp *const comp,
                                                   const size_t ir_timeout,
                                                   const size_t fo_timeout)
+	__attribute__((warn_unused_result));
+
+bool ROHC_EXPORT rohc_comp_set_periodic_refreshes_time(struct rohc_comp *const comp,
+                                                       const uint64_t ir_timeout,
+                                                       const uint64_t fo_timeout)
 	__attribute__((warn_unused_result));
 
 bool ROHC_EXPORT rohc_comp_set_list_trans_nr(struct rohc_comp *const comp,

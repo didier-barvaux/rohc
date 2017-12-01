@@ -38,6 +38,8 @@ typedef uint32_t rohc_ctxt_key_t;
 /** One network packet */
 struct net_pkt
 {
+	struct rohc_ts time;         /**< The time of packet arrival */
+
 	const uint8_t *data;         /**< The packet data */
 	size_t len;                  /**< The length (in bytes) of the packet data */
 
