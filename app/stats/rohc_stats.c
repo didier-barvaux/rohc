@@ -46,6 +46,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>
+#include <limits.h> /* for INT_MAX */
 
 /* includes for network headers */
 #include <protocols/ipv4.h>
@@ -121,7 +122,8 @@ static void usage(void);
 
 static int generate_comp_stats_all(const rohc_cid_type_t cid_type,
                                    const unsigned int max_contexts,
-                                   const char *source)
+                                   const char *source,
+                                   const size_t max_pkts_nr)
 	__attribute__((warn_unused_result, nonnull(3)));
 static int generate_comp_stats_one(struct rohc_comp *comp,
                                    const unsigned long num_packet,
@@ -132,7 +134,8 @@ static int generate_comp_stats_one(struct rohc_comp *comp,
 
 static int generate_decomp_stats_all(const rohc_cid_type_t cid_type,
                                      const unsigned int max_contexts,
-                                     const char *source)
+                                     const char *source,
+                                     const size_t max_pkts_nr)
 	__attribute__((warn_unused_result, nonnull(3)));
 static int generate_decomp_stats_one(struct rohc_decomp *const decomp,
                                      const unsigned long num_packet,
@@ -180,6 +183,7 @@ int main(int argc, char *argv[])
 	char *source_descr = NULL;
 	int status = 1;
 	int max_contexts = ROHC_SMALL_CID_MAX + 1;
+	int max_pkts_nr = 0; /* 0 means all PCAP file or infinite for live capture */
 	size_t max_possible_contexts = ROHC_SMALL_CID_MAX + 1;
 	rohc_cid_type_t cid_type = ROHC_SMALL_CID;
 	int args_used;
@@ -230,6 +234,18 @@ int main(int argc, char *argv[])
 				goto error;
 			}
 			max_contexts = atoi(argv[1]);
+			args_used++;
+		}
+		else if(!strcmp(*argv, "--max-pkts-nr"))
+		{
+			/* get the maximum number of packets the test should (de)compress */
+			if(argc <= 1)
+			{
+				fprintf(stderr, "missing mandatory --max-pkts-nr parameter\n");
+				usage();
+				goto error;
+			}
+			max_pkts_nr = atoi(argv[1]);
 			args_used++;
 		}
 		else if(test_type == NULL)
@@ -300,6 +316,17 @@ int main(int argc, char *argv[])
 		goto error;
 	}
 
+	/* handling a negative number of packets is not possible (0 is a value
+	 * meaning all the packets found in the PCAP file, or infinite for live
+	 * mode) */
+	if(max_pkts_nr < 0)
+	{
+		fprintf(stderr, "the maximum number of packets should be "
+		        "between 0 and %d\n\n", INT_MAX);
+		usage();
+		goto error;
+	}
+
 	/* the source is mandatory */
 	if(source_descr == NULL)
 	{
@@ -312,12 +339,14 @@ int main(int argc, char *argv[])
 	if(strcmp(test_type, "comp") == 0)
 	{
 		/* test ROHC compression with the packets from the capture */
-		status = generate_comp_stats_all(cid_type, max_contexts, source_descr);
+		status = generate_comp_stats_all(cid_type, max_contexts, source_descr,
+		                                 max_pkts_nr);
 	}
 	else if(strcmp(test_type, "decomp") == 0)
 	{
 		/* test ROHC decompression with the packets from the capture */
-		status = generate_decomp_stats_all(cid_type, max_contexts, source_descr);
+		status = generate_decomp_stats_all(cid_type, max_contexts, source_descr,
+		                                   max_pkts_nr);
 	}
 	else
 	{
@@ -364,6 +393,9 @@ static void usage(void)
 	       "      --quiet             Tell the application to be even less verbose\n"
 	       "      --max-contexts NUM  The maximum number of ROHC contexts to\n"
 	       "                          simultaneously use during the test\n"
+	       "      --max-pkts-nr NUM   The maximum number of packets to (de)compress\n"
+	       "                          (0 means all packets from file or infinite for\n"
+	       "                           network device)\n"
 	       "\n"
 	       "With:\n"
 	       "  ACTION    Run a compression test with 'comp' or a\n"
@@ -389,12 +421,14 @@ static void usage(void)
  * @param cid_type       The type of CIDs the compressor shall use
  * @param max_contexts   The maximum number of ROHC contexts to use
  * @param source         The source of IP packets
+ * @param max_pkts_nr    The maximum number of packets to compress
  * @return               0 in case of success,
  *                       1 in case of failure
  */
 static int generate_comp_stats_all(const rohc_cid_type_t cid_type,
                                    const unsigned int max_contexts,
-                                   const char *source)
+                                   const char *source,
+                                   const size_t max_pkts_nr)
 {
 	struct stat source_stat;
 	int ret;
@@ -533,9 +567,11 @@ static int generate_comp_stats_all(const rohc_cid_type_t cid_type,
 		fflush(stdout);
 	}
 
-	/* for each packet extracted from the PCAP file */
+	/* for each packet extracted from the PCAP file or live capture,
+	 * up to max_pkts_nr packets */
 	num_packet = 0;
-	while((packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
+	while((max_pkts_nr == 0 || num_packet < max_pkts_nr) &&
+	      (packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
 	{
 		num_packet++;
 
@@ -679,12 +715,14 @@ error:
  * @param cid_type       The type of CIDs the compressor shall use
  * @param max_contexts   The maximum number of ROHC contexts to use
  * @param source         The source of ROHC packets
+ * @param max_pkts_nr    The maximum number of packets to decompress
  * @return               0 in case of success,
  *                       1 in case of failure
  */
 static int generate_decomp_stats_all(const rohc_cid_type_t cid_type,
                                      const unsigned int max_contexts,
-                                     const char *source)
+                                     const char *source,
+                                     const size_t max_pkts_nr)
 {
 	struct stat source_stat;
 	int ret;
@@ -813,9 +851,11 @@ static int generate_decomp_stats_all(const rohc_cid_type_t cid_type,
 		fflush(stdout);
 	}
 
-	/* for each packet extracted from the PCAP file */
+	/* for each packet extracted from the PCAP file or live capture,
+	 * up to max_pkts_nr packets */
 	num_packet = 0;
-	while((packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
+	while((max_pkts_nr == 0 || num_packet < max_pkts_nr) &&
+	      (packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
 	{
 		num_packet++;
 
