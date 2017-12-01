@@ -23,6 +23,7 @@ rohc_stats_CPPFLAGS = \
 	-I$(top_srcdir)/test \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
+	-I$(top_srcdir)/src/decomp \
 	$(libpcap_includes)
 
 rohc_stats_LDFLAGS = \

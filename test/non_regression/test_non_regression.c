@@ -123,6 +123,11 @@ for ./configure ? If yes, check configure output and config.log"
 /** The maximum number of source PCAP dump files */
 #define SRC_FILENAMES_MAX_NR  2U
 
+/** The Ethertype for the 802.1q protocol (VLAN) */
+#define ETHERTYPE_8021Q   0x8100U
+/** The Ethertype for the 802.1ad protocol */
+#define ETHERTYPE_8021AD  0x88a8U
+
 /** print text on console if not in quiet mode */
 #define trace(format, ...) \
 	do { \
@@ -222,6 +227,14 @@ static int compare_packets(unsigned char *pkt1, int pkt1_size,
                            unsigned char *pkt2, int pkt2_size);
 
 
+/** The VLAN header */
+struct vlan_hdr
+{
+	uint16_t vid;  /**< The PCP, DEI and VID fields */
+	uint16_t type; /**< The Ethertype of the next header */
+} __attribute__((packed));
+
+
 /** Whether the application runs in verbose mode or not */
 static enum
 {
@@ -232,6 +245,9 @@ static enum
 
 /** The number of warnings emitted by the ROHC library */
 static size_t nr_rohc_warnings = 0;
+
+/** The stats about packet sizes */
+static size_t nr_pkts_per_size[MAX_ROHC_SIZE + 1] = { 0 };
 
 
 /**
@@ -258,6 +274,7 @@ int main(int argc, char *argv[])
 	bool no_comparison = false;
 	bool ignore_malformed = false;
 	bool assert_on_error = false;
+	bool print_stats = false;
 	int status = 1;
 	rohc_cid_type_t cid_type;
 	int args_used;
@@ -389,6 +406,11 @@ int main(int argc, char *argv[])
 			padding_up_to = atoi(argv[1]);
 			args_used++;
 		}
+		else if(!strcmp(*argv, "--print-stats"))
+		{
+			/* print some stats at the very end of the test */
+			print_stats = true;
+		}
 		else if(cid_type_name == NULL)
 		{
 			/* get the type of CID to use within the ROHC library */
@@ -501,6 +523,22 @@ int main(int argc, char *argv[])
 		assert(status == 0 || status == 77);
 	}
 
+	/* print stats about packet sizes */
+	if(print_stats)
+	{
+		size_t i;
+		for(i = 0; i <= 1600; i++)
+		{
+			size_t j;
+			printf("%zu ", i);
+			for(j = 0; j < nr_pkts_per_size[i] / 100; j++)
+			{
+				printf("*");
+			}
+			printf(" %zu\n", nr_pkts_per_size[i]);
+		}
+	}
+
 error:
 	return status;
 }
@@ -534,6 +572,7 @@ static void usage(void)
 	        "  --max-contexts NUM      The maximum number of ROHC contexts to\n"
 	        "                          simultaneously use during the test\n"
 	        "  --wlsb-width NUM        The width of the WLSB window to use\n"
+	        "  --print-stats           Print some stats at the end of test\n"
 	        "  --no-comparison         Is comparison with ROHC reference optional for test\n"
 	        "  --ignore-malformed      Ignore malformed packets for test\n"
 	        "  --assert-on-error       Stop the test after the very first encountered error\n"
@@ -840,7 +879,7 @@ static int compress_decompress(struct rohc_comp *comp,
 {
 	/* the layer 2 header */
 	size_t l2_hdr_max_len = max(ETHER_HDR_LEN, LINUX_COOKED_HDR_LEN);
-	struct ether_header *eth_header;
+	bool is_vlan_present = false;
 
 	/* the buffer that will contain the initial uncompressed packet */
 	const struct rohc_ts arrival_time = {
@@ -883,6 +922,35 @@ static int compress_decompress(struct rohc_comp *comp,
 	}
 
 	/* copy the layer 2 header before the ROHC packet, then skip it */
+	if(link_len_src == ETHER_HDR_LEN)
+	{
+		const struct ether_header *const eth_header =
+			(struct ether_header *) rohc_buf_data(ip_packet);
+		uint16_t proto_type = ntohs(eth_header->ether_type);
+
+		/* skip all 802.1q or 802.1ad headers */
+		while(proto_type == ETHERTYPE_8021Q || proto_type == ETHERTYPE_8021AD)
+		{
+			trace("found one 802.1q or 802.1ad header\n");
+			is_vlan_present = true;
+
+			/* check min length */
+			if(header.len < link_len_src + sizeof(struct vlan_hdr))
+			{
+				trace("truncated %u-byte 802.1q or 802.1ad frame\n", header.len);
+				status = -3;
+				goto exit;
+			}
+
+			/* detect next header */
+			const struct vlan_hdr *const vlan_hdr =
+				(struct vlan_hdr *) rohc_buf_data_at(ip_packet, link_len_src);
+			proto_type = ntohs(vlan_hdr->type);
+
+			/* skip VLAN header */
+			link_len_src += sizeof(struct vlan_hdr);
+		}
+	}
 	rohc_buf_append(&rohc_packet, packet, link_len_src);
 	rohc_buf_pull(&ip_packet, link_len_src);
 	rohc_buf_pull(&rohc_packet, link_len_src);
@@ -990,9 +1058,16 @@ static int compress_decompress(struct rohc_comp *comp,
 		{
 			/* prepend the link layer header */
 			rohc_buf_prepend(&rohc_packet, packet, link_len_src);
-			if(link_len_src == ETHER_HDR_LEN) /* Ethernet only */
+			if(is_vlan_present) /* Ethernet and VLAN */
 			{
-				eth_header = (struct ether_header *) rohc_buf_data(rohc_packet);
+				struct vlan_hdr *const vlan_hdr = (struct vlan_hdr *)
+					rohc_buf_data_at(rohc_packet, link_len_src - sizeof(struct vlan_hdr));
+				vlan_hdr->type = htons(ROHC_ETHERTYPE); /* ROHC Ethertype */
+			}
+			else if(link_len_src == ETHER_HDR_LEN) /* Ethernet only */
+			{
+				struct ether_header *const eth_header =
+					(struct ether_header *) rohc_buf_data(rohc_packet);
 				eth_header->ether_type = htons(ROHC_ETHERTYPE); /* ROHC Ethertype */
 			}
 			else if(link_len_src == LINUX_COOKED_HDR_LEN) /* Linux Cooked Sockets only */
@@ -1009,7 +1084,6 @@ static int compress_decompress(struct rohc_comp *comp,
 	}
 
 	/* output the size of the ROHC packet to the output file if asked */
-	if(size_output_file != NULL)
 	{
 		rohc_comp_last_packet_info2_t last_packet_info;
 
@@ -1022,10 +1096,14 @@ static int compress_decompress(struct rohc_comp *comp,
 			status = -1;
 			goto exit;
 		}
+		nr_pkts_per_size[last_packet_info.header_last_comp_size]++;
 
-		fprintf(size_output_file, "compressor_num = %d\tpacket_num = %d\t"
-		        "rohc_size = %zu\tpacket_type = %d\n", num_comp, num_packet,
-		        rohc_packet.len, last_packet_info.packet_type);
+		if(size_output_file != NULL)
+		{
+			fprintf(size_output_file, "compressor_num = %d\tpacket_num = %d\t"
+			        "rohc_size = %zu\tpacket_type = %d\n", num_comp, num_packet,
+			        rohc_packet.len, last_packet_info.packet_type);
+		}
 	}
 
 	/* compare the ROHC packets with the ones given by the user if asked */

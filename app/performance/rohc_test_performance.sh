@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright 2014 Didier Barvaux
+# Copyright 2014,2017 Didier Barvaux
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -79,5 +79,5 @@ if [ -z "${test_iter}" ] ; then
 fi
 
 ${PERF_BIN} ${PERF_OPTS} ${test_iter} -- \
-	${TEST_BIN} ${test_mode} ${test_cid_type} ${test_capture}
+	${TEST_BIN} --quiet ${test_mode} ${test_cid_type} ${test_capture}
 

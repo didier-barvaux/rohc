@@ -64,7 +64,15 @@ curdir=$( dirname "$0" )
 capture="$1"
 ignore_malformed="$2"
 
-options="--no-comparison --ignore-malformed --max-contexts 450 largecid"
+if [ -z "${capture}" ] ; then
+	echo "usage: $0 [--ignore-malformed] <capture file>" >&2
+	exit 1
+elif [ ! -f "${capture}" ] ; then
+	echo "capture file '${capture}' does not exist" >&2
+	exit 1
+fi
+
+options="--no-comparison --ignore-malformed --max-contexts 450 --quiet largecid"
 
 echo -n "$( basename "${capture}" ): "
 

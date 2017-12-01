@@ -24,6 +24,8 @@ To use the function, call it with a pointer on a pre\-allocated rohc_decomp_last
 .PP 
 \(bu Major 0, minor 1
 .PP 
+\(bu Major 0, minor 2
+.PP 
 .RE
 .PP 
 See rohc_decomp_last_packet_info_t for details about fields that are supported in the above versions.
@@ -92,6 +94,10 @@ struct \fBrohc_decomp_last_packet_info_t\fP {
   unsigned long       \fIcorrected_sn_wraparounds\fP;   /* The number of successful corrections of SN wraparound upon CRC failure */
   unsigned long       \fIcorrected_wrong_sn_updates\fP; /* The number of successful corrections of incorrect SN updates upon CRC failure */
   rohc_packet_t       \fIpacket_type\fP;                /* The type of the last decompressed ROHC packet */
+  unsigned long       \fItotal_last_comp_size\fP;       /* The compressed size (in bytes) of the last decompressed packet */
+  unsigned long       \fIheader_last_comp_size\fP;      /* The compressed size (in bytes) of the last decompressed header */
+  unsigned long       \fItotal_last_uncomp_size\fP;     /* The uncompressed size (in bytes) of the last decompressed packet */
+  unsigned long       \fIheader_last_uncomp_size\fP;    /* The uncompressed size (in bytes) of the last decompressed header */
 };
 .fi
 .RE

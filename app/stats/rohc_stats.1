@@ -4,9 +4,9 @@
 rohc_stats \- The ROHC statistics tool
 .SH SYNOPSIS
 .B rohc_stats
-[\fI\,OPTIONS\/\fR] \fI\,CID_TYPE FLOW\/\fR
+[\fI\,OPTIONS\/\fR] \fI\,ACTION CID_TYPE SOURCE\/\fR
 .SH DESCRIPTION
-The ROHC stats tool generates statistics about ROHC compression
+The ROHC stats tool generates statistics about ROHC (de)compression
 .PP
 The rohc_stats tool outputs statistics in CSV format with the
 following tab\-separated fields:
@@ -48,24 +48,42 @@ Print this usage and exit
 \fB\-\-verbose\fR
 Be more verbose
 .TP
+\fB\-\-quiet\fR
+Tell the application to be even less verbose
+.TP
 \fB\-\-max\-contexts\fR NUM
 The maximum number of ROHC contexts to
 simultaneously use during the test
+.TP
+\fB\-\-max\-pkts\-nr\fR NUM
+The maximum number of packets to (de)compress
+(0 means all packets from file or infinite for
+.IP
+network device)
 .SS "With:"
+.TP
+ACTION
+Run a compression test with 'comp' or a
+decompression test with 'decomp'
 .TP
 CID_TYPE
 The type of CID to use among 'smallcid'
 and 'largecid'
 .TP
-FLOW
-The flow of Ethernet frames to compress
-(in PCAP format)
+SOURCE
+The source of of Ethernet frames to compress, ie:
+.IP
+\- the name of a file in PCAP format
+\- the name of a network device
 .SH EXAMPLES
 .TP
-rohc_stats smallcid /tmp/rtp.pcap
-Generate statistics
+rohc_stats comp smallcid /tmp/rtp.pcap
+Generate statistics from a file
 .TP
-rohc_stats largecid ~/lan.pcap
-Generate statistics
+rohc_stats decomp largecid ~/lan.pcap
+Generate statistics from a file
+.TP
+rohc_stats comp largecid eth0
+Generate statistics from Ethernet device 'eth0'
 .SH "REPORTING BUGS"
 Report bugs to <https://rohc\-lib.org/>.

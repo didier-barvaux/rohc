@@ -1,5 +1,8 @@
 #!/bin/sh
 #
+# Copyright 2010,2012,2013,2014 Didier Barvaux
+# Copyright 2012,2017 Viveris Technologies
+#
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
 # License as published by the Free Software Foundation; either
@@ -18,17 +21,35 @@
 # file:        rohc_stats.sh
 # description: Generate some cool graphs about ROHC library compression
 # author:      Didier Barvaux <didier@barvaux.org>
+# author:      Didier Barvaux <didier.barvaux@toulouse.viveris.com>
 #
 
+usage()
+{
+	echo "usage: $0 comp   stream.pcap [output-directory [verbose]]" >&2
+	echo "usage: $0 comp   netdevice   [output-directory [verbose]]" >&2
+	echo "usage: $0 decomp stream.pcap [output-directory [verbose]]" >&2
+	echo "usage: $0 decomp netdevice   [output-directory [verbose]]" >&2
+}
+
 # parse parameters
-capture="$1"
-output_dir="$2"
-verbose="$3"
-if [ -z "${capture}" ] || [ ! -f "${capture}" ] ; then
-	echo "usage: $0 stream.pcap [output-directory [verbose]]" >&2
+action="$1"
+src="$2"
+output_dir="$3"
+verbose="$4"
+if [ "${action}" != "comp" ] && [ "${action}" != "decomp" ] ; then
+	usage $0
 	exit 1
 fi
-capture_name="`basename "${capture}" .pcap`"
+if [ -z "${src}" ] ; then
+	usage $0
+	exit 1
+fi
+if [ ! -f "${src}" ] && [ ! -d "/sys/class/net/${src}/" ] ; then
+	usage $0
+	exit 1
+fi
+src_name="`basename "${src}" .pcap`"
 if [ -z "${output_dir}" ] ; then
 	output_dir="${PWD}/rohc_stats_output/"
 fi
@@ -64,15 +85,25 @@ if [ -z "${SED}" ] ; then
 	exit 1
 fi
 
+
+cleanup()
+{
+	echo "stop live capture"
+}
+trap "cleanup" SIGPIPE
+trap "cleanup" SIGINT
+
 # run the statistics application and retrieve its output
-OUTPUT=$( ${GEN} smallcid ${capture} 2>/dev/null )
-if [ $? -ne 0 ] ; then
-	echo "compression failed for capture '${capture}'" >&2
+OUTPUT=$( ${GEN} ${action} smallcid ${src} 2>/dev/null )
+ret=$?
+if [ ${ret} -ne 0 ] && [ ${ret} -ne $(( 128 + 2 )) ] ; then
+	# compression failure, ignore SIGINT (2) signal
+	echo "${action}ression failed for src '${src}' (code ${ret})" >&2
 	exit 1
 fi
 
 
-echo "generate statistics for '${capture}':"
+echo "generate statistics for '${src}':"
 
 # create the output directory
 mkdir -p "${output_dir}" || exit 1
@@ -87,8 +118,8 @@ echo -e "${OUTPUT}" | ${GREP} "^STAT" > ${RAW_OUTPUT} || exit 1
 [ "${verbose}" = "verbose" ] && echo -ne "\tcreate graph with context modes... "
 echo -e "set terminal png\n" \
         "set output '${output_dir}/modes.png'\n" \
-        "set title 'Compression modes for ${capture_name}'\n" \
-        "set xlabel 'packet number in capture'\n" \
+        "set title '${action}ression modes for ${src_name}'\n" \
+        "set xlabel 'packet number'\n" \
         "plot [] [0:4] '${RAW_OUTPUT}' using 2:3:yticlabels(4) title columnhead(3)" \
 	| ${GNUPLOT} 2>/dev/null \
 	|| exit 1
@@ -98,8 +129,8 @@ echo -e "set terminal png\n" \
 [ "${verbose}" = "verbose" ] && echo -ne "\tcreate graph with context states... "
 echo -e "set terminal png\n" \
         "set output '${output_dir}/states.png'\n" \
-        "set title 'Compression states for ${capture_name}'\n" \
-        "set xlabel 'packet number in capture'\n" \
+        "set title '${action}ression states for ${src_name}'\n" \
+        "set xlabel 'packet number'\n" \
         "plot [] [0:4] '${RAW_OUTPUT}' using 2:5:yticlabels(6) title columnhead(5)" \
 	| ${GNUPLOT} 2>/dev/null \
 	|| exit 1
@@ -109,8 +140,8 @@ echo -e "set terminal png\n" \
 [ "${verbose}" = "verbose" ] && echo -ne "\tcreate graph with packet types... "
 echo -e "set terminal png\n" \
         "set output '${output_dir}/packet_types.png'\n" \
-        "set title 'ROHC packet types for ${capture_name}'\n" \
-        "set xlabel 'packet number in capture'\n" \
+        "set title 'ROHC packet types for ${src_name}'\n" \
+        "set xlabel 'packet number'\n" \
         "plot [] [-1:31] '${RAW_OUTPUT}' using 2:7:yticlabels(8) title columnhead(7)" \
 	| ${GNUPLOT} 2>/dev/null \
 	|| exit 1
@@ -120,8 +151,8 @@ echo -e "set terminal png\n" \
 [ "${verbose}" = "verbose" ] && echo -ne "\tcreate graph with (un)compressed packet sizes... "
 echo -e "set terminal png\n" \
         "set output '${output_dir}/packet_sizes.png'\n" \
-        "set title 'Packet sizes for compression of ${capture_name}'\n" \
-        "set xlabel 'packet number in capture'\n" \
+        "set title 'Packet sizes for ${action}ression of ${src_name}'\n" \
+        "set xlabel 'packet number'\n" \
         "set ylabel 'packet size (bytes)'\n" \
         "plot '${RAW_OUTPUT}' using 2:9 title columnhead(9) with lines," \
         "     '${RAW_OUTPUT}' using 2:11 title columnhead(11) with lines" \
@@ -133,8 +164,8 @@ echo -e "set terminal png\n" \
 [ "${verbose}" = "verbose" ] && echo -ne "\tcreate graph with (un)compressed header sizes... "
 echo -e "set terminal png\n" \
         "set output '${output_dir}/header_sizes.png'\n" \
-        "set title 'Header sizes for compression of ${capture_name}'\n" \
-        "set xlabel 'packet number in capture'\n" \
+        "set title 'Header sizes for ${action}ression of ${src_name}'\n" \
+        "set xlabel 'packet number'\n" \
         "set ylabel 'header size (bytes)'\n" \
         "plot '${RAW_OUTPUT}' using 2:10 title columnhead(10) with lines," \
         "     '${RAW_OUTPUT}' using 2:12 title columnhead(12) with lines" \
@@ -211,7 +242,7 @@ echo -e "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www
 echo -e "<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\">" >> ${HTML_OUTPUT}
 echo -e "\t<head>" >> ${HTML_OUTPUT}
 echo -e "\t\t<meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\" />" >> ${HTML_OUTPUT}
-echo -e "\t\t<title>ROHC compression statistics</title>" >> ${HTML_OUTPUT}
+echo -e "\t\t<title>ROHC ${action}ression statistics</title>" >> ${HTML_OUTPUT}
 echo -e "\t\t<style type=\"text/css\">" >> ${HTML_OUTPUT}
 echo -e "\t\t\tbody { font-size: small; }" >> ${HTML_OUTPUT}
 echo -e "\t\t\ttable, tr, th, td { border: solid thin black; border-collapse: collapse; width: 33%; }" >> ${HTML_OUTPUT}
@@ -221,7 +252,7 @@ echo -e "\t\t</style>" >> ${HTML_OUTPUT}
 echo -e "\t</head>" >> ${HTML_OUTPUT}
 echo -e "\t<body>" >> ${HTML_OUTPUT}
 
-echo -e "\t\t<h1>ROHC compression statistics for '${capture_name}'</h1>" >> ${HTML_OUTPUT}
+echo -e "\t\t<h1>ROHC ${action}ression statistics for '${src_name}'</h1>" >> ${HTML_OUTPUT}
 
 echo -e "\t\t<table>" >> ${HTML_OUTPUT}
 
