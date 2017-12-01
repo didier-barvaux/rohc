@@ -302,6 +302,13 @@ struct rohc_comp * rohc_comp_new2(const rohc_cid_type_t cid_type,
 	{
 		goto destroy_comp;
 	}
+	is_fine = rohc_comp_set_periodic_refreshes_time(comp,
+	                                                CHANGE_TO_IR_TIME,
+	                                                CHANGE_TO_FO_TIME);
+	if(is_fine != true)
+	{
+		goto destroy_comp;
+	}
 
 	/* set the default number of uncompressed transmissions for list
 	 * compression */
@@ -1136,7 +1143,7 @@ bool rohc_comp_set_wlsb_window_width(struct rohc_comp *const comp,
 
 
 /**
- * @brief Set the timeout values for IR and FO periodic refreshes
+ * @brief Set the timeouts in packets for IR and FO periodic refreshes
  *
  * Set the timeout values for IR and FO periodic refreshes. The IR timeout
  * shall be greater than the FO timeout. Both timeouts are expressed in
@@ -1183,13 +1190,74 @@ bool rohc_comp_set_periodic_refreshes(struct rohc_comp *const comp,
 		return false;
 	}
 
-	comp->periodic_refreshes_ir_timeout = ir_timeout;
-	comp->periodic_refreshes_fo_timeout = fo_timeout;
+	comp->periodic_refreshes_ir_timeout_pkts = ir_timeout;
+	comp->periodic_refreshes_fo_timeout_pkts = fo_timeout;
 
 	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "IR timeout for "
 	          "context periodic refreshes set to %zd", ir_timeout);
 	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "FO timeout for "
 	          "context periodic refreshes set to %zd", fo_timeout);
+
+	return true;
+}
+
+
+/**
+ * @brief Set the timeouts in ms for IR and FO periodic refreshes
+ *
+ * Set the timeout values for IR and FO periodic refreshes. The IR timeout
+ * shall be greater than the FO timeout. Both timeouts are expressed in
+ * milliseconds.
+ *
+ * The IR timeout is set to \ref CHANGE_TO_IR_TIME by default.
+ * The FO timeout is set to \ref CHANGE_TO_FO_TIME by default.
+ *
+ * @warning The values can not be modified after library initialization
+ *
+ * @param comp        The ROHC compressor
+ * @param ir_timeout  The delay (in ms) before going back to IR state
+ *                    to force a context refresh
+ * @param fo_timeout  The delay (in ms) before going back to FO state
+ *                    to force a context refresh
+ * @return            true in case of success, false in case of failure
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_comp_set_periodic_refreshes_time(struct rohc_comp *const comp,
+                                           const uint64_t ir_timeout,
+                                           const uint64_t fo_timeout)
+{
+	/* we need a valid compressor, positive non-zero timeouts,
+	 * and IR timeout > FO timeout */
+	if(comp == NULL)
+	{
+		return false;
+	}
+	if(ir_timeout == 0 || fo_timeout == 0 || ir_timeout <= fo_timeout)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "invalid timeouts for context periodic refreshes "
+		             "(IR timeout = %" PRIu64 " ms, FO timeout = %" PRIu64 " ms)",
+		             ir_timeout, fo_timeout);
+		return false;
+	}
+
+	/* refuse to set values if compressor is in use */
+	if(comp->num_packets > 0)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "unable to modify the timeouts for periodic refreshes "
+		             "after initialization");
+		return false;
+	}
+
+	comp->periodic_refreshes_ir_timeout_time = ir_timeout;
+	comp->periodic_refreshes_fo_timeout_time = fo_timeout;
+
+	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "IR timeout for "
+	          "context periodic refreshes set to %" PRIu64 " ms", ir_timeout);
+	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "FO timeout for "
+	          "context periodic refreshes set to %" PRIu64 " ms", fo_timeout);
 
 	return true;
 }
@@ -2738,12 +2806,12 @@ void rohc_comp_periodic_down_transition(struct rohc_comp_ctxt *const context,
 	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 	           "CID %zu: timeouts for periodic refreshes: FO = %zu / %zu, "
 	           "IR = %zu / %zu", context->cid, context->go_back_fo_count,
-	           context->compressor->periodic_refreshes_fo_timeout,
+	           context->compressor->periodic_refreshes_fo_timeout_pkts,
 	           context->go_back_ir_count,
-	           context->compressor->periodic_refreshes_ir_timeout);
+	           context->compressor->periodic_refreshes_ir_timeout_pkts);
 
 	if(context->go_back_ir_count >=
-	   context->compressor->periodic_refreshes_ir_timeout)
+	   context->compressor->periodic_refreshes_ir_timeout_pkts)
 	{
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		          "CID %zu: periodic change to IR state", context->cid);
@@ -2751,7 +2819,8 @@ void rohc_comp_periodic_down_transition(struct rohc_comp_ctxt *const context,
 		next_state = ROHC_COMP_STATE_IR;
 	}
 	else if((context->compressor->features & ROHC_COMP_FEATURE_TIME_BASED_REFRESHES) != 0 &&
-	        rohc_time_interval(context->go_back_ir_time, pkt_time) >= 1000 * 1000)
+	        rohc_time_interval(context->go_back_ir_time, pkt_time) >=
+	        context->compressor->periodic_refreshes_ir_timeout_time * 1000U)
 	{
 		const uint64_t interval_since_ir_refresh =
 			rohc_time_interval(context->go_back_ir_time, pkt_time);
@@ -2762,7 +2831,7 @@ void rohc_comp_periodic_down_transition(struct rohc_comp_ctxt *const context,
 		next_state = ROHC_COMP_STATE_IR;
 	}
 	else if(context->go_back_fo_count >=
-	        context->compressor->periodic_refreshes_fo_timeout)
+	        context->compressor->periodic_refreshes_fo_timeout_pkts)
 	{
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		          "CID %zu: periodic change to FO state", context->cid);
@@ -2770,7 +2839,8 @@ void rohc_comp_periodic_down_transition(struct rohc_comp_ctxt *const context,
 		next_state = ROHC_COMP_STATE_FO;
 	}
 	else if((context->compressor->features & ROHC_COMP_FEATURE_TIME_BASED_REFRESHES) != 0 &&
-	        rohc_time_interval(context->go_back_fo_time, pkt_time) >= 500 * 1000)
+	        rohc_time_interval(context->go_back_fo_time, pkt_time) >=
+	        context->compressor->periodic_refreshes_fo_timeout_time * 1000U)
 	{
 		const uint64_t interval_since_fo_refresh =
 			rohc_time_interval(context->go_back_fo_time, pkt_time);

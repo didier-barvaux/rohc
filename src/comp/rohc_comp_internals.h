@@ -49,9 +49,17 @@
  *  states) before changing back the state to IR (periodic refreshes) */
 #define CHANGE_TO_IR_COUNT  1700
 
+/** The default maximal delay (in ms) spent in > IR states (= FO and SO states)
+ *  before changing back the state to IR (periodic refreshes) */
+#define CHANGE_TO_IR_TIME  1000U
+
 /** The default maximal number of packets sent in > FO states (= SO state)
  *  before changing back the state to FO (periodic refreshes) */
 #define CHANGE_TO_FO_COUNT  700
+
+/** The default maximal delay (in ms) spent in > FO states (= SO state)
+ *  before changing back the state to FO (periodic refreshes) */
+#define CHANGE_TO_FO_TIME  500U
 
 /** The minimal number of packets that must be sent while in IR state before
  *  being able to switch to the FO state */
@@ -189,10 +197,16 @@ struct rohc_comp
 	size_t wlsb_window_width;
 	/** The maximal number of packets sent in > IR states (= FO and SO
 	 *  states) before changing back the state to IR (periodic refreshes) */
-	size_t periodic_refreshes_ir_timeout;
+	size_t periodic_refreshes_ir_timeout_pkts;
+	/** The maximal delay spent in > IR states (= FO and SO states) before
+	 *  changing back the state to IR (periodic refreshes) */
+	uint64_t periodic_refreshes_ir_timeout_time;
 	/** The maximal number of packets sent in > FO states (= SO state)
 	 *  before changing back the state to FO (periodic refreshes) */
-	size_t periodic_refreshes_fo_timeout;
+	size_t periodic_refreshes_fo_timeout_pkts;
+	/** The maximal delay spent in > FO states (= SO state) before changing back
+	 *  the state to FO (periodic refreshes) */
+	uint64_t periodic_refreshes_fo_timeout_time;
 	/** Maximum Reconstructed Reception Unit */
 	size_t mrru;
 	/** The connection type (currently not used) */
