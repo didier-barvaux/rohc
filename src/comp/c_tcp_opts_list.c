@@ -320,6 +320,19 @@ bool rohc_comp_tcp_are_options_acceptable(const struct rohc_comp *const comp,
 		}
 		opt_types_count[opt_type]++;
 
+		/* TCP options shall occur at most once, except EOL and NOP */
+		if(opt_type != TCP_OPT_EOL &&
+		   opt_type != TCP_OPT_NOP &&
+		   opt_types_count[opt_type] > 1)
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "malformed TCP options: TCP option '%s' (%u) should "
+			           "occur at most once, but it was found at least %u times",
+			           tcp_opt_get_descr(opt_type), opt_type,
+			           opt_types_count[opt_type]);
+			goto bad_opts;
+		}
+
 		/* check the well-known options in order to avoid using the TCP profile with
 		 * malformed TCP packets */
 		switch(opt_type)
@@ -436,26 +449,6 @@ bool rohc_comp_tcp_are_options_acceptable(const struct rohc_comp *const comp,
 		           "options found in packet but only %u options possible",
 		           opt_pos, ROHC_TCP_OPTS_MAX);
 		goto bad_opts;
-	}
-
-	/* TCP options shall occur at most once, except EOL and NOP */
-	{
-		unsigned int opt_type;
-
-		for(opt_type = 0; opt_type <= TCP_OPT_MAX; opt_type++)
-		{
-			if(opt_type != TCP_OPT_EOL &&
-			   opt_type != TCP_OPT_NOP &&
-			   opt_types_count[opt_type] > 1)
-			{
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "malformed TCP options: TCP option '%s' (%u) should "
-				           "occur at most once, but it was found %u times",
-				           tcp_opt_get_descr(opt_type), opt_type,
-				           opt_types_count[opt_type]);
-				goto bad_opts;
-			}
-		}
 	}
 
 	return true;

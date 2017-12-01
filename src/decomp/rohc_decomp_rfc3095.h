@@ -354,6 +354,15 @@ struct rohc_decomp_rfc3095_ctxt
 	/// Whether the decompressed packet contains a 2nd IP header
 	int multiple_ip;
 
+	/** Whether the cache for the CRC-3 value on CRC-STATIC fields is initialized or not */
+	bool is_crc_static_3_cached_valid;
+	/** The cache for the CRC-3 value on CRC-STATIC fields */
+	uint8_t crc_static_3_cached;
+	/** Whether the cache for the CRC-7 value on CRC-STATIC fields is initialized or not */
+	bool is_crc_static_7_cached_valid;
+	/** The cache for the CRC-7 value on CRC-STATIC fields */
+	uint8_t crc_static_7_cached;
+
 	/* below are some information and handlers to manage the next header
 	 * (if any) located just after the IP headers (1 or 2 IP headers) */
 

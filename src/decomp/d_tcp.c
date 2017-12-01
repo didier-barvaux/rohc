@@ -369,7 +369,7 @@ static bool d_tcp_create(const struct rohc_decomp_ctxt *const context,
 	struct d_tcp_context *tcp_context;
 
 	/* allocate memory for the context */
-	*persist_ctxt = malloc(sizeof(struct d_tcp_context));
+	*persist_ctxt = calloc(1, sizeof(struct d_tcp_context));
 	if((*persist_ctxt) == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
@@ -377,7 +377,6 @@ static bool d_tcp_create(const struct rohc_decomp_ctxt *const context,
 		goto quit;
 	}
 	tcp_context = *persist_ctxt;
-	memset(tcp_context, 0, sizeof(struct d_tcp_context));
 
 	/* create the LSB decoding context for the MSN */
 	tcp_context->msn_lsb_ctxt = rohc_lsb_new(16);
@@ -979,8 +978,6 @@ error:
  * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
  * @return                   true if parsing was successful,
  *                           false if packet was malformed
- *
- * @todo TODO: avoid malloc/free of packed_rohc_packet
  */
 static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
                            const uint8_t *const rohc_packet,
@@ -991,8 +988,17 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
                            struct rohc_tcp_extr_bits *const bits,
                            size_t *const rohc_hdr_len)
 {
-	const size_t packed_rohc_packet_max_len = 0xffff + 100;
-	uint8_t *packed_rohc_packet = malloc(packed_rohc_packet_max_len); // TODO: change that
+	const size_t packed_rohc_packet_max_len =
+		sizeof(co_common_t) + /* base header */
+		sizeof(uint32_t) + /* seq_number */
+		sizeof(uint32_t) + /* ack_number */
+		sizeof(uint16_t) + /* ack_stride */
+		sizeof(uint16_t) + /* window */
+		sizeof(uint16_t) + /* ip_id */
+		sizeof(uint16_t) + /* urg_ptr */
+		sizeof(uint8_t)  + /* dscp */
+		sizeof(uint8_t);   /* ttl_hopl */
+	uint8_t packed_rohc_packet[packed_rohc_packet_max_len];
 	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
 	int ret;
 
@@ -1040,18 +1046,13 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 		goto error;
 	}
 
-	/* copy the first byte of header over the last byte of the large CID field
+	/* copy the first bytes of header in a contiguous buffer
 	 * to be able to map packet strutures to the ROHC bytes */
-	if((rohc_remain_len - large_cid_len) > packed_rohc_packet_max_len)
-	{
-		rohc_decomp_warn(context, "internal problem: internal buffer too small");
-		goto error;
-	}
 	packed_rohc_packet[0] = rohc_packet[0];
 	memcpy(packed_rohc_packet + 1, rohc_packet + 1 + large_cid_len,
-	       rohc_remain_len - 1 - large_cid_len);
+	       rohc_min(rohc_remain_len - large_cid_len, packed_rohc_packet_max_len) - 1);
 	rohc_remain_data = packed_rohc_packet;
-	rohc_remain_len -= large_cid_len;
+	rohc_remain_len = rohc_min(rohc_remain_len - large_cid_len, packed_rohc_packet_max_len);
 	*rohc_hdr_len = 0;
 
 	/* parse the packet type we detected earlier */
@@ -1130,6 +1131,10 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 	rohc_decomp_dump_buf(context, "ROHC base header", packed_rohc_packet,
 	                     *rohc_hdr_len);
 
+	/* revert the buffer trick since the base header is parsed */
+	rohc_remain_data = rohc_packet + large_cid_len + (*rohc_hdr_len);
+	rohc_remain_len = rohc_length - large_cid_len - (*rohc_hdr_len);
+
 	/* innermost IP-ID behavior */
 	if(inner_ip_bits->id_behavior_nr > 0)
 	{
@@ -1203,11 +1208,9 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 	*rohc_hdr_len += large_cid_len;
 	assert((*rohc_hdr_len) <= rohc_length);
 
-	free(packed_rohc_packet);
 	return true;
 
 error:
-	free(packed_rohc_packet);
 	return false;
 }
 
@@ -2489,7 +2492,58 @@ static void d_tcp_reset_extr_bits(const struct rohc_decomp_ctxt *const context,
 	size_t i;
 
 	/* set every bits and sizes to 0 */
-	memset(bits, 0, sizeof(struct rohc_tcp_extr_bits));
+	for(i = 0; i < ROHC_TCP_MAX_IP_HDRS; i++)
+	{
+		size_t j;
+
+		bits->ip[i].version = 0;
+		bits->ip[i].dscp_bits_nr = 0;
+		bits->ip[i].ecn_flags_bits_nr = 0;
+		bits->ip[i].id_behavior_nr = 0;
+		bits->ip[i].id.bits_nr = 0;
+		bits->ip[i].df_nr = 0;
+		bits->ip[i].ttl_hl.bits_nr = 0;
+		bits->ip[i].proto_nr = 0;
+		bits->ip[i].flowid_nr = 0;
+		bits->ip[i].saddr_nr = 0;
+		bits->ip[i].daddr_nr = 0;
+		for(j = 0; j < ROHC_TCP_MAX_IP_EXT_HDRS; j++)
+		{
+			bits->ip[i].opts[j].len = 0;
+		}
+		bits->ip[i].opts_nr = 0;
+		bits->ip[i].opts_len = 0;
+	}
+	bits->ip_nr = 0;
+	bits->msn.bits_nr = 0;
+	bits->src_port_nr = 0;
+	bits->dst_port_nr = 0;
+	bits->seq.bits_nr = 0;
+	bits->seq_scaled.bits_nr = 0;
+	bits->ack.bits_nr = 0;
+	bits->ack_stride.bits_nr = 0;
+	bits->ack_scaled.bits_nr = 0;
+	bits->ecn_used_bits_nr = 0;
+	bits->res_flags_bits_nr = 0;
+	bits->ecn_flags_bits_nr = 0;
+	bits->urg_flag_bits_nr = 0;
+	bits->ack_flag_bits_nr = 0;
+	bits->psh_flag_bits_nr = 0;
+	bits->rsf_flags_bits_nr = 0;
+	bits->psh_flag_bits_nr = 0;
+	bits->rsf_flags_bits_nr = 0;
+	bits->window.bits_nr = 0;
+	bits->urg_ptr.bits_nr = 0;
+	bits->tcp_opts.nr = 0;
+	for(i = 0; i < ROHC_TCP_OPTS_MAX; i++)
+	{
+		bits->tcp_opts.expected_dynamic[i] = false;
+		bits->tcp_opts.found[i] = false;
+	}
+	for(i = 0; i <= MAX_TCP_OPTION_INDEX; i++)
+	{
+		bits->tcp_opts.bits[i].used = false;
+	}
 
 	/* if context handled at least one packet, init the list of IP headers */
 	if(context->num_recv_packets >= 1)
@@ -2528,16 +2582,6 @@ static void d_tcp_reset_extr_bits(const struct rohc_decomp_ctxt *const context,
 	for(i = 0; i < ROHC_TCP_MAX_IP_HDRS; i++)
 	{
 		bits->ip[i].ttl_hl.p = ROHC_LSB_SHIFT_TCP_TTL;
-	}
-
-	/* no parsed TCP options at the beginning */
-	bits->tcp_opts.nr = 0;
-	memset(bits->tcp_opts.bits, 0,
-	       (MAX_TCP_OPTION_INDEX + 1) * sizeof(struct d_tcp_opt_ctxt));
-	for(i = 0; i < ROHC_TCP_OPTS_MAX; i++)
-	{
-		bits->tcp_opts.expected_dynamic[i] = false;
-		bits->tcp_opts.found[i] = false;
 	}
 }
 

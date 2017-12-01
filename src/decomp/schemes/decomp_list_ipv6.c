@@ -58,20 +58,18 @@ static size_t rohc_build_ip6_extension(const struct list_decomp *const decomp,
 
 
 /**
- * @brief Create one context for decompressing lists of IPv6 extension headers
+ * @brief Init one context for decompressing lists of IPv6 extension headers
  *
  * @param decomp         The context to create
  * @param trace_cb       The function to call for printing traces
  * @param trace_cb_priv  An optional private context, may be NULL
  * @param profile_id     The ID of the associated decompression profile
  */
-void rohc_decomp_list_ipv6_new(struct list_decomp *const decomp,
-                               rohc_trace_callback2_t trace_cb,
-                               void *const trace_cb_priv,
-                               const int profile_id)
+void rohc_decomp_list_ipv6_init(struct list_decomp *const decomp,
+                                rohc_trace_callback2_t trace_cb,
+                                void *const trace_cb_priv,
+                                const int profile_id)
 {
-	memset(decomp, 0, sizeof(struct list_decomp));
-
 	/* specific callbacks for IPv6 extension headers */
 	decomp->check_item = check_ip6_item;
 	decomp->get_item_size = get_ip6_ext_size;
@@ -83,17 +81,6 @@ void rohc_decomp_list_ipv6_new(struct list_decomp *const decomp,
 	decomp->trace_callback = trace_cb;
 	decomp->trace_callback_priv = trace_cb_priv;
 	decomp->profile_id = profile_id;
-}
-
-
-/**
- * @brief Free one context for decompressing lists of IPv6 extension headers
- *
- * @param decomp          The context to destroy
- */
-void rohc_decomp_list_ipv6_free(struct list_decomp *const decomp)
-{
-	memset(decomp, 0, sizeof(struct list_decomp));
 }
 
 

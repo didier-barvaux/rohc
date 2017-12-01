@@ -314,6 +314,7 @@ unsigned int ip_get_hdrlen(const struct ip_packet *const ip)
 
 bool ip_is_fragment(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));
+static inline
 ip_version ip_get_version(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));
 uint8_t ip_get_protocol(const struct ip_packet *const ip)
@@ -338,6 +339,9 @@ void ip_set_daddr(struct ip_packet *const ip, const uint8_t *value)
 
 /* IPv4 specific functions */
 
+static inline
+size_t ipv4_get_hdrlen(const struct ip_packet *const ip)
+	__attribute__((warn_unused_result, nonnull(1), pure));
 const struct ipv4_hdr * ipv4_get_header(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));
 uint16_t ipv4_get_id(const struct ip_packet *const ip)
@@ -358,6 +362,9 @@ void ipv4_set_df(struct ip_packet *const ip, const int value)
 
 /* IPv6 specific functions */
 
+static inline
+size_t ipv6_get_hdrlen(const struct ip_packet *const ip)
+	__attribute__((warn_unused_result, nonnull(1), const));
 const struct ipv6_hdr * ipv6_get_header(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));
 uint32_t ip_get_flow_label(const struct ip_packet *const ip)
@@ -372,6 +379,36 @@ unsigned short ip_get_extension_size(const uint8_t *const ext)
 	__attribute__((warn_unused_result, nonnull(1), pure));
 unsigned short ip_get_total_extension_size(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1)));
+
+
+/**
+ * @brief Get the IP version of an IP packet
+ *
+ * The function handles \ref ip_packet whose \ref ip_packet::version is
+ * \ref IP_UNKNOWN.
+ *
+ * @param ip The IP packet to analyze
+ * @return   The version of the IP packet
+ */
+static inline
+ip_version ip_get_version(const struct ip_packet *const ip)
+{
+	return ip->version;
+}
+
+
+static inline
+size_t ipv4_get_hdrlen(const struct ip_packet *const ip)
+{
+	return (ip->header.v4.ihl * 4);
+}
+
+
+static inline
+size_t ipv6_get_hdrlen(const struct ip_packet *const ip __attribute__((unused)))
+{
+	return sizeof(struct ipv6_hdr);
+}
 
 
 #endif

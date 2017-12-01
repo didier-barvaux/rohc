@@ -198,6 +198,15 @@ struct rohc_comp_rfc3095_ctxt
 	/// Information about the inner IP header
 	struct ip_header_info inner_ip_flags;
 
+	/** Whether the cache for the CRC-3 value on CRC-STATIC fields is initialized or not */
+	bool is_crc_static_3_cached_valid;
+	/** The cache for the CRC-3 value on CRC-STATIC fields */
+	uint8_t crc_static_3_cached;
+	/** Whether the cache for the CRC-7 value on CRC-STATIC fields is initialized or not */
+	bool is_crc_static_7_cached_valid;
+	/** The cache for the CRC-7 value on CRC-STATIC fields */
+	uint8_t crc_static_7_cached;
+
 	/// Temporary variables that are used during one single compression of packet
 	struct generic_tmp_vars tmp;
 

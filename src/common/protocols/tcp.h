@@ -55,7 +55,7 @@
  * The limit value was chosen arbitrarily. It should handle most real-life case
  * without hurting performances nor memory footprint.
  */
-#define ROHC_TCP_MAX_IP_HDRS        10U
+#define ROHC_TCP_MAX_IP_HDRS        2U
 
 
 /**
@@ -64,7 +64,7 @@
  * The limit value was chosen arbitrarily. It should handle most real-life case
  * without hurting performances nor memory footprint.
  */
-#define ROHC_TCP_MAX_IP_EXT_HDRS    20U
+#define ROHC_TCP_MAX_IP_EXT_HDRS    5U
 
 
 /**
@@ -612,7 +612,7 @@ typedef struct
 typedef struct
 {
 #if WORDS_BIGENDIAN == 1
-	uint16_t discriminator:1;   /**< '0'                                    [  4 ] */
+	uint8_t discriminator:1;    /**< '0'                                    [  1 ] */
 	uint8_t ack_num1:7;         /**< lsb(15, 8191)                          [ 15 ] */
 	uint8_t ack_num2;           /**< sequel of \e ack_num1                  [  - ] */
 	uint8_t msn:4;              /**< lsb(4, 4)                              [  4 ] */

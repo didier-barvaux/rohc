@@ -95,8 +95,8 @@ void ip_create(struct ip_packet *const ip,
 		/* copy the IPv4 header */
 		memcpy(&ip->header.v4, packet, sizeof(struct ipv4_hdr));
 
-		if(ip_get_hdrlen(ip) < sizeof(struct ipv4_hdr) ||
-		   ip_get_hdrlen(ip) > size)
+		if(ipv4_get_hdrlen(ip) < sizeof(struct ipv4_hdr) ||
+		   ipv4_get_hdrlen(ip) > size)
 		{
 			goto malformed;
 		}
@@ -450,11 +450,11 @@ unsigned int ip_get_hdrlen(const struct ip_packet *const ip)
 
 	if(ip->version == IPV4)
 	{
-		len = ip->header.v4.ihl * 4;
+		len = ipv4_get_hdrlen(ip);
 	}
 	else if(ip->version == IPV6)
 	{
-		len = sizeof(struct ipv6_hdr);
+		len = ipv6_get_hdrlen(ip);
 	}
 	else
 	{
@@ -466,21 +466,6 @@ unsigned int ip_get_hdrlen(const struct ip_packet *const ip)
 	}
 
 	return len;
-}
-
-
-/**
- * @brief Get the IP version of an IP packet
- *
- * The function handles \ref ip_packet whose \ref ip_packet::version is
- * \ref IP_UNKNOWN.
- *
- * @param ip The IP packet to analyze
- * @return   The version of the IP packet
- */
-ip_version ip_get_version(const struct ip_packet *const ip)
-{
-	return ip->version;
 }
 
 
@@ -990,7 +975,7 @@ static bool ip_find_next_layer(const struct ip_packet *const ip,
 		{
 			goto error;
 		}
-		ip_hdr_len = ip_get_hdrlen(ip);
+		ip_hdr_len = ipv4_get_hdrlen(ip);
 
 		nh->data = ((uint8_t *) ip->data) + ip_hdr_len;
 		nh->len = ip->size - ip_hdr_len;

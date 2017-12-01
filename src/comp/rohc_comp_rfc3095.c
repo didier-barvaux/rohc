@@ -307,7 +307,7 @@ static int header_fields(const struct rohc_comp_ctxt *const context,
                          int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 7)));
 
-static uint8_t compute_uo_crc(const struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt,
+static uint8_t compute_uo_crc(struct rohc_comp_ctxt *const context,
                               const struct net_pkt *const uncomp_pkt,
                               const rohc_crc_type_t crc_type,
                               const uint8_t crc_init,
@@ -548,14 +548,13 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 	rohc_comp_debug(context, "new generic context required for a new stream");
 
 	/* allocate memory for the generic part of the context */
-	rfc3095_ctxt = malloc(sizeof(struct rohc_comp_rfc3095_ctxt));
+	rfc3095_ctxt = calloc(1, sizeof(struct rohc_comp_rfc3095_ctxt));
 	if(rfc3095_ctxt == NULL)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		           "no memory for generic part of the profile context");
 		goto quit;
 	}
-	memset(rfc3095_ctxt, 0, sizeof(struct rohc_comp_rfc3095_ctxt));
 	context->specific = rfc3095_ctxt;
 
 	/* initialize some context variables:
@@ -635,6 +634,9 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 	rfc3095_ctxt->code_uo_remainder = NULL;
 	rfc3095_ctxt->compute_crc_static = compute_crc_static;
 	rfc3095_ctxt->compute_crc_dynamic = compute_crc_dynamic;
+
+	rfc3095_ctxt->is_crc_static_3_cached_valid = false;
+	rfc3095_ctxt->is_crc_static_7_cached_valid = false;
 
 	return true;
 
@@ -722,7 +724,7 @@ bool rohc_comp_rfc3095_check_profile(const struct rohc_comp *const comp,
 
 	/* if outer header is IPv4, check the presence of options */
 	if(version == IPV4 &&
-	   ip_get_hdrlen(&packet->outer_ip) != sizeof(struct ipv4_hdr))
+	   ipv4_get_hdrlen(&packet->outer_ip) != sizeof(struct ipv4_hdr))
 	{
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "the outer IPv4 packet is not supported by the profile: "
@@ -774,7 +776,7 @@ bool rohc_comp_rfc3095_check_profile(const struct rohc_comp *const comp,
 
 		/* if inner header is IPv4, check the presence of options */
 		if(version == IPV4 &&
-		   ip_get_hdrlen(&packet->inner_ip) != sizeof(struct ipv4_hdr))
+		   ipv4_get_hdrlen(&packet->inner_ip) != sizeof(struct ipv4_hdr))
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "the inner IPv4 packet is not supported by the profile: "
@@ -1883,6 +1885,10 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	rohc_comp_debug(context, "CRC (header length = %zu, crc = 0x%x)",
 	                counter, rohc_pkt[crc_position]);
 
+	/* invalid CRC-STATIC cache since some STATIC fields may have changed */
+	rfc3095_ctxt->is_crc_static_3_cached_valid = false;
+	rfc3095_ctxt->is_crc_static_7_cached_valid = false;
+
 	return counter;
 
 error:
@@ -2026,6 +2032,10 @@ static int code_IR_DYN_packet(struct rohc_comp_ctxt *const context,
 	                                       context->compressor->crc_table_8);
 	rohc_comp_debug(context, "CRC (header length = %zu, crc = 0x%x)",
 	                counter, rohc_pkt[crc_position]);
+
+	/* invalid CRC-STATIC cache since some STATIC fields may have changed */
+	rfc3095_ctxt->is_crc_static_3_cached_valid = false;
+	rfc3095_ctxt->is_crc_static_7_cached_valid = false;
 
 	return counter;
 
@@ -2756,7 +2766,7 @@ static int code_UO0_packet(struct rohc_comp_ctxt *const context,
 	 * if the CRC-STATIC fields did not change */
 	assert(rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 <= 4);
 	f_byte = (rfc3095_ctxt->sn & 0x0f) << 3;
-	crc = compute_uo_crc(rfc3095_ctxt, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3,
+	crc = compute_uo_crc(context, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3,
 	                     context->compressor->crc_table_3);
 	f_byte |= crc;
 	rohc_comp_debug(context, "first byte = 0x%02x (CRC = 0x%x)", f_byte, crc);
@@ -2899,7 +2909,7 @@ static int rohc_comp_rfc3095_build_uo1_pkt(struct rohc_comp_ctxt *const context,
 		rohc_comp_warn(context, "ROHC packet is too small for SN/CRC byte");
 		goto error;
 	}
-	crc = compute_uo_crc(rfc3095_ctxt, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3,
+	crc = compute_uo_crc(context, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3,
 	                     context->compressor->crc_table_3);
 	rohc_pkt[counter] = ((rfc3095_ctxt->sn & 0x1f) << 3) | (crc & 0x07);
 	rohc_comp_debug(context, "SN (%d) + CRC (%x) = 0x%02x",
@@ -3036,7 +3046,7 @@ static int rohc_comp_rfc3095_build_uo1rtp_pkt(struct rohc_comp_ctxt *const conte
 	}
 	rohc_pkt[counter] = ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 7;
 	rohc_pkt[counter] |= (rfc3095_ctxt->sn & 0x0f) << 3;
-	crc = compute_uo_crc(rfc3095_ctxt, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3,
+	crc = compute_uo_crc(context, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3,
 	                     context->compressor->crc_table_3);
 	rohc_pkt[counter] |= crc & 0x07;
 	rohc_comp_debug(context, "M (%d) + SN (%d) + CRC (%x) = 0x%02x",
@@ -3184,7 +3194,7 @@ static int rohc_comp_rfc3095_build_uo1ts_pkt(struct rohc_comp_ctxt *const contex
 		rohc_comp_warn(context, "ROHC packet is too small for SN/CRC byte");
 		goto error;
 	}
-	crc = compute_uo_crc(rfc3095_ctxt, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3,
+	crc = compute_uo_crc(context, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3,
 	                     context->compressor->crc_table_3);
 	rohc_pkt[counter] = ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 7;
 	rohc_pkt[counter] |= (rfc3095_ctxt->sn & 0x0f) << 3;
@@ -3434,6 +3444,10 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 			                rtp_context->tmp.nr_ts_bits_more_than_2,
 			                rtp_context->tmp.nr_ts_bits_ext3);
 
+			/* invalid CRC-STATIC cache since some STATIC fields may have changed */
+			rfc3095_ctxt->is_crc_static_3_cached_valid = false;
+			rfc3095_ctxt->is_crc_static_7_cached_valid = false;
+
 			break;
 		}
 		case ROHC_EXT_UNKNOWN:
@@ -3455,7 +3469,7 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 		rohc_comp_warn(context, "ROHC packet is too small for SN/CRC byte");
 		goto error;
 	}
-	crc = compute_uo_crc(rfc3095_ctxt, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3,
+	crc = compute_uo_crc(context, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3,
 	                     context->compressor->crc_table_3);
 	s_byte = crc & 0x07;
 	switch(extension)
@@ -3737,16 +3751,6 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 		counter++;
 	}
 
-	/* part 5: partially calculate the third byte, then remember the position
-	 *         of the third byte, its final value is currently unknown
-	 *
-	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
-	 * if the CRC-STATIC fields did not change */
-	t_byte = compute_uo_crc(rfc3095_ctxt, uncomp_pkt, ROHC_CRC_TYPE_7, CRC_INIT_7,
-	                        context->compressor->crc_table_7);
-	t_byte_position = counter;
-	counter++;
-
 	/* part 6: decide which extension to use */
 	extension = rfc3095_ctxt->decide_extension(context);
 	if(extension == ROHC_EXT_UNKNOWN)
@@ -3756,6 +3760,23 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 	}
 	rohc_comp_debug(context, "extension '%s' chosen",
 	                rohc_get_ext_descr(extension));
+
+	if(extension == ROHC_EXT_3)
+	{
+		/* invalid CRC-STATIC cache since some STATIC fields may have changed */
+		rfc3095_ctxt->is_crc_static_3_cached_valid = false;
+		rfc3095_ctxt->is_crc_static_7_cached_valid = false;
+	}
+
+	/* part 5: partially calculate the third byte, then remember the position
+	 *         of the third byte, its final value is currently unknown
+	 *
+	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
+	 * if the CRC-STATIC fields did not change */
+	t_byte = compute_uo_crc(context, uncomp_pkt, ROHC_CRC_TYPE_7, CRC_INIT_7,
+	                        context->compressor->crc_table_7);
+	t_byte_position = counter;
+	counter++;
 
 	/* parts 2, 4, 5: complete the three packet-specific bytes and copy them
 	 * in packet */
@@ -6097,19 +6118,21 @@ static int header_fields(const struct rohc_comp_ctxt *const context,
 /**
  * @brief Compute the CRC for a UO* packet
  *
- * @param rfc3095_ctxt   The generic compression context
+ * @param context     The compression context to update
  * @param uncomp_pkt  The uncompressed packet to encode
  * @param crc_type    The type of CRC to compute
  * @param crc_init    The initial value of the CRC
  * @param crc_table   The table of pre-computed CRC
  * @return            The computed CRC
  */
-static uint8_t compute_uo_crc(const struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt,
+static uint8_t compute_uo_crc(struct rohc_comp_ctxt *const context,
                               const struct net_pkt *const uncomp_pkt,
                               const rohc_crc_type_t crc_type,
                               const uint8_t crc_init,
                               const uint8_t *const crc_table)
 {
+	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
+		(struct rohc_comp_rfc3095_ctxt *) context->specific;
 	const uint8_t *outer_ip_hdr;
 	const uint8_t *inner_ip_hdr;
 	const uint8_t *next_header;
@@ -6127,8 +6150,37 @@ static uint8_t compute_uo_crc(const struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt,
 	next_header = uncomp_pkt->transport->data;
 
 	/* compute CRC on CRC-STATIC fields */
-	crc = rfc3095_ctxt->compute_crc_static(outer_ip_hdr, inner_ip_hdr, next_header,
-	                                       crc_type, crc, crc_table);
+	if(rfc3095_ctxt->is_crc_static_3_cached_valid && crc_type == ROHC_CRC_TYPE_3)
+	{
+		crc = rfc3095_ctxt->crc_static_3_cached;
+		rohc_comp_debug(context, "use CRC-STATIC-3 = 0x%x from cache", crc);
+	}
+	else if(rfc3095_ctxt->is_crc_static_7_cached_valid && crc_type == ROHC_CRC_TYPE_7)
+	{
+		crc = rfc3095_ctxt->crc_static_7_cached;
+		rohc_comp_debug(context, "use CRC-STATIC-7 = 0x%x from cache", crc);
+	}
+	else
+	{
+		crc = rfc3095_ctxt->compute_crc_static(outer_ip_hdr, inner_ip_hdr, next_header,
+		                                       crc_type, crc, crc_table);
+		rohc_comp_debug(context, "compute CRC-STATIC-%d = 0x%x from packet",
+		                crc_type, crc);
+
+		switch(crc_type)
+		{
+			case ROHC_CRC_TYPE_3:
+				rfc3095_ctxt->crc_static_3_cached = crc;
+				rfc3095_ctxt->is_crc_static_3_cached_valid = true;
+				break;
+			case ROHC_CRC_TYPE_7:
+				rfc3095_ctxt->crc_static_7_cached = crc;
+				rfc3095_ctxt->is_crc_static_7_cached_valid = true;
+				break;
+			default:
+				break;
+		}
+	}
 
 	/* compute CRC on CRC-DYNAMIC fields */
 	crc = rfc3095_ctxt->compute_crc_dynamic(outer_ip_hdr, inner_ip_hdr, next_header,

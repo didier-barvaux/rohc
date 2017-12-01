@@ -262,12 +262,11 @@ struct rohc_comp * rohc_comp_new2(const rohc_cid_type_t cid_type,
 	}
 
 	/* allocate memory for the ROHC compressor */
-	comp = malloc(sizeof(struct rohc_comp));
+	comp = calloc(1, sizeof(struct rohc_comp));
 	if(comp == NULL)
 	{
 		goto error;
 	}
-	memset(comp, 0, sizeof(struct rohc_comp));
 
 	comp->medium.cid_type = cid_type;
 	comp->medium.max_cid = max_cid;

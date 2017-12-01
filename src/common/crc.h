@@ -33,6 +33,10 @@
 #define ROHC_COMMON_CRC_H
 
 #include "ip.h"
+#include "protocols/udp.h"
+#include "protocols/rtp.h"
+#include "protocols/esp.h"
+#include "protocols/tcp.h"
 
 #include <stdbool.h>
 
@@ -93,6 +97,7 @@ uint8_t compute_crc_dynamic(const uint8_t *const outer_ip,
                             const uint8_t *const crc_table)
 	__attribute__((nonnull(1, 6), warn_unused_result));
 
+static inline
 uint8_t udp_compute_crc_static(const uint8_t *const outer_ip,
                                const uint8_t *const inner_ip,
                                const uint8_t *const next_header,
@@ -100,6 +105,7 @@ uint8_t udp_compute_crc_static(const uint8_t *const outer_ip,
                                const uint8_t init_val,
                                const uint8_t *const crc_table)
 	__attribute__((nonnull(1, 3, 6), warn_unused_result));
+static inline
 uint8_t udp_compute_crc_dynamic(const uint8_t *const outer_ip,
                                 const uint8_t *const inner_ip,
                                 const uint8_t *const next_header,
@@ -108,6 +114,7 @@ uint8_t udp_compute_crc_dynamic(const uint8_t *const outer_ip,
                                 const uint8_t *const crc_table)
 	__attribute__((nonnull(1, 3, 6), warn_unused_result));
 
+static inline
 uint8_t esp_compute_crc_static(const uint8_t *const outer_ip,
                                const uint8_t *const inner_ip,
                                const uint8_t *const next_header,
@@ -115,6 +122,7 @@ uint8_t esp_compute_crc_static(const uint8_t *const outer_ip,
                                const uint8_t init_val,
                                const uint8_t *const crc_table)
 	__attribute__((nonnull(1, 3, 6), warn_unused_result));
+static inline
 uint8_t esp_compute_crc_dynamic(const uint8_t *const outer_ip,
                                 const uint8_t *const inner_ip,
                                 const uint8_t *const next_header,
@@ -123,6 +131,7 @@ uint8_t esp_compute_crc_dynamic(const uint8_t *const outer_ip,
                                 const uint8_t *const crc_table)
 	__attribute__((nonnull(1, 3, 6), warn_unused_result));
 
+static inline
 uint8_t rtp_compute_crc_static(const uint8_t *const outer_ip,
                                const uint8_t *const inner_ip,
                                const uint8_t *const next_header,
@@ -130,6 +139,7 @@ uint8_t rtp_compute_crc_static(const uint8_t *const outer_ip,
                                const uint8_t init_val,
                                const uint8_t *const crc_table)
 	__attribute__((nonnull(1, 3, 6), warn_unused_result));
+static inline
 uint8_t rtp_compute_crc_dynamic(const uint8_t *const outer_ip,
                                 const uint8_t *const inner_ip,
                                 const uint8_t *const next_header,
@@ -137,6 +147,255 @@ uint8_t rtp_compute_crc_dynamic(const uint8_t *const outer_ip,
                                 const uint8_t init_val,
                                 const uint8_t *const crc_table)
 	__attribute__((nonnull(1, 3, 6), warn_unused_result));
+
+/**
+ * @brief Compute the CRC-STATIC part of an UDP or UDP-Lite header
+ *
+ * Concerned fields are:
+ *  all fields expect those for CRC-DYNAMIC
+ *    - bytes 1-4 in original UDP header
+ *
+ * @param outer_ip    The outer IP packet
+ * @param inner_ip    The inner IP packet if there is 2 IP headers, NULL otherwise
+ * @param next_header The next header located after the IP header(s)
+ * @param crc_type    The type of CRC
+ * @param init_val    The initial CRC value
+ * @param crc_table   The pre-computed table for fast CRC computation
+ * @return            The checksum
+ */
+static inline
+uint8_t udp_compute_crc_static(const uint8_t *const outer_ip,
+                               const uint8_t *const inner_ip,
+                               const uint8_t *const next_header,
+                               const rohc_crc_type_t crc_type,
+                               const uint8_t init_val,
+                               const uint8_t *const crc_table)
+{
+	uint8_t crc = init_val;
+	const struct udphdr *udp;
+
+	/* compute the CRC-STATIC value for IP and IP2 headers */
+	crc = compute_crc_static(outer_ip, inner_ip, next_header,
+	                         crc_type, crc, crc_table);
+
+	/* get the start of UDP header */
+	udp = (struct udphdr *) next_header;
+
+	/* bytes 1-4 (Source Port, Destination Port) */
+	crc = crc_calculate(crc_type, (uint8_t *)(&udp->source), 4,
+	                    crc, crc_table);
+
+	return crc;
+}
+
+
+/**
+ * @brief Compute the CRC-DYNAMIC part of an UDP or UDP-Lite header
+ *
+ * Concerned fields are:
+ *   - bytes 5-6, 7-8 in original UDP header
+ *
+ * @param outer_ip    The outer IP packet
+ * @param inner_ip    The inner IP packet if there is 2 IP headers, NULL otherwise
+ * @param next_header The next header located after the IP header(s)
+ * @param crc_type    The type of CRC
+ * @param init_val    The initial CRC value
+ * @param crc_table   The pre-computed table for fast CRC computation
+ * @return            The checksum
+ */
+static inline
+uint8_t udp_compute_crc_dynamic(const uint8_t *const outer_ip,
+                                const uint8_t *const inner_ip,
+                                const uint8_t *const next_header,
+                                const rohc_crc_type_t crc_type,
+                                const uint8_t init_val,
+                                const uint8_t *const crc_table)
+{
+	uint8_t crc = init_val;
+	const struct udphdr *udp;
+
+	/* compute the CRC-DYNAMIC value for IP and IP2 headers */
+	crc = compute_crc_dynamic(outer_ip, inner_ip, next_header,
+	                          crc_type, crc, crc_table);
+
+	/* get the start of UDP header */
+	udp = (struct udphdr *) next_header;
+
+	/* bytes 5-8 (Length, Checksum) */
+	crc = crc_calculate(crc_type, (uint8_t *)(&udp->len), 4,
+	                    crc, crc_table);
+
+	return crc;
+}
+
+
+/**
+ * @brief Compute the CRC-STATIC part of an ESP header
+ *
+ * Concerned fields are:
+ *  all fields expect those for CRC-DYNAMIC
+ *    - bytes 1-4 in original ESP header
+ *
+ * @param outer_ip    The outer IP packet
+ * @param inner_ip    The inner IP packet if there is 2 IP headers, NULL otherwise
+ * @param next_header The next header located after the IP header(s)
+ * @param crc_type    The type of CRC
+ * @param init_val    The initial CRC value
+ * @param crc_table   The pre-computed table for fast CRC computation
+ * @return            The checksum
+ */
+static inline
+uint8_t esp_compute_crc_static(const uint8_t *const outer_ip,
+                               const uint8_t *const inner_ip,
+                               const uint8_t *const next_header,
+                               const rohc_crc_type_t crc_type,
+                               const uint8_t init_val,
+                               const uint8_t *const crc_table)
+{
+	uint8_t crc = init_val;
+	const struct esphdr *esp;
+
+	/* compute the CRC-STATIC value for IP and IP2 headers */
+	crc = compute_crc_static(outer_ip, inner_ip, next_header,
+	                         crc_type, crc, crc_table);
+
+	/* get the start of ESP header */
+	esp = (struct esphdr *) next_header;
+
+	/* bytes 1-4 (Security parameters index) */
+	crc = crc_calculate(crc_type, (uint8_t *)(&esp->spi), 4,
+	                    crc, crc_table);
+
+	return crc;
+}
+
+
+/**
+ * @brief Compute the CRC-DYNAMIC part of an ESP header
+ *
+ * Concerned fields are:
+ *   - bytes 5-8 in original ESP header
+ *
+ * @param outer_ip    The outer IP packet
+ * @param inner_ip    The inner IP packet if there is 2 IP headers, NULL otherwise
+ * @param next_header The next header located after the IP header(s)
+ * @param crc_type    The type of CRC
+ * @param init_val    The initial CRC value
+ * @param crc_table   The pre-computed table for fast CRC computation
+ * @return            The checksum
+ */
+static inline
+uint8_t esp_compute_crc_dynamic(const uint8_t *const outer_ip,
+                                const uint8_t *const inner_ip,
+                                const uint8_t *const next_header,
+                                const rohc_crc_type_t crc_type,
+                                const uint8_t init_val,
+                                const uint8_t *const crc_table)
+{
+	uint8_t crc = init_val;
+	const struct esphdr *esp;
+
+	/* compute the CRC-DYNAMIC value for IP and IP2 headers */
+	crc = compute_crc_dynamic(outer_ip, inner_ip, next_header,
+	                          crc_type, crc, crc_table);
+
+	/* get the start of ESP header */
+	esp = (struct esphdr *) next_header;
+
+	/* bytes 5-8 (Sequence number) */
+	crc = crc_calculate(crc_type, (uint8_t *)(&esp->sn), 4,
+	                    crc, crc_table);
+
+	return crc;
+}
+
+
+/**
+ * @brief Compute the CRC-STATIC part of a RTP header
+ *
+ * Concerned fields are:
+ *  all fields expect those for CRC-DYNAMIC
+ *    - bytes 1, 9-12 (and CSRC list) in original RTP header
+ *
+ * @param outer_ip    The outer IP packet
+ * @param inner_ip    The inner IP packet if there is 2 IP headers, NULL otherwise
+ * @param next_header The next header located after the IP header(s)
+ * @param crc_type    The type of CRC
+ * @param init_val    The initial CRC value
+ * @param crc_table   The pre-computed table for fast CRC computation
+ * @return            The checksum
+ */
+static inline
+uint8_t rtp_compute_crc_static(const uint8_t *const outer_ip,
+                               const uint8_t *const inner_ip,
+                               const uint8_t *const next_header,
+                               const rohc_crc_type_t crc_type,
+                               const uint8_t init_val,
+                               const uint8_t *const crc_table)
+{
+	uint8_t crc = init_val;
+	const struct rtphdr *rtp;
+
+	/* compute the CRC-STATIC value for IP, IP2 and UDP headers */
+	crc = udp_compute_crc_static(outer_ip, inner_ip, next_header,
+	                             crc_type, crc, crc_table);
+
+	/* get the start of RTP header */
+	rtp = (struct rtphdr *) (next_header + sizeof(struct udphdr));
+
+	/* byte 1 (Version, P, X, CC) */
+	crc = crc_calculate(crc_type, (uint8_t *)rtp, 1, crc, crc_table);
+
+	/* bytes 9-12 (SSRC identifier) */
+	crc = crc_calculate(crc_type, (uint8_t *)(&rtp->ssrc), 4,
+	                    crc, crc_table);
+
+	/* TODO: CSRC identifiers */
+
+	return crc;
+}
+
+
+/**
+ * @brief Compute the CRC-DYNAMIC part of a RTP header
+ *
+ * Concerned fields are:
+ *   - bytes 2, 3-4, 5-8 in original RTP header
+ *
+ * @param outer_ip    The outer IP packet
+ * @param inner_ip    The inner IP packet if there is 2 IP headers, NULL otherwise
+ * @param next_header The next header located after the IP header(s)
+ * @param crc_type    The type of CRC
+ * @param init_val    The initial CRC value
+ * @param crc_table   The pre-computed table for fast CRC computation
+ * @return            The checksum
+ */
+static inline
+uint8_t rtp_compute_crc_dynamic(const uint8_t *const outer_ip,
+                                const uint8_t *const inner_ip,
+                                const uint8_t *const next_header,
+                                const rohc_crc_type_t crc_type,
+                                const uint8_t init_val,
+                                const uint8_t *const crc_table)
+{
+	uint8_t crc = init_val;
+	const struct rtphdr *rtp;
+
+	/* compute the CRC-DYNAMIC value for IP, IP2 and UDP headers */
+	crc = udp_compute_crc_dynamic(outer_ip, inner_ip, next_header,
+	                              crc_type, crc, crc_table);
+
+	/* get the start of RTP header */
+	rtp = (struct rtphdr *) (next_header + sizeof(struct udphdr));
+
+	/* bytes 2-8 (Marker, Payload Type, Sequence Number, Timestamp) */
+	crc = crc_calculate(crc_type, ((uint8_t *) rtp) + 1, 7,
+	                    crc, crc_table);
+
+	return crc;
+}
+
+
 
 #endif
 

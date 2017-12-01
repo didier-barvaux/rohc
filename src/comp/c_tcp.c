@@ -434,14 +434,13 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 	size_t i;
 
 	/* create the TCP part of the profile context */
-	tcp_context = malloc(sizeof(struct sc_tcp_context));
+	tcp_context = calloc(1, sizeof(struct sc_tcp_context));
 	if(tcp_context == NULL)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		           "no memory for the TCP part of the profile context");
 		goto error;
 	}
-	memset(tcp_context, 0, sizeof(struct sc_tcp_context));
 	context->specific = tcp_context;
 
 	/* create contexts for IP headers and their extensions */
@@ -1390,27 +1389,41 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	tcp_context->seq_num = rohc_ntoh32(tcp->seq_num);
 	tcp_context->ack_num = rohc_ntoh32(tcp->ack_num);
 
-	/* sequence number sent once more, count the number of transmissions to
-	 * know when scaled sequence number is possible */
-	if(tcp_context->seq_num_factor != 0 &&
-	   tcp_context->seq_num_scaling_nr < ROHC_INIT_TS_STRIDE_MIN)
+	/* sequence number */
+	c_add_wlsb(tcp_context->seq_wlsb, tcp_context->msn, tcp_context->seq_num);
+	if(tcp_context->seq_num_factor != 0)
 	{
-		tcp_context->seq_num_scaling_nr++;
-		rohc_comp_debug(context, "unscaled sequence number was transmitted "
-		                "%zu / %u times since the scaling factor or residue "
-		                "changed", tcp_context->seq_num_scaling_nr,
-		                ROHC_INIT_TS_STRIDE_MIN);
+		c_add_wlsb(tcp_context->seq_scaled_wlsb, tcp_context->msn,
+		           tcp_context->seq_num_scaled);
+
+		/* sequence number sent once more, count the number of transmissions to
+		 * know when scaled sequence number is possible */
+		if(tcp_context->seq_num_scaling_nr < ROHC_INIT_TS_STRIDE_MIN)
+		{
+			tcp_context->seq_num_scaling_nr++;
+			rohc_comp_debug(context, "unscaled sequence number was transmitted "
+			                "%zu / %u times since the scaling factor or residue "
+			                "changed", tcp_context->seq_num_scaling_nr,
+			                ROHC_INIT_TS_STRIDE_MIN);
+		}
 	}
 
-	/* ACK number sent once more, count the number of transmissions to
-	 * know when scaled ACK number is possible */
-	if(tcp_context->ack_stride != 0 &&
-	   tcp_context->ack_num_scaling_nr < ROHC_INIT_TS_STRIDE_MIN)
+	/* ACK number */
+	c_add_wlsb(tcp_context->ack_wlsb, tcp_context->msn, tcp_context->ack_num);
+	if(tcp_context->ack_stride != 0)
 	{
-		tcp_context->ack_num_scaling_nr++;
-		rohc_comp_debug(context, "unscaled ACK number was transmitted %zu / %u "
-		                "times since the scaling factor or residue changed",
-		                tcp_context->ack_num_scaling_nr, ROHC_INIT_TS_STRIDE_MIN);
+		c_add_wlsb(tcp_context->ack_scaled_wlsb, tcp_context->msn,
+		           tcp_context->ack_num_scaled);
+
+		/* ACK number sent once more, count the number of transmissions to
+		 * know when scaled ACK number is possible */
+		if(tcp_context->ack_num_scaling_nr < ROHC_INIT_TS_STRIDE_MIN)
+		{
+			tcp_context->ack_num_scaling_nr++;
+			rohc_comp_debug(context, "unscaled ACK number was transmitted %zu / %u "
+			                "times since the scaling factor or residue changed",
+			                tcp_context->ack_num_scaling_nr, ROHC_INIT_TS_STRIDE_MIN);
+		}
 	}
 
 	return counter;
@@ -4284,14 +4297,6 @@ static bool tcp_encode_uncomp_tcp_fields(struct rohc_comp_ctxt *const context,
 		                "sequence number 0x%08x", tcp_context->tmp.nr_seq_scaled_bits,
 		                tcp_context->seq_num_scaled);
 	}
-	/* TODO: move this after successful packet compression */
-	c_add_wlsb(tcp_context->seq_wlsb, tcp_context->msn, seq_num_hbo);
-	if(tcp_context->seq_num_factor != 0)
-	{
-		/* TODO: move this after successful packet compression */
-		c_add_wlsb(tcp_context->seq_scaled_wlsb, tcp_context->msn,
-		           tcp_context->seq_num_scaled);
-	}
 
 	/* how many bits are required to encode the new ACK number? */
 	tcp_context->tmp.tcp_ack_num_changed =
@@ -4333,14 +4338,6 @@ static bool tcp_encode_uncomp_tcp_fields(struct rohc_comp_ctxt *const context,
 		rohc_comp_debug(context, "%zu bits are required to encode new scaled "
 		                "ACK number 0x%08x", tcp_context->tmp.nr_ack_scaled_bits,
 		                tcp_context->ack_num_scaled);
-	}
-	/* TODO: move this after successful packet compression */
-	c_add_wlsb(tcp_context->ack_wlsb, tcp_context->msn, ack_num_hbo);
-	if(tcp_context->ack_stride != 0)
-	{
-		/* TODO: move this after successful packet compression */
-		c_add_wlsb(tcp_context->ack_scaled_wlsb, tcp_context->msn,
-		           tcp_context->ack_num_scaled);
 	}
 
 	/* how many bits are required to encode the new timestamp echo request and
