@@ -41,6 +41,7 @@ rohc_comp_mans = \
 	man/man3/rohc_comp_new2.3 \
 	man/man3/rohc_comp_free.3 \
 	man/man3/rohc_compress4.3 \
+	man/man3/rohc_comp_pad.3 \
 	man/man3/rohc_comp_get_segment2.3 \
 	man/man3/rohc_comp_deliver_feedback2.3 \
 	man/man3/rohc_comp_profile_enabled.3 \
@@ -62,6 +63,7 @@ rohc_comp_mans = \
 	man/man3/rohc_comp_set_mrru.3 \
 	man/man3/rohc_comp_get_state_descr.3 \
 	man/man3/rohc_comp_get_general_info.3 \
+	man/man3/rohc_decomp_get_context_info.3 \
 	man/man3/rohc_comp_get_last_packet_info2.3
 
 rohc_decomp_man = \
