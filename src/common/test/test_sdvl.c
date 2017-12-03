@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
 	CHECK(sdvl_can_value_be_encoded(1 << 28) == true);
 	CHECK(sdvl_can_value_be_encoded(1 << 29) == false);
 	CHECK(sdvl_can_value_be_encoded(1 << 30) == false);
-	CHECK(sdvl_can_value_be_encoded(1 << 31) == false);
+	CHECK(sdvl_can_value_be_encoded(1U << 31) == false);
 	CHECK(sdvl_can_value_be_encoded(UINT32_MAX) == false);
 
 	/* sdvl_can_length_be_encoded() */
@@ -185,7 +185,7 @@ int main(int argc, char *argv[])
 	CHECK(sdvl_get_encoded_len(1 << 28) == 4);
 	CHECK(sdvl_get_encoded_len(1 << 29) == 5);
 	CHECK(sdvl_get_encoded_len(1 << 30) == 5);
-	CHECK(sdvl_get_encoded_len(1 << 31) == 5);
+	CHECK(sdvl_get_encoded_len(1U << 31) == 5);
 
 	/* sdvl_encode() / sdvl_encode_full() / sdvl_decode() */
 	{
