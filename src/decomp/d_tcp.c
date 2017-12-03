@@ -1124,8 +1124,10 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 			                 rohc_get_packet_descr(packet_type), packet_type);
 			goto error;
 		}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		rohc_remain_data += co_pkt_len;
 		rohc_remain_len -= co_pkt_len;
+#endif
 		(*rohc_hdr_len) += co_pkt_len;
 	}
 	rohc_decomp_dump_buf(context, "ROHC base header", packed_rohc_packet,
