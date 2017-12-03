@@ -192,7 +192,8 @@ int main(int argc, char *argv[])
 	/* rohc_comp_set_wlsb_window_width() */
 	CHECK(rohc_comp_set_wlsb_window_width(NULL, 16) == false);
 	CHECK(rohc_comp_set_wlsb_window_width(comp, 0) == false);
-	CHECK(rohc_comp_set_wlsb_window_width(comp, 15) == false);
+	CHECK(rohc_comp_set_wlsb_window_width(comp, 65) == false);
+	CHECK(rohc_comp_set_wlsb_window_width(comp, 64) == true);
 	CHECK(rohc_comp_set_wlsb_window_width(comp, 16) == true);
 
 	/* rohc_comp_set_periodic_refreshes() */

@@ -46,11 +46,13 @@ struct c_wlsb * c_create_wlsb(const size_t bits,
                               const size_t window_width,
                               const rohc_lsb_shift_t p)
 	__attribute__((warn_unused_result));
-void c_destroy_wlsb(struct c_wlsb *s);
+void c_destroy_wlsb(struct c_wlsb *s)
+	__attribute__((nonnull(1)));
 
 void c_add_wlsb(struct c_wlsb *const wlsb,
                 const uint32_t sn,
-                const uint32_t value);
+                const uint32_t value)
+	__attribute__((nonnull(1)));
 
 size_t wlsb_get_k_8bits(const struct c_wlsb *const wlsb,
                         const uint8_t value)
@@ -87,11 +89,6 @@ size_t wlsb_get_mink_32bits(const struct c_wlsb *const wlsb,
 size_t wlsb_get_kp_32bits(const struct c_wlsb *const wlsb,
                           const uint32_t value,
                           const rohc_lsb_shift_t p)
-	__attribute__((warn_unused_result, nonnull(1)));
-size_t wlsb_get_minkp_32bits(const struct c_wlsb *const wlsb,
-                             const uint32_t value,
-                             const size_t min_k,
-                             const rohc_lsb_shift_t p)
 	__attribute__((warn_unused_result, nonnull(1)));
 
 size_t wlsb_ack(struct c_wlsb *const wlsb,
