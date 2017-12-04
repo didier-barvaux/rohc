@@ -80,11 +80,10 @@ struct c_wlsb
  * Public function prototypes:
  */
 
-struct c_wlsb * c_create_wlsb(const size_t bits,
-                              const size_t window_width,
-                              const rohc_lsb_shift_t p)
-	__attribute__((warn_unused_result));
-void c_destroy_wlsb(struct c_wlsb *s)
+void wlsb_init(struct c_wlsb *const wlsb,
+               const size_t bits,
+               const size_t window_width,
+               const rohc_lsb_shift_t p)
 	__attribute__((nonnull(1)));
 
 void c_add_wlsb(struct c_wlsb *const wlsb,

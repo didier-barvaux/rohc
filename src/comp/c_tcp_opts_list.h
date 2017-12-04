@@ -119,8 +119,8 @@ struct c_tcp_opts_ctxt
 	struct c_tcp_opt_ctxt list[MAX_TCP_OPTION_INDEX + 1];
 
 	bool is_timestamp_init;
-	struct c_wlsb *ts_req_wlsb;
-	struct c_wlsb *ts_reply_wlsb;
+	struct c_wlsb ts_req_wlsb;
+	struct c_wlsb ts_reply_wlsb;
 
 	/** The temporary part of the context, shall be reset between 2 packets */
 	struct c_tcp_opts_ctxt_tmp tmp;

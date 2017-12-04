@@ -68,7 +68,7 @@ struct ts_sc_comp
 	/// The TS_SCALED value
 	uint32_t ts_scaled;
 	/** The W-LSB object used to encode the TS_SCALED value */
-	struct c_wlsb *ts_scaled_wlsb;
+	struct c_wlsb ts_scaled_wlsb;
 
 	/// The TS_OFFSET value
 	uint32_t ts_offset;
@@ -76,7 +76,7 @@ struct ts_sc_comp
 	/// The timestamp (TS)
 	uint32_t ts;
 	/** The W-LSB object used to encode the TS value */
-	struct c_wlsb *ts_unscaled_wlsb;
+	struct c_wlsb ts_unscaled_wlsb;
 	/// The previous timestamp
 	uint32_t old_ts;
 
@@ -110,12 +110,11 @@ struct ts_sc_comp
  * Function prototypes
  */
 
-bool c_create_sc(struct ts_sc_comp *const ts_sc,
-                 const size_t wlsb_window_width,
-                 rohc_trace_callback2_t trace_cb,
-                 void *const trace_cb_priv)
-	__attribute__((warn_unused_result));
-void c_destroy_sc(struct ts_sc_comp *const ts_sc);
+void c_init_sc(struct ts_sc_comp *const ts_sc,
+               const size_t wlsb_window_width,
+               rohc_trace_callback2_t trace_cb,
+               void *const trace_cb_priv)
+	__attribute__((nonnull(1)));
 
 void c_add_ts(struct ts_sc_comp *const ts_sc,
               const uint32_t ts,
@@ -125,13 +124,15 @@ void nb_bits_unscaled(const struct ts_sc_comp *const ts_sc,
                       size_t *const bits_nr_less_equal_than_2,
                       size_t *const bits_nr_more_than_2)
 	__attribute__((nonnull(1, 2, 3)));
-void add_unscaled(const struct ts_sc_comp *const ts_sc, const uint16_t sn);
+void add_unscaled(struct ts_sc_comp *const ts_sc, const uint16_t sn)
+	__attribute__((nonnull(1)));
 
 void nb_bits_scaled(const struct ts_sc_comp *const ts_sc,
                     size_t *const bits_nr_less_equal_than_2,
                     size_t *const bits_nr_more_than_2)
 	__attribute__((nonnull(1, 2, 3)));
-void add_scaled(const struct ts_sc_comp *const ts_sc, const uint16_t sn);
+void add_scaled(struct ts_sc_comp *const ts_sc, const uint16_t sn)
+	__attribute__((nonnull(1)));
 
 uint32_t get_ts_stride(const struct ts_sc_comp *const ts_sc)
 	__attribute__((nonnull(1), warn_unused_result, pure));

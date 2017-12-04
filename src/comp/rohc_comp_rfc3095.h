@@ -50,7 +50,7 @@
 struct ipv4_header_info
 {
 	/// A window to store the IP-ID
-	struct c_wlsb *ip_id_window;
+	struct c_wlsb ip_id_window;
 
 	/// The previous IP header
 	struct ipv4_hdr old_ip;
@@ -183,13 +183,13 @@ struct rohc_comp_rfc3095_ctxt
 	/// The Sequence Number (SN), may be 16-bit or 32-bit long
 	uint32_t sn;
 	/// A window used to encode the SN
-	struct c_wlsb *sn_window;
+	struct c_wlsb sn_window;
 
 	/** The SN of the last packet that updated the context (used to determine
 	 * if a positive ACK may cause a transition to a higher compression state) */
 	uint32_t msn_of_last_ctxt_updating_pkt;
 	/** The W-LSB for non-acknowledged MSN */
-	struct c_wlsb *msn_non_acked;
+	struct c_wlsb msn_non_acked;
 
 	/** The number of IP headers */
 	size_t ip_hdr_nr;

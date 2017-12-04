@@ -829,8 +829,8 @@ int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
 			const struct tcp_option_timestamp *const opt_ts =
 				(struct tcp_option_timestamp *) (options + 2);
 			opts_ctxt->is_timestamp_init = true;
-			c_add_wlsb(opts_ctxt->ts_req_wlsb, msn, rohc_ntoh32(opt_ts->ts));
-			c_add_wlsb(opts_ctxt->ts_reply_wlsb, msn, rohc_ntoh32(opt_ts->ts_reply));
+			c_add_wlsb(&opts_ctxt->ts_req_wlsb, msn, rohc_ntoh32(opt_ts->ts));
+			c_add_wlsb(&opts_ctxt->ts_reply_wlsb, msn, rohc_ntoh32(opt_ts->ts_reply));
 		}
 	}
 	if(opt_pos >= ROHC_TCP_OPTS_MAX && i != 0)
@@ -967,8 +967,8 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 			/* TODO: move at the very end of compression to avoid altering
 			 *       context in case of compression failure */
 			opts_ctxt->is_timestamp_init = true;
-			c_add_wlsb(opts_ctxt->ts_req_wlsb, msn, rohc_ntoh32(opt_ts->ts));
-			c_add_wlsb(opts_ctxt->ts_reply_wlsb, msn, rohc_ntoh32(opt_ts->ts_reply));
+			c_add_wlsb(&opts_ctxt->ts_req_wlsb, msn, rohc_ntoh32(opt_ts->ts));
+			c_add_wlsb(&opts_ctxt->ts_reply_wlsb, msn, rohc_ntoh32(opt_ts->ts_reply));
 		}
 		else if(opt_type == TCP_OPT_SACK)
 		{

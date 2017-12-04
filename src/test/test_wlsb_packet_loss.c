@@ -189,7 +189,7 @@ static bool run_test8_with_shift_param(bool be_verbose,
                                        const size_t win_size,
                                        const size_t loss_nr)
 {
-	struct c_wlsb *wlsb; /* the W-LSB encoding context */
+	struct c_wlsb wlsb; /* the W-LSB encoding context */
 	struct rohc_lsb_decode *lsb; /* the LSB decoding context */
 
 	uint8_t value8; /* the value to encode */
@@ -203,12 +203,7 @@ static bool run_test8_with_shift_param(bool be_verbose,
 	assert(win_size > 0);
 
 	/* create the W-LSB encoding context */
-	wlsb = c_create_wlsb(8, win_size, p);
-	if(wlsb == NULL)
-	{
-		fprintf(stderr, "no memory to allocate W-LSB encoding context\n");
-		goto error;
-	}
+	wlsb_init(&wlsb, 8, win_size, p);
 
 	/* init the LSB decoding context with value 0 */
 	value8 = 0;
@@ -217,7 +212,7 @@ static bool run_test8_with_shift_param(bool be_verbose,
 	if(lsb == NULL)
 	{
 		fprintf(stderr, "no memory to allocate LSB decoding context\n");
-		goto destroy_wlsb;
+		goto error;
 	}
 	rohc_lsb_set_ref(lsb, value8, false);
 
@@ -230,7 +225,7 @@ static bool run_test8_with_shift_param(bool be_verbose,
 		trace(be_verbose, "\tinitialize with 8 bits of value 0x%02x ...\n", value8);
 
 		/* update encoding context */
-		c_add_wlsb(wlsb, value8, value8);
+		c_add_wlsb(&wlsb, value8, value8);
 
 		/* transmit all bits without encoding */
 		value8_encoded = value8;
@@ -257,7 +252,7 @@ static bool run_test8_with_shift_param(bool be_verbose,
 
 		/* encode */
 		trace(be_verbose, "\tencode value 0x%02x ...\n", value8);
-		required_bits = wlsb_get_k_8bits(wlsb, value8);
+		required_bits = wlsb_get_k_8bits(&wlsb, value8);
 		assert(required_bits <= 8);
 		if(required_bits == 8)
 		{
@@ -272,7 +267,7 @@ static bool run_test8_with_shift_param(bool be_verbose,
 		      value8_encoded);
 
 		/* update encoding context */
-		c_add_wlsb(wlsb, value8, value8);
+		c_add_wlsb(&wlsb, value8, value8);
 
 		/* do we lose that value? */
 		if(i >= (win_size + 1) && i <= (win_size + loss_nr))
@@ -318,8 +313,6 @@ static bool run_test8_with_shift_param(bool be_verbose,
 
 destroy_lsb:
 	rohc_lsb_free(lsb);
-destroy_wlsb:
-	c_destroy_wlsb(wlsb);
 error:
 	return is_success;
 }
@@ -339,7 +332,7 @@ static bool run_test16_with_shift_param(bool be_verbose,
                                         const size_t win_size,
                                         const size_t loss_nr)
 {
-	struct c_wlsb *wlsb; /* the W-LSB encoding context */
+	struct c_wlsb wlsb; /* the W-LSB encoding context */
 	struct rohc_lsb_decode *lsb; /* the LSB decoding context */
 
 	uint16_t value16; /* the value to encode */
@@ -353,12 +346,7 @@ static bool run_test16_with_shift_param(bool be_verbose,
 	assert(win_size > 0);
 
 	/* create the W-LSB encoding context */
-	wlsb = c_create_wlsb(16, win_size, p);
-	if(wlsb == NULL)
-	{
-		fprintf(stderr, "no memory to allocate W-LSB encoding context\n");
-		goto error;
-	}
+	wlsb_init(&wlsb, 16, win_size, p);
 
 	/* init the LSB decoding context with value 0 */
 	value16 = 0;
@@ -367,7 +355,7 @@ static bool run_test16_with_shift_param(bool be_verbose,
 	if(lsb == NULL)
 	{
 		fprintf(stderr, "no memory to allocate LSB decoding context\n");
-		goto destroy_wlsb;
+		goto error;
 	}
 	rohc_lsb_set_ref(lsb, value16, false);
 
@@ -380,7 +368,7 @@ static bool run_test16_with_shift_param(bool be_verbose,
 		trace(be_verbose, "\tinitialize with 16 bits of value 0x%04x ...\n", value16);
 
 		/* update encoding context */
-		c_add_wlsb(wlsb, value16, value16);
+		c_add_wlsb(&wlsb, value16, value16);
 
 		/* transmit all bits without encoding */
 		value16_encoded = value16;
@@ -407,7 +395,7 @@ static bool run_test16_with_shift_param(bool be_verbose,
 
 		/* encode */
 		trace(be_verbose, "\tencode value 0x%04x ...\n", value16);
-		required_bits = wlsb_get_k_16bits(wlsb, value16);
+		required_bits = wlsb_get_k_16bits(&wlsb, value16);
 		assert(required_bits <= 16);
 		if(required_bits == 16)
 		{
@@ -422,7 +410,7 @@ static bool run_test16_with_shift_param(bool be_verbose,
 		      value16_encoded);
 
 		/* update encoding context */
-		c_add_wlsb(wlsb, value16, value16);
+		c_add_wlsb(&wlsb, value16, value16);
 
 		/* do we lose that value? */
 		if(i >= (win_size + 1) && i <= (win_size + loss_nr))
@@ -468,8 +456,6 @@ static bool run_test16_with_shift_param(bool be_verbose,
 
 destroy_lsb:
 	rohc_lsb_free(lsb);
-destroy_wlsb:
-	c_destroy_wlsb(wlsb);
 error:
 	return is_success;
 }
@@ -489,7 +475,7 @@ static bool run_test32_with_shift_param(bool be_verbose,
                                         const size_t win_size,
                                         const size_t loss_nr)
 {
-	struct c_wlsb *wlsb; /* the W-LSB encoding context */
+	struct c_wlsb wlsb; /* the W-LSB encoding context */
 	struct rohc_lsb_decode *lsb; /* the LSB decoding context */
 
 	uint32_t value32; /* the value to encode */
@@ -503,12 +489,7 @@ static bool run_test32_with_shift_param(bool be_verbose,
 	assert(win_size > 0);
 
 	/* create the W-LSB encoding context */
-	wlsb = c_create_wlsb(32, ROHC_WLSB_WINDOW_WIDTH, p);
-	if(wlsb == NULL)
-	{
-		fprintf(stderr, "no memory to allocate W-LSB encoding context\n");
-		goto error;
-	}
+	wlsb_init(&wlsb, 32, ROHC_WLSB_WINDOW_WIDTH, p);
 
 	/* init the LSB decoding context with value 0 */
 	value32 = 0;
@@ -517,7 +498,7 @@ static bool run_test32_with_shift_param(bool be_verbose,
 	if(lsb == NULL)
 	{
 		fprintf(stderr, "no memory to allocate LSB decoding context\n");
-		goto destroy_wlsb;
+		goto error;
 	}
 	rohc_lsb_set_ref(lsb, value32, false);
 
@@ -530,7 +511,7 @@ static bool run_test32_with_shift_param(bool be_verbose,
 		trace(be_verbose, "\tinitialize with 32 bits of value 0x%08x ...\n", value32);
 
 		/* update encoding context */
-		c_add_wlsb(wlsb, value32, value32);
+		c_add_wlsb(&wlsb, value32, value32);
 
 		/* transmit all bits without encoding */
 		value32_encoded = value32;
@@ -557,7 +538,7 @@ static bool run_test32_with_shift_param(bool be_verbose,
 
 		/* encode */
 		trace(be_verbose, "\tencode value 0x%08x ...\n", value32);
-		required_bits = wlsb_get_k_32bits(wlsb, value32);
+		required_bits = wlsb_get_k_32bits(&wlsb, value32);
 		assert(required_bits <= 32);
 		if(required_bits == 32)
 		{
@@ -572,7 +553,7 @@ static bool run_test32_with_shift_param(bool be_verbose,
 		      value32_encoded);
 
 		/* update encoding context */
-		c_add_wlsb(wlsb, value32, value32);
+		c_add_wlsb(&wlsb, value32, value32);
 
 		/* do we lose that value? */
 		if(i >= (win_size + 1) && i <= (win_size + loss_nr))
@@ -614,8 +595,6 @@ static bool run_test32_with_shift_param(bool be_verbose,
 
 destroy_lsb:
 	rohc_lsb_free(lsb);
-destroy_wlsb:
-	c_destroy_wlsb(wlsb);
 error:
 	return is_success;
 }

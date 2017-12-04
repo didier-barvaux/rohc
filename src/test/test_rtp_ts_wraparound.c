@@ -138,24 +138,18 @@ bool run_test(bool be_verbose, const unsigned int incr)
 	unsigned int real_incr;
 
 	int is_success = false; /* test fails by default */
-	int ret;
 
 	uint64_t i;
 
 	/* create the RTP TS encoding context */
-	ret = c_create_sc(&ts_sc_comp, ROHC_WLSB_WINDOW_WIDTH, NULL, NULL);
-	if(ret != 1)
-	{
-		fprintf(stderr, "failed to initialize the RTP TS encoding context\n");
-		goto error;
-	}
+	c_init_sc(&ts_sc_comp, ROHC_WLSB_WINDOW_WIDTH, NULL, NULL);
 
 	/* create the RTP TS decoding context */
 	ts_sc_decomp = d_create_sc(NULL, NULL);
 	if(ts_sc_decomp == NULL)
 	{
 		fprintf(stderr, "failed to initialize the RTP TS decoding context\n");
-		goto destroy_ts_sc_comp;
+		goto error;
 	}
 
 	/* compute the initial value to encode */
@@ -333,8 +327,6 @@ bool run_test(bool be_verbose, const unsigned int incr)
 
 destroy_ts_sc_decomp:
 	rohc_ts_scaled_free(ts_sc_decomp);
-destroy_ts_sc_comp:
-	c_destroy_sc(&ts_sc_comp);
 error:
 	return is_success;
 }

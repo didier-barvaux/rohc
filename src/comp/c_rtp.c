@@ -163,14 +163,10 @@ static bool c_rtp_create(struct rohc_comp_ctxt *const context,
 	rtp_context->rtp_padding_change_count = 0;
 	rtp_context->rtp_extension_change_count = 0;
 	memcpy(&rtp_context->old_rtp, rtp, sizeof(struct rtphdr));
-	if(!c_create_sc(&rtp_context->ts_sc,
-	                context->compressor->wlsb_window_width,
-	                context->compressor->trace_callback,
-	                context->compressor->trace_callback_priv))
-	{
-		rohc_comp_warn(context, "cannot create scaled RTP Timestamp encoding");
-		goto clean;
-	}
+	c_init_sc(&rtp_context->ts_sc,
+	          context->compressor->wlsb_window_width,
+	          context->compressor->trace_callback,
+	          context->compressor->trace_callback_priv);
 
 	/* init the RTP-specific temporary variables */
 	rtp_context->tmp.send_rtp_dynamic = -1;
@@ -220,16 +216,6 @@ quit:
  */
 static void c_rtp_destroy(struct rohc_comp_ctxt *const context)
 {
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	struct sc_rtp_context *rtp_context;
-
-	assert(context != NULL);
-	assert(context->specific != NULL);
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-	assert(rfc3095_ctxt->specific != NULL);
-	rtp_context = (struct sc_rtp_context *) rfc3095_ctxt->specific;
-
-	c_destroy_sc(&rtp_context->ts_sc);
 	rohc_comp_rfc3095_destroy(context);
 }
 
