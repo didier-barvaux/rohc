@@ -23,6 +23,16 @@
 #
 
 from scapy.all import *
+import sys
+
+if len(sys.argv) != 2:
+    print 'usage: generate_reference_stream_tcp.py <pkts_nr>'
+    sys.exit(1)
+
+pkts_nr = int(sys.argv[1])
+pcap_file_name = "reference_stream_tcp_%ipkts.pcap" % (pkts_nr)
+
+print "generate one TCP stream with %i packets in file '%s'" % (pkts_nr, pcap_file_name)
 
 packets = []
 
@@ -36,7 +46,7 @@ syn_sent = False
 seq_num = 0
 ack_num = 0
 ts = 0
-for num in range(0, 1000):
+for num in range(0, pkts_nr):
     options = []
     if syn_sent is True:
         tcp_flags = "A"
@@ -54,12 +64,12 @@ for num in range(0, 1000):
         cur_payload_len = 0
     packets.append(Ether(src='00:00:00:00:00:01', dst='00:00:00:00:00:02')/Dot1Q(vlan=1)/IP(src='192.168.0.1', dst='192.168.0.2', id=ip_id)/TCP(sport=4242, dport=4243, flags=tcp_flags, seq=seq_num, ack=ack_num, options=options)/payload[:cur_payload_len])
     if syn_sent is True:
-        seq_num = seq_num + cur_payload_len
+        seq_num = (seq_num + cur_payload_len) % 0xffffffff
     else:
-        seq_num = seq_num + 1
+        seq_num = (seq_num + 1) % 0xffffffff
         syn_sent = True
-    ts = ts + 1
-    ip_id = ip_id + 1
+    ts = (ts + 1) % 0xffffffff
+    ip_id = (ip_id + 1) % 0xffff
 
-wrpcap('reference_stream_tcp.pcap', packets)
+wrpcap(pcap_file_name, packets)
 
