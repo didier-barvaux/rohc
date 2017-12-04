@@ -169,13 +169,7 @@ static bool d_udp_lite_create(const struct rohc_decomp_ctxt *const context,
 
 	/* create the LSB decoding context for SN */
 	rfc3095_ctxt->sn_lsb_p = ROHC_LSB_SHIFT_SN;
-	rfc3095_ctxt->sn_lsb_ctxt = rohc_lsb_new(16);
-	if(rfc3095_ctxt->sn_lsb_ctxt == NULL)
-	{
-		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "failed to create the LSB decoding context for SN");
-		goto free_udp_context;
-	}
+	rohc_lsb_init(&rfc3095_ctxt->sn_lsb_ctxt, 16);
 
 	/* the UDP-Lite checksum coverage field present flag will be initialized
 	 * with the IR or IR-DYN packets */
@@ -202,7 +196,7 @@ static bool d_udp_lite_create(const struct rohc_decomp_ctxt *const context,
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "cannot allocate memory for the UDP-Lite-specific part "
 		           "of the outer IP header changes");
-		goto free_lsb_sn;
+		goto free_udp_context;
 	}
 
 	rfc3095_ctxt->inner_ip_changes->next_header_len = sizeof(struct udphdr);
@@ -222,8 +216,6 @@ static bool d_udp_lite_create(const struct rohc_decomp_ctxt *const context,
 
 free_outer_ip_changes_next_header:
 	zfree(rfc3095_ctxt->outer_ip_changes->next_header);
-free_lsb_sn:
-	rohc_lsb_free(rfc3095_ctxt->sn_lsb_ctxt);
 free_udp_context:
 	zfree(udp_lite_context);
 destroy_context:
@@ -250,9 +242,6 @@ static void d_udp_lite_destroy(struct rohc_decomp_rfc3095_ctxt *const rfc3095_ct
 	zfree(rfc3095_ctxt->outer_ip_changes->next_header);
 	assert(rfc3095_ctxt->inner_ip_changes != NULL);
 	zfree(rfc3095_ctxt->inner_ip_changes->next_header);
-
-	/* destroy the LSB decoding context for SN */
-	rohc_lsb_free(rfc3095_ctxt->sn_lsb_ctxt);
 
 	/* destroy the resources of the generic context */
 	rohc_decomp_rfc3095_destroy(rfc3095_ctxt, volat_ctxt);

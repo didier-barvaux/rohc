@@ -54,29 +54,22 @@ struct rohc_interval32 __wrap_rohc_f_32bits(const uint32_t v_ref,
 }
 
 
-/** Test \ref test_lsb_new */
-static void test_lsb_new(void **state)
+/** Test \ref test_lsb_init */
+static void test_lsb_init(void **state)
 {
-	struct rohc_lsb_decode *lsb;
+	struct rohc_lsb_decode lsb;
 
 	/* 32-bit LSB */
-	lsb = rohc_lsb_new(32);
-	assert_true(lsb != NULL);
-	rohc_lsb_free(lsb);
+	rohc_lsb_init(&lsb, 32);
 
 	/* 16-bit LSB */
-	lsb = rohc_lsb_new(16);
-	assert_true(lsb != NULL);
-	rohc_lsb_free(lsb);
+	rohc_lsb_init(&lsb, 16);
 
 	/* 8-bit LSB */
-	lsb = rohc_lsb_new(8);
-	assert_true(lsb != NULL);
-	rohc_lsb_free(lsb);
+	rohc_lsb_init(&lsb, 8);
 
 #if 0 /* TODO: enable this when all assert() of the library are replaced */
-	lsb = rohc_lsb_new(0);
-	assert_true(lsb == NULL);
+	rohc_lsb_init(&lsb, 0);
 #endif
 }
 
@@ -126,13 +119,11 @@ static void test_lsb_decode(void **state)
 		/* end of tests */
 		{ false,         0x0,         0x0,         0x0,  0,       false,         0x0 },
 	};
-	struct rohc_lsb_decode *lsb;
+	struct rohc_lsb_decode lsb;
 	size_t test_num;
 
-	lsb = rohc_lsb_new(32);
-	assert_true(lsb != NULL);
-
-	rohc_lsb_set_ref(lsb, 0, false);
+	rohc_lsb_init(&lsb, 32);
+	rohc_lsb_set_ref(&lsb, 0, false);
 
 	for(test_num = 0; tests[test_num].used; test_num++)
 	{
@@ -148,7 +139,7 @@ static void test_lsb_decode(void **state)
 		expect_value(__wrap_rohc_f_32bits, p, ROHC_LSB_SHIFT_RTP_TS);
 		will_return(__wrap_rohc_f_32bits, tests[test_num].min);
 		will_return(__wrap_rohc_f_32bits, tests[test_num].max);
-		ret = rohc_lsb_decode(lsb, ROHC_LSB_REF_0, 0, tests[test_num].m,
+		ret = rohc_lsb_decode(&lsb, ROHC_LSB_REF_0, 0, tests[test_num].m,
 		                      tests[test_num].k, ROHC_LSB_SHIFT_RTP_TS,
 		                      &decoded);
 		assert_true(ret == tests[test_num].exp_status);
@@ -158,8 +149,6 @@ static void test_lsb_decode(void **state)
 		}
 		printf("\n");
 	}
-
-	rohc_lsb_free(lsb);
 }
 
 
@@ -174,13 +163,13 @@ int main(int argc, char *argv[])
 {
 #if defined(HAVE_CMOCKA_RUN_GROUP_TESTS) && HAVE_CMOCKA_RUN_GROUP_TESTS == 1
 	const struct CMUnitTest tests[] = {
-		cmocka_unit_test(test_lsb_new),
+		cmocka_unit_test(test_lsb_init),
 		cmocka_unit_test(test_lsb_decode),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 #elif defined(HAVE_CMOCKA_RUN_TESTS) && HAVE_CMOCKA_RUN_TESTS == 1
 	const UnitTest tests[] = {
-		unit_test(test_lsb_new),
+		unit_test(test_lsb_init),
 		unit_test(test_lsb_decode),
 	};
 	return run_tests(tests);

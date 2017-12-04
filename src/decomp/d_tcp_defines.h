@@ -269,25 +269,25 @@ struct d_tcp_opts_ctxt
 struct d_tcp_context
 {
 	/** The LSB decoding context of MSN */
-	struct rohc_lsb_decode *msn_lsb_ctxt;
+	struct rohc_lsb_decode msn_lsb_ctxt;
 
 	/** The LSB decoding context of innermost IP-ID */
-	struct rohc_lsb_decode *ip_id_lsb_ctxt;
+	struct rohc_lsb_decode ip_id_lsb_ctxt;
 	/** The LSB decoding context of innermost TTL/HL */
-	struct rohc_lsb_decode *ttl_hl_lsb_ctxt;
+	struct rohc_lsb_decode ttl_hl_lsb_ctxt;
 
 	/* TCP static part */
 	uint16_t tcp_src_port; /**< The TCP source port */
 	uint16_t tcp_dst_port; /**< The TCP dest port */
 
 	uint32_t seq_num_residue;
-	struct rohc_lsb_decode *seq_lsb_ctxt;
-	struct rohc_lsb_decode *seq_scaled_lsb_ctxt;
+	struct rohc_lsb_decode seq_lsb_ctxt;
+	struct rohc_lsb_decode seq_scaled_lsb_ctxt;
 
 	uint16_t ack_stride;
 	uint16_t ack_num_residue;
-	struct rohc_lsb_decode *ack_lsb_ctxt;
-	struct rohc_lsb_decode *ack_scaled_lsb_ctxt;
+	struct rohc_lsb_decode ack_lsb_ctxt;
+	struct rohc_lsb_decode ack_scaled_lsb_ctxt;
 
 	/* TCP flags */
 	uint8_t res_flags:4;  /**< The TCP reserved flags */
@@ -298,7 +298,7 @@ struct d_tcp_context
 	uint8_t rsf_flags:3;  /**< The TCP RSF flag */
 
 	/** The LSB decoding context of TCP window */
-	struct rohc_lsb_decode *window_lsb_ctxt;
+	struct rohc_lsb_decode window_lsb_ctxt;
 
 	/** The URG pointer */
 	uint16_t urg_ptr;
@@ -306,8 +306,8 @@ struct d_tcp_context
 	/** The decoded values of TCP options */
 	struct d_tcp_opts_ctxt tcp_opts;
 	/* TCP TS option */
-	struct rohc_lsb_decode *opt_ts_req_lsb_ctxt;
-	struct rohc_lsb_decode *opt_ts_rep_lsb_ctxt;
+	struct rohc_lsb_decode opt_ts_req_lsb_ctxt;
+	struct rohc_lsb_decode opt_ts_rep_lsb_ctxt;
 	/* TCP SACK option */
 	struct d_tcp_opt_sack opt_sack_blocks;  /**< The TCP SACK blocks */
 

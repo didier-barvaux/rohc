@@ -87,13 +87,7 @@ static bool d_ip_create(const struct rohc_decomp_ctxt *const context,
 
 	/* create the LSB decoding context for SN */
 	rfc3095_ctxt->sn_lsb_p = ROHC_LSB_SHIFT_SN;
-	rfc3095_ctxt->sn_lsb_ctxt = rohc_lsb_new(16);
-	if(rfc3095_ctxt->sn_lsb_ctxt == NULL)
-	{
-		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "failed to create the LSB decoding context for SN");
-		goto free_context;
-	}
+	rohc_lsb_init(&rfc3095_ctxt->sn_lsb_ctxt, 16);
 
 	/* some IP-specific values and functions */
 	rfc3095_ctxt->parse_dyn_next_hdr = ip_parse_dynamic_ip;
@@ -101,8 +95,6 @@ static bool d_ip_create(const struct rohc_decomp_ctxt *const context,
 
 	return true;
 
-free_context:
-	zfree(rfc3095_ctxt);
 quit:
 	return false;
 }
@@ -120,7 +112,6 @@ quit:
 static void d_ip_destroy(struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt,
                          const struct rohc_decomp_volat_ctxt *const volat_ctxt)
 {
-	rohc_lsb_free(rfc3095_ctxt->sn_lsb_ctxt);
 	rohc_decomp_rfc3095_destroy(rfc3095_ctxt, volat_ctxt);
 }
 

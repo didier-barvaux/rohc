@@ -68,41 +68,19 @@ static bool rohc_lsb_decode8(const struct rohc_lsb_decode *const lsb,
  */
 
 /**
- * @brief Create a new Least Significant Bits (LSB) decoding context
+ * @brief Initialize a given Least Significant Bits (LSB) decoding context
  *
  * See 4.5.1 in the RFC 3095 for details about LSB encoding.
  *
- * @param max_len  The max length (in bits) of the non-compressed field
- * @return         The new LSB decoding context in case of success, NULL
- *                 otherwise
+ * @param[in,out] lsb  The LSB decoding context to init
+ * @param max_len      The max length (in bits) of the non-compressed field
  */
-struct rohc_lsb_decode * rohc_lsb_new(const size_t max_len)
+void rohc_lsb_init(struct rohc_lsb_decode *const lsb, const size_t max_len)
 {
-	struct rohc_lsb_decode *lsb;
-
 	assert(max_len == 8 || max_len == 16 || max_len == 32);
 
-	lsb = malloc(sizeof(struct rohc_lsb_decode));
-	if(lsb != NULL)
-	{
-		lsb->max_len = max_len;
-		lsb->is_init = false;
-	}
-
-	return lsb;
-}
-
-
-/**
- * @brief Destroy a given Least Significant Bits (LSB) decoding context
- *
- * See 4.5.1 in the RFC 3095 for details about LSB encoding.
- *
- * @param lsb  The LSB decoding context to destroy
- */
-void rohc_lsb_free(struct rohc_lsb_decode *const lsb)
-{
-	free(lsb);
+	lsb->max_len = max_len;
+	lsb->is_init = false;
 }
 
 
@@ -114,7 +92,6 @@ void rohc_lsb_free(struct rohc_lsb_decode *const lsb)
  */
 bool rohc_lsb_is_ready(const struct rohc_lsb_decode *const lsb)
 {
-	assert(lsb != NULL);
 	return lsb->is_init;
 }
 

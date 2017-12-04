@@ -34,17 +34,26 @@
 #include <stdbool.h>
 
 
-/* The definition of the Offset IP-ID decoding object is private */
-struct ip_id_offset_decode;
+/*
+ * Public structures
+ */
+
+/**
+ * @brief Defines a IP-ID object to help computing the IP-ID value
+ *        from an IP-ID offset
+ */
+struct ip_id_offset_decode
+{
+	/** The LSB context for decoding IP-ID offset */
+	struct rohc_lsb_decode lsb;
+};
 
 
 /*
  * Function prototypes.
  */
 
-struct ip_id_offset_decode * ip_id_offset_new(void);
-
-void ip_id_offset_free(struct ip_id_offset_decode *const ipid)
+void ip_id_offset_init(struct ip_id_offset_decode *const ipid)
 	__attribute__((nonnull(1)));
 
 bool ip_id_offset_decode(const struct ip_id_offset_decode *const ipid,

@@ -379,82 +379,21 @@ static bool d_tcp_create(const struct rohc_decomp_ctxt *const context,
 	tcp_context = *persist_ctxt;
 
 	/* create the LSB decoding context for the MSN */
-	tcp_context->msn_lsb_ctxt = rohc_lsb_new(16);
-	if(tcp_context->msn_lsb_ctxt == NULL)
-	{
-		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "failed to create the LSB decoding context for the MSN");
-		goto destroy_context;
-	}
-
+	rohc_lsb_init(&tcp_context->msn_lsb_ctxt, 16);
 	/* create the LSB decoding context for the innermost IP-ID */
-	tcp_context->ip_id_lsb_ctxt = rohc_lsb_new(16);
-	if(tcp_context->ip_id_lsb_ctxt == NULL)
-	{
-		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "failed to create the LSB decoding context for the innermost "
-		           "IP-ID");
-		goto free_lsb_msn;
-	}
-
+	rohc_lsb_init(&tcp_context->ip_id_lsb_ctxt, 16);
 	/* create the LSB decoding context for the innermost TTL/HL */
-	tcp_context->ttl_hl_lsb_ctxt = rohc_lsb_new(8);
-	if(tcp_context->ttl_hl_lsb_ctxt == NULL)
-	{
-		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "failed to create the LSB decoding context for the innermost "
-		           "TTL/HL");
-		goto free_lsb_ip_id;
-	}
-
+	rohc_lsb_init(&tcp_context->ttl_hl_lsb_ctxt, 8);
 	/* create the LSB decoding context for the TCP window */
-	tcp_context->window_lsb_ctxt = rohc_lsb_new(16);
-	if(tcp_context->window_lsb_ctxt == NULL)
-	{
-		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "failed to create the LSB decoding context for the TCP window");
-		goto free_lsb_ttl_hl;
-	}
-
+	rohc_lsb_init(&tcp_context->window_lsb_ctxt, 16);
 	/* create the LSB decoding context for the sequence number */
-	tcp_context->seq_lsb_ctxt = rohc_lsb_new(32);
-	if(tcp_context->seq_lsb_ctxt == NULL)
-	{
-		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "failed to create the LSB decoding context for the sequence "
-		           "number");
-		goto free_lsb_window;
-	}
-
+	rohc_lsb_init(&tcp_context->seq_lsb_ctxt, 32);
 	/* create the LSB decoding context for the scaled sequence number */
-	tcp_context->seq_scaled_lsb_ctxt = rohc_lsb_new(32);
-	if(tcp_context->seq_scaled_lsb_ctxt == NULL)
-	{
-		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "failed to create the LSB decoding context for the scaled "
-		           "sequence number");
-		goto free_lsb_seq;
-	}
-
+	rohc_lsb_init(&tcp_context->seq_scaled_lsb_ctxt, 32);
 	/* create the LSB decoding context for the ACK number */
-	tcp_context->ack_lsb_ctxt = rohc_lsb_new(32);
-	if(tcp_context->ack_lsb_ctxt == NULL)
-	{
-		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "failed to create the LSB decoding context for the ACK "
-		           "number");
-		goto free_lsb_scaled_seq;
-	}
-
+	rohc_lsb_init(&tcp_context->ack_lsb_ctxt, 32);
 	/* create the LSB decoding context for the scaled acknowledgment number */
-	tcp_context->ack_scaled_lsb_ctxt = rohc_lsb_new(32);
-	if(tcp_context->ack_scaled_lsb_ctxt == NULL)
-	{
-		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "failed to create the LSB decoding context for the scaled "
-		           "acknowledgment number");
-		goto free_lsb_ack;
-	}
+	rohc_lsb_init(&tcp_context->ack_scaled_lsb_ctxt, 32);
 
 	/* the TCP source and destination ports will be initialized
 	 * with the IR packets */
@@ -463,25 +402,10 @@ static bool d_tcp_create(const struct rohc_decomp_ctxt *const context,
 
 	/* create the LSB decoding context for the TCP option Timestamp echo
 	 * request */
-	tcp_context->opt_ts_req_lsb_ctxt = rohc_lsb_new(32);
-	if(tcp_context->opt_ts_req_lsb_ctxt == NULL)
-	{
-		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "failed to create the LSB decoding context for the TCP "
-		           "option Timestamp echo request");
-		goto free_lsb_scaled_ack;
-	}
-
+	rohc_lsb_init(&tcp_context->opt_ts_req_lsb_ctxt, 32);
 	/* create the LSB decoding context for the TCP option Timestamp echo
 	 * reply */
-	tcp_context->opt_ts_rep_lsb_ctxt = rohc_lsb_new(32);
-	if(tcp_context->opt_ts_rep_lsb_ctxt == NULL)
-	{
-		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "failed to create the LSB decoding context for the TCP "
-		           "option Timestamp echo reply");
-		goto free_lsb_ts_opt_req;
-	}
+	rohc_lsb_init(&tcp_context->opt_ts_rep_lsb_ctxt, 32);
 
 	/* volatile part of the decompression context */
 	volat_ctxt->crc.type = ROHC_CRC_TYPE_NONE;
@@ -491,7 +415,7 @@ static bool d_tcp_create(const struct rohc_decomp_ctxt *const context,
 	{
 		rohc_decomp_warn(context, "failed to allocate memory for the volatile part "
 		                 "of one of the TCP decompression context");
-		goto free_lsb_ts_opt_rep;
+		goto destroy_context;
 	}
 	volat_ctxt->decoded_values = malloc(sizeof(struct rohc_tcp_decoded_values));
 	if(volat_ctxt->decoded_values == NULL)
@@ -505,26 +429,6 @@ static bool d_tcp_create(const struct rohc_decomp_ctxt *const context,
 
 free_extr_bits:
 	zfree(volat_ctxt->extr_bits);
-free_lsb_ts_opt_rep:
-	rohc_lsb_free(tcp_context->opt_ts_rep_lsb_ctxt);
-free_lsb_ts_opt_req:
-	rohc_lsb_free(tcp_context->opt_ts_req_lsb_ctxt);
-free_lsb_scaled_ack:
-	rohc_lsb_free(tcp_context->ack_scaled_lsb_ctxt);
-free_lsb_ack:
-	rohc_lsb_free(tcp_context->ack_lsb_ctxt);
-free_lsb_scaled_seq:
-	rohc_lsb_free(tcp_context->seq_scaled_lsb_ctxt);
-free_lsb_seq:
-	rohc_lsb_free(tcp_context->seq_lsb_ctxt);
-free_lsb_window:
-	rohc_lsb_free(tcp_context->window_lsb_ctxt);
-free_lsb_ttl_hl:
-	rohc_lsb_free(tcp_context->ttl_hl_lsb_ctxt);
-free_lsb_ip_id:
-	rohc_lsb_free(tcp_context->ip_id_lsb_ctxt);
-free_lsb_msn:
-	rohc_lsb_free(tcp_context->msn_lsb_ctxt);
 destroy_context:
 	zfree(tcp_context);
 quit:
@@ -544,29 +448,6 @@ quit:
 static void d_tcp_destroy(struct d_tcp_context *const tcp_context,
                           const struct rohc_decomp_volat_ctxt *const volat_ctxt)
 {
-	/* destroy the LSB decoding context for the TCP option Timestamp echo
-	 * request */
-	rohc_lsb_free(tcp_context->opt_ts_req_lsb_ctxt);
-	/* destroy the LSB decoding context for the TCP option Timestamp echo
-	 * reply */
-	rohc_lsb_free(tcp_context->opt_ts_rep_lsb_ctxt);
-	/* destroy the LSB decoding context for the scaled acknowledgment number */
-	rohc_lsb_free(tcp_context->ack_scaled_lsb_ctxt);
-	/* destroy the LSB decoding context for the ACK number */
-	rohc_lsb_free(tcp_context->ack_lsb_ctxt);
-	/* destroy the LSB decoding context for the scaled sequence number */
-	rohc_lsb_free(tcp_context->seq_scaled_lsb_ctxt);
-	/* destroy the LSB decoding context for the sequence number */
-	rohc_lsb_free(tcp_context->seq_lsb_ctxt);
-	/* destroy the LSB decoding context for the TCP window */
-	rohc_lsb_free(tcp_context->window_lsb_ctxt);
-	/* destroy the LSB decoding context for the innermost TTL/HL */
-	rohc_lsb_free(tcp_context->ttl_hl_lsb_ctxt);
-	/* destroy the LSB decoding context for the innermost IP-ID */
-	rohc_lsb_free(tcp_context->ip_id_lsb_ctxt);
-	/* destroy the LSB decoding context for the MSN */
-	rohc_lsb_free(tcp_context->msn_lsb_ctxt);
-
 	/* free the TCP decompression context itself */
 	free(tcp_context);
 
@@ -2617,7 +2498,7 @@ static bool d_tcp_decode_bits(const struct rohc_decomp_ctxt *const context,
 
 		assert(bits->msn.bits_nr > 0); /* all packets contain some MSN bits */
 
-		if(!rohc_lsb_decode(tcp_context->msn_lsb_ctxt, ROHC_LSB_REF_0, 0,
+		if(!rohc_lsb_decode(&tcp_context->msn_lsb_ctxt, ROHC_LSB_REF_0, 0,
 		                    bits->msn.bits, bits->msn.bits_nr, bits->msn.p,
 		                    &msn_decoded32))
 		{
@@ -2780,7 +2661,7 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 			}
 
 			/* decode IP-ID from packet bits and context */
-			if(!d_ip_id_lsb(context, tcp_context->ip_id_lsb_ctxt, decoded_msn,
+			if(!d_ip_id_lsb(context, &tcp_context->ip_id_lsb_ctxt, decoded_msn,
 			                ip_bits->id.bits, ip_bits->id.bits_nr, ip_bits->id.p,
 			                &ip_decoded->id))
 			{
@@ -2824,7 +2705,7 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 	{
 		uint32_t decoded32;
 
-		if(!rohc_lsb_decode(tcp_context->ttl_hl_lsb_ctxt, ROHC_LSB_REF_0, 0,
+		if(!rohc_lsb_decode(&tcp_context->ttl_hl_lsb_ctxt, ROHC_LSB_REF_0, 0,
 		                    ip_bits->ttl_hl.bits, ip_bits->ttl_hl.bits_nr,
 		                    ROHC_LSB_SHIFT_TCP_TTL, &decoded32))
 		{
@@ -3032,14 +2913,14 @@ static bool d_tcp_decode_bits_tcp_hdr(const struct rohc_decomp_ctxt *const conte
 	if(bits->seq_scaled.bits_nr > 0)
 	{
 		/* decode scaled sequence number from packet bits and context */
-		if(!rohc_lsb_is_ready(tcp_context->seq_scaled_lsb_ctxt))
+		if(!rohc_lsb_is_ready(&tcp_context->seq_scaled_lsb_ctxt))
 		{
 			rohc_decomp_warn(context, "failed to decode %zu scaled sequence number "
 			                 "bits 0x%x: scaled sequence number not initialized yet",
 			                 bits->seq_scaled.bits_nr, bits->seq_scaled.bits);
 			goto error;
 		}
-		if(!rohc_lsb_decode(tcp_context->seq_scaled_lsb_ctxt, ROHC_LSB_REF_0, 0,
+		if(!rohc_lsb_decode(&tcp_context->seq_scaled_lsb_ctxt, ROHC_LSB_REF_0, 0,
 		                    bits->seq_scaled.bits, bits->seq_scaled.bits_nr,
 		                    bits->seq_scaled.p, &decoded->seq_num_scaled))
 		{
@@ -3079,7 +2960,7 @@ static bool d_tcp_decode_bits_tcp_hdr(const struct rohc_decomp_ctxt *const conte
 		else if(bits->seq.bits_nr > 0)
 		{
 			/* decode unscaled sequence number from packet bits and context */
-			if(!rohc_lsb_decode(tcp_context->seq_lsb_ctxt, ROHC_LSB_REF_0, 0,
+			if(!rohc_lsb_decode(&tcp_context->seq_lsb_ctxt, ROHC_LSB_REF_0, 0,
 			                    bits->seq.bits, bits->seq.bits_nr, bits->seq.p,
 			                    &decoded->seq_num))
 			{
@@ -3095,7 +2976,7 @@ static bool d_tcp_decode_bits_tcp_hdr(const struct rohc_decomp_ctxt *const conte
 		else
 		{
 			const uint32_t old_seq =
-				rohc_lsb_get_ref(tcp_context->seq_lsb_ctxt, ROHC_LSB_REF_0);
+				rohc_lsb_get_ref(&tcp_context->seq_lsb_ctxt, ROHC_LSB_REF_0);
 			rohc_decomp_debug(context, "  TCP sequence number = 0x%08x (re-used from "
 			                  "previous packet)", old_seq);
 			decoded->seq_num = old_seq;
@@ -3124,7 +3005,7 @@ static bool d_tcp_decode_bits_tcp_hdr(const struct rohc_decomp_ctxt *const conte
 		assert(bits->ack_stride.bits_nr == 0);
 
 		/* decode scaled acknowledgement number from packet bits and context */
-		if(!rohc_lsb_decode(tcp_context->ack_scaled_lsb_ctxt, ROHC_LSB_REF_0, 0,
+		if(!rohc_lsb_decode(&tcp_context->ack_scaled_lsb_ctxt, ROHC_LSB_REF_0, 0,
 		                    bits->ack_scaled.bits, bits->ack_scaled.bits_nr,
 		                    bits->ack_scaled.p, &decoded->ack_num_scaled))
 		{
@@ -3169,7 +3050,7 @@ static bool d_tcp_decode_bits_tcp_hdr(const struct rohc_decomp_ctxt *const conte
 		else if(bits->ack.bits_nr > 0)
 		{
 			/* decode unscaled acknowledgement number from packet bits and context */
-			if(!rohc_lsb_decode(tcp_context->ack_lsb_ctxt, ROHC_LSB_REF_0, 0,
+			if(!rohc_lsb_decode(&tcp_context->ack_lsb_ctxt, ROHC_LSB_REF_0, 0,
 			                    bits->ack.bits, bits->ack.bits_nr, bits->ack.p,
 			                    &decoded->ack_num))
 			{
@@ -3185,7 +3066,7 @@ static bool d_tcp_decode_bits_tcp_hdr(const struct rohc_decomp_ctxt *const conte
 		else
 		{
 			const uint32_t old_ack =
-				rohc_lsb_get_ref(tcp_context->ack_lsb_ctxt, ROHC_LSB_REF_0);
+				rohc_lsb_get_ref(&tcp_context->ack_lsb_ctxt, ROHC_LSB_REF_0);
 			rohc_decomp_debug(context, "  TCP ACK number = 0x%08x (re-used from "
 			                  "previous packet)", old_ack);
 			decoded->ack_num = old_ack;
@@ -3240,7 +3121,7 @@ static bool d_tcp_decode_bits_tcp_hdr(const struct rohc_decomp_ctxt *const conte
 		uint32_t win_decoded32;
 
 		/* decode TCP window from packet bits and context */
-		if(!rohc_lsb_decode(tcp_context->window_lsb_ctxt, ROHC_LSB_REF_0, 0,
+		if(!rohc_lsb_decode(&tcp_context->window_lsb_ctxt, ROHC_LSB_REF_0, 0,
 		                    bits->window.bits, bits->window.bits_nr, bits->window.p,
 		                    &win_decoded32))
 		{
@@ -3255,7 +3136,7 @@ static bool d_tcp_decode_bits_tcp_hdr(const struct rohc_decomp_ctxt *const conte
 	else
 	{
 		const uint16_t old_win =
-			rohc_lsb_get_ref(tcp_context->window_lsb_ctxt, ROHC_LSB_REF_0);
+			rohc_lsb_get_ref(&tcp_context->window_lsb_ctxt, ROHC_LSB_REF_0);
 		rohc_decomp_debug(context, "  TCP window = 0x%04x (re-used from previous "
 		                  "packet)", old_win);
 		decoded->window = old_win;
@@ -3454,7 +3335,7 @@ static bool d_tcp_decode_bits_tcp_opts(const struct rohc_decomp_ctxt *const cont
 		{
 			/* decode TS request field */
 			if(!d_tcp_decode_opt_ts_field(context, "request",
-			                              tcp_context->opt_ts_req_lsb_ctxt,
+			                              &tcp_context->opt_ts_req_lsb_ctxt,
 			                              bits->tcp_opts.bits[TCP_INDEX_TS].data.ts.req,
 			                              &decoded->opt_ts_req))
 			{
@@ -3467,7 +3348,7 @@ static bool d_tcp_decode_bits_tcp_opts(const struct rohc_decomp_ctxt *const cont
 
 			/* decode TS reply field */
 			if(!d_tcp_decode_opt_ts_field(context, "reply",
-			                              tcp_context->opt_ts_rep_lsb_ctxt,
+			                              &tcp_context->opt_ts_rep_lsb_ctxt,
 			                              bits->tcp_opts.bits[TCP_INDEX_TS].data.ts.rep,
 			                              &decoded->opt_ts_rep))
 			{
@@ -4184,7 +4065,7 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 	*do_change_mode = false;
 
 	/* MSN */
-	rohc_lsb_set_ref(tcp_context->msn_lsb_ctxt, msn, false);
+	rohc_lsb_set_ref(&tcp_context->msn_lsb_ctxt, msn, false);
 	rohc_decomp_debug(context, "MSN 0x%04x / %u is the new reference", msn, msn);
 
 	/* update context for IP headers */
@@ -4215,7 +4096,7 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 			ip_context->ctxt.vx.ttl_hopl = ip_decoded->ttl;
 			if(is_inner)
 			{
-				rohc_lsb_set_ref(tcp_context->ttl_hl_lsb_ctxt, ip_decoded->ttl, false);
+				rohc_lsb_set_ref(&tcp_context->ttl_hl_lsb_ctxt, ip_decoded->ttl, false);
 			}
 		}
 		ip_context->ctxt.vx.ip_id_behavior = ip_decoded->id_behavior;
@@ -4238,7 +4119,7 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 				{
 					ip_id_offset = ip_context->ctxt.v4.ip_id - msn;
 				}
-				rohc_lsb_set_ref(tcp_context->ip_id_lsb_ctxt, ip_id_offset, false);
+				rohc_lsb_set_ref(&tcp_context->ip_id_lsb_ctxt, ip_id_offset, false);
 				rohc_decomp_debug(context, "innermost IP-ID offset 0x%04x is the new "
 				                  "reference", ip_id_offset);
 			}
@@ -4282,12 +4163,12 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 	tcp_context->tcp_dst_port = decoded->dst_port;
 
 	/* TCP (scaled) sequence number */
-	rohc_lsb_set_ref(tcp_context->seq_lsb_ctxt, decoded->seq_num, false);
+	rohc_lsb_set_ref(&tcp_context->seq_lsb_ctxt, decoded->seq_num, false);
 	rohc_decomp_debug(context, "sequence number 0x%08x is the new reference",
 	                  decoded->seq_num);
 	if(payload_len != 0)
 	{
-		rohc_lsb_set_ref(tcp_context->seq_scaled_lsb_ctxt,
+		rohc_lsb_set_ref(&tcp_context->seq_scaled_lsb_ctxt,
 		                 decoded->seq_num_scaled, false);
 		rohc_decomp_debug(context, "scaled sequence number 0x%08x is the new "
 		                  "reference", decoded->seq_num_scaled);
@@ -4297,12 +4178,12 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 	}
 
 	/* TCP (scaled) acknowledgment number */
-	rohc_lsb_set_ref(tcp_context->ack_lsb_ctxt, decoded->ack_num, false);
+	rohc_lsb_set_ref(&tcp_context->ack_lsb_ctxt, decoded->ack_num, false);
 	rohc_decomp_debug(context, "ACK number 0x%08x is the new reference",
 	                  decoded->ack_num);
 	if(decoded->ack_stride != 0)
 	{
-		rohc_lsb_set_ref(tcp_context->ack_scaled_lsb_ctxt,
+		rohc_lsb_set_ref(&tcp_context->ack_scaled_lsb_ctxt,
 		                 decoded->ack_num_scaled, false);
 		rohc_decomp_debug(context, "scaled acknowledgment number 0x%08x is the new "
 		                  "reference", decoded->ack_num_scaled);
@@ -4324,7 +4205,7 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 	tcp_context->ecn_used = decoded->ecn_used;
 
 	/* TCP window */
-	rohc_lsb_set_ref(tcp_context->window_lsb_ctxt, decoded->window, false);
+	rohc_lsb_set_ref(&tcp_context->window_lsb_ctxt, decoded->window, false);
 	rohc_decomp_debug(context, "window 0x%04x is the new reference",
 	                  decoded->window);
 
@@ -4363,8 +4244,8 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 		/* specific actions for some TCP options */
 		if(opt_index == TCP_INDEX_TS)
 		{
-			rohc_lsb_set_ref(tcp_context->opt_ts_req_lsb_ctxt, decoded->opt_ts_req, false);
-			rohc_lsb_set_ref(tcp_context->opt_ts_rep_lsb_ctxt, decoded->opt_ts_rep, false);
+			rohc_lsb_set_ref(&tcp_context->opt_ts_req_lsb_ctxt, decoded->opt_ts_req, false);
+			rohc_lsb_set_ref(&tcp_context->opt_ts_rep_lsb_ctxt, decoded->opt_ts_rep, false);
 		}
 		else if(opt_index == TCP_INDEX_SACK)
 		{
@@ -4387,7 +4268,7 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 static uint32_t d_tcp_get_msn(const struct rohc_decomp_ctxt *const context)
 {
 	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
-	const uint16_t msn = rohc_lsb_get_ref(tcp_context->msn_lsb_ctxt, ROHC_LSB_REF_0);
+	const uint16_t msn = rohc_lsb_get_ref(&tcp_context->msn_lsb_ctxt, ROHC_LSB_REF_0);
 	rohc_decomp_debug(context, "MSN = %u (0x%x)", msn, msn);
 	return msn;
 }

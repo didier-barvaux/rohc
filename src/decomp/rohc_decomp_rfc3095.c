@@ -379,31 +379,16 @@ bool rohc_decomp_rfc3095_create(const struct rohc_decomp_ctxt *const context,
 	rfc3095_ctxt = *persist_ctxt;
 
 	/* create the Offset IP-ID decoding context for outer IP header */
-	rfc3095_ctxt->outer_ip_id_offset_ctxt = ip_id_offset_new();
-	if(rfc3095_ctxt->outer_ip_id_offset_ctxt == NULL)
-	{
-		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "failed to create the Offset IP-ID decoding context for "
-		           "outer IP header");
-		goto free_context;
-	}
-
+	ip_id_offset_init(&rfc3095_ctxt->outer_ip_id_offset_ctxt);
 	/* create the Offset IP-ID decoding context for inner IP header */
-	rfc3095_ctxt->inner_ip_id_offset_ctxt = ip_id_offset_new();
-	if(rfc3095_ctxt->inner_ip_id_offset_ctxt == NULL)
-	{
-		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "failed to create the Offset IP-ID decoding context for "
-		           "inner IP header");
-		goto free_outer_ip_id_offset_ctxt;
-	}
+	ip_id_offset_init(&rfc3095_ctxt->inner_ip_id_offset_ctxt);
 
 	rfc3095_ctxt->outer_ip_changes = calloc(2, sizeof(struct rohc_decomp_rfc3095_changes));
 	if(rfc3095_ctxt->outer_ip_changes == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "cannot allocate memory for the outer IP header changes");
-		goto free_inner_ip_id_offset_ctxt;
+		goto free_context;
 	}
 
 	rfc3095_ctxt->inner_ip_changes = calloc(1, sizeof(struct rohc_decomp_rfc3095_changes));
@@ -456,10 +441,6 @@ free_inner_ip_changes:
 	zfree(rfc3095_ctxt->inner_ip_changes);
 free_outer_ip_changes:
 	zfree(rfc3095_ctxt->outer_ip_changes);
-free_inner_ip_id_offset_ctxt:
-	ip_id_offset_free(rfc3095_ctxt->inner_ip_id_offset_ctxt);
-free_outer_ip_id_offset_ctxt:
-	ip_id_offset_free(rfc3095_ctxt->outer_ip_id_offset_ctxt);
 free_context:
 	zfree(rfc3095_ctxt);
 quit:
@@ -482,10 +463,6 @@ void rohc_decomp_rfc3095_destroy(struct rohc_decomp_rfc3095_ctxt *const rfc3095_
 	/* free the volatile part of the decompression context */
 	free(volat_ctxt->decoded_values);
 	free(volat_ctxt->extr_bits);
-
-	/* destroy Offset IP-ID decoding contexts */
-	ip_id_offset_free(rfc3095_ctxt->outer_ip_id_offset_ctxt);
-	ip_id_offset_free(rfc3095_ctxt->inner_ip_id_offset_ctxt);
 
 	/* destroy the information about the IP headers */
 	zfree(rfc3095_ctxt->outer_ip_changes);
@@ -1350,7 +1327,7 @@ error:
 uint32_t rohc_decomp_rfc3095_get_sn(const struct rohc_decomp_ctxt *const context)
 {
 	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
-	return rohc_lsb_get_ref(rfc3095_ctxt->sn_lsb_ctxt, ROHC_LSB_REF_0);
+	return rohc_lsb_get_ref(&rfc3095_ctxt->sn_lsb_ctxt, ROHC_LSB_REF_0);
 }
 
 
@@ -5465,9 +5442,9 @@ bool rfc3095_decomp_attempt_repair(const struct rohc_decomp *const decomp,
                                    struct rohc_extr_bits *const extr_bits)
 {
 	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
-	const uint32_t sn_ref_0 = rohc_lsb_get_ref(rfc3095_ctxt->sn_lsb_ctxt,
+	const uint32_t sn_ref_0 = rohc_lsb_get_ref(&rfc3095_ctxt->sn_lsb_ctxt,
 	                                           ROHC_LSB_REF_0);
-	const uint32_t sn_ref_minus_1 = rohc_lsb_get_ref(rfc3095_ctxt->sn_lsb_ctxt,
+	const uint32_t sn_ref_minus_1 = rohc_lsb_get_ref(&rfc3095_ctxt->sn_lsb_ctxt,
 	                                                 ROHC_LSB_REF_MINUS_1);
 	bool verdict = false;
 
@@ -5700,7 +5677,7 @@ bool rfc3095_decomp_decode_bits(const struct rohc_decomp_ctxt *const context,
 	else
 	{
 		/* decode SN from packet bits and context */
-		decode_ok = rohc_lsb_decode(rfc3095_ctxt->sn_lsb_ctxt, bits->lsb_ref_type,
+		decode_ok = rohc_lsb_decode(&rfc3095_ctxt->sn_lsb_ctxt, bits->lsb_ref_type,
 		                            bits->sn_ref_offset, bits->sn, bits->sn_nr,
 		                            rfc3095_ctxt->sn_lsb_p, &decoded->sn);
 		if(!decode_ok)
@@ -5719,7 +5696,7 @@ bool rfc3095_decomp_decode_bits(const struct rohc_decomp_ctxt *const context,
 
 	/* decode fields related to the outer IP header */
 	decode_ok = decode_ip_values_from_bits(context, rfc3095_ctxt->outer_ip_changes,
-	                                       rfc3095_ctxt->outer_ip_id_offset_ctxt,
+	                                       &rfc3095_ctxt->outer_ip_id_offset_ctxt,
 	                                       decoded->sn, bits->lsb_ref_type,
 	                                       &bits->outer_ip, "outer", 1,
 	                                       &decoded->outer_ip);
@@ -5735,7 +5712,7 @@ bool rfc3095_decomp_decode_bits(const struct rohc_decomp_ctxt *const context,
 	{
 		decode_ok = decode_ip_values_from_bits(context,
 		                                       rfc3095_ctxt->inner_ip_changes,
-		                                       rfc3095_ctxt->inner_ip_id_offset_ctxt,
+		                                       &rfc3095_ctxt->inner_ip_id_offset_ctxt,
 		                                       decoded->sn, bits->lsb_ref_type,
 		                                       &bits->inner_ip, "inner", 2,
 		                                       &decoded->inner_ip);
@@ -6283,7 +6260,7 @@ void rfc3095_decomp_update_ctxt(struct rohc_decomp_ctxt *const context,
 	}
 
 	/* update SN */
-	rohc_lsb_set_ref(rfc3095_ctxt->sn_lsb_ctxt, decoded->sn, keep_ref_minus_1);
+	rohc_lsb_set_ref(&rfc3095_ctxt->sn_lsb_ctxt, decoded->sn, keep_ref_minus_1);
 
 	/* maybe current packet changed the number of IP headers */
 	rfc3095_ctxt->multiple_ip = decoded->multiple_ip;
@@ -6298,7 +6275,7 @@ void rfc3095_decomp_update_ctxt(struct rohc_decomp_ctxt *const context,
 	if(decoded->outer_ip.version == IPV4)
 	{
 		ipv4_set_id(&rfc3095_ctxt->outer_ip_changes->ip, decoded->outer_ip.id);
-		ip_id_offset_set_ref(rfc3095_ctxt->outer_ip_id_offset_ctxt,
+		ip_id_offset_set_ref(&rfc3095_ctxt->outer_ip_id_offset_ctxt,
 		                     decoded->outer_ip.id, decoded->sn, keep_ref_minus_1);
 		ipv4_set_df(&rfc3095_ctxt->outer_ip_changes->ip, decoded->outer_ip.df);
 		rfc3095_ctxt->outer_ip_changes->nbo = decoded->outer_ip.nbo;
@@ -6322,7 +6299,7 @@ void rfc3095_decomp_update_ctxt(struct rohc_decomp_ctxt *const context,
 		if(decoded->inner_ip.version == IPV4)
 		{
 			ipv4_set_id(&rfc3095_ctxt->inner_ip_changes->ip, decoded->inner_ip.id);
-			ip_id_offset_set_ref(rfc3095_ctxt->inner_ip_id_offset_ctxt,
+			ip_id_offset_set_ref(&rfc3095_ctxt->inner_ip_id_offset_ctxt,
 			                     decoded->inner_ip.id, decoded->sn, keep_ref_minus_1);
 			ipv4_set_df(&rfc3095_ctxt->inner_ip_changes->ip, decoded->inner_ip.df);
 			rfc3095_ctxt->inner_ip_changes->nbo = decoded->inner_ip.nbo;

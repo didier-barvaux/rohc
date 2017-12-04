@@ -95,10 +95,7 @@ struct rohc_lsb_field8
  * Function prototypes
  */
 
-struct rohc_lsb_decode * rohc_lsb_new(const size_t max_len)
-	__attribute__((warn_unused_result));
-
-void rohc_lsb_free(struct rohc_lsb_decode *const lsb)
+void rohc_lsb_init(struct rohc_lsb_decode *const lsb, const size_t max_len)
 	__attribute__((nonnull(1)));
 
 bool rohc_lsb_is_ready(const struct rohc_lsb_decode *const lsb)
