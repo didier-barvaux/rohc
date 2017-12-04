@@ -35,9 +35,9 @@
 #include <stdbool.h>
 
 
-/* The definition of the Least Significant Bits decoding object is private */
-struct rohc_lsb_decode;
-
+/*
+ * Public structures and types
+ */
 
 /** The different reference values for LSB decoding */
 typedef enum
@@ -47,6 +47,21 @@ typedef enum
 	ROHC_LSB_REF_MAX           /**< The number of different reference values */
 
 } rohc_lsb_ref_t;
+
+
+/**
+ * @brief The Least Significant Bits (LSB) decoding object
+ *
+ * See RFC 3095, §4.5.1
+ */
+struct rohc_lsb_decode
+{
+	bool is_init;         /**< Whether the reference value was initialized */
+	size_t max_len;       /**< The max length (in bits) of the uncomp. field */
+
+	/** The reference values (ref -1 and ref 0) */
+	uint32_t v_ref_d[ROHC_LSB_REF_MAX];
+};
 
 
 /** The context to parse and decode one LSB-encoded 32-bit field */

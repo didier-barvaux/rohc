@@ -32,25 +32,6 @@
 
 
 /*
- * Private structures and types
- */
-
-/**
- * @brief The Least Significant Bits (LSB) decoding object
- *
- * See RFC 3095, §4.5.1
- */
-struct rohc_lsb_decode
-{
-	bool is_init;         /**< Whether the reference value was initialized */
-	size_t max_len;       /**< The max length (in bits) of the uncomp. field */
-
-	/** The reference values (ref -1 and ref 0) */
-	uint32_t v_ref_d[ROHC_LSB_REF_MAX];
-};
-
-
-/*
  * Private functions
  */
 
