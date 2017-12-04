@@ -33,48 +33,6 @@
 
 
 /*
- * Private structures and types
- */
-
-/**
- * @brief Define a W-LSB window entry
- */
-struct c_window
-{
-	bool used;
-	uint32_t sn;     /**< The Sequence Number (SN) associated with the entry
-	                      (used to acknowledge the entry) */
-	uint32_t value;  /**< The value stored in the window entry */
-};
-
-
-/**
- * @brief Defines a W-LSB encoding object
- */
-struct c_wlsb
-{
-	/// The width of the window
-	size_t window_width; /* TODO: R-mode needs a non-fixed window width */
-
-	/// A pointer on the oldest entry in the window (change on acknowledgement)
-	size_t oldest;
-	/// A pointer on the current entry in the window  (change on add and ack)
-	size_t next;
-
-	/// Count of entries in the window
-	size_t count;
-
-	/// The maximal number of bits for representing the value
-	size_t bits;
-	/// Shift parameter (see 4.5.2 in the RFC 3095)
-	rohc_lsb_shift_t p;
-
-	/** The window in which previous values of the encoded value are stored */
-	struct c_window window[ROHC_WLSB_WIDTH_MAX];
-};
-
-
-/*
  * Private function prototypes:
  */
 

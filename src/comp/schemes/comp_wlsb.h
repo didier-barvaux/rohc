@@ -34,8 +34,46 @@
 #include <stdbool.h>
 
 
-/* The definition of the W-LSB encoding object is private */
-struct c_wlsb;
+/*
+ * Public structures and types
+ */
+
+/**
+ * @brief One W-LSB window entry
+ */
+struct c_window
+{
+	bool used;       /**< Whether the window entry is used or not */
+	uint32_t sn;     /**< The Sequence Number (SN) associated with the entry
+	                      (used to acknowledge the entry) */
+	uint32_t value;  /**< The value stored in the window entry */
+};
+
+
+/**
+ * @brief One W-LSB encoding object
+ */
+struct c_wlsb
+{
+	/** The width of the window */
+	size_t window_width; /* TODO: R-mode needs a non-fixed window width */
+
+	/** A pointer on the oldest entry in the window (change on acknowledgement) */
+	size_t oldest;
+	/** A pointer on the current entry in the window  (change on add and ack) */
+	size_t next;
+
+	/** The count of entries in the window */
+	size_t count;
+
+	/** The maximal number of bits for representing the value */
+	size_t bits;
+	/** The shift parameter (see 4.5.2 in the RFC 3095) */
+	rohc_lsb_shift_t p;
+
+	/** The window in which previous values of the encoded value are stored */
+	struct c_window window[ROHC_WLSB_WIDTH_MAX];
+};
 
 
 /*
