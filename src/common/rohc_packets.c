@@ -113,6 +113,9 @@ const char * rohc_get_packet_descr(const rohc_packet_t packet_type)
 		case ROHC_PACKET_TCP_SEQ_8:
 			return "TCP/seq_8";
 
+		case ROHC_PACKET_IR_CR:
+			return "IR-CR";
+
 		case ROHC_PACKET_UNKNOWN:
 		case ROHC_PACKET_MAX:
 		default:
@@ -282,6 +285,10 @@ rohc_packet_t rohc_get_packet_type(const char *const packet_id)
 	else if(strcmp(packet_id, "tcp-seq-8") == 0)
 	{
 		return ROHC_PACKET_TCP_SEQ_8;
+	}
+	else if(strcmp(packet_id, "ir-cr") == 0)
+	{
+		return ROHC_PACKET_IR_CR;
 	}
 	else
 	{

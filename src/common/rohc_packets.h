@@ -99,6 +99,9 @@ typedef enum
 	ROHC_PACKET_TCP_SEQ_7     = 30, /**< TCP seq_7 packet */
 	ROHC_PACKET_TCP_SEQ_8     = 31, /**< TCP seq_8 packet */
 
+	/* Context Replication (CR) */
+	ROHC_PACKET_IR_CR         = 32, /**< ROHC IR-CR packet */
+
 	ROHC_PACKET_MAX                 /**< The number of packet types */
 } rohc_packet_t;
 

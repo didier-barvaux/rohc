@@ -219,7 +219,10 @@ int main(int argc, char *argv[])
 		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_TCP_SEQ_8), "") != 0);
 		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_TCP_SEQ_8), unknown) != 0);
 
-		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_TCP_SEQ_8 + 1), unknown) == 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_IR_CR), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_IR_CR), unknown) != 0);
+
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_MAX), unknown) == 0);
 		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UNKNOWN), unknown) == 0);
 	}
 
@@ -256,6 +259,7 @@ int main(int argc, char *argv[])
 			"tcp-rnd-5", "tcp-rnd-6", "tcp-rnd-7", "tcp-rnd-8",
 			"tcp-seq-1", "tcp-seq-2", "tcp-seq-3", "tcp-seq-4",
 			"tcp-seq-5", "tcp-seq-6", "tcp-seq-7", "tcp-seq-8",
+			"ir-cr",
 		};
 		rohc_packet_t packet_type;
 
