@@ -16,6 +16,7 @@ rohc_get_mode_descr
 rohc_get_packet_descr
 rohc_get_profile_descr
 rohc_get_packet_type
+rohc_packet_is_ir
 rohc_packet_carry_static_info
 rohc_packet_carry_crc_7_or_8
 rohc_comp_new2

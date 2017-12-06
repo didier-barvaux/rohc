@@ -217,6 +217,9 @@ typedef struct
 		ipv6_context_t v6;
 	} ctxt;
 
+	/* Context Replication */
+	bool cr_ttl_hopl_present;
+
 	size_t opts_nr;
 	ip_option_context_t opts[ROHC_TCP_MAX_IP_EXT_HDRS];
 
@@ -239,23 +242,23 @@ struct sc_tcp_context
 	size_t ecn_used_zero_count;
 
 	uint16_t msn;               /**< The Master Sequence Number (MSN) */
-	struct c_wlsb *msn_wlsb;    /**< The W-LSB decoding context for MSN */
+	struct c_wlsb msn_wlsb;    /**< The W-LSB decoding context for MSN */
 
 	/** The MSN of the last packet that updated the context (used to determine
 	 * if a positive ACK may cause a transition to a higher compression state) */
 	uint16_t msn_of_last_ctxt_updating_pkt;
 
-	struct c_wlsb *ttl_hopl_wlsb;
+	struct c_wlsb ttl_hopl_wlsb;
 	size_t ttl_hopl_change_count;
 
-	struct c_wlsb *ip_id_wlsb;
+	struct c_wlsb ip_id_wlsb;
 
 // lsb(15, 16383)
-	struct c_wlsb *window_wlsb; /**< The W-LSB decoding context for TCP window */
+	struct c_wlsb window_wlsb; /**< The W-LSB decoding context for TCP window */
 
 	uint32_t seq_num;
-	struct c_wlsb *seq_wlsb;
-	struct c_wlsb *seq_scaled_wlsb;
+	struct c_wlsb seq_wlsb;
+	struct c_wlsb seq_scaled_wlsb;
 
 	uint32_t seq_num_scaled;
 	uint32_t seq_num_residue;
@@ -263,8 +266,8 @@ struct sc_tcp_context
 	size_t seq_num_scaling_nr;
 
 	uint32_t ack_num;
-	struct c_wlsb *ack_wlsb;
-	struct c_wlsb *ack_scaled_wlsb;
+	struct c_wlsb ack_wlsb;
+	struct c_wlsb ack_scaled_wlsb;
 
 	size_t ack_deltas_next;
 	uint16_t ack_deltas_width[20];
@@ -272,6 +275,11 @@ struct sc_tcp_context
 	uint32_t ack_num_scaled;
 	uint16_t ack_num_residue;
 	size_t ack_num_scaling_nr;
+
+	/* Context Replication */
+	bool cr_tcp_window_present;
+	bool cr_tcp_urg_ptr_present;
+	bool cr_tcp_ack_num_present;
 
 	/** The compression context for TCP options */
 	struct c_tcp_opts_ctxt tcp_opts;

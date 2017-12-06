@@ -80,6 +80,7 @@ bool tcp_parse_dyn_chain(const struct rohc_decomp_ctxt *const context,
 	(*parsed_len) = 0;
 
 	/* parse dynamic IP part (IPv4/IPv6 headers and extension headers) */
+	assert(bits->ip_nr > 0);
 	for(ip_hdrs_nr = 0; ip_hdrs_nr < bits->ip_nr; ip_hdrs_nr++)
 	{
 		struct rohc_tcp_extr_ip_bits *const ip_bits = &(bits->ip[ip_hdrs_nr]);

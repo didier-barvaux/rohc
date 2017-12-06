@@ -190,8 +190,8 @@ error:
  */
 bool run_test8_with_shift_param(bool be_verbose, const short p)
 {
-	struct c_wlsb *wlsb; /* the W-LSB encoding context */
-	struct rohc_lsb_decode *lsb; /* the LSB decoding context */
+	struct c_wlsb wlsb; /* the W-LSB encoding context */
+	struct rohc_lsb_decode lsb; /* the LSB decoding context */
 
 	uint8_t value8; /* the value to encode */
 
@@ -200,30 +200,20 @@ bool run_test8_with_shift_param(bool be_verbose, const short p)
 	uint32_t i;
 
 	/* create the W-LSB encoding context */
-	wlsb = c_create_wlsb(8, ROHC_WLSB_WINDOW_WIDTH, p);
-	if(wlsb == NULL)
-	{
-		fprintf(stderr, "no memory to allocate W-LSB encoding context\n");
-		goto error;
-	}
+	wlsb_init(&wlsb, 8, ROHC_WLSB_WINDOW_WIDTH, p);
 
 	/* init the LSB decoding context with value 0 */
 	value8 = 0;
 	trace(be_verbose, "\tinitialize with 8 bits of value 0x%02x ...\n", value8);
-	lsb = rohc_lsb_new(8);
-	if(lsb == NULL)
-	{
-		fprintf(stderr, "no memory to allocate LSB decoding context\n");
-		goto destroy_wlsb;
-	}
-	rohc_lsb_set_ref(lsb, value8, false);
+	rohc_lsb_init(&lsb, 8);
+	rohc_lsb_set_ref(&lsb, value8, false);
 
 	/* initialize the W-LSB encoding context */
 	for(i = 1; i < 3; i++)
 	{
 		value8 = i % 0xffff;
 		trace(be_verbose, "\tinitialize with 8 bits of value 0x%02x ...\n", value8);
-		init_wlsb_8(wlsb, lsb, value8);
+		init_wlsb_8(&wlsb, &lsb, value8);
 	}
 
 	/* encode then decode 8-bit values from ranges [3, 0xff] and [0, 100] */
@@ -231,9 +221,9 @@ bool run_test8_with_shift_param(bool be_verbose, const short p)
 	{
 		/* encode/decode value */
 		value8 = i % (((uint32_t) 0xff) + 1);
-		if(!test_wlsb_8(wlsb, lsb, value8, p, be_verbose))
+		if(!test_wlsb_8(&wlsb, &lsb, value8, p, be_verbose))
 		{
-			goto destroy_lsb;
+			goto error;
 		}
 	}
 
@@ -241,10 +231,6 @@ bool run_test8_with_shift_param(bool be_verbose, const short p)
 	trace(be_verbose, "\ttest with shift parameter %d is successful\n", p);
 	is_success = true;
 
-destroy_lsb:
-	rohc_lsb_free(lsb);
-destroy_wlsb:
-	c_destroy_wlsb(wlsb);
 error:
 	return is_success;
 }
@@ -259,8 +245,8 @@ error:
  */
 bool run_test16_with_shift_param(bool be_verbose, const short p)
 {
-	struct c_wlsb *wlsb; /* the W-LSB encoding context */
-	struct rohc_lsb_decode *lsb; /* the LSB decoding context */
+	struct c_wlsb wlsb; /* the W-LSB encoding context */
+	struct rohc_lsb_decode lsb; /* the LSB decoding context */
 
 	uint16_t value16; /* the value to encode */
 
@@ -269,23 +255,13 @@ bool run_test16_with_shift_param(bool be_verbose, const short p)
 	uint32_t i;
 
 	/* create the W-LSB encoding context */
-	wlsb = c_create_wlsb(16, ROHC_WLSB_WINDOW_WIDTH, p);
-	if(wlsb == NULL)
-	{
-		fprintf(stderr, "no memory to allocate W-LSB encoding context\n");
-		goto error;
-	}
+	wlsb_init(&wlsb, 16, ROHC_WLSB_WINDOW_WIDTH, p);
 
 	/* init the LSB decoding context with value 0 */
 	value16 = 0;
 	trace(be_verbose, "\tinitialize with 16 bits of value 0x%04x ...\n", value16);
-	lsb = rohc_lsb_new(16);
-	if(lsb == NULL)
-	{
-		fprintf(stderr, "no memory to allocate LSB decoding context\n");
-		goto destroy_wlsb;
-	}
-	rohc_lsb_set_ref(lsb, value16, false);
+	rohc_lsb_init(&lsb, 16);
+	rohc_lsb_set_ref(&lsb, value16, false);
 
 	/* initialize the W-LSB encoding context */
 	for(i = 1; i < 3; i++)
@@ -293,7 +269,7 @@ bool run_test16_with_shift_param(bool be_verbose, const short p)
 		value16 = i % 0xffff;
 		trace(be_verbose, "\tinitialize with 16 bits of value 0x%04x ...\n",
 		      value16);
-		init_wlsb_16(wlsb, lsb, value16);
+		init_wlsb_16(&wlsb, &lsb, value16);
 	}
 
 	/* encode then decode 16-bit values from ranges [3, 0xffff] and [0, 100] */
@@ -301,9 +277,9 @@ bool run_test16_with_shift_param(bool be_verbose, const short p)
 	{
 		/* encode/decode value */
 		value16 = i % (((uint32_t) 0xffff) + 1);
-		if(!test_wlsb_16(wlsb, lsb, value16, p, be_verbose))
+		if(!test_wlsb_16(&wlsb, &lsb, value16, p, be_verbose))
 		{
-			goto destroy_lsb;
+			goto error;
 		}
 	}
 
@@ -311,10 +287,6 @@ bool run_test16_with_shift_param(bool be_verbose, const short p)
 	trace(be_verbose, "\ttest with shift parameter %d is successful\n", p);
 	is_success = true;
 
-destroy_lsb:
-	rohc_lsb_free(lsb);
-destroy_wlsb:
-	c_destroy_wlsb(wlsb);
 error:
 	return is_success;
 }
@@ -329,8 +301,8 @@ error:
  */
 bool run_test32_with_shift_param(bool be_verbose, const short p)
 {
-	struct c_wlsb *wlsb; /* the W-LSB encoding context */
-	struct rohc_lsb_decode *lsb; /* the LSB decoding context */
+	struct c_wlsb wlsb; /* the W-LSB encoding context */
+	struct rohc_lsb_decode lsb; /* the LSB decoding context */
 
 	uint32_t value32; /* the value to encode */
 
@@ -339,23 +311,13 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 	uint64_t i;
 
 	/* create the W-LSB encoding context */
-	wlsb = c_create_wlsb(32, ROHC_WLSB_WINDOW_WIDTH, p);
-	if(wlsb == NULL)
-	{
-		fprintf(stderr, "no memory to allocate W-LSB encoding context\n");
-		goto error;
-	}
+	wlsb_init(&wlsb, 32, ROHC_WLSB_WINDOW_WIDTH, p);
 
 	/* init the LSB decoding context with value 0 */
 	value32 = 0;
 	trace(be_verbose, "\tinitialize with 32 bits of value 0x%08x ...\n", value32);
-	lsb = rohc_lsb_new(32);
-	if(lsb == NULL)
-	{
-		fprintf(stderr, "no memory to allocate LSB decoding context\n");
-		goto destroy_wlsb;
-	}
-	rohc_lsb_set_ref(lsb, value32, false);
+	rohc_lsb_init(&lsb, 32);
+	rohc_lsb_set_ref(&lsb, value32, false);
 
 	/* initialize the W-LSB encoding context */
 	for(i = 1; i < 3; i++)
@@ -363,7 +325,7 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 		value32 = i % 0xffffffff;
 		trace(be_verbose, "\tinitialize with 32 bits of value 0x%08x ...\n",
 		      value32);
-		init_wlsb_32(wlsb, lsb, value32);
+		init_wlsb_32(&wlsb, &lsb, value32);
 	}
 
 	/* encode then decode 32-bit values from ranges [3, 100] */
@@ -371,35 +333,20 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 	{
 		/* encode/decode value */
 		value32 = i % (((uint64_t) 0xffffffff) + 1);
-		if(!test_wlsb_32(wlsb, lsb, value32, p, be_verbose))
+		if(!test_wlsb_32(&wlsb, &lsb, value32, p, be_verbose))
 		{
-			goto destroy_lsb;
+			goto error;
 		}
 	}
 
-	/* destroy the LSB decoding context */
-	rohc_lsb_free(lsb);
-	/* destroy the W-LSB encoding context */
-	c_destroy_wlsb(wlsb);
-
 	/* create the W-LSB encoding context again */
-	wlsb = c_create_wlsb(32, ROHC_WLSB_WINDOW_WIDTH, p);
-	if(wlsb == NULL)
-	{
-		fprintf(stderr, "no memory to allocate W-LSB encoding\n");
-		goto error;
-	}
+	wlsb_init(&wlsb, 32, ROHC_WLSB_WINDOW_WIDTH, p);
 
 	/* init the LSB decoding context with value 0xffffffff - 100 - 3 */
 	value32 = 0xffffffff - 100 - 3;
 	trace(be_verbose, "\tinitialize with 32 bits of value 0x%08x ...\n", value32);
-	lsb = rohc_lsb_new(32);
-	if(lsb == NULL)
-	{
-		fprintf(stderr, "no memory to allocate LSB decoding context\n");
-		goto destroy_wlsb;
-	}
-	rohc_lsb_set_ref(lsb, value32, false);
+	rohc_lsb_init(&lsb, 32);
+	rohc_lsb_set_ref(&lsb, value32, false);
 
 	/* initialize the W-LSB encoding context */
 	for(i = (0xffffffff - 100 - 3); i < (0xffffffff - 100); i++)
@@ -407,7 +354,7 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 		value32 = i % 0xffffffff;
 		trace(be_verbose, "\tinitialize with 32 bits of value 0x%08x ...\n",
 		      value32);
-		init_wlsb_32(wlsb, lsb, value32);
+		init_wlsb_32(&wlsb, &lsb, value32);
 	}
 
 	/* encode then decode 32-bit values from ranges
@@ -416,36 +363,21 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 	{
 		/* encode/decode value */
 		value32 = i % (((uint64_t) 0xffffffff) + 1);
-		if(!test_wlsb_32(wlsb, lsb, value32, p, be_verbose))
+		if(!test_wlsb_32(&wlsb, &lsb, value32, p, be_verbose))
 		{
-			goto destroy_lsb;
+			goto error;
 		}
 	}
 
-	/* destroy the LSB decoding context */
-	rohc_lsb_free(lsb);
-	/* destroy the W-LSB encoding context */
-	c_destroy_wlsb(wlsb);
-
 	/* create the W-LSB encoding context again */
-	wlsb = c_create_wlsb(32, 64U, p);
-	if(wlsb == NULL)
-	{
-		fprintf(stderr, "no memory to allocate W-LSB encoding\n");
-		goto error;
-	}
+	wlsb_init(&wlsb, 32, 64U, p);
 
 	/* init the LSB decoding context with value 0xffffffff - 4500 - 1700 */
 	value32 = 0xffffffff - 4500 - 1700;
 	trace(be_verbose, "\tinitialize with 32 bits of value 0x%08x ...\n",
 	      value32);
-	lsb = rohc_lsb_new(32);
-	if(lsb == NULL)
-	{
-		fprintf(stderr, "no memory to allocate LSB decoding context\n");
-		goto destroy_wlsb;
-	}
-	rohc_lsb_set_ref(lsb, value32, false);
+	rohc_lsb_init(&lsb, 32);
+	rohc_lsb_set_ref(&lsb, value32, false);
 
 	/* initialize the W-LSB encoding context */
 	for(i = (0xffffffff - 4500 - 1700); i < (0xffffffff - 1700); i += 1500)
@@ -453,39 +385,35 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 		value32 = i % 0xffffffff;
 		trace(be_verbose, "\tinitialize with 32 bits of value 0x%08x ...\n",
 		      value32);
-		init_wlsb_32(wlsb, lsb, value32);
+		init_wlsb_32(&wlsb, &lsb, value32);
 	}
 
 	/* encode several values (+1500, last value is duplicated) */
-	if(!test_wlsb_32(wlsb, lsb, 0xffffffff - 1700, p, be_verbose))
+	if(!test_wlsb_32(&wlsb, &lsb, 0xffffffff - 1700, p, be_verbose))
 	{
-		goto destroy_lsb;
+		goto error;
 	}
-	if(!test_wlsb_32(wlsb, lsb, 0xffffffff - 200, p, be_verbose))
+	if(!test_wlsb_32(&wlsb, &lsb, 0xffffffff - 200, p, be_verbose))
 	{
-		goto destroy_lsb;
+		goto error;
 	}
-	if(!test_wlsb_32(wlsb, lsb, 1300, p, be_verbose))
+	if(!test_wlsb_32(&wlsb, &lsb, 1300, p, be_verbose))
 	{
-		goto destroy_lsb;
+		goto error;
 	}
-	if(!test_wlsb_32(wlsb, lsb, 2800, p, be_verbose))
+	if(!test_wlsb_32(&wlsb, &lsb, 2800, p, be_verbose))
 	{
-		goto destroy_lsb;
+		goto error;
 	}
-	if(!test_wlsb_32(wlsb, lsb, 2800, p, be_verbose))
+	if(!test_wlsb_32(&wlsb, &lsb, 2800, p, be_verbose))
 	{
-		goto destroy_lsb;
+		goto error;
 	}
 
 	/* test succeeds */
 	trace(be_verbose, "\ttest with shift parameter %d is successful\n", p);
 	is_success = true;
 
-destroy_lsb:
-	rohc_lsb_free(lsb);
-destroy_wlsb:
-	c_destroy_wlsb(wlsb);
 error:
 	return is_success;
 }

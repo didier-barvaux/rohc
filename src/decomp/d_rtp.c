@@ -59,7 +59,7 @@ struct d_rtp_context
 	/** Whether the UDP checksum field is encoded in the ROHC packet or not */
 	rohc_tristate_t udp_check_present;
 	/** The scaled RTP Timestamp decoding context */
-	struct ts_sc_decomp *ts_scaled_ctxt;
+	struct ts_sc_decomp ts_scaled_ctxt;
 };
 
 
@@ -203,13 +203,7 @@ static bool d_rtp_create(const struct rohc_decomp_ctxt *const context,
 
 	/* create the LSB decoding context for SN */
 	rfc3095_ctxt->sn_lsb_p = ROHC_LSB_SHIFT_RTP_SN;
-	rfc3095_ctxt->sn_lsb_ctxt = rohc_lsb_new(16);
-	if(rfc3095_ctxt->sn_lsb_ctxt == NULL)
-	{
-		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "failed to create the LSB decoding context for SN");
-		goto free_rtp_context;
-	}
+	rohc_lsb_init(&rfc3095_ctxt->sn_lsb_ctxt, 16);
 
 	/* the UDP checksum field present flag will be initialized
 	 * with the IR packets */
@@ -235,7 +229,7 @@ static bool d_rtp_create(const struct rohc_decomp_ctxt *const context,
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "cannot allocate memory for the RTP-specific part of the "
 		           "outer IP header changes");
-		goto free_lsb_sn;
+		goto free_rtp_context;
 	}
 
 	rfc3095_ctxt->inner_ip_changes->next_header_len = nh_len;
@@ -252,24 +246,13 @@ static bool d_rtp_create(const struct rohc_decomp_ctxt *const context,
 	rfc3095_ctxt->next_header_proto = ROHC_IPPROTO_UDP;
 
 	/* create the scaled RTP Timestamp decoding context */
-	rtp_context->ts_scaled_ctxt =
-		d_create_sc(context->decompressor->trace_callback,
-		            context->decompressor->trace_callback_priv);
-	if(rtp_context->ts_scaled_ctxt == NULL)
-	{
-		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "cannot create the scaled RTP Timestamp decoding context");
-		goto free_inner_ip_changes_next_header;
-	}
+	d_init_sc(&rtp_context->ts_scaled_ctxt, context->decompressor->trace_callback,
+	          context->decompressor->trace_callback_priv);
 
 	return true;
 
-free_inner_ip_changes_next_header:
-	zfree(rfc3095_ctxt->inner_ip_changes->next_header);
 free_outer_ip_changes_next_header:
 	zfree(rfc3095_ctxt->outer_ip_changes->next_header);
-free_lsb_sn:
-	rohc_lsb_free(rfc3095_ctxt->sn_lsb_ctxt);
 free_rtp_context:
 	zfree(rtp_context);
 destroy_context:
@@ -291,20 +274,11 @@ quit:
 static void d_rtp_destroy(struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt,
                           const struct rohc_decomp_volat_ctxt *const volat_ctxt)
 {
-	const struct d_rtp_context *const rtp_context =
-		(struct d_rtp_context *) rfc3095_ctxt->specific;
-
-	/* destroy the scaled RTP Timestamp decoding object */
-	rohc_ts_scaled_free(rtp_context->ts_scaled_ctxt);
-
 	/* clean UDP-specific memory */
 	assert(rfc3095_ctxt->outer_ip_changes != NULL);
 	zfree(rfc3095_ctxt->outer_ip_changes->next_header);
 	assert(rfc3095_ctxt->inner_ip_changes != NULL);
 	zfree(rfc3095_ctxt->inner_ip_changes->next_header);
-
-	/* destroy the LSB decoding context for SN */
-	rohc_lsb_free(rfc3095_ctxt->sn_lsb_ctxt);
 
 	/* destroy the resources of the generic context */
 	rohc_decomp_rfc3095_destroy(rfc3095_ctxt, volat_ctxt);
@@ -663,7 +637,7 @@ static int rtp_parse_dynamic_rtp(const struct rohc_decomp_ctxt *const context,
                                  struct rohc_extr_bits *const bits)
 {
 	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
-	const struct d_rtp_context *const rtp_context = rfc3095_ctxt->specific;
+	struct d_rtp_context *const rtp_context = rfc3095_ctxt->specific;
 	/* The size (in bytes) of the constant RTP dynamic part:
 	 *
 	 * According to RFC3095 section 5.7.7.6:
@@ -808,7 +782,7 @@ static int rtp_parse_dynamic_rtp(const struct rohc_decomp_ctxt *const context,
 			remain_len -= ts_stride_sdvl_len;
 
 			/* temporarily store the decoded TS_STRIDE in context */
-			d_record_ts_stride(rtp_context->ts_scaled_ctxt, ts_stride);
+			d_record_ts_stride(&rtp_context->ts_scaled_ctxt, ts_stride);
 		}
 
 		/* part 9 */
@@ -1433,7 +1407,7 @@ static int rtp_parse_rtp_hdr_fields(const struct rohc_decomp_ctxt *const context
 
 	if(tss)
 	{
-		const struct d_rtp_context *const rtp_context = rfc3095_ctxt->specific;
+		struct d_rtp_context *const rtp_context = rfc3095_ctxt->specific;
 		uint32_t ts_stride;
 		size_t ts_stride_bits_nr;
 		size_t ts_stride_size;
@@ -1456,7 +1430,7 @@ static int rtp_parse_rtp_hdr_fields(const struct rohc_decomp_ctxt *const context
 		rohc_remain_len -= ts_stride_size;
 
 		/* temporarily store the decoded TS_STRIDE in context */
-		d_record_ts_stride(rtp_context->ts_scaled_ctxt, ts_stride);
+		d_record_ts_stride(&rtp_context->ts_scaled_ctxt, ts_stride);
 	}
 
 	if(tis)
@@ -1557,7 +1531,7 @@ static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
                                         struct rohc_decoded_values *const decoded)
 {
 	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
-	const struct d_rtp_context *const rtp_context = rfc3095_ctxt->specific;
+	struct d_rtp_context *const rtp_context = rfc3095_ctxt->specific;
 	struct udphdr *udp;
 	struct rtphdr *rtp;
 
@@ -1749,7 +1723,7 @@ static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 			goto error;
 		}
 
-		ts_decode_ok = ts_decode_unscaled_bits(rtp_context->ts_scaled_ctxt,
+		ts_decode_ok = ts_decode_unscaled_bits(&rtp_context->ts_scaled_ctxt,
 		                                       bits->ts, bits->ts_nr, &decoded->ts);
 		if(!ts_decode_ok)
 		{
@@ -1763,7 +1737,7 @@ static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 		/* TS is scaled but no TS_SCALED bits were transmitted */
 		rohc_decomp_debug(context, "TS is deducted from SN");
 		assert(decoded->sn <= 0xffff);
-		decoded->ts = ts_deduce_from_sn(rtp_context->ts_scaled_ctxt, decoded->sn);
+		decoded->ts = ts_deduce_from_sn(&rtp_context->ts_scaled_ctxt, decoded->sn);
 	}
 	else
 	{
@@ -1772,7 +1746,7 @@ static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 		bool ts_decode_ok;
 
 		rohc_decomp_debug(context, "TS is scaled");
-		ts_decode_ok = ts_decode_scaled_bits(rtp_context->ts_scaled_ctxt,
+		ts_decode_ok = ts_decode_scaled_bits(&rtp_context->ts_scaled_ctxt,
 		                                     bits->ts, bits->ts_nr,
 		                                     &decoded->ts);
 		if(!ts_decode_ok)
@@ -1888,7 +1862,7 @@ static void rtp_update_context(struct rohc_decomp_ctxt *const context,
 	/* update context for RTP fields */
 	rtp = (struct rtphdr *) (udp + 1);
 	assert(decoded->sn <= 0xffff);
-	ts_update_context(rtp_context->ts_scaled_ctxt, decoded->ts, decoded->sn);
+	ts_update_context(&rtp_context->ts_scaled_ctxt, decoded->ts, decoded->sn);
 	rtp->version = decoded->rtp_version;
 	rtp->padding = decoded->rtp_p;
 	rtp->extension = decoded->rtp_x;

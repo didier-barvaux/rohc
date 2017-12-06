@@ -36,13 +36,19 @@ struct rohc_comp_ctxt;
 
 
 /* static_or_irreg encoding for 8-bit and 16-bit values */
-int c_static_or_irreg8(const uint8_t context_value,
-                       const uint8_t packet_value,
+int c_static_or_irreg8(const uint8_t packet_value,
+                       const bool is_static,
                        uint8_t *const rohc_data,
                        const size_t rohc_max_len,
                        int *const indicator)
 	__attribute__((warn_unused_result, nonnull(3, 5)));
 int c_static_or_irreg16(const uint16_t packet_value,
+                        const bool is_static,
+                        uint8_t *const rohc_data,
+                        const size_t rohc_max_len,
+                        int *const indicator)
+	__attribute__((warn_unused_result, nonnull(3, 5)));
+int c_static_or_irreg32(const uint32_t packet_value,
                         const bool is_static,
                         uint8_t *const rohc_data,
                         const size_t rohc_max_len,

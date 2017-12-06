@@ -632,9 +632,13 @@ static int tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *const context,
 	}
 	else
 	{
+		bool no_item_needed;
+
 		ret = c_tcp_code_tcp_opts_list_item(context, tcp, tcp_context->msn,
-		                                    true, &tcp_context->tcp_opts,
-		                                    rohc_remain_data, rohc_remain_len);
+		                                    ROHC_TCP_CHAIN_DYNAMIC,
+		                                    &tcp_context->tcp_opts,
+		                                    rohc_remain_data, rohc_remain_len,
+		                                    &no_item_needed);
 		if(ret < 0)
 		{
 			rohc_comp_warn(context, "failed to encode the list of TCP options "

@@ -119,8 +119,8 @@ struct c_tcp_opts_ctxt
 	struct c_tcp_opt_ctxt list[MAX_TCP_OPTION_INDEX + 1];
 
 	bool is_timestamp_init;
-	struct c_wlsb *ts_req_wlsb;
-	struct c_wlsb *ts_reply_wlsb;
+	struct c_wlsb ts_req_wlsb;
+	struct c_wlsb ts_reply_wlsb;
 
 	/** The temporary part of the context, shall be reset between 2 packets */
 	struct c_tcp_opts_ctxt_tmp tmp;
@@ -141,11 +141,12 @@ bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
                                   const struct tcphdr *const tcp,
                                   const uint16_t msn,
-                                  const bool is_dynamic_chain,
+                                  const rohc_tcp_chain_t chain_type,
                                   struct c_tcp_opts_ctxt *const opts_ctxt,
                                   uint8_t *const comp_opts,
-                                  const size_t comp_opts_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6)));
+                                  const size_t comp_opts_max_len,
+                                  bool *const no_item_needed)
+	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6, 8)));
 
 int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
                               const struct tcphdr *const tcp,

@@ -340,11 +340,11 @@ struct rohc_decomp_rfc3095_ctxt
 	/** The LSB shift parameter for the Sequence Number (SN) */
 	rohc_lsb_shift_t sn_lsb_p;
 	/// The LSB decoding context for the Sequence Number (SN)
-	struct rohc_lsb_decode *sn_lsb_ctxt;
+	struct rohc_lsb_decode sn_lsb_ctxt;
 	/// The IP-ID of the outer IP header
-	struct ip_id_offset_decode *outer_ip_id_offset_ctxt;
+	struct ip_id_offset_decode outer_ip_id_offset_ctxt;
 	/// The IP-ID of the inner IP header
-	struct ip_id_offset_decode *inner_ip_id_offset_ctxt;
+	struct ip_id_offset_decode inner_ip_id_offset_ctxt;
 
 	/// The list decompressor of the outer IP header
 	struct list_decomp list_decomp1;

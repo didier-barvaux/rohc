@@ -28,6 +28,7 @@ librohc_comp_la_SOURCES = \
 	c_tcp_opts_list.c \
 	c_tcp_static.c \
 	c_tcp_dynamic.c \
+	c_tcp_replicate.c \
 	c_tcp_irregular.c \
 	c_tcp.c
 
@@ -62,6 +63,7 @@ noinst_HEADERS = \
 	c_tcp_opts_list.h \
 	c_tcp_static.h \
 	c_tcp_dynamic.h \
+	c_tcp_replicate.h \
 	c_tcp_irregular.h
 
 # extra files for releases

@@ -27,7 +27,6 @@
  */
 
 #include "decomp_scaled_rtp_ts.h"
-#include "decomp_wlsb.h"
 #include "rohc_traces_internal.h"
 
 #include <assert.h>
@@ -40,131 +39,38 @@
 
 
 /*
- * Structure and types
- */
-
-/**
- * @brief The scaled RTP Timestamp decoding context
- *
- * See section 4.5.3 of RFC 3095 for details about Scaled RTP Timestamp
- * decoding.
- */
-struct ts_sc_decomp
-{
-	/// The last computed or received TS_STRIDE value (validated by CRC)
-	uint32_t ts_stride;
-
-	/// The last computed or received TS_SCALED value (validated by CRC)
-	uint32_t ts_scaled;
-	/// The LSB-encoded TS_SCALED value
-	struct rohc_lsb_decode *lsb_ts_scaled;
-
-	/// The last computed or received TS_OFFSET value (validated by CRC)
-	uint32_t ts_offset;
-
-	/** The last timestamp (TS) value */
-	uint32_t ts;
-	/** The LSB-encoded unscaled timestamp (TS) value */
-	struct rohc_lsb_decode *lsb_ts_unscaled;
-	/// The previous timestamp value
-	uint32_t old_ts;
-
-	/// The sequence number (SN)
-	uint16_t sn;
-	/// The previous sequence number
-	uint16_t old_sn;
-
-
-	/* the attributes below are new TS_* values computed by not yet validated
-	   by CRC check */
-
-	/// The last computed or received TS_STRIDE value (not validated by CRC)
-	uint32_t new_ts_stride;
-	/// The last computed or received TS_SCALED value (not validated by CRC)
-	uint32_t new_ts_scaled;
-	/// The last computed or received TS_OFFSET value (not validated by CRC)
-	uint32_t new_ts_offset;
-
-	/** The callback function used to manage traces */
-	rohc_trace_callback2_t trace_callback;
-	/** The private context of the callback function used to manage traces */
-	void *trace_callback_priv;
-};
-
-
-
-/*
  * Public functions
  */
 
 /**
- * @brief Create the scaled RTP Timestamp decoding context
+ * @brief Initialize the scaled RTP Timestamp decoding context
  *
- * @param trace_cb       The trace callback
- * @param trace_cb_priv  An optional private context for the trace
- * @return               The scaled RTP Timestamp decoding context in case of
- *                       success, NULL otherwise
+ * @param[in,out] ts_scaled  The scaled RTP Timestamp decoding context to init
+ * @param trace_cb           The trace callback
+ * @param trace_cb_priv      An optional private context for the trace
  */
-struct ts_sc_decomp * d_create_sc(rohc_trace_callback2_t trace_cb,
-                                  void *const trace_cb_priv)
+void d_init_sc(struct ts_sc_decomp *const ts_scaled,
+               rohc_trace_callback2_t trace_cb,
+               void *const trace_cb_priv)
 {
-	struct ts_sc_decomp *ts_sc;
+	ts_scaled->ts_stride = 0;
+	ts_scaled->ts_scaled = 0;
+	ts_scaled->ts_offset = 0;
 
-	ts_sc = malloc(sizeof(struct ts_sc_decomp));
-	if(ts_sc == NULL)
-	{
-		goto error;
-	}
+	ts_scaled->old_ts = 0;
+	ts_scaled->old_sn = 0;
+	ts_scaled->ts = 0;
+	ts_scaled->sn = 0;
 
-	ts_sc->ts_stride = 0;
-	ts_sc->ts_scaled = 0;
-	ts_sc->ts_offset = 0;
+	ts_scaled->new_ts_stride = 0;
+	ts_scaled->new_ts_scaled = 0;
+	ts_scaled->new_ts_offset = 0;
 
-	ts_sc->old_ts = 0;
-	ts_sc->old_sn = 0;
-	ts_sc->ts = 0;
-	ts_sc->sn = 0;
+	rohc_lsb_init(&ts_scaled->lsb_ts_scaled, 32);
+	rohc_lsb_init(&ts_scaled->lsb_ts_unscaled, 32);
 
-	ts_sc->new_ts_stride = 0;
-	ts_sc->new_ts_scaled = 0;
-	ts_sc->new_ts_offset = 0;
-
-	ts_sc->lsb_ts_scaled = rohc_lsb_new(32);
-	if(ts_sc->lsb_ts_scaled == NULL)
-	{
-		goto free_context;
-	}
-
-	ts_sc->lsb_ts_unscaled = rohc_lsb_new(32);
-	if(ts_sc->lsb_ts_unscaled == NULL)
-	{
-		goto free_lsb_ts_scaled;
-	}
-
-	ts_sc->trace_callback = trace_cb;
-	ts_sc->trace_callback_priv = trace_cb_priv;
-
-	return ts_sc;
-
-free_lsb_ts_scaled:
-	rohc_lsb_free(ts_sc->lsb_ts_scaled);
-free_context:
-	free(ts_sc);
-error:
-	return NULL;
-}
-
-
-/**
- * @brief Destroy the given ts_sc_decomp object
- *
- * @param ts_sc  The ts_sc_decomp object to destroy
- */
-void rohc_ts_scaled_free(struct ts_sc_decomp *const ts_sc)
-{
-	rohc_lsb_free(ts_sc->lsb_ts_unscaled);
-	rohc_lsb_free(ts_sc->lsb_ts_scaled);
-	free(ts_sc);
+	ts_scaled->trace_callback = trace_cb;
+	ts_scaled->trace_callback_priv = trace_cb_priv;
 }
 
 
@@ -226,8 +132,8 @@ void ts_update_context(struct ts_sc_decomp *const ts_sc,
 	ts_sc->new_ts_offset = 0;
 
 	/* update the LSB objects for unscaled TS and TS_SCALED */
-	rohc_lsb_set_ref(ts_sc->lsb_ts_unscaled, ts_sc->ts, false);
-	rohc_lsb_set_ref(ts_sc->lsb_ts_scaled, ts_sc->ts_scaled, false);
+	rohc_lsb_set_ref(&ts_sc->lsb_ts_unscaled, ts_sc->ts, false);
+	rohc_lsb_set_ref(&ts_sc->lsb_ts_scaled, ts_sc->ts_scaled, false);
 }
 
 
@@ -298,8 +204,8 @@ bool ts_decode_unscaled_bits(struct ts_sc_decomp *const ts_sc,
 	{
 		ts_debug(ts_sc, "decode %zd-bit unscaled TS %u (reference = %u)",
 		         ts_unscaled_bits_nr, ts_unscaled_bits,
-		         rohc_lsb_get_ref(ts_sc->lsb_ts_unscaled, ROHC_LSB_REF_0));
-		lsb_decode_ok = rohc_lsb_decode(ts_sc->lsb_ts_unscaled, ROHC_LSB_REF_0, 0,
+		         rohc_lsb_get_ref(&ts_sc->lsb_ts_unscaled, ROHC_LSB_REF_0));
+		lsb_decode_ok = rohc_lsb_decode(&ts_sc->lsb_ts_unscaled, ROHC_LSB_REF_0, 0,
 		                                ts_unscaled_bits, ts_unscaled_bits_nr,
 		                                ROHC_LSB_SHIFT_RTP_TS, decoded_ts);
 		if(!lsb_decode_ok)
@@ -389,8 +295,8 @@ bool ts_decode_scaled_bits(struct ts_sc_decomp *const ts_sc,
 	/* update TS_SCALED in context */
 	ts_debug(ts_sc, "decode %zd-bit TS_SCALED %u (reference = %u)",
 	         ts_scaled_bits_nr, ts_scaled_bits,
-	         rohc_lsb_get_ref(ts_sc->lsb_ts_scaled, ROHC_LSB_REF_0));
-	lsb_decode_ok = rohc_lsb_decode(ts_sc->lsb_ts_scaled, ROHC_LSB_REF_0, 0,
+	         rohc_lsb_get_ref(&ts_sc->lsb_ts_scaled, ROHC_LSB_REF_0));
+	lsb_decode_ok = rohc_lsb_decode(&ts_sc->lsb_ts_scaled, ROHC_LSB_REF_0, 0,
 	                                ts_scaled_bits, ts_scaled_bits_nr,
 	                                ROHC_LSB_SHIFT_RTP_TS, &ts_scaled_decoded);
 	if(!lsb_decode_ok)

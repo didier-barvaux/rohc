@@ -116,7 +116,7 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 {
 	const size_t comp_max_len = sizeof(uint32_t);
 	uint8_t comp_data[comp_max_len];
-	struct c_wlsb *wlsb;
+	struct c_wlsb wlsb;
 	uint32_t old_value;
 	bool is_success = false;
 	size_t i;
@@ -167,17 +167,12 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 	};
 
 	/* create the W-LSB context */
-	wlsb = c_create_wlsb(32, ROHC_WLSB_WINDOW_WIDTH, ROHC_LSB_SHIFT_VAR);
-	if(wlsb == NULL)
-	{
-		trace(be_verbose, "failed to create W-LSB context\n");
-		goto error;
-	}
+	wlsb_init(&wlsb, 32, ROHC_WLSB_WINDOW_WIDTH, ROHC_LSB_SHIFT_VAR);
 	/* init the W-LSB context with several values */
-	c_add_wlsb(wlsb, 0, 0);
-	c_add_wlsb(wlsb, 1, 0);
-	c_add_wlsb(wlsb, 2, 0);
-	c_add_wlsb(wlsb, 3, 0);
+	c_add_wlsb(&wlsb, 0, 0);
+	c_add_wlsb(&wlsb, 1, 0);
+	c_add_wlsb(&wlsb, 2, 0);
+	c_add_wlsb(&wlsb, 3, 0);
 
 	i = 0;
 	old_value = 0;
@@ -189,8 +184,8 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 		size_t nr_bits_63;
 
 		/* detect how many bits are required for the value */
-		nr_bits_16383 = wlsb_get_kp_32bits(wlsb, inputs[i].uncomp_value, 16383);
-		nr_bits_63 = wlsb_get_kp_32bits(wlsb, inputs[i].uncomp_value, 63);
+		nr_bits_16383 = wlsb_get_kp_32bits(&wlsb, inputs[i].uncomp_value, 16383);
+		nr_bits_63 = wlsb_get_kp_32bits(&wlsb, inputs[i].uncomp_value, 63);
 
 		/* compress the value */
 		trace(be_verbose, "\tvariable_length_32_enc(value = 0x%08x)\n",
@@ -207,7 +202,7 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 			fprintf(stderr, "variable_length_32_enc(value = 0x%08x) returned %d "
 			        "as indicator while %d expected\n", inputs[i].uncomp_value,
 			        indicator, inputs[i].expected_indicator);
-			goto free_wlsb;
+			goto error;
 		}
 
 		/* check that written data is as expected */
@@ -217,10 +212,10 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 			        "%zu-byte compressed value while one %zu-byte value was "
 			        "expected\n", inputs[i].uncomp_value, comp_len,
 			        inputs[i].expected_len);
-			goto free_wlsb;
+			goto error;
 		}
 
-		c_add_wlsb(wlsb, i + 4, inputs[i].uncomp_value);
+		c_add_wlsb(&wlsb, i + 4, inputs[i].uncomp_value);
 		old_value = inputs[i].uncomp_value;
 
 		i++;
@@ -228,8 +223,6 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 
 	is_success = true;
 
-free_wlsb:
-	c_destroy_wlsb(wlsb);
 error:
 	return is_success;
 }

@@ -102,7 +102,7 @@ static size_t c_tcp_opt_write_xi(const struct rohc_comp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 bool c_tcp_is_list_item_needed(const struct rohc_comp_ctxt *const context,
-                               const bool is_dynamic_chain,
+                               const rohc_tcp_chain_t chain_type,
                                const uint8_t opt_idx,
                                const uint8_t opt_type,
                                const uint8_t opt_len,
@@ -675,26 +675,30 @@ error:
 /**
  * @brief Build the list of TCP options items
  *
- * The list of TCP options is used in the dynamic chain of the IR and IR-DYN
- * packets, but also at the end of the rnd_8, seq_8, and co_common packets.
+ * The list of TCP options is used in:
+ *  - the dynamic chain of the IR and IR-DYN packets,
+ *  - the replicate chain of the IR-CR packets,
+ *  - at the end of the rnd_8, seq_8, and co_common packets.
  *
  * @param context            The compression context
  * @param tcp                The TCP header
  * @param msn                The Master Sequence Number (MSN) of the packet to compress
- * @param is_dynamic_chain   Whether the list of items is for the dynamic chain or not
+ * @param chain_type         The TCP chain for which the list of items is
  * @param[in,out] opts_ctxt  The compression context for TCP options
  * @param[out] comp_opts     The compressed TCP options
  * @param comp_opts_max_len  The max remaining length in the ROHC buffer
+ * @param[out] no_item_needed Whether no item was needed at all
  * @return                   The length (in bytes) of compressed TCP options
  *                           in case of success, -1 in case of failure
  */
 int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
                                   const struct tcphdr *const tcp,
                                   const uint16_t msn,
-                                  const bool is_dynamic_chain,
+                                  const rohc_tcp_chain_t chain_type,
                                   struct c_tcp_opts_ctxt *const opts_ctxt,
                                   uint8_t *const comp_opts,
-                                  const size_t comp_opts_max_len)
+                                  const size_t comp_opts_max_len,
+                                  bool *const no_item_needed)
 {
 	const uint8_t *options = ((uint8_t *) tcp) + sizeof(struct tcphdr);
 	const size_t data_offset_bytes = (tcp->data_offset << 2);
@@ -714,6 +718,8 @@ int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
 	size_t comp_opts_len = 0; /* no compressed option at the beginning */
 	int ret;
 	int i;
+
+	(*no_item_needed) = true;
 
 	assert(data_offset_bytes >= sizeof(struct tcphdr));
 
@@ -774,7 +780,7 @@ int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
 		c_tcp_opt_trace(context, opt_type, options, opt_len);
 
 		/* do we need to transmit the item? */
-		item_needed = c_tcp_is_list_item_needed(context, is_dynamic_chain, opt_idx,
+		item_needed = c_tcp_is_list_item_needed(context, chain_type, opt_idx,
 		                                        opt_type, opt_len, options, opts_ctxt);
 
 		/* if item is transmitted, the option is new, changed now or changed a
@@ -783,6 +789,7 @@ int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
 		 *       context in case of compression failure */
 		if(item_needed)
 		{
+			(*no_item_needed) = false;
 			c_tcp_opt_record(opts_ctxt, opt_idx, options, opt_len);
 		}
 
@@ -829,8 +836,8 @@ int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
 			const struct tcp_option_timestamp *const opt_ts =
 				(struct tcp_option_timestamp *) (options + 2);
 			opts_ctxt->is_timestamp_init = true;
-			c_add_wlsb(opts_ctxt->ts_req_wlsb, msn, rohc_ntoh32(opt_ts->ts));
-			c_add_wlsb(opts_ctxt->ts_reply_wlsb, msn, rohc_ntoh32(opt_ts->ts_reply));
+			c_add_wlsb(&opts_ctxt->ts_req_wlsb, msn, rohc_ntoh32(opt_ts->ts));
+			c_add_wlsb(&opts_ctxt->ts_reply_wlsb, msn, rohc_ntoh32(opt_ts->ts_reply));
 		}
 	}
 	if(opt_pos >= ROHC_TCP_OPTS_MAX && i != 0)
@@ -967,8 +974,8 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 			/* TODO: move at the very end of compression to avoid altering
 			 *       context in case of compression failure */
 			opts_ctxt->is_timestamp_init = true;
-			c_add_wlsb(opts_ctxt->ts_req_wlsb, msn, rohc_ntoh32(opt_ts->ts));
-			c_add_wlsb(opts_ctxt->ts_reply_wlsb, msn, rohc_ntoh32(opt_ts->ts_reply));
+			c_add_wlsb(&opts_ctxt->ts_req_wlsb, msn, rohc_ntoh32(opt_ts->ts));
+			c_add_wlsb(&opts_ctxt->ts_reply_wlsb, msn, rohc_ntoh32(opt_ts->ts_reply));
 		}
 		else if(opt_type == TCP_OPT_SACK)
 		{
@@ -1435,7 +1442,7 @@ static size_t c_tcp_opt_write_xi(const struct rohc_comp_ctxt *const context,
  * @brief Shall the list item be transmitted or not?
  *
  * @param context           The compression context
- * @param is_dynamic_chain  Whether the list of items is for the dynamic chain or not
+ * @param chain_type        The TCP chain for which the list of items is
  * @param opt_idx           The compression index of the TCP option to compress
  * @param opt_type          The type of the TCP option to compress
  * @param opt_len           The length of the TCP option to compress
@@ -1445,7 +1452,7 @@ static size_t c_tcp_opt_write_xi(const struct rohc_comp_ctxt *const context,
  *                          false if it shall not
  */
 bool c_tcp_is_list_item_needed(const struct rohc_comp_ctxt *const context,
-                               const bool is_dynamic_chain,
+                               const rohc_tcp_chain_t chain_type,
                                const uint8_t opt_idx,
                                const uint8_t opt_type,
                                const uint8_t opt_len,
@@ -1455,15 +1462,16 @@ bool c_tcp_is_list_item_needed(const struct rohc_comp_ctxt *const context,
 	bool item_needed;
 
 	/* do we need to transmit the item? */
-	if(is_dynamic_chain)
+	if(chain_type == ROHC_TCP_CHAIN_DYNAMIC || chain_type == ROHC_TCP_CHAIN_REPLICATE)
 	{
 		/* items are required in dynamic chain, see RFC6846 §6.3.5 */
 		rohc_comp_debug(context, "TCP options list: option '%s' is transmitted "
-		                "because dynamic chain requires all options to be "
-		                "transmitted", tcp_opt_get_descr(opt_type));
+		                "because dynamic/replicate chains require all options to "
+		                "be transmitted", tcp_opt_get_descr(opt_type));
 		item_needed = true;
 	}
-	else if(opt_idx == TCP_INDEX_NOP || opt_idx == TCP_INDEX_SACK_PERM)
+	else if(chain_type == ROHC_TCP_CHAIN_CO &&
+	        (opt_idx == TCP_INDEX_NOP || opt_idx == TCP_INDEX_SACK_PERM))
 	{
 		/* in CO headers, NOP and SACK Permitted options have empty items,
 		 * so transmitting them is useless */
@@ -1502,6 +1510,10 @@ bool c_tcp_is_list_item_needed(const struct rohc_comp_ctxt *const context,
 	{
 		/* option was already transmitted and didn't change since then,
 		 * item shall not be transmitted again */
+		rohc_comp_debug(context, "TCP options list: option '%s' is unchanged and "
+		                "was transmitted at least %zu times",
+		                tcp_opt_get_descr(opt_type),
+		                context->compressor->list_trans_nr);
 		item_needed = false;
 	}
 

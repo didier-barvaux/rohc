@@ -33,48 +33,6 @@
 
 
 /*
- * Private structures and types
- */
-
-/**
- * @brief Define a W-LSB window entry
- */
-struct c_window
-{
-	bool used;
-	uint32_t sn;     /**< The Sequence Number (SN) associated with the entry
-	                      (used to acknowledge the entry) */
-	uint32_t value;  /**< The value stored in the window entry */
-};
-
-
-/**
- * @brief Defines a W-LSB encoding object
- */
-struct c_wlsb
-{
-	/// The width of the window
-	size_t window_width; /* TODO: R-mode needs a non-fixed window width */
-
-	/// A pointer on the oldest entry in the window (change on acknowledgement)
-	size_t oldest;
-	/// A pointer on the current entry in the window  (change on add and ack)
-	size_t next;
-
-	/// Count of entries in the window
-	size_t count;
-
-	/// The maximal number of bits for representing the value
-	size_t bits;
-	/// Shift parameter (see 4.5.2 in the RFC 3095)
-	rohc_lsb_shift_t p;
-
-	/** The window in which previous values of the encoded value are stored */
-	struct c_window window[ROHC_WLSB_WIDTH_MAX];
-};
-
-
-/*
  * Private function prototypes:
  */
 
@@ -96,30 +54,23 @@ static size_t wlsb_ack_remove(struct c_wlsb *const wlsb, const size_t pos)
  */
 
 /**
- * @brief Create a new Window-based Least Significant Bits (W-LSB) encoding
- *        object
+ * @brief Initialize the given W-LSB encoding object
  *
- * @param bits         The maximal number of bits for representing a value
- * @param window_width The number of entries in the window (power of 2)
- * @param p            Shift parameter (see 4.5.2 in the RFC 3095)
- * @return             The newly-created W-LSB encoding object
+ * @param[in,out] wlsb  The W-LSB encoding object to initialize
+ * @param bits          The maximal number of bits for representing a value
+ * @param window_width  The number of entries in the window (power of 2)
+ * @param p             Shift parameter (see 4.5.2 in the RFC 3095)
  */
-struct c_wlsb * c_create_wlsb(const size_t bits,
-                              const size_t window_width,
-                              const rohc_lsb_shift_t p)
+void wlsb_init(struct c_wlsb *const wlsb,
+               const size_t bits,
+               const size_t window_width,
+               const rohc_lsb_shift_t p)
 {
-	struct c_wlsb *wlsb;
 	size_t i;
 
 	assert(bits > 0);
 	assert(window_width > 0);
 	assert(window_width <= ROHC_WLSB_WIDTH_MAX);
-
-	wlsb = malloc(sizeof(struct c_wlsb));
-	if(wlsb == NULL)
-	{
-		goto error;
-	}
 
 	wlsb->oldest = 0;
 	wlsb->next = 0;
@@ -132,22 +83,6 @@ struct c_wlsb * c_create_wlsb(const size_t bits,
 	{
 		wlsb->window[i].used = false;
 	}
-
-	return wlsb;
-
-error:
-	return NULL;
-}
-
-
-/**
- * @brief Destroy a Window-based LSB (W-LSB) encoding object
- *
- * @param wlsb  The W-LSB object to destroy
- */
-void c_destroy_wlsb(struct c_wlsb *const wlsb)
-{
-	free(wlsb);
 }
 
 

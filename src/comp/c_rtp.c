@@ -60,8 +60,9 @@ static bool c_rtp_check_profile(const struct rohc_comp *const comp,
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static bool c_rtp_check_context(const struct rohc_comp_ctxt *const context,
-                                const struct net_pkt *const packet)
-	__attribute__((warn_unused_result, nonnull(1, 2), pure));
+                                const struct net_pkt *const packet,
+                                size_t *const cr_score)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int c_rtp_encode(struct rohc_comp_ctxt *const context,
                         const struct net_pkt *const uncomp_pkt,
@@ -163,14 +164,10 @@ static bool c_rtp_create(struct rohc_comp_ctxt *const context,
 	rtp_context->rtp_padding_change_count = 0;
 	rtp_context->rtp_extension_change_count = 0;
 	memcpy(&rtp_context->old_rtp, rtp, sizeof(struct rtphdr));
-	if(!c_create_sc(&rtp_context->ts_sc,
-	                context->compressor->wlsb_window_width,
-	                context->compressor->trace_callback,
-	                context->compressor->trace_callback_priv))
-	{
-		rohc_comp_warn(context, "cannot create scaled RTP Timestamp encoding");
-		goto clean;
-	}
+	c_init_sc(&rtp_context->ts_sc,
+	          context->compressor->wlsb_window_width,
+	          context->compressor->trace_callback,
+	          context->compressor->trace_callback_priv);
 
 	/* init the RTP-specific temporary variables */
 	rtp_context->tmp.send_rtp_dynamic = -1;
@@ -220,16 +217,6 @@ quit:
  */
 static void c_rtp_destroy(struct rohc_comp_ctxt *const context)
 {
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	struct sc_rtp_context *rtp_context;
-
-	assert(context != NULL);
-	assert(context->specific != NULL);
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-	assert(rfc3095_ctxt->specific != NULL);
-	rtp_context = (struct sc_rtp_context *) rfc3095_ctxt->specific;
-
-	c_destroy_sc(&rtp_context->ts_sc);
 	rohc_comp_rfc3095_destroy(context);
 }
 
@@ -378,15 +365,17 @@ bad_profile:
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param context  The compression context
- * @param packet   The IP/UDP/RTP packet to check
- * @return         true if the IP/UDP/RTP packet belongs to the context
- *                 false if it does not belong to the context
+ * @param context        The compression context
+ * @param packet         The IP/UDP/RTP packet to check
+ * @param[out] cr_score  The score of the context for Context Replication (CR)
+ * @return               true if the IP/UDP/RTP packet belongs to the context
+ *                       false if it does not belong to the context
  *
  * @see c_udp_check_context
  */
 static bool c_rtp_check_context(const struct rohc_comp_ctxt *const context,
-                                const struct net_pkt *const packet)
+                                const struct net_pkt *const packet,
+                                size_t *const cr_score)
 {
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
@@ -397,7 +386,7 @@ static bool c_rtp_check_context(const struct rohc_comp_ctxt *const context,
 	bool udp_check;
 
 	/* check IP and UDP headers */
-	udp_check = c_udp_check_context(context, packet);
+	udp_check = c_udp_check_context(context, packet, cr_score);
 	if(!udp_check)
 	{
 		goto bad_context;

@@ -55,6 +55,7 @@
  *                        right-shift them
  */
 
+#define GET_BIT_0_1(x)  ((*(x)) & 0x03)
 #define GET_BIT_0_2(x)  ((*(x)) & 0x07)
 #define GET_BIT_0_4(x)  ((*(x)) & 0x1f)
 #define GET_BIT_0_3(x)  ((*(x)) & 0x0f)
@@ -69,6 +70,7 @@
  */
 
 #define GET_BIT_1_7(x)  ( ((*(x)) & 0xfe) >> 1 )
+#define GET_BIT_2_5(x)  ( ((*(x)) & 0x3c) >> 2 )
 #define GET_BIT_3_4(x)  ( ((*(x)) & 0x18) >> 3 )
 #define GET_BIT_3_5(x)  ( ((*(x)) & 0x38) >> 3 )
 #define GET_BIT_3_6(x)  ( ((*(x)) & 0x78) >> 3 )

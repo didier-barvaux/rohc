@@ -273,13 +273,15 @@ bad_profile:
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param context  The compression context
- * @param packet   The IP/UDP packet to check
- * @return         true if the IP/UDP packet belongs to the context
- *                 false if it does not belong to the context
+ * @param context        The compression context
+ * @param packet         The IP/UDP packet to check
+ * @param[out] cr_score  The score of the context for Context Replication (CR)
+ * @return               true if the IP/UDP packet belongs to the context
+ *                       false if it does not belong to the context
  */
 bool c_udp_check_context(const struct rohc_comp_ctxt *const context,
-                         const struct net_pkt *const packet)
+                         const struct net_pkt *const packet,
+                         size_t *const cr_score)
 {
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
@@ -288,14 +290,19 @@ bool c_udp_check_context(const struct rohc_comp_ctxt *const context,
 	const struct udphdr *const udp = (struct udphdr *) packet->transport->data;
 
 	/* first, check the same parameters as for the IP-only profile */
-	if(!c_ip_check_context(context, packet))
+	if(!c_ip_check_context(context, packet, cr_score))
 	{
 		goto bad_context;
 	}
 
-	/* in addition, check UDP ports */
-	if(udp_context->old_udp.source != udp->source ||
-	   udp_context->old_udp.dest != udp->dest)
+	/* check UDP source port */
+	if(udp_context->old_udp.source != udp->source)
+	{
+		goto bad_context;
+	}
+
+	/* check UDP destination port */
+	if(udp_context->old_udp.dest != udp->dest)
 	{
 		goto bad_context;
 	}

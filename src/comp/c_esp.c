@@ -69,8 +69,9 @@ static bool c_esp_check_profile(const struct rohc_comp *const comp,
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static bool c_esp_check_context(const struct rohc_comp_ctxt *const context,
-                                const struct net_pkt *const packet)
-	__attribute__((warn_unused_result, nonnull(1, 2), pure));
+                                const struct net_pkt *const packet,
+                                size_t *const ctxt_replication_score)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int c_esp_encode(struct rohc_comp_ctxt *const context,
                         const struct net_pkt *const packet,
@@ -258,13 +259,15 @@ bad_profile:
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param context  The compression context
- * @param packet   The IP/UDP packet to check
- * @return         true if the packet belongs to the context,
- *                 false if it does not belong to the context
+ * @param context        The compression context
+ * @param packet         The IP/ESP packet to check
+ * @param[out] cr_score  The score of the context for Context Replication (CR)
+ * @return               true if the packet belongs to the context,
+ *                       false if it does not belong to the context
  */
 static bool c_esp_check_context(const struct rohc_comp_ctxt *const context,
-                                const struct net_pkt *const packet)
+                                const struct net_pkt *const packet,
+                                size_t *const cr_score)
 {
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
@@ -273,7 +276,7 @@ static bool c_esp_check_context(const struct rohc_comp_ctxt *const context,
 	const struct esphdr *const esp = (struct esphdr *) packet->transport->data;
 
 	/* first, check the same parameters as for the IP-only profile */
-	if(!c_ip_check_context(context, packet))
+	if(!c_ip_check_context(context, packet, cr_score))
 	{
 		goto bad_context;
 	}

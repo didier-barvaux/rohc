@@ -47,6 +47,12 @@ int d_static_or_irreg16(const uint8_t *const rohc_data,
                         struct rohc_lsb_field16 *const lsb)
 	__attribute__((warn_unused_result, nonnull(1, 4)));
 
+int d_static_or_irreg32(const uint8_t *const rohc_data,
+                        const size_t rohc_len,
+                        const int indicator,
+                        struct rohc_lsb_field32 *const lsb)
+	__attribute__((warn_unused_result, nonnull(1, 4)));
+
 int variable_length_32_dec(const uint8_t *const rohc_data,
                            const size_t rohc_len,
                            const int indicator,

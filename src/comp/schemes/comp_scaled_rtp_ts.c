@@ -48,14 +48,12 @@
  * @param trace_cb           The trace callback
  * @param trace_cb_priv      An optional private context for the trace
  *                           callback, may be NULL
- * @return                   true if creation is successful, false otherwise
  */
-bool c_create_sc(struct ts_sc_comp *const ts_sc,
-                 const size_t wlsb_window_width,
-                 rohc_trace_callback2_t trace_cb,
-                 void *const trace_cb_priv)
+void c_init_sc(struct ts_sc_comp *const ts_sc,
+               const size_t wlsb_window_width,
+               rohc_trace_callback2_t trace_cb,
+               void *const trace_cb_priv)
 {
-	assert(ts_sc != NULL);
 	assert(wlsb_window_width > 0);
 
 	ts_sc->ts_stride = 0;
@@ -75,46 +73,10 @@ bool c_create_sc(struct ts_sc_comp *const ts_sc,
 	ts_sc->trace_callback_priv = trace_cb_priv;
 
 	/* W-LSB context for TS_SCALED */
-	ts_sc->ts_scaled_wlsb = c_create_wlsb(32, wlsb_window_width,
-	                                      ROHC_LSB_SHIFT_RTP_TS);
-	if(ts_sc->ts_scaled_wlsb == NULL)
-	{
-		rohc_error(ts_sc, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "cannot create a W-LSB window for TS_SCALED");
-		goto error;
-	}
+	wlsb_init(&ts_sc->ts_scaled_wlsb, 32, wlsb_window_width, ROHC_LSB_SHIFT_RTP_TS);
 
 	/* W-LSB context for unscaled TS */
-	ts_sc->ts_unscaled_wlsb = c_create_wlsb(32, wlsb_window_width,
-	                                        ROHC_LSB_SHIFT_RTP_TS);
-	if(ts_sc->ts_unscaled_wlsb == NULL)
-	{
-		rohc_error(ts_sc, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "cannot create a W-LSB window for unscaled TS");
-		goto free_ts_scaled_wlsb;
-	}
-
-	return true;
-
-free_ts_scaled_wlsb:
-	c_destroy_wlsb(ts_sc->ts_scaled_wlsb);
-error:
-	return false;
-}
-
-
-/**
- * @brief Destroy the ts_sc_comp object
- *
- * @param ts_sc        The ts_sc_comp object to destroy
- */
-void c_destroy_sc(struct ts_sc_comp *const ts_sc)
-{
-	assert(ts_sc != NULL);
-	assert(ts_sc->ts_unscaled_wlsb != NULL);
-	assert(ts_sc->ts_scaled_wlsb != NULL);
-	c_destroy_wlsb(ts_sc->ts_unscaled_wlsb);
-	c_destroy_wlsb(ts_sc->ts_scaled_wlsb);
+	wlsb_init(&ts_sc->ts_unscaled_wlsb, 32, wlsb_window_width, ROHC_LSB_SHIFT_RTP_TS);
 }
 
 
@@ -387,9 +349,9 @@ void nb_bits_unscaled(const struct ts_sc_comp *const ts_sc,
                       size_t *const bits_nr_more_than_2)
 {
 	*bits_nr_less_equal_than_2 =
-		wlsb_get_kp_32bits(ts_sc->ts_unscaled_wlsb, ts_sc->ts, 0);
+		wlsb_get_kp_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts, 0);
 	*bits_nr_more_than_2 =
-		wlsb_get_mink_32bits(ts_sc->ts_unscaled_wlsb, ts_sc->ts, 3);
+		wlsb_get_mink_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts, 3);
 }
 
 
@@ -399,10 +361,9 @@ void nb_bits_unscaled(const struct ts_sc_comp *const ts_sc,
  * @param ts_sc  The ts_sc_comp object
  * @param sn     The Sequence Number
  */
-void add_unscaled(const struct ts_sc_comp *const ts_sc, const uint16_t sn)
+void add_unscaled(struct ts_sc_comp *const ts_sc, const uint16_t sn)
 {
-	assert(ts_sc != NULL);
-	c_add_wlsb(ts_sc->ts_unscaled_wlsb, sn, ts_sc->ts);
+	c_add_wlsb(&ts_sc->ts_unscaled_wlsb, sn, ts_sc->ts);
 }
 
 
@@ -422,9 +383,9 @@ void nb_bits_scaled(const struct ts_sc_comp *const ts_sc,
                     size_t *const bits_nr_more_than_2)
 {
 	*bits_nr_less_equal_than_2 =
-		wlsb_get_kp_32bits(ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled, 0);
+		wlsb_get_kp_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled, 0);
 	*bits_nr_more_than_2 =
-		wlsb_get_mink_32bits(ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled, 3);
+		wlsb_get_mink_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled, 3);
 
 	/* do not send 0 bit of TS if TS is not deducible, because decompressor
 	 * will interprets a 0-bit value as deducible */
@@ -448,10 +409,9 @@ void nb_bits_scaled(const struct ts_sc_comp *const ts_sc,
  * @param ts_sc        The ts_sc_comp object
  * @param sn           The Sequence Number
  */
-void add_scaled(const struct ts_sc_comp *const ts_sc, const uint16_t sn)
+void add_scaled(struct ts_sc_comp *const ts_sc, const uint16_t sn)
 {
-	assert(ts_sc != NULL);
-	c_add_wlsb(ts_sc->ts_scaled_wlsb, sn, ts_sc->ts_scaled);
+	c_add_wlsb(&ts_sc->ts_scaled_wlsb, sn, ts_sc->ts_scaled);
 }
 
 

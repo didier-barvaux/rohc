@@ -99,6 +99,9 @@ typedef enum
 	ROHC_PACKET_TCP_SEQ_7     = 30, /**< TCP seq_7 packet */
 	ROHC_PACKET_TCP_SEQ_8     = 31, /**< TCP seq_8 packet */
 
+	/* Context Replication (CR) */
+	ROHC_PACKET_IR_CR         = 32, /**< ROHC IR-CR packet */
+
 	ROHC_PACKET_MAX                 /**< The number of packet types */
 } rohc_packet_t;
 
@@ -132,6 +135,9 @@ const char * ROHC_EXPORT rohc_get_ext_descr(const rohc_ext_t ext_type)
 
 rohc_packet_t ROHC_EXPORT rohc_get_packet_type(const char *const packet_id)
 	__attribute__((warn_unused_result, nonnull(1)));
+
+bool ROHC_EXPORT rohc_packet_is_ir(const rohc_packet_t packet_type)
+	__attribute__((warn_unused_result, const));
 
 bool ROHC_EXPORT rohc_packet_carry_static_info(const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, const));

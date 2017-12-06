@@ -105,13 +105,15 @@ error:
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param context  The compression context
- * @param packet   The IP packet to check
- * @return         true if the IP packet belongs to the context
- *                 false if it does not belong to the context
+ * @param context        The compression context
+ * @param packet         The IP packet to check
+ * @param[out] cr_score  The score of the context for Context Replication (CR)
+ * @return               true if the IP packet belongs to the context
+ *                       false if it does not belong to the context
  */
 bool c_ip_check_context(const struct rohc_comp_ctxt *const context,
-                        const struct net_pkt *const packet)
+                        const struct net_pkt *const packet,
+                        size_t *const cr_score)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	struct ip_header_info *outer_ip_flags;
@@ -125,6 +127,8 @@ bool c_ip_check_context(const struct rohc_comp_ctxt *const context,
 	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
 	outer_ip_flags = &rfc3095_ctxt->outer_ip_flags;
 	inner_ip_flags = &rfc3095_ctxt->inner_ip_flags;
+
+	*cr_score = 0;
 
 	/* check the IP version of the first header */
 	version = ip_get_version(&packet->outer_ip);
@@ -146,8 +150,11 @@ bool c_ip_check_context(const struct rohc_comp_ctxt *const context,
 		same_dest = IPV6_ADDR_CMP(&outer_ip_flags->info.v6.old_ip.daddr,
 		                          ipv6_get_daddr(&packet->outer_ip));
 	}
-
-	if(!same_src || !same_dest)
+	if(!same_src)
+	{
+		goto bad_context;
+	}
+	if(!same_dest)
 	{
 		goto bad_context;
 	}
@@ -197,8 +204,11 @@ bool c_ip_check_context(const struct rohc_comp_ctxt *const context,
 			same_dest2 = IPV6_ADDR_CMP(&inner_ip_flags->info.v6.old_ip.daddr,
 			                           ipv6_get_daddr(&packet->inner_ip));
 		}
-
-		if(!same_src2 || !same_dest2)
+		if(!same_src2)
+		{
+			goto bad_context;
+		}
+		if(!same_dest2)
 		{
 			goto bad_context;
 		}

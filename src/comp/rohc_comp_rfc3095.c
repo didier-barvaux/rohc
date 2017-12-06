@@ -73,14 +73,14 @@
  * Prototypes of main private functions
  */
 
-static bool ip_header_info_new(struct ip_header_info *const header_info,
+static void ip_header_info_new(struct ip_header_info *const header_info,
                                const struct ip_packet *const ip,
                                const size_t list_trans_nr,
                                const size_t wlsb_window_width,
                                rohc_trace_callback2_t trace_cb,
                                void *const trace_cb_priv,
                                const int profile_id)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+	__attribute__((nonnull(1, 2)));
 static void ip_header_info_free(struct ip_header_info *const header_info)
 	__attribute__((nonnull(1)));
 
@@ -423,9 +423,8 @@ static bool is_field_changed(const unsigned short changed_fields,
  * @param trace_cb           The function to call for printing traces
  * @param trace_cb_priv      An optional private context, may be NULL
  * @param profile_id         The ID of the associated compression profile
- * @return                   true if successful, false otherwise
  */
-static bool ip_header_info_new(struct ip_header_info *const header_info,
+static void ip_header_info_new(struct ip_header_info *const header_info,
                                const struct ip_packet *const ip,
                                const size_t list_trans_nr,
                                const size_t wlsb_window_width,
@@ -448,15 +447,8 @@ static bool ip_header_info_new(struct ip_header_info *const header_info,
 	if(header_info->version == IPV4)
 	{
 		/* init the parameters to encode the IP-ID with W-LSB encoding */
-		header_info->info.v4.ip_id_window =
-			c_create_wlsb(16, wlsb_window_width, ROHC_LSB_SHIFT_IP_ID);
-		if(header_info->info.v4.ip_id_window == NULL)
-		{
-			__rohc_print(trace_cb, trace_cb_priv, ROHC_TRACE_ERROR,
-			             ROHC_TRACE_COMP, profile_id,
-			             "no memory to allocate W-LSB encoding for IP-ID");
-			goto error;
-		}
+		wlsb_init(&header_info->info.v4.ip_id_window, 16, wlsb_window_width,
+		          ROHC_LSB_SHIFT_IP_ID);
 
 		/* init the thresholds the counters must reach before launching
 		 * an action */
@@ -474,11 +466,6 @@ static bool ip_header_info_new(struct ip_header_info *const header_info,
 		rohc_comp_list_ipv6_new(&header_info->info.v6.ext_comp, list_trans_nr,
 		                        trace_cb, trace_cb_priv, profile_id);
 	}
-
-	return true;
-
-error:
-	return false;
 }
 
 
@@ -489,12 +476,7 @@ error:
  */
 static void ip_header_info_free(struct ip_header_info *const header_info)
 {
-	if(header_info->version == IPV4)
-	{
-		/* IPv4: destroy the W-LSB context for the IP-ID offset */
-		c_destroy_wlsb(header_info->info.v4.ip_id_window);
-	}
-	else
+	if(header_info->version == IPV6)
 	{
 		/* IPv6: destroy the list of IPv6 extension headers */
 		rohc_comp_list_ipv6_free(&header_info->info.v6.ext_comp);
@@ -568,46 +550,28 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 	/* step 1 */
 	rohc_comp_debug(context, "use shift parameter %d for LSB-encoding of the "
 	                "%zu-bit SN", sn_shift, sn_bits_nr);
-	rfc3095_ctxt->sn_window =
-		c_create_wlsb(sn_bits_nr, context->compressor->wlsb_window_width, sn_shift);
-	if(rfc3095_ctxt->sn_window == NULL)
-	{
-		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		           "no memory to allocate W-LSB encoding for SN");
-		goto free_generic_context;
-	}
-	rfc3095_ctxt->msn_non_acked =
-		c_create_wlsb(16, context->compressor->wlsb_window_width, sn_shift);
-	if(rfc3095_ctxt->msn_non_acked == NULL)
-	{
-		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		           "no memory to allocate W-LSB encoding for non-acknowledged MSN");
-		goto free_sn_window;
-	}
+	wlsb_init(&rfc3095_ctxt->sn_window, sn_bits_nr,
+	          context->compressor->wlsb_window_width, sn_shift);
+	wlsb_init(&rfc3095_ctxt->msn_non_acked, 16,
+	          context->compressor->wlsb_window_width, sn_shift);
 
 	/* step 3 */
-	if(!ip_header_info_new(&rfc3095_ctxt->outer_ip_flags,
-	                       &packet->outer_ip,
-	                       context->compressor->list_trans_nr,
-	                       context->compressor->wlsb_window_width,
-	                       context->compressor->trace_callback,
-	                       context->compressor->trace_callback_priv,
-	                       context->profile->id))
-	{
-		goto free_msn_wlsb;
-	}
+	ip_header_info_new(&rfc3095_ctxt->outer_ip_flags,
+	                   &packet->outer_ip,
+	                   context->compressor->list_trans_nr,
+	                   context->compressor->wlsb_window_width,
+	                   context->compressor->trace_callback,
+	                   context->compressor->trace_callback_priv,
+	                   context->profile->id);
 	if(packet->ip_hdr_nr > 1)
 	{
-		if(!ip_header_info_new(&rfc3095_ctxt->inner_ip_flags,
-		                       &packet->inner_ip,
-		                       context->compressor->list_trans_nr,
-		                       context->compressor->wlsb_window_width,
-		                       context->compressor->trace_callback,
-		                       context->compressor->trace_callback_priv,
-		                       context->profile->id))
-		{
-			goto free_header_info;
-		}
+		ip_header_info_new(&rfc3095_ctxt->inner_ip_flags,
+		                   &packet->inner_ip,
+		                   context->compressor->list_trans_nr,
+		                   context->compressor->wlsb_window_width,
+		                   context->compressor->trace_callback,
+		                   context->compressor->trace_callback_priv,
+		                   context->profile->id);
 		rfc3095_ctxt->ip_hdr_nr = 2;
 	}
 	else
@@ -640,14 +604,6 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 
 	return true;
 
-free_header_info:
-	ip_header_info_free(&rfc3095_ctxt->outer_ip_flags);
-free_msn_wlsb:
-	c_destroy_wlsb(rfc3095_ctxt->msn_non_acked);
-free_sn_window:
-	c_destroy_wlsb(rfc3095_ctxt->sn_window);
-free_generic_context:
-	free(rfc3095_ctxt);
 quit:
 	return false;
 }
@@ -671,8 +627,6 @@ void rohc_comp_rfc3095_destroy(struct rohc_comp_ctxt *const context)
 	{
 		ip_header_info_free(&rfc3095_ctxt->inner_ip_flags);
 	}
-	c_destroy_wlsb(rfc3095_ctxt->msn_non_acked);
-	c_destroy_wlsb(rfc3095_ctxt->sn_window);
 
 	zfree(rfc3095_ctxt->specific);
 	free(rfc3095_ctxt);
@@ -1136,7 +1090,7 @@ static void rohc_comp_rfc3095_feedback_ack(struct rohc_comp_ctxt *const context,
 	if(!sn_not_valid)
 	{
 		const size_t acked_nr =
-			wlsb_ack(rfc3095_ctxt->msn_non_acked, sn_bits, sn_bits_nr);
+			wlsb_ack(&rfc3095_ctxt->msn_non_acked, sn_bits, sn_bits_nr);
 		rohc_comp_debug(context, "FEEDBACK-2: positive ACK removed %zu values "
 		                "from MSN W-LSB", acked_nr);
 	}
@@ -1166,7 +1120,7 @@ static void rohc_comp_rfc3095_feedback_ack(struct rohc_comp_ctxt *const context,
 
 		/* RFC 3095, §5.4.1.1.2: positive ACKs may be used to acknowledge updates
 		 * transmitted by UOR-2 packets (ie. transit back to SO state more quickly) */
-		if(!wlsb_is_sn_present(rfc3095_ctxt->msn_non_acked,
+		if(!wlsb_is_sn_present(&rfc3095_ctxt->msn_non_acked,
 		                       rfc3095_ctxt->msn_of_last_ctxt_updating_pkt) ||
 		   sn_bits == (rfc3095_ctxt->msn_of_last_ctxt_updating_pkt & sn_mask))
 		{
@@ -1249,7 +1203,7 @@ static void rohc_comp_rfc3095_feedback_ack(struct rohc_comp_ctxt *const context,
 			/* ack outer IP-ID only if IPv4 */
 			if(rfc3095_ctxt->outer_ip_flags.version == IPV4)
 			{
-				acked_nr = wlsb_ack(rfc3095_ctxt->outer_ip_flags.info.v4.ip_id_window,
+				acked_nr = wlsb_ack(&rfc3095_ctxt->outer_ip_flags.info.v4.ip_id_window,
 				                    sn_bits, sn_bits_nr);
 				rohc_comp_debug(context, "FEEDBACK-2: positive ACK removed %zu "
 				                "values from inner IP-ID W-LSB", acked_nr);
@@ -1258,13 +1212,13 @@ static void rohc_comp_rfc3095_feedback_ack(struct rohc_comp_ctxt *const context,
 			if(rfc3095_ctxt->ip_hdr_nr > 1 &&
 			   rfc3095_ctxt->inner_ip_flags.version == IPV4)
 			{
-				acked_nr = wlsb_ack(rfc3095_ctxt->inner_ip_flags.info.v4.ip_id_window,
+				acked_nr = wlsb_ack(&rfc3095_ctxt->inner_ip_flags.info.v4.ip_id_window,
 				                    sn_bits, sn_bits_nr);
 				rohc_comp_debug(context, "FEEDBACK-2: positive ACK removed %zu "
 				                "values from outer IP-ID W-LSB", acked_nr);
 			}
 			/* always ack SN */
-			acked_nr = wlsb_ack(rfc3095_ctxt->sn_window, sn_bits, sn_bits_nr);
+			acked_nr = wlsb_ack(&rfc3095_ctxt->sn_window, sn_bits, sn_bits_nr);
 			rohc_comp_debug(context, "FEEDBACK-2: positive ACK removed %zu values "
 			                "from SN W-LSB", acked_nr);
 		}
@@ -1342,16 +1296,13 @@ static bool rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const contex
 		if(uncomp_pkt->ip_hdr_nr > 1)
 		{
 			rohc_comp_debug(context, "packet got one more IP header than context");
-			if(!ip_header_info_new(&rfc3095_ctxt->inner_ip_flags,
-			                       &uncomp_pkt->inner_ip,
-			                       context->compressor->list_trans_nr,
-			                       context->compressor->wlsb_window_width,
-			                       context->compressor->trace_callback,
-			                       context->compressor->trace_callback_priv,
-			                       context->profile->id))
-			{
-				goto error;
-			}
+			ip_header_info_new(&rfc3095_ctxt->inner_ip_flags,
+			                   &uncomp_pkt->inner_ip,
+			                   context->compressor->list_trans_nr,
+			                   context->compressor->wlsb_window_width,
+			                   context->compressor->trace_callback,
+			                   context->compressor->trace_callback_priv,
+			                   context->profile->id);
 		}
 		else
 		{
@@ -6806,21 +6757,21 @@ static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		if(context->profile->id == ROHC_PROFILE_RTP)
 		{
 			rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 =
-				wlsb_get_mink_16bits(rfc3095_ctxt->sn_window, rfc3095_ctxt->sn, 5);
+				wlsb_get_mink_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn, 5);
 			rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 =
-				wlsb_get_k_16bits(rfc3095_ctxt->sn_window, rfc3095_ctxt->sn);
+				wlsb_get_k_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn);
 		}
 		else if(context->profile->id == ROHC_PROFILE_ESP)
 		{
 			rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 =
-				wlsb_get_mink_32bits(rfc3095_ctxt->sn_window, rfc3095_ctxt->sn, 5);
+				wlsb_get_mink_32bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn, 5);
 			rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 =
-				wlsb_get_k_32bits(rfc3095_ctxt->sn_window, rfc3095_ctxt->sn);
+				wlsb_get_k_32bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn);
 		}
 		else
 		{
 			rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 =
-				wlsb_get_k_16bits(rfc3095_ctxt->sn_window, rfc3095_ctxt->sn);
+				wlsb_get_k_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn);
 			rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 =
 				rfc3095_ctxt->tmp.nr_sn_bits_more_than_4;
 		}
@@ -6834,7 +6785,7 @@ static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		                rfc3095_ctxt->tmp.nr_sn_bits_more_than_4);
 
 		/* add the new SN to the W-LSB encoding object */
-		c_add_wlsb(rfc3095_ctxt->sn_window, rfc3095_ctxt->sn, rfc3095_ctxt->sn);
+		c_add_wlsb(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn, rfc3095_ctxt->sn);
 	}
 
 	/* update info related to the IP-ID of the outer header
@@ -6866,14 +6817,14 @@ static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		{
 			/* send only required bits in FO or SO states */
 			rfc3095_ctxt->tmp.nr_ip_id_bits =
-				wlsb_get_k_16bits(rfc3095_ctxt->outer_ip_flags.info.v4.ip_id_window,
+				wlsb_get_k_16bits(&rfc3095_ctxt->outer_ip_flags.info.v4.ip_id_window,
 				                  rfc3095_ctxt->outer_ip_flags.info.v4.id_delta);
 		}
 		rohc_comp_debug(context, "%zd bits are required to encode new outer "
 		                "IP-ID delta", rfc3095_ctxt->tmp.nr_ip_id_bits);
 
 		/* add the new IP-ID / SN delta to the W-LSB encoding object */
-		c_add_wlsb(rfc3095_ctxt->outer_ip_flags.info.v4.ip_id_window, rfc3095_ctxt->sn,
+		c_add_wlsb(&rfc3095_ctxt->outer_ip_flags.info.v4.ip_id_window, rfc3095_ctxt->sn,
 		           rfc3095_ctxt->outer_ip_flags.info.v4.id_delta);
 	}
 	else /* IPV6 */
@@ -6912,14 +6863,14 @@ static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		{
 			/* send only required bits in FO or SO states */
 			rfc3095_ctxt->tmp.nr_ip_id_bits2 =
-				wlsb_get_k_16bits(rfc3095_ctxt->inner_ip_flags.info.v4.ip_id_window,
+				wlsb_get_k_16bits(&rfc3095_ctxt->inner_ip_flags.info.v4.ip_id_window,
 				                  rfc3095_ctxt->inner_ip_flags.info.v4.id_delta);
 		}
 		rohc_comp_debug(context, "%zd bits are required to encode new inner "
 		                "IP-ID delta", rfc3095_ctxt->tmp.nr_ip_id_bits2);
 
 		/* add the new IP-ID / SN delta to the W-LSB encoding object */
-		c_add_wlsb(rfc3095_ctxt->inner_ip_flags.info.v4.ip_id_window, rfc3095_ctxt->sn,
+		c_add_wlsb(&rfc3095_ctxt->inner_ip_flags.info.v4.ip_id_window, rfc3095_ctxt->sn,
 		           rfc3095_ctxt->inner_ip_flags.info.v4.id_delta);
 	}
 	else if(uncomp_pkt->ip_hdr_nr > 1) /* IPV6 */

@@ -31,21 +31,6 @@
 
 
 /*
- * Private structures
- */
-
-/**
- * @brief Defines a IP-ID object to help computing the IP-ID value
- *        from an IP-ID offset
- */
-struct ip_id_offset_decode
-{
-	/** The LSB context for decoding IP-ID offset */
-	struct rohc_lsb_decode *lsb;
-};
-
-
-/*
  * Public functions
  */
 
@@ -55,45 +40,11 @@ struct ip_id_offset_decode
  *
  * See 4.5.5 in the RFC 3095 for details about Offset IP-ID encoding.
  *
- * @return  The new Offset IP-ID decoding context in case of success,
- *          NULL otherwise
+ * @param[in,out] ipid  The Offset IP-ID decoding context to init
  */
-struct ip_id_offset_decode * ip_id_offset_new(void)
+void ip_id_offset_init(struct ip_id_offset_decode *const ipid)
 {
-	struct ip_id_offset_decode *ipid;
-
-	ipid = malloc(sizeof(struct ip_id_offset_decode));
-	if(ipid == NULL)
-	{
-		goto error;
-	}
-
-	ipid->lsb = rohc_lsb_new(16);
-	if(ipid->lsb == NULL)
-	{
-		goto destroy_ipid;
-	}
-
-	return ipid;
-
-destroy_ipid:
-	free(ipid);
-error:
-	return NULL;
-}
-
-
-/**
- * @brief Destroy a given Offset IP-ID decoding context
- *
- * See 4.5.5 in the RFC 3095 for details about Offset IP-ID encoding.
- *
- * @param ipid  The Offset IP-ID decoding context to destroy
- */
-void ip_id_offset_free(struct ip_id_offset_decode *const ipid)
-{
-	rohc_lsb_free(ipid->lsb);
-	free(ipid);
+	rohc_lsb_init(&ipid->lsb, 16);
 }
 
 
@@ -119,7 +70,7 @@ bool ip_id_offset_decode(const struct ip_id_offset_decode *const ipid,
 	uint32_t offset_decoded;
 	bool is_success;
 
-	is_success = rohc_lsb_decode(ipid->lsb, ref_type, 0, m, k,
+	is_success = rohc_lsb_decode(&ipid->lsb, ref_type, 0, m, k,
 	                             ROHC_LSB_SHIFT_IP_ID, &offset_decoded);
 	if(is_success)
 	{
@@ -151,6 +102,6 @@ void ip_id_offset_set_ref(struct ip_id_offset_decode *const ipid,
 	 * (overflow over 16 bits is expected if SN > IP-ID) */
 	offset_ref = id_ref - sn_ref;
 
-	rohc_lsb_set_ref(ipid->lsb, offset_ref, keep_ref_minus_1);
+	rohc_lsb_set_ref(&ipid->lsb, offset_ref, keep_ref_minus_1);
 }
 

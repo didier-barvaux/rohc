@@ -48,7 +48,6 @@ void net_pkt_parse(struct net_pkt *const packet,
 	packet->data = rohc_buf_data(data);
 	packet->len = data.len;
 	packet->ip_hdr_nr = 0;
-	packet->key = 0;
 
 	/* traces */
 	packet->trace_callback = trace_cb;
@@ -72,26 +71,6 @@ void net_pkt_parse(struct net_pkt *const packet,
 			           "outer IP header: next layer is of type %d",
 			           packet->outer_ip.nl.proto);
 		}
-	}
-
-	/* build the hash key for the packet */
-	if(ip_get_version(&packet->outer_ip) == IPV4)
-	{
-		packet->key ^= ipv4_get_saddr(&packet->outer_ip);
-		packet->key ^= ipv4_get_daddr(&packet->outer_ip);
-	}
-	else if(ip_get_version(&packet->outer_ip) == IPV6)
-	{
-		const struct ipv6_addr *const saddr = ipv6_get_saddr(&packet->outer_ip);
-		const struct ipv6_addr *const daddr = ipv6_get_daddr(&packet->outer_ip);
-		packet->key ^= saddr->u32[0];
-		packet->key ^= saddr->u32[1];
-		packet->key ^= saddr->u32[2];
-		packet->key ^= saddr->u32[3];
-		packet->key ^= daddr->u32[0];
-		packet->key ^= daddr->u32[1];
-		packet->key ^= daddr->u32[2];
-		packet->key ^= daddr->u32[3];
 	}
 
 	/* get the transport protocol */

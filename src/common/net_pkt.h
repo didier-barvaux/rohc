@@ -49,8 +49,6 @@ struct net_pkt
 
 	struct net_hdr *transport;   /**< The transport layer of the packet if any */
 
-	rohc_ctxt_key_t key;         /**< The hash key of the packet */
-
 	/** The callback function used to manage traces */
 	rohc_trace_callback2_t trace_callback;
 	/** The private context of the callback function used to manage traces */

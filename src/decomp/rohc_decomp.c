@@ -1151,6 +1151,8 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 	decomp->last_context = stream->context;
 	sn_feedback_min_bits = rohc_min(decomp->sn_feedback_min_bits,
 	                                profile->msn_max_bits);
+	rohc_decomp_debug(stream->context, "decode packet with profile '%s' (0x%04x)",
+	                  rohc_get_profile_descr(profile->id), profile->id);
 
 	/* collect information for sending feedback to decompressor */
 	stream->context_found = true;
@@ -1222,8 +1224,10 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 	}
 	/* all packet types are allowed in Full Context state */
 
-	/* only IR packet can create a new context */
-	assert(stream->packet_type == ROHC_PACKET_IR || !is_new_context);
+	/* only IR or IR-CR packet can create a new context */
+	assert(stream->packet_type == ROHC_PACKET_IR ||
+	       stream->packet_type == ROHC_PACKET_IR_CR ||
+	       !is_new_context);
 
 	/* decode the packet thanks to the profile-specific routines
 	 * (may change the initial assumption about the packet type) */
@@ -1381,7 +1385,7 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 	 * correctly received. The optional Add-CID is part of the CRC.
 	 */
 
-	if((*packet_type) == ROHC_PACKET_IR || (*packet_type) == ROHC_PACKET_IR_DYN)
+	if(rohc_packet_is_ir(*packet_type))
 	{
 		bool crc_ok;
 
@@ -1508,6 +1512,13 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 			try_decoding_again =
 				profile->attempt_repair(decomp, context, rohc_packet.time,
 				                        &context->crc_corr, extr_bits);
+
+			if((*packet_type) == ROHC_PACKET_IR_CR)
+			{
+				rohc_decomp_warn(context, "CID %zu: do not attempt context/packet repair "
+				                 "for IR-CR", context->cid);
+				try_decoding_again = false;
+			}
 
 			/* report CRC failure if attempt is not possible */
 			if(!try_decoding_again)
@@ -3814,6 +3825,7 @@ static rohc_status_t rohc_decomp_find_context(struct rohc_decomp *const decomp,
 	size_t remain_len = packet_len;
 	bool new_context_needed = false;
 	bool is_packet_ir_dyn;
+	bool is_packet_ir_cr;
 	bool is_packet_ir;
 
 	assert(large_cid_len <= 2);
@@ -3836,10 +3848,11 @@ static rohc_status_t rohc_decomp_find_context(struct rohc_decomp *const decomp,
 	is_packet_ir_dyn = rohc_decomp_packet_is_irdyn(remain_data, remain_len);
 	if(is_packet_ir || is_packet_ir_dyn)
 	{
+		const uint8_t pkt_type = remain_data[0];
 		uint8_t pkt_profile_id;
 
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		           "ROHC packet is an IR or IR-DYN packet");
+		           "ROHC packet is an IR, IR-CR or IR-DYN packet");
 
 		/* skip the type octet */
 		remain_data++;
@@ -3862,7 +3875,14 @@ static rohc_status_t rohc_decomp_find_context(struct rohc_decomp *const decomp,
 		remain_data++;
 		remain_len--;
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		           "profile ID 0x%04x found in IR(-DYN) packet", *profile_id);
+		           "profile ID 0x%04x found in IR(-CR|-DYN) packet", *profile_id);
+
+		is_packet_ir_cr = !!(pkt_profile_id == ROHC_PROFILE_TCP && (pkt_type & 0x01) == 0);
+		is_packet_ir = (is_packet_ir && !is_packet_ir_cr);
+	}
+	else
+	{
+		is_packet_ir_cr = false;
 	}
 
 	/* find the context associated with the CID */
@@ -3874,14 +3894,14 @@ static rohc_status_t rohc_decomp_find_context(struct rohc_decomp *const decomp,
 		           "context with CID %u not found", cid);
 
 		/* only IR packets can create new contexts */
-		if(!is_packet_ir)
+		if(!is_packet_ir && !is_packet_ir_cr)
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			             "non-IR packet cannot create a new context with CID %u", cid);
+			             "only IR or IR-CR packets can create a new context with CID %u", cid);
 			goto error_no_context;
 		}
 
-		/* IR shall create a new context */
+		/* IR or IR-CR shall create a new context */
 		new_context_needed = true;
 	}
 	else
@@ -3890,27 +3910,27 @@ static rohc_status_t rohc_decomp_find_context(struct rohc_decomp *const decomp,
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		           "context with CID %u found", cid);
 
-		/* for IR(-DYN) packets, check whether the packet redefines the profile
+		/* for IR(-CR|-DYN) packets, check whether the packet redefines the profile
 		 * associated with the context */
-		if((is_packet_ir | is_packet_ir_dyn) &&
+		if((is_packet_ir || is_packet_ir_cr || is_packet_ir_dyn) &&
 		   (*context)->profile->id != (*profile_id))
 		{
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			           "IR(-DYN) packet redefines the profile associated to the "
+			           "IR(-CR|-DYN) packet redefines the profile associated to the "
 			           "context with CID %u: %s (0x%04x) -> %s (0x%04x)", cid,
 			           rohc_get_profile_descr((*context)->profile->id),
 			           (*context)->profile->id,
 			           rohc_get_profile_descr(*profile_id), *profile_id);
-			if(is_packet_ir)
+			if(is_packet_ir || is_packet_ir_cr)
 			{
-				/* IR packet: profile switching is handled by re-creating the
+				/* IR(-CR) packets: profile switching is handled by re-creating the
 				 * context from scratch */
 				new_context_needed = true;
 			}
 			else
 			{
-				/* IR-DYN packet: TODO: profile switching is not implemented yet,
-				 * send a STATIC-NACK to the compressor so that it fallbacks on
+				/* IR-CR or IR-DYN packet: TODO: profile switching is not implemented
+				 * yet, send a STATIC-NACK to the compressor so that it fallbacks on
 				 * sending an IR packet instead of the IR-DYN packet */
 				goto error_no_context;
 			}
