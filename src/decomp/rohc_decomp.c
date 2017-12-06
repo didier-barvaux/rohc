@@ -2477,12 +2477,10 @@ bool rohc_decomp_get_last_packet_info(const struct rohc_decomp *const decomp,
 		info->is_duplicated = decomp->last_context->is_duplicated;
 
 		/* new fields added by minor versions */
-		switch(info->version_minor)
+		if((info->version_minor == 2) || (info->version_minor == 1))
 		{
-			case 0:
-				/* nothing to add */
-				break;
-			case 2:
+			if(info->version_minor == 2)
+			{
 				/* new fields in 0.2 */
 				info->total_last_comp_size =
 					decomp->last_context->total_last_compressed_size;
@@ -2492,22 +2490,23 @@ bool rohc_decomp_get_last_packet_info(const struct rohc_decomp *const decomp,
 					decomp->last_context->total_last_uncompressed_size;
 				info->header_last_uncomp_size =
 					decomp->last_context->header_last_uncompressed_size;
-				/* no break to also add new fields in 0.1 */
-			case 1:
-				/* new fields in 0.1 */
-				info->corrected_crc_failures =
-					decomp->last_context->corrected_crc_failures;
-				info->corrected_sn_wraparounds =
-					decomp->last_context->corrected_sn_wraparounds;
-				info->corrected_wrong_sn_updates =
-					decomp->last_context->corrected_wrong_sn_updates;
-				info->packet_type = decomp->last_context->packet_type;
-				break;
-			default:
-				rohc_error(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-				           "unsupported minor version (%u) of the structure for "
-				           "last packet information", info->version_minor);
-				goto error;
+			}
+
+			/* new fields in 0.1 */
+			info->corrected_crc_failures =
+				decomp->last_context->corrected_crc_failures;
+			info->corrected_sn_wraparounds =
+				decomp->last_context->corrected_sn_wraparounds;
+			info->corrected_wrong_sn_updates =
+				decomp->last_context->corrected_wrong_sn_updates;
+			info->packet_type = decomp->last_context->packet_type;
+		}
+		else if(info->version_minor != 0)
+		{
+			rohc_error(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+			           "unsupported minor version (%u) of the structure for "
+			           "last packet information", info->version_minor);
+			goto error;
 		}
 	}
 	else
