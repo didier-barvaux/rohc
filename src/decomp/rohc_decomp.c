@@ -2466,56 +2466,55 @@ bool rohc_decomp_get_last_packet_info(const struct rohc_decomp *const decomp,
 	}
 
 	/* check compatibility version */
-	if(info->version_major == 0)
-	{
-		/* base fields for major version 0 */
-		info->context_mode = decomp->last_context->mode;
-		info->context_state = decomp->last_context->state;
-		info->profile_id = decomp->last_context->profile->id;
-		info->nr_lost_packets = decomp->last_context->nr_lost_packets;
-		info->nr_misordered_packets = decomp->last_context->nr_misordered_packets;
-		info->is_duplicated = decomp->last_context->is_duplicated;
-
-		/* new fields added by minor versions */
-		switch(info->version_minor)
-		{
-			case 0:
-				/* nothing to add */
-				break;
-			case 2:
-				/* new fields in 0.2 */
-				info->total_last_comp_size =
-					decomp->last_context->total_last_compressed_size;
-				info->header_last_comp_size =
-					decomp->last_context->header_last_compressed_size;
-				info->total_last_uncomp_size =
-					decomp->last_context->total_last_uncompressed_size;
-				info->header_last_uncomp_size =
-					decomp->last_context->header_last_uncompressed_size;
-				/* no break to also add new fields in 0.1 */
-			case 1:
-				/* new fields in 0.1 */
-				info->corrected_crc_failures =
-					decomp->last_context->corrected_crc_failures;
-				info->corrected_sn_wraparounds =
-					decomp->last_context->corrected_sn_wraparounds;
-				info->corrected_wrong_sn_updates =
-					decomp->last_context->corrected_wrong_sn_updates;
-				info->packet_type = decomp->last_context->packet_type;
-				break;
-			default:
-				rohc_error(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-				           "unsupported minor version (%u) of the structure for "
-				           "last packet information", info->version_minor);
-				goto error;
-		}
-	}
-	else
+	if(info->version_major != 0)
 	{
 		rohc_error(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		           "unsupported major version (%u) of the structure for last "
 		           "packet information", info->version_major);
 		goto error;
+	}
+
+	/* base fields for major version 0 */
+	info->context_mode = decomp->last_context->mode;
+	info->context_state = decomp->last_context->state;
+	info->profile_id = decomp->last_context->profile->id;
+	info->nr_lost_packets = decomp->last_context->nr_lost_packets;
+	info->nr_misordered_packets = decomp->last_context->nr_misordered_packets;
+	info->is_duplicated = decomp->last_context->is_duplicated;
+
+	if(info->version_minor != 0 &&
+	   info->version_minor != 1 &&
+	   info->version_minor != 2)
+	{
+		rohc_error(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		           "unsupported minor version (%u) of the structure for "
+		           "last packet information", info->version_minor);
+		goto error;
+	}
+
+	/* new fields in 0.1 */
+	if(info->version_minor >= 1)
+	{
+		info->corrected_crc_failures =
+			decomp->last_context->corrected_crc_failures;
+		info->corrected_sn_wraparounds =
+			decomp->last_context->corrected_sn_wraparounds;
+		info->corrected_wrong_sn_updates =
+			decomp->last_context->corrected_wrong_sn_updates;
+		info->packet_type = decomp->last_context->packet_type;
+	}
+
+	/* new fields in 0.2 */
+	if(info->version_minor >= 2)
+	{
+		info->total_last_comp_size =
+			decomp->last_context->total_last_compressed_size;
+		info->header_last_comp_size =
+			decomp->last_context->header_last_compressed_size;
+		info->total_last_uncomp_size =
+			decomp->last_context->total_last_uncompressed_size;
+		info->header_last_uncomp_size =
+			decomp->last_context->header_last_uncompressed_size;
 	}
 
 	return true;
