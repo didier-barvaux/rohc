@@ -688,7 +688,9 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
 	{
 		rohc_comp_debug(context, "compressed list of TCP options: list present");
 		tcp_replicate->list_present = 1;
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		rohc_remain_data += ret;
+#endif
 		rohc_remain_len -= ret;
 	}
 	else

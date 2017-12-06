@@ -1667,8 +1667,10 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 			               "IR-CR packet");
 			goto error;
 		}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		rohc_remain_data += ret;
 		rohc_remain_len -= ret;
+#endif
 		rohc_hdr_len += ret;
 		rohc_comp_dump_buf(context, "current ROHC packet (with replicate part)",
 		                   rohc_pkt, rohc_hdr_len);

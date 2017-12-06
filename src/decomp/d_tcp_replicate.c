@@ -217,8 +217,10 @@ static int tcp_parse_replicate_ip(const struct rohc_decomp_ctxt *const context,
 			rohc_decomp_debug(context, "ttl_hopl = 0x%x", ip_bits->ttl_hl.bits);
 
 			size += sizeof(uint8_t);
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 			remain_data += sizeof(uint8_t);
 			remain_len -= sizeof(uint8_t);
+#endif
 		}
 	}
 	else
@@ -405,8 +407,10 @@ static int tcp_parse_replicate_ipv6_option(const struct rohc_decomp_ctxt *const 
 				opt_context->generic.data_len = opt_len - 2;
 				memcpy(&opt_context->generic.data, remain_data, opt_context->generic.data_len);
 				size += opt_context->generic.data_len;
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 				remain_data += opt_context->generic.data_len;
 				remain_len -= opt_context->generic.data_len;
+#endif
 			}
 			else if(discriminator != 0x00)
 			{
