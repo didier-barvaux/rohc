@@ -1,5 +1,40 @@
-XX Yxxxxx 201z - release 2.1.0
-  Not released yet.
+6 December 2017 - release 2.1.0
+  Compatibility:
+    - Version 2.1.0 is not guaranted to be 100% compatible with previous versions
+      with respect to packet format of the TCP profile because of several fixes
+      related to IETF RFCs that change the format of ROHC/TCP packets.
+    - The library API is fully compatible with versions 2.0.x.
+
+  License/Authors:
+    - Didier Barvaux for Context Replication, ACK(0), CPU performances and
+      Gentoo/RPM packaging
+    - Viveris Technologies for ROHC padding, periodic refreshes based on time,
+      and performance tools
+
+  Acknowledgments for bug reports and/or bug fixes:
+    Klaus Warnke, Mohammad Abyan Abdullah, Mikhail Gruzdev.
+
+  Main changes:
+    - TCP profile:
+       - add support for context replication
+    - all profiles:
+       - use ACK(O) to speed the move to a higher compression state
+       - add support for ROHC padding
+       - add periodic refreshes based on inter-packet time
+    - greatly improve CPU performances:
+       - improve tools for performance analysis
+       - improve performances of RFC3095 and RFC6846 profiles
+       - improve performances of the W-LSB algorithm
+
+  Packaging:
+    - update RPM spec file
+    - update Gentoo ebuild
+
+  Q&A:
+    - refactor the TCP compression profile
+    - fix kernel build with up-to-date Linux kernels
+    - fix warnings from GCC 7.2 and Clang 4.0
+    - fix warnings from Clang Static Analyzer, cppcheck, CodeSonar and Coverity
 
 27 August 2016 - release 2.0.0
   Compatibility:
