@@ -73,14 +73,14 @@
  * Prototypes of main private functions
  */
 
-static void ip_header_info_new(struct ip_header_info *const header_info,
+static bool ip_header_info_new(struct ip_header_info *const header_info,
                                const struct ip_packet *const ip,
                                const size_t list_trans_nr,
                                const size_t wlsb_window_width,
                                rohc_trace_callback2_t trace_cb,
                                void *const trace_cb_priv,
                                const int profile_id)
-	__attribute__((nonnull(1, 2)));
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 static void ip_header_info_free(struct ip_header_info *const header_info)
 	__attribute__((nonnull(1)));
 
@@ -438,8 +438,9 @@ static bool is_field_changed(const unsigned short changed_fields,
  * @param trace_cb           The function to call for printing traces
  * @param trace_cb_priv      An optional private context, may be NULL
  * @param profile_id         The ID of the associated compression profile
+ * @return                   true if successful, false otherwise
  */
-static void ip_header_info_new(struct ip_header_info *const header_info,
+static bool ip_header_info_new(struct ip_header_info *const header_info,
                                const struct ip_packet *const ip,
                                const size_t list_trans_nr,
                                const size_t wlsb_window_width,
@@ -458,8 +459,15 @@ static void ip_header_info_new(struct ip_header_info *const header_info,
 	if(header_info->version == IPV4)
 	{
 		/* init the parameters to encode the IP-ID with W-LSB encoding */
-		wlsb_init(&header_info->info.v4.ip_id_window, 16, wlsb_window_width,
-		          ROHC_LSB_SHIFT_IP_ID);
+		const bool is_ok =
+			wlsb_new(&header_info->info.v4.ip_id_window, 16, wlsb_window_width, ROHC_LSB_SHIFT_IP_ID);
+		if(!is_ok)
+		{
+			__rohc_print(trace_cb, trace_cb_priv, ROHC_TRACE_ERROR,
+			             ROHC_TRACE_COMP, profile_id,
+			             "no memory to allocate W-LSB encoding for IP-ID");
+			goto error;
+		}
 
 		/* init the thresholds the counters must reach before launching
 		 * an action */
@@ -477,6 +485,11 @@ static void ip_header_info_new(struct ip_header_info *const header_info,
 		rohc_comp_list_ipv6_new(&header_info->info.v6.ext_comp, list_trans_nr,
 		                        trace_cb, trace_cb_priv, profile_id);
 	}
+
+	return true;
+
+error:
+	return false;
 }
 
 
@@ -487,7 +500,12 @@ static void ip_header_info_new(struct ip_header_info *const header_info,
  */
 static void ip_header_info_free(struct ip_header_info *const header_info)
 {
-	if(header_info->version == IPV6)
+	if(header_info->version == IPV4)
+	{
+		/* IPv4: destroy the W-LSB context for the IP-ID offset */
+		wlsb_free(&header_info->info.v4.ip_id_window);
+	}
+	else
 	{
 		/* IPv6: destroy the list of IPv6 extension headers */
 		rohc_comp_list_ipv6_free(&header_info->info.v6.ext_comp);
@@ -531,6 +549,7 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
                               const struct net_pkt *const packet)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
+	bool is_ok;
 
 	assert(context->profile != NULL);
 
@@ -557,28 +576,44 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 	/* step 1 */
 	rohc_comp_debug(context, "use shift parameter %d for LSB-encoding of the "
 	                "%zu-bit SN", sn_shift, sn_bits_nr);
-	wlsb_init(&rfc3095_ctxt->sn_window, sn_bits_nr,
-	          context->compressor->wlsb_window_width, sn_shift);
-	wlsb_init(&rfc3095_ctxt->msn_non_acked, 16,
-	          context->compressor->wlsb_window_width, sn_shift);
+	is_ok = wlsb_new(&rfc3095_ctxt->sn_window, sn_bits_nr, context->compressor->wlsb_window_width, sn_shift);
+	if(!is_ok)
+	{
+		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "no memory to allocate W-LSB encoding for SN");
+		goto free_generic_context;
+	}
+	is_ok = wlsb_new(&rfc3095_ctxt->msn_non_acked, 16, context->compressor->wlsb_window_width, sn_shift);
+	if(!is_ok)
+	{
+		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "no memory to allocate W-LSB encoding for non-acknowledged MSN");
+		goto free_sn_window;
+	}
 
 	/* step 3 */
-	ip_header_info_new(&rfc3095_ctxt->outer_ip_flags,
-	                   &packet->outer_ip,
-	                   context->compressor->list_trans_nr,
-	                   context->compressor->wlsb_window_width,
-	                   context->compressor->trace_callback,
-	                   context->compressor->trace_callback_priv,
-	                   context->profile->id);
+	if(!ip_header_info_new(&rfc3095_ctxt->outer_ip_flags,
+	                       &packet->outer_ip,
+	                       context->compressor->list_trans_nr,
+	                       context->compressor->wlsb_window_width,
+	                       context->compressor->trace_callback,
+	                       context->compressor->trace_callback_priv,
+	                       context->profile->id))
+	{
+		goto free_msn_wlsb;
+	}
 	if(packet->ip_hdr_nr > 1)
 	{
-		ip_header_info_new(&rfc3095_ctxt->inner_ip_flags,
-		                   &packet->inner_ip,
-		                   context->compressor->list_trans_nr,
-		                   context->compressor->wlsb_window_width,
-		                   context->compressor->trace_callback,
-		                   context->compressor->trace_callback_priv,
-		                   context->profile->id);
+		if(!ip_header_info_new(&rfc3095_ctxt->inner_ip_flags,
+		                       &packet->inner_ip,
+		                       context->compressor->list_trans_nr,
+		                       context->compressor->wlsb_window_width,
+		                       context->compressor->trace_callback,
+		                       context->compressor->trace_callback_priv,
+		                       context->profile->id))
+		{
+			goto free_header_info;
+		}
 		rfc3095_ctxt->ip_hdr_nr = 2;
 
 		/* RFC 3843, §3.1 Static Chain Termination:
@@ -625,6 +660,14 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 
 	return true;
 
+free_header_info:
+	ip_header_info_free(&rfc3095_ctxt->outer_ip_flags);
+free_msn_wlsb:
+	wlsb_free(&rfc3095_ctxt->msn_non_acked);
+free_sn_window:
+	wlsb_free(&rfc3095_ctxt->sn_window);
+free_generic_context:
+	free(rfc3095_ctxt);
 quit:
 	return false;
 }
@@ -648,6 +691,8 @@ void rohc_comp_rfc3095_destroy(struct rohc_comp_ctxt *const context)
 	{
 		ip_header_info_free(&rfc3095_ctxt->inner_ip_flags);
 	}
+	wlsb_free(&rfc3095_ctxt->msn_non_acked);
+	wlsb_free(&rfc3095_ctxt->sn_window);
 
 	zfree(rfc3095_ctxt->specific);
 	free(rfc3095_ctxt);
@@ -1348,13 +1393,16 @@ static bool rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const contex
 		if(uncomp_pkt->ip_hdr_nr > 1)
 		{
 			rohc_comp_debug(context, "packet got one more IP header than context");
-			ip_header_info_new(&rfc3095_ctxt->inner_ip_flags,
-			                   &uncomp_pkt->inner_ip,
-			                   context->compressor->list_trans_nr,
-			                   context->compressor->wlsb_window_width,
-			                   context->compressor->trace_callback,
-			                   context->compressor->trace_callback_priv,
-			                   context->profile->id);
+			if(!ip_header_info_new(&rfc3095_ctxt->inner_ip_flags,
+			                       &uncomp_pkt->inner_ip,
+			                       context->compressor->list_trans_nr,
+			                       context->compressor->wlsb_window_width,
+			                       context->compressor->trace_callback,
+			                       context->compressor->trace_callback_priv,
+			                       context->profile->id))
+			{
+				goto error;
+			}
 
 			/* RFC 3843, §3.1 Static Chain Termination:
 			 *   [...] the static chain is terminated if the "Next Header / Protocol"

@@ -54,23 +54,32 @@ static size_t wlsb_ack_remove(struct c_wlsb *const wlsb, const size_t pos)
  */
 
 /**
- * @brief Initialize the given W-LSB encoding object
+ * @brief Create a new Window-based Least Significant Bits (W-LSB) encoding
+ *        object
  *
- * @param[in,out] wlsb  The W-LSB encoding object to initialize
- * @param bits          The maximal number of bits for representing a value
- * @param window_width  The number of entries in the window (power of 2)
- * @param p             Shift parameter (see 4.5.2 in the RFC 3095)
+ * @param[in,out] wlsb The W-LSB encoding object to create
+ * @param bits         The maximal number of bits for representing a value
+ * @param window_width The number of entries in the window (power of 2)
+ * @param p            Shift parameter (see 4.5.2 in the RFC 3095)
+ * @return             true if the W-LSB encoding object was created,
+ *                     false if it was not
  */
-void wlsb_init(struct c_wlsb *const wlsb,
-               const size_t bits,
-               const size_t window_width,
-               const rohc_lsb_shift_t p)
+bool wlsb_new(struct c_wlsb *const wlsb,
+              const size_t bits,
+              const size_t window_width,
+              const rohc_lsb_shift_t p)
 {
 	size_t i;
 
 	assert(bits > 0);
 	assert(window_width > 0);
 	assert(window_width <= ROHC_WLSB_WIDTH_MAX);
+
+	wlsb->window = malloc(sizeof(struct c_window) * window_width);
+	if(wlsb->window == NULL)
+	{
+		goto error;
+	}
 
 	wlsb->oldest = 0;
 	wlsb->next = 0;
@@ -83,6 +92,57 @@ void wlsb_init(struct c_wlsb *const wlsb,
 	{
 		wlsb->window[i].used = false;
 	}
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Create a new Window-based Least Significant Bits (W-LSB) encoding
+ *        object from another
+ *
+ * @param[in,out] dst  The W-LSB encoding object to create
+ * @param src          The W-LSB encoding object to copy
+ * @return             true if the W-LSB encoding object was created,
+ *                     false if it was not
+ */
+bool wlsb_copy(struct c_wlsb *const dst,
+               const struct c_wlsb *const src)
+{
+	const size_t window_mem_size = sizeof(struct c_window) * dst->window_width;
+
+	dst->oldest = src->oldest;
+	dst->next = src->next;
+	dst->count = src->count;
+	dst->window_width = src->window_width;
+	dst->bits = src->bits;
+	dst->p = src->p;
+
+	dst->window = malloc(window_mem_size);
+	if(dst->window == NULL)
+	{
+		goto error;
+	}
+	memcpy(dst->window, src->window, window_mem_size);
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Destroy a Window-based LSB (W-LSB) encoding object
+ *
+ * @param wlsb  The W-LSB object to destroy
+ */
+void wlsb_free(struct c_wlsb *const wlsb)
+{
+	free(wlsb->window);
 }
 
 

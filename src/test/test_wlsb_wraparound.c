@@ -198,9 +198,15 @@ bool run_test8_with_shift_param(bool be_verbose, const short p)
 	int is_success = false; /* test fails by default */
 
 	uint32_t i;
+	bool is_ok;
 
 	/* create the W-LSB encoding context */
-	wlsb_init(&wlsb, 8, ROHC_WLSB_WINDOW_WIDTH, p);
+	is_ok = wlsb_new(&wlsb, 8, ROHC_WLSB_WINDOW_WIDTH, p);
+	if(!is_ok)
+	{
+		fprintf(stderr, "no memory to allocate W-LSB encoding context\n");
+		goto error;
+	}
 
 	/* init the LSB decoding context with value 0 */
 	value8 = 0;
@@ -223,7 +229,7 @@ bool run_test8_with_shift_param(bool be_verbose, const short p)
 		value8 = i % (((uint32_t) 0xff) + 1);
 		if(!test_wlsb_8(&wlsb, &lsb, value8, p, be_verbose))
 		{
-			goto error;
+			goto destroy_wlsb;
 		}
 	}
 
@@ -231,6 +237,8 @@ bool run_test8_with_shift_param(bool be_verbose, const short p)
 	trace(be_verbose, "\ttest with shift parameter %d is successful\n", p);
 	is_success = true;
 
+destroy_wlsb:
+	wlsb_free(&wlsb);
 error:
 	return is_success;
 }
@@ -253,9 +261,15 @@ bool run_test16_with_shift_param(bool be_verbose, const short p)
 	int is_success = false; /* test fails by default */
 
 	uint32_t i;
+	bool is_ok;
 
 	/* create the W-LSB encoding context */
-	wlsb_init(&wlsb, 16, ROHC_WLSB_WINDOW_WIDTH, p);
+	is_ok = wlsb_new(&wlsb, 16, ROHC_WLSB_WINDOW_WIDTH, p);
+	if(!is_ok)
+	{
+		fprintf(stderr, "no memory to allocate W-LSB encoding context\n");
+		goto error;
+	}
 
 	/* init the LSB decoding context with value 0 */
 	value16 = 0;
@@ -279,7 +293,7 @@ bool run_test16_with_shift_param(bool be_verbose, const short p)
 		value16 = i % (((uint32_t) 0xffff) + 1);
 		if(!test_wlsb_16(&wlsb, &lsb, value16, p, be_verbose))
 		{
-			goto error;
+			goto destroy_wlsb;
 		}
 	}
 
@@ -287,6 +301,8 @@ bool run_test16_with_shift_param(bool be_verbose, const short p)
 	trace(be_verbose, "\ttest with shift parameter %d is successful\n", p);
 	is_success = true;
 
+destroy_wlsb:
+	wlsb_free(&wlsb);
 error:
 	return is_success;
 }
@@ -309,9 +325,15 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 	int is_success = false; /* test fails by default */
 
 	uint64_t i;
+	bool is_ok;
 
 	/* create the W-LSB encoding context */
-	wlsb_init(&wlsb, 32, ROHC_WLSB_WINDOW_WIDTH, p);
+	is_ok = wlsb_new(&wlsb, 32, ROHC_WLSB_WINDOW_WIDTH, p);
+	if(!is_ok)
+	{
+		fprintf(stderr, "no memory to allocate W-LSB encoding context\n");
+		goto error;
+	}
 
 	/* init the LSB decoding context with value 0 */
 	value32 = 0;
@@ -335,12 +357,20 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 		value32 = i % (((uint64_t) 0xffffffff) + 1);
 		if(!test_wlsb_32(&wlsb, &lsb, value32, p, be_verbose))
 		{
-			goto error;
+			goto destroy_wlsb;
 		}
 	}
 
+	/* destroy the W-LSB encoding context */
+	wlsb_free(&wlsb);
+
 	/* create the W-LSB encoding context again */
-	wlsb_init(&wlsb, 32, ROHC_WLSB_WINDOW_WIDTH, p);
+	is_ok = wlsb_new(&wlsb, 32, ROHC_WLSB_WINDOW_WIDTH, p);
+	if(!is_ok)
+	{
+		fprintf(stderr, "no memory to allocate W-LSB encoding\n");
+		goto error;
+	}
 
 	/* init the LSB decoding context with value 0xffffffff - 100 - 3 */
 	value32 = 0xffffffff - 100 - 3;
@@ -365,12 +395,20 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 		value32 = i % (((uint64_t) 0xffffffff) + 1);
 		if(!test_wlsb_32(&wlsb, &lsb, value32, p, be_verbose))
 		{
-			goto error;
+			goto destroy_wlsb;
 		}
 	}
 
+	/* destroy the W-LSB encoding context */
+	wlsb_free(&wlsb);
+
 	/* create the W-LSB encoding context again */
-	wlsb_init(&wlsb, 32, 64U, p);
+	is_ok = wlsb_new(&wlsb, 32, 64U, p);
+	if(!is_ok)
+	{
+		fprintf(stderr, "no memory to allocate W-LSB encoding\n");
+		goto error;
+	}
 
 	/* init the LSB decoding context with value 0xffffffff - 4500 - 1700 */
 	value32 = 0xffffffff - 4500 - 1700;
@@ -391,29 +429,31 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 	/* encode several values (+1500, last value is duplicated) */
 	if(!test_wlsb_32(&wlsb, &lsb, 0xffffffff - 1700, p, be_verbose))
 	{
-		goto error;
+		goto destroy_wlsb;
 	}
 	if(!test_wlsb_32(&wlsb, &lsb, 0xffffffff - 200, p, be_verbose))
 	{
-		goto error;
+		goto destroy_wlsb;
 	}
 	if(!test_wlsb_32(&wlsb, &lsb, 1300, p, be_verbose))
 	{
-		goto error;
+		goto destroy_wlsb;
 	}
 	if(!test_wlsb_32(&wlsb, &lsb, 2800, p, be_verbose))
 	{
-		goto error;
+		goto destroy_wlsb;
 	}
 	if(!test_wlsb_32(&wlsb, &lsb, 2800, p, be_verbose))
 	{
-		goto error;
+		goto destroy_wlsb;
 	}
 
 	/* test succeeds */
 	trace(be_verbose, "\ttest with shift parameter %d is successful\n", p);
 	is_success = true;
 
+destroy_wlsb:
+	wlsb_free(&wlsb);
 error:
 	return is_success;
 }

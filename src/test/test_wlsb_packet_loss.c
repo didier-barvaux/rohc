@@ -199,11 +199,17 @@ static bool run_test8_with_shift_param(bool be_verbose,
 	int is_success = false; /* test fails by default */
 
 	uint32_t i;
+	bool is_ok;
 
 	assert(win_size > 0);
 
 	/* create the W-LSB encoding context */
-	wlsb_init(&wlsb, 8, win_size, p);
+	is_ok = wlsb_new(&wlsb, 8, win_size, p);
+	if(!is_ok)
+	{
+		fprintf(stderr, "no memory to allocate W-LSB encoding context\n");
+		goto error;
+	}
 
 	/* init the LSB decoding context with value 0 */
 	value8 = 0;
@@ -283,7 +289,7 @@ static bool run_test8_with_shift_param(bool be_verbose,
 			if(!lsb_decode_ok)
 			{
 				fprintf(stderr, "failed to decode %zu-bit value\n", required_bits);
-				goto error;
+				goto destroy_wlsb;
 			}
 			assert(decoded32 <= 0xff);
 			value8_decoded = decoded32;
@@ -297,7 +303,7 @@ static bool run_test8_with_shift_param(bool be_verbose,
 			{
 				fprintf(stderr, "original and decoded values do not match while "
 				        "testing value 0x%02x with shift parameter %d\n", value8, p);
-				goto error;
+				goto destroy_wlsb;
 			}
 		}
 	}
@@ -306,6 +312,8 @@ static bool run_test8_with_shift_param(bool be_verbose,
 	trace(be_verbose, "\ttest with shift parameter %d is successful\n", p);
 	is_success = true;
 
+destroy_wlsb:
+	wlsb_free(&wlsb);
 error:
 	return is_success;
 }
@@ -335,11 +343,17 @@ static bool run_test16_with_shift_param(bool be_verbose,
 	int is_success = false; /* test fails by default */
 
 	uint32_t i;
+	bool is_ok;
 
 	assert(win_size > 0);
 
 	/* create the W-LSB encoding context */
-	wlsb_init(&wlsb, 16, win_size, p);
+	is_ok = wlsb_new(&wlsb, 16, win_size, p);
+	if(!is_ok)
+	{
+		fprintf(stderr, "no memory to allocate W-LSB encoding context\n");
+		goto error;
+	}
 
 	/* init the LSB decoding context with value 0 */
 	value16 = 0;
@@ -419,7 +433,7 @@ static bool run_test16_with_shift_param(bool be_verbose,
 			if(!lsb_decode_ok)
 			{
 				fprintf(stderr, "failed to decode %zu-bit value\n", required_bits);
-				goto error;
+				goto destroy_wlsb;
 			}
 			assert(decoded32 <= 0xffff);
 			value16_decoded = decoded32;
@@ -433,7 +447,7 @@ static bool run_test16_with_shift_param(bool be_verbose,
 			{
 				fprintf(stderr, "original and decoded values do not match while "
 				        "testing value 0x%04x with shift parameter %d\n", value16, p);
-				goto error;
+				goto destroy_wlsb;
 			}
 		}
 	}
@@ -442,6 +456,8 @@ static bool run_test16_with_shift_param(bool be_verbose,
 	trace(be_verbose, "\ttest with shift parameter %d is successful\n", p);
 	is_success = true;
 
+destroy_wlsb:
+	wlsb_free(&wlsb);
 error:
 	return is_success;
 }
@@ -471,11 +487,17 @@ static bool run_test32_with_shift_param(bool be_verbose,
 	int is_success = false; /* test fails by default */
 
 	uint64_t i;
+	bool is_ok;
 
 	assert(win_size > 0);
 
 	/* create the W-LSB encoding context */
-	wlsb_init(&wlsb, 32, ROHC_WLSB_WINDOW_WIDTH, p);
+	is_ok = wlsb_new(&wlsb, 32, ROHC_WLSB_WINDOW_WIDTH, p);
+	if(!is_ok)
+	{
+		fprintf(stderr, "no memory to allocate W-LSB encoding context\n");
+		goto error;
+	}
 
 	/* init the LSB decoding context with value 0 */
 	value32 = 0;
@@ -553,7 +575,7 @@ static bool run_test32_with_shift_param(bool be_verbose,
 			if(!lsb_decode_ok)
 			{
 				fprintf(stderr, "failed to decode %zu-bit value\n", required_bits);
-				goto error;
+				goto destroy_wlsb;
 			}
 			trace(be_verbose, "\t\tdecoded: 0x%08x\n", value32_decoded);
 
@@ -565,7 +587,7 @@ static bool run_test32_with_shift_param(bool be_verbose,
 			{
 				fprintf(stderr, "original and decoded values do not match while "
 				        "testing value 0x%08x with shift parameter %d\n", value32, p);
-				goto error;
+				goto destroy_wlsb;
 			}
 		}
 	}
@@ -574,6 +596,8 @@ static bool run_test32_with_shift_param(bool be_verbose,
 	trace(be_verbose, "\ttest with shift parameter %d is successful\n", p);
 	is_success = true;
 
+destroy_wlsb:
+	wlsb_free(&wlsb);
 error:
 	return is_success;
 }

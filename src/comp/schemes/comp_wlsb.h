@@ -55,24 +55,24 @@ struct c_window
  */
 struct c_wlsb
 {
+	/** The window in which previous values of the encoded value are stored */
+	struct c_window *window;
+
 	/** The width of the window */
-	size_t window_width; /* TODO: R-mode needs a non-fixed window width */
+	uint8_t window_width; /* TODO: R-mode needs a non-fixed window width */
 
 	/** A pointer on the oldest entry in the window (change on acknowledgement) */
-	size_t oldest;
+	uint8_t oldest;
 	/** A pointer on the current entry in the window  (change on add and ack) */
-	size_t next;
+	uint8_t next;
 
 	/** The count of entries in the window */
-	size_t count;
+	uint8_t count;
 
 	/** The maximal number of bits for representing the value */
-	size_t bits;
+	uint8_t bits;
 	/** The shift parameter (see 4.5.2 in the RFC 3095) */
 	rohc_lsb_shift_t p;
-
-	/** The window in which previous values of the encoded value are stored */
-	struct c_window window[ROHC_WLSB_WIDTH_MAX];
 };
 
 
@@ -80,10 +80,15 @@ struct c_wlsb
  * Public function prototypes:
  */
 
-void wlsb_init(struct c_wlsb *const wlsb,
-               const size_t bits,
-               const size_t window_width,
-               const rohc_lsb_shift_t p)
+bool wlsb_new(struct c_wlsb *const wlsb,
+              const size_t bits,
+              const size_t window_width,
+              const rohc_lsb_shift_t p)
+	__attribute__((warn_unused_result, nonnull(1)));
+bool wlsb_copy(struct c_wlsb *const dst,
+               const struct c_wlsb *const src)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
+void wlsb_free(struct c_wlsb *const wlsb)
 	__attribute__((nonnull(1)));
 
 void c_add_wlsb(struct c_wlsb *const wlsb,

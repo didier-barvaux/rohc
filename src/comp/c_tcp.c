@@ -419,8 +419,8 @@ static bool c_tcp_create_from_ctxt(struct rohc_comp_ctxt *const ctxt,
 {
 	const struct rohc_comp *const comp = ctxt->compressor;
 	const struct sc_tcp_context *const base_tcp_ctxt = base_ctxt->specific;
-	const size_t wlsb_size = sizeof(struct c_wlsb);
 	struct sc_tcp_context *tcp_ctxt;
+	bool is_ok;
 
 	/* create the TCP part of the profile context */
 	tcp_ctxt = malloc(sizeof(struct sc_tcp_context));
@@ -439,31 +439,120 @@ static bool c_tcp_create_from_ctxt(struct rohc_comp_ctxt *const ctxt,
 	ctxt->num_sent_packets = base_ctxt->num_sent_packets;
 
 	/* MSN */
-	memcpy(&tcp_ctxt->msn_wlsb, &base_tcp_ctxt->msn_wlsb, wlsb_size);
+	is_ok = wlsb_copy(&tcp_ctxt->msn_wlsb, &base_tcp_ctxt->msn_wlsb);
+	if(!is_ok)
+	{
+		rohc_error(ctxt->compressor, ROHC_TRACE_COMP, ctxt->profile->id,
+		           "failed to create W-LSB context for MSN");
+		goto free_context;
+	}
+
 	/* IP-ID offset */
-	memcpy(&tcp_ctxt->ip_id_wlsb, &base_tcp_ctxt->ip_id_wlsb, wlsb_size);
+	is_ok = wlsb_copy(&tcp_ctxt->ip_id_wlsb, &base_tcp_ctxt->ip_id_wlsb);
+	if(!is_ok)
+	{
+		rohc_error(ctxt->compressor, ROHC_TRACE_COMP, ctxt->profile->id,
+		           "failed to create W-LSB context for IP-ID offset");
+		goto free_wlsb_msn;
+	}
+
 	/* innermost IPv4 TTL or IPv6 Hop Limit */
-	memcpy(&tcp_ctxt->ttl_hopl_wlsb, &base_tcp_ctxt->ttl_hopl_wlsb, wlsb_size);
+	is_ok = wlsb_copy(&tcp_ctxt->ttl_hopl_wlsb, &base_tcp_ctxt->ttl_hopl_wlsb);
+	if(!is_ok)
+	{
+		rohc_error(ctxt->compressor, ROHC_TRACE_COMP, ctxt->profile->id,
+		           "failed to create W-LSB context for innermost IPv4 TTL or "
+		           "IPv6 Hop Limit");
+		goto free_wlsb_ip_id;
+	}
+
 	/* TCP window */
-	memcpy(&tcp_ctxt->window_wlsb, &base_tcp_ctxt->window_wlsb, wlsb_size);
+	is_ok = wlsb_copy(&tcp_ctxt->window_wlsb, &base_tcp_ctxt->window_wlsb);
+	if(!is_ok)
+	{
+		rohc_error(ctxt->compressor, ROHC_TRACE_COMP, ctxt->profile->id,
+		           "failed to create W-LSB context for TCP window");
+		goto free_wlsb_ttl_hopl;
+	}
+
 	/* TCP sequence number */
-	memcpy(&tcp_ctxt->seq_wlsb, &base_tcp_ctxt->seq_wlsb, wlsb_size);
-	memcpy(&tcp_ctxt->seq_scaled_wlsb, &base_tcp_ctxt->seq_scaled_wlsb, wlsb_size);
+	is_ok = wlsb_copy(&tcp_ctxt->seq_wlsb, &base_tcp_ctxt->seq_wlsb);
+	if(!is_ok)
+	{
+		rohc_error(ctxt->compressor, ROHC_TRACE_COMP, ctxt->profile->id,
+		           "failed to create W-LSB context for TCP sequence number");
+		goto free_wlsb_window;
+	}
+	is_ok = wlsb_copy(&tcp_ctxt->seq_scaled_wlsb, &base_tcp_ctxt->seq_scaled_wlsb);
+	if(!is_ok)
+	{
+		rohc_error(ctxt->compressor, ROHC_TRACE_COMP, ctxt->profile->id,
+		           "failed to create W-LSB context for TCP scaled sequence "
+		           "number");
+		goto free_wlsb_seq;
+	}
+
 	/* TCP acknowledgment (ACK) number */
-	memcpy(&tcp_ctxt->ack_wlsb, &base_tcp_ctxt->ack_wlsb, wlsb_size);
-	memcpy(&tcp_ctxt->ack_scaled_wlsb, &base_tcp_ctxt->ack_scaled_wlsb, wlsb_size);
+	is_ok = wlsb_copy(&tcp_ctxt->ack_wlsb, &base_tcp_ctxt->ack_wlsb);
+	if(!is_ok)
+	{
+		rohc_error(ctxt->compressor, ROHC_TRACE_COMP, ctxt->profile->id,
+		           "failed to create W-LSB context for TCP ACK number");
+		goto free_wlsb_seq_scaled;
+	}
+	is_ok = wlsb_copy(&tcp_ctxt->ack_scaled_wlsb, &base_tcp_ctxt->ack_scaled_wlsb);
+	if(!is_ok)
+	{
+		rohc_error(ctxt->compressor, ROHC_TRACE_COMP, ctxt->profile->id,
+		           "failed to create W-LSB context for TCP scaled ACK number");
+		goto free_wlsb_ack;
+	}
 
 	/* init the Master Sequence Number to a random value */
 	tcp_ctxt->msn = comp->random_cb(comp, comp->random_cb_ctxt) & 0xffff;
 	rohc_comp_debug(ctxt, "MSN = 0x%04x / %u", tcp_ctxt->msn, tcp_ctxt->msn);
 
 	/* TCP option Timestamp (request) */
-	memcpy(&tcp_ctxt->tcp_opts.ts_req_wlsb, &base_tcp_ctxt->tcp_opts.ts_req_wlsb, wlsb_size);
+	is_ok = wlsb_copy(&tcp_ctxt->tcp_opts.ts_req_wlsb, &base_tcp_ctxt->tcp_opts.ts_req_wlsb);
+	if(!is_ok)
+	{
+		rohc_error(ctxt->compressor, ROHC_TRACE_COMP, ctxt->profile->id,
+		           "failed to create W-LSB context for TCP option Timestamp "
+		           "request");
+		goto free_wlsb_ack_scaled;
+	}
 	/* TCP option Timestamp (reply) */
-	memcpy(&tcp_ctxt->tcp_opts.ts_reply_wlsb, &base_tcp_ctxt->tcp_opts.ts_reply_wlsb, wlsb_size);
+	is_ok = wlsb_copy(&tcp_ctxt->tcp_opts.ts_reply_wlsb, &base_tcp_ctxt->tcp_opts.ts_reply_wlsb);
+	if(!is_ok)
+	{
+		rohc_error(ctxt->compressor, ROHC_TRACE_COMP, ctxt->profile->id,
+		           "failed to create W-LSB context for TCP option Timestamp "
+		           "reply");
+		goto free_wlsb_opt_ts_req;
+	}
 
 	return true;
 
+free_wlsb_opt_ts_req:
+	wlsb_free(&tcp_ctxt->tcp_opts.ts_req_wlsb);
+free_wlsb_ack_scaled:
+	wlsb_free(&tcp_ctxt->ack_scaled_wlsb);
+free_wlsb_ack:
+	wlsb_free(&tcp_ctxt->ack_wlsb);
+free_wlsb_seq_scaled:
+	wlsb_free(&tcp_ctxt->seq_scaled_wlsb);
+free_wlsb_seq:
+	wlsb_free(&tcp_ctxt->seq_wlsb);
+free_wlsb_window:
+	wlsb_free(&tcp_ctxt->window_wlsb);
+free_wlsb_ttl_hopl:
+	wlsb_free(&tcp_ctxt->ttl_hopl_wlsb);
+free_wlsb_ip_id:
+	wlsb_free(&tcp_ctxt->ip_id_wlsb);
+free_wlsb_msn:
+	wlsb_free(&tcp_ctxt->msn_wlsb);
+free_context:
+	free(tcp_ctxt);
 error:
 	return false;
 }
@@ -493,6 +582,7 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 	const struct tcphdr *tcp;
 	uint8_t proto;
 	size_t i;
+	bool is_ok;
 
 	/* create the TCP part of the profile context */
 	tcp_context = calloc(1, sizeof(struct sc_tcp_context));
@@ -605,21 +695,76 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 	memcpy(&(tcp_context->old_tcphdr), tcp, sizeof(struct tcphdr));
 
 	/* MSN */
-	wlsb_init(&tcp_context->msn_wlsb, 16, comp->wlsb_window_width, ROHC_LSB_SHIFT_TCP_SN);
+	is_ok = wlsb_new(&tcp_context->msn_wlsb, 16, comp->wlsb_window_width, ROHC_LSB_SHIFT_TCP_SN);
+	if(!is_ok)
+	{
+		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "failed to create W-LSB context for MSN");
+		goto free_context;
+	}
+
 	/* IP-ID offset */
-	wlsb_init(&tcp_context->ip_id_wlsb, 16, comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
+	is_ok = wlsb_new(&tcp_context->ip_id_wlsb, 16, comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
+	if(!is_ok)
+	{
+		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "failed to create W-LSB context for IP-ID offset");
+		goto free_wlsb_msn;
+	}
+
 	/* innermost IPv4 TTL or IPv6 Hop Limit */
-	wlsb_init(&tcp_context->ttl_hopl_wlsb, 8, comp->wlsb_window_width, ROHC_LSB_SHIFT_TCP_TTL);
+	is_ok = wlsb_new(&tcp_context->ttl_hopl_wlsb, 8, comp->wlsb_window_width, ROHC_LSB_SHIFT_TCP_TTL);
+	if(!is_ok)
+	{
+		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "failed to create W-LSB context for innermost IPv4 TTL or "
+		           "IPv6 Hop Limit");
+		goto free_wlsb_ip_id;
+	}
+
 	/* TCP window */
-	wlsb_init(&tcp_context->window_wlsb, 16, comp->wlsb_window_width, ROHC_LSB_SHIFT_TCP_WINDOW);
+	is_ok = wlsb_new(&tcp_context->window_wlsb, 16, comp->wlsb_window_width, ROHC_LSB_SHIFT_TCP_WINDOW);
+	if(!is_ok)
+	{
+		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "failed to create W-LSB context for TCP window");
+		goto free_wlsb_ttl_hopl;
+	}
+
 	/* TCP sequence number */
 	tcp_context->seq_num = rohc_ntoh32(tcp->seq_num);
-	wlsb_init(&tcp_context->seq_wlsb, 32, comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
-	wlsb_init(&tcp_context->seq_scaled_wlsb, 32, comp->wlsb_window_width, 7);
+	is_ok = wlsb_new(&tcp_context->seq_wlsb, 32, comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
+	if(!is_ok)
+	{
+		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "failed to create W-LSB context for TCP sequence number");
+		goto free_wlsb_window;
+	}
+	is_ok = wlsb_new(&tcp_context->seq_scaled_wlsb, 32, comp->wlsb_window_width, 7);
+	if(!is_ok)
+	{
+		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "failed to create W-LSB context for TCP scaled sequence "
+		           "number");
+		goto free_wlsb_seq;
+	}
+
 	/* TCP acknowledgment (ACK) number */
 	tcp_context->ack_num = rohc_ntoh32(tcp->ack_num);
-	wlsb_init(&tcp_context->ack_wlsb, 32, comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
-	wlsb_init(&tcp_context->ack_scaled_wlsb, 32, comp->wlsb_window_width, 3);
+	is_ok = wlsb_new(&tcp_context->ack_wlsb, 32, comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
+	if(!is_ok)
+	{
+		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "failed to create W-LSB context for TCP ACK number");
+		goto free_wlsb_seq_scaled;
+	}
+	is_ok = wlsb_new(&tcp_context->ack_scaled_wlsb, 32, comp->wlsb_window_width, 3);
+	if(!is_ok)
+	{
+		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "failed to create W-LSB context for TCP scaled ACK number");
+		goto free_wlsb_ack;
+	}
 
 	/* init the Master Sequence Number to a random value */
 	tcp_context->msn = comp->random_cb(comp, comp->random_cb_ctxt) & 0xffff;
@@ -639,12 +784,44 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 	/* no TCP option Timestamp received yet */
 	tcp_context->tcp_opts.is_timestamp_init = false;
 	/* TCP option Timestamp (request) */
-	wlsb_init(&tcp_context->tcp_opts.ts_req_wlsb, 32, comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
+	is_ok = wlsb_new(&tcp_context->tcp_opts.ts_req_wlsb, 32, comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
+	if(!is_ok)
+	{
+		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "failed to create W-LSB context for TCP option Timestamp "
+		           "request");
+		goto free_wlsb_ack_scaled;
+	}
 	/* TCP option Timestamp (reply) */
-	wlsb_init(&tcp_context->tcp_opts.ts_reply_wlsb, 32, comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
+	is_ok = wlsb_new(&tcp_context->tcp_opts.ts_reply_wlsb, 32, comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
+	if(!is_ok)
+	{
+		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "failed to create W-LSB context for TCP option Timestamp "
+		           "reply");
+		goto free_wlsb_opt_ts_req;
+	}
 
 	return true;
 
+free_wlsb_opt_ts_req:
+	wlsb_free(&tcp_context->tcp_opts.ts_req_wlsb);
+free_wlsb_ack_scaled:
+	wlsb_free(&tcp_context->ack_scaled_wlsb);
+free_wlsb_ack:
+	wlsb_free(&tcp_context->ack_wlsb);
+free_wlsb_seq_scaled:
+	wlsb_free(&tcp_context->seq_scaled_wlsb);
+free_wlsb_seq:
+	wlsb_free(&tcp_context->seq_wlsb);
+free_wlsb_window:
+	wlsb_free(&tcp_context->window_wlsb);
+free_wlsb_ttl_hopl:
+	wlsb_free(&tcp_context->ttl_hopl_wlsb);
+free_wlsb_ip_id:
+	wlsb_free(&tcp_context->ip_id_wlsb);
+free_wlsb_msn:
+	wlsb_free(&tcp_context->msn_wlsb);
 free_context:
 	free(tcp_context);
 error:
@@ -661,6 +838,16 @@ static void c_tcp_destroy(struct rohc_comp_ctxt *const context)
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
 
+	wlsb_free(&tcp_context->tcp_opts.ts_reply_wlsb);
+	wlsb_free(&tcp_context->tcp_opts.ts_req_wlsb);
+	wlsb_free(&tcp_context->ack_scaled_wlsb);
+	wlsb_free(&tcp_context->ack_wlsb);
+	wlsb_free(&tcp_context->seq_scaled_wlsb);
+	wlsb_free(&tcp_context->seq_wlsb);
+	wlsb_free(&tcp_context->window_wlsb);
+	wlsb_free(&tcp_context->ip_id_wlsb);
+	wlsb_free(&tcp_context->ttl_hopl_wlsb);
+	wlsb_free(&tcp_context->msn_wlsb);
 	free(tcp_context);
 }
 

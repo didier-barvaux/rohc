@@ -120,6 +120,7 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 	uint32_t old_value;
 	bool is_success = false;
 	size_t i;
+	bool is_ok;
 
 	const struct
 	{
@@ -167,7 +168,12 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 	};
 
 	/* create the W-LSB context */
-	wlsb_init(&wlsb, 32, ROHC_WLSB_WINDOW_WIDTH, ROHC_LSB_SHIFT_VAR);
+	is_ok = wlsb_new(&wlsb, 32, ROHC_WLSB_WINDOW_WIDTH, ROHC_LSB_SHIFT_VAR);
+	if(!is_ok)
+	{
+		trace(be_verbose, "failed to create W-LSB context\n");
+		goto error;
+	}
 	/* init the W-LSB context with several values */
 	c_add_wlsb(&wlsb, 0, 0);
 	c_add_wlsb(&wlsb, 1, 0);
@@ -202,7 +208,7 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 			fprintf(stderr, "variable_length_32_enc(value = 0x%08x) returned %d "
 			        "as indicator while %d expected\n", inputs[i].uncomp_value,
 			        indicator, inputs[i].expected_indicator);
-			goto error;
+			goto free_wlsb;
 		}
 
 		/* check that written data is as expected */
@@ -212,7 +218,7 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 			        "%zu-byte compressed value while one %zu-byte value was "
 			        "expected\n", inputs[i].uncomp_value, comp_len,
 			        inputs[i].expected_len);
-			goto error;
+			goto free_wlsb;
 		}
 
 		c_add_wlsb(&wlsb, i + 4, inputs[i].uncomp_value);
@@ -223,6 +229,8 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 
 	is_success = true;
 
+free_wlsb:
+	wlsb_free(&wlsb);
 error:
 	return is_success;
 }

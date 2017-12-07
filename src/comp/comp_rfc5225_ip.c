@@ -88,7 +88,7 @@ struct comp_rfc5225_tmp_variables
 struct rohc_comp_rfc5225_ip_ctxt
 {
 	uint16_t msn;  /**< The Master Sequence Number (MSN) */
-	struct c_wlsb msn_wlsb;    /**< The W-LSB encoding context for MSN */
+	struct c_wlsb msn_wlsb;  /**< The W-LSB encoding context for MSN */
 
 	/** The MSN of the last packet that updated the context (used to determine
 	 * if a positive ACK may cause a transition to a higher compression state) */
@@ -363,6 +363,7 @@ static bool rohc_comp_rfc5225_ip_create(struct rohc_comp_ctxt *const context,
 	const uint8_t *remain_data = packet->outer_ip.data;
 	size_t remain_len = packet->outer_ip.size;
 	uint8_t proto;
+	bool is_ok;
 
 	/* create the ROHCv2 IP-only part of the profile context */
 	rfc5225_ctxt = calloc(1, sizeof(struct rohc_comp_rfc5225_ip_ctxt));
@@ -452,10 +453,24 @@ static bool rohc_comp_rfc5225_ip_create(struct rohc_comp_ctxt *const context,
 	while(rohc_is_tunneling(proto) && rfc5225_ctxt->ip_contexts_nr < ROHC_MAX_IP_HDRS);
 
 	/* MSN */
-	wlsb_init(&rfc5225_ctxt->msn_wlsb, 16, comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
+	is_ok = wlsb_new(&rfc5225_ctxt->msn_wlsb, 16, comp->wlsb_window_width,
+	                 ROHC_LSB_SHIFT_VAR);
+	if(!is_ok)
+	{
+		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "failed to create W-LSB context for MSN");
+		goto free_context;
+	}
+
 	/* innermost IP-ID offset */
-	wlsb_init(&rfc5225_ctxt->innermost_ip_id_offset_wlsb, 16,
-	          comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
+	is_ok = wlsb_new(&rfc5225_ctxt->innermost_ip_id_offset_wlsb, 16,
+	                 comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
+	if(!is_ok)
+	{
+		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "failed to create W-LSB context for IP-ID offset");
+		goto free_wlsb_msn;
+	}
 
 	/* init the Master Sequence Number to a random value */
 	rfc5225_ctxt->msn = comp->random_cb(comp, comp->random_cb_ctxt) & 0xffff;
@@ -463,6 +478,8 @@ static bool rohc_comp_rfc5225_ip_create(struct rohc_comp_ctxt *const context,
 
 	return true;
 
+free_wlsb_msn:
+	wlsb_free(&rfc5225_ctxt->msn_wlsb);
 free_context:
 	free(rfc5225_ctxt);
 error:
@@ -482,6 +499,8 @@ static void rohc_comp_rfc5225_ip_destroy(struct rohc_comp_ctxt *const context)
 {
 	struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = context->specific;
 
+	wlsb_free(&rfc5225_ctxt->innermost_ip_id_offset_wlsb);
+	wlsb_free(&rfc5225_ctxt->msn_wlsb);
 	free(rfc5225_ctxt);
 }
 

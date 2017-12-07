@@ -127,8 +127,8 @@ struct sc_tcp_context
 	/** The number of times the ECN fields were not needed */
 	size_t ecn_used_zero_count;
 
-	uint16_t msn;              /**< The Master Sequence Number (MSN) */
-	struct c_wlsb msn_wlsb;    /**< The W-LSB decoding context for MSN */
+	uint16_t msn;            /**< The Master Sequence Number (MSN) */
+	struct c_wlsb msn_wlsb;  /**< The W-LSB decoding context for MSN */
 
 	/** The MSN of the last packet that updated the context (used to determine
 	 * if a positive ACK may cause a transition to a higher compression state) */
@@ -139,7 +139,6 @@ struct sc_tcp_context
 
 	struct c_wlsb ip_id_wlsb;
 
-// lsb(15, 16383)
 	struct c_wlsb window_wlsb; /**< The W-LSB decoding context for TCP window */
 
 	uint32_t seq_num;
