@@ -120,6 +120,15 @@ static enum
 /* prototypes of private functions */
 static void usage(void);
 
+static int generate_dummy_stats_all(const char *source,
+                                    const size_t max_pkts_nr)
+	__attribute__((warn_unused_result, nonnull(1)));
+static int generate_dummy_stats_one(const unsigned long num_packet,
+                                    const struct pcap_pkthdr header,
+                                    const unsigned char *packet,
+                                    size_t link_len)
+	__attribute__((warn_unused_result, nonnull(3)));
+
 static int generate_comp_stats_all(const rohc_cid_type_t cid_type,
                                    const unsigned int max_contexts,
                                    const char *source,
@@ -336,7 +345,12 @@ int main(int argc, char *argv[])
 	}
 
 	/* generate ROHC (de)compression statistics with the packets from the source */
-	if(strcmp(test_type, "comp") == 0)
+	if(strcmp(test_type, "dummy") == 0)
+	{
+		/* do nothing with the packets from the capture to estimate program overhead */
+		status = generate_dummy_stats_all(source_descr, max_pkts_nr);
+	}
+	else if(strcmp(test_type, "comp") == 0)
 	{
 		/* test ROHC compression with the packets from the capture */
 		status = generate_comp_stats_all(cid_type, max_contexts, source_descr,
@@ -398,8 +412,9 @@ static void usage(void)
 	       "                           network device)\n"
 	       "\n"
 	       "With:\n"
-	       "  ACTION    Run a compression test with 'comp' or a\n"
-	       "            decompression test with 'decomp'\n"
+	       "  ACTION    Run a dummy test with 'dummy',\n"
+	       "            a compression test with 'comp', or\n"
+	       "            a decompression test with 'decomp'\n"
 	       "  CID_TYPE  The type of CID to use among 'smallcid'\n"
 	       "            and 'largecid'\n"
 	       "  SOURCE    The source of of Ethernet frames to compress, ie:\n"
@@ -412,6 +427,210 @@ static void usage(void)
 	       "  rohc_stats comp largecid eth0           Generate statistics from Ethernet device 'eth0'\n"
 	       "\n"
 	       "Report bugs to <" PACKAGE_BUGREPORT ">.\n");
+}
+
+
+/**
+ * @brief Generate dummy statistics with a flow of IP packets
+ *
+ * @param source         The source of IP packets
+ * @param max_pkts_nr    The maximum number of packets to compress
+ * @return               0 in case of success,
+ *                       1 in case of failure
+ */
+static int generate_dummy_stats_all(const char *source,
+                                    const size_t max_pkts_nr)
+{
+	struct stat source_stat;
+	int ret;
+
+	char errbuf[PCAP_ERRBUF_SIZE];
+	pcap_t *handle;
+	int link_layer_type;
+	int link_len;
+
+	unsigned long num_packet;
+	struct pcap_pkthdr header;
+	unsigned char *packet;
+
+	int is_failure = 1;
+
+	/* open the source */
+	ret = stat(source, &source_stat);
+	if(ret != 0 && errno != ENOENT)
+	{
+		fprintf(stderr, "failed to get information for file '%s': %s (%d)\n",
+		        source, strerror(errno), errno);
+		goto error;
+	}
+	else if(ret != 0 && errno == ENOENT)
+	{
+		/* open the network device */
+		handle = pcap_open_live(source, DEV_MTU, 0, 0, errbuf);
+		if(handle == NULL)
+		{
+			fprintf(stderr, "failed to open network device '%s': %s",
+			        source, errbuf);
+			goto error;
+		}
+	}
+	else
+	{
+		/* open the source PCAP file */
+		handle = pcap_open_offline(source, errbuf);
+		if(handle == NULL)
+		{
+			fprintf(stderr, "failed to open the source pcap file: %s\n", errbuf);
+			goto error;
+		}
+	}
+
+	/* link layer in the source PCAP file must be Ethernet */
+	link_layer_type = pcap_datalink(handle);
+	if(link_layer_type != DLT_EN10MB &&
+	   link_layer_type != DLT_LINUX_SLL &&
+	   link_layer_type != DLT_RAW)
+	{
+		fprintf(stderr, "link layer type %d not supported in source PCAP file "
+		        "(supported = %d, %d, %d)\n", link_layer_type, DLT_EN10MB,
+		        DLT_LINUX_SLL, DLT_RAW);
+		goto close_input;
+	}
+
+	/* determine the size of the link layer header */
+	if(link_layer_type == DLT_EN10MB)
+	{
+		link_len = ETHER_HDR_LEN;
+	}
+	else if(link_layer_type == DLT_LINUX_SLL)
+	{
+		link_len = LINUX_COOKED_HDR_LEN;
+	}
+	else /* DLT_RAW */
+	{
+		link_len = 0;
+	}
+
+	/* output the statistics columns names */
+	if(verbosity != VERBOSITY_NONE)
+	{
+		printf("STAT\t"
+		       "\"packet number\"\t"
+		       "\"context mode\"\t"
+		       "\"context mode (string)\"\t"
+		       "\"context state\"\t"
+		       "\"context state (string)\"\t"
+		       "\"packet type\"\t"
+		       "\"packet type (string)\"\t"
+		       "\"uncompressed packet size (bytes)\"\t"
+		       "\"uncompressed header size (bytes)\"\t"
+		       "\"compressed packet size (bytes)\"\t"
+		       "\"compressed header size (bytes)\"\n");
+		fflush(stdout);
+	}
+
+	/* for each packet extracted from the PCAP file or live capture,
+	 * up to max_pkts_nr packets */
+	num_packet = 0;
+	while((max_pkts_nr == 0 || num_packet < max_pkts_nr) &&
+	      (packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
+	{
+		num_packet++;
+
+		/* do nothing with the packet and generate statistics */
+		ret = generate_dummy_stats_one(num_packet, header, packet, link_len);
+		if(ret != 0)
+		{
+			fprintf(stderr, "packet %lu: failed to generate stats for packet\n",
+			        num_packet);
+			goto close_input;
+		}
+	}
+
+	/* everything went fine */
+	is_failure = 0;
+
+close_input:
+	pcap_close(handle);
+error:
+	return is_failure;
+}
+
+
+/**
+ * @brief Generate dummy statistics for one single IP packet
+ *
+ * @param num_packet  A number affected to the IP packet to compress
+ * @param header      The PCAP header for the packet
+ * @param packet      The packet to compress (link layer included)
+ * @param link_len    The length of the link layer header before IP data
+ * @return            0 in case of success,
+ *                    1 in case of failure
+ */
+static int generate_dummy_stats_one(const unsigned long num_packet,
+                                    const struct pcap_pkthdr header,
+                                    const unsigned char *packet,
+                                    size_t link_len)
+{
+	struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
+	struct rohc_buf ip_packet =
+		rohc_buf_init_full((unsigned char *) packet, header.caplen, arrival_time);
+
+	/* check frame length */
+	if(header.len <= link_len || header.len != header.caplen)
+	{
+		fprintf(stderr, "packet #%lu: bad PCAP packet (len = %u, caplen = %u)\n",
+		        num_packet, header.len, header.caplen);
+		goto error;
+	}
+
+	/* skip the link layer header (including VLAN headers) */
+	if(!detect_vlan_hdrs(&ip_packet, &link_len))
+	{
+		fprintf(stderr, "packet #%lu: malformed VLAN header\n", num_packet);
+		goto error;
+	}
+	rohc_buf_pull(&ip_packet, link_len);
+
+	/* check for padding after the IP packet in the Ethernet payload */
+	if(link_len == ETHER_HDR_LEN && header.len == ETHER_FRAME_MIN_LEN)
+	{
+		uint8_t version;
+		uint16_t tot_len;
+
+		version = (rohc_buf_byte(ip_packet) >> 4) & 0x0f;
+		if(version == 4)
+		{
+			const struct ipv4_hdr *const ip =
+				(struct ipv4_hdr *) rohc_buf_data(ip_packet);
+			tot_len = ntohs(ip->tot_len);
+		}
+		else
+		{
+			const struct ipv6_hdr *const ip =
+				(struct ipv6_hdr *) rohc_buf_data(ip_packet);
+			tot_len = sizeof(struct ipv6_hdr) + ntohs(ip->plen);
+		}
+
+		if(tot_len < ip_packet.len)
+		{
+			/* the Ethernet frame has some bytes of padding after the IP packet */
+			ip_packet.len = tot_len;
+		}
+	}
+
+	if(verbosity != VERBOSITY_NONE)
+	{
+		/* output some statistics about the last compressed packet */
+		printf("STAT\t%lu\t0\tunknown\t0\tunknown\t14\tunknown\t%zu\t0\t%zu\t0\n",
+		       num_packet, ip_packet.len, ip_packet.len);
+		fflush(stdout);
+	}
+
+	return 0;
+
+error:
+	return 1;
 }
 
 
