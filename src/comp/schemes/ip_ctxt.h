@@ -30,7 +30,9 @@
 #define ROHC_COMP_SCHEMES_IP_CTXT_H
 
 #include "protocols/ip.h"
+#include "protocols/ipv6.h"
 #include "protocols/tcp.h"
+#include "ip.h"
 
 
 /**
