@@ -107,7 +107,7 @@ int tcp_code_irreg_chain(struct rohc_comp_ctxt *const context,
 	uint8_t *rohc_remain_data = rohc_pkt;
 	size_t rohc_remain_len = rohc_pkt_max_len;
 
-	size_t ip_hdr_pos;
+	uint8_t ip_hdr_pos;
 	int ret;
 
 	for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)

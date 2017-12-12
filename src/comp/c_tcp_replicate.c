@@ -666,7 +666,7 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
 		tcp_replicate->ack_stride_flag = indicator;
 		rohc_remain_data += ret;
 		rohc_remain_len -= ret;
-		rohc_comp_debug(context, "TCP ack_stride %spresent (ack_stride = %u, ack_num_scaling_nr = %zu)",
+		rohc_comp_debug(context, "TCP ack_stride %spresent (ack_stride = %u, ack_num_scaling_nr = %u)",
 		                tcp_replicate->ack_stride_flag ? "" : "not ", tcp_context->ack_stride, tcp_context->ack_num_scaling_nr);
 	}
 

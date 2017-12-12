@@ -306,7 +306,7 @@ static int rohc_list_decode(struct list_decomp *decomp,
 		 * not update the sliding window of lists */
 		decomp->lists[gen_id].counter++;
 		rd_list_debug(decomp, "list with gen_id %u is already present in "
-		              "reference lists (received for the #%zu times)",
+		              "reference lists (received for the #%u times)",
 		              gen_id, decomp->lists[gen_id].counter);
 	}
 	else

@@ -536,9 +536,6 @@ static int tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *const context,
 	rohc_remain_data += sizeof(tcp_dynamic_t);
 	rohc_remain_len -= sizeof(tcp_dynamic_t);
 
-	/* TODO: should not update context here */
-	tcp_context->tcp_seq_num_change_count++;
-
 	/* ack_zero flag and ACK number: always check for the ACK number value even
 	 * if the ACK flag is not set in the uncompressed TCP header, this is
 	 * important to transmit all packets without any change, even if those bits

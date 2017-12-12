@@ -1912,7 +1912,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	       (nr_of_ip_hdr == 2 && ip_get_version(&uncomp_pkt->inner_ip) != IPV4 &&
 	        rfc3095_ctxt->tmp.nr_ip_id_bits2 == 0));
 
-	rohc_comp_debug(context, "code IR packet (CID = %u)", context->cid);
+	rohc_comp_debug(context, "code IR packet (CID %u)", context->cid);
 
 	/* parts 1 and 3:
 	 *  - part 2 will be placed at 'first_position'
@@ -2070,7 +2070,7 @@ static int code_IR_DYN_packet(struct rohc_comp_ctxt *const context,
 	int crc_position;
 	int ret;
 
-	rohc_comp_debug(context, "code IR-DYN packet (CID = %u)", context->cid);
+	rohc_comp_debug(context, "code IR-DYN packet (CID %u)", context->cid);
 
 	assert(packet_type == ROHC_PACKET_IR_DYN);
 
@@ -2862,7 +2862,7 @@ static int code_UO0_packet(struct rohc_comp_ctxt *const context,
 
 	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
 
-	rohc_comp_debug(context, "code UO-0 packet (CID = %u)", context->cid);
+	rohc_comp_debug(context, "code UO-0 packet (CID %u)", context->cid);
 
 	assert(packet_type == ROHC_PACKET_UO_0);
 
@@ -2972,7 +2972,7 @@ static int rohc_comp_rfc3095_build_uo1_pkt(struct rohc_comp_ctxt *const context,
 	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
 	is_rtp = context->profile->id == ROHC_PROFILE_RTP;
 
-	rohc_comp_debug(context, "code UO-1 packet (CID = %u)", context->cid);
+	rohc_comp_debug(context, "code UO-1 packet (CID %u)", context->cid);
 
 	assert(packet_type == ROHC_PACKET_UO_1);
 	rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -3122,7 +3122,7 @@ static int rohc_comp_rfc3095_build_uo1rtp_pkt(struct rohc_comp_ctxt *const conte
 	is_rtp = context->profile->id == ROHC_PROFILE_RTP;
 	rtp_context = (struct sc_rtp_context *) rfc3095_ctxt->specific;
 
-	rohc_comp_debug(context, "code UO-1-RTP packet (CID = %u)", context->cid);
+	rohc_comp_debug(context, "code UO-1-RTP packet (CID %u)", context->cid);
 
 	assert(packet_type == ROHC_PACKET_UO_1_RTP);
 	rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -3262,7 +3262,7 @@ static int rohc_comp_rfc3095_build_uo1ts_pkt(struct rohc_comp_ctxt *const contex
 	is_rtp = context->profile->id == ROHC_PROFILE_RTP;
 	rtp_context = (struct sc_rtp_context *) rfc3095_ctxt->specific;
 
-	rohc_comp_debug(context, "code UO-1-TS packet (CID = %u)", context->cid);
+	rohc_comp_debug(context, "code UO-1-TS packet (CID %u)", context->cid);
 
 	assert(packet_type == ROHC_PACKET_UO_1_TS);
 	rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -3422,7 +3422,7 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 	is_rtp = context->profile->id == ROHC_PROFILE_RTP;
 	rtp_context = (struct sc_rtp_context *) rfc3095_ctxt->specific;
 
-	rohc_comp_debug(context, "code UO-1-ID packet (CID = %u)", context->cid);
+	rohc_comp_debug(context, "code UO-1-ID packet (CID %u)", context->cid);
 
 	assert(packet_type == ROHC_PACKET_UO_1_ID ||
 	       packet_type == ROHC_PACKET_UO_1_ID_EXT0 ||

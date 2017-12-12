@@ -682,7 +682,6 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 	assert(rohc_is_tunneling(proto) == false);
 
 	/* create context for TCP header */
-	tcp_context->tcp_seq_num_change_count = 0;
 	tcp_context->ttl_hopl_change_count = 0;
 	tcp_context->tcp_window_change_count = 0;
 	tcp_context->ecn_used = false;
@@ -1415,7 +1414,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 			                ip_hdr_pos + 1);
 			tcp_context->ip_contexts[ip_hdr_pos].opts_nr =
 				tcp_context->tmp.ip_exts_nr[ip_hdr_pos];
-			rohc_comp_debug(context, "    %zu extension headers",
+			rohc_comp_debug(context, "    %u extension headers",
 			                tcp_context->ip_contexts[ip_hdr_pos].opts_nr);
 		}
 	}
@@ -1438,7 +1437,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		{
 			tcp_context->seq_num_scaling_nr++;
 			rohc_comp_debug(context, "unscaled sequence number was transmitted "
-			                "%zu / %u times since the scaling factor or residue "
+			                "%u / %u times since the scaling factor or residue "
 			                "changed", tcp_context->seq_num_scaling_nr,
 			                ROHC_INIT_TS_STRIDE_MIN);
 		}
@@ -1456,11 +1455,14 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		if(tcp_context->ack_num_scaling_nr < ROHC_INIT_TS_STRIDE_MIN)
 		{
 			tcp_context->ack_num_scaling_nr++;
-			rohc_comp_debug(context, "unscaled ACK number was transmitted %zu / %u "
+			rohc_comp_debug(context, "unscaled ACK number was transmitted %u / %u "
 			                "times since the scaling factor or residue changed",
 			                tcp_context->ack_num_scaling_nr, ROHC_INIT_TS_STRIDE_MIN);
 		}
 	}
+
+	/* TCP window */
+	c_add_wlsb(&tcp_context->window_wlsb, tcp_context->msn, rohc_ntoh16(tcp->window));
 
 	return counter;
 
@@ -1772,7 +1774,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	size_t ip_hdr_pos;
 	int ret;
 
-	rohc_comp_debug(context, "code CO packet (CID = %u)", context->cid);
+	rohc_comp_debug(context, "code CO packet (CID %u)", context->cid);
 
 	/* parse the IP headers and their extension headers */
 	rohc_comp_debug(context, "parse the %zu-byte IP packet", remain_len);
@@ -1834,7 +1836,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 					&(ip_context->opts[ip_ext_pos]);
 
 				protocol = ipv6_opt->next_header;
-				rohc_comp_debug(context, "skip %zu-byte IPv6 extension header "
+				rohc_comp_debug(context, "skip %u-byte IPv6 extension header "
 				                "with Next Header 0x%02x",
 				                opt_ctxt->generic.option_length, protocol);
 				remain_data += opt_ctxt->generic.option_length;
@@ -3275,7 +3277,7 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 		// =:= irregular(1) [ 1 ];
 		rohc_comp_debug(context, "optional_ip_id_lsb(behavior = %d, IP-ID = 0x%04x, "
 		                "IP-ID offset = 0x%04x, nr of bits required for WLSB encoding "
-		                "= %zu)", inner_ip_ctxt->ctxt.v4.ip_id_behavior,
+		                "= %u)", inner_ip_ctxt->ctxt.v4.ip_id_behavior,
 		                rohc_ntoh16(inner_ipv4->id), tcp_context->tmp.ip_id_delta,
 		                tcp_context->tmp.nr_ip_id_bits_3);
 		ret = c_optional_ip_id_lsb(inner_ip_ctxt->ctxt.v4.ip_id_behavior,
@@ -3654,7 +3656,7 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 	/* find the offset of the payload and its size */
 	assert(uncomp_pkt->len >= hdrs_len);
 	tcp_context->tmp.payload_len = uncomp_pkt->len - hdrs_len;
-	rohc_comp_debug(context, "payload length = %zu bytes",
+	rohc_comp_debug(context, "payload length = %u bytes",
 	                tcp_context->tmp.payload_len);
 
 	/* compute or find the new SN */
@@ -3747,7 +3749,7 @@ static bool tcp_detect_changes_ipv6_exts(struct rohc_comp_ctxt *const context,
 				else if(ext_len != opt_ctxt->generic.option_length)
 				{
 					rohc_comp_debug(context, "  IPv6 option %u changed of length "
-					                "(%zu -> %zu bytes)", *protocol,
+					                "(%u -> %zu bytes)", *protocol,
 					                opt_ctxt->generic.option_length, ext_len);
 					tcp_context->tmp.is_ipv6_exts_list_static_changed = true;
 
@@ -3809,13 +3811,13 @@ static bool tcp_detect_changes_ipv6_exts(struct rohc_comp_ctxt *const context,
 	else if((*exts_nr) < ip_context->opts_nr)
 	{
 		rohc_comp_debug(context, "  less IP extension headers (%zu) than "
-		                "context (%zu)", *exts_nr, ip_context->opts_nr);
+		                "context (%u)", *exts_nr, ip_context->opts_nr);
 		tcp_context->tmp.is_ipv6_exts_list_static_changed = true;
 	}
 	else if((*exts_nr) > ip_context->opts_nr)
 	{
 		rohc_comp_debug(context, "  more IP extension headers (%zu+) than "
-		                "context (%zu)", *exts_nr, ip_context->opts_nr);
+		                "context (%u)", *exts_nr, ip_context->opts_nr);
 		tcp_context->tmp.is_ipv6_exts_list_static_changed = true;
 	}
 
@@ -3965,7 +3967,7 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	/* how many bits are required to encode the new SN ? */
 	tcp_context->tmp.nr_msn_bits =
 		wlsb_get_k_16bits(&tcp_context->msn_wlsb, tcp_context->msn);
-	rohc_comp_debug(context, "%zu bits are required to encode new MSN 0x%04x",
+	rohc_comp_debug(context, "%u bits are required to encode new MSN 0x%04x",
 	                tcp_context->tmp.nr_msn_bits, tcp_context->msn);
 	/* add the new MSN to the W-LSB encoding object */
 	/* TODO: move this after successful packet compression */
@@ -4162,14 +4164,14 @@ static bool tcp_encode_uncomp_ip_fields(struct rohc_comp_ctxt *const context,
 			tcp_context->tmp.nr_ip_id_bits_3 =
 				wlsb_get_kp_16bits(&tcp_context->ip_id_wlsb,
 				                   tcp_context->tmp.ip_id_delta, 3);
-			rohc_comp_debug(context, "%zu bits are required to encode new innermost "
+			rohc_comp_debug(context, "%u bits are required to encode new innermost "
 			                "IP-ID delta 0x%04x with p = 3",
 			                tcp_context->tmp.nr_ip_id_bits_3,
 			                tcp_context->tmp.ip_id_delta);
 			tcp_context->tmp.nr_ip_id_bits_1 =
 				wlsb_get_kp_16bits(&tcp_context->ip_id_wlsb,
 				                   tcp_context->tmp.ip_id_delta, 1);
-			rohc_comp_debug(context, "%zu bits are required to encode new innermost "
+			rohc_comp_debug(context, "%u bits are required to encode new innermost "
 			                "IP-ID delta 0x%04x with p = 1",
 			                tcp_context->tmp.nr_ip_id_bits_1,
 			                tcp_context->tmp.ip_id_delta);
@@ -4225,7 +4227,7 @@ static bool tcp_encode_uncomp_ip_fields(struct rohc_comp_ctxt *const context,
 	}
 	tcp_context->tmp.nr_ttl_hopl_bits =
 		wlsb_get_k_8bits(&tcp_context->ttl_hopl_wlsb, tcp_context->tmp.ttl_hopl);
-	rohc_comp_debug(context, "%zu bits are required to encode new innermost "
+	rohc_comp_debug(context, "%u bits are required to encode new innermost "
 	                "TTL/Hop Limit 0x%02x with p = 3",
 	                tcp_context->tmp.nr_ttl_hopl_bits,
 	                tcp_context->tmp.ttl_hopl);
@@ -4308,14 +4310,6 @@ static bool tcp_encode_uncomp_tcp_fields(struct rohc_comp_ctxt *const context,
 	}
 	tcp_field_descr_change(context, "TCP window", tcp_context->tmp.tcp_window_changed,
 	                       tcp_context->tcp_window_change_count);
-	tcp_context->tmp.nr_window_bits_16383 =
-		wlsb_get_kp_16bits(&tcp_context->window_wlsb, rohc_ntoh16(tcp->window),
-		                   ROHC_LSB_SHIFT_TCP_WINDOW);
-	rohc_comp_debug(context, "%zu bits are required to encode new TCP window "
-	                "0x%04x with p = %d", tcp_context->tmp.nr_window_bits_16383,
-	                rohc_ntoh16(tcp->window), ROHC_LSB_SHIFT_TCP_WINDOW);
-	/* TODO: move this after successful packet compression */
-	c_add_wlsb(&tcp_context->window_wlsb, tcp_context->msn, rohc_ntoh16(tcp->window));
 
 	/* compute new scaled TCP sequence number */
 	{
@@ -4338,7 +4332,7 @@ static bool tcp_encode_uncomp_tcp_fields(struct rohc_comp_ctxt *const context,
 			tcp_context->seq_num_scaling_nr = 0;
 		}
 		rohc_comp_debug(context, "unscaled sequence number was transmitted at "
-		                "least %zu / %u times since the scaling factor or "
+		                "least %u / %u times since the scaling factor or "
 		                "residue changed", tcp_context->seq_num_scaling_nr,
 		                ROHC_INIT_TS_STRIDE_MIN);
 
@@ -4421,7 +4415,7 @@ static bool tcp_encode_uncomp_tcp_fields(struct rohc_comp_ctxt *const context,
 				tcp_context->ack_num_scaling_nr = 0;
 			}
 			rohc_comp_debug(context, "unscaled ACK number was transmitted at least "
-			                "%zu / %u times since the scaling factor or residue changed",
+			                "%u / %u times since the scaling factor or residue changed",
 			                tcp_context->ack_num_scaling_nr, ROHC_INIT_TS_STRIDE_MIN);
 		}
 
@@ -4431,44 +4425,14 @@ static bool tcp_encode_uncomp_tcp_fields(struct rohc_comp_ctxt *const context,
 		tcp_context->ack_stride = ack_stride;
 	}
 
-	/* how many bits are required to encode the new sequence number? */
-	tcp_context->tmp.tcp_seq_num_changed =
-		(tcp->seq_num != tcp_context->old_tcphdr.seq_num);
-	if(tcp_context->seq_num_factor == 0 ||
-	   tcp_context->seq_num_scaling_nr < ROHC_INIT_TS_STRIDE_MIN)
-	{
-		tcp_context->tmp.nr_seq_scaled_bits = 32;
-	}
-	else
-	{
-		tcp_context->tmp.nr_seq_scaled_bits =
-			wlsb_get_k_32bits(&tcp_context->seq_scaled_wlsb, tcp_context->seq_num_scaled);
-		rohc_comp_debug(context, "%zu bits are required to encode new scaled "
-		                "sequence number 0x%08x", tcp_context->tmp.nr_seq_scaled_bits,
-		                tcp_context->seq_num_scaled);
-	}
-
 	/* how many bits are required to encode the new ACK number? */
 	tcp_context->tmp.tcp_ack_num_changed =
 		(tcp->ack_num != tcp_context->old_tcphdr.ack_num);
 	tcp_context->tmp.nr_ack_bits_16383 =
 		wlsb_get_kp_32bits(&tcp_context->ack_wlsb, ack_num_hbo, 16383);
-	rohc_comp_debug(context, "%zd bits are required to encode new ACK "
+	rohc_comp_debug(context, "%u bits are required to encode new ACK "
 	                "number 0x%08x with p = 16383",
 	                tcp_context->tmp.nr_ack_bits_16383, ack_num_hbo);
-	if(!tcp_is_ack_scaled_possible(tcp_context->ack_stride,
-	                               tcp_context->ack_num_scaling_nr))
-	{
-		tcp_context->tmp.nr_ack_scaled_bits = 32;
-	}
-	else
-	{
-		tcp_context->tmp.nr_ack_scaled_bits =
-			wlsb_get_k_32bits(&tcp_context->ack_scaled_wlsb, tcp_context->ack_num_scaled);
-		rohc_comp_debug(context, "%zu bits are required to encode new scaled "
-		                "ACK number 0x%08x", tcp_context->tmp.nr_ack_scaled_bits,
-		                tcp_context->ack_num_scaled);
-	}
 
 	/* how many bits are required to encode the new timestamp echo request and
 	 * timestamp echo reply? */
@@ -4507,7 +4471,7 @@ static bool tcp_encode_uncomp_tcp_fields(struct rohc_comp_ctxt *const context,
 			wlsb_get_kp_32bits(&tcp_context->tcp_opts.ts_req_wlsb,
 			                   tcp_context->tcp_opts.tmp.ts_req,
 			                   ROHC_LSB_SHIFT_TCP_TS_1B);
-		rohc_comp_debug(context, "%zu bits are required to encode new "
+		rohc_comp_debug(context, "%u bits are required to encode new "
 		                "timestamp echo request 0x%08x with p = %d",
 		                tcp_context->tcp_opts.tmp.nr_opt_ts_req_bits_minus_1,
 		                tcp_context->tcp_opts.tmp.ts_req, ROHC_LSB_SHIFT_TCP_TS_1B);
@@ -4518,7 +4482,7 @@ static bool tcp_encode_uncomp_tcp_fields(struct rohc_comp_ctxt *const context,
 			wlsb_get_kp_32bits(&tcp_context->tcp_opts.ts_req_wlsb,
 			                   tcp_context->tcp_opts.tmp.ts_req,
 			                   ROHC_LSB_SHIFT_TCP_TS_3B);
-		rohc_comp_debug(context, "%zu bits are required to encode new "
+		rohc_comp_debug(context, "%u bits are required to encode new "
 		                "timestamp echo request 0x%08x with p = 0x%x",
 		                tcp_context->tcp_opts.tmp.nr_opt_ts_req_bits_0x40000,
 		                tcp_context->tcp_opts.tmp.ts_req, ROHC_LSB_SHIFT_TCP_TS_3B);
@@ -4529,7 +4493,7 @@ static bool tcp_encode_uncomp_tcp_fields(struct rohc_comp_ctxt *const context,
 			wlsb_get_kp_32bits(&tcp_context->tcp_opts.ts_req_wlsb,
 			                   tcp_context->tcp_opts.tmp.ts_req,
 			                   ROHC_LSB_SHIFT_TCP_TS_4B);
-		rohc_comp_debug(context, "%zu bits are required to encode new "
+		rohc_comp_debug(context, "%u bits are required to encode new "
 		                "timestamp echo request 0x%08x with p = 0x%x",
 		                tcp_context->tcp_opts.tmp.nr_opt_ts_req_bits_0x4000000,
 		                tcp_context->tcp_opts.tmp.ts_req, ROHC_LSB_SHIFT_TCP_TS_4B);
@@ -4540,7 +4504,7 @@ static bool tcp_encode_uncomp_tcp_fields(struct rohc_comp_ctxt *const context,
 			wlsb_get_kp_32bits(&tcp_context->tcp_opts.ts_reply_wlsb,
 			                   tcp_context->tcp_opts.tmp.ts_reply,
 			                   ROHC_LSB_SHIFT_TCP_TS_1B);
-		rohc_comp_debug(context, "%zu bits are required to encode new "
+		rohc_comp_debug(context, "%u bits are required to encode new "
 		                "timestamp echo reply 0x%08x with p = %d",
 		                tcp_context->tcp_opts.tmp.nr_opt_ts_reply_bits_minus_1,
 		                tcp_context->tcp_opts.tmp.ts_reply, ROHC_LSB_SHIFT_TCP_TS_1B);
@@ -4551,7 +4515,7 @@ static bool tcp_encode_uncomp_tcp_fields(struct rohc_comp_ctxt *const context,
 			wlsb_get_kp_32bits(&tcp_context->tcp_opts.ts_reply_wlsb,
 			                   tcp_context->tcp_opts.tmp.ts_reply,
 			                   ROHC_LSB_SHIFT_TCP_TS_3B);
-		rohc_comp_debug(context, "%zu bits are required to encode new "
+		rohc_comp_debug(context, "%u bits are required to encode new "
 		                "timestamp echo reply 0x%08x with p = 0x%x",
 		                tcp_context->tcp_opts.tmp.nr_opt_ts_reply_bits_0x40000,
 		                tcp_context->tcp_opts.tmp.ts_reply, ROHC_LSB_SHIFT_TCP_TS_3B);
@@ -4562,7 +4526,7 @@ static bool tcp_encode_uncomp_tcp_fields(struct rohc_comp_ctxt *const context,
 			wlsb_get_kp_32bits(&tcp_context->tcp_opts.ts_reply_wlsb,
 			                   tcp_context->tcp_opts.tmp.ts_reply,
 			                   ROHC_LSB_SHIFT_TCP_TS_4B);
-		rohc_comp_debug(context, "%zu bits are required to encode new "
+		rohc_comp_debug(context, "%u bits are required to encode new "
 		                "timestamp echo reply 0x%08x with p = 0x%x",
 		                tcp_context->tcp_opts.tmp.nr_opt_ts_reply_bits_0x4000000,
 		                tcp_context->tcp_opts.tmp.ts_reply, ROHC_LSB_SHIFT_TCP_TS_4B);
@@ -4846,11 +4810,16 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 	struct sc_tcp_context *const tcp_context = context->specific;
 	const uint32_t seq_num_hbo = rohc_ntoh32(tcp->seq_num);
 	const uint32_t ack_num_hbo = rohc_ntoh32(tcp->ack_num);
+	bool tcp_seq_num_changed; /* whether the TCP sequence number changed or not */
 	size_t nr_seq_bits_32767; /* min bits required to encode TCP seqnum with p = 32767 */
 	size_t nr_seq_bits_8191; /* min bits required to encode TCP seqnum with p = 8191 */
+	size_t nr_seq_scaled_bits; /* min bits required to encode the TCP scaled seqnum */
 	size_t nr_ack_bits_8191; /* min bits required to encode TCP ACK number with p = 8191 */
+	size_t nr_ack_scaled_bits; /* min bits required to encode the TCP scaled ACK */
 	rohc_packet_t packet_type;
 
+	/* how many bits are required to encode the new sequence number? */
+	tcp_seq_num_changed = !!(tcp->seq_num != tcp_context->old_tcphdr.seq_num);
 	nr_seq_bits_32767 = wlsb_get_kp_32bits(&tcp_context->seq_wlsb, seq_num_hbo, 32767);
 	rohc_comp_debug(context, "%zd bits are required to encode new sequence "
 	                "number 0x%08x with p = 32767", nr_seq_bits_32767, seq_num_hbo);
@@ -4858,9 +4827,40 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 	rohc_comp_debug(context, "%zd bits are required to encode new sequence "
 	                "number 0x%08x with p = 8191", nr_seq_bits_8191, seq_num_hbo);
 
+	/* how many bits are required to encode the new scaled sequence number? */
+	if(tcp_context->seq_num_factor == 0 ||
+	   tcp_context->seq_num_scaling_nr < ROHC_INIT_TS_STRIDE_MIN)
+	{
+		nr_seq_scaled_bits = 32;
+	}
+	else
+	{
+		nr_seq_scaled_bits =
+			wlsb_get_k_32bits(&tcp_context->seq_scaled_wlsb, tcp_context->seq_num_scaled);
+		rohc_comp_debug(context, "%zu bits are required to encode new scaled "
+		                "sequence number 0x%08x", nr_seq_scaled_bits,
+		                tcp_context->seq_num_scaled);
+	}
+
+	/* how many bits are required to encode the new ACK number? */
 	nr_ack_bits_8191 = wlsb_get_kp_32bits(&tcp_context->ack_wlsb, ack_num_hbo, 8191);
 	rohc_comp_debug(context, "%zd bits are required to encode new ACK "
 	                "number 0x%08x with p = 8191", nr_ack_bits_8191, ack_num_hbo);
+
+	/* how many bits are required to encode the new scaled ACK number? */
+	if(!tcp_is_ack_scaled_possible(tcp_context->ack_stride,
+	                               tcp_context->ack_num_scaling_nr))
+	{
+		nr_ack_scaled_bits = 32;
+	}
+	else
+	{
+		nr_ack_scaled_bits =
+			wlsb_get_k_32bits(&tcp_context->ack_scaled_wlsb, tcp_context->ack_num_scaled);
+		rohc_comp_debug(context, "%zu bits are required to encode new scaled "
+		                "ACK number 0x%08x", nr_ack_scaled_bits,
+		                tcp_context->ack_num_scaled);
+	}
 
 	if(tcp->rsf_flags != 0 ||
 	   tcp_context->tcp_opts.tmp.do_list_struct_changed ||
@@ -4893,17 +4893,26 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 	else if(tcp_context->tmp.tcp_window_changed)
 	{
 		size_t nr_ack_bits_32767; /* min bits required to encode TCP ACK number with p = 32767 */
+		size_t nr_window_bits_16383; /* min bits required to encode TCP window with p = 16383 */
 
 		nr_ack_bits_32767 = wlsb_get_kp_32bits(&tcp_context->ack_wlsb, ack_num_hbo, 32767);
 		rohc_comp_debug(context, "%zd bits are required to encode new ACK "
 		                "number 0x%08x with p = 32767", nr_ack_bits_32767, ack_num_hbo);
 
+		/* how many bits are required to encode the new TCP window? */
+		nr_window_bits_16383 =
+			wlsb_get_kp_16bits(&tcp_context->window_wlsb, rohc_ntoh16(tcp->window),
+			                   ROHC_LSB_SHIFT_TCP_WINDOW);
+		rohc_comp_debug(context, "%zu bits are required to encode new TCP window "
+		                "0x%04x with p = %d", nr_window_bits_16383,
+		                rohc_ntoh16(tcp->window), ROHC_LSB_SHIFT_TCP_WINDOW);
+
 		/* seq_7 or co_common */
 		if(!crc7_at_least &&
-		   tcp_context->tmp.nr_window_bits_16383 <= 15 &&
+		   nr_window_bits_16383 <= 15 &&
 		   tcp_context->tmp.nr_ip_id_bits_3 <= 5 &&
 		   nr_ack_bits_32767 <= 16 &&
-		   !tcp_context->tmp.tcp_seq_num_changed)
+		   !tcp_seq_num_changed)
 		{
 			/* seq_7 is possible */
 			TRACE_GOTO_CHOICE;
@@ -4922,7 +4931,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 		if(!crc7_at_least &&
 		   tcp_context->tmp.nr_ip_id_bits_3 <= 7 &&
 		   tcp_context->seq_num_scaling_nr >= ROHC_INIT_TS_STRIDE_MIN &&
-		   tcp_context->tmp.nr_seq_scaled_bits <= 4)
+		   nr_seq_scaled_bits <= 4)
 		{
 			/* seq_2 is possible */
 			TRACE_GOTO_CHOICE;
@@ -4951,14 +4960,14 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 			packet_type = ROHC_PACKET_TCP_CO_COMMON;
 		}
 	}
-	else if(!tcp_context->tmp.tcp_seq_num_changed)
+	else if(!tcp_seq_num_changed)
 	{
 		/* seq_4, seq_3, or co_common */
 		if(!crc7_at_least &&
 		   tcp_context->tmp.nr_ip_id_bits_1 <= 3 &&
 		   tcp_is_ack_scaled_possible(tcp_context->ack_stride,
 		                              tcp_context->ack_num_scaling_nr) &&
-		   tcp_context->tmp.nr_ack_scaled_bits <= 4)
+		   nr_ack_scaled_bits <= 4)
 		{
 			TRACE_GOTO_CHOICE;
 			packet_type = ROHC_PACKET_TCP_SEQ_4;
@@ -4991,7 +5000,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 		if(!crc7_at_least &&
 		   tcp_context->tmp.nr_ip_id_bits_3 <= 4 &&
 		   tcp_context->seq_num_scaling_nr >= ROHC_INIT_TS_STRIDE_MIN &&
-		   tcp_context->tmp.nr_seq_scaled_bits <= 4 &&
+		   nr_seq_scaled_bits <= 4 &&
 		   tcp_context->tmp.nr_ack_bits_16383 <= 16)
 		{
 			TRACE_GOTO_CHOICE;
@@ -5049,11 +5058,16 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 	struct sc_tcp_context *const tcp_context = context->specific;
 	const uint32_t seq_num_hbo = rohc_ntoh32(tcp->seq_num);
 	const uint32_t ack_num_hbo = rohc_ntoh32(tcp->ack_num);
+	bool tcp_seq_num_changed; /* whether the TCP sequence number changed or not */
 	size_t nr_seq_bits_65535; /* min bits required to encode TCP seqnum with p = 65535 */
 	size_t nr_seq_bits_8191; /* min bits required to encode TCP seqnum with p = 8191 */
+	size_t nr_seq_scaled_bits; /* min bits required to encode the TCP scaled seqnum */
 	size_t nr_ack_bits_8191; /* min bits required to encode TCP ACK number with p = 8191 */
+	size_t nr_ack_scaled_bits; /* min bits required to encode the TCP scaled ACK */
 	rohc_packet_t packet_type;
 
+	/* how many bits are required to encode the new sequence number? */
+	tcp_seq_num_changed = !!(tcp->seq_num != tcp_context->old_tcphdr.seq_num);
 	nr_seq_bits_65535 = wlsb_get_kp_32bits(&tcp_context->seq_wlsb, seq_num_hbo, 65535);
 	rohc_comp_debug(context, "%zd bits are required to encode new sequence "
 	                "number 0x%08x with p = 65535", nr_seq_bits_65535, seq_num_hbo);
@@ -5061,9 +5075,40 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 	rohc_comp_debug(context, "%zd bits are required to encode new sequence "
 	                "number 0x%08x with p = 8191", nr_seq_bits_8191, seq_num_hbo);
 
+	/* how many bits are required to encode the new scaled sequence number? */
+	if(tcp_context->seq_num_factor == 0 ||
+	   tcp_context->seq_num_scaling_nr < ROHC_INIT_TS_STRIDE_MIN)
+	{
+		nr_seq_scaled_bits = 32;
+	}
+	else
+	{
+		nr_seq_scaled_bits =
+			wlsb_get_k_32bits(&tcp_context->seq_scaled_wlsb, tcp_context->seq_num_scaled);
+		rohc_comp_debug(context, "%zu bits are required to encode new scaled "
+		                "sequence number 0x%08x", nr_seq_scaled_bits,
+		                tcp_context->seq_num_scaled);
+	}
+
+	/* how many bits are required to encode the new ACK number? */
 	nr_ack_bits_8191 = wlsb_get_kp_32bits(&tcp_context->ack_wlsb, ack_num_hbo, 8191);
 	rohc_comp_debug(context, "%zd bits are required to encode new ACK "
 	                "number 0x%08x with p = 8191", nr_ack_bits_8191, ack_num_hbo);
+
+	/* how many bits are required to encode the new scaled ACK number? */
+	if(!tcp_is_ack_scaled_possible(tcp_context->ack_stride,
+	                               tcp_context->ack_num_scaling_nr))
+	{
+		nr_ack_scaled_bits = 32;
+	}
+	else
+	{
+		nr_ack_scaled_bits =
+			wlsb_get_k_32bits(&tcp_context->ack_scaled_wlsb, tcp_context->ack_num_scaled);
+		rohc_comp_debug(context, "%zu bits are required to encode new scaled "
+		                "ACK number 0x%08x", nr_ack_scaled_bits,
+		                tcp_context->ack_num_scaled);
+	}
 
 	if(tcp->rsf_flags != 0 ||
 	   tcp_context->tcp_opts.tmp.do_list_struct_changed ||
@@ -5093,7 +5138,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 			                "number 0x%08x with p = 65535", nr_ack_bits_65535, ack_num_hbo);
 
 			if(!crc7_at_least &&
-			   !tcp_context->tmp.tcp_seq_num_changed &&
+			   !tcp_seq_num_changed &&
 			   nr_ack_bits_65535 <= 18)
 			{
 				/* rnd_7 is possible */
@@ -5111,7 +5156,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 		        !tcp_context->tmp.tcp_ack_num_changed &&
 		        tcp_context->tmp.payload_len > 0 &&
 		        tcp_context->seq_num_scaling_nr >= ROHC_INIT_TS_STRIDE_MIN &&
-		        tcp_context->tmp.nr_seq_scaled_bits <= 4)
+		        nr_seq_scaled_bits <= 4)
 		{
 			/* rnd_2 is possible */
 			assert(tcp_context->tmp.payload_len > 0);
@@ -5122,8 +5167,8 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 		        tcp->ack_flag != 0 &&
 		        tcp_is_ack_scaled_possible(tcp_context->ack_stride,
 		                                   tcp_context->ack_num_scaling_nr) &&
-		        tcp_context->tmp.nr_ack_scaled_bits <= 4 &&
-		        !tcp_context->tmp.tcp_seq_num_changed)
+		        nr_ack_scaled_bits <= 4 &&
+		        !tcp_seq_num_changed)
 		{
 			/* rnd_4 is possible */
 			TRACE_GOTO_CHOICE;
@@ -5131,7 +5176,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 		}
 		else if(!crc7_at_least &&
 		        tcp->ack_flag != 0 &&
-		        !tcp_context->tmp.tcp_seq_num_changed &&
+		        !tcp_seq_num_changed &&
 		        nr_ack_bits_8191 <= 15)
 		{
 			/* rnd_3 is possible */
@@ -5149,7 +5194,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 		else if(!crc7_at_least &&
 		        tcp->ack_flag != 0 &&
 		        tcp_context->seq_num_scaling_nr >= ROHC_INIT_TS_STRIDE_MIN &&
-		        tcp_context->tmp.nr_seq_scaled_bits <= 4 &&
+		        nr_seq_scaled_bits <= 4 &&
 		        tcp_context->tmp.nr_ack_bits_16383 <= 16)
 		{
 			/* ACK number present */
@@ -5243,7 +5288,7 @@ static void tcp_detect_ecn_used_behavior(struct rohc_comp_ctxt *const context,
 			/* do not change ecn_used = 0 too quickly, wait for a few packets
 			 * that do not need ecn_used = 1 to actually perform the change */
 			rohc_comp_debug(context, "ECN: packet doesn't use ECN any more but "
-			                "context does, wait for %zu more packets without ECN "
+			                "context does, wait for %u more packets without ECN "
 			                "before changing the context ecn_used parameter",
 			                MAX_FO_COUNT - tcp_context->ecn_used_zero_count);
 			tcp_context->tmp.ecn_used_changed = false;

@@ -32,6 +32,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 
 /*
@@ -43,11 +44,24 @@
  */
 struct c_window
 {
-	bool used;       /**< Whether the window entry is used or not */
 	uint32_t sn;     /**< The Sequence Number (SN) associated with the entry
 	                      (used to acknowledge the entry) */
 	uint32_t value;  /**< The value stored in the window entry */
+	bool used;       /**< Whether the window entry is used or not */
+	uint8_t unused[7];
 };
+
+/* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
+#if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
+     (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
+      (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
+_Static_assert((offsetof(struct c_window, sn) % 8) == 0,
+               "sn in c_window should be aligned on 8 bytes");
+_Static_assert((offsetof(struct c_window, value) % 4) == 0,
+               "value in c_window should be aligned on 4 bytes");
+_Static_assert((sizeof(struct c_window) % 8) == 0,
+               "c_window length should be multiple of 8 bytes");
+#endif
 
 
 /**
@@ -74,6 +88,17 @@ struct c_wlsb
 	/** The shift parameter (see 4.5.2 in the RFC 3095) */
 	rohc_lsb_shift_t p;
 };
+
+/* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
+#if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
+     (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
+      (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
+_Static_assert((offsetof(struct c_wlsb, window) % 8) == 0,
+               "window in c_wlsb should be aligned on 8 bytes");
+_Static_assert((sizeof(struct c_wlsb) % 8) == 0,
+               "c_wlsb length should be multiple of 8 bytes");
+#endif
+
 
 
 /*

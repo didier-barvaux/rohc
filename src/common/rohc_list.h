@@ -70,7 +70,7 @@ struct rohc_list
 	/** The number of items in the list */
 	size_t items_nr;
 	/** How many times the list was transmitted? */
-	size_t counter;
+	uint8_t counter;
 };
 
 
@@ -85,7 +85,7 @@ struct rohc_list_item
 	/** Is the compressor confident that the decompressor knows the item? */
 	bool known;
 	/** How many times the item was transmitted? */
-	size_t counter;
+	uint8_t counter;
 
 /**
  * @brief The maximum length (in bytes) of item data

@@ -137,7 +137,7 @@ struct rohc_comp
 	/** The array of compression contexts that use the compressor */
 	struct rohc_comp_ctxt *contexts;
 	/** The number of compression contexts in use in the array */
-	size_t num_contexts_used;
+	uint16_t num_contexts_used;
 
 	/** Which profiles are enabled and with one are not? */
 	bool enabled_profiles[C_NUM_PROFILES];
@@ -217,7 +217,7 @@ struct rohc_comp
 	/** The connection type (currently not used) */
 	int connection_type;
 	/** The number of uncompressed transmissions for list compression (L) */
-	size_t list_trans_nr;
+	uint8_t list_trans_nr;
 
 	/** The callback function used to manage traces */
 	rohc_trace_callback2_t trace_callback;

@@ -1044,7 +1044,7 @@ bool rohc_comp_force_contexts_reinit(struct rohc_comp *const comp)
 	}
 
 	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	          "force re-initialization for all %zu contexts",
+	          "force re-initialization for all %u contexts",
 	          comp->num_contexts_used);
 
 	for(i = 0; i <= comp->medium.max_cid; i++)
@@ -1322,7 +1322,7 @@ bool rohc_comp_set_list_trans_nr(struct rohc_comp *const comp,
 	{
 		return false;
 	}
-	if(list_trans_nr == 0)
+	if(list_trans_nr == 0 || list_trans_nr > UINT8_MAX)
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "invalid "
 		             "value for uncompressed transmissions of list compression "
@@ -2093,7 +2093,7 @@ static bool __rohc_comp_deliver_feedback(struct rohc_comp *const comp,
 	{
 		/* context was not found */
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		             "failed to deliver feedback: context with CID = %u not found",
+		             "failed to deliver feedback: context with CID %u not found",
 		             cid);
 		goto error;
 	}
@@ -2527,7 +2527,7 @@ static struct rohc_comp_ctxt *
 
 		/* destroy the oldest context before replacing it with a new one */
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "recycle oldest context (CID = %u)", cid_to_use);
+		           "recycle oldest context (CID %u)", cid_to_use);
 		comp->contexts[cid_to_use].profile->destroy(&comp->contexts[cid_to_use]);
 		comp->contexts[cid_to_use].used = 0;
 		assert(comp->num_contexts_used > 0);
@@ -2551,7 +2551,7 @@ static struct rohc_comp_ctxt *
 		}
 
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "take the first unused context (CID = %u)", cid_to_use);
+		           "take the first unused context (CID %u)", cid_to_use);
 	}
 
 	/* initialize the previously found context */
@@ -2561,7 +2561,7 @@ static struct rohc_comp_ctxt *
 	if(do_ctxt_replication && cid_to_use != cid_for_replication)
 	{
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "create context with CID = %u as a replication of context "
+		           "create context with CID %u as a replication of context "
 		           "with CID %u", cid_to_use, cid_for_replication);
 
 		/* copy the base context, then reset some parts of it */
@@ -2636,7 +2636,7 @@ static struct rohc_comp_ctxt *
 	comp->num_contexts_used++;
 
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "context (CID = %u) created at %" PRIu64 " seconds (num_used = %zu)",
+	           "context (CID %u) created at %" PRIu64 " seconds (num_used = %u)",
 	           c->cid, c->latest_used, comp->num_contexts_used);
 	return c;
 }
@@ -2699,7 +2699,7 @@ static struct rohc_comp_ctxt *
 		}
 
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "check context CID = %u with same profile", context->cid);
+		           "check context CID %u with same profile", context->cid);
 
 		/* ask the profile whether the packet matches the context */
 		if(context->profile->check_context(context, packet, &cr_score))
@@ -2715,7 +2715,7 @@ static struct rohc_comp_ctxt *
 			   context->cr_count >= MAX_CR_COUNT)
 			{
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "re-using context CID = %u", context->cid);
+				           "re-using context CID %u", context->cid);
 				break;
 			}
 			/* check whether the base context changed too much to be re-used or not */
@@ -2733,13 +2733,13 @@ static struct rohc_comp_ctxt *
 			{
 				/* no large change, we may continue the Context Replication */
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "re-using context CID = %u as a replication of context "
+				           "re-using context CID %u as a replication of context "
 				           "CID %u", context->cid, base_ctxt->cid);
 				break;
 			}
 			/* too much change, we need to interrupt the Context Replication */
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "cannot re-use context CID = %u as replication of context "
+			           "cannot re-use context CID %u as replication of context "
 			           "CID %u, the base context changed too much", context->cid,
 			           base_ctxt->cid);
 			cr_score = 0;
@@ -2796,7 +2796,7 @@ static struct rohc_comp_ctxt *
 		/* matching context found, update use timestamp */
 		context->latest_used = packet->time.sec;
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "context (CID = %u) used at %" PRIu64 " seconds",
+		           "context (CID %u) used at %" PRIu64 " seconds",
 		           context->cid, context->latest_used);
 	}
 
@@ -3125,7 +3125,7 @@ static bool rohc_comp_feedback_parse_cid(const struct rohc_comp *const comp,
 	}
 
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "feedback CID = %u", *cid);
+	           "feedback CID %u", *cid);
 
 	return true;
 
