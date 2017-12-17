@@ -336,10 +336,6 @@ int rohc_list_encode(struct list_comp *const comp,
 {
 	int encoding_type;
 
-	/* sanity checks */
-	assert(comp != NULL);
-	assert(dest != NULL);
-
 	/* determine which encoding type is required for the current list ? */
 	encoding_type = rohc_list_decide_type(comp);
 	assert(encoding_type >= 0 && encoding_type <= 3);
@@ -590,7 +586,6 @@ static int rohc_list_decide_type(struct list_comp *const comp)
 	int encoding_type;
 
 	/* sanity checks */
-	assert(comp != NULL);
 	assert(comp->cur_id != ROHC_LIST_GEN_ID_NONE);
 
 	if(comp->ref_id == ROHC_LIST_GEN_ID_NONE)
@@ -763,9 +758,7 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 	size_t k; /* the index of the current element in list */
 	size_t ps; /* indicate the size of the indexes */
 
-	assert(comp != NULL);
 	assert(comp->cur_id != ROHC_LIST_GEN_ID_NONE);
-	assert(dest != NULL);
 
 	/* retrieve the number of items in the current list */
 	m = comp->lists[comp->cur_id].items_nr;
@@ -1035,10 +1028,8 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 	size_t ps_pos; /* the position of the byte that contains the PS bit */
 	int ret;
 
-	assert(comp != NULL);
 	assert(comp->ref_id != ROHC_LIST_GEN_ID_NONE);
 	assert(comp->cur_id != ROHC_LIST_GEN_ID_NONE);
-	assert(dest != NULL);
 
 	/* retrieve the number of items in the current list */
 	m = comp->lists[comp->cur_id].items_nr;
@@ -1198,10 +1189,8 @@ static int rohc_list_encode_type_2(struct list_comp *const comp,
 	size_t rem_mask_len;
 	size_t count; /* size of reference list */
 
-	assert(comp != NULL);
 	assert(comp->ref_id != ROHC_LIST_GEN_ID_NONE);
 	assert(comp->cur_id != ROHC_LIST_GEN_ID_NONE);
-	assert(dest != NULL);
 
 	/* retrieve the number of items in the reference list */
 	count = comp->lists[comp->ref_id].items_nr;
@@ -1360,10 +1349,8 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 	size_t ps_pos; /* the position of the byte that contains the PS bit */
 	int ret;
 
-	assert(comp != NULL);
 	assert(comp->ref_id != ROHC_LIST_GEN_ID_NONE);
 	assert(comp->cur_id != ROHC_LIST_GEN_ID_NONE);
-	assert(dest != NULL);
 
 	/* retrieve the number of items in the reference list */
 	count = comp->lists[comp->ref_id].items_nr;

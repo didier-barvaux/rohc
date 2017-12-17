@@ -432,11 +432,6 @@ static void ip_header_info_new(struct ip_header_info *const header_info,
                                void *const trace_cb_priv,
                                const int profile_id)
 {
-	assert(header_info != NULL);
-	assert(ip != NULL);
-	assert(list_trans_nr > 0);
-	assert(wlsb_window_width > 0);
-
 	/* store the IP version in the header info */
 	header_info->version = ip_get_version(ip);
 
@@ -523,9 +518,7 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 
-	assert(context != NULL);
 	assert(context->profile != NULL);
-	assert(packet != NULL);
 
 	rohc_comp_debug(context, "new generic context required for a new stream");
 
@@ -662,9 +655,6 @@ bool rohc_comp_rfc3095_check_profile(const struct rohc_comp *const comp,
 {
 	ip_version version;
 
-	assert(comp != NULL);
-	assert(packet != NULL);
-
 	/* check the IP version of the outer header */
 	version = ip_get_version(&packet->outer_ip);
 	if(version != IPV4 && version != IPV6)
@@ -797,12 +787,9 @@ int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
                              rohc_packet_t *const packet_type,
                              size_t *const payload_offset)
 {
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
+	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 	int size;
 
-	assert(context != NULL);
-	assert(context->specific != NULL);
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
 	rfc3095_ctxt->tmp.changed_fields2 = 0;
 	rfc3095_ctxt->tmp.nr_ip_id_bits2 = 0;
 	rfc3095_ctxt->tmp.packet_type = ROHC_PACKET_UNKNOWN;
@@ -815,7 +802,6 @@ int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
 	}
 
 	/* decide in which state to go */
-	assert(rfc3095_ctxt->decide_state != NULL);
 	rfc3095_ctxt->decide_state(context);
 	if(context->mode == ROHC_U_MODE)
 	{
@@ -1285,7 +1271,6 @@ static bool rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const contex
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
 
 	/* compute or find the new SN */
-	assert(rfc3095_ctxt->get_next_sn != NULL);
 	rfc3095_ctxt->sn = rfc3095_ctxt->get_next_sn(context, uncomp_pkt);
 	rohc_comp_debug(context, "SN = %u", rfc3095_ctxt->sn);
 
@@ -1893,18 +1878,11 @@ static int code_IR_DYN_packet(struct rohc_comp_ctxt *const context,
                               uint8_t *const rohc_pkt,
                               const size_t rohc_pkt_max_len)
 {
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
+	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 	size_t counter;
 	size_t first_position;
 	int crc_position;
 	int ret;
-
-	assert(context != NULL);
-	assert(context->specific != NULL);
-	assert(uncomp_pkt != NULL);
-	assert(rohc_pkt != NULL);
-
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
 
 	rohc_comp_debug(context, "code IR-DYN packet (CID = %zu)", context->cid);
 
@@ -4478,19 +4456,13 @@ static int code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
                               uint8_t *const s_byte,
                               uint8_t *const t_byte)
 {
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	struct sc_rtp_context *rtp_context;
+	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
+	struct sc_rtp_context *const rtp_context = rfc3095_ctxt->specific;
 
 	/* number of IP-ID bits and IP-ID offset to transmit  */
 	ip_header_pos_t innermost_ip_hdr;
 	size_t nr_innermost_ip_id_bits;
 	uint16_t innermost_ip_id_delta;
-
-	assert(context != NULL);
-	assert(context->specific != NULL);
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-	assert(rfc3095_ctxt->specific != NULL);
-	rtp_context = (struct sc_rtp_context *) rfc3095_ctxt->specific;
 
 	/* determine the number of IP-ID bits and the IP-ID offset of the
 	 * innermost IPv4 header with non-random IP-ID */
@@ -6511,10 +6483,6 @@ static unsigned short detect_changed_fields(const struct rohc_comp_ctxt *const c
 	uint8_t old_protocol;
 	uint8_t new_protocol;
 
-	assert(context != NULL);
-	assert(header_info != NULL);
-	assert(ip != NULL);
-
 	if(ip_get_version(ip) == IPV4)
 	{
 		const struct ipv4_hdr *old_ip;
@@ -6603,12 +6571,7 @@ error:
 static void detect_ip_id_behaviours(struct rohc_comp_ctxt *const context,
                                     const struct net_pkt *const uncomp_pkt)
 {
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-
-	assert(context != NULL);
-	assert(uncomp_pkt != NULL);
-
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
+	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 
 	/* detect IP-ID behaviour for the outer IP header if IPv4 */
 	if(ip_get_version(&uncomp_pkt->outer_ip) == IPV4)
@@ -6739,12 +6702,7 @@ error:
 static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
                                  const struct net_pkt *const uncomp_pkt)
 {
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-
-	assert(context != NULL);
-	assert(context->specific != NULL);
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-	assert(uncomp_pkt != NULL);
+	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 
 	rohc_comp_debug(context, "compressor is in state %u", context->state);
 
@@ -7269,15 +7227,7 @@ static void rohc_get_innermost_ipv4_non_rnd(const struct rohc_comp_ctxt *const c
                                             size_t *const nr_bits,
                                             uint16_t *const offset)
 {
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-
-	assert(context != NULL);
-	assert(context->specific != NULL);
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-
-	assert(pos != NULL);
-	assert(nr_bits != NULL);
-	assert(offset != NULL);
+	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 
 	if(rfc3095_ctxt->ip_hdr_nr > 1 &&
 	   rfc3095_ctxt->inner_ip_flags.version == IPV4 &&

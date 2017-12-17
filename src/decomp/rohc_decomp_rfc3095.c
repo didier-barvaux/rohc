@@ -523,11 +523,6 @@ bool rfc3095_decomp_parse_pkt(const struct rohc_decomp_ctxt *const context,
 	              size_t *const _rohc_hdr_len)
 		__attribute__((warn_unused_result, nonnull(1, 2, 5, 6, 7, 8)));
 
-	assert(context != NULL);
-	assert(packet_type != NULL);
-	assert(bits != NULL);
-	assert(rohc_hdr_len != NULL);
-
 	/* what function to call for parsing the packet? */
 	switch(*packet_type)
 	{
@@ -660,7 +655,7 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
                      struct rohc_extr_bits *const bits,
                      size_t *const rohc_hdr_len)
 {
-	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt = context->persist_ctxt;
+	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
 	   (will be computed during parsing) */
@@ -673,11 +668,7 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 	int size;
 
 	assert(rfc3095_ctxt != NULL);
-	assert(rohc_packet != NULL);
-	assert(packet_type != NULL);
 	assert((*packet_type) == ROHC_PACKET_IR);
-	assert(bits != NULL);
-	assert(rohc_hdr_len != NULL);
 
 	rohc_remain_data = rohc_packet;
 	rohc_remain_len = rohc_length;
@@ -920,10 +911,6 @@ static int parse_static_part_ip(const struct rohc_decomp_ctxt *const context,
 {
 	int read; /* number of bytes read from the packet */
 
-	assert(context != NULL);
-	assert(packet != NULL);
-	assert(bits != NULL);
-
 	/* check the minimal length to decode the IP version */
 	if(length < 1)
 	{
@@ -976,10 +963,6 @@ static int parse_static_part_ipv4(const struct rohc_decomp_ctxt *const context,
                                   struct rohc_extr_ip_bits *const bits)
 {
 	int read = 0; /* number of bytes read from the packet */
-
-	assert(context != NULL);
-	assert(packet != NULL);
-	assert(bits != NULL);
 
 	/* check the minimal length to decode the IPv4 static part */
 	if(length < 10)
@@ -1043,10 +1026,6 @@ static int parse_static_part_ipv6(const struct rohc_decomp_ctxt *const context,
                                   struct rohc_extr_ip_bits *const bits)
 {
 	int read = 0; /* number of bytes read from the packet */
-
-	assert(context != NULL);
-	assert(packet != NULL);
-	assert(bits != NULL);
 
 	/* check the minimal length to decode the IPv6 static part */
 	if(length < 36)
@@ -1431,11 +1410,7 @@ static bool parse_uo0(const struct rohc_decomp_ctxt *const context,
 	size_t rohc_remain_len;
 
 	assert(rfc3095_ctxt != NULL);
-	assert(rohc_packet != NULL);
-	assert(packet_type != NULL);
 	assert((*packet_type) == ROHC_PACKET_UO_0);
-	assert(bits != NULL);
-	assert(rohc_hdr_len != NULL);
 
 	rohc_remain_data = rohc_packet;
 	rohc_remain_len = rohc_length;
@@ -1593,7 +1568,7 @@ static bool parse_uo1(const struct rohc_decomp_ctxt *const context,
                       struct rohc_extr_bits *const bits,
                       size_t *const rohc_hdr_len)
 {
-	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
+	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	size_t rohc_remainder_len;
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
@@ -1604,13 +1579,7 @@ static bool parse_uo1(const struct rohc_decomp_ctxt *const context,
 	/* which IP header is the innermost IPv4 header with non-random IP-ID ? */
 	ip_header_pos_t innermost_ipv4_non_rnd;
 
-	assert(context != NULL);
-	rfc3095_ctxt = context->persist_ctxt;
-	assert(rohc_packet != NULL);
-	assert(packet_type != NULL);
 	assert((*packet_type) == ROHC_PACKET_UO_1);
-	assert(bits != NULL);
-	assert(rohc_hdr_len != NULL);
 
 	rohc_remain_data = rohc_packet;
 	rohc_remain_len = rohc_length;
@@ -1826,7 +1795,7 @@ static bool parse_uo1rtp(const struct rohc_decomp_ctxt *const context,
                          struct rohc_extr_bits *const bits,
                          size_t *const rohc_hdr_len)
 {
-	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
+	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	size_t rohc_remainder_len;
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
@@ -1834,13 +1803,7 @@ static bool parse_uo1rtp(const struct rohc_decomp_ctxt *const context,
 	const uint8_t *rohc_remain_data;
 	size_t rohc_remain_len;
 
-	assert(context != NULL);
-	rfc3095_ctxt = context->persist_ctxt;
-	assert(rohc_packet != NULL);
-	assert(packet_type != NULL);
 	assert((*packet_type) == ROHC_PACKET_UO_1_RTP);
-	assert(bits != NULL);
-	assert(rohc_hdr_len != NULL);
 
 	rohc_remain_data = rohc_packet;
 	rohc_remain_len = rohc_length;
@@ -2024,7 +1987,7 @@ static bool parse_uo1id(const struct rohc_decomp_ctxt *const context,
                         struct rohc_extr_bits *const bits,
                         size_t *const rohc_hdr_len)
 {
-	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
+	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	size_t rohc_remainder_len;
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
@@ -2035,13 +1998,7 @@ static bool parse_uo1id(const struct rohc_decomp_ctxt *const context,
 	/* which IP header is the innermost IPv4 header with non-random IP-ID ? */
 	ip_header_pos_t innermost_ipv4_non_rnd;
 
-	assert(context != NULL);
-	rfc3095_ctxt = context->persist_ctxt;
-	assert(rohc_packet != NULL);
-	assert(packet_type != NULL);
 	assert((*packet_type) == ROHC_PACKET_UO_1_ID);
-	assert(bits != NULL);
-	assert(rohc_hdr_len != NULL);
 
 	rohc_remain_data = rohc_packet;
 	rohc_remain_len = rohc_length;
@@ -2360,7 +2317,7 @@ static bool parse_uo1ts(const struct rohc_decomp_ctxt *const context,
                         struct rohc_extr_bits *const bits,
                         size_t *const rohc_hdr_len)
 {
-	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
+	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	size_t rohc_remainder_len;
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
@@ -2368,13 +2325,7 @@ static bool parse_uo1ts(const struct rohc_decomp_ctxt *const context,
 	const uint8_t *rohc_remain_data;
 	size_t rohc_remain_len;
 
-	assert(context != NULL);
-	rfc3095_ctxt = context->persist_ctxt;
-	assert(rohc_packet != NULL);
-	assert(packet_type != NULL);
 	assert((*packet_type) == ROHC_PACKET_UO_1_TS);
-	assert(bits != NULL);
-	assert(rohc_hdr_len != NULL);
 
 	rohc_remain_data = rohc_packet;
 	rohc_remain_len = rohc_length;
@@ -2561,10 +2512,7 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
 	/* which IP header is the innermost IPv4 header with non-random IP-ID ? */
 	ip_header_pos_t innermost_ipv4_non_rnd;
 
-	assert(packet_type != NULL);
 	assert((*packet_type) == ROHC_PACKET_UOR_2);
-	assert(bits != NULL);
-	assert(rohc_hdr_len != NULL);
 
 	*rohc_hdr_len = 0;
 
@@ -2827,7 +2775,6 @@ static bool parse_uor2rtp(const struct rohc_decomp_ctxt *const context,
 	bool need_reparse;
 	bool parsing;
 
-	assert(packet_type != NULL);
 	assert((*packet_type) == ROHC_PACKET_UOR_2_RTP);
 	assert(context->state != ROHC_DECOMP_STATE_NC);
 	assert(context->profile->id == ROHC_PROFILE_RTP);
@@ -3029,11 +2976,8 @@ static bool parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
 	/* which IP header is the innermost IPv4 header with non-random IP-ID ? */
 	ip_header_pos_t innermost_ipv4_non_rnd;
 
-	assert(rohc_packet != NULL);
 	assert(packet_type == ROHC_PACKET_UOR_2_RTP);
 	assert(context->profile->id == ROHC_PROFILE_RTP);
-	assert(bits != NULL);
-	assert(rohc_hdr_len != NULL);
 
 	rohc_remain_data = rohc_packet;
 	rohc_remain_len = rohc_length;
@@ -3297,7 +3241,6 @@ static bool parse_uor2id(const struct rohc_decomp_ctxt *const context,
 	bool need_reparse;
 	bool parsing;
 
-	assert(packet_type != NULL);
 	assert((*packet_type) == ROHC_PACKET_UOR_2_ID);
 	assert(context->state != ROHC_DECOMP_STATE_NC);
 	assert(context->profile->id == ROHC_PROFILE_RTP);
@@ -3489,11 +3432,8 @@ static bool parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
 	/* which IP header is the innermost IPv4 header with non-random IP-ID ? */
 	ip_header_pos_t innermost_ipv4_non_rnd;
 
-	assert(rohc_packet != NULL);
 	assert(packet_type == ROHC_PACKET_UOR_2_ID);
 	assert(context->profile->id == ROHC_PROFILE_RTP);
-	assert(bits != NULL);
-	assert(rohc_hdr_len != NULL);
 
 	rohc_remain_data = rohc_packet;
 	rohc_remain_len = rohc_length;
@@ -3768,7 +3708,6 @@ static bool parse_uor2ts(const struct rohc_decomp_ctxt *const context,
 	bool need_reparse;
 	bool parsing;
 
-	assert(packet_type != NULL);
 	assert((*packet_type) == ROHC_PACKET_UOR_2_TS);
 	assert(context->state != ROHC_DECOMP_STATE_NC);
 	assert(context->profile->id == ROHC_PROFILE_RTP);
@@ -3960,11 +3899,8 @@ static bool parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
 	/* which IP header is the innermost IPv4 header with non-random IP-ID ? */
 	ip_header_pos_t innermost_ipv4_non_rnd;
 
-	assert(rohc_packet != NULL);
 	assert(packet_type == ROHC_PACKET_UOR_2_TS);
 	assert(context->profile->id == ROHC_PROFILE_RTP);
-	assert(bits != NULL);
-	assert(rohc_hdr_len != NULL);
 
 	rohc_remain_data = rohc_packet;
 	rohc_remain_len = rohc_length;
@@ -4287,10 +4223,6 @@ static bool parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
 	const uint8_t *rohc_remain_data;
 	size_t rohc_remain_len;
 
-	assert(rohc_packet != NULL);
-	assert(bits != NULL);
-	assert(rohc_hdr_len != NULL);
-
 	rohc_remain_data = rohc_packet;
 	rohc_remain_len = rohc_length;
 	*rohc_hdr_len = 0;
@@ -4468,11 +4400,7 @@ static bool parse_irdyn(const struct rohc_decomp_ctxt *const context,
 	/* helper variables for values returned by functions */
 	int size;
 
-	assert(rohc_packet != NULL);
-	assert(packet_type != NULL);
 	assert((*packet_type) == ROHC_PACKET_IR_DYN);
-	assert(bits != NULL);
-	assert(rohc_hdr_len != NULL);
 
 	rohc_remain_data = rohc_packet;
 	rohc_remain_len = rohc_length;
@@ -4589,9 +4517,6 @@ static int parse_extension0(const struct rohc_decomp_ctxt *const context,
                             struct rohc_extr_bits *const bits)
 {
 	const size_t rohc_ext0_len = 1;
-
-	assert(rohc_data != NULL);
-	assert(bits != NULL);
 
 	rohc_decomp_debug(context, "decode %s extension 0",
 	                  rohc_get_packet_descr(packet_type));
@@ -4816,9 +4741,6 @@ static int parse_extension2(const struct rohc_decomp_ctxt *const context,
                             struct rohc_extr_bits *const bits)
 {
 	const size_t rohc_ext2_len = 3;
-
-	assert(rohc_data != NULL);
-	assert(bits != NULL);
 
 	rohc_decomp_debug(context, "decode %s extension 2",
 	                  rohc_get_packet_descr(packet_type));
@@ -5333,16 +5255,11 @@ static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
                              const rohc_crc_type_t crc_type,
                              const uint8_t crc_packet)
 {
-	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
+	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	const uint8_t *crc_table;
 	uint8_t crc_computed;
 
-	assert(decomp != NULL);
-	assert(context != NULL);
-	assert(context->persist_ctxt != NULL);
-	rfc3095_ctxt = context->persist_ctxt;
-	assert(outer_ip_hdr != NULL);
-	assert(next_header != NULL);
+	assert(rfc3095_ctxt != NULL);
 	assert(crc_type != ROHC_CRC_TYPE_NONE);
 
 	/* determine the initial value and the pre-computed table for the CRC */
@@ -5775,9 +5692,6 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 		!!(ip_get_version(&ctxt->ip) == IPV6 && bits->version == IPV4);
 	const bool ip_4to6_switch =
 		!!(ip_get_version(&ctxt->ip) == IPV4 && bits->version == IPV6);
-
-	assert(ctxt != NULL);
-	assert(decoded != NULL);
 
 	/* IP version (always present in extracted bits) */
 	decoded->version = bits->version;
@@ -6330,9 +6244,6 @@ void rfc3095_decomp_update_ctxt(struct rohc_decomp_ctxt *const context,
 static void reset_extr_bits(const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt,
                             struct rohc_extr_bits *const bits)
 {
-	assert(rfc3095_ctxt != NULL);
-	assert(bits != NULL);
-
 	/* set every bits and sizes to 0 except for CCE-related variables */
 	{
 		const rohc_packet_cce_t cce_pkt = bits->cce_pkt;

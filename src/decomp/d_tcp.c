@@ -583,8 +583,6 @@ static rohc_packet_t tcp_detect_packet_type(const struct rohc_decomp_ctxt *const
 	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
 	rohc_packet_t type;
 
-	assert(rohc_packet != NULL);
-
 	if(rohc_length < 1)
 	{
 		rohc_decomp_warn(context, "ROHC packet too small to read the packet "
@@ -1211,7 +1209,6 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 	                     size_t *const rohc_hdr_len,
 	                     bool *const has_opts_list);
 
-	assert(rohc_packet != NULL);
 	assert(large_cid_len <= 2);
 	assert(packet_type != ROHC_PACKET_UNKNOWN);
 

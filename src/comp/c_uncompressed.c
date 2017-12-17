@@ -83,7 +83,8 @@ static int uncompressed_code_normal_packet(const struct rohc_comp_ctxt *const co
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
 /* re-initialize a context */
-static bool c_uncompressed_reinit_context(struct rohc_comp_ctxt *const context);
+static bool c_uncompressed_reinit_context(struct rohc_comp_ctxt *const context)
+	__attribute__((warn_unused_result, nonnull(1)));
 
 /* deliver feedbacks */
 static bool uncomp_feedback(struct rohc_comp_ctxt *const context,
@@ -119,11 +120,9 @@ static void uncompressed_decide_state(struct rohc_comp_ctxt *const context,
  * @return         true if successful, false otherwise
  */
 static bool c_uncompressed_create(struct rohc_comp_ctxt *const context,
-                                  const struct net_pkt *const packet)
+                                  const struct net_pkt *const packet __attribute__((unused)))
 {
-	assert(context != NULL);
 	assert(context->profile != NULL);
-	assert(packet != NULL);
 
 	context->specific = NULL;
 
@@ -242,8 +241,6 @@ static int c_uncompressed_encode(struct rohc_comp_ctxt *const context,
  */
 static bool c_uncompressed_reinit_context(struct rohc_comp_ctxt *const context)
 {
-	assert(context != NULL);
-
 	/* go back to U-mode and IR state */
 	rohc_comp_change_mode(context, ROHC_U_MODE);
 	rohc_comp_change_state(context, ROHC_COMP_STATE_IR);

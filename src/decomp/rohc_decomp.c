@@ -129,12 +129,13 @@ static bool rohc_decomp_create_contexts(struct rohc_decomp *const decomp,
 static const struct rohc_decomp_profile *
 	find_profile(const struct rohc_decomp *const decomp,
 	             const rohc_profile_t profile_id)
-	__attribute__((warn_unused_result));
+	__attribute__((warn_unused_result, nonnull(1)));
 
 static struct rohc_decomp_ctxt * context_create(struct rohc_decomp *decomp,
                                                 const rohc_cid_t cid,
                                                 const struct rohc_decomp_profile *const profile,
-                                                const struct rohc_ts arrival_time);
+                                                const struct rohc_ts arrival_time)
+	__attribute__((warn_unused_result, nonnull(1, 3)));
 static struct rohc_decomp_ctxt * find_context(const struct rohc_decomp *const decomp,
                                               const size_t cid)
 	__attribute__((nonnull(1), warn_unused_result));
@@ -267,9 +268,7 @@ static struct rohc_decomp_ctxt * context_create(struct rohc_decomp *decomp,
 {
 	struct rohc_decomp_ctxt *context;
 
-	assert(decomp != NULL);
 	assert(cid <= ROHC_LARGE_CID_MAX);
-	assert(profile != NULL);
 
 	/* allocate memory for the decompression context */
 	context = (struct rohc_decomp_ctxt *) malloc(sizeof(struct rohc_decomp_ctxt));
@@ -1687,8 +1686,6 @@ static bool rohc_decomp_check_ir_crc(const struct rohc_decomp *const decomp,
 	const uint8_t crc_zero[] = { 0x00 };
 	unsigned int crc_comp; /* computed CRC */
 
-	assert(decomp != NULL);
-	assert(rohc_hdr != NULL);
 	assert(rohc_hdr_len >= (add_cid_len + 2 + large_cid_len + 1));
 
 	crc_table = decomp->crc_table_8;
@@ -2380,7 +2377,6 @@ static void rohc_decomp_stats_add_success(struct rohc_decomp_ctxt *const context
  */
 static void rohc_decomp_reset_stats(struct rohc_decomp *const decomp)
 {
-	assert(decomp != NULL);
 	decomp->stats.received = 0;
 	decomp->stats.failed_crc = 0;
 	decomp->stats.failed_no_context = 0;
@@ -3649,8 +3645,6 @@ static const struct rohc_decomp_profile * find_profile(const struct rohc_decomp 
 {
 	size_t i;
 
-	assert(decomp != NULL);
-
 	/* search for the profile within the enabled profiles */
 	for(i = 0;
 	    i < D_NUM_PROFILES && rohc_decomp_profiles[i]->id != profile_id;
@@ -4131,7 +4125,6 @@ error:
 static bool rohc_decomp_create_contexts(struct rohc_decomp *const decomp,
                                         const rohc_cid_t max_cid)
 {
-	assert(decomp != NULL);
 	assert(max_cid <= ROHC_LARGE_CID_MAX);
 
 	/* allocate memory for the new context array */

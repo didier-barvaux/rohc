@@ -70,12 +70,14 @@ static void d_udp_destroy(struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt,
 static int udp_parse_dynamic_udp(const struct rohc_decomp_ctxt *const context,
                                  const uint8_t *packet,
                                  const size_t length,
-                                 struct rohc_extr_bits *const bits);
+                                 struct rohc_extr_bits *const bits)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
 static int udp_parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
                                   const uint8_t *packet,
                                   unsigned int length,
-                                  struct rohc_extr_bits *const bits);
+                                  struct rohc_extr_bits *const bits)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
 static bool udp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
                                         const struct rohc_extr_bits *const bits,
@@ -85,7 +87,8 @@ static bool udp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 static int udp_build_uncomp_udp(const struct rohc_decomp_ctxt *const context,
                                 const struct rohc_decoded_values *const decoded,
                                 uint8_t *const dest,
-                                const unsigned int payload_len);
+                                const unsigned int payload_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static void udp_update_context(struct rohc_decomp_ctxt *const context,
                                const struct rohc_decoded_values *const decoded)
@@ -111,7 +114,6 @@ static bool d_udp_create(const struct rohc_decomp_ctxt *const context,
 	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	struct d_udp_context *udp_context;
 
-	assert(context != NULL);
 	assert(context->decompressor != NULL);
 	assert(context->profile != NULL);
 
@@ -237,9 +239,6 @@ int udp_parse_static_udp(const struct rohc_decomp_ctxt *const context,
 	const struct d_udp_context *const udp_context = rfc3095_ctxt->specific;
 	size_t read = 0; /* number of bytes read from the packet */
 
-	assert(packet != NULL);
-	assert(bits != NULL);
-
 	/* check the minimal length to decode the UDP static part */
 	if(length < 4)
 	{
@@ -308,9 +307,6 @@ static int udp_parse_dynamic_udp(const struct rohc_decomp_ctxt *const context,
 	int read = 0; /* number of bytes read from the packet */
 	int ret;
 
-	assert(packet != NULL);
-	assert(bits != NULL);
-
 	/* UDP checksum */
 	if(length < 2)
 	{
@@ -364,9 +360,6 @@ static int udp_parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
 		context->persist_ctxt;
 	const struct d_udp_context *const udp_context = rfc3095_ctxt->specific;
 	int read = 0; /* number of bytes read from the packet */
-
-	assert(packet != NULL);
-	assert(bits != NULL);
 
 	/* parse extra UDP checksum if present */
 	if(udp_context->udp_check_present == ROHC_TRISTATE_NONE)
@@ -429,8 +422,6 @@ static bool udp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 		context->persist_ctxt;
 	const struct d_udp_context *const udp_context = rfc3095_ctxt->specific;
 	struct udphdr *udp;
-
-	assert(decoded != NULL);
 
 	assert(rfc3095_ctxt->outer_ip_changes != NULL);
 	assert(rfc3095_ctxt->outer_ip_changes->next_header != NULL);
@@ -524,11 +515,7 @@ static int udp_build_uncomp_udp(const struct rohc_decomp_ctxt *const context,
                                 uint8_t *const dest,
                                 const unsigned int payload_len)
 {
-	struct udphdr *udp;
-
-	assert(context != NULL);
-	assert(dest != NULL);
-	udp = (struct udphdr *) dest;
+	struct udphdr *const udp = (struct udphdr *) dest;
 
 	/* static fields */
 	udp->source = decoded->udp_src;

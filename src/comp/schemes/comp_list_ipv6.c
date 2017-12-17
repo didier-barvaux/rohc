@@ -56,6 +56,8 @@ void rohc_comp_list_ipv6_new(struct list_comp *const comp,
 {
 	size_t i;
 
+	assert(list_trans_nr > 0);
+
 	comp->ref_id = ROHC_LIST_GEN_ID_NONE;
 	comp->cur_id = ROHC_LIST_GEN_ID_NONE;
 

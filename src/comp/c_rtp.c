@@ -123,7 +123,6 @@ static bool c_rtp_create(struct rohc_comp_ctxt *const context,
 	const struct udphdr *udp;
 	const struct rtphdr *rtp;
 
-	assert(context != NULL);
 	assert(context->profile != NULL);
 
 	/* create and initialize the generic part of the profile context */
@@ -828,17 +827,11 @@ static int c_rtp_encode(struct rohc_comp_ctxt *const context,
                         rohc_packet_t *const packet_type,
                         size_t *const payload_offset)
 {
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	struct sc_rtp_context *rtp_context;
+	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
+	struct sc_rtp_context *const rtp_context = rfc3095_ctxt->specific;
 	const struct udphdr *udp;
 	const struct rtphdr *rtp;
 	int size;
-
-	assert(context != NULL);
-	assert(context->specific != NULL);
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-	assert(rfc3095_ctxt->specific != NULL);
-	rtp_context = (struct sc_rtp_context *) rfc3095_ctxt->specific;
 
 	/* retrieve the UDP and RTP headers */
 	assert(uncomp_pkt->transport->data != NULL);
@@ -965,17 +958,11 @@ static uint32_t c_rtp_get_next_sn(const struct rohc_comp_ctxt *const context __a
 static bool rtp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
                                      const struct net_pkt *const uncomp_pkt)
 {
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	struct sc_rtp_context *rtp_context;
+	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
+	struct sc_rtp_context *const rtp_context = rfc3095_ctxt->specific;
 	struct udphdr *udp;
 	struct rtphdr *rtp;
 
-	assert(context != NULL);
-	assert(context->specific != NULL);
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-	assert(rfc3095_ctxt->specific != NULL);
-	rtp_context = rfc3095_ctxt->specific;
-	assert(uncomp_pkt != NULL);
 	assert(uncomp_pkt->transport->data != NULL);
 	udp = (struct udphdr *) uncomp_pkt->transport->data;
 	rtp = (struct rtphdr *) (udp + 1);

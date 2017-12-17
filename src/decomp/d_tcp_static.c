@@ -440,8 +440,6 @@ static int tcp_parse_static_tcp(const struct rohc_decomp_ctxt *const context,
 {
 	const tcp_static_t *tcp_static;
 
-	assert(rohc_packet != NULL);
-
 	rohc_decomp_debug(context, "parse TCP static part");
 
 	/* check the minimal length to decode the TCP static part */

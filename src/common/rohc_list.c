@@ -44,7 +44,6 @@ static bool rohc_list_item_update(struct rohc_list_item *const list_item,
  */
 void rohc_list_reset(struct rohc_list *const list)
 {
-	assert(list != NULL);
 	list->id = ROHC_LIST_GEN_ID_NONE;
 	list->items_nr = 0;
 	list->counter = 0;
@@ -120,8 +119,6 @@ bool rohc_list_supersede(const struct rohc_list *const large,
  */
 void rohc_list_item_reset(struct rohc_list_item *const list_item)
 {
-	assert(list_item != NULL);
-
 	/* item is not transmitted nor known yet */
 	list_item->known = false;
 	list_item->counter = 0;
@@ -150,8 +147,6 @@ int rohc_list_item_update_if_changed(rohc_list_item_cmp cmp_item,
                                      const size_t item_len)
 {
 	int status;
-
-	assert(list_item != NULL);
 
 	if(!cmp_item(list_item, item_type, item_data, item_len))
 	{
@@ -187,8 +182,6 @@ static bool rohc_list_item_update(struct rohc_list_item *const list_item,
                                   const uint8_t *const item_data,
                                   const size_t item_len)
 {
-	assert(list_item != NULL);
-
 	rohc_list_item_reset(list_item);
 
 	/* record new data for the item */
