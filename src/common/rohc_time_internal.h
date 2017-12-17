@@ -29,6 +29,7 @@
 #ifndef ROHC_TIME_INTERNAL_H
 #define ROHC_TIME_INTERNAL_H
 
+#include "rohc_math64.h"
 #include "rohc_time.h" /* for public definition of struct rohc_ts */
 
 #ifndef __KERNEL__
@@ -57,7 +58,7 @@ static inline uint64_t rohc_time_interval(const struct rohc_ts begin,
 	interval *= 1000000000UL;       /* convert in nanoseconds */
 	interval += end.nsec;           /* additional end nanoseconds */
 	interval -= begin.nsec;         /* superfluous begin nanoseconds */
-	interval /= 1000UL;             /* convert in microseconds */
+	rohc_do_div(interval, 1000UL);  /* convert in microseconds */
 
 	return interval;
 }
