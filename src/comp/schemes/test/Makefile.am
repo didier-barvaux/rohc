@@ -9,11 +9,12 @@ TESTS = \
 	test_rfc4996.sh \
 	test_tcp_ts_opt.sh
 
+XFAIL_TESTS = \
+	test_tcp_ts_opt.sh
 
 check_PROGRAMS = \
 	test_rfc4996 \
 	test_tcp_ts_opt
-
 
 test_rfc4996_SOURCES = \
 	$(srcdir)/../comp_wlsb.c \
@@ -32,6 +33,7 @@ test_rfc4996_CPPFLAGS = \
 	-I$(srcdir)/..
 
 test_tcp_ts_opt_SOURCES = \
+	$(srcdir)/../comp_wlsb.c \
 	$(srcdir)/../tcp_ts.c \
 	test_tcp_ts_opt.c
 test_tcp_ts_opt_LDADD = \

@@ -27,6 +27,8 @@
 #ifndef ROHC_COMP_SCHEMES_RFC4996_H
 #define ROHC_COMP_SCHEMES_RFC4996_H
 
+#include "comp_wlsb.h"
+
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -70,12 +72,11 @@ int c_zero_or_irreg32(const uint32_t packet_value,
 /* variable_length_32_enc encoding method */
 int variable_length_32_enc(const uint32_t old_value,
                            const uint32_t new_value,
-                           const size_t nr_bits_63,
-                           const size_t nr_bits_16383,
+                           const struct c_wlsb *const wlsb,
                            uint8_t *const rohc_data,
                            const size_t rohc_max_len,
                            int *const indicator)
-	__attribute__((nonnull(5, 7), warn_unused_result));
+	__attribute__((nonnull(3, 4, 6), warn_unused_result));
 
 /* RFC4996 page 49 */
 void c_field_scaling(uint32_t *const scaled_value,

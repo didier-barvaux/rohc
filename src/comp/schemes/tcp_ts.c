@@ -23,6 +23,7 @@
  */
 
 #include "tcp_ts.h"
+#include "sdvl.h"
 
 #include <string.h>
 
@@ -32,28 +33,25 @@
  *
  * See RFC4996 page 65
  *
- * @param context            The compression context
- * @param timestamp          The timestamp value to compress
- * @param nr_bits_minus_1    The minimal number of required bits for p = -1
- * @param nr_bits_0x40000    The minimal number of required bits for p = 0x40000
- * @param nr_bits_0x4000000  The minimal number of required bits for p = 0x4000000
- * @param[out] rohc_data     The ROHC packet being built
- * @param rohc_max_len       The max remaining length in the ROHC buffer
- * @param[out] rohc_len      The length appended in the ROHC buffer
- * @return                   true if compression was successful, false otherwise
+ * @param context         The compression context
+ * @param timestamp       The timestamp value to compress
+ * @param wlsb            The W-LSB encoding context
+ * @param[out] rohc_data  The ROHC packet being built
+ * @param rohc_max_len    The max remaining length in the ROHC buffer
+ * @param[out] rohc_len   The length appended in the ROHC buffer
+ * @return                true if compression was successful, false otherwise
  */
 bool c_tcp_ts_lsb_code(const struct rohc_comp_ctxt *const context,
                        const uint32_t timestamp,
-                       const size_t nr_bits_minus_1,
-                       const size_t nr_bits_0x40000,
-                       const size_t nr_bits_0x4000000,
+                       const struct c_wlsb *const wlsb,
                        uint8_t *const rohc_data,
                        const size_t rohc_max_len,
                        size_t *const rohc_len)
 {
 	size_t encoded_len;
 
-	if(nr_bits_minus_1 <= 7)
+	if(wlsb_is_kp_possible_32bits(wlsb, timestamp, ROHC_SDVL_MAX_BITS_IN_1_BYTE,
+	                              ROHC_LSB_SHIFT_TCP_TS_1B))
 	{
 		/* encoding on 1 byte with discriminator '0' */
 		encoded_len = 1;
@@ -68,7 +66,8 @@ bool c_tcp_ts_lsb_code(const struct rohc_comp_ctxt *const context,
 		rohc_comp_debug(context, "encode timestamp = 0x%08x on 1 byte: 0x%02x",
 		                timestamp, rohc_data[0]);
 	}
-	else if(nr_bits_minus_1 <= 14)
+	else if(wlsb_is_kp_possible_32bits(wlsb, timestamp, ROHC_SDVL_MAX_BITS_IN_2_BYTES,
+	                                   ROHC_LSB_SHIFT_TCP_TS_2B))
 	{
 		/* encoding on 2 bytes with discriminator '10' */
 		encoded_len = 2;
@@ -84,7 +83,8 @@ bool c_tcp_ts_lsb_code(const struct rohc_comp_ctxt *const context,
 		rohc_comp_debug(context, "encode timestamp = 0x%08x on 2 bytes: 0x%02x "
 		                "0x%02x", timestamp, rohc_data[0], rohc_data[1]);
 	}
-	else if(nr_bits_0x40000 <= 21)
+	else if(wlsb_is_kp_possible_32bits(wlsb, timestamp, ROHC_SDVL_MAX_BITS_IN_3_BYTES,
+	                                   ROHC_LSB_SHIFT_TCP_TS_3B))
 	{
 		/* encoding on 3 bytes with discriminator '110' */
 		encoded_len = 3;
@@ -102,7 +102,8 @@ bool c_tcp_ts_lsb_code(const struct rohc_comp_ctxt *const context,
 		                "0x%02x 0x%02x", timestamp, rohc_data[0], rohc_data[1],
 		                rohc_data[2]);
 	}
-	else if(nr_bits_0x4000000 <= 29)
+	else if(wlsb_is_kp_possible_32bits(wlsb, timestamp, ROHC_SDVL_MAX_BITS_IN_4_BYTES,
+	                                   ROHC_LSB_SHIFT_TCP_TS_4B))
 	{
 		/* encoding on 4 bytes with discriminator '111' */
 		encoded_len = 4;

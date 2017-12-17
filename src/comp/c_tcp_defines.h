@@ -58,10 +58,6 @@ struct tcp_tmp_variables
 	/** The minimal number of bits required to encode the MSN value */
 	bits_nr_t nr_msn_bits;
 
-	/** The minimal number of bits required to encode the TCP ACK number
-	 *  with p = 16383 */
-	bits_nr_t nr_ack_bits_16383;
-
 	/** The minimal number of bits required to encode the innermost IP-ID value
 	 *  with p = 3 */
 	bits_nr_t nr_ip_id_bits_3;
