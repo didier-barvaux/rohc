@@ -41,6 +41,7 @@ private_headers = \
 	rohc_internal.h \
 	rohc_bit_ops.h \
 	rohc_debug.h \
+	rohc_math64.h \
 	rohc_traces_internal.h \
 	rohc_time_internal.h \
 	rohc_utils.h \
