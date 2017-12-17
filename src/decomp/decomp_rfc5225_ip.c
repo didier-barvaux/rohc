@@ -624,7 +624,7 @@ static void decomp_rfc5225_ip_reset_extr_bits(const struct rohc_decomp_ctxt *con
 		for(i = 0; i < rfc5225_ctxt->ip_contexts_nr; i++)
 		{
 			bits->ip[i].version = rfc5225_ctxt->ip_contexts[i].version;
-			bits->ip[i].proto = rfc5225_ctxt->ip_contexts[i].ctxt.vx.next_header;
+			bits->ip[i].proto = rfc5225_ctxt->ip_contexts[i].next_header;
 			bits->ip[i].proto_nr = 8;
 			/* TODO: handle IPv6 extension headers */
 		}
@@ -929,7 +929,7 @@ static bool decomp_rfc5225_ip_parse_co(const struct rohc_decomp_ctxt *const ctxt
 	}
 	else
 	{
-		innermost_ip_id_behavior = ip_inner_context->ctxt.vx.ip_id_behavior;
+		innermost_ip_id_behavior = ip_inner_context->ip_id_behavior;
 		rohc_decomp_debug(ctxt, "use already-defined behavior '%s' for "
 		                  "innermost IP-ID",
 		                  rohc_ip_id_behavior_get_descr(innermost_ip_id_behavior));
@@ -1336,7 +1336,7 @@ static bool decomp_rfc5225_ip_parse_co_common(const struct rohc_decomp_ctxt *con
 		}
 		else
 		{
-			innermost_ip_id_behavior = innermost_ip_ctxt->ctxt.vx.ip_id_behavior;
+			innermost_ip_id_behavior = innermost_ip_ctxt->ip_id_behavior;
 		}
 
 		ret = d_optional_ip_id_lsb(ctxt, remain_data, remain_len,
@@ -2012,7 +2012,7 @@ static bool decomp_rfc5225_ip_parse_irreg_chain(const struct rohc_decomp_ctxt *c
 		}
 		else
 		{
-			ip_id_behavior = ip_context->ctxt.vx.ip_id_behavior;
+			ip_id_behavior = ip_context->ip_id_behavior;
 		}
 
 		ret = decomp_rfc5225_ip_parse_irreg_ip(ctxt, remain_data, remain_len,
@@ -2213,7 +2213,7 @@ static rohc_status_t decomp_rfc5225_ip_decode_bits(const struct rohc_decomp_ctxt
 			/* only IP-ID behavior of IPv4 headers are part of the CRC, see
 			 * errata 2703 of RFC5225 for reasons to exclude IPv6 headers:
 			 * https://www.rfc-editor.org/errata_search.php?rfc=5225&eid=2703 */
-			if(rfc5225_ctxt->ip_contexts[ip_hdr_pos].ctxt.vx.version == IPV4)
+			if(rfc5225_ctxt->ip_contexts[ip_hdr_pos].version == IPV4)
 			{
 				ip_id_behaviors[ip_id_behaviors_nr] = bits->ip[ip_hdr_pos].id_behavior;
 				rohc_decomp_debug(ctxt, "IP-ID behavior #%zu of IPv4 header #%zu "
@@ -2329,7 +2329,7 @@ static bool decomp_rfc5225_ip_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *
 	}
 	else
 	{
-		ip_decoded->tos_tc = ip_ctxt->ctxt.vx.tos_tc;
+		ip_decoded->tos_tc = ip_ctxt->tos_tc;
 		rohc_decomp_debug(ctxt, "  TOS/TC = 0x%02x taken from context",
 		                  ip_decoded->tos_tc);
 	}
@@ -2344,7 +2344,7 @@ static bool decomp_rfc5225_ip_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *
 	}
 	else
 	{
-		ip_id_behavior = ip_ctxt->ctxt.vx.ip_id_behavior;
+		ip_id_behavior = ip_ctxt->ip_id_behavior;
 		rohc_decomp_debug(ctxt, "  use already-defined behavior '%s' for IP-ID",
 		                  rohc_ip_id_behavior_get_descr(ip_id_behavior));
 	}
@@ -2405,15 +2405,15 @@ static bool decomp_rfc5225_ip_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *
 
 				if(ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ)
 				{
-					ip_decoded->id = ip_ctxt->ctxt.v4.ip_id + msn_delta;
+					ip_decoded->id = ip_ctxt->ip_id + msn_delta;
 				}
 				else /* ROHC_IP_ID_BEHAVIOR_SEQ_SWAP */
 				{
-					ip_decoded->id = swab16(swab16(ip_ctxt->ctxt.v4.ip_id) + msn_delta);
+					ip_decoded->id = swab16(swab16(ip_ctxt->ip_id) + msn_delta);
 				}
 				rohc_decomp_debug(ctxt, "  IP-ID = 0x%04x (inferred from context "
 				                  "IP-ID 0x%x, and MSN %u -> %u)", ip_decoded->id,
-				                  ip_ctxt->ctxt.v4.ip_id, last_msn, decoded_msn);
+				                  ip_ctxt->ip_id, last_msn, decoded_msn);
 			}
 			else
 			{
@@ -2442,7 +2442,7 @@ static bool decomp_rfc5225_ip_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *
 	else
 	{
 		assert(ip_bits->ttl_hl_nr == 0);
-		ip_decoded->ttl = ip_ctxt->ctxt.vx.ttl_hopl;
+		ip_decoded->ttl = ip_ctxt->ttl_hopl;
 		rohc_decomp_debug(ctxt, "  TTL/HL = 0x%02x taken from context",
 		                  ip_decoded->ttl);
 	}
@@ -2458,7 +2458,7 @@ static bool decomp_rfc5225_ip_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *
 		}
 		else
 		{
-			ip_decoded->df = ip_ctxt->ctxt.v4.df;
+			ip_decoded->df = ip_ctxt->df;
 			rohc_decomp_debug(ctxt, "  DF = %d taken from context", ip_decoded->df);
 		}
 	}
@@ -2481,7 +2481,7 @@ static bool decomp_rfc5225_ip_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *
 	}
 	else
 	{
-		ip_decoded->proto = ip_ctxt->ctxt.vx.next_header;
+		ip_decoded->proto = ip_ctxt->next_header;
 		rohc_decomp_debug(ctxt, "  protocol/next header = 0x%02x (%d) taken "
 		                  "from context", ip_decoded->proto, ip_decoded->proto);
 	}
@@ -2498,7 +2498,7 @@ static bool decomp_rfc5225_ip_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *
 		}
 		else
 		{
-			ip_decoded->flowid = ip_ctxt->ctxt.v6.flow_label;
+			ip_decoded->flowid = ip_ctxt->flow_label;
 			rohc_decomp_debug(ctxt, "  flow label = 0x%05x taken from context",
 			                  ip_decoded->flowid);
 		}
@@ -2517,12 +2517,12 @@ static bool decomp_rfc5225_ip_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *
 	}
 	else if(ip_decoded->version == IPV4)
 	{
-		memcpy(ip_decoded->saddr, &ip_ctxt->ctxt.v4.src_addr, 4);
+		memcpy(ip_decoded->saddr, ip_ctxt->saddr, 4);
 		rohc_decomp_debug(ctxt, "  4-byte source address (context)");
 	}
 	else /* IPv6 */
 	{
-		memcpy(ip_decoded->saddr, ip_ctxt->ctxt.v6.src_addr, 16);
+		memcpy(ip_decoded->saddr, ip_ctxt->saddr, 16);
 		rohc_decomp_debug(ctxt, "  16-byte source address (context)");
 	}
 
@@ -2535,12 +2535,12 @@ static bool decomp_rfc5225_ip_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *
 	}
 	else if(ip_decoded->version == IPV4)
 	{
-		memcpy(ip_decoded->daddr, &ip_ctxt->ctxt.v4.dst_addr, 4);
+		memcpy(ip_decoded->daddr, ip_ctxt->daddr, 4);
 		rohc_decomp_debug(ctxt, "  4-byte destination address (context)");
 	}
 	else /* IPv6 */
 	{
-		memcpy(ip_decoded->daddr, ip_ctxt->ctxt.v6.dest_addr, 16);
+		memcpy(ip_decoded->daddr, ip_ctxt->daddr, 16);
 		rohc_decomp_debug(ctxt, "  16-byte destination address (context)");
 	}
 
@@ -2941,29 +2941,29 @@ static void decomp_rfc5225_ip_update_ctxt(struct rohc_decomp_ctxt *const context
 		                  ip_decoded->version, ip_hdr_nr + 1);
 
 		ip_context->version = ip_decoded->version;
-		ip_context->ctxt.vx.version = ip_decoded->version;
-		ip_context->ctxt.vx.tos_tc = ip_decoded->tos_tc;
-		ip_context->ctxt.vx.ttl_hopl = ip_decoded->ttl;
-		ip_context->ctxt.vx.next_header = ip_decoded->proto;
-		ip_context->ctxt.vx.ip_id_behavior = ip_decoded->id_behavior;
+		ip_context->version = ip_decoded->version;
+		ip_context->tos_tc = ip_decoded->tos_tc;
+		ip_context->ttl_hopl = ip_decoded->ttl;
+		ip_context->next_header = ip_decoded->proto;
+		ip_context->ip_id_behavior = ip_decoded->id_behavior;
 
 		if(ip_context->version == IPV4)
 		{
-			ip_context->ctxt.v4.df = ip_decoded->df;
-			ip_context->ctxt.v4.ip_id = ip_decoded->id;
-			memcpy(&ip_context->ctxt.v4.src_addr, ip_decoded->saddr, 4);
-			memcpy(&ip_context->ctxt.v4.dst_addr, ip_decoded->daddr, 4);
+			ip_context->df = ip_decoded->df;
+			ip_context->ip_id = ip_decoded->id;
+			memcpy(ip_context->saddr, ip_decoded->saddr, 4);
+			memcpy(ip_context->daddr, ip_decoded->daddr, 4);
 
 			if(is_inner)
 			{
 				uint16_t ip_id_offset;
 				if(ip_decoded->id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
 				{
-					ip_id_offset = swab16(ip_context->ctxt.v4.ip_id) - msn;
+					ip_id_offset = swab16(ip_context->ip_id) - msn;
 				}
 				else
 				{
-					ip_id_offset = ip_context->ctxt.v4.ip_id - msn;
+					ip_id_offset = ip_context->ip_id - msn;
 				}
 				rohc_lsb_set_ref(&rfc5225_ctxt->ip_id_offset_lsb_ctxt,
 				                 ip_id_offset, false);
@@ -2976,9 +2976,9 @@ static void decomp_rfc5225_ip_update_ctxt(struct rohc_decomp_ctxt *const context
 		else /* IPv6 */
 		{
 			assert((ip_decoded->flowid & 0xfffff) == ip_decoded->flowid);
-			ip_context->ctxt.v6.flow_label = ip_decoded->flowid;
-			memcpy(&ip_context->ctxt.v6.src_addr, ip_decoded->saddr, 16);
-			memcpy(&ip_context->ctxt.v6.dest_addr, ip_decoded->daddr, 16);
+			ip_context->flow_label = ip_decoded->flowid;
+			memcpy(ip_context->saddr, ip_decoded->saddr, 16);
+			memcpy(ip_context->daddr, ip_decoded->daddr, 16);
 
 			/* TODO: extension headers */
 		}

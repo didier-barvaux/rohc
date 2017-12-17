@@ -78,138 +78,38 @@ _Static_assert((sizeof(ip_option_context_t) % 8) == 0,
 
 
 /**
- * @brief Define the common IP header context to IPv4 and IPv6
- */
-typedef struct __attribute__((packed)) ipvx_context
-{
-	uint8_t version:4;
-	uint8_t ip_id_behavior:2;
-	uint8_t unused:2;
-
-	union
-	{
-		struct
-		{
-			uint8_t dscp:6;
-			uint8_t ip_ecn_flags:2;
-		};
-		uint8_t tos_tc;
-	} __attribute__((packed));
-
-	uint8_t next_header;
-
-	uint8_t ttl_hopl;
-
-} ipvx_context_t;
-
-/* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
-#if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
-     (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
-      (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
-_Static_assert(sizeof(ipvx_context_t) == 4,
-               "ipvx_context_t should be 4 bytes length");
-#endif
-
-
-/**
- * @brief Define the IPv4 header context
- */
-typedef struct __attribute__((packed)) ipv4_context
-{
-	uint8_t version:4;
-	uint8_t ip_id_behavior:2;
-	uint8_t df:1;
-	uint8_t unused:1;
-
-	union
-	{
-		struct
-		{
-			uint8_t dscp:6;
-			uint8_t ip_ecn_flags:2;
-		};
-		uint8_t tos;
-	} __attribute__((packed));
-
-	uint8_t protocol;
-
-	uint8_t ttl;
-
-	uint16_t ip_id;
-
-	uint32_t src_addr;
-	uint32_t dst_addr;
-
-} ipv4_context_t;
-
-/* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
-#if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
-     (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
-      (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
-_Static_assert(sizeof(ipv4_context_t) == 14,
-               "ipv4_context_t should be 14 bytes length");
-#endif
-
-
-/**
- * @brief Define the IPv6 header context
- */
-typedef struct __attribute__((packed)) ipv6_context
-{
-	uint8_t version:4;
-	uint8_t ip_id_behavior:2;
-	uint8_t unused:2;
-
-	union
-	{
-		struct
-		{
-			uint8_t dscp:6;
-			uint8_t ip_ecn_flags:2;
-		};
-		uint8_t tc;
-	} __attribute__((packed));
-
-	uint8_t next_header;
-
-	uint8_t hopl;
-
-	uint32_t flow_label:20; /**< IPv6 Flow Label */
-	uint32_t unused2:12;
-
-	uint32_t src_addr[4];
-	uint32_t dest_addr[4];
-
-} ipv6_context_t;
-
-/* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
-#if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
-     (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
-      (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
-_Static_assert((offsetof(ipv6_context_t, src_addr) % 8) == 0,
-               "src_addr in ip_context_t should be aligned on 8 bytes");
-_Static_assert((sizeof(ipv6_context_t) % 8) == 0,
-               "ipv6_context_t length should be multiple of 8 bytes");
-#endif
-
-
-/**
- * @brief Define union of IP contexts
+ * @brief The TCP decompression context for one IPv4 or IPv6 header
  */
 typedef struct
 {
+	uint32_t flow_label:20; /**< IPv6 Flow Label */
 	union
 	{
-		ipvx_context_t vx;
-		ipv4_context_t v4;
-		ipv6_context_t v6;
-	} ctxt;
+		struct
+		{
+			uint32_t dscp:6;
+			uint32_t ip_ecn_flags:2;
+		};
+		uint32_t tos_tc:8;
+	};
+	uint32_t df:1;
+	uint32_t unused:3;
+
+	uint16_t ip_id;
+	uint8_t next_header;
+	uint8_t ttl_hopl;
+
+	uint32_t saddr[4];
+	uint32_t daddr[4];
 
 	ip_option_context_t opts[ROHC_MAX_IP_EXT_HDRS];
 	uint16_t opts_len; /* no more than the max IPv6 length, ie. 65535 */
 	uint8_t opts_nr;
 
-	ip_version version;
+	uint8_t version:4;
+	uint8_t ip_id_behavior:2;
+	uint8_t unused2:2;
+	uint8_t unused3[4];
 
 } ip_context_t;
 
@@ -217,16 +117,17 @@ typedef struct
 #if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
      (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
       (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
-_Static_assert((offsetof(ip_context_t, ctxt) % 8) == 0,
-               "ctxt in ip_context_t should be aligned on 8 bytes");
-_Static_assert((offsetof(ip_context_t, opts) % 8) == 0,
-               "opts in ip_context_t should be aligned on 8 bytes");
+_Static_assert((offsetof(ip_context_t, saddr) % 8) == 0,
+               "saddr in ip_context_t should be aligned on 8 bytes");
+_Static_assert((offsetof(ip_context_t, daddr) % 8) == 0,
+               "daddr in ip_context_t should be aligned on 8 bytes");
 _Static_assert((offsetof(ip_context_t, opts_len) % 8) == 0,
                "opts_len in ip_context_t should be aligned on 8 bytes");
+_Static_assert((offsetof(ip_context_t, opts) % 8) == 0,
+               "opts in ip_context_t should be aligned on 8 bytes");
 _Static_assert((sizeof(ip_context_t) % 8) == 0,
                "ip_context_t length should be multiple of 8 bytes");
 #endif
-
 
 #endif /* ROHC_DECOMP_SCHEMES_IP_CTXT_H */
 

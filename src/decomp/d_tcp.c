@@ -615,7 +615,7 @@ static rohc_packet_t tcp_detect_packet_type(const struct rohc_decomp_ctxt *const
 			assert(tcp_context->ip_contexts_nr > 0);
 			innermost_hdr_ctxt =
 				&(tcp_context->ip_contexts[tcp_context->ip_contexts_nr - 1]);
-			innermost_ip_id_behavior = innermost_hdr_ctxt->ctxt.vx.ip_id_behavior;
+			innermost_ip_id_behavior = innermost_hdr_ctxt->ip_id_behavior;
 			is_ip_id_seq = (innermost_ip_id_behavior <= ROHC_IP_ID_BEHAVIOR_SEQ_SWAP);
 			rohc_decomp_debug(context, "IPv%u header #%u is the innermost IP header",
 			                  innermost_hdr_ctxt->version, tcp_context->ip_contexts_nr);
@@ -1166,7 +1166,8 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 		sizeof(uint16_t) + /* urg_ptr */
 		sizeof(uint8_t)  + /* dscp */
 		sizeof(uint8_t);   /* ttl_hopl */
-	uint8_t packed_rohc_packet[packed_rohc_packet_max_len];
+	uint8_t packed_rohc_packet[packed_rohc_packet_max_len]
+		__attribute__((aligned(8)));
 	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
 	int ret;
 
@@ -1316,7 +1317,7 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 	}
 	else
 	{
-		innermost_ip_id_behavior = ip_inner_context->ctxt.vx.ip_id_behavior;
+		innermost_ip_id_behavior = ip_inner_context->ip_id_behavior;
 		rohc_decomp_debug(context, "use already-defined behavior '%s' for "
 		                  "innermost IP-ID",
 		                  rohc_ip_id_behavior_get_descr(innermost_ip_id_behavior));
@@ -2532,7 +2533,7 @@ static bool d_tcp_parse_co_common(const struct rohc_decomp_ctxt *const context,
 	/* IP-ID behavior */
 	if((co_common->ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ ||
 	    co_common->ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ_SWAP) &&
-	   innermost_ip_ctxt->ctxt.vx.version != IPV4)
+	   innermost_ip_ctxt->version != IPV4)
 	{
 		rohc_decomp_warn(context, "packet and context mismatch: co_common packet "
 		                 "advertizes that innermost IP-ID behaves as %s but "
@@ -2617,7 +2618,7 @@ static bool d_tcp_parse_co_common(const struct rohc_decomp_ctxt *const context,
 	}
 
 	/* DF */
-	if(innermost_ip_ctxt->ctxt.vx.version == IPV4)
+	if(innermost_ip_ctxt->version == IPV4)
 	{
 		innermost_ip_bits->df = co_common->df;
 		innermost_ip_bits->df_nr = 1;
@@ -2724,7 +2725,7 @@ static void d_tcp_reset_extr_bits(const struct rohc_decomp_ctxt *const context,
 		for(i = 0; i < tcp_context->ip_contexts_nr; i++)
 		{
 			bits->ip[i].version = tcp_context->ip_contexts[i].version;
-			bits->ip[i].proto = tcp_context->ip_contexts[i].ctxt.vx.next_header;
+			bits->ip[i].proto = tcp_context->ip_contexts[i].next_header;
 			bits->ip[i].proto_nr = 8;
 			if(bits->ip[i].version == IPV6)
 			{
@@ -2915,7 +2916,7 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 	}
 	else
 	{
-		ip_decoded->ecn_flags = ip_context->ctxt.vx.ip_ecn_flags;
+		ip_decoded->ecn_flags = ip_context->ip_ecn_flags;
 	}
 
 	/* DSCP */
@@ -2926,7 +2927,7 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 	}
 	else
 	{
-		ip_decoded->dscp = ip_context->ctxt.v4.dscp;
+		ip_decoded->dscp = ip_context->dscp;
 	}
 
 	/* IP-ID behavior */
@@ -2939,7 +2940,7 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 	}
 	else
 	{
-		ip_id_behavior = ip_context->ctxt.vx.ip_id_behavior;
+		ip_id_behavior = ip_context->ip_id_behavior;
 		rohc_decomp_debug(context, "  use already-defined behavior '%s' for IP-ID",
 		                  rohc_ip_id_behavior_get_descr(ip_id_behavior));
 	}
@@ -3025,7 +3026,7 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 	}
 	else
 	{
-		ip_decoded->ttl = ip_context->ctxt.vx.ttl_hopl;
+		ip_decoded->ttl = ip_context->ttl_hopl;
 		rohc_decomp_debug(context, "  TTL/HL = 0x%02x taken from context",
 		                  ip_decoded->ttl);
 	}
@@ -3041,7 +3042,7 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 		}
 		else
 		{
-			ip_decoded->df = ip_context->ctxt.v4.df;
+			ip_decoded->df = ip_context->df;
 			rohc_decomp_debug(context, "  DF = %d taken from context",
 			                  ip_decoded->df);
 		}
@@ -3065,7 +3066,7 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 	}
 	else
 	{
-		ip_decoded->proto = ip_context->ctxt.vx.next_header;
+		ip_decoded->proto = ip_context->next_header;
 		rohc_decomp_debug(context, "  protocol/next header = 0x%02x (%d) taken "
 		                  "from context", ip_decoded->proto, ip_decoded->proto);
 	}
@@ -3082,7 +3083,7 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 		}
 		else
 		{
-			ip_decoded->flowid = ip_context->ctxt.v6.flow_label;
+			ip_decoded->flowid = ip_context->flow_label;
 			rohc_decomp_debug(context, "  flow label = 0x%05x taken from context",
 			                  ip_decoded->flowid);
 		}
@@ -3095,36 +3096,36 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 	/* source address */
 	if(ip_bits->saddr_nr > 0)
 	{
-		memcpy(ip_decoded->saddr, ip_bits->saddr, ip_bits->saddr_nr / 8);
+		memcpy(ip_decoded->saddr, ip_bits->saddr, 16);
 		rohc_decomp_debug(context, "  %u-byte source address (packet)",
 		                  ip_bits->saddr_nr / 8);
 	}
 	else if(ip_decoded->version == IPV4)
 	{
-		memcpy(ip_decoded->saddr, &ip_context->ctxt.v4.src_addr, 4);
+		memcpy(ip_decoded->saddr, ip_context->saddr, 4);
 		rohc_decomp_debug(context, "  4-byte source address (context)");
 	}
 	else /* IPv6 */
 	{
-		memcpy(ip_decoded->saddr, ip_context->ctxt.v6.src_addr, 16);
+		memcpy(ip_decoded->saddr, ip_context->saddr, 16);
 		rohc_decomp_debug(context, "  16-byte source address (context)");
 	}
 
 	/* destination address */
 	if(ip_bits->daddr_nr > 0)
 	{
-		memcpy(ip_decoded->daddr, ip_bits->daddr, ip_bits->daddr_nr / 8);
+		memcpy(ip_decoded->daddr, ip_bits->daddr, 16);
 		rohc_decomp_debug(context, "  %u-byte destination address (packet)",
 		                  ip_bits->daddr_nr / 8);
 	}
 	else if(ip_decoded->version == IPV4)
 	{
-		memcpy(ip_decoded->daddr, &ip_context->ctxt.v4.dst_addr, 4);
+		memcpy(ip_decoded->daddr, ip_context->daddr, 4);
 		rohc_decomp_debug(context, "  4-byte destination address (context)");
 	}
 	else /* IPv6 */
 	{
-		memcpy(ip_decoded->daddr, ip_context->ctxt.v6.dest_addr, 16);
+		memcpy(ip_decoded->daddr, ip_context->daddr, 16);
 		rohc_decomp_debug(context, "  16-byte destination address (context)");
 	}
 
@@ -4345,10 +4346,10 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 		                  ip_decoded->version, ip_hdr_nr + 1);
 
 		ip_context->version = ip_decoded->version;
-		ip_context->ctxt.vx.version = ip_decoded->version;
-		ip_context->ctxt.vx.dscp = ip_decoded->dscp;
-		ip_context->ctxt.vx.ip_ecn_flags = ip_decoded->ecn_flags;
-		ip_context->ctxt.vx.next_header = ip_decoded->proto;
+		ip_context->version = ip_decoded->version;
+		ip_context->dscp = ip_decoded->dscp;
+		ip_context->ip_ecn_flags = ip_decoded->ecn_flags;
+		ip_context->next_header = ip_decoded->proto;
 
 		/* update context with new TTL/HL for the innermost IP header and for :
 		 *  - for the innermost IP header,
@@ -4357,31 +4358,31 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 		 *  - for the outer IP headers if TTL/HL was transmitted in irregular chain */
 		if(is_inner || decoded->ttl_dyn_chain_flag)
 		{
-			ip_context->ctxt.vx.ttl_hopl = ip_decoded->ttl;
+			ip_context->ttl_hopl = ip_decoded->ttl;
 			if(is_inner)
 			{
 				rohc_lsb_set_ref(&tcp_context->ttl_hl_lsb_ctxt, ip_decoded->ttl, false);
 			}
 		}
-		ip_context->ctxt.vx.ip_id_behavior = ip_decoded->id_behavior;
+		ip_context->ip_id_behavior = ip_decoded->id_behavior;
 
 		if(ip_context->version == IPV4)
 		{
-			ip_context->ctxt.v4.df = ip_decoded->df;
-			ip_context->ctxt.v4.ip_id = ip_decoded->id;
-			memcpy(&ip_context->ctxt.v4.src_addr, ip_decoded->saddr, 4);
-			memcpy(&ip_context->ctxt.v4.dst_addr, ip_decoded->daddr, 4);
+			ip_context->df = ip_decoded->df;
+			ip_context->ip_id = ip_decoded->id;
+			memcpy(ip_context->saddr, ip_decoded->saddr, 4);
+			memcpy(ip_context->daddr, ip_decoded->daddr, 4);
 
 			if(is_inner)
 			{
 				uint16_t ip_id_offset;
 				if(ip_decoded->id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
 				{
-					ip_id_offset = swab16(ip_context->ctxt.v4.ip_id) - msn;
+					ip_id_offset = swab16(ip_context->ip_id) - msn;
 				}
 				else
 				{
-					ip_id_offset = ip_context->ctxt.v4.ip_id - msn;
+					ip_id_offset = ip_context->ip_id - msn;
 				}
 				rohc_lsb_set_ref(&tcp_context->ip_id_lsb_ctxt, ip_id_offset, false);
 				rohc_decomp_debug(context, "innermost IP-ID offset 0x%04x is the new "
@@ -4399,9 +4400,9 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 			size_t ext_pos;
 
 			assert((ip_decoded->flowid & 0xfffff) == ip_decoded->flowid);
-			ip_context->ctxt.v6.flow_label = ip_decoded->flowid;
-			memcpy(&ip_context->ctxt.v6.src_addr, ip_decoded->saddr, 16);
-			memcpy(&ip_context->ctxt.v6.dest_addr, ip_decoded->daddr, 16);
+			ip_context->flow_label = ip_decoded->flowid;
+			memcpy(ip_context->saddr, ip_decoded->saddr, 16);
+			memcpy(ip_context->daddr, ip_decoded->daddr, 16);
 
 			/* remember the extension headers */
 			ip_context->opts_nr = ip_decoded->opts_nr;

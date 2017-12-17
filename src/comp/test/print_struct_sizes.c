@@ -69,9 +69,6 @@ int main(void)
 	printf("\n");
 	printf("sizeof(struct sc_tcp_context) = %zu\n", sizeof(struct sc_tcp_context));
 	printf("\tsizeof(ip_context_t) = %zu\n", sizeof(ip_context_t));
-	printf("\t\tsizeof(ipvx_context_t) = %zu\n", sizeof(ipvx_context_t));
-	printf("\t\tsizeof(ipv4_context_t) = %zu\n", sizeof(ipv4_context_t));
-	printf("\t\tsizeof(ipv6_context_t) = %zu\n", sizeof(ipv6_context_t));
 	printf("\t\tsizeof(ip_option_context_t) = %zu\n", sizeof(ip_option_context_t));
 	printf("\t\t\tsizeof(ipv6_generic_option_context_t) = %zu\n",
 	       sizeof(ipv6_generic_option_context_t));

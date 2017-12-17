@@ -251,16 +251,16 @@ static int tcp_code_irregular_ipv4_part(const struct rohc_comp_ctxt *const conte
 	uint8_t *rohc_remain_data = rohc_data;
 	size_t rohc_remain_len = rohc_max_len;
 
-	assert(ip_context->ctxt.vx.version == IPV4);
+	assert(ip_context->version == IPV4);
 
 	rohc_comp_debug(context, "ecn_used = %d, is_innermost = %d, "
 	                "ttl_irreg_chain_flag = %d, ip_inner_ecn = %u",
 	                ecn_used, is_innermost, ttl_irreg_chain_flag, ip_inner_ecn);
 	rohc_comp_debug(context, "IP version = 4, ip_id_behavior = %d",
-	                ip_context->ctxt.v4.ip_id_behavior);
+	                ip_context->ip_id_behavior);
 
 	/* ip_id =:= ip_id_enc_irreg( ip_id_behavior.UVALUE ) */
-	if(ip_context->ctxt.v4.ip_id_behavior == ROHC_IP_ID_BEHAVIOR_RAND)
+	if(ip_context->ip_id_behavior == ROHC_IP_ID_BEHAVIOR_RAND)
 	{
 		if(rohc_remain_len < sizeof(uint16_t))
 		{
@@ -355,13 +355,13 @@ static int tcp_code_irregular_ipv6_part(const struct rohc_comp_ctxt *const conte
 	uint8_t *rohc_remain_data = rohc_data;
 	size_t rohc_remain_len = rohc_max_len;
 
-	assert(ip_context->ctxt.vx.version == IPV6);
+	assert(ip_context->version == IPV6);
 
 	rohc_comp_debug(context, "ecn_used = %d, is_innermost = %d, "
 	                "ttl_irreg_chain_flag = %d, ip_inner_ecn = %u",
 	                ecn_used, is_innermost, ttl_irreg_chain_flag, ip_inner_ecn);
 	rohc_comp_debug(context, "IP version = 6, ip_id_behavior = %d",
-	                ip_context->ctxt.v4.ip_id_behavior);
+	                ip_context->ip_id_behavior);
 
 	if(!is_innermost)
 	{
