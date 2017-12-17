@@ -93,8 +93,6 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
 {
 	uint16_t sn_delta;
 
-	assert(ts_sc != NULL);
-
 	ts_debug(ts_sc, "Timestamp = %u", ts);
 
 	/* consider that TS bits are not deducible by default */

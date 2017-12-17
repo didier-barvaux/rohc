@@ -68,7 +68,6 @@ static bool d_ip_create(const struct rohc_decomp_ctxt *const context,
 {
 	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 
-	assert(context != NULL);
 	assert(context->decompressor != NULL);
 	assert(context->profile != NULL);
 
@@ -196,10 +195,6 @@ int ip_parse_dynamic_ip(const struct rohc_decomp_ctxt *const context,
 {
 	size_t read = 0; /* number of bytes read from the packet */
 
-	assert(context != NULL);
-	assert(packet != NULL);
-	assert(bits != NULL);
-
 	/* check the minimal length to decode the SN field */
 	if(length < 2)
 	{
@@ -279,18 +274,13 @@ int ip_parse_ext3(const struct rohc_decomp_ctxt *const context,
 	int size;
 
 	/* remaining ROHC data */
-	const uint8_t *rohc_remain_data;
-	size_t rohc_remain_len;
+	const uint8_t *rohc_remain_data = rohc_data;
+	size_t rohc_remain_len = rohc_data_len;
 
 	/* sanity checks */
-	assert(rohc_data != NULL);
 	assert(packet_type == ROHC_PACKET_UOR_2);
-	assert(bits != NULL);
 
 	rohc_decomp_debug(context, "decode extension 3");
-
-	rohc_remain_data = rohc_data;
-	rohc_remain_len = rohc_data_len;
 
 	/* check the minimal length to decode the flags */
 	if(rohc_remain_len < 1)
@@ -538,11 +528,6 @@ int parse_inner_header_flags(const struct rohc_decomp_ctxt *const context,
 	uint8_t nbo;
 	uint8_t rnd;
 	int read = 0;
-
-	assert(context != NULL);
-	assert(flags != NULL);
-	assert(fields != NULL);
-	assert(bits != NULL);
 
 	/* get the inner IP header flags */
 	is_tos = GET_REAL(GET_BIT_7(flags));

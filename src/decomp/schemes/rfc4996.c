@@ -289,10 +289,6 @@ bool d_ip_id_lsb(const struct rohc_decomp_ctxt *const context,
 	uint32_t ip_id_offset32;
 	uint16_t ip_id_offset;
 
-	assert(context != NULL);
-	assert(ip_id_lsb_ctxt != NULL);
-	assert(ip_id != NULL);
-
 	decode_ok = rohc_lsb_decode(ip_id_lsb_ctxt, ROHC_LSB_REF_0, 0,
 	                            ip_id_bits, ip_id_bits_nr, p, &ip_id_offset32);
 	if(!decode_ok)
@@ -338,8 +334,6 @@ int d_optional_ip_id_lsb(const struct rohc_decomp_ctxt *const context,
                          struct rohc_lsb_field16 *const lsb)
 {
 	int length;
-
-	assert(context != NULL);
 
 	switch(behavior)
 	{

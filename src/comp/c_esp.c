@@ -120,9 +120,7 @@ static bool c_esp_create(struct rohc_comp_ctxt *const context,
 	struct sc_esp_context *esp_context;
 	const struct esphdr *esp;
 
-	assert(context != NULL);
 	assert(context->profile != NULL);
-	assert(packet != NULL);
 
 	/* create and initialize the generic part of the profile context */
 	if(!rohc_comp_rfc3095_create(context, 32, ROHC_LSB_SHIFT_ESP_SN, packet))
@@ -209,9 +207,6 @@ static bool c_esp_check_profile(const struct rohc_comp *const comp,
                                 const struct net_pkt *const packet)
 {
 	bool ip_check;
-
-	assert(comp != NULL);
-	assert(packet != NULL);
 
 	/* check that the the versions of outer and inner IP headers are 4 or 6
 	   and that outer and inner IP headers are not IP fragments */
@@ -314,20 +309,10 @@ static int c_esp_encode(struct rohc_comp_ctxt *const context,
                         rohc_packet_t *const packet_type,
                         size_t *const payload_offset)
 {
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	struct sc_esp_context *esp_context;
+	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
+	struct sc_esp_context *const esp_context = rfc3095_ctxt->specific;
 	const struct esphdr *esp;
 	int size;
-
-	assert(context != NULL);
-	assert(uncomp_pkt != NULL);
-	assert(rohc_pkt != NULL);
-	assert(packet_type != NULL);
-
-	assert(context->specific != NULL);
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-	assert(rfc3095_ctxt->specific != NULL);
-	esp_context = (struct sc_esp_context *) rfc3095_ctxt->specific;
 
 	/* retrieve the ESP header */
 	assert(uncomp_pkt->transport->data != NULL);

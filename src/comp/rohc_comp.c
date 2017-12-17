@@ -113,7 +113,7 @@ static const struct rohc_comp_profile *
  */
 
 static bool c_create_contexts(struct rohc_comp *const comp)
-	__attribute__((nonnull(1)));
+	__attribute__((warn_unused_result, nonnull(1)));
 static void c_destroy_contexts(struct rohc_comp *const comp)
 	__attribute__((nonnull(1)));
 
@@ -2408,10 +2408,6 @@ static struct rohc_comp_ctxt *
 	struct rohc_comp_ctxt *c;
 	rohc_cid_t cid_to_use;
 
-	assert(comp != NULL);
-	assert(profile != NULL);
-	assert(packet != NULL);
-
 	cid_to_use = 0;
 
 	/* if all the contexts in the array are used:
@@ -2985,8 +2981,6 @@ void rohc_comp_periodic_down_transition(struct rohc_comp_ctxt *const context,
  */
 bool rohc_comp_reinit_context(struct rohc_comp_ctxt *const context)
 {
-	assert(context != NULL);
-
 	/* go back to U-mode and IR state */
 	rohc_comp_change_mode(context, ROHC_U_MODE);
 	rohc_comp_change_state(context, ROHC_COMP_STATE_IR);

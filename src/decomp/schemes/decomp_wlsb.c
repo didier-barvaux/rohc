@@ -123,9 +123,7 @@ bool rohc_lsb_decode(const struct rohc_lsb_decode *const lsb,
 {
 	bool is_success;
 
-	assert(lsb != NULL);
 	assert(lsb->is_init == true);
-	assert(decoded != NULL);
 	assert(ref_type == ROHC_LSB_REF_MINUS_1 || ref_type == ROHC_LSB_REF_0);
 
 	if(lsb->max_len == 8)
@@ -387,7 +385,6 @@ void rohc_lsb_set_ref(struct rohc_lsb_decode *const lsb,
 uint32_t rohc_lsb_get_ref(const struct rohc_lsb_decode *const lsb,
                           const rohc_lsb_ref_t ref_type)
 {
-	assert(lsb != NULL);
 	assert(lsb->is_init == true);
 	assert(ref_type == ROHC_LSB_REF_MINUS_1 || ref_type == ROHC_LSB_REF_0);
 	return lsb->v_ref_d[ref_type];

@@ -77,7 +77,8 @@ static int esp_parse_static_esp(const struct rohc_decomp_ctxt *const context,
 static int esp_parse_dynamic_esp(const struct rohc_decomp_ctxt *const context,
                                  const uint8_t *packet,
                                  const size_t length,
-                                 struct rohc_extr_bits *const bits);
+                                 struct rohc_extr_bits *const bits)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
 static bool esp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
                                         const struct rohc_extr_bits *const bits,
@@ -117,7 +118,6 @@ static bool d_esp_create(const struct rohc_decomp_ctxt *const context,
 	struct rohc_decomp_rfc3095_ctxt *rfc3095_ctxt;
 	struct d_esp_context *esp_context;
 
-	assert(context != NULL);
 	assert(context->decompressor != NULL);
 	assert(context->profile != NULL);
 
@@ -237,9 +237,6 @@ static int esp_parse_static_esp(const struct rohc_decomp_ctxt *const context,
 	const size_t spi_length = sizeof(uint32_t);
 	size_t read = 0; /* number of bytes read from the packet */
 
-	assert(packet != NULL);
-	assert(bits != NULL);
-
 	/* check the minimal length to parse the ESP static part */
 	if(length < spi_length)
 	{
@@ -295,10 +292,6 @@ static int esp_parse_dynamic_esp(const struct rohc_decomp_ctxt *const context,
 	int read = 0; /* number of bytes read from the packet */
 	uint32_t sn;
 
-	assert(context != NULL);
-	assert(packet != NULL);
-	assert(bits != NULL);
-
 	/* check the minimal length to parse the ESP dynamic part */
 	if(length < sn_length)
 	{
@@ -340,12 +333,8 @@ static bool esp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
                                         struct rohc_decoded_values *const decoded)
 {
 	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
+	const struct esphdr *const esp = rfc3095_ctxt->outer_ip_changes->next_header;
 	const size_t spi_length = sizeof(uint32_t);
-	struct esphdr *esp;
-
-	assert(decoded != NULL);
-
-	esp = (struct esphdr *) rfc3095_ctxt->outer_ip_changes->next_header;
 
 	/* decode ESP SPI */
 	if(bits->esp_spi_nr > 0)

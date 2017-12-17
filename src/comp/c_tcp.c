@@ -707,17 +707,11 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 {
 	/* TODO: should avoid code duplication by using net_pkt as
 	 * rohc_comp_rfc3095_check_profile() does */
-	const uint8_t *remain_data;
-	size_t remain_len;
+	const uint8_t *remain_data = packet->outer_ip.data;
+	size_t remain_len = packet->outer_ip.size;
 	size_t ip_hdrs_nr;
 	uint8_t next_proto;
 	const struct tcphdr *tcp_header;
-
-	assert(comp != NULL);
-	assert(packet != NULL);
-
-	remain_data = packet->outer_ip.data;
-	remain_len = packet->outer_ip.size;
 
 	/* check that the the versions of IP headers are 4 or 6 and that IP headers
 	 * are not IP fragments */
@@ -1322,8 +1316,6 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	const struct tcphdr *tcp;
 	int counter;
 	size_t i;
-
-	assert(rohc_pkt != NULL);
 
 	*packet_type = ROHC_PACKET_UNKNOWN;
 

@@ -217,9 +217,6 @@ bool c_udp_check_profile(const struct rohc_comp *const comp,
 	const struct udphdr *udp_header;
 	bool ip_check;
 
-	assert(comp != NULL);
-	assert(packet != NULL);
-
 	/* check that the the versions of outer and inner IP headers are 4 or 6
 	   and that outer and inner IP headers are not IP fragments */
 	ip_check = rohc_comp_rfc3095_check_profile(comp, packet);
@@ -334,16 +331,10 @@ static int c_udp_encode(struct rohc_comp_ctxt *const context,
                         rohc_packet_t *const packet_type,
                         size_t *const payload_offset)
 {
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	struct sc_udp_context *udp_context;
+	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
+	struct sc_udp_context *const udp_context = rfc3095_ctxt->specific;
 	const struct udphdr *udp;
 	int size;
-
-	assert(context != NULL);
-	assert(context->specific != NULL);
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-	assert(rfc3095_ctxt->specific != NULL);
-	udp_context = (struct sc_udp_context *) rfc3095_ctxt->specific;
 
 	/* retrieve the UDP header */
 	assert(uncomp_pkt->transport->data != NULL);

@@ -180,9 +180,6 @@ void rohc_crc_init_table(uint8_t *const table,
 	uint8_t polynom;
 	int i;
 
-	/* sanity check */
-	assert(table != NULL);
-
 	/* determine the polynom to use */
 	polynom = rohc_crc_get_polynom(crc_type);
 
@@ -474,8 +471,6 @@ static uint8_t ipv6_ext_calc_crc_static(const uint8_t *const ip,
 	const uint8_t *ext;
 	uint8_t ext_type;
 
-	assert(ip != NULL);
-
 	ext = ipv6_get_first_extension(ip, &ext_type);
 	while(ext != NULL)
 	{
@@ -510,8 +505,6 @@ static uint8_t ipv6_ext_calc_crc_dyn(const uint8_t *const ip,
 	uint8_t crc = init_val;
 	const uint8_t *ext;
 	uint8_t ext_type;
-
-	assert(ip != NULL);
 
 	ext = ipv6_get_first_extension(ip, &ext_type);
 	while(ext != NULL)
@@ -573,12 +566,8 @@ static char rohc_crc_get_polynom(const rohc_crc_type_t crc_type)
 static uint8_t * ipv6_get_first_extension(const uint8_t *const ip,
                                           uint8_t *const type)
 {
-	struct ipv6_hdr *ip_hdr;
+	const struct ipv6_hdr *const ip_hdr = (struct ipv6_hdr *) ip;
 
-	assert(ip != NULL);
-	assert(type != NULL);
-
-	ip_hdr = (struct ipv6_hdr *) ip;
 	*type = ip_hdr->nh;
 
 	if(rohc_is_ipv6_opt(*type))

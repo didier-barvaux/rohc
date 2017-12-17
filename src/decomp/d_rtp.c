@@ -102,7 +102,8 @@ static int rtp_parse_static_rtp(const struct rohc_decomp_ctxt *const context,
 static int rtp_parse_dynamic_rtp(const struct rohc_decomp_ctxt *const context,
                                  const uint8_t *packet,
                                  const size_t length,
-                                 struct rohc_extr_bits *const bits);
+                                 struct rohc_extr_bits *const bits)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
 static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
                           const uint8_t *const rohc_data,
@@ -124,7 +125,8 @@ static int rtp_parse_rtp_hdr_fields(const struct rohc_decomp_ctxt *const context
 static int rtp_parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
                                   const uint8_t *packet,
                                   unsigned int length,
-                                  struct rohc_extr_bits *const bits);
+                                  struct rohc_extr_bits *const bits)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
 static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
                                         const struct rohc_extr_bits *const bits,
@@ -134,7 +136,8 @@ static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 static int rtp_build_uncomp_rtp(const struct rohc_decomp_ctxt *const context,
                                 const struct rohc_decoded_values *const decoded,
                                 uint8_t *const dest,
-                                const unsigned int payload_len);
+                                const unsigned int payload_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static void rtp_update_context(struct rohc_decomp_ctxt *const context,
                                const struct rohc_decoded_values *const decoded)
@@ -145,10 +148,14 @@ static void rtp_update_context(struct rohc_decomp_ctxt *const context,
  * Prototypes of private helper functions
  */
 
-static inline bool is_outer_ipv4_ctxt(const struct rohc_decomp_rfc3095_ctxt *const ctxt);
-static inline bool is_outer_ipv4_rnd_ctxt(const struct rohc_decomp_rfc3095_ctxt *const ctxt);
-static inline bool is_inner_ipv4_ctxt(const struct rohc_decomp_rfc3095_ctxt *const ctxt);
-static inline bool is_inner_ipv4_rnd_ctxt(const struct rohc_decomp_rfc3095_ctxt *const ctxt);
+static inline bool is_outer_ipv4_ctxt(const struct rohc_decomp_rfc3095_ctxt *const ctxt)
+	__attribute__((warn_unused_result, nonnull(1)));
+static inline bool is_outer_ipv4_rnd_ctxt(const struct rohc_decomp_rfc3095_ctxt *const ctxt)
+	__attribute__((warn_unused_result, nonnull(1)));
+static inline bool is_inner_ipv4_ctxt(const struct rohc_decomp_rfc3095_ctxt *const ctxt)
+	__attribute__((warn_unused_result, nonnull(1)));
+static inline bool is_inner_ipv4_rnd_ctxt(const struct rohc_decomp_rfc3095_ctxt *const ctxt)
+	__attribute__((warn_unused_result, nonnull(1)));
 
 
 /*
@@ -175,7 +182,6 @@ static bool d_rtp_create(const struct rohc_decomp_ctxt *const context,
 	struct d_rtp_context *rtp_context;
 	const size_t nh_len = sizeof(struct udphdr) + sizeof(struct rtphdr);
 
-	assert(context != NULL);
 	assert(context->decompressor != NULL);
 	assert(context->profile != NULL);
 
@@ -576,9 +582,6 @@ static int rtp_parse_static_rtp(const struct rohc_decomp_ctxt *const context,
 	const struct d_rtp_context *const rtp_context = rfc3095_ctxt->specific;
 	int read; /* number of bytes read from the packet */
 
-	assert(packet != NULL);
-	assert(bits != NULL);
-
 	/* decode UDP static part */
 	read = udp_parse_static_udp(context, packet, length, bits);
 	if(read == -1)
@@ -650,9 +653,6 @@ static int rtp_parse_dynamic_rtp(const struct rohc_decomp_ctxt *const context,
 	const size_t rtp_dyn_size = 9;
 	size_t remain_len = length;
 	int rx;
-
-	assert(packet != NULL);
-	assert(bits != NULL);
 
 	/* part 1: UDP checksum */
 	if(remain_len < sizeof(uint16_t))
@@ -885,8 +885,8 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
 	struct rohc_decomp_rfc3095_changes *outer_ip_changes;
 
 	/* remaining ROHC data */
-	const uint8_t *rohc_remain_data;
-	size_t rohc_remain_len;
+	const uint8_t *rohc_remain_data = rohc_data;
+	size_t rohc_remain_len = rohc_data_len;
 
 	/* whether all RND values for outer and inner IP headers are set to 1 or
 	 * not (use value(RND) if RND bits are present in the extension, use
@@ -896,14 +896,7 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
 	/* whether at least one RND flag changed in extension 3 */
 	bool rnd_changed = false;
 
-	/* sanity checks */
-	assert(rohc_data != NULL);
-	assert(bits != NULL);
-
 	rohc_decomp_debug(context, "decode extension 3");
-
-	rohc_remain_data = rohc_data;
-	rohc_remain_len = rohc_data_len;
 
 	if(bits->multiple_ip)
 	{
@@ -1466,9 +1459,6 @@ static int rtp_parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
 	const struct d_rtp_context *const rtp_context = rfc3095_ctxt->specific;
 	int read = 0; /* number of bytes read from the packet */
 
-	assert(packet != NULL);
-	assert(bits != NULL);
-
 	/* parse extra UDP checksum if present */
 	if(rtp_context->udp_check_present == ROHC_TRISTATE_NONE)
 	{
@@ -1532,13 +1522,8 @@ static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 {
 	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	struct d_rtp_context *const rtp_context = rfc3095_ctxt->specific;
-	struct udphdr *udp;
-	struct rtphdr *rtp;
-
-	assert(decoded != NULL);
-
-	udp = (struct udphdr *) rfc3095_ctxt->outer_ip_changes->next_header;
-	rtp = (struct rtphdr *) (udp + 1);
+	const struct udphdr *const udp = rfc3095_ctxt->outer_ip_changes->next_header;
+	const struct rtphdr *const rtp = (struct rtphdr *) (udp + 1);
 
 	/* decode UDP source port */
 	if(bits->udp_src_nr > 0)
@@ -1797,13 +1782,8 @@ static int rtp_build_uncomp_rtp(const struct rohc_decomp_ctxt *const context,
                                 uint8_t *const dest,
                                 const unsigned int payload_len)
 {
-	struct udphdr *udp;
-	struct rtphdr *rtp;
-
-	assert(context != NULL);
-	assert(dest != NULL);
-	udp = (struct udphdr *) dest;
-	rtp = (struct rtphdr *) (udp + 1);
+	struct udphdr *const udp = (struct udphdr *) dest;
+	struct rtphdr *const rtp = (struct rtphdr *) (udp + 1);
 
 	/* UDP static fields */
 	udp->source = decoded->udp_src;
@@ -1850,17 +1830,15 @@ static void rtp_update_context(struct rohc_decomp_ctxt *const context,
 {
 	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	struct d_rtp_context *const rtp_context = rfc3095_ctxt->specific;
-	struct udphdr *udp;
-	struct rtphdr *rtp;
+	struct udphdr *const udp = rfc3095_ctxt->outer_ip_changes->next_header;
+	struct rtphdr *const rtp = (struct rtphdr *) (udp + 1);
 
 	/* update context for UDP fields */
-	udp = (struct udphdr *) rfc3095_ctxt->outer_ip_changes->next_header;
 	udp->source = decoded->udp_src;
 	udp->dest = decoded->udp_dst;
 	rtp_context->udp_check_present = decoded->udp_check_present;
 
 	/* update context for RTP fields */
-	rtp = (struct rtphdr *) (udp + 1);
 	assert(decoded->sn <= 0xffff);
 	ts_update_context(&rtp_context->ts_scaled_ctxt, decoded->ts, decoded->sn);
 	rtp->version = decoded->rtp_version;

@@ -145,9 +145,6 @@ int rohc_list_decode_maybe(struct list_decomp *decomp,
 	size_t read_length = 0;
 	int ret;
 
-	assert(decomp != NULL);
-	assert(packet != NULL);
-
 	/* check for minimal size (1 byte) */
 	if(packet_len < 1)
 	{
@@ -355,9 +352,6 @@ bool rohc_decomp_list_create_item(struct list_decomp *const decomp,
 	bool is_created;
 	int ret;
 
-	assert(decomp != NULL);
-	assert(rohc_packet != NULL);
-
 	/* is there enough room in packet for at least one byte of the item? */
 	if(rohc_max_len == 0)
 	{
@@ -430,8 +424,6 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 	unsigned int xi_index; /* the index of the current XI in XI list */
 	size_t item_read_len; /* the amount of bytes currently read in the item field */
 
-	assert(decomp != NULL);
-	assert(packet != NULL);
 	assert(gen_id != ROHC_LIST_GEN_ID_NONE);
 	assert(ps == 0 || ps == 1);
 	assert(m <= ROHC_LIST_ITEMS_MAX);
@@ -584,8 +576,6 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 	unsigned int ref_id;
 	int ret;
 
-	assert(decomp != NULL);
-	assert(packet != NULL);
 	assert(gen_id != ROHC_LIST_GEN_ID_NONE);
 	assert(ps == 0 || ps == 1);
 
@@ -682,8 +672,6 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 	unsigned int ref_id;
 	int ret;
 
-	assert(decomp != NULL);
-	assert(packet != NULL);
 	assert(gen_id != ROHC_LIST_GEN_ID_NONE);
 
 	/* is there enough data in packet for the ref_id and minimal removal
@@ -774,8 +762,6 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 	unsigned int ref_id;
 	int ret;
 
-	assert(decomp != NULL);
-	assert(packet != NULL);
 	assert(gen_id != ROHC_LIST_GEN_ID_NONE);
 	assert(ps == 0 || ps == 1);
 
