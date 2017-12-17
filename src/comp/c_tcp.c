@@ -1427,6 +1427,9 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	tcp_context->seq_num = rohc_ntoh32(tcp->seq_num);
 	tcp_context->ack_num = rohc_ntoh32(tcp->ack_num);
 
+	/* add the new MSN to the W-LSB encoding object */
+	c_add_wlsb(&tcp_context->msn_wlsb, tcp_context->msn, tcp_context->msn);
+
 	/* sequence number */
 	c_add_wlsb(&tcp_context->seq_wlsb, tcp_context->msn, tcp_context->seq_num);
 	if(tcp_context->seq_num_factor != 0)
@@ -3951,17 +3954,6 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
                                      const struct net_pkt *const uncomp_pkt,
                                      const struct tcphdr *const tcp)
 {
-	struct sc_tcp_context *const tcp_context = context->specific;
-
-	/* how many bits are required to encode the new SN ? */
-	tcp_context->tmp.nr_msn_bits =
-		wlsb_get_k_16bits(&tcp_context->msn_wlsb, tcp_context->msn);
-	rohc_comp_debug(context, "%u bits are required to encode new MSN 0x%04x",
-	                tcp_context->tmp.nr_msn_bits, tcp_context->msn);
-	/* add the new MSN to the W-LSB encoding object */
-	/* TODO: move this after successful packet compression */
-	c_add_wlsb(&tcp_context->msn_wlsb, tcp_context->msn, tcp_context->msn);
-
 	if(!tcp_encode_uncomp_ip_fields(context, uncomp_pkt))
 	{
 		rohc_comp_warn(context, "failed to encode the uncompressed fields "
@@ -4610,7 +4602,8 @@ static rohc_packet_t tcp_decide_FO_SO_packet(const struct rohc_comp_ctxt *const 
 		                "changed too much");
 		packet_type = ROHC_PACKET_IR_DYN;
 	}
-	else if(tcp_context->tmp.nr_msn_bits > 4)
+	else if(!wlsb_is_kp_possible_16bits(&tcp_context->msn_wlsb, tcp_context->msn, 4,
+	                                    ROHC_LSB_SHIFT_TCP_SN))
 	{
 		rohc_comp_debug(context, "force packet IR-DYN because the MSN changed "
 		                "too much");

@@ -55,9 +55,6 @@ struct tcp_tmp_variables
 	/** The new number of IP extensions headers (for every IP header) */
 	uint8_t ip_exts_nr[ROHC_MAX_IP_HDRS];
 
-	/** The minimal number of bits required to encode the MSN value */
-	bits_nr_t nr_msn_bits;
-
 	/** The minimal number of bits required to encode the innermost IP-ID value
 	 *  with p = 3 */
 	bits_nr_t nr_ip_id_bits_3;
@@ -92,7 +89,7 @@ struct tcp_tmp_variables
 	uint16_t ecn_used_changed:1; /**< Whether the ecn_used flag changed or not */
 	uint16_t unused:2;
 
-	uint8_t unused2[2];
+	uint8_t unused2[4];
 };
 
 /* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
