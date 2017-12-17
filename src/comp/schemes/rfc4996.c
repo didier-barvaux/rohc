@@ -410,7 +410,8 @@ unsigned int rsf_index_enc(const uint8_t rsf_flags)
  * @param behavior         The IP-ID behavior
  * @param ip_id_nbo        The IP-ID value to compress (in NBO)
  * @param ip_id_offset     The IP-ID offset value to compress (in HBO)
- * @param nr_bits_wlsb     The number of IP-ID offset bits required for W-LSB
+ * @param wlsb             The W-LSB encoding context
+ * @param p                The W-LSB shift parameter p
  * @param[out] rohc_data   The compressed value
  * @param rohc_max_len     The max remaining length in the ROHC buffer
  * @param[out] indicator   The indicator: 0 if short, 1 if long
@@ -420,7 +421,8 @@ unsigned int rsf_index_enc(const uint8_t rsf_flags)
 int c_optional_ip_id_lsb(const int behavior,
                          const uint16_t ip_id_nbo,
                          const uint16_t ip_id_offset,
-                         const size_t nr_bits_wlsb,
+                         const struct c_wlsb *const wlsb,
+                         const rohc_lsb_shift_t p,
                          uint8_t *const rohc_data,
                          const size_t rohc_max_len,
                          int *const indicator)
@@ -431,7 +433,7 @@ int c_optional_ip_id_lsb(const int behavior,
 	{
 		case ROHC_IP_ID_BEHAVIOR_SEQ_SWAP:
 		case ROHC_IP_ID_BEHAVIOR_SEQ:
-			if(nr_bits_wlsb <= 8)
+			if(wlsb_is_kp_possible_16bits(wlsb, ip_id_offset, 8, p))
 			{
 				if(rohc_max_len < 1)
 				{

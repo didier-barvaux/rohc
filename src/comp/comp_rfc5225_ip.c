@@ -3686,28 +3686,14 @@ static int rohc_comp_rfc5225_ip_build_co_common_pkt(const struct rohc_comp_ctxt 
 
 	/* innermost IP-ID */
 	{
-		size_t nr_bits_wlsb;
 		int indicator;
 		int ret;
-
-		if(innermost_ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ ||
-		   innermost_ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
-		{
-			const bool is_8b_possible =
-				wlsb_is_kp_possible_16bits(&rfc5225_ctxt->innermost_ip_id_offset_wlsb,
-				                           rfc5225_ctxt->tmp.innermost_ip_id_offset, 8,
-				                           rohc_interval_get_rfc5225_id_id_p(8));
-			nr_bits_wlsb = (is_8b_possible ? 8 : 16);
-		}
-		else
-		{
-			nr_bits_wlsb = 16;
-		}
 
 		ret = c_optional_ip_id_lsb(innermost_ip_id_behavior,
 		                           rohc_hton16(rfc5225_ctxt->tmp.innermost_ip_id),
 		                           rfc5225_ctxt->tmp.innermost_ip_id_offset,
-		                           nr_bits_wlsb,
+		                           &rfc5225_ctxt->innermost_ip_id_offset_wlsb,
+		                           rohc_interval_get_rfc5225_id_id_p(8),
 		                           rohc_remain_data, rohc_remain_len, &indicator);
 		if(ret < 0)
 		{

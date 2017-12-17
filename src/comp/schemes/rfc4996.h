@@ -95,11 +95,12 @@ unsigned int rsf_index_enc(const uint8_t rsf_flags)
 int c_optional_ip_id_lsb(const int behavior,
                          const uint16_t ip_id_nbo,
                          const uint16_t ip_id_offset,
-                         const size_t nr_bits_wlsb,
+                         const struct c_wlsb *const wlsb,
+                         const rohc_lsb_shift_t p,
                          uint8_t *const rohc_data,
                          const size_t rohc_max_len,
                          int *const indicator)
-	__attribute__((warn_unused_result, nonnull(5, 7)));
+	__attribute__((warn_unused_result, nonnull(4, 6, 8)));
 
 // RFC4996 page 75
 int dscp_encode(const uint8_t context_value,
