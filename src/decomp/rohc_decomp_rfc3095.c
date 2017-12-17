@@ -5492,6 +5492,7 @@ static bool is_sn_wraparound(const struct rohc_ts cur_arrival_time,
 	uint64_t cur_interval; /* in microseconds */
 	uint64_t avg_interval; /* in microseconds */
 	uint64_t min_interval; /* in microseconds */
+	uint64_t marge; /* in microseconds */
 
 	/* cannot use correction for SN wraparound if no arrival time was given
 	 * for the current packet, or if too few packets were received yet */
@@ -5508,7 +5509,11 @@ static bool is_sn_wraparound(const struct rohc_ts cur_arrival_time,
 	/* compute average inter-packet arrival time for last packets */
 	avg_interval = rohc_time_interval(arrival_times[arrival_times_index],
 	                                  arrival_times[arrival_times_index_last]);
+#ifndef __KERNEL__
 	avg_interval /= ROHC_MAX_ARRIVAL_TIMES - 1;
+#else
+	do_div(avg_interval, ROHC_MAX_ARRIVAL_TIMES - 1);
+#endif
 
 	/* compute the minimum inter-packet interval that the current interval
 	 * shall exceed so that SN wraparound is detected */
@@ -5519,7 +5524,13 @@ static bool is_sn_wraparound(const struct rohc_ts cur_arrival_time,
 	min_interval = ((1 << k) - rohc_interval_compute_p(k, p)) * avg_interval;
 
 	/* subtract 10% to handle problems related to clock precision */
-	min_interval -= min_interval * 10 / 100;
+	marge = min_interval * 10;
+#ifndef __KERNEL__
+	marge /= 100;
+#else
+	do_div(marge, 100);
+#endif
+	min_interval -= marge;
 
 	/* enough time elapsed for SN wraparound? */
 	return (cur_interval >= min_interval);
