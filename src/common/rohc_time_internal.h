@@ -57,7 +57,11 @@ static inline uint64_t rohc_time_interval(const struct rohc_ts begin,
 	interval *= 1000000000UL;       /* convert in nanoseconds */
 	interval += end.nsec;           /* additional end nanoseconds */
 	interval -= begin.nsec;         /* superfluous begin nanoseconds */
+#ifndef __KERNEL__
 	interval /= 1000UL;             /* convert in microseconds */
+#else
+	do_div(interval, 1000UL);       /* convert in microseconds */
+#endif
 
 	return interval;
 }
