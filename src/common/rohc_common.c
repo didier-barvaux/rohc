@@ -148,23 +148,36 @@ const char * rohc_get_profile_descr(const rohc_profile_t profile)
 	switch(profile)
 	{
 		case ROHC_PROFILE_UNCOMPRESSED:
-			return "Uncompressed";
+			return "ROHCv1 Uncompressed";
 		case ROHC_PROFILE_RTP:
-			return "IP/UDP/RTP";
+			return "ROHCv1 IP/UDP/RTP";
 		case ROHC_PROFILE_UDP:
-			return "IP/UDP";
+			return "ROHCv1 IP/UDP";
 		case ROHC_PROFILE_ESP:
-			return "IP/ESP";
+			return "ROHCv1 IP/ESP";
 		case ROHC_PROFILE_IP:
-			return "IP-only";
+			return "ROHCv1 IP-only";
 		case ROHC_PROFILE_RTP_LLA:
-			return "IP/UDP/RTP (LLA)";
+			return "ROHCv1 IP/UDP/RTP (LLA)";
 		case ROHC_PROFILE_TCP:
-			return "IP/TCP";
+			return "ROHCv1 IP/TCP";
 		case ROHC_PROFILE_UDPLITE_RTP:
-			return "IP/UDP-Lite/RTP";
+			return "ROHCv1 IP/UDP-Lite/RTP";
 		case ROHC_PROFILE_UDPLITE:
-			return "IP/UDP-Lite";
+			return "ROHCv1 IP/UDP-Lite";
+		case ROHCv2_PROFILE_IP_UDP_RTP:
+			return "ROHCv2 IP/UDP/RTP";
+		case ROHCv2_PROFILE_IP_UDP:
+			return "ROHCv2 IP/UDP";
+		case ROHCv2_PROFILE_IP_ESP:
+			return "ROHCv2 IP/ESP";
+		case ROHCv2_PROFILE_IP:
+			return "ROHCv2 IP";
+		case ROHCv2_PROFILE_IP_UDPLITE_RTP:
+			return "ROHCv2 IP/UDP-Lite/RTP";
+		case ROHCv2_PROFILE_IP_UDPLITE:
+			return "ROHCv2 IP/UDP-Lite";
+
 		case ROHC_PROFILE_MAX:
 		default:
 			return "no description";

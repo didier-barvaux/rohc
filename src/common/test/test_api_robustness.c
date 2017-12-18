@@ -148,7 +148,41 @@ int main(int argc, char *argv[])
 		CHECK(strcmp(rohc_get_profile_descr(ROHC_PROFILE_UDPLITE_RTP), unknown) != 0);
 		CHECK(strcmp(rohc_get_profile_descr(ROHC_PROFILE_UDPLITE), "") != 0);
 		CHECK(strcmp(rohc_get_profile_descr(ROHC_PROFILE_UDPLITE), unknown) != 0);
-		CHECK(strcmp(rohc_get_profile_descr(ROHC_PROFILE_UDPLITE + 1), unknown) == 0);
+
+		/* test ROHCv1 profiles */
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_UNCOMPRESSED), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_UNCOMPRESSED), unknown) != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP_UDP_RTP), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP_UDP_RTP), unknown) != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP_UDP), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP_UDP), unknown) != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP_ESP), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP_ESP), unknown) != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP), unknown) != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP_UDP_RTP_LLA), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP_UDP_RTP_LLA), unknown) != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP_TCP), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP_TCP), unknown) != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP_UDPLITE_RTP), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP_UDPLITE_RTP), unknown) != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP_UDPLITE), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP_UDPLITE), unknown) != 0);
+
+		/* test ROHCv2 profiles */
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv2_PROFILE_IP_UDP_RTP), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv2_PROFILE_IP_UDP_RTP), unknown) != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv2_PROFILE_IP_UDP), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv2_PROFILE_IP_UDP), unknown) != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv2_PROFILE_IP_ESP), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv2_PROFILE_IP_ESP), unknown) != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv2_PROFILE_IP), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv2_PROFILE_IP), unknown) != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv2_PROFILE_IP_UDPLITE_RTP), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv2_PROFILE_IP_UDPLITE_RTP), unknown) != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv2_PROFILE_IP_UDPLITE), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv2_PROFILE_IP_UDPLITE), unknown) != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv2_PROFILE_IP_UDPLITE + 1), unknown) == 0);
 	}
 
 	/* rohc_get_packet_descr() */
