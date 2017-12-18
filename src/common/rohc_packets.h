@@ -102,6 +102,24 @@ typedef enum
 	/* Context Replication (CR) */
 	ROHC_PACKET_IR_CR         = 32, /**< ROHC IR-CR packet */
 
+	/* packet types for all ROHCv2 profiles (RFC 5225) */
+#define ROHC_PACKET_CO_COMMON ROHC_PACKET_TCP_CO_COMMON /**< ROHCv2 co_common packet */
+	ROHC_PACKET_CO_REPAIR         = 33, /**< ROHCv2 CO-REPAIR packet */
+	ROHC_PACKET_PT_0_CRC3         = 34, /**< ROHCv2 PT-0-CRC3 packet */
+	/* packet types for all non-RTP ROHCv2 profiles (RFC 5225) */
+	ROHC_PACKET_NORTP_PT_0_CRC7   = 35, /**< ROHCv2 PT-0-CRC7 packet (non-RTP) */
+	ROHC_PACKET_NORTP_PT_1_SEQ_ID = 36, /**< ROHCv2 PT-1-SEQ-ID packet (non-RTP) */
+	ROHC_PACKET_NORTP_PT_2_SEQ_ID = 37, /**< ROHCv2 PT-2-SEQ-ID packet (non-RTP) */
+	/* packet types for all RTP ROHCv2 profiles (RFC 5225) */
+	ROHC_PACKET_RTP_PT_0_CRC7     = 38, /**< ROHCv2 PT-0-CRC7 packet (RTP) */
+	ROHC_PACKET_RTP_PT_1_RND      = 39, /**< ROHCv2 PT-1-RND packet (RTP) */
+	ROHC_PACKET_RTP_PT_1_SEQ_ID   = 40, /**< ROHCv2 PT-1-SEQ-ID packet (RTP) */
+	ROHC_PACKET_RTP_PT_1_SEQ_TS   = 41, /**< ROHCv2 PT-1-SEQ-TS packet (RTP) */
+	ROHC_PACKET_RTP_PT_2_RND      = 42, /**< ROHCv2 PT-2-RND packet (RTP) */
+	ROHC_PACKET_RTP_PT_2_SEQ_ID   = 43, /**< ROHCv2 PT-2-SEQ-ID packet (RTP) */
+	ROHC_PACKET_RTP_PT_2_SEQ_TS   = 44, /**< ROHCv2 PT-2-SEQ-TS packet (RTP) */
+	ROHC_PACKET_RTP_PT_2_SEQ_BOTH = 45, /**< ROHCv2 PT-2-SEQ-BOTH packet (RTP) */
+
 	ROHC_PACKET_MAX                 /**< The number of packet types */
 } rohc_packet_t;
 
