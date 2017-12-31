@@ -92,6 +92,8 @@ local f_pkt_ir_x    = ProtoField.uint8("rohc_lua.pkt.ir.x", "Profile specific in
 -- IR-DYN packet
 local f_pkt_irdyn      = ProtoField.bytes("rohc_lua.pkt.irdyn", "IR-DYN")
 local f_pkt_irdyn_type = ProtoField.uint8("rohc_lua.pkt.irdyn.type", "IR-DYN type octet", base.HEX)
+-- unknown packet type
+local f_pkt_unknown = ProtoField.bytes("rohc_lua.pkt.pkt.unknown", "Unknown packet type")
 
 -- payload
 local f_payload         = ProtoField.bytes("rohc_lua.payload", "ROHC payload")
@@ -115,6 +117,7 @@ rohc_protocol.fields = {
 	f_pkt_profile, f_pkt_crc8,
 	f_pkt_ir, f_pkt_ir_type, f_pkt_ir_x,
 	f_pkt_irdyn, f_pkt_irdyn_type, f_pkt_irdyn_x,
+	f_pkt_unknown,
 	f_payload, f_payload_trailer,
 	f_rohc_cid, f_rohc_profile, f_rohc_packet, f_rohc_hdr_len,
 }
@@ -396,29 +399,48 @@ function rohc_protocol.dissector(tvbuf, pktinfo, root)
 		pktinfo.private["udp_check"] = udp_check
 		hdr_len, profile_id = dissect_pkt_irdyn(irdyn_pkt, pktinfo, irdyn_tree)
 	else
-		profile_id = rohc_contexts[cid]["profile"]
-		protocol = rohc_contexts[cid]["protocol"]
-		udp_dport = rohc_contexts[cid]["udp_dport"]
-		ip_hdrs_nr = rohc_contexts[cid]["ip_hdrs_nr"]
+		if rohc_contexts[cid] == nil then
+			profile_id = nil
+			protocol = nil
+			udp_dport = nil
+			ip_hdrs_nr = nil
+			ip_hdr_1_version = nil
+			ip_hdr_2_version = nil
+			rnd_outer_ip_id = nil
+			rnd_inner_ip_id = nil
+			udp_check = nil
+			print("CID "..cid.." uses an unknown profile and protocol (IR or IR-DYN packet not seen yet)")
+		else
+			profile_id = rohc_contexts[cid]["profile"]
+			protocol = rohc_contexts[cid]["protocol"]
+			udp_dport = rohc_contexts[cid]["udp_dport"]
+			ip_hdrs_nr = rohc_contexts[cid]["ip_hdrs_nr"]
+			ip_hdr_1_version = rohc_contexts[cid]["ip_hdr_1_version"]
+			ip_hdr_2_version = rohc_contexts[cid]["ip_hdr_2_version"]
+			rnd_outer_ip_id = rohc_contexts[cid]["rnd_outer_ip_id"]
+			rnd_inner_ip_id = rohc_contexts[cid]["rnd_inner_ip_id"]
+			udp_check = rohc_contexts[cid]["udp_check"]
+			print("CID "..cid.." uses profile ID 0x"..profile_id.." and protocol "..protocol)
+		end
 		pktinfo.private["rohc_ip_hdrs_nr"] = ip_hdrs_nr
-		ip_hdr_1_version = rohc_contexts[cid]["ip_hdr_1_version"]
 		pktinfo.private["rohc_ip_hdr_1_version"] = ip_hdr_1_version
-		ip_hdr_2_version = rohc_contexts[cid]["ip_hdr_2_version"]
 		pktinfo.private["rohc_ip_hdr_2_version"] = ip_hdr_2_version
-		rnd_outer_ip_id = rohc_contexts[cid]["rnd_outer_ip_id"]
 		pktinfo.private["rnd_outer_ip_id"] = rnd_outer_ip_id
-		rnd_inner_ip_id = rohc_contexts[cid]["rnd_inner_ip_id"]
 		pktinfo.private["rnd_inner_ip_id"] = rnd_inner_ip_id
-		udp_check = rohc_contexts[cid]["udp_check"]
 		pktinfo.private["udp_check"] = udp_check
-		print("CID "..cid.." uses profile ID 0x"..profile_id.." and protocol "..protocol)
 
 		-- remaining bytes are specific to the ROHC profile
-		local rohc_remain_bytes = tvbuf:range(offset, tvbuf:len() - offset)
-		local profiles = DissectorTable.get("rohc.profiles")
-		hdr_len = profiles:try(profile_id, rohc_remain_bytes:tvb(), pktinfo, tree)
-		if profile_id == 0x0000 then
-			hdr_len = hdr_len - 1
+		local rohc_remain_len = tvbuf:len() - offset
+		local rohc_remain_bytes = tvbuf:range(offset, rohc_remain_len)
+		if profile_id ~= nil then
+			local profiles = DissectorTable.get("rohc.profiles")
+			hdr_len = profiles:try(profile_id, rohc_remain_bytes:tvb(), pktinfo, tree)
+			if profile_id == 0x0000 then
+				hdr_len = hdr_len - 1
+			end
+		else
+			tree:add(f_pkt_unknown, rohc_remain_bytes)
+			hdr_len = rohc_remain_len
 		end
 	end
 	offset = offset + hdr_len
@@ -427,37 +449,43 @@ function rohc_protocol.dissector(tvbuf, pktinfo, root)
 	-- add expert info for CID, profile ID and packet type
 	tree:add(f_rohc_cid, cid)
 	pktinfo.cols.info:append(", CID "..cid)
-	tree:add(f_rohc_profile, profile_id)
-	pktinfo.cols.info:append(", "..profiles_short_descr[profile_id].." profile")
-	tree:add(f_rohc_packet, pktinfo.private["rohc_packet_type"])
-	pktinfo.cols.info:append(", "..pktinfo.private["rohc_packet_type"].." packet")
+	if profile_id ~= nil then
+		tree:add(f_rohc_profile, profile_id)
+		pktinfo.cols.info:append(", "..profiles_short_descr[profile_id].." profile")
+		tree:add(f_rohc_packet, pktinfo.private["rohc_packet_type"])
+		pktinfo.cols.info:append(", "..pktinfo.private["rohc_packet_type"].." packet")
+	end
 	tree:add(f_rohc_hdr_len, offset)
 	pktinfo.cols.info:append(", "..offset.."B header, "..(tvbuf:len() - offset).."B payload")
 
 	-- ROHC payload
 	print((tvbuf:len()-offset).."-byte payload starts at offset "..offset)
 	local payload_bytes = tvbuf:range(offset, tvbuf:len() - offset)
-	print("profile ID = "..profile_id)
+	if profile_id ~= nil then
+		print("profile ID = "..profile_id)
+	else
+		print("profile ID = <unknown>")
+	end
 	if protocol ~= nil then
 		print("protocol = "..protocol)
 	else
 		print("protocol = <unknown>")
 	end
-	if profile_id == 0x0000 and protocol ~= nil then
+	if profile_id ~= nil and profile_id == 0x0000 and protocol ~= nil then
 		-- protocol transported by layer 2
 		print("try to call a dissector for layer 2 payload (protocol "..protocol..")")
 		local ether_tables = DissectorTable.get("ethertype")
 		local ether_payload_len =
 			ether_tables:try(protocol, payload_bytes:tvb(), pktinfo, root)
 		offset = offset + ether_payload_len
-	elseif profile_id == 0x0004 then
+	elseif profile_id ~= nil and profile_id == 0x0004 then
 		-- protocol transported by IP
 		print("try to call a dissector for IP payload (protocol "..protocol..")")
 		local ip_tables = DissectorTable.get("ip.proto")
 		local ip_payload_len =
 			ip_tables:try(protocol, payload_bytes:tvb(), pktinfo, root)
 		offset = offset + ip_payload_len
-	elseif profile_id == 0x0002 then
+	elseif profile_id ~= nil and profile_id == 0x0002 then
 		-- protocol transported by UDP
 		print("try to call a dissector for UDP payload (UDP destination port "..udp_dport..")")
 		local udp_tables = DissectorTable.get("udp.port")
@@ -474,17 +502,19 @@ function rohc_protocol.dissector(tvbuf, pktinfo, root)
 	end
 
 	-- remember the context information
-	rohc_contexts[cid] = {
-		["profile"] = profile_id,
-		["protocol"] = protocol,
-		["udp_dport"] = udp_dport,
-		["ip_hdrs_nr"] = ip_hdrs_nr,
-		["ip_hdr_1_version"] = ip_hdr_1_version,
-		["ip_hdr_2_version"] = ip_hdr_2_version,
-		["rnd_outer_ip_id"] = rnd_outer_ip_id,
-		["rnd_inner_ip_id"] = rnd_inner_ip_id,
-		["udp_check"] = udp_check,
-	}
+	if profile_id ~= nil then
+		rohc_contexts[cid] = {
+			["profile"] = profile_id,
+			["protocol"] = protocol,
+			["udp_dport"] = udp_dport,
+			["ip_hdrs_nr"] = ip_hdrs_nr,
+			["ip_hdr_1_version"] = ip_hdr_1_version,
+			["ip_hdr_2_version"] = ip_hdr_2_version,
+			["rnd_outer_ip_id"] = rnd_outer_ip_id,
+			["rnd_inner_ip_id"] = rnd_inner_ip_id,
+			["udp_check"] = udp_check,
+		}
+	end
 end
 
 local ethertype_table = DissectorTable.get("ethertype")
