@@ -54,7 +54,8 @@ function rohc_rfc3095_ip_udp.dissector(tvbuf, pktinfo, root)
 		                                         rohc_rfc3095_ip_udp_profile_id)
 	else
 		uor_pkt = tvbuf:range(offset, tvbuf:len() - offset)
-		hdr_len = rohc_rfc3095_dissect_pkt_uor(uor_pkt, pktinfo, root)
+		hdr_len = rohc_rfc3095_dissect_pkt_uor(uor_pkt, pktinfo, root,
+		                                       rohc_rfc3095_ip_udp_profile_id)
 	end
 	offset = offset + hdr_len
 

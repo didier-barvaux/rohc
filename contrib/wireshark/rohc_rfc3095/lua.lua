@@ -925,7 +925,7 @@ local function dissect_uor_remainder(uor_bytes, pktinfo, uor_tree, profile_id)
 end
 
 -- dissect UO-0 packet
-local function dissect_pkt_uo0(uo0_pkt, pktinfo, rohc_tree)
+local function dissect_pkt_uo0(uo0_pkt, pktinfo, rohc_tree, profile_id)
 	local offset = 0
 	local uo0_tree = rohc_tree:add(f_pkt_uo0, uo0_pkt)
 	uo0_tree:add(f_pkt_uo0_type, uo0_pkt:range(offset, 1))
@@ -934,14 +934,14 @@ local function dissect_pkt_uo0(uo0_pkt, pktinfo, rohc_tree)
 	offset = offset + 1
 	-- UO remainder
 	local uor_bytes = uo0_pkt:range(offset, uo0_pkt:len() - offset)
-	local remainder_len = dissect_uor_remainder(uor_bytes, pktinfo, uo0_tree)
+	local remainder_len = dissect_uor_remainder(uor_bytes, pktinfo, uo0_tree, profile_id)
 	offset = offset + remainder_len
 	uo0_tree:set_len(offset)
 	return offset
 end
 
 -- dissect UO-1 packet
-local function dissect_pkt_uo1(uo1_pkt, pktinfo, rohc_tree)
+local function dissect_pkt_uo1(uo1_pkt, pktinfo, rohc_tree, profile_id)
 	local offset = 0
 	local uo1_tree = rohc_tree:add(f_pkt_uo1, uo1_pkt)
 	uo1_tree:add(f_pkt_uo1_type,  uo1_pkt:range(offset, 1))
@@ -952,14 +952,14 @@ local function dissect_pkt_uo1(uo1_pkt, pktinfo, rohc_tree)
 	offset = offset + 1
 	-- UO remainder
 	local uor_bytes = uo1_pkt:range(offset, uo1_pkt:len() - offset)
-	local remainder_len = dissect_uor_remainder(uor_bytes, pktinfo, uo1_tree)
+	local remainder_len = dissect_uor_remainder(uor_bytes, pktinfo, uo1_tree, profile_id)
 	offset = offset + remainder_len
 	uo1_tree:set_len(offset)
 	return offset
 end
 
 -- dissect UOR-2 packet
-local function dissect_pkt_uor2(uor2_pkt, pktinfo, rohc_tree)
+local function dissect_pkt_uor2(uor2_pkt, pktinfo, rohc_tree, profile_id)
 	local offset = 0
 	local uor2_tree = rohc_tree:add(f_pkt_uor2, uor2_pkt)
 	uor2_tree:add(f_pkt_uor2_type,  uor2_pkt:range(offset, 1))
@@ -977,28 +977,28 @@ local function dissect_pkt_uor2(uor2_pkt, pktinfo, rohc_tree)
 	end
 	-- UO remainder
 	local uor_bytes = uor2_pkt:range(offset, uor2_pkt:len() - offset)
-	local remainder_len = dissect_uor_remainder(uor_bytes, pktinfo, uor2_tree)
+	local remainder_len = dissect_uor_remainder(uor_bytes, pktinfo, uor2_tree, profile_id)
 	offset = offset + remainder_len
 	uor2_tree:set_len(offset)
 	return offset
 end
 
 -- dissect UOR packets
-function rohc_rfc3095_dissect_pkt_uor(uor_pkt, pktinfo, rohc_tree)
+function rohc_rfc3095_dissect_pkt_uor(uor_pkt, pktinfo, rohc_tree, profile_id)
 	local hdr_len
 
 	if uor_pkt:range(offset, 1):bitfield(0, 1) == 0x0 then
 		-- UO-0
 		pktinfo.private["rohc_packet_type"] = "UO-0"
-		hdr_len = dissect_pkt_uo0(uor_pkt, pktinfo, rohc_tree)
+		hdr_len = dissect_pkt_uo0(uor_pkt, pktinfo, rohc_tree, profile_id)
 	elseif uor_pkt:range(offset, 1):bitfield(0, 2) == 0x2 then
 		-- UO-1
 		pktinfo.private["rohc_packet_type"] = "UO-1"
-		hdr_len = dissect_pkt_uo1(uor_pkt, pktinfo, rohc_tree)
+		hdr_len = dissect_pkt_uo1(uor_pkt, pktinfo, rohc_tree, profile_id)
 	elseif uor_pkt:range(offset, 1):bitfield(0, 3) == 0x6 then
 		-- UOR-2
 		pktinfo.private["rohc_packet_type"] = "UOR-2"
-		hdr_len = dissect_pkt_uor2(uor_pkt, pktinfo, rohc_tree)
+		hdr_len = dissect_pkt_uor2(uor_pkt, pktinfo, rohc_tree, profile_id)
 	else
 		error("unsupported ROHC packet")
 		return nil
