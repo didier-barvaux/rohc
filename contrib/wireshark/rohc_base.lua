@@ -131,7 +131,6 @@ local rohc_contexts = { }
 local function dissect_add_cid_if_any(bytes, pktinfo, tree)
 	local add_cid_found = (bytes:range(offset, 1):bitfield(0, 4) == 0x0e)
 	local add_cid_value = 0
-	local add_cid_count = 0
 	local offset = 0
 
 	if add_cid_found then
@@ -139,11 +138,10 @@ local function dissect_add_cid_if_any(bytes, pktinfo, tree)
 		add_cid_tree:add(f_add_cid_type, bytes:range(offset, 1))
 		add_cid_tree:add(f_add_cid_value, bytes:range(offset, 1))
 		add_cid_value = bytes:range(offset, 1):bitfield(4, 4)
-		add_cid_count = add_cid_count + 1
 		offset = offset + 1
 	end
 
-	return offset, add_cid_value, add_cid_count
+	return offset, add_cid_value
 end
 
 -- dissect ROHC feedback
@@ -176,7 +174,7 @@ local function dissect_feedback(feedback_bytes, pktinfo, rohc_tree)
 			feedback_type = 1
 		elseif feedback_bytes:range(offset, 1):bitfield(0, 2) == 3 then
 			-- parse Add-CID if any
-			local add_cid_len, add_cid_value, add_cid_count =
+			local add_cid_len, add_cid_value =
 				dissect_add_cid_if_any(feedback_bytes:range(offset, 1), pktinfo, feedback_tree)
 			offset = offset + add_cid_len
 			if (feedback_size - offset) == 2 then
@@ -308,18 +306,23 @@ function rohc_protocol.dissector(tvbuf, pktinfo, root)
 	end
 
 	-- parse Add-CID and feedback blocks
-	local add_cid_value = 0
 	local add_cid_found
-	local add_cid_count = 0
 	local feedback_found
+	local add_cid_value = 0
+	local add_cid_count = 0
 	repeat
 		add_cid_found = (tvbuf:range(offset, 1):bitfield(0, 4) == 0x0e)
 		feedback_found = (tvbuf:range(offset, 1):bitfield(0, 5) == 0x1e)
 
 		-- Add-CID ?
-		local add_cid_len, add_cid_value, add_cid_count =
+		local last_add_cid_len, last_add_cid_value =
 			dissect_add_cid_if_any(tvbuf:range(offset, 1), pktinfo, tree)
-		offset = offset + add_cid_len
+		if last_add_cid_len > 0 then
+			add_cid_value = last_add_cid_value
+			add_cid_count = add_cid_count + 1
+		end
+		print("Add-CID = ", last_add_cid_len, " ", add_cid_value, " ", add_cid_count)
+		offset = offset + last_add_cid_len
 
 		-- feedback?
 		if feedback_found then
