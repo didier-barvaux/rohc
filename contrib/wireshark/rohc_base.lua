@@ -367,6 +367,7 @@ function rohc_protocol.dissector(tvbuf, pktinfo, root)
 	print("packet type = 0x"..tvbuf:range(offset, 1))
 	local profile_id
 	local protocol
+	local udp_sport
 	local udp_dport
 	local hdr_len
 	if tvbuf:range(offset, 1):bitfield(0, 7) == 0x7e then
@@ -375,6 +376,7 @@ function rohc_protocol.dissector(tvbuf, pktinfo, root)
 		local ir_tree = tree:add(f_pkt_ir, ir_pkt)
 		hdr_len, profile_id = dissect_pkt_ir(ir_pkt, pktinfo, ir_tree)
 		protocol = tonumber(pktinfo.private["rohc_embedded_protocol"])
+		udp_sport = tonumber(pktinfo.private["rohc_embedded_udp_sport"])
 		udp_dport = tonumber(pktinfo.private["rohc_embedded_udp_dport"])
 		ip_hdrs_nr = tonumber(pktinfo.private["rohc_ip_hdrs_nr"])
 		ip_hdr_1_version = tonumber(pktinfo.private["rohc_ip_hdr_1_version"])
@@ -387,6 +389,7 @@ function rohc_protocol.dissector(tvbuf, pktinfo, root)
 		local irdyn_pkt = tvbuf:range(offset, tvbuf:len() - offset)
 		local irdyn_tree = tree:add(f_pkt_irdyn, irdyn_pkt)
 		protocol = rohc_contexts[cid]["protocol"]
+		udp_sport = rohc_contexts[cid]["udp_sport"]
 		udp_dport = rohc_contexts[cid]["udp_dport"]
 		ip_hdrs_nr = rohc_contexts[cid]["ip_hdrs_nr"]
 		pktinfo.private["rohc_ip_hdrs_nr"] = ip_hdrs_nr
@@ -405,6 +408,7 @@ function rohc_protocol.dissector(tvbuf, pktinfo, root)
 		if rohc_contexts[cid] == nil then
 			profile_id = nil
 			protocol = nil
+			udp_sport = nil
 			udp_dport = nil
 			ip_hdrs_nr = nil
 			ip_hdr_1_version = nil
@@ -416,6 +420,7 @@ function rohc_protocol.dissector(tvbuf, pktinfo, root)
 		else
 			profile_id = rohc_contexts[cid]["profile"]
 			protocol = rohc_contexts[cid]["protocol"]
+			udp_sport = rohc_contexts[cid]["udp_sport"]
 			udp_dport = rohc_contexts[cid]["udp_dport"]
 			ip_hdrs_nr = rohc_contexts[cid]["ip_hdrs_nr"]
 			ip_hdr_1_version = rohc_contexts[cid]["ip_hdr_1_version"]
@@ -490,10 +495,16 @@ function rohc_protocol.dissector(tvbuf, pktinfo, root)
 		offset = offset + ip_payload_len
 	elseif profile_id ~= nil and profile_id == 0x0002 then
 		-- protocol transported by UDP
-		print("try to call a dissector for UDP payload (UDP destination port "..udp_dport..")")
+		print("try to call a dissector for UDP payload (ports "..udp_sport.." -> "..udp_dport..")")
 		local udp_tables = DissectorTable.get("udp.port")
+		local udp_port
+		if udp_dport <= 1024 then
+			udp_port = udp_dport
+		else
+			udp_port = udp_sport
+		end
 		local udp_payload_len =
-			udp_tables:try(udp_dport, payload_bytes:tvb(), pktinfo, root)
+			udp_tables:try(udp_port, payload_bytes:tvb(), pktinfo, root)
 		offset = offset + udp_payload_len
 	else
 		-- TODO: handle RTP, UDP, ESP, TCP
@@ -509,6 +520,7 @@ function rohc_protocol.dissector(tvbuf, pktinfo, root)
 		rohc_contexts[cid] = {
 			["profile"] = profile_id,
 			["protocol"] = protocol,
+			["udp_sport"] = udp_sport,
 			["udp_dport"] = udp_dport,
 			["ip_hdrs_nr"] = ip_hdrs_nr,
 			["ip_hdr_1_version"] = ip_hdr_1_version,
