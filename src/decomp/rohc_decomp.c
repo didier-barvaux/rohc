@@ -85,10 +85,10 @@ static const struct rohc_decomp_profile *const rohc_decomp_profiles[D_NUM_PROFIL
  */
 
 /**
- * @brief The stream informations about a decompressed packet
+ * @brief The stream information about a decompressed packet
  *
  * To be able to send some feedback to the compressor, the decompressor shall
- * (aside the decompression status itself) collect some informations about
+ * (aside the decompression status itself) collect some information about
  * the packet being decompressed:
  *  \li the Context ID (CID) of the packet (even if context was not found)
  *  \li the CID type of the channel
@@ -927,7 +927,7 @@ error:
  *                            \li If NULL, ignore the received feedback data
  *                            \li If not NULL, store the received feedback in
  *                                at the given address
- * @param[out] stream         The informations about the decompressed stream,
+ * @param[out] stream         The information about the decompressed stream,
  *                            required for sending feedback to compressor
  * @return                    Possible return values:
  *                            \li ROHC_STATUS_OK if packet is successfully
@@ -1186,7 +1186,7 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 	rohc_decomp_debug(stream->context, "decode packet as '%s'",
 	                  rohc_get_packet_descr(stream->packet_type));
 
-	/* only packets that carry static informations can be received in the
+	/* only packets that carry static information can be received in the
 	 * No Context state, other cannot */
 	if(stream->state == ROHC_DECOMP_STATE_NC &&
 	   !rohc_packet_carry_static_info(stream->packet_type))
@@ -1236,7 +1236,7 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 	                                &stream->packet_type, &stream->do_change_mode);
 	if(status != ROHC_STATUS_OK)
 	{
-		/* decompression failed, free ressources if necessary */
+		/* decompression failed, free resources if necessary */
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, profile->id,
 		             "failed to decompress packet (code = %d)", status);
 		if(is_new_context)
@@ -2199,7 +2199,7 @@ static bool rohc_decomp_feedback_nack(struct rohc_decomp *const decomp,
 		do_downward_transition = false;
 	}
 
-	/* update informations if feedback is sent or downward transition taken */
+	/* update information if feedback is sent or downward transition taken */
 	if(do_build_ack || do_downward_transition)
 	{
 		decomp->last_pkt_feedbacks[ack_type].sent |= 1;

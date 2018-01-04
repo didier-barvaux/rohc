@@ -627,7 +627,7 @@ static void usage(void)
 static void sniffer_interrupt(int signum)
 {
 	/* end the program with next captured packet */
-	SNIFFER_LOG(LOG_NOTICE, "signal %d catched", signum);
+	SNIFFER_LOG(LOG_NOTICE, "signal %d caught", signum);
 	stop_program = true;
 
 	/* for SIGSEGV/SIGABRT, close the PCAP dumps, print the last debug traces,
