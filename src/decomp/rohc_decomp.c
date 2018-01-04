@@ -3990,13 +3990,25 @@ static rohc_status_t rohc_decomp_find_context(struct rohc_decomp *const decomp,
 			goto error_malformed;
 		}
 		pkt_profile_id = remain_data[0];
-		*profile_id = pkt_profile_id; /* TODO: ROHCv2 profiles not handled yet */
 		remain_data++;
 		remain_len--;
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		           "profile octet 0x%02x found in IR(-CR|-DYN) packet",
+		           pkt_profile_id);
+
+		/* ROHCv1 or ROHCv2? use ROHCv2 if profile exists and is enabled */
+		if(rohc_decomp_profile_enabled(decomp, 0x0100 + pkt_profile_id))
+		{
+			*profile_id = 0x0100 + pkt_profile_id; /* ROHCv2 profile */
+		}
+		else
+		{
+			*profile_id = pkt_profile_id; /* ROHCv1 profile */
+		}
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		           "profile ID 0x%04x found in IR(-CR|-DYN) packet", *profile_id);
 
-		is_packet_ir_cr = !!(pkt_profile_id == ROHC_PROFILE_TCP && (pkt_type & 0x01) == 0);
+		is_packet_ir_cr = !!((*profile_id) == ROHC_PROFILE_TCP && (pkt_type & 0x01) == 0);
 		is_packet_ir = (is_packet_ir && !is_packet_ir_cr);
 	}
 	else
