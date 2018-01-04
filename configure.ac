@@ -797,7 +797,7 @@ AC_ARG_ENABLE(linux_kernel_module,
               [enable_linux_kmod=no])
 AM_CONDITIONAL([ROHC_LINUX_MODULE], [test "x$enable_linux_kmod" = "xyes"])
 
-# allow users to specify kernel soure directory
+# allow users to specify kernel source directory
 AC_ARG_WITH(linux_kernel_src,
             AS_HELP_STRING([--with-linux-kernel-src=DIR],
                            [Linux kernel sources directory]),

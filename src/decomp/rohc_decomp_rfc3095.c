@@ -2849,7 +2849,7 @@ static bool parse_uor2rtp(const struct rohc_decomp_ctxt *const context,
 			goto error;
 		}
 
-		/* UOR-2* packet overrided some context values, so reparsing with new
+		/* UOR-2* packet overridden some context values, so reparsing with new
 		 * assumptions is required */
 		rohc_info(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		          "packet needs to be reparsed with different assumptions "
@@ -3319,7 +3319,7 @@ static bool parse_uor2id(const struct rohc_decomp_ctxt *const context,
 			goto error;
 		}
 
-		/* UOR-2* packet overrided some context values, so reparsing with new
+		/* UOR-2* packet overridden some context values, so reparsing with new
 		 * assumptions is required */
 		rohc_info(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		          "packet needs to be reparsed with different assumptions "
@@ -3790,7 +3790,7 @@ static bool parse_uor2ts(const struct rohc_decomp_ctxt *const context,
 			goto error;
 		}
 
-		/* UOR-2* packet overrided some context values, so reparsing with new
+		/* UOR-2* packet overridden some context values, so reparsing with new
 		 * assumptions is required */
 		rohc_info(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		          "packet needs to be reparsed with different assumptions "

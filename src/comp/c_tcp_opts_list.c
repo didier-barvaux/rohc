@@ -267,7 +267,7 @@ static int c_tcp_type2index[TCP_LIST_ITEM_MAP_LEN] =
  *  - no more than \e ROHC_TCP_OPTS_MAX options are present,
  *  - each TCP options is present only once (except EOL and NOP).
  *
- * The following well-known TCP options shall have expected lengthes:
+ * The following well-known TCP options shall have expected lengths:
  *  - MSS shall be TCP_OLEN_MSS long,
  *  - WS shall be TCP_OLEN_WS long,
  *  - SACK Permitted shall be TCP_OLEN_SACK_PERM long,

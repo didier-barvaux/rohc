@@ -65,7 +65,7 @@
 /** A flag to indicate that the content of the IPv6 extension headers list
  *  changed in IP header */
 #define MOD_IPV6_EXT_LIST_CONTENT 0x0004
-/** A flag to indicate that an errror occurred */
+/** A flag to indicate that an error occurred */
 #define MOD_ERROR 0x0008
 
 

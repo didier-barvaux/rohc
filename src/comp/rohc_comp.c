@@ -2677,7 +2677,7 @@ static struct rohc_comp_ctxt *
 
 		/* several contexts may be used as basis for context replication:
 		 *  - drop the ones that are not fully established with decompressor (fully
-		 *    established means that the static part of the context was explicitely
+		 *    established means that the static part of the context was explicitly
 		 *    acknowledged by the decompressor through one ACK protected by a CRC),
 		 *  - keep the one that is the nearest from the new stream (more bytes
 		 *    in common) */

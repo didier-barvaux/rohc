@@ -3619,7 +3619,7 @@ static bool d_tcp_decode_bits_tcp_opts(const struct rohc_decomp_ctxt *const cont
 
 	rohc_decomp_debug(context, "decode %zu TCP options", bits->tcp_opts.nr);
 
-	/* copy the informations collected on TCP options */
+	/* copy the information collected on TCP options */
 	memcpy(&decoded->tcp_opts, &bits->tcp_opts, sizeof(struct d_tcp_opts_ctxt));
 
 	for(tcp_opt_id = 0; tcp_opt_id < decoded->tcp_opts.nr; tcp_opt_id++)
@@ -3828,7 +3828,7 @@ static void d_tcp_decode_opt_sack(const struct rohc_decomp_ctxt *const context,
  * @brief Build all of the uncompressed IP headers
  *
  * Build all of the uncompressed IP headers - IPv4 or IPv6 - from the context
- * and packet informations.
+ * and packet information.
  *
  * @param context             The decompression context
  * @param decoded             The values decoded from the ROHC packet
@@ -3876,7 +3876,7 @@ error:
  * @brief Build one single uncompressed IP header
  *
  * Build one single uncompressed IP header - IPv4 or IPv6 - from the context
- * and packet informations.
+ * and packet information.
  *
  * @param context             The decompression context
  * @param decoded             The values decoded from the ROHC packet
@@ -3919,7 +3919,7 @@ error:
  * @brief Build one single uncompressed IPv4 header
  *
  * Build one single uncompressed IPv4 header from the context and packet
- * informations.
+ * information.
  *
  * @param context             The decompression context
  * @param decoded             The values decoded from the ROHC packet
@@ -3989,7 +3989,7 @@ error:
  * @brief Build one single uncompressed IPv6 header
  *
  * Build one single uncompressed IPv6 header - including IPv6 extension
- * headers - from the context and packet informations.
+ * headers - from the context and packet information.
  *
  * @param context             The decompression context
  * @param decoded             The values decoded from the ROHC packet
@@ -4075,7 +4075,7 @@ error:
  * @brief Build the uncompressed TCP header
  *
  * Build the uncompressed TCP header - including the TCP options - from the
- * context and packet informations.
+ * context and packet information.
  *
  * @param context             The decompression context
  * @param decoded             The values decoded from ROHC header
@@ -4160,7 +4160,7 @@ error_too_small:
  * @brief Build the uncompressed headers
  *
  * Build all the uncompressed IP headers, TCP headers from the context and
- * packet informations.
+ * packet information.
  *
  * @param decomp                The ROHC decompressor
  * @param context               The decompression context
@@ -4568,7 +4568,7 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 	/* TCP checksum is sent every time, nothing to update in context */
 	/* TCP Urgent pointer is sent every time, nothing to update in context */
 
-	/* copy the informations collected on TCP options */
+	/* copy the information collected on TCP options */
 	tcp_context->tcp_opts.nr = decoded->tcp_opts.nr;
 	memcpy(&tcp_context->tcp_opts.structure, &decoded->tcp_opts.structure,
 	       sizeof(uint8_t) * ROHC_TCP_OPTS_MAX);

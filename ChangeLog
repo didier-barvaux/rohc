@@ -1,6 +1,6 @@
 6 December 2017 - release 2.1.0
   Compatibility:
-    - Version 2.1.0 is not guaranted to be 100% compatible with previous versions
+    - Version 2.1.0 is not guaranteed to be 100% compatible with previous versions
       with respect to packet format of the TCP profile because of several fixes
       related to IETF RFCs that change the format of ROHC/TCP packets.
     - The library API is fully compatible with versions 2.0.x.
