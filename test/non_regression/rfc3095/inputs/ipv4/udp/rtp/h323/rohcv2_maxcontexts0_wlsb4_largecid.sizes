@@ -50,9 +50,9 @@ compressor_num = 1	packet_num = 25	rohc_size = 201	packet_type = 13
 compressor_num = 2	packet_num = 25	rohc_size = 201	packet_type = 13
 compressor_num = 1	packet_num = 26	rohc_size = 681	packet_type = 13
 compressor_num = 2	packet_num = 26	rohc_size = 681	packet_type = 13
-compressor_num = 1	packet_num = 27	rohc_size = 201	packet_type = 13
-compressor_num = 2	packet_num = 27	rohc_size = 201	packet_type = 13
-compressor_num = 1	packet_num = 28	rohc_size = 201	packet_type = 13
+compressor_num = 1	packet_num = 27	rohc_size = 204	packet_type = 0
+compressor_num = 2	packet_num = 27	rohc_size = 207	packet_type = 0
+compressor_num = 1	packet_num = 28	rohc_size = 204	packet_type = 13
 compressor_num = 2	packet_num = 28	rohc_size = 201	packet_type = 13
 compressor_num = 1	packet_num = 29	rohc_size = 201	packet_type = 13
 compressor_num = 2	packet_num = 29	rohc_size = 201	packet_type = 13
