@@ -994,6 +994,7 @@ AC_CONFIG_FILES([ \
 	test/non_regression/Makefile \
 	test/non_regression/rfc3095/Makefile \
 	test/non_regression/rfc6846/Makefile \
+	test/non_regression/rfc5225/Makefile \
 	test/interop/Makefile \
 	examples/Makefile \
 	linux/Makefile \

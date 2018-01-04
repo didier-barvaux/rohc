@@ -5,7 +5,7 @@
 # Description: create and run the ROHC non-regression tests
 ################################################################################
 
-SUBDIRS = . rfc3095 rfc6846
+SUBDIRS = . rfc3095 rfc6846 rfc5225
 
 
 check_PROGRAMS = \
