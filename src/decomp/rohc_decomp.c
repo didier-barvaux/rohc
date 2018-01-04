@@ -2000,7 +2000,6 @@ static bool rohc_decomp_feedback_ack(struct rohc_decomp *const decomp,
 
 		/* FEEDBACK-1 or FEEDBACK-2 ? */
 		if(infos->profile_id == ROHC_PROFILE_UNCOMPRESSED ||
-		   infos->profile_id == ROHCv2_PROFILE_IP || /* TODO: ROHCv2 */
 		   (!infos->do_change_mode && infos->sn_bits_nr != 0 && infos->sn_bits_nr <= 8))
 		{
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
@@ -2154,8 +2153,7 @@ static bool rohc_decomp_feedback_nack(struct rohc_decomp *const decomp,
 	}
 
 	/* check if the decompressor shall build a negative feedback */
-	if(infos->profile_id == ROHC_PROFILE_UNCOMPRESSED ||
-	   infos->profile_id == ROHCv2_PROFILE_IP /* TODO: ROHCv2 */)
+	if(infos->profile_id == ROHC_PROFILE_UNCOMPRESSED)
 	{
 		/* the Uncompressed profile does not use negative feedback nor FEEDBACK-2 */
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
