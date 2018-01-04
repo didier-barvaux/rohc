@@ -51,7 +51,8 @@ rohc_comp_sources = \
 	../../src/comp/c_tcp_dynamic.c \
 	../../src/comp/c_tcp_replicate.c \
 	../../src/comp/c_tcp_irregular.c \
-	../../src/comp/c_tcp.c
+	../../src/comp/c_tcp.c \
+	../../src/comp/comp_rfc5225_ip.c
 
 rohc_decomp_sources = \
 	../../src/decomp/schemes/decomp_wlsb.c \
