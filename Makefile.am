@@ -156,7 +156,7 @@ checkpatch:
 # files and man pages
 # https://github.com/lucasdemarchi/codespell
 codespell:
-	$(AM_V_GEN)codespell.py \
+	$(AM_V_GEN)codespell \
 		`find . -name \*.md -or -name \*.7.in -or -name ChangeLog -or -name README` \
 		`find . -name configure.ac -or -name Makefile.am` \
 		`find . -name \*.c -or -name \*.h`
