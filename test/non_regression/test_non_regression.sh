@@ -127,6 +127,8 @@ else
 	CMD_PARAMS="${CMD_PARAMS} ${CID_TYPE} ${CAPTURE_SOURCE}"
 	if [ "${VERBOSE}" = "verbose" ] ; then
 		CMD_PARAMS="${CMD_PARAMS} --verbose"
+	else
+		CMD_PARAMS="${CMD_PARAMS} --quiet"
 	fi
 	CMD="${APP} ${CMD_PARAMS} -c ${CAPTURE_COMPARE}"
 	CMD_PYTHON="${CMD_PYTHON} ${CMD_PARAMS} -c ${CAPTURE_COMPARE}"
