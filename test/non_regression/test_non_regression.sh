@@ -62,7 +62,7 @@ if [ "x$MAKELEVEL" != "x" ] ; then
 	APP="../test_non_regression${KERNEL_SUFFIX}${CROSS_COMPILATION_EXEEXT}"
 	APP_PYTHON="python${USE_PYTHON} ../../../contrib/python/test_non_regression.py"
 else
-	BASEDIR=$( dirname "${SCRIPT}" )
+	BASEDIR="$( dirname "${SCRIPT}" )/../"
 	APP="${BASEDIR}/../test_non_regression${KERNEL_SUFFIX}${CROSS_COMPILATION_EXEEXT}"
 	APP_PYTHON="python${USE_PYTHON} ${BASEDIR}/../../../contrib/python/test_non_regression.py"
 fi
