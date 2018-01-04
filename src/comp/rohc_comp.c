@@ -1492,7 +1492,7 @@ bool rohc_comp_enable_profile(struct rohc_comp *const comp,
 	/* mark the profile as enabled */
 	comp->enabled_profiles[i] = true;
 	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	          "ROHC compression profile (ID = %d) enabled", profile);
+	          "ROHC compression profile (ID = 0x%04x) enabled", profile);
 
 	return true;
 
@@ -1554,7 +1554,7 @@ bool rohc_comp_disable_profile(struct rohc_comp *const comp,
 	/* mark the profile as disabled */
 	comp->enabled_profiles[i] = false;
 	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	          "ROHC compression profile (ID = %d) disabled", profile);
+	          "ROHC compression profile (ID = 0x%04x) disabled", profile);
 
 	return true;
 
