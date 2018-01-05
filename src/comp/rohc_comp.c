@@ -1066,7 +1066,7 @@ bool rohc_comp_force_contexts_reinit(struct rohc_comp *const comp)
 	{
 		if(comp->contexts[i].used)
 		{
-			if(!comp->contexts[i].profile->reinit_context(&(comp->contexts[i])))
+			if(!rohc_comp_reinit_context(&(comp->contexts[i])))
 			{
 				rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 				             "failed to force re-initialization for CID %zu", i);

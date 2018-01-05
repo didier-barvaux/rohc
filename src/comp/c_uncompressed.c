@@ -82,9 +82,6 @@ static int uncompressed_code_normal_packet(const struct rohc_comp_ctxt *const co
                                            size_t *const payload_offset)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
-/* re-initialize a context */
-static bool c_uncompressed_reinit_context(struct rohc_comp_ctxt *const context);
-
 /* deliver feedbacks */
 static bool uncomp_feedback(struct rohc_comp_ctxt *const context,
                             const enum rohc_feedback_type feedback_type,
@@ -226,27 +223,6 @@ static int c_uncompressed_encode(struct rohc_comp_ctxt *const context,
 	                                packet_type, payload_offset);
 
 	return size;
-}
-
-
-/**
- * @brief Re-initialize a given context
- *
- * This function is one of the functions that must exist in one profile for the
- * framework to work.
- *
- * @param context  The compression context
- * @return         true in case of success, false otherwise
- */
-static bool c_uncompressed_reinit_context(struct rohc_comp_ctxt *const context)
-{
-	assert(context != NULL);
-
-	/* go back to U-mode and IR state */
-	rohc_comp_change_mode(context, ROHC_U_MODE);
-	rohc_comp_change_state(context, ROHC_COMP_STATE_IR);
-
-	return true;
 }
 
 
@@ -619,7 +595,6 @@ const struct rohc_comp_profile c_uncompressed_profile =
 	.check_profile  = c_uncompressed_check_profile,
 	.check_context  = c_uncompressed_check_context,
 	.encode         = c_uncompressed_encode,
-	.reinit_context = c_uncompressed_reinit_context,
 	.feedback       = uncomp_feedback,
 };
 

@@ -821,7 +821,6 @@ const struct rohc_comp_profile c_udp_lite_profile =
 	.check_profile  = c_udp_lite_check_profile,
 	.check_context  = c_udp_lite_check_context,
 	.encode         = c_udp_lite_encode,
-	.reinit_context = rohc_comp_reinit_context,
 	.feedback       = rohc_comp_rfc3095_feedback,
 };
 

@@ -515,7 +515,6 @@ const struct rohc_comp_profile c_ip_profile =
 	.check_profile  = rohc_comp_rfc3095_check_profile,
 	.check_context  = c_ip_check_context,
 	.encode         = rohc_comp_rfc3095_encode,
-	.reinit_context = rohc_comp_reinit_context,
 	.feedback       = rohc_comp_rfc3095_feedback,
 };
 

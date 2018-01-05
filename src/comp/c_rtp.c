@@ -1449,7 +1449,6 @@ const struct rohc_comp_profile c_rtp_profile =
 	.check_profile  = c_rtp_check_profile,
 	.check_context  = c_rtp_check_context,
 	.encode         = c_rtp_encode,
-	.reinit_context = rohc_comp_reinit_context,
 	.feedback       = rohc_comp_rfc3095_feedback,
 };
 

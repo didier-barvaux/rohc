@@ -443,7 +443,6 @@ const struct rohc_comp_profile c_esp_profile =
 	.check_profile  = c_esp_check_profile,
 	.check_context  = c_esp_check_context,
 	.encode         = c_esp_encode,
-	.reinit_context = rohc_comp_reinit_context,
 	.feedback       = rohc_comp_rfc3095_feedback,
 };
 

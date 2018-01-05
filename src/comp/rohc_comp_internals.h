@@ -304,12 +304,6 @@ struct rohc_comp_profile
 		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
 
 	/**
-	 * @brief The handler used to re-initialize a context
-	 */
-	bool (*reinit_context)(struct rohc_comp_ctxt *const context)
-		__attribute__((nonnull(1), warn_unused_result));
-
-	/**
 	 * @brief The handler used to warn the profile-specific part of the
 	 *        context about the arrival of feedback data
 	 */

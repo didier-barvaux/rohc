@@ -580,7 +580,6 @@ const struct rohc_comp_profile c_udp_profile =
 	.check_profile  = c_udp_check_profile,
 	.check_context  = c_udp_check_context,
 	.encode         = c_udp_encode,
-	.reinit_context = rohc_comp_reinit_context,
 	.feedback       = rohc_comp_rfc3095_feedback,
 };
 

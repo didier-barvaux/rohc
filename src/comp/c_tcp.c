@@ -5661,7 +5661,6 @@ const struct rohc_comp_profile c_tcp_profile =
 	.check_profile  = c_tcp_check_profile,
 	.check_context  = c_tcp_check_context,
 	.encode         = c_tcp_encode,
-	.reinit_context = rohc_comp_reinit_context,
 	.feedback       = c_tcp_feedback,
 };
 
