@@ -30,9 +30,20 @@
 #include "protocols/ip.h"
 #include "schemes/cid.h"
 #include "schemes/ipv6_exts.h"
+#include "schemes/ip_ctxt.h"
 #include "crc.h"
 
 #include <assert.h>
+
+
+/** Define the ROHCv2 IP-only part of the profile compression context */
+struct rohc_comp_rfc5225_ip_ctxt
+{
+	uint16_t msn;  /**< The Master Sequence Number (MSN) */
+
+	ip_context_t ip_contexts[ROHC_MAX_IP_HDRS];
+	size_t ip_contexts_nr;
+};
 
 
 /*
@@ -119,13 +130,124 @@ static void rohc_comp_rfc5225_ip_decide_state(struct rohc_comp_ctxt *const conte
 static bool rohc_comp_rfc5225_ip_create(struct rohc_comp_ctxt *const context,
                                         const struct net_pkt *const packet)
 {
-	assert(context != NULL);
-	assert(context->profile != NULL);
-	assert(packet != NULL);
+	const struct rohc_comp *const comp = context->compressor;
+	struct rohc_comp_rfc5225_ip_ctxt *rfc5225_ctxt;
+	const uint8_t *remain_data = packet->outer_ip.data;
+	size_t remain_len = packet->outer_ip.size;
+	uint8_t proto;
 
-	context->specific = NULL;
+	/* create the ROHCv2 IP-only part of the profile context */
+	rfc5225_ctxt = calloc(1, sizeof(struct rohc_comp_rfc5225_ip_ctxt));
+	if(rfc5225_ctxt == NULL)
+	{
+		rohc_error(comp, ROHC_TRACE_COMP, context->profile->id,
+		           "no memory for the ROHCv2 IP-only part of the profile context");
+		goto error;
+	}
+	context->specific = rfc5225_ctxt;
+
+	/* create contexts for IP headers and their extensions */
+	rfc5225_ctxt->ip_contexts_nr = 0;
+	do
+	{
+		const struct ip_hdr *const ip = (struct ip_hdr *) remain_data;
+		ip_context_t *const ip_context =
+			&(rfc5225_ctxt->ip_contexts[rfc5225_ctxt->ip_contexts_nr]);
+
+		/* retrieve IP version */
+		assert(remain_len >= sizeof(struct ip_hdr));
+		rohc_comp_debug(context, "found IPv%d", ip->version);
+		ip_context->version = ip->version;
+		ip_context->ctxt.vx.version = ip->version;
+
+		switch(ip->version)
+		{
+			case IPV4:
+			{
+				const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) remain_data;
+
+				assert(remain_len >= sizeof(struct ipv4_hdr));
+				proto = ipv4->protocol;
+
+				ip_context->ctxt.v4.last_ip_id = rohc_ntoh16(ipv4->id);
+				rohc_comp_debug(context, "IP-ID 0x%04x", ip_context->ctxt.v4.last_ip_id);
+				ip_context->ctxt.v4.last_ip_id_behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
+				ip_context->ctxt.v4.ip_id_behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
+				ip_context->ctxt.v4.protocol = proto;
+				ip_context->ctxt.v4.dscp = ipv4->dscp;
+				ip_context->ctxt.v4.df = ipv4->df;
+				ip_context->ctxt.v4.ttl = ipv4->ttl;
+				ip_context->ctxt.v4.src_addr = ipv4->saddr;
+				ip_context->ctxt.v4.dst_addr = ipv4->daddr;
+
+				remain_data += sizeof(struct ipv4_hdr);
+				remain_len -= sizeof(struct ipv4_hdr);
+				break;
+			}
+			case IPV6:
+			{
+				const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
+
+				assert(remain_len >= sizeof(struct ipv6_hdr));
+				proto = ipv6->nh;
+
+				ip_context->ctxt.v6.ip_id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
+				ip_context->ctxt.v6.dscp = remain_data[1];
+				ip_context->ctxt.v6.hopl = ipv6->hl;
+				ip_context->ctxt.v6.flow_label = ipv6_get_flow_label(ipv6);
+				memcpy(ip_context->ctxt.v6.src_addr, &ipv6->saddr,
+				       sizeof(struct ipv6_addr));
+				memcpy(ip_context->ctxt.v6.dest_addr, &ipv6->daddr,
+				       sizeof(struct ipv6_addr));
+
+				remain_data += sizeof(struct ipv6_hdr);
+				remain_len -= sizeof(struct ipv6_hdr);
+
+				rohc_comp_debug(context, "parse IPv6 extension headers");
+				while(rohc_is_ipv6_opt(proto))
+				{
+					const struct ipv6_opt *const ipv6_opt = (struct ipv6_opt *) remain_data;
+					size_t opt_len;
+					assert(remain_len >= sizeof(struct ipv6_opt));
+					opt_len = ipv6_opt_get_length(ipv6_opt);
+					rohc_comp_debug(context, "  IPv6 extension header is %zu-byte long",
+					                opt_len);
+					remain_data += opt_len;
+					remain_len -= opt_len;
+					proto = ipv6_opt->next_header;
+				}
+				ip_context->ctxt.v6.next_header = proto;
+				break;
+			}
+			default:
+			{
+				goto free_context;
+			}
+		}
+
+		rfc5225_ctxt->ip_contexts_nr++;
+	}
+	while(rohc_is_tunneling(proto) && rfc5225_ctxt->ip_contexts_nr < ROHC_MAX_IP_HDRS);
+
+	/* profile cannot handle the packet if it bypasses internal limit of IP headers */
+	if(rohc_is_tunneling(proto))
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "too many IP headers for TCP profile (%u headers max)",
+		           ROHC_MAX_IP_HDRS);
+		goto free_context;
+	}
+
+	/* init the Master Sequence Number to a random value */
+	rfc5225_ctxt->msn = comp->random_cb(comp, comp->random_cb_ctxt) & 0xffff;
+	rohc_comp_debug(context, "MSN = 0x%04x / %u", rfc5225_ctxt->msn, rfc5225_ctxt->msn);
 
 	return true;
+
+free_context:
+	free(rfc5225_ctxt);
+error:
+	return false;
 }
 
 
@@ -135,11 +257,13 @@ static bool rohc_comp_rfc5225_ip_create(struct rohc_comp_ctxt *const context,
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param context The compression context
+ * @param context The ROHCv2 IP-only compression context to destroy
  */
 static void rohc_comp_rfc5225_ip_destroy(struct rohc_comp_ctxt *const context)
 {
-	zfree(context->specific);
+	struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = context->specific;
+
+	free(rfc5225_ctxt);
 }
 
 
@@ -315,23 +439,177 @@ bad_profile:
 
 
 /**
- * @brief Check if an uncompressed packet belongs to the ROHCv2 IP-only context
+ * @brief Check if the IP packet belongs to the given ROHCv2 IP-only context
  *
+ * Conditions are:
+ *  - the number of IP headers must be the same as in context
+ *  - IP version of all the IP headers must be the same as in context
+ *  - IP packets must not be fragmented
+ *  - the source and destination addresses of the two IP headers must match
+ *    the ones in the context
+ *  - IPv6 only: the Flow Label of all the IP headers must match the ones the
+ *    context
+ *
+
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
  * @param context        The compression context
- * @param packet         The packet to check
+ * @param packet         The IP packet to check
  * @param[out] cr_score  The score of the context for Context Replication (CR)
- * @return               Always return true to tell that the packet belongs
- *                       to the context
+ * @return               true if the IP packet belongs to the context
+ *                       false if it does not belong to the context
+ *
+ * @todo TODO: the code that parses IP headers in IP/UDP/RTP profiles could
+ *             probably be re-used (and maybe enhanced if needed)
  */
-static bool rohc_comp_rfc5225_ip_check_context(const struct rohc_comp_ctxt *const context __attribute__((unused)),
-                                               const struct net_pkt *const packet __attribute__((unused)),
+static bool rohc_comp_rfc5225_ip_check_context(const struct rohc_comp_ctxt *const context,
+                                               const struct net_pkt *const packet,
                                                size_t *const cr_score)
 {
-	*cr_score = 0; /* Context Replication is useless from ROHCv2 IP-only profile */
+	struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = context->specific;
+	const uint8_t *remain_data = packet->outer_ip.data;
+	size_t remain_len = packet->outer_ip.size;
+	size_t ip_hdr_pos;
+	uint8_t next_proto = ROHC_IPPROTO_IPIP;
+
+	*cr_score = 0; /* Context Replication is not defined for ROHCv2 IP-only profile */
+
+	/* parse the IP headers (lengths already checked while checking profile) */
+	for(ip_hdr_pos = 0;
+	    ip_hdr_pos < rfc5225_ctxt->ip_contexts_nr && rohc_is_tunneling(next_proto);
+	    ip_hdr_pos++)
+	{
+		const struct ip_hdr *const ip = (struct ip_hdr *) remain_data;
+		const ip_context_t *const ip_context = &(rfc5225_ctxt->ip_contexts[ip_hdr_pos]);
+		size_t ip_ext_pos;
+
+		/* retrieve IP version */
+		assert(remain_len >= sizeof(struct ip_hdr));
+		rohc_comp_debug(context, "found IPv%d", ip->version);
+		if(ip->version != ip_context->version)
+		{
+			rohc_comp_debug(context, "  not same IP version");
+			goto bad_context;
+		}
+
+		if(ip->version == IPV4)
+		{
+			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) remain_data;
+
+			assert(remain_len >= sizeof(struct ipv4_hdr));
+
+			/* check source address */
+			if(ipv4->saddr != ip_context->ctxt.v4.src_addr)
+			{
+				rohc_comp_debug(context, "  not same IPv4 source addresses");
+				goto bad_context;
+			}
+			rohc_comp_debug(context, "  same IPv4 source addresses");
+
+			/* check destination address */
+			if(ipv4->daddr != ip_context->ctxt.v4.dst_addr)
+			{
+				rohc_comp_debug(context, "  not same IPv4 destination addresses");
+				goto bad_context;
+			}
+			rohc_comp_debug(context, "  same IPv4 destination addresses");
+
+			/* check transport protocol */
+			next_proto = ipv4->protocol;
+			if(next_proto != ip_context->ctxt.v4.protocol)
+			{
+				rohc_comp_debug(context, "  IPv4 not same protocol");
+				goto bad_context;
+			}
+			rohc_comp_debug(context, "  IPv4 same protocol %d", next_proto);
+
+			/* skip IPv4 header */
+			remain_data += sizeof(struct ipv4_hdr);
+			remain_len -= sizeof(struct ipv4_hdr);
+		}
+		else if(ip->version == IPV6)
+		{
+			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
+
+			assert(remain_len >= sizeof(struct ipv6_hdr));
+
+			/* check source address */
+			if(memcmp(&ipv6->saddr, ip_context->ctxt.v6.src_addr,
+			          sizeof(struct ipv6_addr)) != 0)
+			{
+				rohc_comp_debug(context, "  not same IPv6 source addresses");
+				goto bad_context;
+			}
+			rohc_comp_debug(context, "  same IPv6 source addresses");
+
+			/* check destination address */
+			if(memcmp(&ipv6->daddr, ip_context->ctxt.v6.dest_addr,
+			          sizeof(struct ipv6_addr)) != 0)
+			{
+				rohc_comp_debug(context, "  not same IPv6 destination addresses");
+				goto bad_context;
+			}
+			rohc_comp_debug(context, "  same IPv6 destination addresses");
+
+			/* check Flow Label */
+			if(ipv6_get_flow_label(ipv6) != ip_context->ctxt.v6.flow_label)
+			{
+				rohc_comp_debug(context, "  not same IPv6 flow label");
+				goto bad_context;
+			}
+			rohc_comp_debug(context, "  same IPv6 flow label");
+
+			/* skip IPv6 base header */
+			remain_data += sizeof(struct ipv6_hdr);
+			remain_len -= sizeof(struct ipv6_hdr);
+
+			/* find transport header/protocol, skip any IPv6 extension headers */
+			next_proto = ipv6->nh;
+			for(ip_ext_pos = 0; rohc_is_ipv6_opt(next_proto); ip_ext_pos++)
+			{
+				const struct ipv6_opt *const ipv6_opt = (struct ipv6_opt *) remain_data;
+				size_t opt_len;
+				assert(remain_len >= sizeof(struct ipv6_opt));
+				opt_len = ipv6_opt_get_length(ipv6_opt);
+				remain_data += opt_len;
+				remain_len -= opt_len;
+				next_proto = ipv6_opt->next_header;
+			}
+
+			/* check transport header protocol */
+			if(next_proto != ip_context->ctxt.v6.next_header)
+			{
+				rohc_comp_debug(context, "  IPv6 not same protocol %u", next_proto);
+				goto bad_context;
+			}
+			rohc_comp_debug(context, "  IPv6 same protocol %u", next_proto);
+		}
+		else
+		{
+			rohc_comp_warn(context, "unsupported version %u for header #%zu",
+			               ip->version, ip_hdr_pos + 1);
+			assert(0);
+			goto bad_context;
+		}
+	}
+
+	if(ip_hdr_pos < rfc5225_ctxt->ip_contexts_nr)
+	{
+		rohc_comp_debug(context, "  less IP headers than context");
+		goto bad_context;
+	}
+
+	if(rohc_is_tunneling(next_proto))
+	{
+		rohc_comp_debug(context, "  more IP headers than context");
+		goto bad_context;
+	}
+
 	return true;
+
+bad_context:
+	return false;
 }
 
 
@@ -741,6 +1019,7 @@ const struct rohc_comp_profile rohc_comp_rfc5225_ip_profile =
 	.id             = ROHCv2_PROFILE_IP, /* profile ID (RFC5225, ROHCv2 IP) */
 	.protocol       = 0,                               /* IP protocol */
 	.create         = rohc_comp_rfc5225_ip_create,     /* profile handlers */
+	.clone          = NULL,
 	.destroy        = rohc_comp_rfc5225_ip_destroy,
 	.check_profile  = rohc_comp_rfc5225_ip_check_profile,
 	.check_context  = rohc_comp_rfc5225_ip_check_context,
