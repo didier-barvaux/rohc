@@ -426,7 +426,6 @@ struct rohc_tcp_decoded_ip_values
 	uint8_t proto;       /**< The decoded protocol/NH field */
 	uint8_t nbo:1;       /**< The decoded NBO field (IPv4 only) */
 	uint8_t rnd:1;       /**< The decoded RND field (IPv4 only) */
-	uint8_t sid:1;       /**< The decoded SID field (IPv4 only) */
 	uint32_t flowid:20;  /**< The decoded flow ID field (IPv6 only) */
 	uint8_t saddr[16];   /**< The decoded source address field */
 	uint8_t daddr[16];   /**< The decoded destination address field */
