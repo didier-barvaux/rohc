@@ -365,8 +365,8 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
  * Misc functions
  */
 
-static tcp_ip_id_behavior_t tcp_detect_ip_id_behavior(const uint16_t last_ip_id,
-                                                      const uint16_t new_ip_id)
+static rohc_ip_id_behavior_t tcp_detect_ip_id_behavior(const uint16_t last_ip_id,
+                                                       const uint16_t new_ip_id)
 	__attribute__((warn_unused_result, const));
 
 static void tcp_detect_ecn_used_behavior(struct rohc_comp_ctxt *const context,
@@ -533,8 +533,8 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 
 				ip_context->ctxt.v4.last_ip_id = rohc_ntoh16(ipv4->id);
 				rohc_comp_debug(context, "IP-ID 0x%04x", ip_context->ctxt.v4.last_ip_id);
-				ip_context->ctxt.v4.last_ip_id_behavior = IP_ID_BEHAVIOR_SEQ;
-				ip_context->ctxt.v4.ip_id_behavior = IP_ID_BEHAVIOR_SEQ;
+				ip_context->ctxt.v4.last_ip_id_behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
+				ip_context->ctxt.v4.ip_id_behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
 				ip_context->ctxt.v4.protocol = proto;
 				ip_context->ctxt.v4.dscp = ipv4->dscp;
 				ip_context->ctxt.v4.df = ipv4->df;
@@ -553,7 +553,7 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 				assert(remain_len >= sizeof(struct ipv6_hdr));
 				proto = ipv6->nh;
 
-				ip_context->ctxt.v6.ip_id_behavior = IP_ID_BEHAVIOR_RAND;
+				ip_context->ctxt.v6.ip_id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
 				ip_context->ctxt.v6.dscp = remain_data[1];
 				ip_context->ctxt.v6.ttl_hopl = ipv6->hl;
 				ip_context->ctxt.v6.flow_label = ipv6_get_flow_label(ipv6);
@@ -2375,7 +2375,7 @@ static int c_tcp_build_rnd_8(const struct rohc_comp_ctxt *const context,
 		bool no_item_needed;
 		rnd8->list_present = 1;
 		ret = c_tcp_code_tcp_opts_list_item(context, tcp, tcp_context->msn,
-		                                    ROHC_TCP_CHAIN_CO, &tcp_context->tcp_opts,
+		                                    ROHC_CHAIN_CO, &tcp_context->tcp_opts,
 		                                    rnd8->options,
 		                                    rohc_max_len - sizeof(rnd_8_t),
 		                                    &no_item_needed);
@@ -2915,7 +2915,7 @@ static int c_tcp_build_seq_8(const struct rohc_comp_ctxt *const context,
 		bool no_item_needed;
 		seq8->list_present = 1;
 		ret = c_tcp_code_tcp_opts_list_item(context, tcp, tcp_context->msn,
-		                                    ROHC_TCP_CHAIN_CO, &tcp_context->tcp_opts,
+		                                    ROHC_CHAIN_CO, &tcp_context->tcp_opts,
 		                                    seq8->options,
 		                                    rohc_max_len - sizeof(seq_8_t),
 		                                    &no_item_needed);
@@ -3125,7 +3125,7 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 		// =:= irregular(1) [ 1 ];
 		co_common->ip_id_indicator = 0;
 		// =:= ip_id_behavior_choice(true) [ 2 ];
-		co_common->ip_id_behavior = IP_ID_BEHAVIOR_RAND;
+		co_common->ip_id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
 		rohc_comp_debug(context, "ip_id_indicator = %d, "
 		                "ip_id_behavior = %d (innermost IP-ID encoded on 0 byte)",
 		                co_common->ip_id_indicator, co_common->ip_id_behavior);
@@ -3263,7 +3263,7 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 		bool no_item_needed;
 		co_common->list_present = 1;
 		ret = c_tcp_code_tcp_opts_list_item(context, tcp, tcp_context->msn,
-		                                    ROHC_TCP_CHAIN_CO, &tcp_context->tcp_opts,
+		                                    ROHC_CHAIN_CO, &tcp_context->tcp_opts,
 		                                    co_common_opt, rohc_remain_len,
 		                                    &no_item_needed);
 		if(ret < 0)
@@ -3457,14 +3457,14 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 		const uint16_t ip_id = rohc_ntoh16(inner_ipv4_hdr->id);
 
 		rohc_comp_debug(context, "IP-ID behaved as %s",
-		                tcp_ip_id_behavior_get_descr((*ip_inner_ctxt)->ctxt.v4.ip_id_behavior));
+		                rohc_ip_id_behavior_get_descr((*ip_inner_ctxt)->ctxt.v4.ip_id_behavior));
 		rohc_comp_debug(context, "IP-ID = 0x%04x -> 0x%04x",
 		                (*ip_inner_ctxt)->ctxt.v4.last_ip_id, ip_id);
 
 		if(context->num_sent_packets == 0)
 		{
 			/* first packet, be optimistic: choose sequential behavior */
-			(*ip_inner_ctxt)->ctxt.v4.ip_id_behavior = IP_ID_BEHAVIOR_SEQ;
+			(*ip_inner_ctxt)->ctxt.v4.ip_id_behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
 		}
 		else
 		{
@@ -3472,7 +3472,7 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 				tcp_detect_ip_id_behavior((*ip_inner_ctxt)->ctxt.v4.last_ip_id, ip_id);
 		}
 		rohc_comp_debug(context, "IP-ID now behaves as %s",
-		                tcp_ip_id_behavior_get_descr((*ip_inner_ctxt)->ctxt.v4.ip_id_behavior));
+		                rohc_ip_id_behavior_get_descr((*ip_inner_ctxt)->ctxt.v4.ip_id_behavior));
 	}
 
 	/* find the offset of the payload and its size */
@@ -3948,7 +3948,7 @@ static bool tcp_encode_uncomp_ip_fields(struct rohc_comp_ctxt *const context,
 		                       tcp_context->tmp.ip_id_behavior_changed, 0);
 
 		/* compute the new IP-ID / SN delta */
-		if(inner_ip_ctxt->ctxt.v4.ip_id_behavior == IP_ID_BEHAVIOR_SEQ_SWAP)
+		if(inner_ip_ctxt->ctxt.v4.ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
 		{
 			/* specific case of IP-ID delta for sequential swapped behavior */
 			tcp_context->tmp.ip_id_delta = swab16(ip_id) - tcp_context->msn;
@@ -3968,8 +3968,8 @@ static bool tcp_encode_uncomp_ip_fields(struct rohc_comp_ctxt *const context,
 		}
 
 		/* how many bits are required to encode the new IP-ID / SN delta ? */
-		if(inner_ip_ctxt->ctxt.v4.ip_id_behavior != IP_ID_BEHAVIOR_SEQ &&
-		   inner_ip_ctxt->ctxt.v4.ip_id_behavior != IP_ID_BEHAVIOR_SEQ_SWAP)
+		if(inner_ip_ctxt->ctxt.v4.ip_id_behavior != ROHC_IP_ID_BEHAVIOR_SEQ &&
+		   inner_ip_ctxt->ctxt.v4.ip_id_behavior != ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
 		{
 			/* send all bits if IP-ID behavior is not sequential */
 			tcp_context->tmp.nr_ip_id_bits_3 = 16;
@@ -4592,18 +4592,18 @@ static rohc_packet_t tcp_decide_FO_SO_packet(const struct rohc_comp_ctxt *const 
 		 *  - use common if too many LSB of sequence number are required
 		 *  - use common if too many LSB of innermost TTL/Hop Limit are required
 		 *  - use common if window changed */
-		if(ip_inner_context->ctxt.vx.ip_id_behavior <= IP_ID_BEHAVIOR_SEQ_SWAP &&
+		if(ip_inner_context->ctxt.vx.ip_id_behavior <= ROHC_IP_ID_BEHAVIOR_SEQ_SWAP &&
 		   tcp_context->tmp.nr_ip_id_bits_3 <= 4 &&
 		   nr_seq_bits_8191 <= 14 &&
 		   nr_ack_bits_8191 <= 15 &&
 		   tcp_context->tmp.nr_ttl_hopl_bits <= 3 &&
 		   !tcp_context->tmp.tcp_window_changed)
 		{
-			/* IP_ID_BEHAVIOR_SEQ or IP_ID_BEHAVIOR_SEQ_SWAP */
+			/* ROHC_IP_ID_BEHAVIOR_SEQ or ROHC_IP_ID_BEHAVIOR_SEQ_SWAP */
 			TRACE_GOTO_CHOICE;
 			packet_type = ROHC_PACKET_TCP_SEQ_8;
 		}
-		else if(ip_inner_context->ctxt.vx.ip_id_behavior > IP_ID_BEHAVIOR_SEQ_SWAP &&
+		else if(ip_inner_context->ctxt.vx.ip_id_behavior > ROHC_IP_ID_BEHAVIOR_SEQ_SWAP &&
 		        nr_seq_bits_65535 <= 16 &&
 		        tcp_context->tmp.nr_ack_bits_16383 <= 16 &&
 		        tcp_context->tmp.nr_ttl_hopl_bits <= 3 &&
@@ -4618,16 +4618,16 @@ static rohc_packet_t tcp_decide_FO_SO_packet(const struct rohc_comp_ctxt *const 
 			packet_type = ROHC_PACKET_TCP_CO_COMMON;
 		}
 	}
-	else if(ip_inner_context->ctxt.vx.ip_id_behavior <= IP_ID_BEHAVIOR_SEQ_SWAP)
+	else if(ip_inner_context->ctxt.vx.ip_id_behavior <= ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
 	{
-		/* IP_ID_BEHAVIOR_SEQ or IP_ID_BEHAVIOR_SEQ_SWAP:
+		/* ROHC_IP_ID_BEHAVIOR_SEQ or ROHC_IP_ID_BEHAVIOR_SEQ_SWAP:
 		 * co_common or seq_X packet types */
 		packet_type = tcp_decide_FO_SO_packet_seq(context, tcp, crc7_at_least);
 	}
-	else if(ip_inner_context->ctxt.vx.ip_id_behavior == IP_ID_BEHAVIOR_RAND ||
-	        ip_inner_context->ctxt.vx.ip_id_behavior == IP_ID_BEHAVIOR_ZERO)
+	else if(ip_inner_context->ctxt.vx.ip_id_behavior == ROHC_IP_ID_BEHAVIOR_RAND ||
+	        ip_inner_context->ctxt.vx.ip_id_behavior == ROHC_IP_ID_BEHAVIOR_ZERO)
 	{
-		/* IP_ID_BEHAVIOR_RAND or IP_ID_BEHAVIOR_ZERO:
+		/* ROHC_IP_ID_BEHAVIOR_RAND or ROHC_IP_ID_BEHAVIOR_ZERO:
 		 * co_common or rnd_X packet types */
 		packet_type = tcp_decide_FO_SO_packet_rnd(context, tcp, crc7_at_least);
 	}
@@ -5019,18 +5019,18 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
  *
  * @param last_ip_id  The IP-ID value of the previous packet (in HBO)
  * @param new_ip_id   The IP-ID value of the current packet (in HBO)
- * @return            The IP-ID behavior among: IP_ID_BEHAVIOR_SEQ,
- *                    IP_ID_BEHAVIOR_SEQ_SWAP, IP_ID_BEHAVIOR_ZERO, or
- *                    IP_ID_BEHAVIOR_RAND
+ * @return            The IP-ID behavior among: ROHC_IP_ID_BEHAVIOR_SEQ,
+ *                    ROHC_IP_ID_BEHAVIOR_SEQ_SWAP, ROHC_IP_ID_BEHAVIOR_ZERO, or
+ *                    ROHC_IP_ID_BEHAVIOR_RAND
  */
-static tcp_ip_id_behavior_t tcp_detect_ip_id_behavior(const uint16_t last_ip_id,
-                                                      const uint16_t new_ip_id)
+static rohc_ip_id_behavior_t tcp_detect_ip_id_behavior(const uint16_t last_ip_id,
+                                                       const uint16_t new_ip_id)
 {
-	tcp_ip_id_behavior_t behavior;
+	rohc_ip_id_behavior_t behavior;
 
 	if(is_ip_id_increasing(last_ip_id, new_ip_id))
 	{
-		behavior = IP_ID_BEHAVIOR_SEQ;
+		behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
 	}
 	else
 	{
@@ -5039,15 +5039,15 @@ static tcp_ip_id_behavior_t tcp_detect_ip_id_behavior(const uint16_t last_ip_id,
 
 		if(is_ip_id_increasing(swapped_last_ip_id, swapped_new_ip_id))
 		{
-			behavior = IP_ID_BEHAVIOR_SEQ_SWAP;
+			behavior = ROHC_IP_ID_BEHAVIOR_SEQ_SWAP;
 		}
 		else if(new_ip_id == 0)
 		{
-			behavior = IP_ID_BEHAVIOR_ZERO;
+			behavior = ROHC_IP_ID_BEHAVIOR_ZERO;
 		}
 		else
 		{
-			behavior = IP_ID_BEHAVIOR_RAND;
+			behavior = ROHC_IP_ID_BEHAVIOR_RAND;
 		}
 	}
 

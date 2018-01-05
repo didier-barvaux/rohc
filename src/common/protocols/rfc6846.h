@@ -44,19 +44,6 @@
 #define ROHC_PACKET_TYPE_IR_DYN  0xF8
 
 
-/**
- * @brief The different chains used by the TCP profile
- */
-typedef enum
-{
-	ROHC_TCP_CHAIN_STATIC    = 0,  /**< The TCP static chain */
-	ROHC_TCP_CHAIN_DYNAMIC   = 1,  /**< The TCP dynamic chain */
-	ROHC_TCP_CHAIN_REPLICATE = 2,  /**< The TCP replicate chain */
-	ROHC_TCP_CHAIN_IRREGULAR = 3,  /**< The TCP irregular chain */
-	ROHC_TCP_CHAIN_CO        = 4,  /**< Not a chain, but in CO packet */
-
-} rohc_tcp_chain_t;
-
 
 /************************************************************************
  * Compressed TCP options                                             *
@@ -127,16 +114,6 @@ typedef struct
 	uint32_t src_addr;
 	uint32_t dst_addr;
 } __attribute__((packed)) ipv4_static_t;
-
-
-/** The different IP-ID behaviors */
-typedef enum
-{
-	IP_ID_BEHAVIOR_SEQ       = 0, /**< IP-ID increases */
-	IP_ID_BEHAVIOR_SEQ_SWAP  = 1, /**< IP-ID increases in little endian */
-	IP_ID_BEHAVIOR_RAND      = 2, /**< IP-ID is random */
-	IP_ID_BEHAVIOR_ZERO      = 3, /**< IP-ID is constant zero */
-} tcp_ip_id_behavior_t;
 
 
 /**
@@ -1070,37 +1047,6 @@ typedef struct
 } __attribute__((packed)) seq_8_t;
 
 
-
-/************************************************************************
- * Helper functions                                                     *
- ************************************************************************/
-
-static inline char * tcp_ip_id_behavior_get_descr(const tcp_ip_id_behavior_t ip_id_behavior)
-	__attribute__((warn_unused_result, const));
-
-
-/**
- * @brief Get a string that describes the given IP-ID behavior
- *
- * @param behavior  The type of the option to get a description for
- * @return          The description of the option
- */
-static inline char * tcp_ip_id_behavior_get_descr(const tcp_ip_id_behavior_t behavior)
-{
-	switch(behavior)
-	{
-		case IP_ID_BEHAVIOR_SEQ:
-			return "sequential";
-		case IP_ID_BEHAVIOR_SEQ_SWAP:
-			return "sequential swapped";
-		case IP_ID_BEHAVIOR_RAND:
-			return "random";
-		case IP_ID_BEHAVIOR_ZERO:
-			return "constant zero";
-		default:
-			return "unknown IP-ID behavior";
-	}
-}
 
 #endif /* ROHC_PROTOCOLS_RFC6846_H */
 

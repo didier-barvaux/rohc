@@ -421,7 +421,7 @@ struct rohc_tcp_decoded_ip_values
 	uint8_t version:4;   /**< The decoded version field */
 	uint8_t ecn_flags:2; /**< The decoded ECN flags */
 	uint8_t dscp:6;      /**< The decoded DSCP field */
-	tcp_ip_id_behavior_t id_behavior; /**< The decoded IP-ID behavior (Ipv4 only) */
+	rohc_ip_id_behavior_t id_behavior; /**< The decoded IP-ID behavior (IPv4 only) */
 	uint16_t id;         /**< The decoded IP-ID field (IPv4 only) */
 	uint8_t df:1;        /**< The decoded DF field (IPv4 only) */
 	uint8_t ttl;         /**< The decoded TTL/HL field */

@@ -153,5 +153,62 @@ struct rohc_medium
 };
 
 
+/**
+ * @brief The different chains used by the ROHCv1 TCP and ROHCv2 profiles
+ */
+typedef enum
+{
+	ROHC_CHAIN_STATIC    = 0,  /**< The TCP static chain */
+	ROHC_CHAIN_DYNAMIC   = 1,  /**< The TCP dynamic chain */
+	ROHC_CHAIN_REPLICATE = 2,  /**< The TCP replicate chain */
+	ROHC_CHAIN_IRREGULAR = 3,  /**< The TCP irregular chain */
+	ROHC_CHAIN_CO        = 4,  /**< Not a chain, but in CO packet */
+
+} rohc_chain_t;
+
+
+/** The different IP-ID behaviors */
+typedef enum
+{
+	ROHC_IP_ID_BEHAVIOR_SEQ       = 0, /**< IP-ID increases */
+	ROHC_IP_ID_BEHAVIOR_SEQ_SWAP  = 1, /**< IP-ID increases in little endian */
+	ROHC_IP_ID_BEHAVIOR_RAND      = 2, /**< IP-ID is random */
+	ROHC_IP_ID_BEHAVIOR_ZERO      = 3, /**< IP-ID is constant zero */
+} rohc_ip_id_behavior_t;
+
+
+
+/************************************************************************
+ * Helper functions                                                     *
+ ************************************************************************/
+
+static inline char * rohc_ip_id_behavior_get_descr(const rohc_ip_id_behavior_t behavior)
+	__attribute__((warn_unused_result, const));
+
+
+/**
+ * @brief Get a string that describes the given IP-ID behavior
+ *
+ * @param behavior  The type of the option to get a description for
+ * @return          The description of the option
+ */
+static inline char * rohc_ip_id_behavior_get_descr(const rohc_ip_id_behavior_t behavior)
+{
+	switch(behavior)
+	{
+		case ROHC_IP_ID_BEHAVIOR_SEQ:
+			return "sequential";
+		case ROHC_IP_ID_BEHAVIOR_SEQ_SWAP:
+			return "sequential swapped";
+		case ROHC_IP_ID_BEHAVIOR_RAND:
+			return "random";
+		case ROHC_IP_ID_BEHAVIOR_ZERO:
+			return "constant zero";
+		default:
+			return "unknown IP-ID behavior";
+	}
+}
+
+
 #endif
 

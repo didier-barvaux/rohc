@@ -31,7 +31,6 @@
 
 #include "protocols/ip.h"
 #include "protocols/tcp.h"
-#include "c_tcp_opts_list.h"
 
 
 /**

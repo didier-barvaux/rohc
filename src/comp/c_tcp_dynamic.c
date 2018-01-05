@@ -297,14 +297,14 @@ static int tcp_code_dynamic_ipv4_part(const struct rohc_comp_ctxt *const context
 	}
 	else
 	{
-		/* only IP_ID_BEHAVIOR_RAND or IP_ID_BEHAVIOR_ZERO */
+		/* only ROHC_IP_ID_BEHAVIOR_RAND or ROHC_IP_ID_BEHAVIOR_ZERO */
 		if(ipv4->id == 0)
 		{
-			ipv4_dynamic1->ip_id_behavior = IP_ID_BEHAVIOR_ZERO;
+			ipv4_dynamic1->ip_id_behavior = ROHC_IP_ID_BEHAVIOR_ZERO;
 		}
 		else
 		{
-			ipv4_dynamic1->ip_id_behavior = IP_ID_BEHAVIOR_RAND;
+			ipv4_dynamic1->ip_id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
 		}
 		/* TODO: should not update context there */
 		ip_context->ctxt.v4.ip_id_behavior = ipv4_dynamic1->ip_id_behavior;
@@ -318,7 +318,7 @@ static int tcp_code_dynamic_ipv4_part(const struct rohc_comp_ctxt *const context
 
 	/* IP-ID itself
 	 * cf. RFC4996 page 60/61 ip_id_enc_dyn() */
-	if(ipv4_dynamic1->ip_id_behavior == IP_ID_BEHAVIOR_ZERO)
+	if(ipv4_dynamic1->ip_id_behavior == ROHC_IP_ID_BEHAVIOR_ZERO)
 	{
 		rohc_comp_debug(context, "ip_id_behavior = %d", ipv4_dynamic1->ip_id_behavior);
 	}
@@ -635,7 +635,7 @@ static int tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *const context,
 		bool no_item_needed;
 
 		ret = c_tcp_code_tcp_opts_list_item(context, tcp, tcp_context->msn,
-		                                    ROHC_TCP_CHAIN_DYNAMIC,
+		                                    ROHC_CHAIN_DYNAMIC,
 		                                    &tcp_context->tcp_opts,
 		                                    rohc_remain_data, rohc_remain_len,
 		                                    &no_item_needed);

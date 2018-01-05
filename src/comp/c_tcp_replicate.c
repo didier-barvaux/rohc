@@ -255,14 +255,14 @@ static int tcp_code_replicate_ipv4_part(const struct rohc_comp_ctxt *const conte
 	}
 	else
 	{
-		/* only IP_ID_BEHAVIOR_RAND or IP_ID_BEHAVIOR_ZERO */
+		/* only ROHC_IP_ID_BEHAVIOR_RAND or ROHC_IP_ID_BEHAVIOR_ZERO */
 		if(ipv4->id == 0)
 		{
-			ipv4_replicate->ip_id_behavior = IP_ID_BEHAVIOR_ZERO;
+			ipv4_replicate->ip_id_behavior = ROHC_IP_ID_BEHAVIOR_ZERO;
 		}
 		else
 		{
-			ipv4_replicate->ip_id_behavior = IP_ID_BEHAVIOR_RAND;
+			ipv4_replicate->ip_id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
 		}
 		/* TODO: should not update context there */
 		ip_context->ctxt.v4.ip_id_behavior = ipv4_replicate->ip_id_behavior;
@@ -275,7 +275,7 @@ static int tcp_code_replicate_ipv4_part(const struct rohc_comp_ctxt *const conte
 	ipv4_replicate->ip_ecn_flags = ipv4->ecn;
 
 	/* IP-ID itself: cf. RFC6846 ip_id_enc_dyn() */
-	if(ipv4_replicate->ip_id_behavior == IP_ID_BEHAVIOR_ZERO)
+	if(ipv4_replicate->ip_id_behavior == ROHC_IP_ID_BEHAVIOR_ZERO)
 	{
 		rohc_comp_debug(context, "ip_id_behavior = %d", ipv4_replicate->ip_id_behavior);
 	}
@@ -673,7 +673,7 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
 	/* the structure of the list of TCP options changed or at least one of
 	 * the option changed, compress them */
 	ret = c_tcp_code_tcp_opts_list_item(context, tcp, tcp_context->msn,
-	                                    ROHC_TCP_CHAIN_REPLICATE,
+	                                    ROHC_CHAIN_REPLICATE,
 	                                    &tcp_context->tcp_opts,
 	                                    rohc_remain_data, rohc_remain_len,
 	                                    &no_item_needed);

@@ -182,7 +182,7 @@ static int tcp_parse_replicate_ip(const struct rohc_decomp_ctxt *const context,
 		remain_len -= sizeof(ipv4_replicate_t);
 
 		/* IP-ID: cf RFC6846 ip_id_enc_dyn() */
-		if(ipv4_replicate->ip_id_behavior != IP_ID_BEHAVIOR_ZERO)
+		if(ipv4_replicate->ip_id_behavior != ROHC_IP_ID_BEHAVIOR_ZERO)
 		{
 			const uint16_t *const replicate_ip_id = (uint16_t *) remain_data;
 
@@ -295,7 +295,7 @@ static int tcp_parse_replicate_ip(const struct rohc_decomp_ctxt *const context,
 		}
 
 		/* no IP-ID for IPv6, simulate random behavior to be generic with IPv4 code */
-		ip_bits->id_behavior = IP_ID_BEHAVIOR_RAND;
+		ip_bits->id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
 		ip_bits->id_behavior_nr = 2;
 
 		/* parse IPv6 extension headers */

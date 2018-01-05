@@ -101,13 +101,13 @@ static size_t c_tcp_opt_write_xi(const struct rohc_comp_ctxt *const context,
                                  const bool item_needed)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-bool c_tcp_is_list_item_needed(const struct rohc_comp_ctxt *const context,
-                               const rohc_tcp_chain_t chain_type,
-                               const uint8_t opt_idx,
-                               const uint8_t opt_type,
-                               const uint8_t opt_len,
-                               const uint8_t *const opt,
-                               const struct c_tcp_opts_ctxt *const opts_ctxt)
+static bool c_tcp_is_list_item_needed(const struct rohc_comp_ctxt *const context,
+                                      const rohc_chain_t chain_type,
+                                      const uint8_t opt_idx,
+                                      const uint8_t opt_type,
+                                      const uint8_t opt_len,
+                                      const uint8_t *const opt,
+                                      const struct c_tcp_opts_ctxt *const opts_ctxt)
 	__attribute__((warn_unused_result, nonnull(1, 6, 7)));
 
 static int c_tcp_build_nop_list_item(const struct rohc_comp_ctxt *const context,
@@ -706,7 +706,7 @@ error:
 int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
                                   const struct tcphdr *const tcp,
                                   const uint16_t msn,
-                                  const rohc_tcp_chain_t chain_type,
+                                  const rohc_chain_t chain_type,
                                   struct c_tcp_opts_ctxt *const opts_ctxt,
                                   uint8_t *const comp_opts,
                                   const size_t comp_opts_max_len,
@@ -1463,18 +1463,18 @@ static size_t c_tcp_opt_write_xi(const struct rohc_comp_ctxt *const context,
  * @return                  true if the list item shall be transmitted,
  *                          false if it shall not
  */
-bool c_tcp_is_list_item_needed(const struct rohc_comp_ctxt *const context,
-                               const rohc_tcp_chain_t chain_type,
-                               const uint8_t opt_idx,
-                               const uint8_t opt_type,
-                               const uint8_t opt_len,
-                               const uint8_t *const opt,
-                               const struct c_tcp_opts_ctxt *const opts_ctxt)
+static bool c_tcp_is_list_item_needed(const struct rohc_comp_ctxt *const context,
+                                      const rohc_chain_t chain_type,
+                                      const uint8_t opt_idx,
+                                      const uint8_t opt_type,
+                                      const uint8_t opt_len,
+                                      const uint8_t *const opt,
+                                      const struct c_tcp_opts_ctxt *const opts_ctxt)
 {
 	bool item_needed;
 
 	/* do we need to transmit the item? */
-	if(chain_type == ROHC_TCP_CHAIN_DYNAMIC || chain_type == ROHC_TCP_CHAIN_REPLICATE)
+	if(chain_type == ROHC_CHAIN_DYNAMIC || chain_type == ROHC_CHAIN_REPLICATE)
 	{
 		/* items are required in dynamic chain, see RFC6846 §6.3.5 */
 		rohc_comp_debug(context, "TCP options list: option '%s' is transmitted "
@@ -1482,7 +1482,7 @@ bool c_tcp_is_list_item_needed(const struct rohc_comp_ctxt *const context,
 		                "be transmitted", tcp_opt_get_descr(opt_type));
 		item_needed = true;
 	}
-	else if(chain_type == ROHC_TCP_CHAIN_CO &&
+	else if(chain_type == ROHC_CHAIN_CO &&
 	        (opt_idx == TCP_INDEX_NOP || opt_idx == TCP_INDEX_SACK_PERM))
 	{
 		/* in CO headers, NOP and SACK Permitted options have empty items,
