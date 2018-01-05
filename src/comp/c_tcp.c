@@ -893,14 +893,14 @@ bad_profile:
  *
  * Conditions are:
  *  - the number of IP headers must be the same as in context
- *  - IP version of the two IP headers must be the same as in context
+ *  - IP version of all the IP headers must be the same as in context
  *  - IP packets must not be fragmented
- *  - the source and destination addresses of the two IP headers must match
+ *  - the source and destination addresses of all the IP headers must match
  *    the ones in the context
  *  - the transport protocol must be TCP
  *  - the source and destination ports of the TCP header must match the ones
  *    in the context
- *  - IPv6 only: the Flow Label of the two IP headers must match the ones the
+ *  - IPv6 only: the Flow Label of the all IP headers must match the ones the
  *    context
  *
  * This function is one of the functions that must exist in one profile for the
