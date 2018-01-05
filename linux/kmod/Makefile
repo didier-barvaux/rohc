@@ -36,6 +36,7 @@ rohc_comp_sources = \
 	../../src/comp/schemes/rfc4996.c \
 	../../src/comp/schemes/tcp_sack.c \
 	../../src/comp/schemes/tcp_ts.c \
+	../../src/comp/schemes/ipv6_exts.c \
 	../../src/comp/rohc_comp.c \
 	../../src/comp/c_uncompressed.c \
 	../../src/comp/rohc_comp_rfc3095.c \

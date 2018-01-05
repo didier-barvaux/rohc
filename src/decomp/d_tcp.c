@@ -406,7 +406,7 @@ static void d_tcp_create_from_ctxt(struct rohc_decomp_ctxt *const ctxt,
 	       sizeof(struct d_tcp_opt_sack));
 	tcp_ctxt->ip_contexts_nr = base_tcp_ctxt->ip_contexts_nr;
 	memcpy(&tcp_ctxt->ip_contexts, &base_tcp_ctxt->ip_contexts,
-	       ROHC_TCP_MAX_IP_HDRS * sizeof(ip_context_t));
+	       ROHC_MAX_IP_HDRS * sizeof(ip_context_t));
 
 	/* copy the LSB decoding contexts */
 	memcpy(&tcp_ctxt->msn_lsb_ctxt, &base_tcp_ctxt->msn_lsb_ctxt, wlsb_size);
@@ -2684,7 +2684,7 @@ static void d_tcp_reset_extr_bits(const struct rohc_decomp_ctxt *const context,
 	bits->do_ctxt_replication = false;
 
 	/* set every bits and sizes to 0 */
-	for(i = 0; i < ROHC_TCP_MAX_IP_HDRS; i++)
+	for(i = 0; i < ROHC_MAX_IP_HDRS; i++)
 	{
 		size_t j;
 
@@ -2699,7 +2699,7 @@ static void d_tcp_reset_extr_bits(const struct rohc_decomp_ctxt *const context,
 		bits->ip[i].flowid_nr = 0;
 		bits->ip[i].saddr_nr = 0;
 		bits->ip[i].daddr_nr = 0;
-		for(j = 0; j < ROHC_TCP_MAX_IP_EXT_HDRS; j++)
+		for(j = 0; j < ROHC_MAX_IP_EXT_HDRS; j++)
 		{
 			bits->ip[i].opts[j].len = 0;
 		}
@@ -2771,7 +2771,7 @@ static void d_tcp_reset_extr_bits(const struct rohc_decomp_ctxt *const context,
 	bits->msn.p = ROHC_LSB_SHIFT_TCP_SN;
 	bits->seq_scaled.p = ROHC_LSB_SHIFT_TCP_SEQ_SCALED;
 	bits->ack_scaled.p = ROHC_LSB_SHIFT_TCP_ACK_SCALED;
-	for(i = 0; i < ROHC_TCP_MAX_IP_HDRS; i++)
+	for(i = 0; i < ROHC_MAX_IP_HDRS; i++)
 	{
 		bits->ip[i].ttl_hl.p = ROHC_LSB_SHIFT_TCP_TTL;
 	}
@@ -3148,7 +3148,7 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 	}
 
 	/* extension headers */
-	assert(ip_bits->opts_nr <= ROHC_TCP_MAX_IP_EXT_HDRS);
+	assert(ip_bits->opts_nr <= ROHC_MAX_IP_EXT_HDRS);
 	ip_decoded->opts_nr = ip_bits->opts_nr;
 	ip_decoded->opts_len = ip_bits->opts_len;
 	if(ip_bits->version == IPV6)

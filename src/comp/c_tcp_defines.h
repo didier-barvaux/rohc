@@ -29,6 +29,7 @@
 #ifndef ROHC_DECOMP_TCP_DEFINES_H
 #define ROHC_DECOMP_TCP_DEFINES_H
 
+#include "protocols/ip.h"
 #include "protocols/tcp.h"
 #include "c_tcp_opts_list.h"
 
@@ -50,7 +51,7 @@ struct tcp_tmp_variables
 	 * in the current packet */
 	bool is_ipv6_exts_list_dyn_changed;
 	/** The new number of IP extensions headers (for every IP header) */
-	size_t ip_exts_nr[ROHC_TCP_MAX_IP_HDRS];
+	size_t ip_exts_nr[ROHC_MAX_IP_HDRS];
 
 	/* the length of the TCP payload (headers and options excluded) */
 	size_t payload_len;
@@ -221,7 +222,7 @@ typedef struct
 	bool cr_ttl_hopl_present;
 
 	size_t opts_nr;
-	ip_option_context_t opts[ROHC_TCP_MAX_IP_EXT_HDRS];
+	ip_option_context_t opts[ROHC_MAX_IP_EXT_HDRS];
 
 } ip_context_t;
 
@@ -292,7 +293,7 @@ struct sc_tcp_context
 	struct tcp_tmp_variables tmp;
 
 	size_t ip_contexts_nr;
-	ip_context_t ip_contexts[ROHC_TCP_MAX_IP_HDRS];
+	ip_context_t ip_contexts[ROHC_MAX_IP_HDRS];
 };
 
 #endif /* ROHC_DECOMP_TCP_DEFINES_H */

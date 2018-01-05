@@ -50,24 +50,6 @@
  ************************************************************************/
 
 /**
- * @brief The maximum number of IP headers supported by the TCP profile
- *
- * The limit value was chosen arbitrarily. It should handle most real-life case
- * without hurting performances nor memory footprint.
- */
-#define ROHC_TCP_MAX_IP_HDRS        2U
-
-
-/**
- * @brief The maximum number of IP extension header supported by the TCP profile
- *
- * The limit value was chosen arbitrarily. It should handle most real-life case
- * without hurting performances nor memory footprint.
- */
-#define ROHC_TCP_MAX_IP_EXT_HDRS    5U
-
-
-/**
  * @brief The largest index that may be used to identify one TCP option
  *
  * The ROHC standard defines that one TCP option is identified by an index. It

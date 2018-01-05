@@ -106,9 +106,9 @@ bool tcp_parse_static_chain(const struct rohc_decomp_ctxt *const context,
 
 		ip_hdrs_nr++;
 	}
-	while(rohc_is_tunneling(protocol) && ip_hdrs_nr < ROHC_TCP_MAX_IP_HDRS);
+	while(rohc_is_tunneling(protocol) && ip_hdrs_nr < ROHC_MAX_IP_HDRS);
 
-	if(rohc_is_tunneling(protocol) && ip_hdrs_nr >= ROHC_TCP_MAX_IP_HDRS)
+	if(rohc_is_tunneling(protocol) && ip_hdrs_nr >= ROHC_MAX_IP_HDRS)
 	{
 		rohc_decomp_warn(context, "too many IP headers to decompress");
 		goto error;
@@ -270,7 +270,7 @@ static int tcp_parse_static_ip(const struct rohc_decomp_ctxt *const context,
 		{
 			ip_option_context_t *opt;
 
-			if(ip_bits->opts_nr >= ROHC_TCP_MAX_IP_EXT_HDRS)
+			if(ip_bits->opts_nr >= ROHC_MAX_IP_EXT_HDRS)
 			{
 				rohc_decomp_warn(context, "too many IPv6 extension headers");
 				goto error;
