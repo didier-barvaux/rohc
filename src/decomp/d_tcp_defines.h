@@ -33,6 +33,7 @@
 #include "interval.h"
 #include "protocols/ip.h"
 #include "protocols/tcp.h"
+#include "protocols/rfc6846.h"
 #include "schemes/decomp_wlsb.h"
 #include "schemes/tcp_ts.h"
 #include "schemes/tcp_sack.h"

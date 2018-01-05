@@ -27,6 +27,7 @@
 #include "rohc_comp_internals.h"
 #include "rohc_utils.h"
 #include "protocols/tcp.h"
+#include "protocols/rfc6846.h"
 
 #include <string.h>
 #ifdef __KERNEL__

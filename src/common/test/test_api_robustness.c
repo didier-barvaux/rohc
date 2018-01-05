@@ -27,6 +27,7 @@
 #include "rohc_packets.h"
 #include "protocols/ip_numbers.h"
 #include "protocols/tcp.h"
+#include "protocols/rfc6846.h"
 
 #include "config.h" /* for VERSION and PACKAGE_REVNO */
 

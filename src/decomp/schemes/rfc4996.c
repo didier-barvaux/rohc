@@ -33,6 +33,7 @@
 #include "rohc_utils.h"
 #include "crc.h"
 #include "protocols/tcp.h"
+#include "protocols/rfc6846.h"
 #include "rohc_packets.h"
 #include "rohc_decomp.h"
 

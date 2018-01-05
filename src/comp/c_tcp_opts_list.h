@@ -31,6 +31,7 @@
 
 #include "rohc_comp_internals.h"
 #include "protocols/tcp.h"
+#include "protocols/rfc6846.h"
 
 #include <stdint.h>
 #include <stddef.h>
