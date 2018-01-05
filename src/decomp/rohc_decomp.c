@@ -1798,8 +1798,7 @@ static bool rohc_decomp_check_ir_crc(const struct rohc_decomp *const decomp,
 
 	/* all profiles but the Uncompressed profile compute their CRC through the
 	 * zeroed CRC field and the rest of the ROHC header */
-	if(context->profile->id != ROHC_PROFILE_UNCOMPRESSED &&
-	   context->profile->id != ROHCv2_PROFILE_IP /* TODO: ROHCv2 */)
+	if(context->profile->id != ROHC_PROFILE_UNCOMPRESSED)
 	{
 		/* zeroed CRC field */
 		crc_comp = crc_calculate(crc_type, crc_zero, 1, crc_comp, crc_table);

@@ -809,8 +809,9 @@ static bool d_tcp_parse_ir(const struct rohc_decomp_ctxt *const context,
 	remain_len = rohc_length;
 
 	/* skip:
-	 * - the first byte of the ROHC packet (field 2)
-	 * - the Profile byte (field 4) */
+	 * - the first byte of the ROHC packet
+	 * - the large CID if any
+	 * - the Profile byte */
 	if(remain_len < (1 + large_cid_len + 1))
 	{
 		rohc_decomp_warn(context, "malformed ROHC packet: too short for first "

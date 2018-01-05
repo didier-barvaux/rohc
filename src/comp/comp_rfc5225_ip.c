@@ -26,8 +26,10 @@
 #include "rohc_traces.h"
 #include "rohc_traces_internal.h"
 #include "rohc_debug.h"
+#include "rohc_bit_ops.h"
 #include "protocols/ip_numbers.h"
 #include "protocols/ip.h"
+#include "protocols/rfc5225.h"
 #include "schemes/cid.h"
 #include "schemes/ipv6_exts.h"
 #include "schemes/ip_ctxt.h"
@@ -74,18 +76,53 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
                                        rohc_packet_t *const packet_type,
                                        size_t *const payload_offset)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
-static int rohc_comp_rfc5225_ip_code_packet(struct rohc_comp_ctxt *const context,
-                                            const struct net_pkt *const uncomp_pkt,
+
+static int rohc_comp_rfc5225_ip_code_IR_pkt(const struct rohc_comp_ctxt *const ctxt,
+                                            const struct ip_packet *const ip,
                                             uint8_t *const rohc_pkt,
                                             const size_t rohc_pkt_max_len,
-                                            rohc_packet_t *const packet_type,
                                             size_t *const payload_offset)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
-static int rohc_comp_rfc5225_ip_code_IR_packet(const struct rohc_comp_ctxt *const context,
-                                               const struct net_pkt *const uncomp_pkt,
-                                               uint8_t *const rohc_pkt,
-                                               const size_t rohc_pkt_max_len,
-                                               size_t *const payload_offset)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
+
+/* static chain */
+static int rohc_comp_rfc5225_ip_static_chain(const struct rohc_comp_ctxt *const ctxt,
+                                             const struct ip_packet *const ip,
+                                             uint8_t *const rohc_pkt,
+                                             const size_t rohc_pkt_max_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+static int rohc_comp_rfc5225_ip_static_ipv4_part(const struct rohc_comp_ctxt *const ctxt,
+                                                 const struct ipv4_hdr *const ipv4,
+                                                 const bool is_innermost,
+                                                 uint8_t *const rohc_data,
+                                                 const size_t rohc_max_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
+static int rohc_comp_rfc5225_ip_static_ipv6_part(const struct rohc_comp_ctxt *const ctxt,
+                                                 const struct ipv6_hdr *const ipv6,
+                                                 const bool is_innermost,
+                                                 uint8_t *const rohc_data,
+                                                 const size_t rohc_max_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
+
+/* dynamic chain */
+static int rohc_comp_rfc5225_ip_dyn_chain(const struct rohc_comp_ctxt *const ctxt,
+                                          const struct ip_packet *const ip,
+                                          uint8_t *const rohc_pkt,
+                                          const size_t rohc_pkt_max_len,
+                                          size_t *const parsed_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
+static int rohc_comp_rfc5225_ip_dyn_ipv4_part(const struct rohc_comp_ctxt *const ctxt,
+                                              const ip_context_t *const ip_ctxt,
+                                              const struct ipv4_hdr *const ipv4,
+                                              const bool is_innermost,
+                                              uint8_t *const rohc_data,
+                                              const size_t rohc_max_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
+static int rohc_comp_rfc5225_ip_dyn_ipv6_part(const struct rohc_comp_ctxt *const ctxt,
+                                              const ip_context_t *const ip_ctxt,
+                                              const struct ipv6_hdr *const ipv6,
+                                              const bool is_innermost,
+                                              uint8_t *const rohc_data,
+                                              const size_t rohc_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
 /* deliver feedbacks */
@@ -102,6 +139,9 @@ static void rohc_comp_rfc5225_ip_decide_state(struct rohc_comp_ctxt *const conte
                                               const struct rohc_ts pkt_time)
 	__attribute__((nonnull(1)));
 
+/* decide packet */
+static rohc_packet_t rohc_comp_rfc5225_ip_decide_pkt(struct rohc_comp_ctxt *const context)
+	__attribute__((warn_unused_result, nonnull(1)));
 
 
 /*
@@ -167,7 +207,7 @@ static bool rohc_comp_rfc5225_ip_create(struct rohc_comp_ctxt *const context,
 				ip_context->ctxt.v4.last_ip_id_behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
 				ip_context->ctxt.v4.ip_id_behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
 				ip_context->ctxt.v4.protocol = proto;
-				ip_context->ctxt.v4.dscp = ipv4->dscp;
+				ip_context->ctxt.v4.tos = ipv4->tos;
 				ip_context->ctxt.v4.df = ipv4->df;
 				ip_context->ctxt.v4.ttl = ipv4->ttl;
 				ip_context->ctxt.v4.src_addr = ipv4->saddr;
@@ -185,7 +225,7 @@ static bool rohc_comp_rfc5225_ip_create(struct rohc_comp_ctxt *const context,
 				proto = ipv6->nh;
 
 				ip_context->ctxt.v6.ip_id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
-				ip_context->ctxt.v6.dscp = remain_data[1];
+				ip_context->ctxt.v6.tc = remain_data[1];
 				ip_context->ctxt.v6.hopl = ipv6->hl;
 				ip_context->ctxt.v6.flow_label = ipv6_get_flow_label(ipv6);
 				memcpy(ip_context->ctxt.v6.src_addr, &ipv6->saddr,
@@ -401,6 +441,14 @@ static bool rohc_comp_rfc5225_ip_check_profile(const struct rohc_comp *const com
 				           "detected", ip_hdrs_nr + 1);
 				goto bad_profile;
 			}
+			/* TODO: handle IPv6 extension headers */
+			if(ipv6_exts_len > 0)
+			{
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "IP packet #%zu is not supported by the profile: "
+				           "IPv6 extension headers detected", ip_hdrs_nr + 1);
+				goto bad_profile;
+			}
 			remain_data += ipv6_exts_len;
 			remain_len -= ipv6_exts_len;
 		}
@@ -611,7 +659,9 @@ bad_context:
  *        several different factors
  *
  * 1. Decide state\n
- * 2. Code packet\n
+ * 2. Decide which packet type to send.\n
+ * 3. Code packet\n
+ * 4. Update context\n
  * \n
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
@@ -633,17 +683,50 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
                                        rohc_packet_t *const packet_type,
                                        size_t *const payload_offset)
 {
-	int size;
+	size_t rohc_len;
+	int ret;
 
 	/* STEP 1: decide state */
 	rohc_comp_rfc5225_ip_decide_state(context, uncomp_pkt->time);
 
-	/* STEP 2: Code packet */
-	size = rohc_comp_rfc5225_ip_code_packet(context, uncomp_pkt,
-	                                rohc_pkt, rohc_pkt_max_len,
-	                                packet_type, payload_offset);
+	/* STEP 2: decide packet type */
+	*packet_type = rohc_comp_rfc5225_ip_decide_pkt(context);
 
-	return size;
+	/* STEP 3: code packet */
+	if((*packet_type) == ROHC_PACKET_IR)
+	{
+		ret = rohc_comp_rfc5225_ip_code_IR_pkt(context, &uncomp_pkt->outer_ip,
+		                                       rohc_pkt, rohc_pkt_max_len,
+		                                       payload_offset);
+		if(ret < 0)
+		{
+			rohc_comp_warn(context, "failed to build IR packet");
+			goto error;
+		}
+		rohc_len = ret;
+	}
+	else if((*packet_type) == ROHC_PACKET_UNKNOWN)
+	{
+		rohc_comp_warn(context, "failed to find the packet type to encode");
+		goto error;
+	}
+	else
+	{
+		rohc_comp_warn(context, "packet type %d '%s' not supported by profile",
+		               *packet_type, rohc_get_packet_descr(*packet_type));
+		assert(0);
+		goto error;
+	}
+	rohc_comp_dump_buf(context, "current ROHC packet", rohc_pkt, rohc_len);
+	rohc_comp_debug(context, "payload_offset = %zu", *payload_offset);
+
+	/* STEP 4: update context */
+	rohc_comp_debug(context, "update context:");
+
+	return rohc_len;
+
+error:
+	return -1;
 }
 
 
@@ -695,145 +778,732 @@ static void rohc_comp_rfc5225_ip_decide_state(struct rohc_comp_ctxt *const conte
 
 
 /**
- * @brief Build the ROHC packet to send
+ * @brief Decide which packet to send when in the different states
  *
  * @param context           The compression context
- * @param uncomp_pkt        The uncompressed packet to encode
- * @param rohc_pkt          OUT: The ROHC packet
- * @param rohc_pkt_max_len  The maximum length of the ROHC packet
- * @param packet_type       OUT: The type of ROHC packet that is created
- * @param payload_offset    OUT: the offset of the payload in the buffer
- * @return                  The length of the ROHC packet if successful,
- *                         -1 otherwise
+ * @return                  \li The packet type among ROHC_PACKET_IR
+ *                              in case of success
+ *                          \li ROHC_PACKET_UNKNOWN in case of failure
  */
-static int rohc_comp_rfc5225_ip_code_packet(struct rohc_comp_ctxt *const context,
-                                            const struct net_pkt *const uncomp_pkt,
-                                            uint8_t *const rohc_pkt,
-                                            const size_t rohc_pkt_max_len,
-                                            rohc_packet_t *const packet_type,
-                                            size_t *const payload_offset)
+static rohc_packet_t rohc_comp_rfc5225_ip_decide_pkt(struct rohc_comp_ctxt *const context)
 {
-	int (*code_packet)(const struct rohc_comp_ctxt *const _context,
-	                   const struct net_pkt *const _uncomp_pkt,
-	                   uint8_t *const _rohc_pkt,
-	                   const size_t _rohc_pkt_max_len,
-	                   size_t *const _payload_offset)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
-	int size;
+	rohc_packet_t packet_type;
 
-	/* decide what packet to send depending on state and uncompressed packet */
-	*packet_type = ROHC_PACKET_IR;
-	context->ir_count++;
+	switch(context->state)
+	{
+		case ROHC_COMP_STATE_IR: /* The Initialization and Refresh (IR) state */
+			rohc_comp_debug(context, "code IR packet");
+			packet_type = ROHC_PACKET_IR;
+			context->ir_count++;
+			break;
+		case ROHC_COMP_STATE_UNKNOWN:
+		default:
+#if defined(NDEBUG) || defined(__KERNEL__) || defined(ENABLE_DEAD_CODE)
+			packet_type = ROHC_PACKET_UNKNOWN;
+#endif
+			assert(0); /* should not happen */
+			break;
+	}
 
-	rohc_comp_debug(context, "build IR packet");
-	code_packet = rohc_comp_rfc5225_ip_code_IR_packet;
-
-	/* code packet according to the selected type */
-	size = code_packet(context, uncomp_pkt, rohc_pkt, rohc_pkt_max_len,
-	                   payload_offset);
-
-	return size;
+	return packet_type;
 }
 
 
 /**
- * @brief Build the IR packet
- *
- * \verbatim
-
- IR packet (5.10.1)
-
-     0   1   2   3   4   5   6   7
-    --- --- --- --- --- --- --- ---
- 1 :         Add-CID octet         : if for small CIDs and (CID != 0)
-   +---+---+---+---+---+---+---+---+
- 2 | 1   1   1   1   1   1   0 |res|
-   +---+---+---+---+---+---+---+---+
-   :                               :
- 3 /    0-2 octets of CID info     / 1-2 octets if for large CIDs
-   :                               :
-   +---+---+---+---+---+---+---+---+
- 4 |          Profile = 0          | 1 octet
-   +---+---+---+---+---+---+---+---+
- 5 |              CRC              | 1 octet
-   +---+---+---+---+---+---+---+---+
-   :                               : (optional)
- 6 /      uncompressed packet      / variable length
-   :                               :
-    --- --- --- --- --- --- --- ---
-
-\endverbatim
- *
- * Part 6 is not managed by this function.
+ * @brief Encode an IP packet as IR packet
  *
  * @param context           The compression context
- * @param uncomp_pkt        The uncompressed packet to encode
+ * @param ip                The outer IP header
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param payload_offset    OUT: the offset of the payload in the buffer
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
-static int rohc_comp_rfc5225_ip_code_IR_packet(const struct rohc_comp_ctxt *context,
-                                               const struct net_pkt *const uncomp_pkt __attribute__((unused)),
-                                               uint8_t *const rohc_pkt,
-                                               const size_t rohc_pkt_max_len,
-                                               size_t *const payload_offset)
+static int rohc_comp_rfc5225_ip_code_IR_pkt(const struct rohc_comp_ctxt *context,
+                                            const struct ip_packet *const ip,
+                                            uint8_t *const rohc_pkt,
+                                            const size_t rohc_pkt_max_len,
+                                            size_t *const payload_offset)
 {
-	size_t counter;
+	uint8_t *rohc_remain_data = rohc_pkt;
+	size_t rohc_remain_len = rohc_pkt_max_len;
 	size_t first_position;
+	size_t crc_position;
+	size_t rohc_hdr_len = 0;
 	int ret;
-
-	rohc_comp_debug(context, "code IR packet (CID = %zu)", context->cid);
 
 	/* parts 1 and 3:
 	 *  - part 2 will be placed at 'first_position'
 	 *  - part 4 will start at 'counter'
 	 */
-	ret = code_cid_values(context->compressor->medium.cid_type, context->cid,
-	                      rohc_pkt, rohc_pkt_max_len, &first_position);
+	ret = code_cid_values(context->compressor->medium.cid_type,
+	                      context->cid, rohc_remain_data, rohc_remain_len,
+	                      &first_position);
 	if(ret < 1)
 	{
-		rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the "
-		               "%zu-byte ROHC buffer is too small",
+		rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the %zu-byte "
+		               "ROHC buffer is too small",
 		               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
-		               "small" : "large", context->cid, rohc_pkt_max_len);
+		               "small" : "large", context->cid, rohc_remain_len);
 		goto error;
 	}
-	counter = ret;
-	rohc_comp_debug(context, "%s CID %zu encoded on %zu byte(s)",
+	rohc_remain_data += ret;
+	rohc_remain_len -= ret;
+	rohc_hdr_len += ret;
+	rohc_comp_debug(context, "%s CID %zu encoded on %d byte(s)",
 	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
-	                "small" : "large", context->cid, counter - 1);
+	                "small" : "large", context->cid, ret - 1);
 
-	/* part 2 */
-	rohc_pkt[first_position] = 0xfc;
-	rohc_comp_debug(context, "first byte = 0x%02x", rohc_pkt[first_position]);
+	/* type of packet */
+	rohc_pkt[first_position] = ROHC_PACKET_TYPE_IR;
+	rohc_comp_debug(context, "packet type = 0x%02x", rohc_pkt[first_position]);
 
-	/* is ROHC buffer large enough for parts 4 and 5 ? */
-	if((rohc_pkt_max_len - counter) < 2)
+	/* enough room for profile ID and CRC? */
+	if(rohc_remain_len < 2)
 	{
-		rohc_comp_warn(context, "ROHC packet is too small for profile ID and "
-		               "CRC bytes");
+		rohc_comp_warn(context, "ROHC buffer too small for IR packet: "
+		               "2 bytes required for profile ID and CRC, but only "
+		               "%zu bytes available", rohc_remain_len);
 		goto error;
 	}
 
-	/* part 4 */
-	rohc_pkt[counter] = ROHCv2_PROFILE_IP & 0xff;
-	rohc_comp_debug(context, "Profile ID = 0x%02x", rohc_pkt[counter]);
-	counter++;
+	/* profile ID */
+	rohc_comp_debug(context, "profile ID = 0x%02x", context->profile->id & 0xff);
+	rohc_remain_data[0] = context->profile->id & 0xff;
+	rohc_remain_data++;
+	rohc_remain_len--;
+	rohc_hdr_len++;
 
-	/* part 5 */
-	rohc_pkt[counter] = 0;
-	rohc_pkt[counter] = crc_calculate(ROHC_CRC_TYPE_8, rohc_pkt, counter,
-	                                  CRC_INIT_8,
-	                                  context->compressor->crc_table_8);
-	rohc_comp_debug(context, "CRC on %zu bytes = 0x%02x", counter,
-	                rohc_pkt[counter]);
-	counter++;
+	/* the CRC is computed later since it must be computed over the whole packet
+	 * with an empty CRC field */
+	rohc_comp_debug(context, "CRC = 0x00 for CRC calculation");
+	crc_position = rohc_hdr_len;
+	rohc_remain_data[0] = 0;
+	rohc_remain_data++;
+	rohc_remain_len--;
+	rohc_hdr_len++;
 
-	*payload_offset = 0;
+	/* add static chain */
+	ret = rohc_comp_rfc5225_ip_static_chain(context, ip, rohc_remain_data,
+	                                        rohc_remain_len);
+	if(ret < 0)
+	{
+		rohc_comp_warn(context, "failed to build the static chain of the IR packet");
+		goto error;
+	}
+	rohc_remain_data += ret;
+	rohc_remain_len -= ret;
+	rohc_hdr_len += ret;
+	rohc_comp_dump_buf(context, "current ROHC packet (with static part)",
+	                   rohc_pkt, rohc_hdr_len);
 
-	return counter;
+	/* add dynamic chain */
+	ret = rohc_comp_rfc5225_ip_dyn_chain(context, ip, rohc_remain_data,
+	                                     rohc_remain_len, payload_offset);
+	if(ret < 0)
+	{
+		rohc_comp_warn(context, "failed to build the dynamic chain of the IR packet");
+		goto error;
+	}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
+	rohc_remain_data += ret;
+	rohc_remain_len -= ret;
+#endif
+	rohc_hdr_len += ret;
+	rohc_comp_dump_buf(context, "current ROHC packet (with dynamic part)",
+	                   rohc_pkt, rohc_hdr_len);
+
+	/* IR header was successfully built, compute the CRC */
+	rohc_pkt[crc_position] = crc_calculate(ROHC_CRC_TYPE_8, rohc_pkt,
+	                                       rohc_hdr_len, CRC_INIT_8,
+	                                       context->compressor->crc_table_8);
+	rohc_comp_debug(context, "CRC (header length = %zu, crc = 0x%x)",
+	                rohc_hdr_len, rohc_pkt[crc_position]);
+
+	rohc_comp_debug(context, "IR packet, length %zu", rohc_hdr_len);
+	rohc_comp_dump_buf(context, "current ROHC packet", rohc_pkt, rohc_hdr_len);
+
+	return rohc_hdr_len;
+
+error:
+	return -1;
+}
+
+
+/**
+ * @brief Code the static chain of an ROHCv2 IP-only IR packet
+ *
+ * @param ctxt              The compression context
+ * @param ip                The outer IP header
+ * @param rohc_pkt          OUT: The ROHC packet
+ * @param rohc_pkt_max_len  The maximum length of the ROHC packet
+ * @return                  The length of the ROHC packet if successful,
+ *                          -1 otherwise
+ */
+static int rohc_comp_rfc5225_ip_static_chain(const struct rohc_comp_ctxt *const ctxt,
+                                             const struct ip_packet *const ip,
+                                             uint8_t *const rohc_pkt,
+                                             const size_t rohc_pkt_max_len)
+{
+	const struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = ctxt->specific;
+
+	const uint8_t *remain_data = ip->data;
+	size_t remain_len = ip->size;
+
+	uint8_t *rohc_remain_data = rohc_pkt;
+	size_t rohc_remain_len = rohc_pkt_max_len;
+
+	size_t ip_hdr_pos;
+	int ret;
+
+	/* add IP parts of static chain */
+	for(ip_hdr_pos = 0; ip_hdr_pos < rfc5225_ctxt->ip_contexts_nr; ip_hdr_pos++)
+	{
+		const struct ip_hdr *const ip_hdr = (struct ip_hdr *) remain_data;
+		const bool is_innermost = !!(ip_hdr_pos + 1 == rfc5225_ctxt->ip_contexts_nr);
+
+		/* retrieve IP version */
+		assert(remain_len >= sizeof(struct ip_hdr));
+		rohc_comp_debug(ctxt, "found IPv%d", ip_hdr->version);
+
+		if(ip_hdr->version == IPV4)
+		{
+			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) remain_data;
+
+			assert(remain_len >= sizeof(struct ipv4_hdr));
+
+			ret = rohc_comp_rfc5225_ip_static_ipv4_part(ctxt, ipv4, is_innermost,
+			                                            rohc_remain_data, rohc_remain_len);
+			if(ret < 0)
+			{
+				rohc_comp_warn(ctxt, "failed to build the IPv4 base header part "
+				               "of the static chain");
+				goto error;
+			}
+			rohc_remain_data += ret;
+			rohc_remain_len -= ret;
+
+			remain_data += sizeof(struct ipv4_hdr);
+			remain_len -= sizeof(struct ipv4_hdr);
+		}
+		else if(ip_hdr->version == IPV6)
+		{
+			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
+
+			assert(remain_len >= sizeof(struct ipv6_hdr));
+
+			ret = rohc_comp_rfc5225_ip_static_ipv6_part(ctxt, ipv6, is_innermost,
+			                                            rohc_remain_data, rohc_remain_len);
+			if(ret < 0)
+			{
+				rohc_comp_warn(ctxt, "failed to build the IPv6 base header part "
+				               "of the static chain");
+				goto error;
+			}
+			rohc_remain_data += ret;
+			rohc_remain_len -= ret;
+
+			remain_data += sizeof(struct ipv6_hdr);
+			remain_len -= sizeof(struct ipv6_hdr);
+
+			/* TODO: handle IPv6 extension headers */
+		}
+		else
+		{
+			rohc_comp_warn(ctxt, "unexpected IP version %u", ip_hdr->version);
+			assert(0);
+			goto error;
+		}
+	}
+
+	return (rohc_pkt_max_len - rohc_remain_len);
+
+error:
+	return -1;
+}
+
+
+/**
+ * @brief Build the static part of the IPv4 header
+ *
+ * @param ctxt            The compression context
+ * @param ipv4            The IPv4 header
+ * @param is_innermost    Whether the IPv4 header is the innermost IP header
+ * @param[out] rohc_data  The ROHC packet being built
+ * @param rohc_max_len    The max remaining length in the ROHC buffer
+ * @return                The length appended in the ROHC buffer if positive,
+ *                        -1 in case of error
+ */
+static int rohc_comp_rfc5225_ip_static_ipv4_part(const struct rohc_comp_ctxt *const ctxt,
+                                                 const struct ipv4_hdr *const ipv4,
+                                                 const bool is_innermost,
+                                                 uint8_t *const rohc_data,
+                                                 const size_t rohc_max_len)
+{
+	ipv4_static_t *const ipv4_static = (ipv4_static_t *) rohc_data;
+	const size_t ipv4_static_len = sizeof(ipv4_static_t);
+
+	if(rohc_max_len < ipv4_static_len)
+	{
+		rohc_comp_warn(ctxt, "ROHC buffer too small for the IPv4 static part: "
+		               "%zu bytes required, but only %zu bytes available",
+		               ipv4_static_len, rohc_max_len);
+		goto error;
+	}
+
+	ipv4_static->version_flag = 0;
+	ipv4_static->innermost_ip = GET_REAL(is_innermost);
+	ipv4_static->reserved = 0;
+	ipv4_static->protocol = ipv4->protocol;
+	rohc_comp_debug(ctxt, "IPv4 protocol = %u", ipv4_static->protocol);
+	ipv4_static->src_addr = ipv4->saddr;
+	ipv4_static->dst_addr = ipv4->daddr;
+
+	rohc_comp_dump_buf(ctxt, "IPv4 static part", rohc_data, ipv4_static_len);
+
+	return ipv4_static_len;
+
+error:
+	return -1;
+}
+
+
+/**
+ * @brief Build the static part of the IPv6 header
+ *
+ * @param ctxt            The compression context
+ * @param ipv6            The IPv6 header
+ * @param is_innermost    Whether the IPv6 header is the innermost IP header
+ * @param[out] rohc_data  The ROHC packet being built
+ * @param rohc_max_len    The max remaining length in the ROHC buffer
+ * @return                The length appended in the ROHC buffer if positive,
+ *                        -1 in case of error
+ */
+static int rohc_comp_rfc5225_ip_static_ipv6_part(const struct rohc_comp_ctxt *const ctxt,
+                                                 const struct ipv6_hdr *const ipv6,
+                                                 const bool is_innermost,
+                                                 uint8_t *const rohc_data,
+                                                 const size_t rohc_max_len)
+{
+	size_t ipv6_static_len;
+
+	if(ipv6->flow1 == 0 && ipv6->flow2 == 0)
+	{
+		ipv6_static_nofl_t *const ipv6_static = (ipv6_static_nofl_t *) rohc_data;
+
+		ipv6_static_len = sizeof(ipv6_static_nofl_t);
+		if(rohc_max_len < ipv6_static_len)
+		{
+			rohc_comp_warn(ctxt, "ROHC buffer too small for the IPv6 static part: "
+			               "%zu bytes required, but only %zu bytes available",
+			               ipv6_static_len, rohc_max_len);
+			goto error;
+		}
+
+		ipv6_static->version_flag = 1;
+		ipv6_static->innermost_ip = GET_REAL(is_innermost);
+		ipv6_static->reserved1 = 0;
+		ipv6_static->flow_label_enc_discriminator = 0;
+		ipv6_static->reserved2 = 0;
+		ipv6_static->next_header = ipv6->nh;
+		memcpy(ipv6_static->src_addr, &ipv6->saddr, sizeof(struct ipv6_addr));
+		memcpy(ipv6_static->dst_addr, &ipv6->daddr, sizeof(struct ipv6_addr));
+	}
+	else
+	{
+		ipv6_static_fl_t *const ipv6_static = (ipv6_static_fl_t *) rohc_data;
+
+		ipv6_static_len = sizeof(ipv6_static_fl_t);
+		if(rohc_max_len < ipv6_static_len)
+		{
+			rohc_comp_warn(ctxt, "ROHC buffer too small for the IPv6 static part: "
+			               "%zu bytes required, but only %zu bytes available",
+			               ipv6_static_len, rohc_max_len);
+			goto error;
+		}
+
+		ipv6_static->version_flag = 1;
+		ipv6_static->innermost_ip = GET_REAL(is_innermost);
+		ipv6_static->reserved = 0;
+		ipv6_static->flow_label_enc_discriminator = 1;
+		ipv6_static->flow_label_msb = ipv6->flow1;
+		ipv6_static->flow_label_lsb = ipv6->flow2;
+		ipv6_static->next_header = ipv6->nh;
+		memcpy(ipv6_static->src_addr, &ipv6->saddr, sizeof(struct ipv6_addr));
+		memcpy(ipv6_static->dst_addr, &ipv6->daddr, sizeof(struct ipv6_addr));
+	}
+	rohc_comp_debug(ctxt, "IPv6 next header = %u", ipv6->nh);
+
+	rohc_comp_dump_buf(ctxt, "IPv6 static part", rohc_data, ipv6_static_len);
+
+	return ipv6_static_len;
+
+error:
+	return -1;
+}
+
+
+/**
+ * @brief Code the dynamic chain of a ROHCv2 IP-only IR packet
+ *
+ * @param ctxt              The compression context
+ * @param ip                The outer IP header
+ * @param rohc_pkt          OUT: The ROHC packet
+ * @param rohc_pkt_max_len  The maximum length of the ROHC packet
+ * @param[out] parsed_len   The length of uncompressed data parsed
+ * @return                  The length of the ROHC packet if successful,
+ *                          -1 otherwise
+ */
+static int rohc_comp_rfc5225_ip_dyn_chain(const struct rohc_comp_ctxt *const ctxt,
+                                          const struct ip_packet *const ip,
+                                          uint8_t *const rohc_pkt,
+                                          const size_t rohc_pkt_max_len,
+                                          size_t *const parsed_len)
+{
+	const struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = ctxt->specific;
+
+	const uint8_t *remain_data = ip->data;
+	size_t remain_len = ip->size;
+
+	uint8_t *rohc_remain_data = rohc_pkt;
+	size_t rohc_remain_len = rohc_pkt_max_len;
+
+#if 0
+	const ip_context_t *inner_ip_ctxt = NULL;
+	const struct ip_hdr *inner_ip_hdr = NULL;
+#endif
+	size_t ip_hdr_pos;
+	int ret;
+
+	/* there is at least one IP header otherwise it won't be the IP/TCP profile */
+	assert(rfc5225_ctxt->ip_contexts_nr > 0);
+
+	/* add dynamic part for all IP headers */
+	for(ip_hdr_pos = 0; ip_hdr_pos < rfc5225_ctxt->ip_contexts_nr; ip_hdr_pos++)
+	{
+		const struct ip_hdr *const ip_hdr = (struct ip_hdr *) remain_data;
+		const ip_context_t *const ip_ctxt = &(rfc5225_ctxt->ip_contexts[ip_hdr_pos]);
+		const bool is_innermost = !!(ip_hdr_pos + 1 == rfc5225_ctxt->ip_contexts_nr);
+
+#if 0
+		/* the last IP header is the innermost one */
+		inner_ip_ctxt = ip_ctxt;
+		inner_ip_hdr = (struct ip_hdr *) remain_data;
+#endif
+
+		/* retrieve IP version */
+		assert(remain_len >= sizeof(struct ip_hdr));
+		rohc_comp_debug(ctxt, "found IPv%d", ip_hdr->version);
+
+		if(ip_hdr->version == IPV4)
+		{
+			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) remain_data;
+
+			assert(remain_len >= sizeof(struct ipv4_hdr));
+
+			ret = rohc_comp_rfc5225_ip_dyn_ipv4_part(ctxt, ip_ctxt, ipv4, is_innermost,
+			                                         rohc_remain_data, rohc_remain_len);
+			if(ret < 0)
+			{
+				rohc_comp_warn(ctxt, "failed to build the IPv4 base header part "
+				               "of the dynamic chain");
+				goto error;
+			}
+			rohc_remain_data += ret;
+			rohc_remain_len -= ret;
+
+			remain_data += sizeof(struct ipv4_hdr);
+			remain_len -= sizeof(struct ipv4_hdr);
+		}
+		else if(ip_hdr->version == IPV6)
+		{
+			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
+
+			assert(remain_len >= sizeof(struct ipv6_hdr));
+
+			ret = rohc_comp_rfc5225_ip_dyn_ipv6_part(ctxt, ip_ctxt, ipv6, is_innermost,
+			                                         rohc_remain_data, rohc_remain_len);
+			if(ret < 0)
+			{
+				rohc_comp_warn(ctxt, "failed to build the IPv6 base header part "
+				               "of the dynamic chain");
+				goto error;
+			}
+			rohc_remain_data += ret;
+			rohc_remain_len -= ret;
+
+			remain_data += sizeof(struct ipv6_hdr);
+			remain_len -= sizeof(struct ipv6_hdr);
+
+			/* TODO: handle IPv6 extension headers */
+		}
+		else
+		{
+			rohc_comp_warn(ctxt, "unexpected IP version %u", ip_hdr->version);
+			assert(0);
+			goto error;
+		}
+	}
+
+	/* how many bytes were parsed from the uncompressed packet? */
+	*parsed_len = remain_data - ip->data;
+
+#if 0
+	/* update context with new values (done at the very end to avoid wrongly
+	 * updating the context in case of compression failure) */
+	if(inner_ip_hdr->version == IPV4)
+	{
+		const struct ipv4_hdr *const inner_ipv4 = (struct ipv4_hdr *) inner_ip_hdr;
+		inner_ip_ctxt->ctxt.v4.last_ip_id_behavior =
+			inner_ip_ctxt->ctxt.v4.ip_id_behavior;
+		inner_ip_ctxt->ctxt.v4.last_ip_id = rohc_ntoh16(inner_ipv4->id);
+		inner_ip_ctxt->ctxt.v4.df = inner_ipv4->df;
+		inner_ip_ctxt->ctxt.vx.dscp = inner_ipv4->dscp;
+	}
+	else if(inner_ip_hdr->version == IPV6)
+	{
+		const struct ipv6_hdr *const inner_ipv6 = (struct ipv6_hdr *) inner_ip_hdr;
+		inner_ip_ctxt->ctxt.vx.dscp = ipv6_get_dscp(inner_ipv6);
+	}
+	else
+	{
+		rohc_comp_warn(context, "unexpected IP version %u", inner_ip_hdr->version);
+		assert(0);
+		goto error;
+	}
+	inner_ip_ctxt->ctxt.vx.ttl_hopl = rohc_comp_rfc5225_ip_context->tmp.ttl_hopl;
+#endif
+
+	return (rohc_pkt_max_len - rohc_remain_len);
+
+error:
+	return -1;
+}
+
+
+/**
+ * @brief Build the dynamic part of the IPv4 header
+ *
+ * @param ctxt            The compression context
+ * @param ip_ctxt         The specific IP compression context
+ * @param ipv4            The IPv4 header
+ * @param is_innermost    true if the IP header is the innermost of the packet,
+ *                        false otherwise
+ * @param[out] rohc_data  The ROHC packet being built
+ * @param rohc_max_len    The max remaining length in the ROHC buffer
+ * @return                The length appended in the ROHC buffer if positive,
+ *                        -1 in case of error
+ */
+static int rohc_comp_rfc5225_ip_dyn_ipv4_part(const struct rohc_comp_ctxt *const ctxt,
+                                              const ip_context_t *const ip_ctxt,
+                                              const struct ipv4_hdr *const ipv4,
+                                              const bool is_innermost,
+                                              uint8_t *const rohc_data,
+                                              const size_t rohc_max_len)
+{
+	const struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = ctxt->specific;
+	size_t ipv4_dyn_len;
+
+	assert(ip_ctxt->ctxt.vx.version == IPV4);
+
+	if(is_innermost)
+	{
+		ipv4_endpoint_innermost_dynamic_noipid_t *const ipv4_dynamic =
+			(ipv4_endpoint_innermost_dynamic_noipid_t *) rohc_data;
+		ipv4_dyn_len = sizeof(ipv4_endpoint_innermost_dynamic_noipid_t);
+
+		if(rohc_max_len < ipv4_dyn_len)
+		{
+			rohc_comp_warn(ctxt, "ROHC buffer too small for the IPv4 dynamic part: "
+			               "%zu bytes required, but only %zu bytes available",
+			               ipv4_dyn_len, rohc_max_len);
+			goto error;
+		}
+
+		ipv4_dynamic->reserved = 0;
+		ipv4_dynamic->reorder_ratio = 0; /* TODO: handle reorder_ratio */
+		ipv4_dynamic->df = ipv4->df;
+		/* IP-ID behavior: all behavior values possible */
+		ipv4_dynamic->ip_id_behavior_innermost = ip_ctxt->ctxt.v4.ip_id_behavior;
+		ipv4_dynamic->tos_tc = ipv4->tos;
+		ipv4_dynamic->ttl_hopl = ipv4->ttl;
+
+		/* IP-ID */
+		if(ipv4_dynamic->ip_id_behavior_innermost == ROHC_IP_ID_BEHAVIOR_ZERO)
+		{
+			rohc_comp_debug(ctxt, "ip_id_behavior_innermost = %d",
+			                ipv4_dynamic->ip_id_behavior_innermost);
+
+			/* MSN */
+			ipv4_dynamic->msn = rohc_hton16(rfc5225_ctxt->msn);
+		}
+		else
+		{
+			ipv4_endpoint_innermost_dynamic_ipid_t *const ipv4_dynamic_ipid =
+				(ipv4_endpoint_innermost_dynamic_ipid_t *) rohc_data;
+			ipv4_dyn_len = sizeof(ipv4_endpoint_innermost_dynamic_ipid_t);
+
+			if(rohc_max_len < ipv4_dyn_len)
+			{
+				rohc_comp_warn(ctxt, "ROHC buffer too small for the IPv4 dynamic part: "
+				               "%zu bytes required, but only %zu bytes available",
+				               ipv4_dyn_len, rohc_max_len);
+				goto error;
+			}
+
+			ipv4_dynamic_ipid->ip_id_innermost = ipv4->id;
+			rohc_comp_debug(ctxt, "ip_id_behavior_innermost = %d, IP-ID = 0x%04x",
+			                ipv4_dynamic->ip_id_behavior_innermost,
+			                rohc_ntoh16(ipv4->id));
+
+			/* MSN */
+			ipv4_dynamic_ipid->msn = rohc_hton16(rfc5225_ctxt->msn);
+		}
+	}
+	else /* any outer IPv4 header */
+	{
+		ipv4_outer_dynamic_noipid_t *const ipv4_dynamic =
+			(ipv4_outer_dynamic_noipid_t *) rohc_data;
+		ipv4_dyn_len = sizeof(ipv4_outer_dynamic_noipid_t);
+
+		if(rohc_max_len < ipv4_dyn_len)
+		{
+			rohc_comp_warn(ctxt, "ROHC buffer too small for the IPv4 dynamic part: "
+			               "%zu bytes required, but only %zu bytes available",
+			               ipv4_dyn_len, rohc_max_len);
+			goto error;
+		}
+
+		ipv4_dynamic->reserved = 0;
+		ipv4_dynamic->df = ipv4->df;
+
+		/* only ROHC_IP_ID_BEHAVIOR_RAND or ROHC_IP_ID_BEHAVIOR_ZERO */
+		if(ipv4->id == 0)
+		{
+			ipv4_dynamic->ip_id_behavior_outer = ROHC_IP_ID_BEHAVIOR_ZERO;
+		}
+		else
+		{
+			ipv4_dynamic->ip_id_behavior_outer = ROHC_IP_ID_BEHAVIOR_RAND;
+		}
+		ipv4_dynamic->tos_tc = ipv4->tos;
+		ipv4_dynamic->ttl_hopl = ipv4->ttl;
+
+		/* IP-ID */
+		if(ipv4_dynamic->ip_id_behavior_outer == ROHC_IP_ID_BEHAVIOR_ZERO)
+		{
+			rohc_comp_debug(ctxt, "ip_id_behavior_outer = %d",
+			                ipv4_dynamic->ip_id_behavior_outer);
+		}
+		else
+		{
+			ipv4_outer_dynamic_ipid_t *const ipv4_dynamic_ipid =
+				(ipv4_outer_dynamic_ipid_t *) rohc_data;
+			ipv4_dyn_len = sizeof(ipv4_outer_dynamic_ipid_t);
+
+			if(rohc_max_len < ipv4_dyn_len)
+			{
+				rohc_comp_warn(ctxt, "ROHC buffer too small for the IPv4 dynamic part: "
+				               "%zu bytes required, but only %zu bytes available",
+				               ipv4_dyn_len, rohc_max_len);
+				goto error;
+			}
+
+			ipv4_dynamic_ipid->ip_id_outer = ipv4->id;
+			rohc_comp_debug(ctxt, "ip_id_behavior = %d, IP-ID = 0x%04x",
+			                ipv4_dynamic->ip_id_behavior_outer, rohc_ntoh16(ipv4->id));
+		}
+	}
+
+#if 0
+	/* TODO: should not update context there */
+	ip_ctxt->ctxt.v4.ip_id_behavior = ipv4_dynamic1->ip_id_behavior;
+	ip_ctxt->ctxt.v4.last_ip_id_behavior = ip_ctxt->ctxt.v4.ip_id_behavior;
+	ip_ctxt->ctxt.v4.dscp = ipv4->dscp;
+	ip_ctxt->ctxt.v4.ttl = ipv4->ttl;
+	ip_ctxt->ctxt.v4.df = ipv4->df;
+	ip_ctxt->ctxt.v4.last_ip_id = rohc_ntoh16(ipv4->id);
+#endif
+
+	rohc_comp_dump_buf(ctxt, "IPv4 dynamic part", rohc_data, ipv4_dyn_len);
+
+	return ipv4_dyn_len;
+
+error:
+	return -1;
+}
+
+
+/**
+ * @brief Build the dynamic part of the IPv6 header
+ *
+ * @param ctxt            The compression context
+ * @param ip_ctxt         The specific IP compression context
+ * @param ipv6            The IPv6 header
+ * @param is_innermost    true if the IP header is the innermost of the packet,
+ *                        false otherwise
+ * @param[out] rohc_data  The ROHC packet being built
+ * @param rohc_max_len    The max remaining length in the ROHC buffer
+ * @return                The length appended in the ROHC buffer if positive,
+ *                        -1 in case of error
+ */
+static int rohc_comp_rfc5225_ip_dyn_ipv6_part(const struct rohc_comp_ctxt *const ctxt,
+                                              const ip_context_t *const ip_ctxt,
+                                              const struct ipv6_hdr *const ipv6,
+                                              const bool is_innermost,
+                                              uint8_t *const rohc_data,
+                                              const size_t rohc_max_len)
+{
+	const struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = ctxt->specific;
+	ipv6_regular_dynamic_t *const ipv6_dynamic =
+		(ipv6_regular_dynamic_t *) rohc_data;
+	size_t ipv6_dyn_len = sizeof(ipv6_regular_dynamic_t);
+	const uint8_t tc = ipv6_get_tc(ipv6);
+
+	assert(ip_ctxt->ctxt.v6.version == IPV6);
+
+	if(rohc_max_len < ipv6_dyn_len)
+	{
+		rohc_comp_warn(ctxt, "ROHC buffer too small for the IPv6 dynamic part: "
+		               "%zu bytes required, but only %zu bytes available",
+		               ipv6_dyn_len, rohc_max_len);
+		goto error;
+	}
+
+	ipv6_dynamic->tos_tc = tc;
+	ipv6_dynamic->ttl_hopl = ipv6->hl;
+
+	if(is_innermost)
+	{
+		ipv6_endpoint_dynamic_t *const ipv6_endpoint_dynamic =
+			(ipv6_endpoint_dynamic_t *) rohc_data;
+		ipv6_dyn_len = sizeof(ipv6_endpoint_dynamic_t);
+
+		if(rohc_max_len < ipv6_dyn_len)
+		{
+			rohc_comp_warn(ctxt, "ROHC buffer too small for the IPv6 dynamic part: "
+			               "%zu bytes required, but only %zu bytes available",
+			               ipv6_dyn_len, rohc_max_len);
+			goto error;
+		}
+
+		ipv6_endpoint_dynamic->reorder_ratio = 0; /* TODO: handle reorder_ratio */
+		ipv6_endpoint_dynamic->reserved = 0;
+
+		/* MSN */
+		ipv6_endpoint_dynamic->msn = rohc_hton16(rfc5225_ctxt->msn);
+	}
+
+#if 0
+	/* TODO: should not update context there */
+	ip_ctxt->ctxt.v6.dscp = dscp;
+	ip_ctxt->ctxt.v6.hopl = ipv6->hl;
+#endif
+
+	rohc_comp_dump_buf(ctxt, "IP dynamic part", rohc_data, ipv6_dyn_len);
+
+	return ipv6_dyn_len;
 
 error:
 	return -1;
