@@ -112,8 +112,15 @@ typedef struct __attribute__((packed)) ipvx_context
 	uint8_t version:4;
 	uint8_t unused:4;
 
-	uint8_t dscp:6;
-	uint8_t ip_ecn_flags:2;
+	union
+	{
+		struct
+		{
+			uint8_t dscp:6;
+			uint8_t ip_ecn_flags:2;
+		};
+		uint8_t tos_tc;
+	};
 
 	uint8_t next_header;
 
@@ -133,12 +140,19 @@ typedef struct __attribute__((packed)) ipv4_context
 	uint8_t df:1;
 	uint8_t unused:3;
 
-	uint8_t dscp:6;
-	uint8_t ip_ecn_flags:2;
+	union
+	{
+		struct
+		{
+			uint8_t dscp:6;
+			uint8_t ip_ecn_flags:2;
+		};
+		uint8_t tos;
+	};
 
 	uint8_t protocol;
 
-	uint8_t ttl_hopl;
+	uint8_t ttl;
 
 	uint8_t ip_id_behavior;
 	uint16_t ip_id;
@@ -157,12 +171,19 @@ typedef struct __attribute__((packed)) ipv6_context
 	uint8_t version:4;
 	uint8_t unused:4;
 
-	uint8_t dscp:6;
-	uint8_t ip_ecn_flags:2;
+	union
+	{
+		struct
+		{
+			uint8_t dscp:6;
+			uint8_t ip_ecn_flags:2;
+		};
+		uint8_t tc;
+	};
 
 	uint8_t next_header;
 
-	uint8_t ttl_hopl;
+	uint8_t hopl;
 
 	uint8_t ip_id_behavior;
 

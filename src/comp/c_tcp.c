@@ -538,7 +538,7 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 				ip_context->ctxt.v4.protocol = proto;
 				ip_context->ctxt.v4.dscp = ipv4->dscp;
 				ip_context->ctxt.v4.df = ipv4->df;
-				ip_context->ctxt.v4.ttl_hopl = ipv4->ttl;
+				ip_context->ctxt.v4.ttl = ipv4->ttl;
 				ip_context->ctxt.v4.src_addr = ipv4->saddr;
 				ip_context->ctxt.v4.dst_addr = ipv4->daddr;
 
@@ -555,7 +555,7 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 
 				ip_context->ctxt.v6.ip_id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
 				ip_context->ctxt.v6.dscp = remain_data[1];
-				ip_context->ctxt.v6.ttl_hopl = ipv6->hl;
+				ip_context->ctxt.v6.hopl = ipv6->hl;
 				ip_context->ctxt.v6.flow_label = ipv6_get_flow_label(ipv6);
 				memcpy(ip_context->ctxt.v6.src_addr, &ipv6->saddr,
 				       sizeof(struct ipv6_addr));
@@ -1046,7 +1046,7 @@ static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
 
 			/* check whether IPv6 HL changed to avoid Context Replication
 			 * (changes for IPv6 HL cannot be transmitted in IR-CR) */
-			if(ipv6->hl != ip_context->ctxt.v6.ttl_hopl)
+			if(ipv6->hl != ip_context->ctxt.v6.hopl)
 			{
 				at_least_one_ipv6_hl_changed = true;
 			}
@@ -3871,12 +3871,12 @@ static bool tcp_encode_uncomp_ip_fields(struct rohc_comp_ctxt *const context,
 
 			/* irregular chain? */
 			ttl_hopl = ipv4->ttl;
-			if(!is_innermost && ttl_hopl != ip_context->ctxt.v4.ttl_hopl)
+			if(!is_innermost && ttl_hopl != ip_context->ctxt.v4.ttl)
 			{
 				tcp_context->tmp.ttl_irreg_chain_flag |= 1;
 				rohc_comp_debug(context, "last ttl_hopl = 0x%02x, ttl_hopl = "
 				                "0x%02x, ttl_irreg_chain_flag = %d",
-				                ip_context->ctxt.v4.ttl_hopl, ttl_hopl,
+				                ip_context->ctxt.v4.ttl, ttl_hopl,
 				                tcp_context->tmp.ttl_irreg_chain_flag);
 			}
 
@@ -3897,12 +3897,12 @@ static bool tcp_encode_uncomp_ip_fields(struct rohc_comp_ctxt *const context,
 
 			/* irregular chain? */
 			ttl_hopl = ipv6->hl;
-			if(!is_innermost && ttl_hopl != ip_context->ctxt.v6.ttl_hopl)
+			if(!is_innermost && ttl_hopl != ip_context->ctxt.v6.hopl)
 			{
 				tcp_context->tmp.ttl_irreg_chain_flag |= 1;
 				rohc_comp_debug(context, "last ttl_hopl = 0x%02x, ttl_hopl = "
 				                "0x%02x, ttl_irreg_chain_flag = %d",
-				                ip_context->ctxt.v6.ttl_hopl, ttl_hopl,
+				                ip_context->ctxt.v6.hopl, ttl_hopl,
 				                tcp_context->tmp.ttl_irreg_chain_flag);
 			}
 

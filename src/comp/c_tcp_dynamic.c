@@ -342,7 +342,7 @@ static int tcp_code_dynamic_ipv4_part(const struct rohc_comp_ctxt *const context
 
 	/* TODO: should not update context there */
 	ip_context->ctxt.v4.dscp = ipv4->dscp;
-	ip_context->ctxt.v4.ttl_hopl = ipv4->ttl;
+	ip_context->ctxt.v4.ttl = ipv4->ttl;
 	ip_context->ctxt.v4.df = ipv4->df;
 	ip_context->ctxt.v4.last_ip_id = rohc_ntoh16(ipv4->id);
 
@@ -392,7 +392,7 @@ static int tcp_code_dynamic_ipv6_part(const struct rohc_comp_ctxt *const context
 
 	/* TODO: should not update context there */
 	ip_context->ctxt.v6.dscp = dscp;
-	ip_context->ctxt.v6.ttl_hopl = ipv6->hl;
+	ip_context->ctxt.v6.hopl = ipv6->hl;
 
 	rohc_comp_dump_buf(context, "IP dynamic part", rohc_data, ipv6_dynamic_len);
 
