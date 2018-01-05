@@ -1,5 +1,5 @@
 /*
- * Copyright 2012,2013,2014,2015,2016 Didier Barvaux
+ * Copyright 2012,2013,2014 Didier Barvaux
  * Copyright 2013,2014,2018 Viveris Technologies
  * Copyright 2012 WBX
  *
@@ -19,30 +19,89 @@
  */
 
 /**
- * @file   src/comp/schemes/ip_ctxt.h
- * @brief  The compression context for IP headers
+ * @file   decomp/schemes/ip_ctxt.h
+ * @brief  The decompression context for IP headers
  * @author FWX <rohc_team@dialine.fr>
  * @author Didier Barvaux <didier@barvaux.org>
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  */
 
-#ifndef ROHC_COMP_SCHEMES_IP_CTXT_H
-#define ROHC_COMP_SCHEMES_IP_CTXT_H
+#ifndef ROHC_DECOMP_SCHEMES_IP_CTXT_H
+#define ROHC_DECOMP_SCHEMES_IP_CTXT_H
 
 #include "protocols/ip.h"
 #include "protocols/tcp.h"
 
 
 /**
- * @brief Define the IPv6 generic option context
+ * @brief Define the IPv6 option context for Destination, Hop-by-Hop
+ *        and Routing option
  */
-typedef struct __attribute__((packed)) ipv6_generic_option_context
+typedef struct __attribute__((packed))
 {
-	size_t option_length;
-	uint8_t next_header;
+	size_t data_len;
 	uint8_t data[IPV6_OPT_CTXT_LEN_MAX];
 
 } ipv6_generic_option_context_t;
+
+
+/**
+ * @brief Define the IPv6 option context for GRE option
+ */
+typedef struct __attribute__((packed)) ipv6_gre_option_context
+{
+	uint8_t c_flag:1;
+	uint8_t k_flag:1;
+	uint8_t s_flag:1;
+	uint8_t protocol:1;
+	uint8_t padding:4;
+
+	uint32_t key;               // if k_flag set
+	uint32_t sequence_number;   // if s_flag set
+
+} ipv6_gre_option_context_t;
+
+
+/**
+ * @brief Define the IPv6 option context for MIME option
+ */
+typedef struct __attribute__((packed)) ipv6_mime_option_context
+{
+	uint8_t s_bit:1;
+	uint8_t res_bits:7;
+	uint32_t orig_dest;
+	uint32_t orig_src;         // if s_bit set
+
+} ipv6_mime_option_context_t;
+
+
+/**
+ * @brief Define the IPv6 option context for AH option
+ */
+typedef struct __attribute__((packed)) ipv6_ah_option_context
+{
+	uint32_t spi;
+	uint32_t sequence_number;
+	uint32_t auth_data[1];
+} ipv6_ah_option_context_t;
+
+
+/** The decompression context for one IP extension header */
+typedef struct
+{
+	size_t len;        /**< The length (in bytes) of the extension header */
+	uint8_t proto;     /**< The protocol of the extension header */
+	uint8_t nh_proto;  /**< The protocol of the next header */
+
+	union
+	{
+		ipv6_generic_option_context_t generic; /**< IPv6 generic extension header */
+		ipv6_gre_option_context_t gre;         /**< IPv6 GRE extension header */
+		ipv6_mime_option_context_t mime;       /**< IPv6 MIME extension header */
+		ipv6_ah_option_context_t ah;           /**< IPv6 AH extension header */
+	};
+
+} ip_option_context_t;
 
 
 /**
@@ -61,7 +120,6 @@ typedef struct __attribute__((packed)) ipvx_context
 	uint8_t ttl_hopl;
 
 	uint8_t ip_id_behavior;
-	uint8_t last_ip_id_behavior;
 
 } ipvx_context_t;
 
@@ -83,23 +141,12 @@ typedef struct __attribute__((packed)) ipv4_context
 	uint8_t ttl_hopl;
 
 	uint8_t ip_id_behavior;
-	uint8_t last_ip_id_behavior;
-	uint16_t last_ip_id;
+	uint16_t ip_id;
 
 	uint32_t src_addr;
 	uint32_t dst_addr;
 
 } ipv4_context_t;
-
-
-/** The compression context for one IPv6 extension header */
-typedef union
-{
-	ipv6_generic_option_context_t generic; /**< IPv6 generic extension header */
-	/* TODO: GRE not yet supported */
-	/* TODO: MINE not yet supported */
-	/* TODO: AH not yet supported */
-} ip_option_context_t;
 
 
 /**
@@ -118,9 +165,8 @@ typedef struct __attribute__((packed)) ipv6_context
 	uint8_t ttl_hopl;
 
 	uint8_t ip_id_behavior;
-	uint8_t last_ip_id_behavior;
 
-	uint32_t flow_label:20;
+	uint32_t flow_label:20; /**< IPv6 Flow Label */
 
 	uint32_t src_addr[4];
 	uint32_t dest_addr[4];
@@ -141,13 +187,11 @@ typedef struct
 		ipv6_context_t v6;
 	} ctxt;
 
-	/* Context Replication */
-	bool cr_ttl_hopl_present;
-
 	size_t opts_nr;
+	size_t opts_len;
 	ip_option_context_t opts[ROHC_MAX_IP_EXT_HDRS];
 
 } ip_context_t;
 
-#endif /* ROHC_COMP_SCHEMES_IP_CTXT_H */
+#endif /* ROHC_DECOMP_SCHEMES_IP_CTXT_H */
 

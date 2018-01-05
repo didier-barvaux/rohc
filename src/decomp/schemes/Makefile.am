@@ -47,5 +47,6 @@ noinst_HEADERS = \
 	decomp_list_ipv6.h \
 	rfc4996.h \
 	tcp_sack.h \
-	tcp_ts.h
+	tcp_ts.h \
+	ip_ctxt.h
 
