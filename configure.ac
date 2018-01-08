@@ -32,7 +32,7 @@ if test -d "$srcdir/.git/" ; then
 	if test $? -ne 0 ; then
 		PACKAGE_REVNO="~unknown"
 	else
-		GIT_TAG="`${git_bin} describe --tags`"
+		${git_bin} describe --tags | grep -qE '^rohc-[[0-9]]+\.[[0-9]]+\.[[0-9]]+$'
 		if test $? -eq 0 ; then
 			# git revno matches a tag, revno is thus useless
 			PACKAGE_REVNO=""
