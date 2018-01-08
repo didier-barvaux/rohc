@@ -69,8 +69,8 @@ fi
 
 # extract the CID type and capture name from the name of the script
 PARAMS=$( echo "${SCRIPT}" | \
-          ${SED} -e 's#^.*/test_non_regression_##' -e 's#\.sh$##' )
-MAX_CONTEXTS=$( echo "${PARAMS}" | ${AWK} -F'_' '{ print $(NF-2) }' | sed -e 's/maxcontexts//' )
+          ${SED} -e 's#^.*/test_non_reg_##' -e 's#\.sh$##' )
+MAX_CONTEXTS=$( echo "${PARAMS}" | ${AWK} -F'_' '{ print $(NF-2) }' | sed -e 's/mc//' )
 WLSB_WIDTH=$( echo "${PARAMS}" | ${AWK} -F'_' '{ print $(NF-1) }' | sed -e 's/wlsb//' )
 CID_TYPE=$( echo "${PARAMS}" | ${AWK} -F'_' '{ print $(NF) }' )
 STREAM=$( echo "${PARAMS}" | ${AWK} -F'_' '{ OFS="/" ; $(NF-2)="" ; $(NF-1)="" ; $(NF)="" ; print $0 }' )
