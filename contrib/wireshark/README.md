@@ -8,13 +8,10 @@ with the Lua support included.
 Start Wireshark, go to the Help menu, then the About entry. The Lua word shall
 appear in the list.
 
-### Tell Wireshark to enable the Lua plugins
+### Install ROHC dissectors in the Wireshark directory of the local user
 
 ```
-$ mkdir ~/.wireshark/
-$ mkdir ~/.wireshark/plugins/
-$ echo "disable_lua = false"  > ~/.wireshark/init.lua
-$ cp /path/to/rohc/sources/contrib/wireshark/*.lua ~/.wireshark/plugins/
+$ make install
 ```
 
 ### Test with Wireshark
