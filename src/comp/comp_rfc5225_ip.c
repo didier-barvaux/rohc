@@ -236,19 +236,9 @@ static bool rohc_comp_rfc5225_ip_create(struct rohc_comp_ctxt *const context,
 				remain_data += sizeof(struct ipv6_hdr);
 				remain_len -= sizeof(struct ipv6_hdr);
 
-				rohc_comp_debug(context, "parse IPv6 extension headers");
-				while(rohc_is_ipv6_opt(proto))
-				{
-					const struct ipv6_opt *const ipv6_opt = (struct ipv6_opt *) remain_data;
-					size_t opt_len;
-					assert(remain_len >= sizeof(struct ipv6_opt));
-					opt_len = ipv6_opt_get_length(ipv6_opt);
-					rohc_comp_debug(context, "  IPv6 extension header is %zu-byte long",
-					                opt_len);
-					remain_data += opt_len;
-					remain_len -= opt_len;
-					proto = ipv6_opt->next_header;
-				}
+				/* TODO: handle IPv6 extension headers */
+				assert(rohc_is_ipv6_opt(proto) == false);
+
 				ip_context->ctxt.v6.next_header = proto;
 				break;
 			}
@@ -524,7 +514,6 @@ static bool rohc_comp_rfc5225_ip_check_context(const struct rohc_comp_ctxt *cons
 	{
 		const struct ip_hdr *const ip = (struct ip_hdr *) remain_data;
 		const ip_context_t *const ip_context = &(rfc5225_ctxt->ip_contexts[ip_hdr_pos]);
-		size_t ip_ext_pos;
 
 		/* retrieve IP version */
 		assert(remain_len >= sizeof(struct ip_hdr));
@@ -608,16 +597,8 @@ static bool rohc_comp_rfc5225_ip_check_context(const struct rohc_comp_ctxt *cons
 
 			/* find transport header/protocol, skip any IPv6 extension headers */
 			next_proto = ipv6->nh;
-			for(ip_ext_pos = 0; rohc_is_ipv6_opt(next_proto); ip_ext_pos++)
-			{
-				const struct ipv6_opt *const ipv6_opt = (struct ipv6_opt *) remain_data;
-				size_t opt_len;
-				assert(remain_len >= sizeof(struct ipv6_opt));
-				opt_len = ipv6_opt_get_length(ipv6_opt);
-				remain_data += opt_len;
-				remain_len -= opt_len;
-				next_proto = ipv6_opt->next_header;
-			}
+			/* TODO: handle IPv6 extension headers */
+			assert(rohc_is_ipv6_opt(next_proto) == false);
 
 			/* check transport header protocol */
 			if(next_proto != ip_context->ctxt.v6.next_header)
