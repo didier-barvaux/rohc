@@ -17,7 +17,7 @@ before_install:
    - wget https://cmocka.org/files/1.1/cmocka-1.1.1.tar.xz -O /tmp/cmocka-1.1.1.tar.xz
    - tar -xvf /tmp/cmocka-1.1.1.tar.xz
    - mkdir cmocka-1.1.1/build && cd cmocka-1.1.1/build && cmake -DCMAKE_INSTALL_PREFIX=/usr -DWITH_STATIC_LIB=OFF -DUNIT_TESTING=OFF -DCMAKE_DISABLE_FIND_PACKAGE_Doxygen=ON .. && make && sudo make install && cd -
-script: ./autogen.sh --disable-linux-kernel-module --disable-doc && make --silent clean && make -j2 all CFLAGS='-Wno-unreachable-code -Wframe-larger-than=1000000' && make -j2 check CFLAGS='-Wno-unreachable-code -Wframe-larger-than=1000000' && make -j2 distcheck CFLAGS='-Wno-unreachable-code -Wframe-larger-than=1000000'
+script: ./autogen.sh --disable-linux-kernel-module --disable-doc && make --silent clean && make -j2 all CFLAGS='-Wno-unreachable-code -Wframe-larger-than=1000000' && make -j2 check CFLAGS='-Wno-unreachable-code -Wframe-larger-than=1000000' && make -j2 --silent distcheck CFLAGS='-Wno-unreachable-code -Wframe-larger-than=1000000'
 
 addons:
   coverity_scan:
