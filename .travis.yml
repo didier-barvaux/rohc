@@ -5,6 +5,8 @@ env:
    - secure: "gx527mA//JOHGAP+QVlh081EzLvG5gAkXLCa89fK+WZhO/Q1ZC7NdWrV2M8AvKyfnH/zcz0N2qvDJ99ATzzFZ/n1StIwnUWPIgjX9QO6L0NWShSR2PdL0LwION3d4OV8zbEY/i+mCQmVng1c9/SfVFn/58Ee1vu8gWnCxBK+o7I="
 
 group: travis_latest
+sudo: false
+dist: trusty
 language: c
 compiler:
    - clang
