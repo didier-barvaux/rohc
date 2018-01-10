@@ -45,7 +45,7 @@ echo "" >&2
 rm -f "${LCOV_FILE}" "${LCOV_FILTERED}"
 
 # run the non-regression test in verbose mode to cover those bits
-$(dirname $0)/non_regression/rfc3095/test_non_regression_ipv4_udp_rtp_voip_maxcontexts1_wlsb64_smallcid.sh verbose &>/dev/null
+$(dirname $0)/non_regression/rfc3095/test_non_reg_ipv4_udp_rtp_voip_mc1_wlsb64_smallcid.sh verbose &>/dev/null
 
 # scan for gcov output files, create the output.zcov report file
 echo -n "Collect information about code coverage... " >&2
