@@ -91,7 +91,7 @@ struct rohc_rfc5225_ip_bits
 };
 
 
-/** The bits extracted from ROHC TCP header */
+/** The bits extracted from ROHCv2 IP-only header */
 struct rohc_rfc5225_bits
 {
 	/** The extracted bits related to the IP headers */
@@ -121,7 +121,7 @@ struct rohc_rfc5225_decoded_ip
 };
 
 
-/** The values decoded from the bits extracted from ROHC TCP header */
+/** The values decoded from the bits extracted from ROHCv2 IP-only header */
 struct rohc_rfc5225_decoded
 {
 	/** The decoded values related to the IP headers */
@@ -480,7 +480,7 @@ static void decomp_rfc5225_ip_reset_extr_bits(const struct rohc_decomp_ctxt *con
 	}
 
 	/* default constant LSB shift parameters */
-	bits->msn.p = ROHC_LSB_SHIFT_TCP_SN;
+	bits->msn.p = ROHC_LSB_SHIFT_VAR;
 	for(i = 0; i < ROHC_MAX_IP_HDRS; i++)
 	{
 		bits->ip[i].ttl_hl.p = ROHC_LSB_SHIFT_TCP_TTL;
@@ -1516,7 +1516,7 @@ static rohc_status_t decomp_rfc5225_ip_build_hdrs(const struct rohc_decomp *cons
 	{
 		rohc_dump_packet(decomp->trace_callback, decomp->trace_callback_priv,
 		                 ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
-		                 "IP/TCP headers", *uncomp_hdrs);
+		                 "IP headers", *uncomp_hdrs);
 	}
 
 	return ROHC_STATUS_OK;

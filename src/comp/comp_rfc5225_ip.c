@@ -266,7 +266,7 @@ static bool rohc_comp_rfc5225_ip_create(struct rohc_comp_ctxt *const context,
 	if(rohc_is_tunneling(proto))
 	{
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "too many IP headers for TCP profile (%u headers max)",
+		           "too many IP headers for RFC5225 IP-only profile (%u headers max)",
 		           ROHC_MAX_IP_HDRS);
 		goto free_context;
 	}
@@ -361,7 +361,7 @@ static bool rohc_comp_rfc5225_ip_check_profile(const struct rohc_comp *const com
 				goto bad_profile;
 			}
 
-			/* IPv4 options are not supported by the TCP profile */
+			/* IPv4 options are not supported by the ROHCv2 IP-only profile */
 			if(ipv4->ihl != ipv4_min_words_nr)
 			{
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -430,7 +430,8 @@ static bool rohc_comp_rfc5225_ip_check_profile(const struct rohc_comp *const com
 			}
 
 			/* reject packets with malformed IPv6 extension headers or IPv6
-			 * extension headers that are not compatible with the TCP profile */
+			 * extension headers that are not compatible with the ROHCv2 IP-only
+			 * profile */
 			if(!rohc_comp_ipv6_exts_are_acceptable(comp, &next_proto,
 			                                       remain_data, remain_len,
 			                                       &ipv6_exts_len))
@@ -467,7 +468,7 @@ static bool rohc_comp_rfc5225_ip_check_profile(const struct rohc_comp *const com
 	if(rohc_is_tunneling(next_proto))
 	{
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "too many IP headers for TCP profile (%u headers max)",
+		           "too many IP headers for ROHCv2 IP-only profile (%u headers max)",
 		           ROHC_MAX_IP_HDRS);
 		goto bad_profile;
 	}
@@ -1176,7 +1177,7 @@ static int rohc_comp_rfc5225_ip_dyn_chain(const struct rohc_comp_ctxt *const ctx
 	size_t ip_hdr_pos;
 	int ret;
 
-	/* there is at least one IP header otherwise it won't be the IP/TCP profile */
+	/* there is at least one IP header otherwise it won't be the IP-only profile */
 	assert(rfc5225_ctxt->ip_contexts_nr > 0);
 
 	/* add dynamic part for all IP headers */
