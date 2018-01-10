@@ -23,6 +23,7 @@ TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_IPONLY = \
 	test_non_reg_ipv4_icmp_mc0_wlsb4_smallcid.sh \
 	test_non_reg_ipv4_icmp_bug580491_mc0_wlsb4_smallcid.sh \
 	test_non_reg_ipv4_icmp+tcp_mc0_wlsb4_smallcid.sh \
+	test_non_reg_ipv4_tcp_ip-9-times_mc0_wlsb4_smallcid.sh \
 	test_non_reg_ipv6_icmp_mc0_wlsb4_smallcid.sh \
 	test_non_reg_ipv6ext_icmp_mc0_wlsb4_smallcid.sh \
 	test_non_reg_ipv6ext_icmp-large-ipv6-ext_mc0_wlsb4_smallcid.sh \
@@ -146,6 +147,7 @@ TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_IPONLY = \
 	test_non_reg_ipv4_icmp_mc0_wlsb64_smallcid.sh \
 	test_non_reg_ipv4_icmp_bug580491_mc0_wlsb64_smallcid.sh \
 	test_non_reg_ipv4_icmp+tcp_mc0_wlsb64_smallcid.sh \
+	test_non_reg_ipv4_tcp_ip-9-times_mc0_wlsb64_smallcid.sh \
 	test_non_reg_ipv6_icmp_mc0_wlsb64_smallcid.sh \
 	test_non_reg_ipv6ext_icmp_mc0_wlsb64_smallcid.sh \
 	test_non_reg_ipv6ext_icmp-large-ipv6-ext_mc0_wlsb64_smallcid.sh \
@@ -274,6 +276,7 @@ TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_IPONLY = \
 	test_non_reg_ipv4_icmp_mc1_wlsb4_smallcid.sh \
 	test_non_reg_ipv4_icmp_bug580491_mc1_wlsb4_smallcid.sh \
 	test_non_reg_ipv4_icmp+tcp_mc1_wlsb4_smallcid.sh \
+	test_non_reg_ipv4_tcp_ip-9-times_mc1_wlsb4_smallcid.sh \
 	test_non_reg_ipv6_icmp_mc1_wlsb4_smallcid.sh \
 	test_non_reg_ipv6ext_icmp_mc1_wlsb4_smallcid.sh \
 	test_non_reg_ipv6ext_icmp-large-ipv6-ext_mc1_wlsb4_smallcid.sh \
@@ -397,6 +400,7 @@ TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_IPONLY = \
 	test_non_reg_ipv4_icmp_mc1_wlsb64_smallcid.sh \
 	test_non_reg_ipv4_icmp_bug580491_mc1_wlsb64_smallcid.sh \
 	test_non_reg_ipv4_icmp+tcp_mc1_wlsb64_smallcid.sh \
+	test_non_reg_ipv4_tcp_ip-9-times_mc1_wlsb64_smallcid.sh \
 	test_non_reg_ipv6_icmp_mc1_wlsb64_smallcid.sh \
 	test_non_reg_ipv6ext_icmp_mc1_wlsb64_smallcid.sh \
 	test_non_reg_ipv6ext_icmp-large-ipv6-ext_mc1_wlsb64_smallcid.sh \
@@ -530,6 +534,7 @@ TESTS_MAXCONTEXTS0_WLSB4_LARGECID_IPONLY = \
 	test_non_reg_ipv4_icmp_mc0_wlsb4_largecid.sh \
 	test_non_reg_ipv4_icmp_bug580491_mc0_wlsb4_largecid.sh \
 	test_non_reg_ipv4_icmp+tcp_mc0_wlsb4_largecid.sh \
+	test_non_reg_ipv4_tcp_ip-9-times_mc0_wlsb4_largecid.sh \
 	test_non_reg_ipv6_icmp_mc0_wlsb4_largecid.sh \
 	test_non_reg_ipv6ext_icmp_mc0_wlsb4_largecid.sh \
 	test_non_reg_ipv6ext_icmp-large-ipv6-ext_mc0_wlsb4_largecid.sh \
@@ -653,6 +658,7 @@ TESTS_MAXCONTEXTS0_WLSB64_LARGECID_IPONLY = \
 	test_non_reg_ipv4_icmp_mc0_wlsb64_largecid.sh \
 	test_non_reg_ipv4_icmp_bug580491_mc0_wlsb64_largecid.sh \
 	test_non_reg_ipv4_icmp+tcp_mc0_wlsb64_largecid.sh \
+	test_non_reg_ipv4_tcp_ip-9-times_mc0_wlsb64_largecid.sh \
 	test_non_reg_ipv6_icmp_mc0_wlsb64_largecid.sh \
 	test_non_reg_ipv6ext_icmp_mc0_wlsb64_largecid.sh \
 	test_non_reg_ipv6ext_icmp-large-ipv6-ext_mc0_wlsb64_largecid.sh \
@@ -781,6 +787,7 @@ TESTS_MAXCONTEXTS1_WLSB4_LARGECID_IPONLY = \
 	test_non_reg_ipv4_icmp_mc1_wlsb4_largecid.sh \
 	test_non_reg_ipv4_icmp_bug580491_mc1_wlsb4_largecid.sh \
 	test_non_reg_ipv4_icmp+tcp_mc1_wlsb4_largecid.sh \
+	test_non_reg_ipv4_tcp_ip-9-times_mc1_wlsb4_largecid.sh \
 	test_non_reg_ipv6_icmp_mc1_wlsb4_largecid.sh \
 	test_non_reg_ipv6ext_icmp_mc1_wlsb4_largecid.sh \
 	test_non_reg_ipv6ext_icmp-large-ipv6-ext_mc1_wlsb4_largecid.sh \
@@ -904,6 +911,7 @@ TESTS_MAXCONTEXTS1_WLSB64_LARGECID_IPONLY = \
 	test_non_reg_ipv4_icmp_mc1_wlsb64_largecid.sh \
 	test_non_reg_ipv4_icmp_bug580491_mc1_wlsb64_largecid.sh \
 	test_non_reg_ipv4_icmp+tcp_mc1_wlsb64_largecid.sh \
+	test_non_reg_ipv4_tcp_ip-9-times_mc1_wlsb64_largecid.sh \
 	test_non_reg_ipv6_icmp_mc1_wlsb64_largecid.sh \
 	test_non_reg_ipv6ext_icmp_mc1_wlsb64_largecid.sh \
 	test_non_reg_ipv6ext_icmp-large-ipv6-ext_mc1_wlsb64_largecid.sh \
