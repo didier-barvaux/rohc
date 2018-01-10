@@ -55,6 +55,7 @@ rohc_comp_sources = \
 	../../src/comp/comp_rfc5225_ip.c
 
 rohc_decomp_sources = \
+	../../src/decomp/schemes/decomp_crc.c \
 	../../src/decomp/schemes/decomp_wlsb.c \
 	../../src/decomp/schemes/ip_id_offset.c \
 	../../src/decomp/schemes/decomp_scaled_rtp_ts.c \

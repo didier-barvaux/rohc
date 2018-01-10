@@ -365,10 +365,6 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
  * Misc functions
  */
 
-static rohc_ip_id_behavior_t tcp_detect_ip_id_behavior(const uint16_t last_ip_id,
-                                                       const uint16_t new_ip_id)
-	__attribute__((warn_unused_result, const));
-
 static void tcp_detect_ecn_used_behavior(struct rohc_comp_ctxt *const context,
                                          const uint8_t pkt_ecn_vals,
                                          const uint8_t pkt_outer_dscp_changed,
@@ -3469,7 +3465,7 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 		else
 		{
 			(*ip_inner_ctxt)->ctxt.v4.ip_id_behavior =
-				tcp_detect_ip_id_behavior((*ip_inner_ctxt)->ctxt.v4.last_ip_id, ip_id);
+				rohc_comp_detect_ip_id_behavior((*ip_inner_ctxt)->ctxt.v4.last_ip_id, ip_id);
 		}
 		rohc_comp_debug(context, "IP-ID now behaves as %s",
 		                rohc_ip_id_behavior_get_descr((*ip_inner_ctxt)->ctxt.v4.ip_id_behavior));
@@ -5011,47 +5007,6 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 	        packet_type <= ROHC_PACKET_TCP_RND_8));
 
 	return packet_type;
-}
-
-
-/**
- * @brief Detect the behavior of the IPv4 Identification field
- *
- * @param last_ip_id  The IP-ID value of the previous packet (in HBO)
- * @param new_ip_id   The IP-ID value of the current packet (in HBO)
- * @return            The IP-ID behavior among: ROHC_IP_ID_BEHAVIOR_SEQ,
- *                    ROHC_IP_ID_BEHAVIOR_SEQ_SWAP, ROHC_IP_ID_BEHAVIOR_ZERO, or
- *                    ROHC_IP_ID_BEHAVIOR_RAND
- */
-static rohc_ip_id_behavior_t tcp_detect_ip_id_behavior(const uint16_t last_ip_id,
-                                                       const uint16_t new_ip_id)
-{
-	rohc_ip_id_behavior_t behavior;
-
-	if(is_ip_id_increasing(last_ip_id, new_ip_id))
-	{
-		behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
-	}
-	else
-	{
-		const uint16_t swapped_last_ip_id = swab16(last_ip_id);
-		const uint16_t swapped_new_ip_id = swab16(new_ip_id);
-
-		if(is_ip_id_increasing(swapped_last_ip_id, swapped_new_ip_id))
-		{
-			behavior = ROHC_IP_ID_BEHAVIOR_SEQ_SWAP;
-		}
-		else if(new_ip_id == 0)
-		{
-			behavior = ROHC_IP_ID_BEHAVIOR_ZERO;
-		}
-		else
-		{
-			behavior = ROHC_IP_ID_BEHAVIOR_RAND;
-		}
-	}
-
-	return behavior;
 }
 
 

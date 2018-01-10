@@ -33,8 +33,9 @@
 #include "schemes/cid.h"
 #include "schemes/ipv6_exts.h"
 #include "schemes/ip_ctxt.h"
-#include "crc.h"
 #include "schemes/comp_wlsb.h"
+#include "schemes/ip_id_offset.h"
+#include "crc.h"
 
 #include <assert.h>
 
@@ -84,6 +85,12 @@ static int rohc_comp_rfc5225_ip_code_IR_pkt(const struct rohc_comp_ctxt *const c
                                             const size_t rohc_pkt_max_len,
                                             size_t *const payload_offset)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
+
+static int rohc_comp_rfc5225_ip_build_pt_0_crc3_pkt(const struct rohc_comp_ctxt *const context,
+                                                    const uint8_t crc,
+                                                    uint8_t *const rohc_data,
+                                                    const size_t rohc_max_len)
+	__attribute__((nonnull(1, 3), warn_unused_result));
 
 /* static chain */
 static int rohc_comp_rfc5225_ip_static_chain(const struct rohc_comp_ctxt *const ctxt,
@@ -677,8 +684,115 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
                                        size_t *const payload_offset)
 {
 	struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = context->specific;
+
+	const uint8_t *remain_data = uncomp_pkt->data;
+	size_t remain_len = uncomp_pkt->len;
+
+	uint8_t *rohc_remain_data = rohc_pkt;
+	size_t rohc_remain_len = rohc_pkt_max_len;
+
+	ip_context_t *inner_ip_ctxt = NULL;
+	const struct ip_hdr *inner_ip_hdr = NULL;
+	size_t ip_hdr_pos;
 	size_t rohc_len;
 	int ret;
+
+	*packet_type = ROHC_PACKET_UNKNOWN;
+	*payload_offset = 0;
+
+	/* STEP 0: detect changes */
+	/* parse the IP headers and their extension headers to identify the length
+	 * of the uncompressed headers */
+	/* TODO: find a better to detect the uncompressed header length */
+	rohc_comp_debug(context, "parse the %zu-byte IP packet", remain_len);
+	assert(rfc5225_ctxt->ip_contexts_nr > 0);
+	for(ip_hdr_pos = 0; ip_hdr_pos < rfc5225_ctxt->ip_contexts_nr; ip_hdr_pos++)
+	{
+		const struct ip_hdr *const ip_hdr = (struct ip_hdr *) remain_data;
+		ip_context_t *const ip_context = &(rfc5225_ctxt->ip_contexts[ip_hdr_pos]);
+		uint8_t protocol;
+
+		/* retrieve IP version */
+		assert(remain_len >= sizeof(struct ip_hdr));
+		rohc_comp_debug(context, "found IPv%d", ip_hdr->version);
+
+		inner_ip_hdr = (struct ip_hdr *) remain_data;
+		inner_ip_ctxt = ip_context;
+
+		if(ip_hdr->version == IPV4)
+		{
+			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) remain_data;
+			size_t ipv4_hdr_len;
+
+			assert(remain_len >= sizeof(struct ipv4_hdr));
+
+			protocol = ipv4->protocol;
+			ipv4_hdr_len = ipv4->ihl * sizeof(uint32_t);
+
+			/* skip IPv4 header */
+			rohc_comp_debug(context, "skip %zu-byte IPv4 header with "
+			                "Protocol 0x%02x", ipv4_hdr_len, protocol);
+			remain_data += ipv4_hdr_len;
+			remain_len -= ipv4_hdr_len;
+			*payload_offset += ipv4_hdr_len;
+		}
+		else if(ip_hdr->version == IPV6)
+		{
+			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
+
+			assert(remain_len >= sizeof(struct ipv6_hdr));
+
+			protocol = ipv6->nh;
+
+			/* skip IPv6 header */
+			rohc_comp_debug(context, "skip %zu-byte IPv6 header with Next Header "
+			                "0x%02x", sizeof(struct ipv6_hdr), protocol);
+			remain_data += sizeof(struct ipv6_hdr);
+			remain_len -= sizeof(struct ipv6_hdr);
+			*payload_offset += sizeof(struct ipv6_hdr);
+
+			/* TODO: handle IPv6 extension headers */
+			assert(rohc_is_ipv6_opt(protocol) == false);
+		}
+		else
+		{
+			rohc_comp_warn(context, "unexpected IP version %u", ip_hdr->version);
+			assert(0);
+			goto error;
+		}
+	}
+
+	/* determine the IP-ID behavior of the innermost IPv4 header */
+	if(inner_ip_ctxt->ctxt.vx.version == IPV4)
+	{
+		const struct ipv4_hdr *const inner_ipv4_hdr = (struct ipv4_hdr *) inner_ip_hdr;
+		const uint16_t ip_id = rohc_ntoh16(inner_ipv4_hdr->id);
+		const uint16_t last_ip_id = inner_ip_ctxt->ctxt.v4.last_ip_id;
+		const rohc_ip_id_behavior_t last_ip_id_behavior =
+			inner_ip_ctxt->ctxt.v4.ip_id_behavior;
+		rohc_ip_id_behavior_t ip_id_behavior;
+
+		rohc_comp_debug(context, "IP-ID behaved as %s",
+		                rohc_ip_id_behavior_get_descr(last_ip_id_behavior));
+		rohc_comp_debug(context, "IP-ID = 0x%04x -> 0x%04x", last_ip_id, ip_id);
+
+		if(context->num_sent_packets == 0)
+		{
+			/* first packet, be optimistic: choose sequential behavior */
+			ip_id_behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
+		}
+		else
+		{
+			ip_id_behavior = rohc_comp_detect_ip_id_behavior(last_ip_id, ip_id);
+		}
+		inner_ip_ctxt->ctxt.v4.ip_id_behavior = ip_id_behavior;
+		rohc_comp_debug(context, "IP-ID now behaves as %s",
+		                rohc_ip_id_behavior_get_descr(ip_id_behavior));
+	}
+
+	/* compute or find the new SN */
+	rfc5225_ctxt->msn = (rfc5225_ctxt->msn + 1) % 0xffff;
+	rohc_comp_debug(context, "MSN = 0x%04x / %u", rfc5225_ctxt->msn, rfc5225_ctxt->msn);
 
 	/* STEP 1: decide state */
 	rohc_comp_rfc5225_ip_decide_state(context, uncomp_pkt->time);
@@ -690,7 +804,7 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 	if((*packet_type) == ROHC_PACKET_IR)
 	{
 		ret = rohc_comp_rfc5225_ip_code_IR_pkt(context, &uncomp_pkt->outer_ip,
-		                                       rohc_pkt, rohc_pkt_max_len,
+		                                       rohc_remain_data, rohc_remain_len,
 		                                       payload_offset);
 		if(ret < 0)
 		{
@@ -701,16 +815,70 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 	}
 	else if((*packet_type) == ROHC_PACKET_PT_0_CRC3)
 	{
-		/* TODO: replace that by the encoding of pt_0_crc3 */
-		ret = rohc_comp_rfc5225_ip_code_IR_pkt(context, &uncomp_pkt->outer_ip,
-		                                       rohc_pkt, rohc_pkt_max_len,
-		                                       payload_offset);
-		if(ret < 0)
+		uint8_t save_first_byte;
+		size_t pos_1st_byte;
+		size_t pos_2nd_byte;
+
+		/* let's compute the CRC on uncompressed headers */
+		const uint8_t crc_computed =
+			crc_calculate(ROHC_CRC_TYPE_3, uncomp_pkt->data, *payload_offset,
+			              CRC_INIT_3, context->compressor->crc_table_3);
+		rohc_comp_debug(context, "CRC-3 on %zu-byte uncompressed header = 0x%x",
+		                *payload_offset, crc_computed);
+
+		/* write Add-CID or large CID bytes: 'pos_1st_byte' indicates the location
+		 * where first header byte shall be written, 'pos_2nd_byte' indicates the
+		 * location where the next header bytes shall be written */
+		ret = code_cid_values(context->compressor->medium.cid_type, context->cid,
+		                      rohc_remain_data, rohc_remain_len, &pos_1st_byte);
+		if(ret < 1)
 		{
-			rohc_comp_warn(context, "failed to build IR packet");
+			rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the "
+			               "%zu-byte ROHC buffer is too small",
+			               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
+			               "small" : "large", context->cid, rohc_remain_len);
 			goto error;
 		}
-		rohc_len = ret;
+		pos_2nd_byte = ret;
+		rohc_remain_data += ret;
+		rohc_remain_len -= ret;
+		rohc_comp_debug(context, "%s CID %zu encoded on %d byte(s)",
+		                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
+		                "small" : "large", context->cid, ret - 1);
+
+		/* The CO headers are written as a contiguous block. There is a problem in
+		 * case of large CIDs. In such a case, the CID octets are not located at the
+		 * beginning of the ROHC header. The first CO octet is located before the
+		 * CID octet(s) and the remaining CO octets are located after the CID octet(s).
+		 * To workaround that situation, the last CID octet is saved before writing
+		 * the CO header and restored afterwards */
+		save_first_byte = rohc_remain_data[-1];
+		rohc_remain_data--;
+		rohc_remain_len++;
+
+		/* build the pt_0_crc3 ROHC header */
+		ret = rohc_comp_rfc5225_ip_build_pt_0_crc3_pkt(context, crc_computed,
+		                                               rohc_remain_data,
+		                                               rohc_remain_len);
+		if(ret < 0)
+		{
+			rohc_comp_warn(context, "failed to build pt_0_crc3 packet");
+			goto error;
+		}
+		rohc_remain_data += ret;
+		rohc_remain_len -= ret;
+
+		/* end of workaround: restore the saved octet */
+		if(context->compressor->medium.cid_type != ROHC_SMALL_CID)
+		{
+			rohc_pkt[pos_1st_byte] = rohc_pkt[pos_2nd_byte - 1];
+			rohc_pkt[pos_2nd_byte - 1] = save_first_byte;
+		}
+
+		rohc_comp_dump_buf(context, "CO packet", rohc_pkt,
+		                   rohc_pkt_max_len - rohc_remain_len);
+
+		rohc_len = (rohc_pkt_max_len - rohc_remain_len);
 	}
 	else if((*packet_type) == ROHC_PACKET_UNKNOWN)
 	{
@@ -864,15 +1032,25 @@ static rohc_packet_t rohc_comp_rfc5225_ip_decide_pkt(struct rohc_comp_ctxt *cons
 		case ROHC_COMP_STATE_SO:
 		{
 			rohc_reordering_offset_t reorder_ratio = context->compressor->reorder_ratio;
+			const ip_context_t *const innermost_ip_ctxt =
+				&(rfc5225_ctxt->ip_contexts[rfc5225_ctxt->ip_contexts_nr -1]);
+			const rohc_ip_id_behavior_t innermost_ip_id_behavior =
+				innermost_ip_ctxt->ctxt.vx.ip_id_behavior;
 
-			if(rohc_comp_rfc5225_is_msn_lsb_possible(&rfc5225_ctxt->msn_wlsb,
-			                                         rfc5225_ctxt->msn,
-			                                         reorder_ratio, 4))
+			/* use pt_0_crc3 only if:
+			 *  - 4 MSN bits are enough
+			 *  - the decompressor shall be able to infer the innermost IP-ID from its
+			 *    behavior and the MSN
+			 */
+			/* TODO: allow IP-ID random once the irregular chain will be implemented */
+			if(innermost_ip_id_behavior != ROHC_IP_ID_BEHAVIOR_RAND &&
+			   rohc_comp_rfc5225_is_msn_lsb_possible(&rfc5225_ctxt->msn_wlsb,
+			                                         rfc5225_ctxt->msn, reorder_ratio, 4))
 			{
 				rohc_comp_debug(context, "code pt_0_crc3 packet");
 				packet_type = ROHC_PACKET_PT_0_CRC3;
 			}
-			else
+			else /* fallback on IR packet */
 			{
 				rohc_comp_debug(context, "code IR packet");
 				packet_type = ROHC_PACKET_IR;
@@ -909,7 +1087,7 @@ static bool rohc_comp_rfc5225_is_msn_lsb_possible(const struct c_wlsb *const wls
 {
 	/* compute p according to reorder ratio  */
 	rohc_lsb_shift_t p_computed = rohc_interval_get_rfc5225_msn_p(k, reorder_ratio);
-	
+
 	return wlsb_is_kp_possible_16bits(wlsb, value, k, p_computed);
 }
 
@@ -1609,6 +1787,43 @@ static int rohc_comp_rfc5225_ip_dyn_ipv6_part(const struct rohc_comp_ctxt *const
 	rohc_comp_dump_buf(ctxt, "IP dynamic part", rohc_data, ipv6_dyn_len);
 
 	return ipv6_dyn_len;
+
+error:
+	return -1;
+}
+
+
+/**
+ * @brief Build a ROHCv2 pt_0_crc3 packet
+ *
+ * @param context         The compression context
+ * @param crc             The CRC on the uncompressed headers
+ * @param[out] rohc_data  The ROHC packet being built
+ * @param rohc_max_len    The max remaining length in the ROHC buffer
+ * @return                The length appended in the ROHC buffer if positive,
+ *                        -1 in case of error
+ */
+static int rohc_comp_rfc5225_ip_build_pt_0_crc3_pkt(const struct rohc_comp_ctxt *const context,
+                                                    const uint8_t crc,
+                                                    uint8_t *const rohc_data,
+                                                    const size_t rohc_max_len)
+{
+	struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = context->specific;
+	pt_0_crc3_t *const pt_0_crc3 = (pt_0_crc3_t *) rohc_data;
+
+	if(rohc_max_len < sizeof(pt_0_crc3_t))
+	{
+		rohc_comp_warn(context, "ROHC buffer too small for the pt_0_crc3_t header: "
+		               "%zu bytes required, but only %zu bytes available",
+		               sizeof(pt_0_crc3_t), rohc_max_len);
+		goto error;
+	}
+
+	pt_0_crc3->discriminator = 0x0;
+	pt_0_crc3->msn = rfc5225_ctxt->msn & 0xf;
+	pt_0_crc3->header_crc = crc;
+
+	return sizeof(pt_0_crc3_t);
 
 error:
 	return -1;

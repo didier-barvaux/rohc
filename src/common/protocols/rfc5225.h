@@ -249,5 +249,24 @@ typedef struct
 } __attribute__((packed)) ipv6_regular_dynamic_t;
 
 
+/**
+ * @brief The pt_0_crc3 packet format
+ *
+ * See RFC5225 page 91
+ */
+typedef struct
+{
+#if WORDS_BIGENDIAN == 1
+	uint8_t discriminator:1;  /**< '0'                              [ 1 ] */
+	uint8_t msn:4;            /**< msn_lsb(4)                       [ 4 ] */
+	uint8_t header_crc:3;     /**< crc3(THIS.UVALUE, THIS.ULENGTH)  [ 3 ] */
+#else
+	uint8_t header_crc:3;
+	uint8_t msn:4;
+	uint8_t discriminator:1;
+#endif
+} __attribute__((packed)) pt_0_crc3_t;
+
+
 #endif /* ROHC_PROTOCOLS_RFC5225_H */
 

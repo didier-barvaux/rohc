@@ -43,6 +43,7 @@
 #include "sdvl.h"
 #include "schemes/rfc4996.h"
 #include "schemes/decomp_wlsb.h"
+#include "schemes/decomp_crc.h"
 #include "schemes/tcp_sack.h"
 #include "schemes/tcp_ts.h"
 #include "protocols/tcp.h"
@@ -342,12 +343,6 @@ static rohc_status_t d_tcp_build_hdrs(const struct rohc_decomp *const decomp,
                                       struct rohc_buf *const uncomp_hdrs,
                                       size_t *const uncomp_hdrs_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5, 7, 8)));
-static bool d_tcp_check_uncomp_crc(const struct rohc_decomp *const decomp,
-                                   const struct rohc_decomp_ctxt *const context,
-                                   struct rohc_buf *const uncomp_hdrs,
-                                   const rohc_crc_type_t crc_type,
-                                   const uint8_t crc_packet)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 /* CRC repair */
 static bool d_tcp_attempt_repair(const struct rohc_decomp *const decomp,
@@ -4260,8 +4255,9 @@ static rohc_status_t d_tcp_build_hdrs(const struct rohc_decomp *const decomp,
 	/* compute CRC on uncompressed headers if asked */
 	if(extr_crc->type != ROHC_CRC_TYPE_NONE)
 	{
-		const bool crc_ok = d_tcp_check_uncomp_crc(decomp, context, uncomp_hdrs,
-		                                           extr_crc->type, extr_crc->bits);
+		const bool crc_ok =
+			rohc_decomp_check_uncomp_crc(decomp, context, uncomp_hdrs,
+			                             extr_crc->type, extr_crc->bits);
 		if(!crc_ok)
 		{
 			rohc_decomp_warn(context, "CRC detected a decompression failure for "
@@ -4291,70 +4287,6 @@ static rohc_status_t d_tcp_build_hdrs(const struct rohc_decomp *const decomp,
 
 error:
 	return status;
-}
-
-
-/**
- * @brief Check whether the CRC on uncompressed header is correct or not
- *
- * @param decomp       The ROHC decompressor
- * @param context      The decompression context
- * @param uncomp_hdrs  The uncompressed headers
- * @param crc_type     The type of CRC
- * @param crc_packet   The CRC extracted from the ROHC header
- * @return             true if the CRC is correct, false otherwise
- */
-static bool d_tcp_check_uncomp_crc(const struct rohc_decomp *const decomp,
-                                   const struct rohc_decomp_ctxt *const context,
-                                   struct rohc_buf *const uncomp_hdrs,
-                                   const rohc_crc_type_t crc_type,
-                                   const uint8_t crc_packet)
-{
-	const uint8_t *crc_table;
-	uint8_t crc_computed;
-
-	/* determine the initial value and the pre-computed table for the CRC */
-	switch(crc_type)
-	{
-		case ROHC_CRC_TYPE_3:
-			crc_computed = CRC_INIT_3;
-			crc_table = decomp->crc_table_3;
-			break;
-		case ROHC_CRC_TYPE_7:
-			crc_computed = CRC_INIT_7;
-			crc_table = decomp->crc_table_7;
-			break;
-		case ROHC_CRC_TYPE_8:
-			rohc_decomp_warn(context, "unexpected CRC type %d", crc_type);
-			assert(0);
-			goto error;
-		case ROHC_CRC_TYPE_NONE:
-		default:
-			rohc_decomp_warn(context, "unknown CRC type %d", crc_type);
-			assert(0);
-			goto error;
-	}
-
-	/* compute the CRC from built uncompressed headers */
-	crc_computed =
-		crc_calculate(crc_type, rohc_buf_data(*uncomp_hdrs), uncomp_hdrs->len,
-		              crc_computed, crc_table);
-	rohc_decomp_debug(context, "CRC-%d on uncompressed header = 0x%x",
-	                  crc_type, crc_computed);
-
-	/* does the computed CRC match the one in packet? */
-	if(crc_computed != crc_packet)
-	{
-		rohc_decomp_warn(context, "CRC failure (computed = 0x%02x, packet = "
-		                 "0x%02x)", crc_computed, crc_packet);
-		goto error;
-	}
-
-	/* computed CRC matches the one in packet */
-	return true;
-
-error:
-	return false;
 }
 
 
