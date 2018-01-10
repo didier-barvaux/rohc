@@ -386,6 +386,10 @@ bool ROHC_EXPORT rohc_comp_set_wlsb_window_width(struct rohc_comp *const comp,
                                                  const size_t width)
 	__attribute__((warn_unused_result));
 
+bool ROHC_EXPORT rohc_comp_set_reorder_ratio(struct rohc_comp *const comp,
+                                             const rohc_reordering_offset_t reorder_ratio)
+	__attribute__((warn_unused_result));
+
 bool ROHC_EXPORT rohc_comp_set_periodic_refreshes(struct rohc_comp *const comp,
                                                   const size_t ir_timeout,
                                                   const size_t fo_timeout)

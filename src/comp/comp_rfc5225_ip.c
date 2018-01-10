@@ -37,7 +37,6 @@
 
 #include <assert.h>
 
-
 /** Define the ROHCv2 IP-only part of the profile compression context */
 struct rohc_comp_rfc5225_ip_ctxt
 {
@@ -1304,7 +1303,7 @@ static int rohc_comp_rfc5225_ip_dyn_ipv4_part(const struct rohc_comp_ctxt *const
 		}
 
 		ipv4_dynamic->reserved = 0;
-		ipv4_dynamic->reorder_ratio = 0; /* TODO: handle reorder_ratio */
+		ipv4_dynamic->reorder_ratio = ctxt->compressor->reorder_ratio;
 		ipv4_dynamic->df = ipv4->df;
 		/* IP-ID behavior: all behavior values possible */
 		ipv4_dynamic->ip_id_behavior_innermost = ip_ctxt->ctxt.v4.ip_id_behavior;
@@ -1470,7 +1469,7 @@ static int rohc_comp_rfc5225_ip_dyn_ipv6_part(const struct rohc_comp_ctxt *const
 			goto error;
 		}
 
-		ipv6_endpoint_dynamic->reorder_ratio = 0; /* TODO: handle reorder_ratio */
+		ipv6_endpoint_dynamic->reorder_ratio = ctxt->compressor->reorder_ratio;
 		ipv6_endpoint_dynamic->reserved = 0;
 
 		/* MSN */

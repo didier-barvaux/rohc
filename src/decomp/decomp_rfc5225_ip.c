@@ -51,6 +51,9 @@ struct rohc_decomp_rfc5225_ip_ctxt
 	/** The LSB decoding context of innermost TTL/HL */
 	struct rohc_lsb_decode ttl_hl_lsb_ctxt; /* TODO: useful ? */
 
+	/** The reorder ratio that compressor sent to decompressor */
+	rohc_reordering_offset_t reorder_ratio;
+
 	size_t ip_contexts_nr;
 	ip_context_t ip_contexts[ROHC_MAX_IP_HDRS];
 };
@@ -101,6 +104,9 @@ struct rohc_rfc5225_bits
 
 	/** The extracted bits of the Master Sequence Number (MSN) of the packet */
 	struct rohc_lsb_field16 msn;
+
+	rohc_reordering_offset_t reorder_ratio; /**< The reorder ratio bits */
+	size_t reorder_ratio_nr; /**< The number of reorder ratio bits */
 };
 
 
@@ -131,6 +137,8 @@ struct rohc_rfc5225_decoded
 
 	/** The Master Sequence Number (MSN) of the packet */
 	uint16_t msn;
+
+	rohc_reordering_offset_t reorder_ratio; /**< The reorder ratio decoded */
 };
 
 
@@ -307,6 +315,9 @@ static bool decomp_rfc5225_ip_new_context(const struct rohc_decomp_ctxt *const c
 	rohc_lsb_init(&rfc5225_ctxt->ip_id_lsb_ctxt, 16);
 	/* create the LSB decoding context for the innermost TTL/HL */
 	rohc_lsb_init(&rfc5225_ctxt->ttl_hl_lsb_ctxt, 8);
+
+	/* by default, no reordering accepted on the channel */
+	rfc5225_ctxt->reorder_ratio = ROHC_REORDERING_NONE;
 
 	/* volatile part */
 	volat_ctxt->crc.type = ROHC_CRC_TYPE_NONE;
@@ -870,7 +881,8 @@ static int decomp_rfc5225_ip_parse_dyn_ip(const struct rohc_decomp_ctxt *const c
 			}
 
 			/* TODO: check reserved field in strict mode */
-			/* TODO: handle reorder_ratio */
+			bits->reorder_ratio = ipv4_dynamic->reorder_ratio;
+			bits->reorder_ratio_nr = 2;
 			ip_bits->df = ipv4_dynamic->df;
 			ip_bits->df_nr = 1;
 			ip_bits->id_behavior = ipv4_dynamic->ip_id_behavior_innermost;
@@ -1015,8 +1027,8 @@ static int decomp_rfc5225_ip_parse_dyn_ip(const struct rohc_decomp_ctxt *const c
 			}
 
 			/* TODO: check reserved field in strict mode */
-			/* TODO: handle reorder_ratio */
-
+			bits->reorder_ratio = ipv6_endpoint_dynamic->reorder_ratio;
+			bits->reorder_ratio_nr = 2;
 			bits->msn.bits = rohc_ntoh16(ipv6_endpoint_dynamic->msn);
 			bits->msn.bits_nr = 16;
 			rohc_decomp_debug(ctxt, "%zu bits of MSN 0x%04x",
@@ -1093,6 +1105,17 @@ static bool decomp_rfc5225_ip_decode_bits(const struct rohc_decomp_ctxt *const c
 		decoded->msn = (uint16_t) (msn_decoded32 & 0xffff);
 		rohc_decomp_debug(ctxt, "decoded MSN = 0x%04x (%zu bits 0x%x)",
 		                  decoded->msn, bits->msn.bits_nr, bits->msn.bits);
+	}
+
+	/* decode reorder ratio */
+	if(bits->reorder_ratio_nr > 0)
+	{
+		assert(bits->reorder_ratio_nr == 2);
+		decoded->reorder_ratio = bits->reorder_ratio;
+	}
+	else
+	{
+		decoded->reorder_ratio = rfc5225_ctxt->reorder_ratio;
 	}
 
 	/* decode IP headers */

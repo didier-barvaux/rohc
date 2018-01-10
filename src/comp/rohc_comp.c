@@ -290,6 +290,7 @@ struct rohc_comp * rohc_comp_new2(const rohc_cid_type_t cid_type,
                                   void *const rand_priv)
 {
 	const size_t wlsb_width = 4; /* default window width for W-LSB encoding */
+	const size_t reorder_ratio = ROHC_REORDERING_NONE; /* default reordering ratio */
 	struct rohc_comp *comp;
 	bool is_fine;
 	size_t i;
@@ -348,6 +349,13 @@ struct rohc_comp * rohc_comp_new2(const rohc_cid_type_t cid_type,
 
 	/* set the default W-LSB window width */
 	is_fine = rohc_comp_set_wlsb_window_width(comp, wlsb_width);
+	if(is_fine != true)
+	{
+		goto destroy_comp;
+	}
+
+	/* set the default reordering ratio for W-LSB MSN in ROHCv2 profiles */
+	is_fine = rohc_comp_set_reorder_ratio(comp, reorder_ratio);
 	if(is_fine != true)
 	{
 		goto destroy_comp;
@@ -1187,6 +1195,60 @@ bool rohc_comp_set_wlsb_window_width(struct rohc_comp *const comp,
 
 	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	          "width of W-LSB sliding window set to %zd", width);
+
+	return true;
+}
+
+
+/**
+ * @brief Set the reordering ratio for the W-LSB encoding scheme
+ *
+ * The control field reorder_ratio specifies how much reordering is
+ * handled by the W-LSB encoding of the MSN in ROHCv2 profiles.
+ *
+ * The reordering ration is set to ROHC_REORDERING_NONE by default.
+ *
+ * @param comp           The ROHC compressor
+ * @param reorder_ratio  The reordering ratio
+ * @return               true in case of success,
+ *                       false in case of failure
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_comp_set_reorder_ratio(struct rohc_comp *const comp,
+                                 const rohc_reordering_offset_t reorder_ratio)
+{
+	/* we need a valid compressor */
+	if(comp == NULL)
+	{
+		return false;
+	}
+
+	/* Check value of reorder ratio */
+	if(reorder_ratio != ROHC_REORDERING_NONE &&
+	   reorder_ratio != ROHC_REORDERING_QUARTER &&
+	   reorder_ratio != ROHC_REORDERING_HALF &&
+	   reorder_ratio != ROHC_REORDERING_THREEQUARTERS)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "failed to "
+		             "set reorder ratio to %u: reorder ratio must be in range "
+		             "[%u;%u]", reorder_ratio, ROHC_REORDERING_NONE,
+		             ROHC_REORDERING_THREEQUARTERS);
+		return false;
+	}
+
+	/* refuse to set a value if compressor is in use */
+	if(comp->num_packets > 0)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "unable to "
+		             "modify reorder ratio after initialization");
+		return false;
+	}
+
+	comp->reorder_ratio = reorder_ratio;
+
+	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	          "Reorder ratio set to %u", reorder_ratio);
 
 	return true;
 }
