@@ -72,7 +72,8 @@ struct rohc_rfc5225_ip_bits
 	                      header or in extension header */
 	size_t df_nr;    /**< The number of DF bits found */
 
-	struct rohc_lsb_field8 ttl_hl;  /**< The IP TTL/HL bits */
+	uint8_t ttl_hl;   /**< The IP TTL/HL bits */
+	size_t ttl_hl_nr; /**< The number of IP TTL/HL bits */
 
 	uint8_t proto;   /**< The protocol/next header bits found static chain
 	                      of IR header or in extension header */
@@ -456,7 +457,7 @@ static void decomp_rfc5225_ip_reset_extr_bits(const struct rohc_decomp_ctxt *con
 		bits->ip[i].id_behavior_nr = 0;
 		bits->ip[i].id.bits_nr = 0;
 		bits->ip[i].df_nr = 0;
-		bits->ip[i].ttl_hl.bits_nr = 0;
+		bits->ip[i].ttl_hl_nr = 0;
 		bits->ip[i].proto_nr = 0;
 		bits->ip[i].flowid_nr = 0;
 		bits->ip[i].saddr_nr = 0;
@@ -481,10 +482,6 @@ static void decomp_rfc5225_ip_reset_extr_bits(const struct rohc_decomp_ctxt *con
 
 	/* default constant LSB shift parameters */
 	bits->msn.p = ROHC_LSB_SHIFT_VAR;
-	for(i = 0; i < ROHC_MAX_IP_HDRS; i++)
-	{
-		bits->ip[i].ttl_hl.p = ROHC_LSB_SHIFT_TCP_TTL;
-	}
 }
 
 
@@ -882,10 +879,10 @@ static int decomp_rfc5225_ip_parse_dyn_ip(const struct rohc_decomp_ctxt *const c
 			                  ip_bits->id_behavior);
 			ip_bits->tos_tc_bits = ipv4_dynamic->tos_tc; /* TODO: handle TOS */
 			ip_bits->tos_tc_bits_nr = 6;
-			ip_bits->ttl_hl.bits = ipv4_dynamic->ttl_hopl;
-			ip_bits->ttl_hl.bits_nr = 8;
+			ip_bits->ttl_hl = ipv4_dynamic->ttl_hopl;
+			ip_bits->ttl_hl_nr = 8;
 			rohc_decomp_debug(ctxt, "TOS/TC = 0x%x, ttl_hopl = 0x%x",
-			                  ip_bits->tos_tc_bits, ip_bits->ttl_hl.bits);
+			                  ip_bits->tos_tc_bits, ip_bits->ttl_hl);
 
 			if(ipv4_dynamic->ip_id_behavior_innermost != ROHC_IP_ID_BEHAVIOR_ZERO)
 			{
@@ -949,10 +946,10 @@ static int decomp_rfc5225_ip_parse_dyn_ip(const struct rohc_decomp_ctxt *const c
 			                  ip_bits->id_behavior);
 			ip_bits->tos_tc_bits = ipv4_dynamic->tos_tc; /* TODO: handle TOS */
 			ip_bits->tos_tc_bits_nr = 6;
-			ip_bits->ttl_hl.bits = ipv4_dynamic->ttl_hopl;
-			ip_bits->ttl_hl.bits_nr = 8;
+			ip_bits->ttl_hl = ipv4_dynamic->ttl_hopl;
+			ip_bits->ttl_hl_nr = 8;
 			rohc_decomp_debug(ctxt, "TOS/TC = 0x%x, ttl_hopl = 0x%x",
-			                  ip_bits->tos_tc_bits, ip_bits->ttl_hl.bits);
+			                  ip_bits->tos_tc_bits, ip_bits->ttl_hl);
 
 			if(ipv4_dynamic->ip_id_behavior_outer != ROHC_IP_ID_BEHAVIOR_ZERO)
 			{
@@ -1000,8 +997,8 @@ static int decomp_rfc5225_ip_parse_dyn_ip(const struct rohc_decomp_ctxt *const c
 
 		ip_bits->tos_tc_bits = ipv6_dynamic->tos_tc;
 		ip_bits->tos_tc_bits_nr = 6;
-		ip_bits->ttl_hl.bits = ipv6_dynamic->ttl_hopl;
-		ip_bits->ttl_hl.bits_nr = 8;
+		ip_bits->ttl_hl = ipv6_dynamic->ttl_hopl;
+		ip_bits->ttl_hl_nr = 8;
 		ip_bits->id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
 		ip_bits->id_behavior_nr = 2;
 
@@ -1263,32 +1260,15 @@ static bool decomp_rfc5225_ip_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *
 	}
 
 	/* decode TTL/HL */
-	if(ip_bits->ttl_hl.bits_nr == 8)
+	if(ip_bits->ttl_hl_nr == 8)
 	{
-		ip_decoded->ttl = ip_bits->ttl_hl.bits;
+		ip_decoded->ttl = ip_bits->ttl_hl;
 		rohc_decomp_debug(ctxt, "  decoded TTL/HL = 0x%02x (%zu bits 0x%x)",
-		                  ip_decoded->ttl, ip_bits->ttl_hl.bits_nr,
-		                  ip_bits->ttl_hl.bits);
-	}
-	else if(ip_bits->ttl_hl.bits_nr > 0)
-	{
-		uint32_t decoded32;
-
-		if(!rohc_lsb_decode(&rfc5225_ctxt->ttl_hl_lsb_ctxt, ROHC_LSB_REF_0, 0,
-		                    ip_bits->ttl_hl.bits, ip_bits->ttl_hl.bits_nr,
-		                    ROHC_LSB_SHIFT_TCP_TTL, &decoded32))
-		{
-			rohc_decomp_warn(ctxt, "failed to decode %zu TTL/HL bits 0x%x",
-			                 ip_bits->ttl_hl.bits_nr, ip_bits->ttl_hl.bits);
-			goto error;
-		}
-		ip_decoded->ttl = (uint8_t) (decoded32 & 0xff);
-		rohc_decomp_debug(ctxt, "  decoded TTL/HL = 0x%02x (%zu bits 0x%x)",
-		                  ip_decoded->ttl, ip_bits->ttl_hl.bits_nr,
-		                  ip_bits->ttl_hl.bits);
+		                  ip_decoded->ttl, ip_bits->ttl_hl_nr, ip_bits->ttl_hl);
 	}
 	else
 	{
+		assert(ip_bits->ttl_hl_nr == 0);
 		ip_decoded->ttl = ip_ctxt->ctxt.vx.ttl_hopl;
 		rohc_decomp_debug(ctxt, "  TTL/HL = 0x%02x taken from context",
 		                  ip_decoded->ttl);
