@@ -34,6 +34,7 @@ coverage_lines_min_req=90
 coverage_functions_min_req=99
 coverage_branches_min_req=58
 
+LCOV_BIN="lcov --rc lcov_function_coverage=1 --rc lcov_branch_coverage=1"
 LCOV_FILE="coverage.info"
 LCOV_FILTERED="coverage.info.filtered"
 
@@ -49,22 +50,22 @@ $(dirname $0)/non_regression/rfc3095/test_non_reg_ipv4_udp_rtp_voip_mc1_wlsb64_s
 
 # scan for gcov output files, create the output.zcov report file
 echo -n "Collect information about code coverage... " >&2
-lcov --capture --directory . --output-file "${LCOV_FILE}" &>/dev/null || exit 1
+${LCOV_BIN} --capture --directory . --output-file "${LCOV_FILE}" &>/dev/null || exit 1
 echo "done." >&2
 
 echo -n "Filter information about system headers... " >&2
-lcov -r "${LCOV_FILE}" /usr/include/\* --output-file "${LCOV_FILTERED}" &>/dev/null || exit 1
-lcov -r "${LCOV_FILTERED}" src/comp/test/\* --output-file "${LCOV_FILTERED}.new" &>/dev/null || exit 1
+${LCOV_BIN} -r "${LCOV_FILE}" /usr/include/\* --output-file "${LCOV_FILTERED}" &>/dev/null || exit 1
+${LCOV_BIN} -r "${LCOV_FILTERED}" src/comp/test/\* --output-file "${LCOV_FILTERED}.new" &>/dev/null || exit 1
 mv -f "${LCOV_FILTERED}.new" "${LCOV_FILTERED}" || exit 1
-lcov -r "${LCOV_FILTERED}" src/comp/schemes/test/\* --output-file "${LCOV_FILTERED}.new" &>/dev/null || exit 1
+${LCOV_BIN} -r "${LCOV_FILTERED}" src/comp/schemes/test/\* --output-file "${LCOV_FILTERED}.new" &>/dev/null || exit 1
 mv -f "${LCOV_FILTERED}.new" "${LCOV_FILTERED}" || exit 1
-lcov -r "${LCOV_FILTERED}" src/decomp/test/\* --output-file "${LCOV_FILTERED}.new" &>/dev/null || exit 1
+${LCOV_BIN} -r "${LCOV_FILTERED}" src/decomp/test/\* --output-file "${LCOV_FILTERED}.new" &>/dev/null || exit 1
 mv -f "${LCOV_FILTERED}.new" "${LCOV_FILTERED}" || exit 1
-lcov -r "${LCOV_FILTERED}" src/decomp/schemes/test/\* --output-file "${LCOV_FILTERED}.new" &>/dev/null || exit 1
+${LCOV_BIN} -r "${LCOV_FILTERED}" src/decomp/schemes/test/\* --output-file "${LCOV_FILTERED}.new" &>/dev/null || exit 1
 mv -f "${LCOV_FILTERED}.new" "${LCOV_FILTERED}" || exit 1
-lcov -r "${LCOV_FILTERED}" src/test/\* --output-file "${LCOV_FILTERED}.new" &>/dev/null || exit 1
+${LCOV_BIN} -r "${LCOV_FILTERED}" src/test/\* --output-file "${LCOV_FILTERED}.new" &>/dev/null || exit 1
 mv -f "${LCOV_FILTERED}.new" "${LCOV_FILTERED}" || exit 1
-lcov -r "${LCOV_FILTERED}" test/\* --output-file "${LCOV_FILTERED}.new" &>/dev/null || exit 1
+${LCOV_BIN} -r "${LCOV_FILTERED}" test/\* --output-file "${LCOV_FILTERED}.new" &>/dev/null || exit 1
 mv -f "${LCOV_FILTERED}.new" "${LCOV_FILTERED}" || exit 1
 echo "done." >&2
 
