@@ -36,6 +36,7 @@
 #include "rohc_bit_ops.h"
 #include "crc.h"
 #include "rohc_debug.h"
+#include "interval.h"
 
 #include <string.h>
 
@@ -1086,12 +1087,14 @@ static bool decomp_rfc5225_ip_decode_bits(const struct rohc_decomp_ctxt *const c
 	}
 	else
 	{
+		const rohc_lsb_shift_t p_computed =
+			rohc_interval_get_rfc5225_msn_p(bits->msn.bits_nr, bits->reorder_ratio);
 		uint32_t msn_decoded32;
 
 		assert(bits->msn.bits_nr > 0); /* all packets contain some MSN bits */
 
 		if(!rohc_lsb_decode(&rfc5225_ctxt->msn_lsb_ctxt, ROHC_LSB_REF_0, 0,
-		                    bits->msn.bits, bits->msn.bits_nr, bits->msn.p,
+		                    bits->msn.bits, bits->msn.bits_nr, p_computed,
 		                    &msn_decoded32))
 		{
 			rohc_decomp_warn(ctxt, "failed to decode %zu MSN bits 0x%x",

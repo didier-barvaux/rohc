@@ -25,6 +25,8 @@
 #ifndef ROHC_COMMON_INTERVAL_H
 #define ROHC_COMMON_INTERVAL_H
 
+#include <rohc/rohc.h> /* for rohc_reordering_offset_t */
+
 #include <stdlib.h>
 #include <stdint.h>
 
@@ -136,6 +138,10 @@ static inline int32_t rohc_interval_compute_p(const size_t k,
 struct rohc_interval32 rohc_f_32bits(const uint32_t v_ref,
                                      const size_t k,
                                      const rohc_lsb_shift_t p)
+	__attribute__((warn_unused_result, const));
+
+int32_t rohc_interval_get_rfc5225_msn_p(const size_t k,
+                                        rohc_reordering_offset_t reorder_ratio)
 	__attribute__((warn_unused_result, const));
 
 

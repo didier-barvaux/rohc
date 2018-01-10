@@ -34,6 +34,7 @@
 #include "schemes/ipv6_exts.h"
 #include "schemes/ip_ctxt.h"
 #include "crc.h"
+#include "schemes/comp_wlsb.h"
 
 #include <assert.h>
 
@@ -41,6 +42,7 @@
 struct rohc_comp_rfc5225_ip_ctxt
 {
 	uint16_t msn;  /**< The Master Sequence Number (MSN) */
+	struct c_wlsb msn_wlsb;    /**< The W-LSB decoding context for MSN */
 
 	ip_context_t ip_contexts[ROHC_MAX_IP_HDRS];
 	size_t ip_contexts_nr;
@@ -141,6 +143,13 @@ static void rohc_comp_rfc5225_ip_decide_state(struct rohc_comp_ctxt *const conte
 /* decide packet */
 static rohc_packet_t rohc_comp_rfc5225_ip_decide_pkt(struct rohc_comp_ctxt *const context)
 	__attribute__((warn_unused_result, nonnull(1)));
+
+static bool rohc_comp_rfc5225_is_msn_lsb_possible(const struct c_wlsb *const wlsb,
+                                                  const uint16_t value,
+                                                  const rohc_reordering_offset_t reorder_ratio,
+                                                  const size_t k)
+	__attribute__((warn_unused_result, nonnull(1)));
+
 
 
 /*
@@ -259,6 +268,9 @@ static bool rohc_comp_rfc5225_ip_create(struct rohc_comp_ctxt *const context,
 		           ROHC_MAX_IP_HDRS);
 		goto free_context;
 	}
+
+	/* MSN */
+	wlsb_init(&rfc5225_ctxt->msn_wlsb, 16, comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
 
 	/* init the Master Sequence Number to a random value */
 	rfc5225_ctxt->msn = comp->random_cb(comp, comp->random_cb_ctxt) & 0xffff;
@@ -762,12 +774,14 @@ static void rohc_comp_rfc5225_ip_decide_state(struct rohc_comp_ctxt *const conte
  * @brief Decide which packet to send when in the different states
  *
  * @param context           The compression context
- * @return                  \li The packet type among ROHC_PACKET_IR
+ * @return                  \li The packet type among ROHC_PACKET_IR,
+ *                              ROHC_PACKET_PT_0_CRC3
  *                              in case of success
  *                          \li ROHC_PACKET_UNKNOWN in case of failure
  */
 static rohc_packet_t rohc_comp_rfc5225_ip_decide_pkt(struct rohc_comp_ctxt *const context)
 {
+	struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = context->specific;
 	rohc_packet_t packet_type;
 
 	switch(context->state)
@@ -777,6 +791,30 @@ static rohc_packet_t rohc_comp_rfc5225_ip_decide_pkt(struct rohc_comp_ctxt *cons
 			packet_type = ROHC_PACKET_IR;
 			context->ir_count++;
 			break;
+		case ROHC_COMP_STATE_FO:
+			rohc_comp_debug(context, "code IR packet");
+			packet_type = ROHC_PACKET_IR;
+			context->fo_count++;
+			break;
+		case ROHC_COMP_STATE_SO:
+		{
+			rohc_reordering_offset_t reorder_ratio = context->compressor->reorder_ratio;
+
+			if(rohc_comp_rfc5225_is_msn_lsb_possible(&rfc5225_ctxt->msn_wlsb,
+			                                         rfc5225_ctxt->msn,
+			                                         reorder_ratio, 4))
+			{
+				rohc_comp_debug(context, "code pt_0_crc3 packet");
+				packet_type = ROHC_PACKET_PT_0_CRC3;
+			}
+			else
+			{
+				rohc_comp_debug(context, "code IR packet");
+				packet_type = ROHC_PACKET_IR;
+			}
+			context->so_count++;
+			break;
+		}
 		case ROHC_COMP_STATE_UNKNOWN:
 		default:
 #if defined(NDEBUG) || defined(__KERNEL__) || defined(ENABLE_DEAD_CODE)
@@ -787,6 +825,27 @@ static rohc_packet_t rohc_comp_rfc5225_ip_decide_pkt(struct rohc_comp_ctxt *cons
 	}
 
 	return packet_type;
+}
+
+
+/**
+ * @brief Define according to computed shift parameter if msn_lsb() is possible
+ *
+ * @param wlsb           The W-LSB object
+ * @param value          The value to encode using the LSB algorithm
+ * @param reorder_ratio  The reordering ratio
+ * @param k              The number of bits for encoding
+ * @return               true if msn_lsb is possible or not
+ */
+static bool rohc_comp_rfc5225_is_msn_lsb_possible(const struct c_wlsb *const wlsb,
+		                                            const uint16_t value,
+                                                  const rohc_reordering_offset_t reorder_ratio,
+                                                  const size_t k)
+{
+	/* compute p according to reorder ratio  */
+	rohc_lsb_shift_t p_computed = rohc_interval_get_rfc5225_msn_p(k, reorder_ratio);
+	
+	return wlsb_is_kp_possible_16bits(wlsb, value, k, p_computed);
 }
 
 
