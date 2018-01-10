@@ -27,7 +27,8 @@
 #   make all
 #   make check
 #
-# note: LANG=C and LC_ALL=C are required for zcov to work correctly
+# note: LANG=C and LC_ALL=C are required for lcov to work correctly
+#       MAKELEVEL makes the non-regression script to mis-compute paths
 #
 
 coverage_lines_min_req=90
@@ -40,6 +41,7 @@ LCOV_FILTERED="coverage.info.filtered"
 
 export LANG=C
 export LC_ALL=C
+unset MAKELEVEL
 
 echo "" >&2
 
@@ -47,6 +49,10 @@ rm -f "${LCOV_FILE}" "${LCOV_FILTERED}"
 
 # run the non-regression test in verbose mode to cover those bits
 $(dirname $0)/non_regression/rfc3095/test_non_reg_ipv4_udp_rtp_voip_mc1_wlsb64_smallcid.sh verbose &>/dev/null
+if [ $? -ne 0 ] ; then
+	echo "fail to run non-regression test in verbose mode to improve coverage" >&2
+	exit 1
+fi
 
 # scan for gcov output files, create the output.zcov report file
 echo -n "Collect information about code coverage... " >&2
