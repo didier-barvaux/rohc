@@ -48,8 +48,6 @@ struct rohc_decomp_rfc5225_ip_ctxt
 
 	/** The LSB decoding context of innermost IP-ID */
 	struct rohc_lsb_decode ip_id_lsb_ctxt; /* TODO: useful ? */
-	/** The LSB decoding context of innermost TTL/HL */
-	struct rohc_lsb_decode ttl_hl_lsb_ctxt; /* TODO: useful ? */
 
 	/** The reorder ratio that compressor sent to decompressor */
 	rohc_reordering_offset_t reorder_ratio;
@@ -313,8 +311,6 @@ static bool decomp_rfc5225_ip_new_context(const struct rohc_decomp_ctxt *const c
 	rohc_lsb_init(&rfc5225_ctxt->msn_lsb_ctxt, 16);
 	/* create the LSB decoding context for the innermost IP-ID */
 	rohc_lsb_init(&rfc5225_ctxt->ip_id_lsb_ctxt, 16);
-	/* create the LSB decoding context for the innermost TTL/HL */
-	rohc_lsb_init(&rfc5225_ctxt->ttl_hl_lsb_ctxt, 8);
 
 	/* by default, no reordering accepted on the channel */
 	rfc5225_ctxt->reorder_ratio = ROHC_REORDERING_NONE;
