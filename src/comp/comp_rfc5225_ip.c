@@ -676,6 +676,7 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
                                        rohc_packet_t *const packet_type,
                                        size_t *const payload_offset)
 {
+	struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = context->specific;
 	size_t rohc_len;
 	int ret;
 
@@ -688,6 +689,19 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 	/* STEP 3: code packet */
 	if((*packet_type) == ROHC_PACKET_IR)
 	{
+		ret = rohc_comp_rfc5225_ip_code_IR_pkt(context, &uncomp_pkt->outer_ip,
+		                                       rohc_pkt, rohc_pkt_max_len,
+		                                       payload_offset);
+		if(ret < 0)
+		{
+			rohc_comp_warn(context, "failed to build IR packet");
+			goto error;
+		}
+		rohc_len = ret;
+	}
+	else if((*packet_type) == ROHC_PACKET_PT_0_CRC3)
+	{
+		/* TODO: replace that by the encoding of pt_0_crc3 */
 		ret = rohc_comp_rfc5225_ip_code_IR_pkt(context, &uncomp_pkt->outer_ip,
 		                                       rohc_pkt, rohc_pkt_max_len,
 		                                       payload_offset);
@@ -715,6 +729,8 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 
 	/* STEP 4: update context */
 	rohc_comp_debug(context, "update context:");
+	/* add the new MSN to the W-LSB encoding object */
+	c_add_wlsb(&rfc5225_ctxt->msn_wlsb, rfc5225_ctxt->msn, rfc5225_ctxt->msn);
 
 	return rohc_len;
 
@@ -760,7 +776,56 @@ static bool rohc_comp_rfc5225_ip_feedback(struct rohc_comp_ctxt *const context,
 static void rohc_comp_rfc5225_ip_decide_state(struct rohc_comp_ctxt *const context,
                                               const struct rohc_ts pkt_time)
 {
-	rohc_comp_change_state(context, ROHC_COMP_STATE_IR);
+	const rohc_comp_state_t curr_state = context->state;
+	rohc_comp_state_t next_state;
+
+	if(curr_state == ROHC_COMP_STATE_IR)
+	{
+		if(context->ir_count < MAX_IR_COUNT)
+		{
+			rohc_comp_debug(context, "not enough packets transmitted in IR state "
+			                "for the moment (%zu/%d), so stay in IR state",
+			                context->ir_count, MAX_IR_COUNT);
+			next_state = ROHC_COMP_STATE_IR;
+		}
+		else
+		{
+			rohc_comp_debug(context, "enough packets transmitted in IR state (%zu/%u), "
+			                "go to SO state", context->ir_count, MAX_IR_COUNT);
+			next_state = ROHC_COMP_STATE_SO;
+		}
+	}
+	else if(curr_state == ROHC_COMP_STATE_FO)
+	{
+		if(context->fo_count < MAX_FO_COUNT)
+		{
+			rohc_comp_debug(context, "not enough packets transmitted in FO state "
+			                "for the moment (%zu/%u), so stay in FO state",
+			                context->fo_count, MAX_FO_COUNT);
+			next_state = ROHC_COMP_STATE_FO;
+		}
+		else
+		{
+			rohc_comp_debug(context, "enough packets transmitted in FO state (%zu/%u), "
+			                "go to SO state", context->fo_count, MAX_FO_COUNT);
+			next_state = ROHC_COMP_STATE_SO;
+		}
+	}
+	else if(curr_state == ROHC_COMP_STATE_SO)
+	{
+		/* do not change state */
+		rohc_comp_debug(context, "stay in SO state");
+		next_state = ROHC_COMP_STATE_SO;
+		/* TODO: handle NACK and STATIC-NACK */
+	}
+	else
+	{
+		rohc_comp_warn(context, "unexpected compressor state %d", curr_state);
+		assert(0);
+		return;
+	}
+
+	rohc_comp_change_state(context, next_state);
 
 	/* periodic refreshes in U-mode only */
 	if(context->mode == ROHC_U_MODE)
