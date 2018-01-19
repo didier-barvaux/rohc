@@ -455,6 +455,11 @@ static bool decomp_rfc5225_ip_parse_pkt(const struct rohc_decomp_ctxt *const con
 	{
 		status = decomp_rfc5225_ip_parse_ir(context, rohc_packet, large_cid_len,
 		                                    extr_crc, bits, rohc_hdr_len);
+		if(status == false)
+		{
+			rohc_decomp_warn(context, "failed to parse IR packet");
+			goto error;
+		}
 	}
 	else if ((*packet_type) == ROHC_PACKET_PT_0_CRC3)
 	{
@@ -462,6 +467,14 @@ static bool decomp_rfc5225_ip_parse_pkt(const struct rohc_decomp_ctxt *const con
 		uint8_t packed_rohc_packet[packed_rohc_packet_max_len];
 		const uint8_t *remain_data = rohc_buf_data(rohc_packet);
 		size_t remain_len = rohc_packet.len;
+
+		/* check if the ROHC packet is large enough to parse first bytes */
+		if(remain_len <= (1 + large_cid_len))
+		{
+			rohc_decomp_warn(context, "rohc packet too small (len = %zu)",
+			                 remain_len);
+			goto error;
+		}
 
 		/* copy the first bytes of header in a contiguous buffer
 		 * to be able to map packet structures to the ROHC bytes */
@@ -473,14 +486,30 @@ static bool decomp_rfc5225_ip_parse_pkt(const struct rohc_decomp_ctxt *const con
 
 		status = decomp_rfc5225_ip_parse_pt_0_crc3(context, remain_data, remain_len,
 		                                           extr_crc, bits, rohc_hdr_len);
+		if(status == false)
+		{
+			rohc_decomp_warn(context, "failed to parse %s packet (type %d)",
+			                 rohc_get_packet_descr(*packet_type), *packet_type);
+			goto error;
+		}
+
+		/* revert the buffer trick since the base header is parsed */
+		remain_data = rohc_packet.data + large_cid_len + (*rohc_hdr_len);
+		remain_len = rohc_packet.len - large_cid_len - (*rohc_hdr_len);
+
+		/* count large CID in header length now */
+		*rohc_hdr_len += large_cid_len;
 	}
 	else
 	{
 		rohc_decomp_warn(context, "unsupported ROHC packet type %u", (*packet_type));
-		status = false;
+		goto error;
 	}
 
-	return status;
+	return true;
+
+error:
+	return false;
 }
 
 
