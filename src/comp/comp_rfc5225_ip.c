@@ -48,6 +48,8 @@ struct comp_rfc5225_tmp_variables
 {
 	/** Whether the behavior of the IP-ID field changed with current packet */
 	bool ip_id_behavior_changed;
+	/** The number of changed TOS/TC fields in IP headers */
+	size_t tos_tc_changed_nr;
 };
 
 
@@ -720,6 +722,7 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 	/* TODO: find a better to detect the uncompressed header length */
 	rohc_comp_debug(context, "parse the %zu-byte IP packet", remain_len);
 	assert(rfc5225_ctxt->ip_contexts_nr > 0);
+	rfc5225_ctxt->tmp.tos_tc_changed_nr = 0;
 	for(ip_hdr_pos = 0; ip_hdr_pos < rfc5225_ctxt->ip_contexts_nr; ip_hdr_pos++)
 	{
 		const struct ip_hdr *const ip_hdr = (struct ip_hdr *) remain_data;
@@ -741,6 +744,10 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 			assert(remain_len >= sizeof(struct ipv4_hdr));
 
 			protocol = ipv4->protocol;
+			if(ip_context->ctxt.vx.tos_tc != ipv4->tos)
+			{
+				rfc5225_ctxt->tmp.tos_tc_changed_nr++;
+			}
 			ipv4_hdr_len = ipv4->ihl * sizeof(uint32_t);
 
 			/* skip IPv4 header */
@@ -757,6 +764,10 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 			assert(remain_len >= sizeof(struct ipv6_hdr));
 
 			protocol = ipv6->nh;
+			if(ip_context->ctxt.vx.tos_tc != ipv6_get_tc(ipv6))
+			{
+				rfc5225_ctxt->tmp.tos_tc_changed_nr++;
+			}
 
 			/* skip IPv6 header */
 			rohc_comp_debug(context, "skip %zu-byte IPv6 header with Next Header "
@@ -1062,10 +1073,12 @@ static rohc_packet_t rohc_comp_rfc5225_ip_decide_pkt(struct rohc_comp_ctxt *cons
 			 *  - 4 MSN bits are enough
 			 *  - the decompressor shall be able to infer the innermost IP-ID from its
 			 *    behavior and the MSN
+			 *  - the TOS/TC field shall not be changing
 			 */
 			/* TODO: allow IP-ID random once the irregular chain will be implemented */
 			if(innermost_ip_id_behavior != ROHC_IP_ID_BEHAVIOR_RAND &&
 			   !rfc5225_ctxt->tmp.ip_id_behavior_changed &&
+			   rfc5225_ctxt->tmp.tos_tc_changed_nr == 0 &&
 			   rohc_comp_rfc5225_is_msn_lsb_possible(&rfc5225_ctxt->msn_wlsb,
 			                                         rfc5225_ctxt->msn, reorder_ratio, 4))
 			{
