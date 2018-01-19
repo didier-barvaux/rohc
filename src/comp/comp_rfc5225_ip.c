@@ -1076,7 +1076,8 @@ static rohc_packet_t rohc_comp_rfc5225_ip_decide_pkt(struct rohc_comp_ctxt *cons
 			 *  - the TOS/TC field shall not be changing
 			 */
 			/* TODO: allow IP-ID random once the irregular chain will be implemented */
-			if(innermost_ip_id_behavior != ROHC_IP_ID_BEHAVIOR_RAND &&
+			if(rfc5225_ctxt->ip_contexts_nr == 1 &&
+			   innermost_ip_id_behavior != ROHC_IP_ID_BEHAVIOR_RAND &&
 			   !rfc5225_ctxt->tmp.ip_id_behavior_changed &&
 			   rfc5225_ctxt->tmp.tos_tc_changed_nr == 0 &&
 			   rohc_comp_rfc5225_is_msn_lsb_possible(&rfc5225_ctxt->msn_wlsb,
