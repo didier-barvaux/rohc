@@ -41,7 +41,7 @@ bool is_ip_id_increasing(const uint16_t old_id, const uint16_t new_id)
 {
 	/* The maximal delta accepted between two consecutive IPv4 ID so that it
 	 * can be considered as increasing */
-	const uint16_t max_id_delta = 20;
+	const uint16_t max_id_delta = 2;
 	bool is_increasing;
 
 	/* the new IP-ID is increasing if it belongs to:

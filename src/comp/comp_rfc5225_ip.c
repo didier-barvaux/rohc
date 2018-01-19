@@ -39,6 +39,18 @@
 
 #include <assert.h>
 
+
+/**
+ * @brief Define the RFC5225-specific temporary variables in the profile
+ *        compression context
+ */
+struct comp_rfc5225_tmp_variables
+{
+	/** Whether the behavior of the IP-ID field changed with current packet */
+	bool ip_id_behavior_changed;
+};
+
+
 /** Define the ROHCv2 IP-only part of the profile compression context */
 struct rohc_comp_rfc5225_ip_ctxt
 {
@@ -47,6 +59,8 @@ struct rohc_comp_rfc5225_ip_ctxt
 
 	ip_context_t ip_contexts[ROHC_MAX_IP_HDRS];
 	size_t ip_contexts_nr;
+
+	struct comp_rfc5225_tmp_variables tmp;
 };
 
 
@@ -239,7 +253,7 @@ static bool rohc_comp_rfc5225_ip_create(struct rohc_comp_ctxt *const context,
 				assert(remain_len >= sizeof(struct ipv6_hdr));
 				proto = ipv6->nh;
 
-				ip_context->ctxt.v6.ip_id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
+				ip_context->ctxt.v6.ip_id_behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
 				ip_context->ctxt.v6.tc = remain_data[1];
 				ip_context->ctxt.v6.hopl = ipv6->hl;
 				ip_context->ctxt.v6.flow_label = ipv6_get_flow_label(ipv6);
@@ -788,6 +802,13 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 		inner_ip_ctxt->ctxt.v4.ip_id_behavior = ip_id_behavior;
 		rohc_comp_debug(context, "IP-ID now behaves as %s",
 		                rohc_ip_id_behavior_get_descr(ip_id_behavior));
+
+		rfc5225_ctxt->tmp.ip_id_behavior_changed =
+			(last_ip_id_behavior != ip_id_behavior);
+	}
+	else /* IPv6 */
+	{
+		rfc5225_ctxt->tmp.ip_id_behavior_changed = false;
 	}
 
 	/* compute or find the new SN */
@@ -1044,6 +1065,7 @@ static rohc_packet_t rohc_comp_rfc5225_ip_decide_pkt(struct rohc_comp_ctxt *cons
 			 */
 			/* TODO: allow IP-ID random once the irregular chain will be implemented */
 			if(innermost_ip_id_behavior != ROHC_IP_ID_BEHAVIOR_RAND &&
+			   !rfc5225_ctxt->tmp.ip_id_behavior_changed &&
 			   rohc_comp_rfc5225_is_msn_lsb_possible(&rfc5225_ctxt->msn_wlsb,
 			                                         rfc5225_ctxt->msn, reorder_ratio, 4))
 			{
