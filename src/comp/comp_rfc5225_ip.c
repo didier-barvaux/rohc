@@ -808,7 +808,7 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 		}
 		else
 		{
-			ip_id_behavior = rohc_comp_detect_ip_id_behavior(last_ip_id, ip_id);
+			ip_id_behavior = rohc_comp_detect_ip_id_behavior(last_ip_id, ip_id, 1);
 		}
 		inner_ip_ctxt->ctxt.v4.ip_id_behavior = ip_id_behavior;
 		rohc_comp_debug(context, "IP-ID now behaves as %s",

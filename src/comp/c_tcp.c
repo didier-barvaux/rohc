@@ -3465,7 +3465,7 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 		else
 		{
 			(*ip_inner_ctxt)->ctxt.v4.ip_id_behavior =
-				rohc_comp_detect_ip_id_behavior((*ip_inner_ctxt)->ctxt.v4.last_ip_id, ip_id);
+				rohc_comp_detect_ip_id_behavior((*ip_inner_ctxt)->ctxt.v4.last_ip_id, ip_id, 19);
 		}
 		rohc_comp_debug(context, "IP-ID now behaves as %s",
 		                rohc_ip_id_behavior_get_descr((*ip_inner_ctxt)->ctxt.v4.ip_id_behavior));
