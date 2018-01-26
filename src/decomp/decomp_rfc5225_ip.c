@@ -107,6 +107,9 @@ struct rohc_rfc5225_bits
 
 	rohc_reordering_offset_t reorder_ratio; /**< The reorder ratio bits */
 	size_t reorder_ratio_nr; /**< The number of reorder ratio bits */
+
+	uint8_t outer_ip_flag;   /**< The outer_ip_flag bits */
+	size_t outer_ip_flag_nr; /**< The number of outer_ip_flag bits */
 };
 
 
@@ -180,7 +183,16 @@ static bool decomp_rfc5225_ip_parse_ir(const struct rohc_decomp_ctxt *const ctxt
                                        struct rohc_decomp_crc *const extr_crc,
                                        struct rohc_rfc5225_bits *const bits,
                                        size_t *const rohc_hdr_len)
-	__attribute__((warn_unused_result, nonnull(1, 4, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 4, 5, 6)));
+
+static bool decomp_rfc5225_ip_parse_co(const struct rohc_decomp_ctxt *const ctxt,
+                                       const struct rohc_buf rohc_pkt,
+                                       const size_t large_cid_len,
+                                       const rohc_packet_t packet_type,
+                                       struct rohc_decomp_crc *const extr_crc,
+                                       struct rohc_rfc5225_bits *const bits,
+                                       size_t *const rohc_hdr_len)
+	__attribute__((warn_unused_result, nonnull(1, 5, 6, 7)));
 
 static bool decomp_rfc5225_ip_parse_pt_0_crc3(const struct rohc_decomp_ctxt *const ctxt,
                                               const uint8_t *const rohc_pkt,
@@ -188,7 +200,7 @@ static bool decomp_rfc5225_ip_parse_pt_0_crc3(const struct rohc_decomp_ctxt *con
                                               struct rohc_decomp_crc *const extr_crc,
                                               struct rohc_rfc5225_bits *const bits,
                                               size_t *const rohc_hdr_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5, 6)));
 
 /* static chain */
 static bool decomp_rfc5225_ip_parse_static_chain(const struct rohc_decomp_ctxt *const ctxt,
@@ -218,6 +230,23 @@ static int decomp_rfc5225_ip_parse_dyn_ip(const struct rohc_decomp_ctxt *const c
                                           struct rohc_rfc5225_bits *const bits,
                                           struct rohc_rfc5225_ip_bits *const ip_bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6)));
+
+/* irregular chain */
+static bool decomp_rfc5225_ip_parse_irreg_chain(const struct rohc_decomp_ctxt *const ctxt,
+                                                const uint8_t *const rohc_pkt,
+                                                const size_t rohc_len,
+                                                const rohc_ip_id_behavior_t innermost_ip_id_behavior,
+                                                struct rohc_rfc5225_bits *const bits,
+                                                size_t *const parsed_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6)));
+static int decomp_rfc5225_ip_parse_irreg_ip(const struct rohc_decomp_ctxt *const ctxt,
+                                            const uint8_t *const rohc_pkt,
+                                            const size_t rohc_len,
+                                            const bool is_innermost,
+                                            const rohc_ip_id_behavior_t ip_id_behavior,
+                                            const bool outer_ip_flag,
+                                            struct rohc_rfc5225_ip_bits *const ip_bits)
+	__attribute__((warn_unused_result, nonnull(1, 2, 7)));
 
 /* decoding parsed fields */
 static bool decomp_rfc5225_ip_decode_bits(const struct rohc_decomp_ctxt *const ctxt,
@@ -461,49 +490,16 @@ static bool decomp_rfc5225_ip_parse_pkt(const struct rohc_decomp_ctxt *const con
 			goto error;
 		}
 	}
-	else if ((*packet_type) == ROHC_PACKET_PT_0_CRC3)
+	else /* parse CO headers */
 	{
-		const size_t packed_rohc_packet_max_len = sizeof(pt_0_crc3_t);
-		uint8_t packed_rohc_packet[packed_rohc_packet_max_len];
-		const uint8_t *remain_data = rohc_buf_data(rohc_packet);
-		size_t remain_len = rohc_packet.len;
-
-		/* check if the ROHC packet is large enough to parse first bytes */
-		if(remain_len <= (1 + large_cid_len))
-		{
-			rohc_decomp_warn(context, "rohc packet too small (len = %zu)",
-			                 remain_len);
-			goto error;
-		}
-
-		/* copy the first bytes of header in a contiguous buffer
-		 * to be able to map packet structures to the ROHC bytes */
-		packed_rohc_packet[0] = remain_data[0];
-		memcpy(packed_rohc_packet + 1, remain_data + 1 + large_cid_len,
-		       rohc_min(remain_len - large_cid_len, packed_rohc_packet_max_len) - 1);
-		remain_data = packed_rohc_packet;
-		remain_len = rohc_min(remain_len - large_cid_len, packed_rohc_packet_max_len);
-
-		status = decomp_rfc5225_ip_parse_pt_0_crc3(context, remain_data, remain_len,
-		                                           extr_crc, bits, rohc_hdr_len);
+		status = decomp_rfc5225_ip_parse_co(context, rohc_packet,
+		                                    large_cid_len, *packet_type,
+		                                    extr_crc, bits, rohc_hdr_len);
 		if(status == false)
 		{
-			rohc_decomp_warn(context, "failed to parse %s packet (type %d)",
-			                 rohc_get_packet_descr(*packet_type), *packet_type);
+			rohc_decomp_warn(context, "failed to parse CO packet");
 			goto error;
 		}
-
-		/* revert the buffer trick since the base header is parsed */
-		remain_data = rohc_packet.data + large_cid_len + (*rohc_hdr_len);
-		remain_len = rohc_packet.len - large_cid_len - (*rohc_hdr_len);
-
-		/* count large CID in header length now */
-		*rohc_hdr_len += large_cid_len;
-	}
-	else
-	{
-		rohc_decomp_warn(context, "unsupported ROHC packet type %u", (*packet_type));
-		goto error;
 	}
 
 	return true;
@@ -543,6 +539,8 @@ static void decomp_rfc5225_ip_reset_extr_bits(const struct rohc_decomp_ctxt *con
 	}
 	bits->ip_nr = 0;
 	bits->msn.bits_nr = 0;
+	bits->reorder_ratio_nr = 0;
+	bits->outer_ip_flag_nr = 0;
 
 	/* if context handled at least one packet, init the list of IP headers */
 	if(ctxt->num_recv_packets >= 1)
@@ -635,6 +633,176 @@ static bool decomp_rfc5225_ip_parse_ir(const struct rohc_decomp_ctxt *const ctxt
 #endif
 
 	*rohc_hdr_len = remain_data - rohc_buf_data(rohc_pkt);
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Parse CO packet for the ROHCv2 IP-only profile
+ *
+ * @param ctxt               The decompression context
+ * @param rohc_pkt           The ROHC packet to decode
+ * @param large_cid_len      The length of the optional large CID field
+ * @param packet_type        The type of the ROHC packet to parse
+ * @param[out] extr_crc      The CRC extracted from the ROHC packet
+ * @param[out] bits          The bits extracted from the ROHC packet
+ * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
+ * @return                   true if parsing was successful,
+ *                           false if packet was malformed
+ */
+static bool decomp_rfc5225_ip_parse_co(const struct rohc_decomp_ctxt *const ctxt,
+                                       const struct rohc_buf rohc_pkt,
+                                       const size_t large_cid_len,
+                                       const rohc_packet_t packet_type,
+                                       struct rohc_decomp_crc *const extr_crc,
+                                       struct rohc_rfc5225_bits *const bits,
+                                       size_t *const rohc_hdr_len)
+{
+	const struct rohc_decomp_rfc5225_ip_ctxt *const rfc5225_ctxt =
+		ctxt->persist_ctxt;
+
+	const size_t packed_rohc_packet_max_len = sizeof(pt_0_crc3_t);
+	uint8_t packed_rohc_packet[packed_rohc_packet_max_len];
+
+	const uint8_t *remain_data = rohc_buf_data(rohc_pkt);
+	size_t remain_len = rohc_pkt.len;
+
+	const ip_context_t *ip_inner_context;
+	struct rohc_rfc5225_ip_bits *inner_ip_bits;
+	rohc_ip_id_behavior_t innermost_ip_id_behavior;
+
+	bool status;
+
+	assert(rfc5225_ctxt->ip_contexts_nr > 0);
+	ip_inner_context = &(rfc5225_ctxt->ip_contexts[rfc5225_ctxt->ip_contexts_nr - 1]);
+	assert(bits->ip_nr > 0);
+	inner_ip_bits = &(bits->ip[bits->ip_nr - 1]);
+
+	/* check if the ROHC packet is large enough to parse first bytes */
+	if(remain_len <= (1 + large_cid_len))
+	{
+		rohc_decomp_warn(ctxt, "rohc packet too small (len = %zu)", remain_len);
+		goto error;
+	}
+
+	/* copy the first bytes of header in a contiguous buffer
+	 * to be able to map packet structures to the ROHC bytes */
+	packed_rohc_packet[0] = remain_data[0];
+	memcpy(packed_rohc_packet + 1, remain_data + 1 + large_cid_len,
+	       (int)rohc_min(remain_len - large_cid_len, packed_rohc_packet_max_len) - 1);
+	remain_data = packed_rohc_packet;
+	remain_len = rohc_min(remain_len - large_cid_len, packed_rohc_packet_max_len);
+
+	if(packet_type == ROHC_PACKET_PT_0_CRC3)
+	{
+		status = decomp_rfc5225_ip_parse_pt_0_crc3(ctxt, remain_data, remain_len,
+		                                           extr_crc, bits, rohc_hdr_len);
+	}
+	else
+	{
+		rohc_decomp_warn(ctxt, "unsupported ROHC packet type %u", packet_type);
+		goto error;
+	}
+	if(status == false)
+	{
+		rohc_decomp_warn(ctxt, "failed to parse %s packet (type %d)",
+		                 rohc_get_packet_descr(packet_type), packet_type);
+		goto error;
+	}
+
+	/* revert the buffer trick since the base header is parsed */
+	remain_data = rohc_buf_data(rohc_pkt) + large_cid_len + (*rohc_hdr_len);
+	remain_len = rohc_pkt.len - large_cid_len - (*rohc_hdr_len);
+
+	/* count large CID in header length now */
+	*rohc_hdr_len += large_cid_len;
+	assert((*rohc_hdr_len) <= rohc_pkt.len);
+
+	/* innermost IP-ID behavior */
+	if(inner_ip_bits->id_behavior_nr > 0)
+	{
+		assert(inner_ip_bits->id_behavior_nr == 2);
+		innermost_ip_id_behavior = inner_ip_bits->id_behavior;
+		rohc_decomp_debug(ctxt, "use behavior '%s' defined in current packet "
+		                  "for innermost IP-ID",
+		                  rohc_ip_id_behavior_get_descr(innermost_ip_id_behavior));
+	}
+	else
+	{
+		innermost_ip_id_behavior = ip_inner_context->ctxt.vx.ip_id_behavior;
+		rohc_decomp_debug(ctxt, "use already-defined behavior '%s' for "
+		                  "innermost IP-ID",
+		                  rohc_ip_id_behavior_get_descr(innermost_ip_id_behavior));
+	}
+
+	/* parse irregular chain */
+	{
+		size_t irreg_chain_len;
+		if(!decomp_rfc5225_ip_parse_irreg_chain(ctxt, remain_data, remain_len,
+		                                        innermost_ip_id_behavior, bits,
+		                                        &irreg_chain_len))
+		{
+			rohc_decomp_warn(ctxt, "failed to parse the irregular chain");
+			goto error;
+		}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
+		remain_data += irreg_chain_len;
+		remain_len -= irreg_chain_len;
+#endif
+		*rohc_hdr_len += irreg_chain_len;
+	}
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Parse one pt_0_crc3 packet for the ROHCv2 IP-only profile
+ *
+ * @param ctxt               The decompression context
+ * @param rohc_pkt           The ROHC packet to decode
+ * @param rohc_len           The length (in bytes) of the ROHC packet
+ * @param[out] extr_crc      The CRC extracted from the ROHC packet
+ * @param[out] bits          The bits extracted from the ROHC packet
+ * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
+ * @return                   true if parsing was successful,
+ *                           false if packet was malformed
+ */
+static bool decomp_rfc5225_ip_parse_pt_0_crc3(const struct rohc_decomp_ctxt *const ctxt,
+                                              const uint8_t *const rohc_pkt,
+                                              const size_t rohc_len,
+                                              struct rohc_decomp_crc *const extr_crc,
+                                              struct rohc_rfc5225_bits *const bits,
+                                              size_t *const rohc_hdr_len)
+{
+	const pt_0_crc3_t *const pt_0_crc3 = (pt_0_crc3_t *) rohc_pkt;
+
+	/* check packet usage */
+	assert(ctxt->state == ROHC_DECOMP_STATE_FC);
+
+	/* check if the ROHC packet is large enough to parse pt_0_crc3 */
+	if(rohc_len < sizeof(pt_0_crc3_t))
+	{
+		rohc_decomp_warn(ctxt, "ROHC packet too small for pt_0_crc3 (len = %zu)",
+		                 rohc_len);
+		goto error;
+	}
+
+	assert(pt_0_crc3->discriminator == 0x0);
+	bits->msn.bits = pt_0_crc3->msn;
+	bits->msn.bits_nr = 4;
+	extr_crc->type = ROHC_CRC_TYPE_3;
+	extr_crc->bits = pt_0_crc3->header_crc;
+	extr_crc->bits_nr = 3;
+
+	*rohc_hdr_len = sizeof(pt_0_crc3_t);
+
 	return true;
 
 error:
@@ -1128,50 +1296,170 @@ error:
 
 
 /**
- * @brief Parse one pt_0_crc3 packet for the ROHCv2 IP-only profile
+ * @brief Parse the irregular chain of the CO packet
  *
- * @param ctxt               The decompression context
- * @param rohc_pkt           The ROHC packet to decode
- * @param rohc_len           The length (in bytes) of the ROHC packet
- * @param[out] extr_crc      The CRC extracted from the ROHC packet
- * @param[out] bits          The bits extracted from the ROHC packet
- * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
- * @return                   true if parsing was successful,
- *                           false if packet was malformed
+ * @param ctxt             The decompression context
+ * @param rohc_pkt         The remaining part of the ROHC packet
+ * @param rohc_len         The remaining length (in bytes) of the ROHC packet
+ * @param innermost_ip_id_behavior  The behavior of the innermost IP-ID
+ * @param[out] parsed_len  The length (in bytes) of irregular chain in case of success
+ * @param[out] bits        The bits extracted from the irregular chain
+ * @return                 true in the irregular chain was successfully parsed,
+ *                         false if the ROHC packet was malformed
  */
-static bool decomp_rfc5225_ip_parse_pt_0_crc3(const struct rohc_decomp_ctxt *const ctxt,
-                                              const uint8_t *const rohc_pkt,
-                                              const size_t rohc_len,
-                                              struct rohc_decomp_crc *const extr_crc,
-                                              struct rohc_rfc5225_bits *const bits,
-                                              size_t *const rohc_hdr_len)
+static bool decomp_rfc5225_ip_parse_irreg_chain(const struct rohc_decomp_ctxt *const ctxt,
+                                                const uint8_t *const rohc_pkt,
+                                                const size_t rohc_len,
+                                                const rohc_ip_id_behavior_t innermost_ip_id_behavior,
+                                                struct rohc_rfc5225_bits *const bits,
+                                                size_t *const parsed_len)
 {
-	const pt_0_crc3_t *const pt_0_crc3 = (pt_0_crc3_t *) rohc_pkt;
+	const struct rohc_decomp_rfc5225_ip_ctxt *const rfc5225_ctxt =
+		ctxt->persist_ctxt;
 
-	/* check packet usage */
-	assert(ctxt->state == ROHC_DECOMP_STATE_FC);
+	const uint8_t *remain_data = rohc_pkt;
+	size_t remain_len = rohc_len;
+	size_t ip_hdrs_nr;
+	bool outer_ip_flag;
+	int ret;
 
-	/* check if the ROHC packet is large enough to parse pt_0_crc3 */
-	if(rohc_len < sizeof(pt_0_crc3_t))
+	(*parsed_len) = 0;
+
+	/* only co_common transmits the outer_ip_flag */
+	if(bits->outer_ip_flag_nr > 0)
 	{
-		rohc_decomp_warn(ctxt, "ROHC packet too small for pt_0_crc3 (len = %zu)",
-		                 rohc_len);
-		goto error;
+		assert(bits->outer_ip_flag_nr == 1);
+		outer_ip_flag = bits->outer_ip_flag;
+	}
+	else
+	{
+		outer_ip_flag = 0;
 	}
 
-	assert(pt_0_crc3->discriminator == 0x0);
-	bits->msn.bits = pt_0_crc3->msn;
-	bits->msn.bits_nr = 4;
-	extr_crc->type = ROHC_CRC_TYPE_3;
-	extr_crc->bits = pt_0_crc3->header_crc;
-	extr_crc->bits_nr = 3;
+	/* parse irregular IP part (IPv4/IPv6 headers and extension headers) */
+	assert(bits->ip_nr > 0);
+	for(ip_hdrs_nr = 0; ip_hdrs_nr < bits->ip_nr; ip_hdrs_nr++)
+	{
+		const ip_context_t *const ip_context =
+			&(rfc5225_ctxt->ip_contexts[ip_hdrs_nr]);
+		struct rohc_rfc5225_ip_bits *const ip_bits = &(bits->ip[ip_hdrs_nr]);
+		const bool is_innermost = !!(ip_hdrs_nr == (bits->ip_nr - 1));
+		rohc_ip_id_behavior_t ip_id_behavior;
 
-	*rohc_hdr_len = sizeof(pt_0_crc3_t);
+		if(is_innermost)
+		{
+			ip_id_behavior = innermost_ip_id_behavior;
+		}
+		else
+		{
+			ip_id_behavior = ip_context->ctxt.vx.ip_id_behavior;
+		}
+
+		ret = decomp_rfc5225_ip_parse_irreg_ip(ctxt, remain_data, remain_len,
+		                                       is_innermost, ip_id_behavior,
+		                                       outer_ip_flag, ip_bits);
+		if(ret < 0)
+		{
+			rohc_decomp_warn(ctxt, "malformed ROHC packet: malformed IP irregular part");
+			goto error;
+		}
+		rohc_decomp_debug(ctxt, "IPv%u irregular part is %d-byte length",
+		                  ip_bits->version, ret);
+		assert(remain_len >= ((size_t) ret));
+		remain_data += ret;
+		remain_len -= ret;
+		(*parsed_len) += ret;
+	}
 
 	return true;
 
 error:
 	return false;
+}
+
+
+/**
+ * @brief Decode the irregular IP header of the ROHC packet
+ *
+ * @param ctxt           The decompression context
+ * @param rohc_pkt       The remaining part of the ROHC packet
+ * @param rohc_len       The remaining length (in bytes) of the ROHC packet
+ * @param is_innermost   Whether the IP header is the innermost IP header or not
+ * @param ip_id_behavior The IP-ID behavior of the IP header
+ *                       (may be different from the context)
+ * @param outer_ip_flag  Whether the TOS/TC or TTL/HL fields of outer IP headers
+ *                       are present or not
+ * @param[out] ip_bits   The bits extracted from the IP part of the irregular chain
+ * @return               The length of dynamic IP header in case of success,
+ *                       -1 if an error occurs
+ */
+static int decomp_rfc5225_ip_parse_irreg_ip(const struct rohc_decomp_ctxt *const ctxt,
+                                            const uint8_t *const rohc_pkt,
+                                            const size_t rohc_len,
+                                            const bool is_innermost,
+                                            const rohc_ip_id_behavior_t ip_id_behavior,
+                                            const bool outer_ip_flag,
+                                            struct rohc_rfc5225_ip_bits *const ip_bits)
+{
+
+	const uint8_t *remain_data = rohc_pkt;
+	size_t remain_len = rohc_len;
+	size_t size = 0;
+
+	rohc_decomp_debug(ctxt, "parse IP irregular part");
+
+	/* the innermost IPv4 IP-ID is transmitted in full if it is random */
+	if(ip_bits->version == IPV4 && ip_id_behavior == ROHC_IP_ID_BEHAVIOR_RAND)
+	{
+		uint16_t ip_id;
+
+		if(remain_len < sizeof(uint16_t))
+		{
+			rohc_decomp_warn(ctxt, "packet too short for random IP-ID: only "
+			                 "%zu bytes available while at least %zu bytes "
+			                 "required", remain_len, sizeof(uint16_t));
+			goto error;
+		}
+		memcpy(&ip_id, remain_data, sizeof(uint16_t));
+		remain_data += sizeof(uint16_t);
+		remain_len -= sizeof(uint16_t);
+		size += sizeof(uint16_t);
+		rohc_decomp_debug(ctxt, "read ip_id = 0x%04x (ip_id_behavior = %d)",
+		                  ip_id, ip_id_behavior);
+		ip_bits->id.bits = rohc_ntoh16(ip_id);
+		ip_bits->id.bits_nr = 16;
+		rohc_decomp_debug(ctxt, "new IP-ID = 0x%04x", ip_bits->id.bits);
+	}
+
+	/* the TOS/TC and TTL/HL fields of outer IP headers are transmitted in full
+	 * if the outer_ip_flag is set to 1 (ie. only in co_common header) */
+	if(!is_innermost && outer_ip_flag)
+	{
+		size_t tos_ttl_req_len = 2;
+
+		if(remain_len < tos_ttl_req_len)
+		{
+			rohc_decomp_warn(ctxt, "malformed ROHC packet: too short for "
+			                 "TOS and TTL in IPv4 irregular part");
+			goto error;
+		}
+		ip_bits->tos_tc_bits = remain_data[0];
+		ip_bits->tos_tc_bits_nr = 8;
+		ip_bits->ttl_hl = remain_data[1];
+		ip_bits->ttl_hl_nr = 8;
+		remain_data += tos_ttl_req_len;
+		remain_len -= tos_ttl_req_len;
+		size += tos_ttl_req_len;
+		rohc_decomp_debug(ctxt, "TOS/TC = 0x%x, ttl_hopl = 0x%x",
+		                  ip_bits->tos_tc_bits, ip_bits->ttl_hl);
+	}
+
+	rohc_decomp_dump_buf(ctxt, "IP irregular part", rohc_pkt, size);
+
+	return size;
+
+error:
+	return -1;
 }
 
 

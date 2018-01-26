@@ -158,7 +158,6 @@ typedef struct
 } __attribute__((packed)) ipv4_outer_dynamic_ipid_t;
 
 
-
 /************************************************************************
  * Compressed IPv6 base header and its extension headers                *
  ************************************************************************/
