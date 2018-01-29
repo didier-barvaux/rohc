@@ -267,5 +267,26 @@ typedef struct
 } __attribute__((packed)) pt_0_crc3_t;
 
 
+/**
+ * @brief The pt_0_crc7 packet format
+ *
+ * See RFC5225 page 91
+ */
+typedef struct
+{
+#if WORDS_BIGENDIAN == 1
+	uint8_t discriminator:3;  /**< '100'                            [ 3 ] */
+	uint8_t msn_1:5;          /**< 5 MSB of msn_lsb(6)              [ 5 ] */
+	uint8_t msn_2:1;          /**< last LSB of msn_lsb(6)           [ 6 ] */
+	uint8_t header_crc:7;     /**< crc7(THIS.UVALUE, THIS.ULENGTH)  [ 7 ] */
+#else
+	uint8_t msn_1:5;
+	uint8_t discriminator:3;
+	uint8_t header_crc:7;
+	uint8_t msn_2:1;
+#endif
+} __attribute__((packed)) pt_0_crc7_t;
+
+
 #endif /* ROHC_PROTOCOLS_RFC5225_H */
 

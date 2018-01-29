@@ -202,6 +202,14 @@ static bool decomp_rfc5225_ip_parse_pt_0_crc3(const struct rohc_decomp_ctxt *con
                                               size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5, 6)));
 
+static bool decomp_rfc5225_ip_parse_pt_0_crc7(const struct rohc_decomp_ctxt *const ctxt,
+                                              const uint8_t *const rohc_pkt,
+                                              const size_t rohc_len,
+                                              struct rohc_decomp_crc *const extr_crc,
+                                              struct rohc_rfc5225_bits *const bits,
+                                              size_t *const rohc_hdr_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
+
 /* static chain */
 static bool decomp_rfc5225_ip_parse_static_chain(const struct rohc_decomp_ctxt *const ctxt,
                                                  const uint8_t *const rohc_pkt,
@@ -429,12 +437,16 @@ static rohc_packet_t decomp_rfc5225_ip_detect_pkt_type(const struct rohc_decomp_
 		                 "type (len = %zu)", rohc_length);
 		goto error;
 	}
-
-	if(GET_BIT_7(rohc_packet) == 0)
+	
+	if(GET_BIT_7(rohc_packet) == 0) /* 1-bit discriminator '0' */
 	{
 		type = ROHC_PACKET_PT_0_CRC3;
 	}
-	else if(rohc_decomp_packet_is_ir(rohc_packet, rohc_length))
+	else if(GET_BIT_5_7(rohc_packet) == 0x04) /* 3-bit discriminator '100' */
+	{
+		type = ROHC_PACKET_NORTP_PT_0_CRC7;
+	}
+	else if(rohc_decomp_packet_is_ir(rohc_packet, rohc_length)) /* 7-bit */
 	{
 		type = ROHC_PACKET_IR;
 	}
@@ -494,7 +506,7 @@ static bool decomp_rfc5225_ip_parse_pkt(const struct rohc_decomp_ctxt *const con
 	{
 		status = decomp_rfc5225_ip_parse_co(context, rohc_packet,
 		                                    large_cid_len, *packet_type,
-		                                    extr_crc, bits, rohc_hdr_len);
+						    extr_crc, bits, rohc_hdr_len);
 		if(status == false)
 		{
 			rohc_decomp_warn(context, "failed to parse CO packet");
@@ -663,10 +675,9 @@ static bool decomp_rfc5225_ip_parse_co(const struct rohc_decomp_ctxt *const ctxt
 {
 	const struct rohc_decomp_rfc5225_ip_ctxt *const rfc5225_ctxt =
 		ctxt->persist_ctxt;
-
-	const size_t packed_rohc_packet_max_len = sizeof(pt_0_crc3_t);
+	const size_t packed_rohc_packet_max_len = sizeof(pt_0_crc7_t);
 	uint8_t packed_rohc_packet[packed_rohc_packet_max_len];
-
+	
 	const uint8_t *remain_data = rohc_buf_data(rohc_pkt);
 	size_t remain_len = rohc_pkt.len;
 
@@ -699,6 +710,11 @@ static bool decomp_rfc5225_ip_parse_co(const struct rohc_decomp_ctxt *const ctxt
 	if(packet_type == ROHC_PACKET_PT_0_CRC3)
 	{
 		status = decomp_rfc5225_ip_parse_pt_0_crc3(ctxt, remain_data, remain_len,
+		                                           extr_crc, bits, rohc_hdr_len);
+	}
+	else if(packet_type == ROHC_PACKET_NORTP_PT_0_CRC7)
+	{
+		status = decomp_rfc5225_ip_parse_pt_0_crc7(ctxt, remain_data, remain_len,
 		                                           extr_crc, bits, rohc_hdr_len);
 	}
 	else
@@ -802,6 +818,54 @@ static bool decomp_rfc5225_ip_parse_pt_0_crc3(const struct rohc_decomp_ctxt *con
 	extr_crc->bits_nr = 3;
 
 	*rohc_hdr_len = sizeof(pt_0_crc3_t);
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Parse one pt_0_crc7 packet for the ROHCv2 IP-only profile
+ *
+ * @param ctxt               The decompression context
+ * @param rohc_pkt           The ROHC packet to decode
+ * @param rohc_len           The length (in bytes) of the ROHC packet
+ * @param[out] extr_crc      The CRC extracted from the ROHC packet
+ * @param[out] bits          The bits extracted from the ROHC packet
+ * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
+ * @return                   true if parsing was successful,
+ *                           false if packet was malformed
+ */
+static bool decomp_rfc5225_ip_parse_pt_0_crc7(const struct rohc_decomp_ctxt *const ctxt,
+                                              const uint8_t *const rohc_pkt,
+                                              const size_t rohc_len,
+                                              struct rohc_decomp_crc *const extr_crc,
+                                              struct rohc_rfc5225_bits *const bits,
+                                              size_t *const rohc_hdr_len)
+{
+	const pt_0_crc7_t *const pt_0_crc7 = (pt_0_crc7_t *) rohc_pkt;
+
+	/* check packet usage */
+	assert(ctxt->state == ROHC_DECOMP_STATE_FC);
+
+	/* check if the ROHC packet is large enough to parse pt_0_crc7 */
+	if(rohc_len < sizeof(pt_0_crc7_t))
+	{
+		rohc_decomp_warn(ctxt, "ROHC packet too small for pt_0_crc7 (len = %zu)",
+		                 rohc_len);
+		goto error;
+	}
+
+	assert(pt_0_crc7->discriminator == 0x4);
+	bits->msn.bits = ((pt_0_crc7->msn_1 << 1) | pt_0_crc7->msn_2) & 0x3f;
+	bits->msn.bits_nr = 6;
+	extr_crc->type = ROHC_CRC_TYPE_7;
+	extr_crc->bits = pt_0_crc7->header_crc;
+	extr_crc->bits_nr = 7;
+
+	*rohc_hdr_len = sizeof(pt_0_crc7_t);
 
 	return true;
 

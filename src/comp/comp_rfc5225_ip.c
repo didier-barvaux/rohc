@@ -117,6 +117,12 @@ static int rohc_comp_rfc5225_ip_build_pt_0_crc3_pkt(const struct rohc_comp_ctxt 
                                                     const size_t rohc_max_len)
 	__attribute__((nonnull(1, 3), warn_unused_result));
 
+static int rohc_comp_rfc5225_ip_build_pt_0_crc7_pkt(const struct rohc_comp_ctxt *const context,
+                                                    const uint8_t crc,
+                                                    uint8_t *const rohc_data,
+                                                    const size_t rohc_max_len)
+	__attribute__((nonnull(1, 3), warn_unused_result));
+
 /* static chain */
 static int rohc_comp_rfc5225_ip_static_chain(const struct rohc_comp_ctxt *const ctxt,
                                              const struct ip_packet *const ip,
@@ -1079,6 +1085,20 @@ static rohc_packet_t rohc_comp_rfc5225_ip_decide_pkt(struct rohc_comp_ctxt *cons
 				rohc_comp_debug(context, "code pt_0_crc3 packet");
 				packet_type = ROHC_PACKET_PT_0_CRC3;
 			}
+			/* use pt_0_crc7 only if:
+			 *  - 6 MSN bits are enough
+			 *  - the TOS/TC fields of all IP headers shall not be changing
+			 *  - the behavior of the innermost IP-ID shall not be changing
+			 */
+			else if(rohc_comp_rfc5225_is_msn_lsb_possible(&rfc5225_ctxt->msn_wlsb,
+			                                              rfc5225_ctxt->msn, reorder_ratio, 6) &&
+			        !rfc5225_ctxt->tmp.outer_ip_flag &&
+			        !rfc5225_ctxt->tmp.innermost_ip_flag &&
+			        !rfc5225_ctxt->tmp.ip_id_behavior_changed)
+			{
+				rohc_comp_debug(context, "code pt_0_crc7 packet");
+				packet_type = ROHC_PACKET_NORTP_PT_0_CRC7;
+			}
 			else /* fallback on IR packet */
 			{
 				rohc_comp_debug(context, "code IR packet");
@@ -1269,11 +1289,22 @@ static int rohc_comp_rfc5225_ip_code_CO_pkt(const struct rohc_comp_ctxt *const c
 	int ret;
 
 	/* let's compute the CRC on uncompressed headers */
-	crc_computed =
-		crc_calculate(ROHC_CRC_TYPE_3, ip->data, payload_offset,
-		              CRC_INIT_3, context->compressor->crc_table_3);
-	rohc_comp_debug(context, "CRC-3 on %zu-byte uncompressed header = 0x%x",
-	                payload_offset, crc_computed);
+	if(packet_type == ROHC_PACKET_PT_0_CRC3)
+	{
+		crc_computed =
+			crc_calculate(ROHC_CRC_TYPE_3, ip->data, payload_offset,
+			              CRC_INIT_3, context->compressor->crc_table_3);
+		rohc_comp_debug(context, "CRC-3 on %zu-byte uncompressed header = 0x%x",
+		                payload_offset, crc_computed);
+	}
+	else
+	{
+		crc_computed =
+			crc_calculate(ROHC_CRC_TYPE_7, ip->data, payload_offset,
+			              CRC_INIT_7, context->compressor->crc_table_7);
+		rohc_comp_debug(context, "CRC-7 on %zu-byte uncompressed header = 0x%x",
+		                payload_offset, crc_computed);
+	}
 
 	/* write Add-CID or large CID bytes: 'pos_1st_byte' indicates the location
 	 * where first header byte shall be written, 'pos_2nd_byte' indicates the
@@ -1315,6 +1346,20 @@ static int rohc_comp_rfc5225_ip_code_CO_pkt(const struct rohc_comp_ctxt *const c
 		if(ret < 0)
 		{
 			rohc_comp_warn(context, "failed to build pt_0_crc3 packet");
+			goto error;
+		}
+		rohc_remain_data += ret;
+		rohc_remain_len -= ret;
+	}
+	else if(packet_type == ROHC_PACKET_NORTP_PT_0_CRC7)
+	{
+		/* build the pt_0_crc7 ROHC header */
+		ret = rohc_comp_rfc5225_ip_build_pt_0_crc7_pkt(context, crc_computed,
+		                                               rohc_remain_data,
+		                                               rohc_remain_len);
+		if(ret < 0)
+		{
+			rohc_comp_warn(context, "failed to build pt_0_crc7 packet");
 			goto error;
 		}
 		rohc_remain_data += ret;
@@ -2187,6 +2232,44 @@ static int rohc_comp_rfc5225_ip_build_pt_0_crc3_pkt(const struct rohc_comp_ctxt 
 	pt_0_crc3->header_crc = crc;
 
 	return sizeof(pt_0_crc3_t);
+
+error:
+	return -1;
+}
+
+
+/**
+ * @brief Build a ROHCv2 pt_0_crc7 packet
+ *
+ * @param context         The compression context
+ * @param crc             The CRC on the uncompressed headers
+ * @param[out] rohc_data  The ROHC packet being built
+ * @param rohc_max_len    The max remaining length in the ROHC buffer
+ * @return                The length appended in the ROHC buffer if positive,
+ *                        -1 in case of error
+ */
+static int rohc_comp_rfc5225_ip_build_pt_0_crc7_pkt(const struct rohc_comp_ctxt *const context,
+                                                    const uint8_t crc,
+                                                    uint8_t *const rohc_data,
+                                                    const size_t rohc_max_len)
+{
+	struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = context->specific;
+	pt_0_crc7_t *const pt_0_crc7 = (pt_0_crc7_t *) rohc_data;
+	
+	if(rohc_max_len < sizeof(pt_0_crc7_t))
+	{
+		rohc_comp_warn(context, "ROHC buffer too small for the pt_0_crc7_t header: "
+		               "%zu bytes required, but only %zu bytes available",
+		               sizeof(pt_0_crc7_t), rohc_max_len);
+		goto error;
+	}
+
+	pt_0_crc7->discriminator = 0x4;
+	pt_0_crc7->msn_1 = (rfc5225_ctxt->msn >> 1) & 0x1f;
+	pt_0_crc7->msn_2 = rfc5225_ctxt->msn & 0x01;
+	pt_0_crc7->header_crc = crc;
+
+	return sizeof(pt_0_crc7_t);
 
 error:
 	return -1;
