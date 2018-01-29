@@ -210,6 +210,14 @@ static bool decomp_rfc5225_ip_parse_pt_0_crc7(const struct rohc_decomp_ctxt *con
                                               size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
 
+static bool decomp_rfc5225_ip_parse_pt_1_seq_id(const struct rohc_decomp_ctxt *const ctxt,
+                                                const uint8_t *const rohc_pkt,
+                                                const size_t rohc_len,
+                                                struct rohc_decomp_crc *const extr_crc,
+                                                struct rohc_rfc5225_bits *const bits,
+                                                size_t *const rohc_hdr_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
+
 /* static chain */
 static bool decomp_rfc5225_ip_parse_static_chain(const struct rohc_decomp_ctxt *const ctxt,
                                                  const uint8_t *const rohc_pkt,
@@ -446,6 +454,10 @@ static rohc_packet_t decomp_rfc5225_ip_detect_pkt_type(const struct rohc_decomp_
 	{
 		type = ROHC_PACKET_NORTP_PT_0_CRC7;
 	}
+	else if(GET_BIT_5_7(rohc_packet) == 0x05) /* 3-bit discriminator '101' */
+	{
+		type = ROHC_PACKET_NORTP_PT_1_SEQ_ID;
+	}
 	else if(rohc_decomp_packet_is_ir(rohc_packet, rohc_length)) /* 7-bit */
 	{
 		type = ROHC_PACKET_IR;
@@ -675,7 +687,7 @@ static bool decomp_rfc5225_ip_parse_co(const struct rohc_decomp_ctxt *const ctxt
 {
 	const struct rohc_decomp_rfc5225_ip_ctxt *const rfc5225_ctxt =
 		ctxt->persist_ctxt;
-	const size_t packed_rohc_packet_max_len = sizeof(pt_0_crc7_t);
+	const size_t packed_rohc_packet_max_len = sizeof(pt_1_seq_id_t);
 	uint8_t packed_rohc_packet[packed_rohc_packet_max_len];
 	
 	const uint8_t *remain_data = rohc_buf_data(rohc_pkt);
@@ -716,6 +728,11 @@ static bool decomp_rfc5225_ip_parse_co(const struct rohc_decomp_ctxt *const ctxt
 	{
 		status = decomp_rfc5225_ip_parse_pt_0_crc7(ctxt, remain_data, remain_len,
 		                                           extr_crc, bits, rohc_hdr_len);
+	}
+	else if(packet_type == ROHC_PACKET_NORTP_PT_1_SEQ_ID)
+	{
+		status = decomp_rfc5225_ip_parse_pt_1_seq_id(ctxt, remain_data, remain_len,
+		                                             extr_crc, bits, rohc_hdr_len);
 	}
 	else
 	{
@@ -866,6 +883,59 @@ static bool decomp_rfc5225_ip_parse_pt_0_crc7(const struct rohc_decomp_ctxt *con
 	extr_crc->bits_nr = 7;
 
 	*rohc_hdr_len = sizeof(pt_0_crc7_t);
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Parse one pt_1_seq_id packet for the ROHCv2 IP-only profile
+ *
+ * @param ctxt               The decompression context
+ * @param rohc_pkt           The ROHC packet to decode
+ * @param rohc_len           The length (in bytes) of the ROHC packet
+ * @param[out] extr_crc      The CRC extracted from the ROHC packet
+ * @param[out] bits          The bits extracted from the ROHC packet
+ * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
+ * @return                   true if parsing was successful,
+ *                           false if packet was malformed
+ */
+static bool decomp_rfc5225_ip_parse_pt_1_seq_id(const struct rohc_decomp_ctxt *const ctxt,
+                                                const uint8_t *const rohc_pkt,
+                                                const size_t rohc_len,
+                                                struct rohc_decomp_crc *const extr_crc,
+                                                struct rohc_rfc5225_bits *const bits,
+                                                size_t *const rohc_hdr_len)
+{
+	struct rohc_rfc5225_ip_bits *const innermost_ip_bits =
+		&(bits->ip[bits->ip_nr - 1]);
+	const pt_1_seq_id_t *const pt_1_seq_id = (pt_1_seq_id_t *) rohc_pkt;
+
+	/* check packet usage */
+	assert(ctxt->state == ROHC_DECOMP_STATE_FC);
+
+	/* check if the ROHC packet is large enough to parse pt_1_seq_id */
+	if(rohc_len < sizeof(pt_1_seq_id_t))
+	{
+		rohc_decomp_warn(ctxt, "ROHC packet too small for pt_1_seq_id (len = %zu)",
+		                 rohc_len);
+		goto error;
+	}
+	
+	assert(pt_1_seq_id->discriminator == 0x5);
+	innermost_ip_bits->id.bits = pt_1_seq_id->ip_id; 
+	innermost_ip_bits->id.bits_nr = 4; 
+	innermost_ip_bits->id.p = rohc_interval_get_rfc5225_id_id_p(4);
+	extr_crc->type = ROHC_CRC_TYPE_3;
+	extr_crc->bits = pt_1_seq_id->header_crc;
+	extr_crc->bits_nr = 3;
+	bits->msn.bits = ((pt_1_seq_id->msn_1 << 4) | pt_1_seq_id->msn_2) & 0x3f;
+	bits->msn.bits_nr = 6;
+
+	*rohc_hdr_len = sizeof(pt_1_seq_id_t);
 
 	return true;
 

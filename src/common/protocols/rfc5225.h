@@ -288,5 +288,28 @@ typedef struct
 } __attribute__((packed)) pt_0_crc7_t;
 
 
+/**
+ * @brief The pt_1_seq_id packet format
+ *
+ * See RFC5225 page 91
+ */
+typedef struct
+{
+#if WORDS_BIGENDIAN == 1
+	uint8_t discriminator:3;/**< '101'                                 [ 3 ] */
+	uint8_t header_crc:3;   /**< crc3(THIS.UVALUE, THIS.ULENGTH)       [ 3 ] */
+	uint8_t msn_1:2;        /**< 2 MSB of msn_lsb(6)                   [ 2 ] */
+	uint8_t msn_2:4;        /**< 4 LSB of msn_lsb(6)                   [ 4 ] */
+	uint8_t ip_id:4;        /**< ip_id_lsb(ip_id_behavior.UVALUE, 4)   [ 4 ] */
+#else
+	uint8_t msn_1:2;
+	uint8_t header_crc:3;
+	uint8_t discriminator:3;
+	uint8_t ip_id:4;
+	uint8_t msn_2:4;
+#endif
+} __attribute__((packed)) pt_1_seq_id_t;
+
+
 #endif /* ROHC_PROTOCOLS_RFC5225_H */
 

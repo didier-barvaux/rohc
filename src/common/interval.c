@@ -113,3 +113,16 @@ int32_t rohc_interval_get_rfc5225_msn_p(const size_t k,
 	return p;
 }
 
+
+/**
+ * @brief Get shift parameter p from number of bytes k for ip_id_lsb 
+ *
+ * @param k  The number of least significant bits of the value
+ *           that are transmitted
+ * @return   The shift parameter p
+ */
+int32_t rohc_interval_get_rfc5225_id_id_p(const size_t k)
+{
+	return ((1 << k) / 4 - 1);
+}
+

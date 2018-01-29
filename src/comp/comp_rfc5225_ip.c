@@ -52,6 +52,8 @@ struct comp_rfc5225_tmp_variables
 	bool outer_ip_flag;
 	/** Whether the innermost TOS/TC or TTL/HL changed in the innermost IP header */
 	bool innermost_ip_flag;
+	/** The IP-ID / SN delta (with bits swapped if necessary) */
+	uint16_t ip_id_offset;
 };
 
 
@@ -121,6 +123,12 @@ static int rohc_comp_rfc5225_ip_build_pt_0_crc7_pkt(const struct rohc_comp_ctxt 
                                                     const uint8_t crc,
                                                     uint8_t *const rohc_data,
                                                     const size_t rohc_max_len)
+	__attribute__((nonnull(1, 3), warn_unused_result));
+
+static int rohc_comp_rfc5225_ip_build_pt_1_seq_id_pkt(const struct rohc_comp_ctxt *const context,
+                                                      const uint8_t crc,
+                                                      uint8_t *const rohc_data,
+                                                      const size_t rohc_max_len)
 	__attribute__((nonnull(1, 3), warn_unused_result));
 
 /* static chain */
@@ -207,8 +215,6 @@ static bool rohc_comp_rfc5225_is_msn_lsb_possible(const struct c_wlsb *const wls
                                                   const rohc_reordering_offset_t reorder_ratio,
                                                   const size_t k)
 	__attribute__((warn_unused_result, nonnull(1)));
-
-
 
 /*
  * Definitions of private functions
@@ -832,6 +838,26 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 				{
 					rfc5225_ctxt->tmp.ip_id_behavior_changed = true;
 				}
+
+				/* compute the new IP-ID / SN offset of the innermost IP header */
+				if(is_innermost)
+				{
+					if(ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
+					{
+						/* specific case of IP-ID delta for sequential swapped behavior */
+						rfc5225_ctxt->tmp.ip_id_offset = swab16(ip_id) - rfc5225_ctxt->msn;
+					}
+					else
+					{
+						/* compute delta the same way for sequential, zero or random: it is
+						 * important to always compute the IP-ID delta and record it in W-LSB,
+						 * so that the IP-ID deltas of next packets may be correctly encoded */
+						rfc5225_ctxt->tmp.ip_id_offset = ip_id - rfc5225_ctxt->msn;
+					}
+					rohc_comp_debug(context, "new IP-ID offset = 0x%x / %u",
+					                rfc5225_ctxt->tmp.ip_id_offset,
+					                rfc5225_ctxt->tmp.ip_id_offset);
+				}
 			}
 
 			/* skip IPv4 header */
@@ -919,6 +945,7 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 	}
 	else /* CO packets */
 	{
+
 		ret = rohc_comp_rfc5225_ip_code_CO_pkt(context, &uncomp_pkt->outer_ip,
 		                                       rohc_remain_data, rohc_remain_len,
 		                                       *packet_type, *payload_offset);
@@ -1070,7 +1097,6 @@ static rohc_packet_t rohc_comp_rfc5225_ip_decide_pkt(struct rohc_comp_ctxt *cons
 		case ROHC_COMP_STATE_SO:
 		{
 			rohc_reordering_offset_t reorder_ratio = context->compressor->reorder_ratio;
-
 			/* use pt_0_crc3 only if:
 			 *  - 4 MSN bits are enough
 			 *  - the TOS/TC fields of all IP headers shall not be changing
@@ -1098,6 +1124,24 @@ static rohc_packet_t rohc_comp_rfc5225_ip_decide_pkt(struct rohc_comp_ctxt *cons
 			{
 				rohc_comp_debug(context, "code pt_0_crc7 packet");
 				packet_type = ROHC_PACKET_NORTP_PT_0_CRC7;
+			}
+			/* use pt_1_seq_id only if:
+			 *  - 6 MSN bits are enough
+			 *  - 4 IP-ID are enough
+			 *  - the TOS/TC fields of all IP headers shall not be changing
+			 *  - the behavior of the innermost IP-ID shall not be changing
+			 */
+			else if(rohc_comp_rfc5225_is_msn_lsb_possible(&rfc5225_ctxt->msn_wlsb,
+			                                              rfc5225_ctxt->msn, reorder_ratio, 6) &&
+			        wlsb_is_kp_possible_16bits(&rfc5225_ctxt->msn_wlsb,
+			                                   rfc5225_ctxt->tmp.ip_id_offset, 4,
+			                                   rohc_interval_get_rfc5225_id_id_p(4)) &&
+			        !rfc5225_ctxt->tmp.outer_ip_flag &&
+			        !rfc5225_ctxt->tmp.innermost_ip_flag &&
+			        !rfc5225_ctxt->tmp.ip_id_behavior_changed)
+			{
+				rohc_comp_debug(context, "code pt_1_seq_id packet");
+				packet_type = ROHC_PACKET_NORTP_PT_1_SEQ_ID;
 			}
 			else /* fallback on IR packet */
 			{
@@ -1139,7 +1183,6 @@ static bool rohc_comp_rfc5225_is_msn_lsb_possible(const struct c_wlsb *const wls
 
 	return wlsb_is_kp_possible_16bits(wlsb, value, k, p_computed);
 }
-
 
 /**
  * @brief Encode an IP packet as IR packet
@@ -1289,7 +1332,8 @@ static int rohc_comp_rfc5225_ip_code_CO_pkt(const struct rohc_comp_ctxt *const c
 	int ret;
 
 	/* let's compute the CRC on uncompressed headers */
-	if(packet_type == ROHC_PACKET_PT_0_CRC3)
+	if(packet_type == ROHC_PACKET_PT_0_CRC3 ||
+	   packet_type == ROHC_PACKET_NORTP_PT_1_SEQ_ID)
 	{
 		crc_computed =
 			crc_calculate(ROHC_CRC_TYPE_3, ip->data, payload_offset,
@@ -1360,6 +1404,20 @@ static int rohc_comp_rfc5225_ip_code_CO_pkt(const struct rohc_comp_ctxt *const c
 		if(ret < 0)
 		{
 			rohc_comp_warn(context, "failed to build pt_0_crc7 packet");
+			goto error;
+		}
+		rohc_remain_data += ret;
+		rohc_remain_len -= ret;
+	}
+	else if(packet_type == ROHC_PACKET_NORTP_PT_1_SEQ_ID)
+	{
+		/* build the pt_1_seq_id ROHC header */
+		ret = rohc_comp_rfc5225_ip_build_pt_1_seq_id_pkt(context, crc_computed,
+		                                                 rohc_remain_data,
+		                                                 rohc_remain_len);
+		if(ret < 0)
+		{
+			rohc_comp_warn(context, "failed to build pt_1_seq_id packet");
 			goto error;
 		}
 		rohc_remain_data += ret;
@@ -2255,7 +2313,7 @@ static int rohc_comp_rfc5225_ip_build_pt_0_crc7_pkt(const struct rohc_comp_ctxt 
 {
 	struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = context->specific;
 	pt_0_crc7_t *const pt_0_crc7 = (pt_0_crc7_t *) rohc_data;
-	
+
 	if(rohc_max_len < sizeof(pt_0_crc7_t))
 	{
 		rohc_comp_warn(context, "ROHC buffer too small for the pt_0_crc7_t header: "
@@ -2270,6 +2328,45 @@ static int rohc_comp_rfc5225_ip_build_pt_0_crc7_pkt(const struct rohc_comp_ctxt 
 	pt_0_crc7->header_crc = crc;
 
 	return sizeof(pt_0_crc7_t);
+
+error:
+	return -1;
+}
+
+
+/**
+ * @brief Build a ROHCv2 pt_1_seq_id packet
+ *
+ * @param context         The compression context
+ * @param crc             The CRC on the uncompressed headers
+ * @param[out] rohc_data  The ROHC packet being built
+ * @param rohc_max_len    The max remaining length in the ROHC buffer
+ * @return                The length appended in the ROHC buffer if positive,
+ *                        -1 in case of error
+ */
+static int rohc_comp_rfc5225_ip_build_pt_1_seq_id_pkt(const struct rohc_comp_ctxt *const context,
+                                                      const uint8_t crc,
+                                                      uint8_t *const rohc_data,
+                                                      const size_t rohc_max_len)
+{
+	struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = context->specific;
+	pt_1_seq_id_t *const pt_1_seq_id = (pt_1_seq_id_t *) rohc_data;
+
+	if(rohc_max_len < sizeof(pt_1_seq_id_t))
+	{
+		rohc_comp_warn(context, "ROHC buffer too small for the pt_1_seq_id header: "
+		               "%zu bytes required, but only %zu bytes available",
+		               sizeof(pt_1_seq_id_t), rohc_max_len);
+		goto error;
+	}
+
+	pt_1_seq_id->discriminator = 0x5;
+	pt_1_seq_id->header_crc = crc;
+	pt_1_seq_id->msn_1 = (rfc5225_ctxt->msn >> 4) & 0x03;
+	pt_1_seq_id->msn_2 = rfc5225_ctxt->msn & 0x0f;
+	pt_1_seq_id->ip_id = rfc5225_ctxt->tmp.ip_id_offset & 0x0f;
+
+	return sizeof(pt_1_seq_id_t);
 
 error:
 	return -1;

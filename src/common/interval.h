@@ -144,6 +144,9 @@ int32_t rohc_interval_get_rfc5225_msn_p(const size_t k,
                                         rohc_reordering_offset_t reorder_ratio)
 	__attribute__((warn_unused_result, const));
 
+int32_t rohc_interval_get_rfc5225_id_id_p(const size_t k)
+	__attribute__((warn_unused_result, const));
+
 
 /**
  * @brief Compute the shift parameter p for the f function
