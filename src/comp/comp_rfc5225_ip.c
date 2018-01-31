@@ -46,7 +46,7 @@
  */
 struct comp_rfc5225_tmp_variables
 {
-	/** Whether the behavior of the IP-ID field changed with current packet */
+	/** Whether the behavior of at least one of the IP-ID fields changed */
 	bool ip_id_behavior_changed;
 	/* Whether at least one TOS/TC or TTL/HL changed in all outer IP headers */
 	bool outer_ip_flag;
@@ -284,7 +284,7 @@ static bool rohc_comp_rfc5225_ip_create(struct rohc_comp_ctxt *const context,
 				assert(remain_len >= sizeof(struct ipv6_hdr));
 				proto = ipv6->nh;
 
-				ip_context->ctxt.v6.ip_id_behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
+				ip_context->ctxt.v6.ip_id_behavior = ROHC_IP_ID_BEHAVIOR_ZERO;
 				ip_context->ctxt.v6.tc = remain_data[1];
 				ip_context->ctxt.v6.hopl = ipv6->hl;
 				ip_context->ctxt.v6.flow_label = ipv6_get_flow_label(ipv6);
@@ -736,8 +736,6 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 	uint8_t *rohc_remain_data = rohc_pkt;
 	size_t rohc_remain_len = rohc_pkt_max_len;
 
-	ip_context_t *inner_ip_ctxt = NULL;
-	const struct ip_hdr *inner_ip_hdr = NULL;
 	size_t ip_hdr_pos;
 	size_t rohc_len;
 	int ret;
@@ -753,6 +751,7 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 	assert(rfc5225_ctxt->ip_contexts_nr > 0);
 	rfc5225_ctxt->tmp.outer_ip_flag = false;
 	rfc5225_ctxt->tmp.innermost_ip_flag = false;
+	rfc5225_ctxt->tmp.ip_id_behavior_changed = false;
 	for(ip_hdr_pos = 0; ip_hdr_pos < rfc5225_ctxt->ip_contexts_nr; ip_hdr_pos++)
 	{
 		const struct ip_hdr *const ip_hdr = (struct ip_hdr *) remain_data;
@@ -765,9 +764,6 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 		assert(remain_len >= sizeof(struct ip_hdr));
 		rohc_comp_debug(context, "  found %s IPv%d header",
 		                is_innermost ? "innermost" : "outer", ip_hdr->version);
-
-		inner_ip_hdr = (struct ip_hdr *) remain_data;
-		inner_ip_ctxt = ip_context;
 
 		if(ip_hdr->version == IPV4)
 		{
@@ -800,6 +796,37 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 				}
 			}
 			ipv4_hdr_len = ipv4->ihl * sizeof(uint32_t);
+
+			/* determine the IP-ID behavior of the IPv4 header */
+			{
+				const uint16_t ip_id = rohc_ntoh16(ipv4->id);
+				const uint16_t last_ip_id = ip_context->ctxt.v4.last_ip_id;
+				const rohc_ip_id_behavior_t last_ip_id_behavior =
+					ip_context->ctxt.v4.ip_id_behavior;
+				rohc_ip_id_behavior_t ip_id_behavior;
+
+				rohc_comp_debug(context, "IP-ID behaved as %s",
+				                rohc_ip_id_behavior_get_descr(last_ip_id_behavior));
+				rohc_comp_debug(context, "IP-ID = 0x%04x -> 0x%04x", last_ip_id, ip_id);
+
+				if(context->num_sent_packets == 0)
+				{
+					/* first packet, be optimistic: choose sequential behavior */
+					ip_id_behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
+				}
+				else
+				{
+					ip_id_behavior =
+						rohc_comp_detect_ip_id_behavior(last_ip_id, ip_id, 1);
+				}
+				ip_context->ctxt.v4.ip_id_behavior = ip_id_behavior;
+				rohc_comp_debug(context, "IP-ID now behaves as %s",
+				                rohc_ip_id_behavior_get_descr(ip_id_behavior));
+				if(last_ip_id_behavior != ip_id_behavior)
+				{
+					rfc5225_ctxt->tmp.ip_id_behavior_changed = true;
+				}
+			}
 
 			/* skip IPv4 header */
 			rohc_comp_debug(context, "skip %zu-byte IPv4 header with "
@@ -854,41 +881,6 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 			assert(0);
 			goto error;
 		}
-	}
-
-	/* determine the IP-ID behavior of the innermost IPv4 header */
-	if(inner_ip_ctxt->ctxt.vx.version == IPV4)
-	{
-		const struct ipv4_hdr *const inner_ipv4_hdr = (struct ipv4_hdr *) inner_ip_hdr;
-		const uint16_t ip_id = rohc_ntoh16(inner_ipv4_hdr->id);
-		const uint16_t last_ip_id = inner_ip_ctxt->ctxt.v4.last_ip_id;
-		const rohc_ip_id_behavior_t last_ip_id_behavior =
-			inner_ip_ctxt->ctxt.v4.ip_id_behavior;
-		rohc_ip_id_behavior_t ip_id_behavior;
-
-		rohc_comp_debug(context, "IP-ID behaved as %s",
-		                rohc_ip_id_behavior_get_descr(last_ip_id_behavior));
-		rohc_comp_debug(context, "IP-ID = 0x%04x -> 0x%04x", last_ip_id, ip_id);
-
-		if(context->num_sent_packets == 0)
-		{
-			/* first packet, be optimistic: choose sequential behavior */
-			ip_id_behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
-		}
-		else
-		{
-			ip_id_behavior = rohc_comp_detect_ip_id_behavior(last_ip_id, ip_id, 1);
-		}
-		inner_ip_ctxt->ctxt.v4.ip_id_behavior = ip_id_behavior;
-		rohc_comp_debug(context, "IP-ID now behaves as %s",
-		                rohc_ip_id_behavior_get_descr(ip_id_behavior));
-
-		rfc5225_ctxt->tmp.ip_id_behavior_changed =
-			(last_ip_id_behavior != ip_id_behavior);
-	}
-	else /* IPv6 */
-	{
-		rfc5225_ctxt->tmp.ip_id_behavior_changed = false;
 	}
 
 	/* compute or find the new SN */
@@ -1761,7 +1753,6 @@ static int rohc_comp_rfc5225_ip_dyn_ipv4_part(const struct rohc_comp_ctxt *const
 		ipv4_dynamic->reserved = 0;
 		ipv4_dynamic->reorder_ratio = ctxt->compressor->reorder_ratio;
 		ipv4_dynamic->df = ipv4->df;
-		/* IP-ID behavior: all behavior values possible */
 		ipv4_dynamic->ip_id_behavior_innermost = ip_ctxt->ctxt.v4.ip_id_behavior;
 		ipv4_dynamic->tos_tc = ipv4->tos;
 		ipv4_dynamic->ttl_hopl = ipv4->ttl;
@@ -1814,16 +1805,7 @@ static int rohc_comp_rfc5225_ip_dyn_ipv4_part(const struct rohc_comp_ctxt *const
 
 		ipv4_dynamic->reserved = 0;
 		ipv4_dynamic->df = ipv4->df;
-
-		/* only ROHC_IP_ID_BEHAVIOR_RAND or ROHC_IP_ID_BEHAVIOR_ZERO */
-		if(ipv4->id == 0)
-		{
-			ipv4_dynamic->ip_id_behavior_outer = ROHC_IP_ID_BEHAVIOR_ZERO;
-		}
-		else
-		{
-			ipv4_dynamic->ip_id_behavior_outer = ROHC_IP_ID_BEHAVIOR_RAND;
-		}
+		ipv4_dynamic->ip_id_behavior_outer = ip_ctxt->ctxt.v4.ip_id_behavior;
 		ipv4_dynamic->tos_tc = ipv4->tos;
 		ipv4_dynamic->ttl_hopl = ipv4->ttl;
 
