@@ -1123,8 +1123,8 @@ static int decomp_rfc5225_ip_parse_dyn_ip(const struct rohc_decomp_ctxt *const c
 			ip_bits->id_behavior_nr = 2;
 			rohc_decomp_debug(ctxt, "ip_id_behavior_innermost = %d",
 			                  ip_bits->id_behavior);
-			ip_bits->tos_tc_bits = ipv4_dynamic->tos_tc; /* TODO: handle TOS */
-			ip_bits->tos_tc_bits_nr = 6;
+			ip_bits->tos_tc_bits = ipv4_dynamic->tos_tc;
+			ip_bits->tos_tc_bits_nr = 8;
 			ip_bits->ttl_hl = ipv4_dynamic->ttl_hopl;
 			ip_bits->ttl_hl_nr = 8;
 			rohc_decomp_debug(ctxt, "TOS/TC = 0x%x, ttl_hopl = 0x%x",
@@ -1190,8 +1190,8 @@ static int decomp_rfc5225_ip_parse_dyn_ip(const struct rohc_decomp_ctxt *const c
 			ip_bits->id_behavior_nr = 2;
 			rohc_decomp_debug(ctxt, "ip_id_behavior_outer = %d",
 			                  ip_bits->id_behavior);
-			ip_bits->tos_tc_bits = ipv4_dynamic->tos_tc; /* TODO: handle TOS */
-			ip_bits->tos_tc_bits_nr = 6;
+			ip_bits->tos_tc_bits = ipv4_dynamic->tos_tc;
+			ip_bits->tos_tc_bits_nr = 8;
 			ip_bits->ttl_hl = ipv4_dynamic->ttl_hopl;
 			ip_bits->ttl_hl_nr = 8;
 			rohc_decomp_debug(ctxt, "TOS/TC = 0x%x, ttl_hopl = 0x%x",
@@ -1242,7 +1242,7 @@ static int decomp_rfc5225_ip_parse_dyn_ip(const struct rohc_decomp_ctxt *const c
 		}
 
 		ip_bits->tos_tc_bits = ipv6_dynamic->tos_tc;
-		ip_bits->tos_tc_bits_nr = 6;
+		ip_bits->tos_tc_bits_nr = 8;
 		ip_bits->ttl_hl = ipv6_dynamic->ttl_hopl;
 		ip_bits->ttl_hl_nr = 8;
 		ip_bits->id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
@@ -1608,12 +1608,17 @@ static bool decomp_rfc5225_ip_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *
 	/* TOS/TC */
 	if(ip_bits->tos_tc_bits_nr > 0)
 	{
-		assert(ip_bits->tos_tc_bits_nr == 6);
+		assert(ip_bits->tos_tc_bits_nr == 8);
 		ip_decoded->tos_tc = ip_bits->tos_tc_bits;
+		rohc_decomp_debug(ctxt, "  decoded TOS/TC = 0x%02x (%zu bits 0x%x)",
+		                  ip_decoded->tos_tc, ip_bits->tos_tc_bits_nr,
+		                  ip_bits->tos_tc_bits);
 	}
 	else
 	{
-		ip_decoded->tos_tc = ip_ctxt->ctxt.v4.tos;
+		ip_decoded->tos_tc = ip_ctxt->ctxt.vx.tos_tc;
+		rohc_decomp_debug(ctxt, "  TOS/TC = 0x%02x taken from context",
+		                  ip_decoded->tos_tc);
 	}
 
 	/* IP-ID behavior */
@@ -2227,6 +2232,7 @@ static void decomp_rfc5225_ip_update_ctxt(struct rohc_decomp_ctxt *const context
 
 		ip_context->version = ip_decoded->version;
 		ip_context->ctxt.vx.version = ip_decoded->version;
+		ip_context->ctxt.vx.tos_tc = ip_decoded->tos_tc;
 		ip_context->ctxt.vx.ttl_hopl = ip_decoded->ttl;
 		ip_context->ctxt.vx.next_header = ip_decoded->proto;
 		ip_context->ctxt.vx.ip_id_behavior = ip_decoded->id_behavior;
