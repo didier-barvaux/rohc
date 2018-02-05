@@ -221,6 +221,16 @@ static void rohc_comp_rfc5225_ip_decide_state(struct rohc_comp_ctxt *const conte
 static rohc_packet_t rohc_comp_rfc5225_ip_decide_pkt(struct rohc_comp_ctxt *const context)
 	__attribute__((warn_unused_result, nonnull(1)));
 
+static rohc_packet_t rohc_comp_rfc5225_ip_decide_FO_pkt(const struct rohc_comp_ctxt *const ctxt)
+	__attribute__((warn_unused_result, nonnull(1)));
+
+static rohc_packet_t rohc_comp_rfc5225_ip_decide_SO_pkt(const struct rohc_comp_ctxt *const ctxt)
+	__attribute__((warn_unused_result, nonnull(1)));
+
+static rohc_packet_t rohc_comp_rfc5225_ip_decide_FO_SO_pkt(const struct rohc_comp_ctxt *const ctxt,
+                                                           const bool crc7_at_least)
+	__attribute__((warn_unused_result, nonnull(1)));
+
 static bool rohc_comp_rfc5225_is_msn_lsb_possible(const struct c_wlsb *const wlsb,
                                                   const uint16_t value,
                                                   const rohc_reordering_offset_t reorder_ratio,
@@ -1144,13 +1154,15 @@ static void rohc_comp_rfc5225_ip_decide_state(struct rohc_comp_ctxt *const conte
  *
  * @param context           The compression context
  * @return                  \li The packet type among ROHC_PACKET_IR,
- *                              ROHC_PACKET_PT_0_CRC3
+ *                              ROHC_PACKET_PT_0_CRC3,
+ *                              ROHC_PACKET_NORTP_PT_0_CRC7,
+ *                              ROHC_PACKET_NORTP_PT_1_SEQ_ID, or
+ *                              ROHC_PACKET_NORTP_PT_2_SEQ_ID
  *                              in case of success
  *                          \li ROHC_PACKET_UNKNOWN in case of failure
  */
 static rohc_packet_t rohc_comp_rfc5225_ip_decide_pkt(struct rohc_comp_ctxt *const context)
 {
-	struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = context->specific;
 	rohc_packet_t packet_type;
 
 	switch(context->state)
@@ -1161,109 +1173,13 @@ static rohc_packet_t rohc_comp_rfc5225_ip_decide_pkt(struct rohc_comp_ctxt *cons
 			context->ir_count++;
 			break;
 		case ROHC_COMP_STATE_FO:
-			rohc_comp_debug(context, "code IR packet");
-			packet_type = ROHC_PACKET_IR;
+			packet_type = rohc_comp_rfc5225_ip_decide_FO_pkt(context);
 			context->fo_count++;
 			break;
 		case ROHC_COMP_STATE_SO:
-		{
-			const rohc_reordering_offset_t reorder_ratio = context->compressor->reorder_ratio;
-			const ip_context_t *const innermost_ip_ctxt =
-				&(rfc5225_ctxt->ip_contexts[rfc5225_ctxt->ip_contexts_nr - 1]);
-			const uint16_t innermost_ip_id = rfc5225_ctxt->tmp.innermost_ip_id;
-			const rohc_ip_id_behavior_t innermost_ip_id_behavior =
-				innermost_ip_ctxt->ctxt.vx.ip_id_behavior;
-
-			/* use pt_0_crc3 only if:
-			 *  - 4 MSN bits are enough
-			 *  - the innermost IP-ID is either:
-			 *     - random (transmitted in irregular chain),
-			 *     - zero (not transmitted at all),
-			 *     - sequential and inferred from MSN (and not transmitted at all).
-			 *  - the TOS/TC fields of all IP headers shall not be changing
-			 *  - the behavior of the innermost IP-ID shall not be changing
-			 */
-			if(rohc_comp_rfc5225_is_msn_lsb_possible(&rfc5225_ctxt->msn_wlsb,
-			                                         rfc5225_ctxt->msn, reorder_ratio, 4) &&
-			   (!rohc_comp_rfc5225_is_ipid_sequential(innermost_ip_id_behavior) ||
-			    rohc_comp_rfc5225_is_seq_ipid_inferred(innermost_ip_ctxt, innermost_ip_id)) &&
-			   !rfc5225_ctxt->tmp.outer_ip_flag &&
-			   !rfc5225_ctxt->tmp.innermost_ip_flag &&
-			   !rfc5225_ctxt->tmp.ip_id_behavior_changed)
-			{
-				rohc_comp_debug(context, "code pt_0_crc3 packet");
-				packet_type = ROHC_PACKET_PT_0_CRC3;
-			}
-			/* use pt_0_crc7 only if:
-			 *  - 6 MSN bits are enough
-			 *  - the innermost IP-ID is either:
-			 *     - random (transmitted in irregular chain),
-			 *     - zero (not transmitted at all),
-			 *     - sequential and inferred from MSN (and not transmitted at all).
-			 *  - the TOS/TC fields of all IP headers shall not be changing
-			 *  - the behavior of the innermost IP-ID shall not be changing
-			 */
-			else if(rohc_comp_rfc5225_is_msn_lsb_possible(&rfc5225_ctxt->msn_wlsb,
-			                                              rfc5225_ctxt->msn, reorder_ratio, 6) &&
-			        (!rohc_comp_rfc5225_is_ipid_sequential(innermost_ip_id_behavior) ||
-			         rohc_comp_rfc5225_is_seq_ipid_inferred(innermost_ip_ctxt,
-			                                                innermost_ip_id)) &&
-			        !rfc5225_ctxt->tmp.outer_ip_flag &&
-			        !rfc5225_ctxt->tmp.innermost_ip_flag &&
-			        !rfc5225_ctxt->tmp.ip_id_behavior_changed)
-			{
-				rohc_comp_debug(context, "code pt_0_crc7 packet");
-				packet_type = ROHC_PACKET_NORTP_PT_0_CRC7;
-			}
-			/* use pt_1_seq_id only if:
-			 *  - 6 MSN bits are enough
-			 *  - innermost IP-ID is sequential (swapped or not)
-			 *  - 4 innermost IP-ID / SN offset bits are enough
-			 *  - the TOS/TC fields of all IP headers shall not be changing
-			 *  - the behavior of the innermost IP-ID shall not be changing
-			 */
-			else if(rohc_comp_rfc5225_is_msn_lsb_possible(&rfc5225_ctxt->msn_wlsb,
-			                                              rfc5225_ctxt->msn, reorder_ratio, 6) &&
-			        rohc_comp_rfc5225_is_ipid_sequential(innermost_ip_id_behavior) &&
-			        wlsb_is_kp_possible_16bits(&rfc5225_ctxt->innermost_ip_id_offset_wlsb,
-			                                   rfc5225_ctxt->tmp.innermost_ip_id_offset, 4,
-			                                   rohc_interval_get_rfc5225_id_id_p(4)) &&
-			        !rfc5225_ctxt->tmp.outer_ip_flag &&
-			        !rfc5225_ctxt->tmp.innermost_ip_flag &&
-			        !rfc5225_ctxt->tmp.ip_id_behavior_changed)
-			{
-				assert(innermost_ip_ctxt->ctxt.vx.version == IPV4);
-				rohc_comp_debug(context, "code pt_1_seq_id packet");
-				packet_type = ROHC_PACKET_NORTP_PT_1_SEQ_ID;
-			}
-			/* use pt_2_seq_id only if:
-			 *  - innermost IP-ID is sequential (swapped or not)
-			 *  - 6 innermost IP-ID / SN offset bits are enough
-			 *  - 8 MSN bits are enough
-			 *  - the TOS/TC fields of all IP headers shall not be changing
-			 *  - the behavior of the innermost IP-ID shall not be changing
-			 */
-			else if(rohc_comp_rfc5225_is_ipid_sequential(innermost_ip_id_behavior) &&
-			        wlsb_is_kp_possible_16bits(&rfc5225_ctxt->innermost_ip_id_offset_wlsb,
-			                                   rfc5225_ctxt->tmp.innermost_ip_id_offset, 6,
-			                                   rohc_interval_get_rfc5225_id_id_p(6)) &&
-			        rohc_comp_rfc5225_is_msn_lsb_possible(&rfc5225_ctxt->msn_wlsb,
-			                                              rfc5225_ctxt->msn, reorder_ratio, 8) &&
-			        !rfc5225_ctxt->tmp.outer_ip_flag &&
-			        !rfc5225_ctxt->tmp.innermost_ip_flag &&
-			        !rfc5225_ctxt->tmp.ip_id_behavior_changed)
-			{
-				rohc_comp_debug(context, "code pt_2_seq_id packet");
-				packet_type = ROHC_PACKET_NORTP_PT_2_SEQ_ID;
-			}
-			else /* fallback on IR packet */
-			{
-				rohc_comp_debug(context, "code IR packet");
-				packet_type = ROHC_PACKET_IR;
-			}
+			packet_type = rohc_comp_rfc5225_ip_decide_SO_pkt(context);
 			context->so_count++;
 			break;
-		}
 		case ROHC_COMP_STATE_UNKNOWN:
 		default:
 #if defined(NDEBUG) || defined(__KERNEL__) || defined(ENABLE_DEAD_CODE)
@@ -1271,6 +1187,173 @@ static rohc_packet_t rohc_comp_rfc5225_ip_decide_pkt(struct rohc_comp_ctxt *cons
 #endif
 			assert(0); /* should not happen */
 			break;
+	}
+
+	return packet_type;
+}
+
+
+/**
+ * @brief Decide which packet to send when in FO state
+ *
+ * @param ctxt  The compression context
+ * @return      \li The packet type among ROHC_PACKET_IR,
+ *                  ROHC_PACKET_NORTP_PT_0_CRC7, or
+ *                  ROHC_PACKET_NORTP_PT_2_SEQ_ID
+ *                  in case of success
+ *              \li ROHC_PACKET_UNKNOWN in case of failure
+ */
+static rohc_packet_t rohc_comp_rfc5225_ip_decide_FO_pkt(const struct rohc_comp_ctxt *const ctxt)
+{
+	const bool crc7_at_least = true;
+	const rohc_packet_t packet_type =
+		rohc_comp_rfc5225_ip_decide_FO_SO_pkt(ctxt, crc7_at_least);
+
+	assert(packet_type != ROHC_PACKET_PT_0_CRC3);
+	assert(packet_type != ROHC_PACKET_NORTP_PT_1_SEQ_ID);
+
+	return packet_type;
+}
+
+
+/**
+ * @brief Decide which packet to send when in SO state
+ *
+ * @param ctxt  The compression context
+ * @return      \li The packet type among ROHC_PACKET_IR,
+ *                  ROHC_PACKET_PT_0_CRC3,
+ *                  ROHC_PACKET_NORTP_PT_0_CRC7,
+ *                  ROHC_PACKET_NORTP_PT_1_SEQ_ID, or
+ *                  ROHC_PACKET_NORTP_PT_2_SEQ_ID
+ *                  in case of success
+ *              \li ROHC_PACKET_UNKNOWN in case of failure
+ */
+static rohc_packet_t rohc_comp_rfc5225_ip_decide_SO_pkt(const struct rohc_comp_ctxt *const ctxt)
+{
+	const bool crc7_at_least = false;
+	return rohc_comp_rfc5225_ip_decide_FO_SO_pkt(ctxt, crc7_at_least);
+}
+
+
+/**
+ * @brief Decide which packet to send when in FO or SO state
+ *
+ * @param ctxt           The compression context
+ * @param crc7_at_least  Whether packet types with CRC strictly smaller
+ *                       than 7 bits are allowed or not
+ * @return               \li The packet type among ROHC_PACKET_IR,
+ *                           ROHC_PACKET_PT_0_CRC3,
+ *                           ROHC_PACKET_NORTP_PT_0_CRC7,
+ *                           ROHC_PACKET_NORTP_PT_1_SEQ_ID, or
+ *                           ROHC_PACKET_NORTP_PT_2_SEQ_ID
+ *                           in case of success
+ *                       \li ROHC_PACKET_UNKNOWN in case of failure
+ */
+static rohc_packet_t rohc_comp_rfc5225_ip_decide_FO_SO_pkt(const struct rohc_comp_ctxt *const ctxt,
+                                                           const bool crc7_at_least)
+{
+	struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = ctxt->specific;
+	const rohc_reordering_offset_t reorder_ratio = ctxt->compressor->reorder_ratio;
+	const ip_context_t *const innermost_ip_ctxt =
+		&(rfc5225_ctxt->ip_contexts[rfc5225_ctxt->ip_contexts_nr - 1]);
+	const uint16_t innermost_ip_id = rfc5225_ctxt->tmp.innermost_ip_id;
+	const rohc_ip_id_behavior_t innermost_ip_id_behavior =
+		innermost_ip_ctxt->ctxt.vx.ip_id_behavior;
+	rohc_packet_t packet_type;
+
+	/* use pt_0_crc3 only if:
+	 *  - CRC-3 is enough to protect the compression
+	 *  - 4 MSN bits are enough
+	 *  - the innermost IP-ID is either:
+	 *     - random (transmitted in irregular chain),
+	 *     - zero (not transmitted at all),
+	 *     - sequential and inferred from MSN (and not transmitted at all).
+	 *  - the TOS/TC fields of all IP headers shall not be changing
+	 *  - the behavior of the innermost IP-ID shall not be changing
+	 */
+	if(!crc7_at_least &&
+	   rohc_comp_rfc5225_is_msn_lsb_possible(&rfc5225_ctxt->msn_wlsb,
+	                                         rfc5225_ctxt->msn, reorder_ratio, 4) &&
+	   (!rohc_comp_rfc5225_is_ipid_sequential(innermost_ip_id_behavior) ||
+	    rohc_comp_rfc5225_is_seq_ipid_inferred(innermost_ip_ctxt, innermost_ip_id)) &&
+	   !rfc5225_ctxt->tmp.outer_ip_flag &&
+	   !rfc5225_ctxt->tmp.innermost_ip_flag &&
+	   !rfc5225_ctxt->tmp.ip_id_behavior_changed)
+	{
+		rohc_comp_debug(ctxt, "code pt_0_crc3 packet");
+		packet_type = ROHC_PACKET_PT_0_CRC3;
+	}
+	/* use pt_0_crc7 only if:
+	 *  - 6 MSN bits are enough
+	 *  - the innermost IP-ID is either:
+	 *     - random (transmitted in irregular chain),
+	 *     - zero (not transmitted at all),
+	 *     - sequential and inferred from MSN (and not transmitted at all).
+	 *  - the TOS/TC fields of all IP headers shall not be changing
+	 *  - the behavior of the innermost IP-ID shall not be changing
+	 */
+	else if(rohc_comp_rfc5225_is_msn_lsb_possible(&rfc5225_ctxt->msn_wlsb,
+	                                              rfc5225_ctxt->msn,
+	                                              reorder_ratio, 6) &&
+	        (!rohc_comp_rfc5225_is_ipid_sequential(innermost_ip_id_behavior) ||
+	         rohc_comp_rfc5225_is_seq_ipid_inferred(innermost_ip_ctxt,
+	                                                innermost_ip_id)) &&
+	        !rfc5225_ctxt->tmp.outer_ip_flag &&
+	        !rfc5225_ctxt->tmp.innermost_ip_flag &&
+	        !rfc5225_ctxt->tmp.ip_id_behavior_changed)
+	{
+		rohc_comp_debug(ctxt, "code pt_0_crc7 packet");
+		packet_type = ROHC_PACKET_NORTP_PT_0_CRC7;
+	}
+	/* use pt_1_seq_id only if:
+	 *  - CRC-3 is enough to protect the compression
+	 *  - 6 MSN bits are enough
+	 *  - innermost IP-ID is sequential (swapped or not)
+	 *  - 4 innermost IP-ID / SN offset bits are enough
+	 *  - the TOS/TC fields of all IP headers shall not be changing
+	 *  - the behavior of the innermost IP-ID shall not be changing
+	 */
+	else if(!crc7_at_least &&
+	        rohc_comp_rfc5225_is_msn_lsb_possible(&rfc5225_ctxt->msn_wlsb,
+	                                              rfc5225_ctxt->msn,
+	                                              reorder_ratio, 6) &&
+	        rohc_comp_rfc5225_is_ipid_sequential(innermost_ip_id_behavior) &&
+	        wlsb_is_kp_possible_16bits(&rfc5225_ctxt->innermost_ip_id_offset_wlsb,
+	                                   rfc5225_ctxt->tmp.innermost_ip_id_offset, 4,
+	                                   rohc_interval_get_rfc5225_id_id_p(4)) &&
+	        !rfc5225_ctxt->tmp.outer_ip_flag &&
+	        !rfc5225_ctxt->tmp.innermost_ip_flag &&
+	        !rfc5225_ctxt->tmp.ip_id_behavior_changed)
+	{
+		assert(innermost_ip_ctxt->ctxt.vx.version == IPV4);
+		rohc_comp_debug(ctxt, "code pt_1_seq_id packet");
+		packet_type = ROHC_PACKET_NORTP_PT_1_SEQ_ID;
+	}
+	/* use pt_2_seq_id only if:
+	 *  - innermost IP-ID is sequential (swapped or not)
+	 *  - 6 innermost IP-ID / SN offset bits are enough
+	 *  - 8 MSN bits are enough
+	 *  - the TOS/TC fields of all IP headers shall not be changing
+	 *  - the behavior of the innermost IP-ID shall not be changing
+	 */
+	else if(rohc_comp_rfc5225_is_ipid_sequential(innermost_ip_id_behavior) &&
+	        wlsb_is_kp_possible_16bits(&rfc5225_ctxt->innermost_ip_id_offset_wlsb,
+	                                   rfc5225_ctxt->tmp.innermost_ip_id_offset, 6,
+	                                   rohc_interval_get_rfc5225_id_id_p(6)) &&
+	        rohc_comp_rfc5225_is_msn_lsb_possible(&rfc5225_ctxt->msn_wlsb,
+	                                              rfc5225_ctxt->msn,
+	                                              reorder_ratio, 8) &&
+	        !rfc5225_ctxt->tmp.outer_ip_flag &&
+	        !rfc5225_ctxt->tmp.innermost_ip_flag &&
+	        !rfc5225_ctxt->tmp.ip_id_behavior_changed)
+	{
+		rohc_comp_debug(ctxt, "code pt_2_seq_id packet");
+		packet_type = ROHC_PACKET_NORTP_PT_2_SEQ_ID;
+	}
+	else /* fallback on IR packet */
+	{
+		rohc_comp_debug(ctxt, "code IR packet");
+		packet_type = ROHC_PACKET_IR;
 	}
 
 	return packet_type;
