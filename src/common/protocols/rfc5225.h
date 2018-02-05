@@ -34,7 +34,8 @@
 #endif
 
 
-#define ROHC_PACKET_TYPE_IR      0xFD
+#define ROHC_PACKET_TYPE_IR         0xFD
+#define ROHC_PACKET_TYPE_CO_REPAIR  0xFB
 
 
 
@@ -246,6 +247,27 @@ typedef struct
 	uint8_t tos_tc;
 	uint8_t ttl_hopl;
 } __attribute__((packed)) ipv6_regular_dynamic_t;
+
+
+/**
+ * @brief The CRC part of the co_repair packet format
+ *
+ * See RFC5225 §6.8.2.2 page 44
+ */
+typedef struct
+{
+#if WORDS_BIGENDIAN == 1
+	uint8_t r1:1;          /**< Reserved field, must be 0 */
+	uint8_t header_crc:7;  /**< CRC-7 over uncompressed headers */
+	uint8_t r2:5;          /**< Reserved field, must be 0 */
+	uint8_t ctrl_crc:3;    /**< CRC-3 over control fields */
+#else
+	uint8_t header_crc:7;
+	uint8_t r1:1;
+	uint8_t ctrl_crc:3;
+	uint8_t r2:5;
+#endif
+} __attribute__((packed)) co_repair_crc_t;
 
 
 /**

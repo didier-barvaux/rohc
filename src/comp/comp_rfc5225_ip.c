@@ -128,6 +128,13 @@ static int rohc_comp_rfc5225_ip_code_IR_pkt(const struct rohc_comp_ctxt *const c
                                             const size_t rohc_pkt_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
+static int rohc_comp_rfc5225_ip_code_co_repair_pkt(const struct rohc_comp_ctxt *const ctxt,
+                                                   const struct ip_packet *const ip,
+                                                   uint8_t *const rohc_pkt,
+                                                   const size_t rohc_pkt_max_len,
+                                                   const size_t payload_offset)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+
 static int rohc_comp_rfc5225_ip_code_CO_pkt(const struct rohc_comp_ctxt *const context,
                                             const struct ip_packet *const ip,
                                             uint8_t *const rohc_pkt,
@@ -844,9 +851,20 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 		}
 		rohc_len = ret;
 	}
-	else /* CO packets */
+	else if((*packet_type) == ROHC_PACKET_CO_REPAIR)
 	{
-
+		ret = rohc_comp_rfc5225_ip_code_co_repair_pkt(context, &uncomp_pkt->outer_ip,
+		                                              rohc_remain_data, rohc_remain_len,
+		                                              *payload_offset);
+		if(ret < 0)
+		{
+			rohc_comp_warn(context, "failed to build co_repair packet");
+			goto error;
+		}
+		rohc_len = ret;
+	}
+	else /* other CO packets */
+	{
 		ret = rohc_comp_rfc5225_ip_code_CO_pkt(context, &uncomp_pkt->outer_ip,
 		                                       rohc_remain_data, rohc_remain_len,
 		                                       *packet_type, *payload_offset);
@@ -1317,6 +1335,7 @@ static rohc_packet_t rohc_comp_rfc5225_ip_decide_pkt(struct rohc_comp_ctxt *cons
  *
  * @param ctxt  The compression context
  * @return      \li The packet type among ROHC_PACKET_IR,
+ *                  ROHC_PACKET_CO_REPAIR,
  *                  ROHC_PACKET_NORTP_PT_0_CRC7, or
  *                  ROHC_PACKET_NORTP_PT_2_SEQ_ID
  *                  in case of success
@@ -1340,6 +1359,7 @@ static rohc_packet_t rohc_comp_rfc5225_ip_decide_FO_pkt(const struct rohc_comp_c
  *
  * @param ctxt  The compression context
  * @return      \li The packet type among ROHC_PACKET_IR,
+ *                  ROHC_PACKET_CO_REPAIR,
  *                  ROHC_PACKET_PT_0_CRC3,
  *                  ROHC_PACKET_NORTP_PT_0_CRC7,
  *                  ROHC_PACKET_NORTP_PT_1_SEQ_ID, or
@@ -1473,10 +1493,13 @@ static rohc_packet_t rohc_comp_rfc5225_ip_decide_FO_SO_pkt(const struct rohc_com
 		rohc_comp_debug(ctxt, "code pt_2_seq_id packet");
 		packet_type = ROHC_PACKET_NORTP_PT_2_SEQ_ID;
 	}
-	else /* fallback on IR packet */
+	else /* fallback on co_repair packet */
 	{
-		rohc_comp_debug(ctxt, "code IR packet");
-		packet_type = ROHC_PACKET_IR;
+		/* the co_repair packet is enough to transmit all the dynamic changes ;
+		 * if there were static changes, the context would have been reset by
+		 * the stream classifier */
+		rohc_comp_debug(ctxt, "code co_repair packet");
+		packet_type = ROHC_PACKET_CO_REPAIR;
 	}
 
 	return packet_type;
@@ -1671,6 +1694,157 @@ static int rohc_comp_rfc5225_ip_code_IR_pkt(const struct rohc_comp_ctxt *context
 	                rohc_hdr_len, rohc_pkt[crc_position]);
 
 	rohc_comp_debug(context, "IR packet, length %zu", rohc_hdr_len);
+	rohc_comp_dump_buf(context, "current ROHC packet", rohc_pkt, rohc_hdr_len);
+
+	return rohc_hdr_len;
+
+error:
+	return -1;
+}
+
+
+/**
+ * @brief Encode an IP packet as co_repair packet
+ *
+ * \verbatim
+
+        0   1   2   3   4   5   6   7
+       --- --- --- --- --- --- --- ---
+      :         Add-CID octet         : if for small CIDs and CID 1-15
+      +---+---+---+---+---+---+---+---+
+      | 1   1   1   1   1   0   1   1 | discriminator
+      +---+---+---+---+---+---+---+---+
+      :                               :
+      /   0, 1, or 2 octets of CID    / 1-2 octets if large CIDs
+      :                               :
+      +---+---+---+---+---+---+---+---+
+      |r1 |         CRC-7             |
+      +---+---+---+---+---+---+---+---+
+      |        r2         |   CRC-3   |
+      +---+---+---+---+---+---+---+---+
+      |                               |
+      /         Dynamic chain         / variable length
+      |                               |
+       - - - - - - - - - - - - - - - -
+
+\endverbatim
+ *
+ * @param context           The compression context
+ * @param ip                The outer IP header
+ * @param rohc_pkt          OUT: The ROHC packet
+ * @param rohc_pkt_max_len  The maximum length of the ROHC packet
+ * @param payload_offset    The offset for the payload in the IP packet
+ * @return                  The length of the ROHC packet if successful,
+ *                          -1 otherwise
+ */
+static int rohc_comp_rfc5225_ip_code_co_repair_pkt(const struct rohc_comp_ctxt *context,
+                                                   const struct ip_packet *const ip,
+                                                   uint8_t *const rohc_pkt,
+                                                   const size_t rohc_pkt_max_len,
+                                                   const size_t payload_offset)
+{
+	const struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = context->specific;
+	uint8_t *rohc_remain_data = rohc_pkt;
+	size_t rohc_remain_len = rohc_pkt_max_len;
+	size_t first_position;
+	size_t rohc_hdr_len = 0;
+	int ret;
+
+	/* Add-CID or large CID:
+	 *  - discriminator will be placed at 'first_position'
+	 *  - CRC-7 will start at 'counter'
+	 */
+	ret = code_cid_values(context->compressor->medium.cid_type,
+	                      context->cid, rohc_remain_data, rohc_remain_len,
+	                      &first_position);
+	if(ret < 1)
+	{
+		rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the %zu-byte "
+		               "ROHC buffer is too small",
+		               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
+		               "small" : "large", context->cid, rohc_remain_len);
+		goto error;
+	}
+	rohc_remain_data += ret;
+	rohc_remain_len -= ret;
+	rohc_hdr_len += ret;
+	rohc_comp_debug(context, "%s CID %zu encoded on %d byte(s)",
+	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
+	                "small" : "large", context->cid, ret - 1);
+
+	/* discriminator */
+	rohc_pkt[first_position] = ROHC_PACKET_TYPE_CO_REPAIR;
+	rohc_comp_debug(context, "discriminator = 0x%02x", rohc_pkt[first_position]);
+
+	/* enough room for CRC-7 and CRC-3? */
+	if(rohc_remain_len < sizeof(co_repair_crc_t))
+	{
+		rohc_comp_warn(context, "ROHC buffer too small for co_repair packet: "
+		               "%zu bytes required for CRC-7 and CRC-2, but only %zu "
+		               "bytes available", sizeof(co_repair_crc_t), rohc_remain_len);
+		goto error;
+	}
+
+	/* CRC-7 over uncompressed headers and CRC-3 over control fields */
+	{
+		co_repair_crc_t *const co_repair_crc = (co_repair_crc_t *) rohc_remain_data;
+		uint8_t ip_id_behaviors[ROHC_MAX_IP_HDRS];
+		size_t ip_hdr_pos;
+
+		/* reserved field must be 0 */
+		co_repair_crc->r1 = 0;
+		/* CRC-7 over uncompressed headers */
+		co_repair_crc->header_crc =
+			crc_calculate(ROHC_CRC_TYPE_7, ip->data, payload_offset,
+			              CRC_INIT_7, context->compressor->crc_table_7);
+		rohc_comp_debug(context, "CRC-7 on %zu-byte uncompressed header = 0x%x",
+		                payload_offset, co_repair_crc->header_crc);
+
+		/* reserved field must be 0 */
+		co_repair_crc->r2 = 0;
+		/* CRC-3 over control fields */
+		for(ip_hdr_pos = 0; ip_hdr_pos < rfc5225_ctxt->ip_contexts_nr; ip_hdr_pos++)
+		{
+			ip_id_behaviors[ip_hdr_pos] =
+				rfc5225_ctxt->ip_contexts[ip_hdr_pos].ctxt.vx.ip_id_behavior;
+			rohc_comp_debug(context, "IP-ID behavior #%zu = 0x%02x", ip_hdr_pos + 1,
+			                ip_id_behaviors[ip_hdr_pos]);
+		}
+		co_repair_crc->ctrl_crc =
+			compute_crc_ctrl_fields(context->compressor->crc_table_3,
+			                        context->compressor->reorder_ratio,
+			                        rfc5225_ctxt->msn,
+			                        ip_id_behaviors, rfc5225_ctxt->ip_contexts_nr);
+		rohc_comp_debug(context, "CRC-3 on control fields = 0x%x "
+		                "(reorder_ratio = 0x%02x, MSN = 0x%04x, %zu IP-ID behaviors)",
+		                co_repair_crc->ctrl_crc, context->compressor->reorder_ratio,
+		                rfc5225_ctxt->msn, rfc5225_ctxt->ip_contexts_nr);
+
+		/* skip CRCs */
+		rohc_remain_data += sizeof(co_repair_crc_t);
+		rohc_remain_len -= sizeof(co_repair_crc_t);
+		rohc_hdr_len += sizeof(co_repair_crc_t);
+	}
+
+	/* add dynamic chain */
+	ret = rohc_comp_rfc5225_ip_dyn_chain(context, ip, rohc_remain_data,
+	                                     rohc_remain_len);
+	if(ret < 0)
+	{
+		rohc_comp_warn(context, "failed to build the dynamic chain of the "
+		               "co_repair packet");
+		goto error;
+	}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
+	rohc_remain_data += ret;
+	rohc_remain_len -= ret;
+#endif
+	rohc_hdr_len += ret;
+	rohc_comp_dump_buf(context, "current ROHC packet (with dynamic part)",
+	                   rohc_pkt, rohc_hdr_len);
+
+	/* co_repair header was successfully built */
+	rohc_comp_debug(context, "co_repair packet, length %zu", rohc_hdr_len);
 	rohc_comp_dump_buf(context, "current ROHC packet", rohc_pkt, rohc_hdr_len);
 
 	return rohc_hdr_len;

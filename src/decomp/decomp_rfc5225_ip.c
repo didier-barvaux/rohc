@@ -110,6 +110,8 @@ struct rohc_rfc5225_bits
 
 	uint8_t outer_ip_flag;   /**< The outer_ip_flag bits */
 	size_t outer_ip_flag_nr; /**< The number of outer_ip_flag bits */
+
+	struct rohc_decomp_crc ctrl_crc;
 };
 
 
@@ -183,6 +185,14 @@ static bool decomp_rfc5225_ip_parse_ir(const struct rohc_decomp_ctxt *const ctxt
                                        struct rohc_decomp_crc *const extr_crc,
                                        struct rohc_rfc5225_bits *const bits,
                                        size_t *const rohc_hdr_len)
+	__attribute__((warn_unused_result, nonnull(1, 4, 5, 6)));
+
+static bool decomp_rfc5225_ip_parse_co_repair(const struct rohc_decomp_ctxt *const ctxt,
+                                              const struct rohc_buf rohc_pkt,
+                                              const size_t large_cid_len,
+                                              struct rohc_decomp_crc *const hdr_crc,
+                                              struct rohc_rfc5225_bits *const bits,
+                                              size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 4, 5, 6)));
 
 static bool decomp_rfc5225_ip_parse_co(const struct rohc_decomp_ctxt *const ctxt,
@@ -440,7 +450,7 @@ static void decomp_rfc5225_ip_free_context(struct rohc_decomp_rfc5225_ip_ctxt *c
  * @param large_cid_len  The length of the optional large CID field
  * @return               The packet type
  */
-static rohc_packet_t decomp_rfc5225_ip_detect_pkt_type(const struct rohc_decomp_ctxt *const context __attribute__((unused)),
+static rohc_packet_t decomp_rfc5225_ip_detect_pkt_type(const struct rohc_decomp_ctxt *const context,
                                                        const uint8_t *const rohc_packet,
                                                        const size_t rohc_length,
                                                        const size_t large_cid_len __attribute__((unused)))
@@ -470,7 +480,11 @@ static rohc_packet_t decomp_rfc5225_ip_detect_pkt_type(const struct rohc_decomp_
 	{
 		type = ROHC_PACKET_NORTP_PT_2_SEQ_ID;
 	}
-	else if(rohc_decomp_packet_is_ir(rohc_packet, rohc_length)) /* 7-bit */
+	else if(rohc_packet[0] == ROHC_PACKET_TYPE_CO_REPAIR) /* 7-bit '11111011' */
+	{
+		type = ROHC_PACKET_CO_REPAIR;
+	}
+	else if(rohc_packet[0] == ROHC_PACKET_TYPE_IR) /* 7-bit '11111101' */
 	{
 		type = ROHC_PACKET_IR;
 	}
@@ -526,7 +540,17 @@ static bool decomp_rfc5225_ip_parse_pkt(const struct rohc_decomp_ctxt *const con
 			goto error;
 		}
 	}
-	else /* parse CO headers */
+	else if((*packet_type) == ROHC_PACKET_CO_REPAIR)
+	{
+		status = decomp_rfc5225_ip_parse_co_repair(context, rohc_packet, large_cid_len,
+		                                           extr_crc, bits, rohc_hdr_len);
+		if(status == false)
+		{
+			rohc_decomp_warn(context, "failed to parse co_repair packet");
+			goto error;
+		}
+	}
+	else /* parse the other CO headers */
 	{
 		status = decomp_rfc5225_ip_parse_co(context, rohc_packet,
 		                                    large_cid_len, *packet_type,
@@ -577,6 +601,8 @@ static void decomp_rfc5225_ip_reset_extr_bits(const struct rohc_decomp_ctxt *con
 	bits->msn.bits_nr = 0;
 	bits->reorder_ratio_nr = 0;
 	bits->outer_ip_flag_nr = 0;
+	bits->ctrl_crc.type = ROHC_CRC_TYPE_NONE;
+	bits->ctrl_crc.bits_nr = 0;
 
 	/* if context handled at least one packet, init the list of IP headers */
 	if(ctxt->num_recv_packets >= 1)
@@ -655,6 +681,104 @@ static bool decomp_rfc5225_ip_parse_ir(const struct rohc_decomp_ctxt *const ctxt
 	}
 	remain_data += static_chain_len;
 	remain_len -= static_chain_len;
+
+	/* parse dynamic chain */
+	if(!decomp_rfc5225_ip_parse_dyn_chain(ctxt, remain_data, remain_len,
+	                                      bits, &dyn_chain_len))
+	{
+		rohc_decomp_warn(ctxt, "failed to parse the dynamic chain");
+		goto error;
+	}
+	remain_data += dyn_chain_len;
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
+	remain_len -= dyn_chain_len;
+#endif
+
+	*rohc_hdr_len = remain_data - rohc_buf_data(rohc_pkt);
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Parse one co_repair packet for the ROHCv2 IP-only profile
+ *
+ * @param ctxt               The decompression context
+ * @param rohc_pkt           The ROHC packet to decode
+ * @param large_cid_len      The length of the optional large CID field
+ * @param[out] hdr_crc       The CRC over uncomp headers extracted from ROHC packet
+ * @param[out] bits          The bits extracted from the ROHC packet
+ * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
+ * @return                   true if parsing was successful,
+ *                           false if packet was malformed
+ */
+static bool decomp_rfc5225_ip_parse_co_repair(const struct rohc_decomp_ctxt *const ctxt,
+                                              const struct rohc_buf rohc_pkt,
+                                              const size_t large_cid_len,
+                                              struct rohc_decomp_crc *const hdr_crc,
+                                              struct rohc_rfc5225_bits *const bits,
+                                              size_t *const rohc_hdr_len)
+{
+	const uint8_t *remain_data = rohc_buf_data(rohc_pkt);
+	size_t remain_len = rohc_pkt.len;
+	size_t dyn_chain_len;
+
+	/* reject too small co_repair packets, the following fields are mandatory:
+	 *  - 1-byte packet discriminator
+	 *  - 0/1/2-byte large CID
+	 *  - 1-byte r1/CRC-7
+	 *  - 1-byte r2/CRC-3
+	 */
+	if(remain_len < (1 + large_cid_len + 2))
+	{
+		rohc_decomp_warn(ctxt, "malformed ROHC packet: too short for discriminator "
+		                 "byte, large CID bytes, and CRC-7/CRC-3 bytes");
+		goto error;
+	}
+
+	/* discriminator (already checked during packet detection */
+	assert(remain_data[0] == ROHC_PACKET_TYPE_CO_REPAIR);
+	remain_data++;
+	remain_len--;
+	
+	/* skip any large CID bytes */
+	remain_data += large_cid_len;
+	remain_len -= large_cid_len;
+
+	/* parse CRC-7 over uncompressed headers and CRC-3 over control fields */
+	{
+		const co_repair_crc_t *const co_repair_crc = (co_repair_crc_t *) remain_data;
+
+		/* reserved field r1 shall be zero */
+		if(co_repair_crc->r1 != 0)
+		{
+			rohc_decomp_warn(ctxt, "malformed ROHC packet: reserved field r1 is 0x%x "
+			                 "instead of 0", co_repair_crc->r1);
+			goto error;
+		}
+		/* CRC-7 over uncompressed headers */
+		hdr_crc->type = ROHC_CRC_TYPE_7;
+		hdr_crc->bits = co_repair_crc->header_crc;
+		hdr_crc->bits_nr = 7;
+
+		/* reserved field r2 shall be zero */
+		if(co_repair_crc->r2 != 0)
+		{
+			rohc_decomp_warn(ctxt, "malformed ROHC packet: reserved field r2 is 0x%x "
+			                 "instead of 0", co_repair_crc->r2);
+			goto error;
+		}
+		/* CRC-3 over control fields */
+		bits->ctrl_crc.type = ROHC_CRC_TYPE_3;
+		bits->ctrl_crc.bits = co_repair_crc->ctrl_crc;
+		bits->ctrl_crc.bits_nr = 3;
+
+		/* skip CRCs */
+		remain_data += sizeof(co_repair_crc_t);
+		remain_len -= sizeof(co_repair_crc_t);
+	}
 
 	/* parse dynamic chain */
 	if(!decomp_rfc5225_ip_parse_dyn_chain(ctxt, remain_data, remain_len,
@@ -1732,6 +1856,43 @@ static bool decomp_rfc5225_ip_decode_bits(const struct rohc_decomp_ctxt *const c
 	{
 		rohc_decomp_warn(ctxt, "failed to decode bits extracted for IP headers");
 		goto error;
+	}
+
+	/* all control fields were decoded, so let's check any CRC-3 computed over
+	 * control fields */
+	if(bits->ctrl_crc.type != ROHC_CRC_TYPE_NONE)
+	{
+		uint8_t ip_id_behaviors[ROHC_MAX_IP_HDRS];
+		size_t ip_hdr_pos;
+		uint8_t ctrl_crc_computed;
+
+		assert(bits->ctrl_crc.type == ROHC_CRC_TYPE_3);
+		assert(bits->ctrl_crc.bits_nr == 3);
+
+		/* compute the CRC-3 over decoded control fields */
+		assert(bits->ip_nr > 0);
+		for(ip_hdr_pos = 0; ip_hdr_pos < bits->ip_nr; ip_hdr_pos++)
+		{
+			ip_id_behaviors[ip_hdr_pos] = bits->ip[ip_hdr_pos].id_behavior;
+			rohc_decomp_debug(ctxt, "IP-ID behavior #%zu = 0x%02x", ip_hdr_pos + 1,
+			                  ip_id_behaviors[ip_hdr_pos]);
+		}
+		ctrl_crc_computed =
+			compute_crc_ctrl_fields(ctxt->decompressor->crc_table_3,
+			                        decoded->reorder_ratio, decoded->msn,
+			                        ip_id_behaviors, bits->ip_nr);
+		rohc_decomp_debug(ctxt, "CRC-3 on control fields = 0x%x (reorder_ratio = "
+		                  "0x%02x, MSN = 0x%04x, %zu IP-ID behaviors)",
+		                  ctrl_crc_computed, decoded->reorder_ratio, decoded->msn,
+		                  bits->ip_nr);
+
+		/* does the computed CRC match the one in packet? */
+		if(ctrl_crc_computed != bits->ctrl_crc.bits)
+		{
+			rohc_decomp_warn(ctxt, "control CRC failure (computed = 0x%x, packet = "
+			                 "0x%x)", ctrl_crc_computed, bits->ctrl_crc.bits);
+			goto error;
+		}
 	}
 
 	return true;
