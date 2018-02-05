@@ -48,8 +48,8 @@ struct rohc_decomp_rfc5225_ip_ctxt
 	/** The LSB decoding context of MSN */
 	struct rohc_lsb_decode msn_lsb_ctxt;
 
-	/** The LSB decoding context of innermost IP-ID */
-	struct rohc_lsb_decode ip_id_lsb_ctxt; /* TODO: useful ? */
+	/** The LSB decoding context of innermost IP-ID offset */
+	struct rohc_lsb_decode ip_id_offset_lsb_ctxt;
 
 	/** The reorder ratio that compressor sent to decompressor */
 	rohc_reordering_offset_t reorder_ratio;
@@ -364,7 +364,7 @@ static bool decomp_rfc5225_ip_new_context(const struct rohc_decomp_ctxt *const c
 	/* create the LSB decoding context for the MSN */
 	rohc_lsb_init(&rfc5225_ctxt->msn_lsb_ctxt, 16);
 	/* create the LSB decoding context for the innermost IP-ID */
-	rohc_lsb_init(&rfc5225_ctxt->ip_id_lsb_ctxt, 16);
+	rohc_lsb_init(&rfc5225_ctxt->ip_id_offset_lsb_ctxt, 16);
 
 	/* by default, no reordering accepted on the channel */
 	rfc5225_ctxt->reorder_ratio = ROHC_REORDERING_NONE;
@@ -1793,7 +1793,7 @@ static bool decomp_rfc5225_ip_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *
 			}
 
 			/* decode IP-ID from packet bits and context */
-			if(!d_ip_id_lsb(ctxt, &rfc5225_ctxt->ip_id_lsb_ctxt, decoded_msn,
+			if(!d_ip_id_lsb(ctxt, &rfc5225_ctxt->ip_id_offset_lsb_ctxt, decoded_msn,
 			                ip_bits->id.bits, ip_bits->id.bits_nr, ip_bits->id.p,
 			                &ip_decoded->id))
 			{
@@ -2389,7 +2389,8 @@ static void decomp_rfc5225_ip_update_ctxt(struct rohc_decomp_ctxt *const context
 				{
 					ip_id_offset = ip_context->ctxt.v4.ip_id - msn;
 				}
-				rohc_lsb_set_ref(&rfc5225_ctxt->ip_id_lsb_ctxt, ip_id_offset, false);
+				rohc_lsb_set_ref(&rfc5225_ctxt->ip_id_offset_lsb_ctxt,
+				                 ip_id_offset, false);
 				rohc_decomp_debug(context, "innermost IP-ID offset 0x%04x is the new "
 				                  "reference", ip_id_offset);
 			}
