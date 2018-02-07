@@ -832,8 +832,8 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 {
 	struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = context->specific;
 
-	const uint8_t *remain_data = uncomp_pkt->data;
-	size_t remain_len = uncomp_pkt->len;
+	const uint8_t *remain_data;
+	size_t remain_len;
 
 	uint8_t *rohc_remain_data = rohc_pkt;
 	size_t rohc_remain_len = rohc_pkt_max_len;
@@ -2824,8 +2824,10 @@ static int rohc_comp_rfc5225_ip_irreg_ipv4_part(const struct rohc_comp_ctxt *con
 		}
 		rohc_remain_data[0] = ipv4->tos;
 		rohc_remain_data[1] = ipv4->ttl;
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		rohc_remain_data += tos_ttl_req_len;
 		rohc_remain_len -= tos_ttl_req_len;
+#endif
 		ipv4_irreg_len += tos_ttl_req_len;
 	}
 
@@ -2880,8 +2882,10 @@ static int rohc_comp_rfc5225_ip_irreg_ipv6_part(const struct rohc_comp_ctxt *con
 		}
 		rohc_remain_data[0] = ipv6_get_tc(ipv6);
 		rohc_remain_data[1] = ipv6->hl;
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		rohc_remain_data += tc_hl_req_len;
 		rohc_remain_len -= tc_hl_req_len;
+#endif
 		ipv6_irreg_len += tc_hl_req_len;
 	}
 
@@ -3234,8 +3238,10 @@ static int rohc_comp_rfc5225_ip_build_co_common_pkt(const struct rohc_comp_ctxt 
 		}
 		rohc_comp_debug(context, "add %d bytes of innermost IP-ID to co_common", ret);
 		co_common->ip_id_ind = indicator;
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		rohc_remain_data += ret;
 		rohc_remain_len -= ret;
+#endif
 		co_common_hdr_len += ret;
 	}
 

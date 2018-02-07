@@ -1347,8 +1347,10 @@ static bool decomp_rfc5225_ip_parse_co_common(const struct rohc_decomp_ctxt *con
 		}
 		rohc_decomp_debug(ctxt, "found %zu bits of innermost IP-ID encoded "
 		                  "on %d bytes", innermost_ip_bits->id.bits_nr, ret);
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		remain_data += ret;
 		remain_len -= ret;
+#endif
 		co_common_hdr_len += ret;
 	}
 
@@ -2000,8 +2002,10 @@ static int decomp_rfc5225_ip_parse_irreg_ip(const struct rohc_decomp_ctxt *const
 		ip_bits->tos_tc_bits_nr = 8;
 		ip_bits->ttl_hl = remain_data[1];
 		ip_bits->ttl_hl_nr = 8;
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		remain_data += tos_ttl_req_len;
 		remain_len -= tos_ttl_req_len;
+#endif
 		size += tos_ttl_req_len;
 		rohc_decomp_debug(ctxt, "TOS/TC = 0x%x, ttl_hopl = 0x%x",
 		                  ip_bits->tos_tc_bits, ip_bits->ttl_hl);
