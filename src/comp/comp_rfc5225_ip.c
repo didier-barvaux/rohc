@@ -343,7 +343,11 @@ static bool rohc_comp_rfc5225_ip_create(struct rohc_comp_ctxt *const context,
 				assert(remain_len >= sizeof(struct ipv6_hdr));
 				proto = ipv6->nh;
 
-				ip_context->ctxt.v6.ip_id_behavior = ROHC_IP_ID_BEHAVIOR_ZERO;
+				/* IPv6 got no IP-ID, but for encoding the innermost IP-ID is
+				 * considered bebaving randomly (see RFC5225 page 90):
+				 * ENFORCE(ip_id_behavior_innermost.UVALUE == IP_ID_BEHAVIOR_RANDOM);
+				 */
+				ip_context->ctxt.v6.ip_id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
 				ip_context->ctxt.v6.tc = remain_data[1];
 				ip_context->ctxt.v6.hopl = ipv6->hl;
 				ip_context->ctxt.v6.flow_label = ipv6_get_flow_label(ipv6);
