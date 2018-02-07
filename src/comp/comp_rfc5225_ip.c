@@ -106,6 +106,22 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
                                        size_t *const payload_offset)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
 
+static bool rohc_comp_rfc5225_ip_detect_changes(struct rohc_comp_ctxt *const context,
+                                                const struct net_pkt *const uncomp_pkt,
+                                                size_t *const payload_offset)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+static int rohc_comp_rfc5225_ip_detect_changes_ipv4(struct rohc_comp_ctxt *const ctxt,
+                                                    ip_context_t *const ip_ctxt,
+                                                    const struct ip_hdr *const ip_hdr,
+                                                    const bool is_innermost)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+
+static int rohc_comp_rfc5225_ip_detect_changes_ipv6(struct rohc_comp_ctxt *const ctxt,
+                                                    const ip_context_t *const ip_ctxt,
+                                                    const struct ip_hdr *const ip_hdr,
+                                                    const bool is_innermost)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+
 static int rohc_comp_rfc5225_ip_code_IR_pkt(const struct rohc_comp_ctxt *const ctxt,
                                             const struct ip_packet *const ip,
                                             uint8_t *const rohc_pkt,
@@ -793,180 +809,11 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 	rfc5225_ctxt->msn++; /* wraparound on overflow is expected */
 	rohc_comp_debug(context, "MSN = 0x%04x / %u", rfc5225_ctxt->msn, rfc5225_ctxt->msn);
 
-	/* STEP 0: detect changes */
-	/* parse the IP headers and their extension headers to identify the length
-	 * of the uncompressed headers */
-	/* TODO: find a better to detect the uncompressed header length */
-	rohc_comp_debug(context, "parse the %zu-byte IP packet", remain_len);
-	assert(rfc5225_ctxt->ip_contexts_nr > 0);
-	rfc5225_ctxt->tmp.outer_ip_flag = false;
-	rfc5225_ctxt->tmp.innermost_ip_flag = false;
-	rfc5225_ctxt->tmp.df_changed = false;
-	rfc5225_ctxt->tmp.ip_id_behavior_changed = false;
-	for(ip_hdr_pos = 0; ip_hdr_pos < rfc5225_ctxt->ip_contexts_nr; ip_hdr_pos++)
+	/* STEP 0: detect changes between new uncompressed packet and context */
+	if(!rohc_comp_rfc5225_ip_detect_changes(context, uncomp_pkt, payload_offset))
 	{
-		const struct ip_hdr *const ip_hdr = (struct ip_hdr *) remain_data;
-		ip_context_t *const ip_context = &(rfc5225_ctxt->ip_contexts[ip_hdr_pos]);
-		const bool is_innermost =
-			!!(ip_hdr_pos == (rfc5225_ctxt->ip_contexts_nr - 1));
-		uint8_t protocol;
-
-		/* retrieve IP version */
-		assert(remain_len >= sizeof(struct ip_hdr));
-		rohc_comp_debug(context, "  found %s IPv%d header",
-		                is_innermost ? "innermost" : "outer", ip_hdr->version);
-
-		if(ip_hdr->version == IPV4)
-		{
-			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) remain_data;
-			size_t ipv4_hdr_len;
-
-			assert(remain_len >= sizeof(struct ipv4_hdr));
-
-			protocol = ipv4->protocol;
-			if(is_innermost)
-			{
-				if(ip_context->ctxt.vx.tos_tc != ipv4->tos ||
-				   ip_context->ctxt.vx.ttl_hopl != ipv4->ttl)
-				{
-					rohc_comp_debug(context, "    TOS (%02x -> %02x) or TTL (%u -> %u) "
-					                "changed", ip_context->ctxt.vx.tos_tc, ipv4->tos,
-										 ip_context->ctxt.vx.ttl_hopl, ipv4->ttl);
-					rfc5225_ctxt->tmp.innermost_ip_flag = true;
-				}
-			}
-			else
-			{
-				if(ip_context->ctxt.vx.tos_tc != ipv4->tos ||
-				   ip_context->ctxt.vx.ttl_hopl != ipv4->ttl)
-				{
-					rohc_comp_debug(context, "    TOS (%02x -> %02x) or TTL (%u -> %u) "
-					                "changed", ip_context->ctxt.vx.tos_tc, ipv4->tos,
-										 ip_context->ctxt.vx.ttl_hopl, ipv4->ttl);
-					rfc5225_ctxt->tmp.outer_ip_flag = true;
-				}
-			}
-			ipv4_hdr_len = ipv4->ihl * sizeof(uint32_t);
-
-			/* IPv4 DF changed? */
-			if(ip_context->ctxt.v4.df != ipv4->df)
-			{
-				rfc5225_ctxt->tmp.df_changed = true;
-			}
-
-			/* determine the IP-ID behavior of the IPv4 header */
-			{
-				const uint16_t ip_id = rohc_ntoh16(ipv4->id);
-				const uint16_t last_ip_id = ip_context->ctxt.v4.last_ip_id;
-				const rohc_ip_id_behavior_t last_ip_id_behavior =
-					ip_context->ctxt.v4.ip_id_behavior;
-				rohc_ip_id_behavior_t ip_id_behavior;
-
-				rohc_comp_debug(context, "IP-ID behaved as %s",
-				                rohc_ip_id_behavior_get_descr(last_ip_id_behavior));
-				rohc_comp_debug(context, "IP-ID = 0x%04x -> 0x%04x", last_ip_id, ip_id);
-
-				if(context->num_sent_packets == 0)
-				{
-					/* first packet, be optimistic: choose sequential behavior */
-					ip_id_behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
-				}
-				else
-				{
-					ip_id_behavior =
-						rohc_comp_detect_ip_id_behavior(last_ip_id, ip_id, 19);
-
-					/* no sequential behavior for outer IP headers */
-					if(!is_innermost && ip_id_behavior <= ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
-					{
-						ip_id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
-					}
-				}
-				ip_context->ctxt.v4.ip_id_behavior = ip_id_behavior;
-				rohc_comp_debug(context, "IP-ID now behaves as %s",
-				                rohc_ip_id_behavior_get_descr(ip_id_behavior));
-				if(last_ip_id_behavior != ip_id_behavior)
-				{
-					rfc5225_ctxt->tmp.ip_id_behavior_changed = true;
-				}
-
-				/* compute the new IP-ID / SN offset of the innermost IP header */
-				if(is_innermost)
-				{
-					rfc5225_ctxt->tmp.innermost_ip_id = ip_id;
-					if(ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
-					{
-						/* specific case of IP-ID delta for sequential swapped behavior */
-						rfc5225_ctxt->tmp.innermost_ip_id_offset =
-							swab16(ip_id) - rfc5225_ctxt->msn;
-					}
-					else
-					{
-						/* compute delta the same way for sequential, zero or random: it is
-						 * important to always compute the IP-ID delta and record it in W-LSB,
-						 * so that the IP-ID deltas of next packets may be correctly encoded */
-						rfc5225_ctxt->tmp.innermost_ip_id_offset =
-							ip_id - rfc5225_ctxt->msn;
-					}
-					rohc_comp_debug(context, "new IP-ID offset = 0x%x / %u",
-					                rfc5225_ctxt->tmp.innermost_ip_id_offset,
-					                rfc5225_ctxt->tmp.innermost_ip_id_offset);
-				}
-			}
-
-			/* skip IPv4 header */
-			rohc_comp_debug(context, "skip %zu-byte IPv4 header with "
-			                "Protocol 0x%02x", ipv4_hdr_len, protocol);
-			remain_data += ipv4_hdr_len;
-			remain_len -= ipv4_hdr_len;
-			*payload_offset += ipv4_hdr_len;
-		}
-		else if(ip_hdr->version == IPV6)
-		{
-			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
-
-			assert(remain_len >= sizeof(struct ipv6_hdr));
-
-			protocol = ipv6->nh;
-			if(is_innermost)
-			{
-				if(ip_context->ctxt.vx.tos_tc != ipv6_get_tc(ipv6) ||
-				   ip_context->ctxt.vx.ttl_hopl != ipv6->hl)
-				{
-					rohc_comp_debug(context, "    TC (%02x -> %02x) or HL (%u -> %u) "
-					                "changed", ip_context->ctxt.vx.tos_tc, ipv6_get_tc(ipv6),
-										 ip_context->ctxt.vx.ttl_hopl, ipv6->hl);
-					rfc5225_ctxt->tmp.innermost_ip_flag = true;
-				}
-			}
-			else if(!rfc5225_ctxt->tmp.outer_ip_flag)
-			{
-				if(ip_context->ctxt.vx.tos_tc != ipv6_get_tc(ipv6) ||
-				   ip_context->ctxt.vx.ttl_hopl != ipv6->hl)
-				{
-					rohc_comp_debug(context, "    TC (%02x -> %02x) or HL (%u -> %u) "
-					                "changed", ip_context->ctxt.vx.tos_tc, ipv6_get_tc(ipv6),
-										 ip_context->ctxt.vx.ttl_hopl, ipv6->hl);
-					rfc5225_ctxt->tmp.outer_ip_flag = true;
-				}
-			}
-
-			/* skip IPv6 header */
-			rohc_comp_debug(context, "skip %zu-byte IPv6 header with Next Header "
-			                "0x%02x", sizeof(struct ipv6_hdr), protocol);
-			remain_data += sizeof(struct ipv6_hdr);
-			remain_len -= sizeof(struct ipv6_hdr);
-			*payload_offset += sizeof(struct ipv6_hdr);
-
-			/* TODO: handle IPv6 extension headers */
-			assert(rohc_is_ipv6_opt(protocol) == false);
-		}
-		else
-		{
-			rohc_comp_warn(context, "unexpected IP version %u", ip_hdr->version);
-			assert(0);
-			goto error;
-		}
+		rohc_comp_warn(context, "failed to detect changes in uncompressed packet");
+		goto error;
 	}
 
 	/* STEP 1: decide state */
@@ -1059,6 +906,265 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 
 error:
 	return -1;
+}
+
+
+/**
+ * @brief Detect changes between packet and context
+ *
+ * @param context             The compression context to compare
+ * @param uncomp_pkt          The uncompressed packet to compare
+ * @param[out] payload_offset The offset for the payload in the uncompressed packet
+ * @return                    true if changes were successfully detected,
+ *                            false if a problem occurred
+ */
+static bool rohc_comp_rfc5225_ip_detect_changes(struct rohc_comp_ctxt *const context,
+                                                const struct net_pkt *const uncomp_pkt,
+                                                size_t *const payload_offset)
+{
+	struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = context->specific;
+	const uint8_t *remain_data = uncomp_pkt->data;
+	size_t remain_len = uncomp_pkt->len;
+	size_t ip_hdr_pos;
+	int ret;
+
+	/* detect changes in all the IP headers */
+	rohc_comp_debug(context, "detect changes the %zu-byte IP packet", remain_len);
+	assert(rfc5225_ctxt->ip_contexts_nr > 0);
+	rfc5225_ctxt->tmp.outer_ip_flag = false;
+	rfc5225_ctxt->tmp.innermost_ip_flag = false;
+	rfc5225_ctxt->tmp.df_changed = false;
+	rfc5225_ctxt->tmp.ip_id_behavior_changed = false;
+	for(ip_hdr_pos = 0; ip_hdr_pos < rfc5225_ctxt->ip_contexts_nr; ip_hdr_pos++)
+	{
+		const struct ip_hdr *const ip_hdr = (struct ip_hdr *) remain_data;
+		ip_context_t *const ip_context = &(rfc5225_ctxt->ip_contexts[ip_hdr_pos]);
+		const bool is_innermost =
+			!!(ip_hdr_pos == (rfc5225_ctxt->ip_contexts_nr - 1));
+
+		/* retrieve IP version */
+		assert(remain_len >= sizeof(struct ip_hdr));
+		rohc_comp_debug(context, "  found %s IPv%d header",
+		                is_innermost ? "innermost" : "outer", ip_hdr->version);
+
+		if(ip_hdr->version == IPV4)
+		{
+			size_t ipv4_hdr_len;
+
+			assert(remain_len >= sizeof(struct ipv4_hdr));
+
+			/* detect changes in the IPv4 header */
+			ret = rohc_comp_rfc5225_ip_detect_changes_ipv4(context, ip_context,
+			                                               ip_hdr, is_innermost);
+			if(ret < 0)
+			{
+				rohc_comp_warn(context, "failed to detect changes in IPv4 header #%zu",
+				               ip_hdr_pos + 1);
+				goto error;
+			}
+			ipv4_hdr_len = ret;
+
+			/* skip IPv4 header */
+			rohc_comp_debug(context, "skip %zu-byte IPv4 header", ipv4_hdr_len);
+			remain_data += ipv4_hdr_len;
+			remain_len -= ipv4_hdr_len;
+			*payload_offset += ipv4_hdr_len;
+		}
+		else if(ip_hdr->version == IPV6)
+		{
+			size_t ipv6_hdr_len;
+
+			assert(remain_len >= sizeof(struct ipv6_hdr));
+
+			/* detect changes in the IPv6 header */
+			ret = rohc_comp_rfc5225_ip_detect_changes_ipv6(context, ip_context,
+			                                               ip_hdr, is_innermost);
+			if(ret < 0)
+			{
+				rohc_comp_warn(context, "failed to detect changes in IPv6 header #%zu",
+				               ip_hdr_pos + 1);
+				goto error;
+			}
+			ipv6_hdr_len = ret;
+
+			/* skip IPv6 header */
+			rohc_comp_debug(context, "skip %zu-byte IPv6 header", ipv6_hdr_len);
+			remain_data += ipv6_hdr_len;
+			remain_len -= ipv6_hdr_len;
+			*payload_offset += ipv6_hdr_len;
+
+			/* TODO: handle IPv6 extension headers */
+		}
+		else
+		{
+			rohc_comp_warn(context, "unexpected IP version %u", ip_hdr->version);
+			assert(0);
+			goto error;
+		}
+	}
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Detect changes for the given IPv4 header between packet and context
+ *
+ * @param ctxt          The compression context
+ * @param ip_ctxt       The IPv4 context to compare
+ * @param ip_hdr        The IPv4 header to compare
+ * @param is_innermost  Whether the IPv4 header is the innermost of all IP headers
+ * @return              The length of the IPv4 header,
+ *                      -1 if a problem occurred
+ */
+static int rohc_comp_rfc5225_ip_detect_changes_ipv4(struct rohc_comp_ctxt *const ctxt,
+                                                    ip_context_t *const ip_ctxt,
+                                                    const struct ip_hdr *const ip_hdr,
+                                                    const bool is_innermost)
+{
+	/* TODO: parameter ip_ctxt should be const */
+	struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = ctxt->specific;
+	const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) ip_hdr;
+	const size_t ipv4_hdr_len = ipv4->ihl * sizeof(uint32_t);
+
+	/* TOS or TTL changed? */
+	if(is_innermost)
+	{
+		if(ip_ctxt->ctxt.vx.tos_tc != ipv4->tos ||
+		   ip_ctxt->ctxt.vx.ttl_hopl != ipv4->ttl)
+		{
+			rohc_comp_debug(ctxt, "    TOS (%02x -> %02x) or TTL (%u -> %u) changed",
+			                ip_ctxt->ctxt.vx.tos_tc, ipv4->tos,
+			                ip_ctxt->ctxt.vx.ttl_hopl, ipv4->ttl);
+			rfc5225_ctxt->tmp.innermost_ip_flag = true;
+		}
+	}
+	else
+	{
+		if(ip_ctxt->ctxt.vx.tos_tc != ipv4->tos ||
+		   ip_ctxt->ctxt.vx.ttl_hopl != ipv4->ttl)
+		{
+			rohc_comp_debug(ctxt, "    TOS (%02x -> %02x) or TTL (%u -> %u) changed",
+			                ip_ctxt->ctxt.vx.tos_tc, ipv4->tos,
+			                ip_ctxt->ctxt.vx.ttl_hopl, ipv4->ttl);
+			rfc5225_ctxt->tmp.outer_ip_flag = true;
+		}
+	}
+
+	/* IPv4 DF changed? */
+	if(ip_ctxt->ctxt.v4.df != ipv4->df)
+	{
+		rohc_comp_debug(ctxt, "    DF (%u -> %u) changed", ip_ctxt->ctxt.v4.df, ipv4->df);
+		rfc5225_ctxt->tmp.df_changed = true;
+	}
+
+	/* determine the IP-ID behavior of the IPv4 header */
+	{
+		const uint16_t ip_id = rohc_ntoh16(ipv4->id);
+		const uint16_t last_ip_id = ip_ctxt->ctxt.v4.last_ip_id;
+		const rohc_ip_id_behavior_t last_ip_id_behavior = ip_ctxt->ctxt.v4.ip_id_behavior;
+		rohc_ip_id_behavior_t ip_id_behavior;
+
+		rohc_comp_debug(ctxt, "IP-ID behaved as %s",
+		                rohc_ip_id_behavior_get_descr(last_ip_id_behavior));
+		rohc_comp_debug(ctxt, "IP-ID = 0x%04x -> 0x%04x", last_ip_id, ip_id);
+
+		if(ctxt->num_sent_packets == 0)
+		{
+			/* first packet, be optimistic: choose sequential behavior */
+			ip_id_behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
+		}
+		else
+		{
+			ip_id_behavior = rohc_comp_detect_ip_id_behavior(last_ip_id, ip_id, 19);
+
+			/* no sequential behavior for outer IP headers */
+			if(!is_innermost && ip_id_behavior <= ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
+			{
+				ip_id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
+			}
+		}
+		/* TODO: avoid changing context here */
+		ip_ctxt->ctxt.v4.ip_id_behavior = ip_id_behavior;
+		rohc_comp_debug(ctxt, "IP-ID now behaves as %s",
+		                rohc_ip_id_behavior_get_descr(ip_id_behavior));
+		if(last_ip_id_behavior != ip_id_behavior)
+		{
+			rfc5225_ctxt->tmp.ip_id_behavior_changed = true;
+		}
+
+		/* compute the new IP-ID / SN offset of the innermost IP header */
+		if(is_innermost)
+		{
+			rfc5225_ctxt->tmp.innermost_ip_id = ip_id;
+			if(ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
+			{
+				/* specific case of IP-ID delta for sequential swapped behavior */
+				rfc5225_ctxt->tmp.innermost_ip_id_offset = swab16(ip_id) - rfc5225_ctxt->msn;
+			}
+			else
+			{
+				/* compute delta the same way for sequential, zero or random: it is
+				 * important to always compute the IP-ID delta and record it in W-LSB,
+				 * so that the IP-ID deltas of next packets may be correctly encoded */
+				rfc5225_ctxt->tmp.innermost_ip_id_offset = ip_id - rfc5225_ctxt->msn;
+			}
+			rohc_comp_debug(ctxt, "new IP-ID offset = 0x%x / %u",
+			                rfc5225_ctxt->tmp.innermost_ip_id_offset,
+			                rfc5225_ctxt->tmp.innermost_ip_id_offset);
+		}
+	}
+
+	return ipv4_hdr_len;
+}
+
+
+/**
+ * @brief Detect changes for the given IPv6 header between packet and context
+ *
+ * @param ctxt          The compression context
+ * @param ip_ctxt       The IPv6 context to compare
+ * @param ip_hdr        The IPv6 header to compare
+ * @param is_innermost  Whether the IPv6 header is the innermost of all IP headers
+ * @return              The length of the IPv6 header,
+ *                      -1 if a problem occurred
+ */
+static int rohc_comp_rfc5225_ip_detect_changes_ipv6(struct rohc_comp_ctxt *const ctxt,
+                                                    const ip_context_t *const ip_ctxt,
+                                                    const struct ip_hdr *const ip_hdr,
+                                                    const bool is_innermost)
+{
+	struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = ctxt->specific;
+	const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) ip_hdr;
+
+	/* TC or HL changed? */
+	if(is_innermost)
+	{
+		if(ip_ctxt->ctxt.vx.tos_tc != ipv6_get_tc(ipv6) ||
+		   ip_ctxt->ctxt.vx.ttl_hopl != ipv6->hl)
+		{
+			rohc_comp_debug(ctxt, "    TC (%02x -> %02x) or HL (%u -> %u) changed",
+			                ip_ctxt->ctxt.vx.tos_tc, ipv6_get_tc(ipv6),
+			                ip_ctxt->ctxt.vx.ttl_hopl, ipv6->hl);
+			rfc5225_ctxt->tmp.innermost_ip_flag = true;
+		}
+	}
+	else
+	{
+		if(ip_ctxt->ctxt.vx.tos_tc != ipv6_get_tc(ipv6) ||
+		   ip_ctxt->ctxt.vx.ttl_hopl != ipv6->hl)
+		{
+			rohc_comp_debug(ctxt, "    TC (%02x -> %02x) or HL (%u -> %u) changed",
+			                ip_ctxt->ctxt.vx.tos_tc, ipv6_get_tc(ipv6),
+			                ip_ctxt->ctxt.vx.ttl_hopl, ipv6->hl);
+			rfc5225_ctxt->tmp.outer_ip_flag = true;
+		}
+	}
+
+	return sizeof(struct ipv6_hdr);
 }
 
 
