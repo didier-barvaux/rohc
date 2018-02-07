@@ -3846,7 +3846,7 @@ static uint16_t c_tcp_get_next_msn(const struct rohc_comp_ctxt *const context)
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
 
-	return ((tcp_context->msn + 1) % 0xffff);
+	return (tcp_context->msn + 1); /* wraparound on overflow is expected */
 }
 
 
