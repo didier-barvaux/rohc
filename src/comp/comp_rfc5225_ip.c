@@ -790,7 +790,7 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 	*payload_offset = 0;
 
 	/* compute or find the new SN */
-	rfc5225_ctxt->msn = (rfc5225_ctxt->msn + 1) % 0xffff;
+	rfc5225_ctxt->msn++; /* wraparound on overflow is expected */
 	rohc_comp_debug(context, "MSN = 0x%04x / %u", rfc5225_ctxt->msn, rfc5225_ctxt->msn);
 
 	/* STEP 0: detect changes */
