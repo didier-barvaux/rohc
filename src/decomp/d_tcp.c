@@ -2990,14 +2990,13 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 				                 ip_bits->id.bits, ip_bits->id.p);
 				goto error;
 			}
-			rohc_decomp_debug(context, "  IP-ID = 0x%04x (decoded from "
-			                  "%zu-bit 0x%x with p = %d)", ip_decoded->id,
-			                  ip_bits->id.bits_nr, ip_bits->id.bits, ip_bits->id.p);
-
 			if(ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
 			{
 				ip_decoded->id = swab16(ip_decoded->id);
 			}
+			rohc_decomp_debug(context, "  IP-ID = 0x%04x (decoded from "
+			                  "%zu-bit 0x%x with p = %d)", ip_decoded->id,
+			                  ip_bits->id.bits_nr, ip_bits->id.bits, ip_bits->id.p);
 		}
 		else if(ip_id_behavior == ROHC_IP_ID_BEHAVIOR_ZERO)
 		{

@@ -1873,14 +1873,13 @@ static bool decomp_rfc5225_ip_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *
 				                 ip_bits->id.bits, ip_bits->id.p);
 				goto error;
 			}
-			rohc_decomp_debug(ctxt, "  IP-ID = 0x%04x (decoded from "
-			                  "%zu-bit 0x%x with p = %d)", ip_decoded->id,
-			                  ip_bits->id.bits_nr, ip_bits->id.bits, ip_bits->id.p);
-
 			if(ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
 			{
 				ip_decoded->id = swab16(ip_decoded->id);
 			}
+			rohc_decomp_debug(ctxt, "  IP-ID = 0x%04x (decoded from "
+			                  "%zu-bit 0x%x with p = %d)", ip_decoded->id,
+			                  ip_bits->id.bits_nr, ip_bits->id.bits, ip_bits->id.p);
 		}
 		else /* inferred_sequential_ip_id */
 		{
@@ -1895,16 +1894,19 @@ static bool decomp_rfc5225_ip_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *
 				const uint16_t last_msn =
 					rohc_lsb_get_ref(&rfc5225_ctxt->msn_lsb_ctxt, ROHC_LSB_REF_0);
 				const int16_t msn_delta = decoded_msn - last_msn;
-				ip_decoded->id = ip_ctxt->ctxt.v4.ip_id + msn_delta;
 
+				if(ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ)
+				{
+					ip_decoded->id = ip_ctxt->ctxt.v4.ip_id + msn_delta;
+				}
+				else /* ROHC_IP_ID_BEHAVIOR_SEQ_SWAP */
+				{
+					ip_decoded->id = swab16(swab16(ip_ctxt->ctxt.v4.ip_id) + msn_delta);
+				}
 				rohc_decomp_debug(ctxt, "  IP-ID = 0x%04x (inferred from context "
 				                  "IP-ID 0x%x, and MSN %u -> %u)", ip_decoded->id,
 				                  ip_ctxt->ctxt.v4.ip_id, last_msn, decoded_msn);
 
-				if(ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
-				{
-					ip_decoded->id = swab16(ip_decoded->id);
-				}
 			}
 			else
 			{
