@@ -46,6 +46,8 @@
  */
 struct comp_rfc5225_tmp_variables
 {
+	/** Whether at least one of the DF fields changed */
+	bool df_changed;
 	/** Whether the behavior of at least one of the IP-ID fields changed */
 	bool ip_id_behavior_changed;
 	/* Whether at least one TOS/TC or TTL/HL changed in all outer IP headers */
@@ -799,6 +801,7 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 	assert(rfc5225_ctxt->ip_contexts_nr > 0);
 	rfc5225_ctxt->tmp.outer_ip_flag = false;
 	rfc5225_ctxt->tmp.innermost_ip_flag = false;
+	rfc5225_ctxt->tmp.df_changed = false;
 	rfc5225_ctxt->tmp.ip_id_behavior_changed = false;
 	for(ip_hdr_pos = 0; ip_hdr_pos < rfc5225_ctxt->ip_contexts_nr; ip_hdr_pos++)
 	{
@@ -844,6 +847,12 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 				}
 			}
 			ipv4_hdr_len = ipv4->ihl * sizeof(uint32_t);
+
+			/* IPv4 DF changed? */
+			if(ip_context->ctxt.v4.df != ipv4->df)
+			{
+				rfc5225_ctxt->tmp.df_changed = true;
+			}
 
 			/* determine the IP-ID behavior of the IPv4 header */
 			{
@@ -1278,6 +1287,7 @@ static rohc_packet_t rohc_comp_rfc5225_ip_decide_FO_SO_pkt(const struct rohc_com
 	    rohc_comp_rfc5225_is_seq_ipid_inferred(innermost_ip_ctxt, innermost_ip_id)) &&
 	   !rfc5225_ctxt->tmp.outer_ip_flag &&
 	   !rfc5225_ctxt->tmp.innermost_ip_flag &&
+	   !rfc5225_ctxt->tmp.df_changed &&
 	   !rfc5225_ctxt->tmp.ip_id_behavior_changed)
 	{
 		rohc_comp_debug(ctxt, "code pt_0_crc3 packet");
@@ -1300,6 +1310,7 @@ static rohc_packet_t rohc_comp_rfc5225_ip_decide_FO_SO_pkt(const struct rohc_com
 	                                                innermost_ip_id)) &&
 	        !rfc5225_ctxt->tmp.outer_ip_flag &&
 	        !rfc5225_ctxt->tmp.innermost_ip_flag &&
+	        !rfc5225_ctxt->tmp.df_changed &&
 	        !rfc5225_ctxt->tmp.ip_id_behavior_changed)
 	{
 		rohc_comp_debug(ctxt, "code pt_0_crc7 packet");
@@ -1323,6 +1334,7 @@ static rohc_packet_t rohc_comp_rfc5225_ip_decide_FO_SO_pkt(const struct rohc_com
 	                                   rohc_interval_get_rfc5225_id_id_p(4)) &&
 	        !rfc5225_ctxt->tmp.outer_ip_flag &&
 	        !rfc5225_ctxt->tmp.innermost_ip_flag &&
+	        !rfc5225_ctxt->tmp.df_changed &&
 	        !rfc5225_ctxt->tmp.ip_id_behavior_changed)
 	{
 		assert(innermost_ip_ctxt->ctxt.vx.version == IPV4);
@@ -1345,6 +1357,7 @@ static rohc_packet_t rohc_comp_rfc5225_ip_decide_FO_SO_pkt(const struct rohc_com
 	                                              reorder_ratio, 8) &&
 	        !rfc5225_ctxt->tmp.outer_ip_flag &&
 	        !rfc5225_ctxt->tmp.innermost_ip_flag &&
+	        !rfc5225_ctxt->tmp.df_changed &&
 	        !rfc5225_ctxt->tmp.ip_id_behavior_changed)
 	{
 		rohc_comp_debug(ctxt, "code pt_2_seq_id packet");
