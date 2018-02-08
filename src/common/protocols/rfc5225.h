@@ -356,5 +356,55 @@ typedef struct
 } __attribute__((packed)) pt_2_seq_id_t;
 
 
+/**
+ * @brief The fixed part of the co_common packet format
+ *
+ * See RFC5225 page 90/91
+ */
+typedef struct
+{
+#if WORDS_BIGENDIAN == 1
+	uint8_t discriminator:8;  /**< '11111010'                       [ 8 ] */
+	uint8_t ip_id_ind:1;      /**< irregular(1)                     [ 1 ] */
+	uint8_t header_crc:7;     /**< crc7(THIS.UVALUE, THIS.ULENGTH)  [ 7 ] */
+	uint8_t flags_ind:1;      /**< irregular(1)                     [ 1 ] */
+	uint8_t ttl_hopl_ind:1;   /**< irregular(1)                     [ 1 ] */
+	uint8_t tos_tc_ind:1;     /**< irregular(1)                     [ 1 ] */
+	uint8_t reorder_ratio:2;  /**< irregular(2)                     [ 2 ] */
+	uint8_t control_crc3:3;   /**< control_crc3_encoding            [ 3 ] */
+#else
+	uint8_t discriminator:8;  /**< '11111010'                       [ 8 ] */
+	uint8_t header_crc:7;     /**< crc7(THIS.UVALUE, THIS.ULENGTH)  [ 7 ] */
+	uint8_t ip_id_ind:1;      /**< irregular(1)                     [ 1 ] */
+	uint8_t control_crc3:3;   /**< 4 LSB of msn_lsb(6)              [ 3 ] */
+	uint8_t reorder_ratio:2;  /**< irregular(2)                     [ 2 ] */
+	uint8_t tos_tc_ind:1;     /**< irregular(1)                     [ 1 ] */
+	uint8_t ttl_hopl_ind:1;   /**< irregular(1)                     [ 1 ] */
+	uint8_t flags_ind:1;      /**< irregular(1)                     [ 1 ] */
+#endif
+} __attribute__((packed)) co_common_base_t;
+
+
+/**
+ * @brief The profile_2_3_4_flags_enc packet part
+ *
+ * See RFC5225 page 76
+ */
+typedef struct
+{
+#if WORDS_BIGENDIAN == 1
+	uint8_t ip_outer_indicator:1; /**< irregular(1)              [ 1 ] */
+	uint8_t df:1;                 /**< dont_fragment(ip_version) [ 1 ] */
+	uint8_t ip_id_behavior:2;     /**< irregular(2)              [ 2 ] */
+	uint8_t reserved:4;           /**< compressed_value(4, 0)    [ 4 ] */
+#else
+	uint8_t reserved:4;
+	uint8_t ip_id_behavior:2;
+	uint8_t df:1;
+	uint8_t ip_outer_indicator:1;
+#endif
+} __attribute__((packed)) profile_2_3_4_flags_t;
+
+
 #endif /* ROHC_PROTOCOLS_RFC5225_H */
 

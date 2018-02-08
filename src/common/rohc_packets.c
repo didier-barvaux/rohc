@@ -76,8 +76,8 @@ const char * rohc_get_packet_descr(const rohc_packet_t packet_type)
 		case ROHC_PACKET_NORMAL:
 			return "ROHCv1/Uncomp/Normal";
 
-		case ROHC_PACKET_TCP_CO_COMMON:
-			return "ROHCv1/TCP/co_common";
+		case ROHC_PACKET_CO_COMMON:
+			return "co_common";
 
 		case ROHC_PACKET_TCP_RND_1:
 			return "ROHCv1/TCP/rnd_1";
@@ -325,6 +325,10 @@ rohc_packet_t rohc_get_packet_type(const char *const packet_id)
 	else if(strcmp(packet_id, "co-repair") == 0)
 	{
 		return ROHC_PACKET_CO_REPAIR;
+	}
+	else if(strcmp(packet_id, "co-common") == 0)
+	{
+		return ROHC_PACKET_CO_COMMON;
 	}
 	else if(strcmp(packet_id, "pt-0-crc3") == 0)
 	{

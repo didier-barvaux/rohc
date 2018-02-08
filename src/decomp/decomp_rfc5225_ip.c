@@ -236,6 +236,14 @@ static bool decomp_rfc5225_ip_parse_pt_2_seq_id(const struct rohc_decomp_ctxt *c
                                                 size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
 
+static bool decomp_rfc5225_ip_parse_co_common(const struct rohc_decomp_ctxt *const ctxt,
+                                              const uint8_t *const rohc_pkt,
+                                              const size_t rohc_len,
+                                              struct rohc_decomp_crc *const extr_crc,
+                                              struct rohc_rfc5225_bits *const bits,
+                                              size_t *const rohc_hdr_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
+
 /* static chain */
 static bool decomp_rfc5225_ip_parse_static_chain(const struct rohc_decomp_ctxt *const ctxt,
                                                  const uint8_t *const rohc_pkt,
@@ -480,11 +488,15 @@ static rohc_packet_t decomp_rfc5225_ip_detect_pkt_type(const struct rohc_decomp_
 	{
 		type = ROHC_PACKET_NORTP_PT_2_SEQ_ID;
 	}
-	else if(rohc_packet[0] == ROHC_PACKET_TYPE_CO_REPAIR) /* 7-bit '11111011' */
+	else if(GET_BIT_0_7(rohc_packet) == 0xfa) /* 8-bit discriminator '11111010' */
+	{
+		type = ROHC_PACKET_CO_COMMON;
+	}
+	else if(rohc_packet[0] == ROHC_PACKET_TYPE_CO_REPAIR) /* 8-bit '11111011' */
 	{
 		type = ROHC_PACKET_CO_REPAIR;
 	}
-	else if(rohc_packet[0] == ROHC_PACKET_TYPE_IR) /* 7-bit '11111101' */
+	else if(rohc_packet[0] == ROHC_PACKET_TYPE_IR) /* 8-bit '11111101' */
 	{
 		type = ROHC_PACKET_IR;
 	}
@@ -823,7 +835,13 @@ static bool decomp_rfc5225_ip_parse_co(const struct rohc_decomp_ctxt *const ctxt
 {
 	const struct rohc_decomp_rfc5225_ip_ctxt *const rfc5225_ctxt =
 		ctxt->persist_ctxt;
-	const size_t packed_rohc_packet_max_len = sizeof(pt_2_seq_id_t);
+	const size_t packed_rohc_packet_max_len =
+		sizeof(co_common_base_t) +
+		sizeof(profile_2_3_4_flags_t) +
+		1 /* innermost TOS/TC */ +
+		1 /* innermost TTL/HL */ +
+		1 /* MSN */ +
+		2 /* innermost IP-ID */;
 	uint8_t packed_rohc_packet[packed_rohc_packet_max_len];
 	
 	const uint8_t *remain_data = rohc_buf_data(rohc_pkt);
@@ -874,6 +892,11 @@ static bool decomp_rfc5225_ip_parse_co(const struct rohc_decomp_ctxt *const ctxt
 	{
 		status = decomp_rfc5225_ip_parse_pt_2_seq_id(ctxt, remain_data, remain_len,
 		                                             extr_crc, bits, rohc_hdr_len);
+	}
+	else if(packet_type == ROHC_PACKET_CO_COMMON)
+	{
+		status = decomp_rfc5225_ip_parse_co_common(ctxt, remain_data, remain_len,
+		                                           extr_crc, bits, rohc_hdr_len);
 	}
 	else
 	{
@@ -1131,6 +1154,207 @@ static bool decomp_rfc5225_ip_parse_pt_2_seq_id(const struct rohc_decomp_ctxt *c
 	bits->msn.bits_nr = 8;
 
 	*rohc_hdr_len = sizeof(pt_2_seq_id_t);
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Parse one co_common packet for the ROHCv2 IP-only profile
+ *
+ * @param ctxt               The decompression context
+ * @param rohc_pkt           The ROHC packet to decode
+ * @param rohc_len           The length (in bytes) of the ROHC packet
+ * @param[out] extr_crc      The CRC extracted from the ROHC packet
+ * @param[out] bits          The bits extracted from the ROHC packet
+ * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
+ * @return                   true if parsing was successful,
+ *                           false if packet was malformed
+ */
+static bool decomp_rfc5225_ip_parse_co_common(const struct rohc_decomp_ctxt *const ctxt,
+                                              const uint8_t *const rohc_pkt,
+                                              const size_t rohc_len,
+                                              struct rohc_decomp_crc *const extr_crc,
+                                              struct rohc_rfc5225_bits *const bits,
+                                              size_t *const rohc_hdr_len)
+{
+	struct rohc_decomp_rfc5225_ip_ctxt *const rfc5225_ctxt = ctxt->persist_ctxt;
+	const ip_context_t *const innermost_ip_ctxt =
+		&(rfc5225_ctxt->ip_contexts[rfc5225_ctxt->ip_contexts_nr - 1]);
+	struct rohc_rfc5225_ip_bits *const innermost_ip_bits =
+		&(bits->ip[bits->ip_nr - 1]);
+	const uint8_t *remain_data = rohc_pkt;
+	size_t remain_len = rohc_len;
+	const co_common_base_t *const co_common =
+		(co_common_base_t *) remain_data;
+	size_t co_common_hdr_len = 0;
+
+	/* check packet usage */
+	assert(ctxt->state == ROHC_DECOMP_STATE_SC ||
+	       ctxt->state == ROHC_DECOMP_STATE_FC);
+
+	/* check if the ROHC packet is large enough to parse co_common base header */
+	if(remain_len < sizeof(co_common_base_t))
+	{
+		rohc_decomp_warn(ctxt, "ROHC packet too small for co_common base header "
+		                 "(len = %zu)", remain_len);
+		goto error;
+	}
+	
+	assert(co_common->discriminator == 0xfa);
+
+	/* CRC-7 over uncompressed header */
+	extr_crc->type = ROHC_CRC_TYPE_7;
+	extr_crc->bits = co_common->header_crc;
+	extr_crc->bits_nr = 7;
+	rohc_decomp_debug(ctxt, "found %zu bits of header CRC-7 0x%02x",
+	                  extr_crc->bits_nr, extr_crc->bits);
+
+	/* reorder_ratio */
+	bits->reorder_ratio = co_common->reorder_ratio;
+	bits->reorder_ratio_nr = 2;
+	rohc_decomp_debug(ctxt, "found %zu bits of reorder_ratio %u",
+	                  bits->reorder_ratio_nr, bits->reorder_ratio);
+
+	/* CRC-3 over control fields */
+	bits->ctrl_crc.type = ROHC_CRC_TYPE_3;
+	bits->ctrl_crc.bits = co_common->control_crc3;
+	bits->ctrl_crc.bits_nr = 3;
+	rohc_decomp_debug(ctxt, "found %zu bits of control CRC-3 %u",
+	                  bits->ctrl_crc.bits_nr, bits->ctrl_crc.bits);
+
+	/* skip the fixed part of the co_common header */
+	remain_data += sizeof(co_common_base_t);
+	remain_len -= sizeof(co_common_base_t);
+	co_common_hdr_len += sizeof(co_common_base_t);
+
+	/* profile_2_3_4_flags_enc() */
+	if(co_common->flags_ind == 1)
+	{
+		const profile_2_3_4_flags_t *const profile_2_3_4_flags =
+			(profile_2_3_4_flags_t *) remain_data;
+
+		if(remain_len < sizeof(profile_2_3_4_flags_t))
+		{
+			rohc_decomp_warn(ctxt, "ROHC packet too small for co_common "
+			                 "profile_2_3_4_flags (len = %zu)", remain_len);
+			goto error;
+		}
+
+		/* outer_ip_flag */
+		bits->outer_ip_flag = profile_2_3_4_flags->ip_outer_indicator;
+		bits->outer_ip_flag_nr = 1;
+		rohc_decomp_debug(ctxt, "found %zu bits of outer_ip_flag %u",
+		                  bits->outer_ip_flag_nr, bits->outer_ip_flag);
+
+		/* innermost DF */
+		innermost_ip_bits->df = profile_2_3_4_flags->df;
+		innermost_ip_bits->df_nr = 1;
+		rohc_decomp_debug(ctxt, "found %zu bits of innermost DF %u",
+		                  innermost_ip_bits->df_nr, innermost_ip_bits->df);
+
+		/* innermost IP-ID behavior */
+		innermost_ip_bits->id_behavior = profile_2_3_4_flags->ip_id_behavior;
+		innermost_ip_bits->id_behavior_nr = 2;
+		rohc_decomp_debug(ctxt, "found %zu bits of innermost IP-ID behavior %u",
+		                  innermost_ip_bits->id_behavior_nr,
+		                  innermost_ip_bits->id_behavior);
+
+		remain_data += sizeof(profile_2_3_4_flags_t);
+		remain_len -= sizeof(profile_2_3_4_flags_t);
+		co_common_hdr_len += sizeof(profile_2_3_4_flags_t);
+	}
+
+	/* innermost TOS/TC */
+	if(co_common->tos_tc_ind == 1)
+	{
+		if(remain_len < 1)
+		{
+			rohc_decomp_warn(ctxt, "ROHC packet too small for co_common TOS/TC "
+			                 "(len = %zu)", remain_len);
+			goto error;
+		}
+		innermost_ip_bits->tos_tc_bits = remain_data[0];
+		innermost_ip_bits->tos_tc_bits_nr = 8;
+		rohc_decomp_debug(ctxt, "found %zu bits of innermost TOS/TC %u",
+		                  innermost_ip_bits->tos_tc_bits_nr,
+		                  innermost_ip_bits->tos_tc_bits);
+		remain_data++;
+		remain_len--;
+		co_common_hdr_len++;
+	}
+
+	/* innermost TTL/HL */
+	if(co_common->ttl_hopl_ind == 1)
+	{
+		if(remain_len < 1)
+		{
+			rohc_decomp_warn(ctxt, "ROHC packet too small for co_common TTL/HL "
+			                 "(len = %zu)", remain_len);
+			goto error;
+		}
+		innermost_ip_bits->ttl_hl = remain_data[0];
+		innermost_ip_bits->ttl_hl_nr = 8;
+		rohc_decomp_debug(ctxt, "found %zu bits of innermost TTL/HL %u",
+		                  innermost_ip_bits->ttl_hl_nr,
+		                  innermost_ip_bits->ttl_hl);
+		remain_data++;
+		remain_len--;
+		co_common_hdr_len++;
+	}
+
+	/* MSN */
+	if(remain_len < 1)
+	{
+		rohc_decomp_warn(ctxt, "ROHC packet too small for co_common MSN "
+		                 "(len = %zu)", remain_len);
+		goto error;
+	}
+	bits->msn.bits = remain_data[0];
+	bits->msn.bits_nr = 8;
+	rohc_decomp_debug(ctxt, "found %zu bits of MSN %u (0x%02x)",
+	                  bits->msn.bits_nr, bits->msn.bits, bits->msn.bits);
+	remain_data++;
+	remain_len--;
+	co_common_hdr_len++;
+
+	/* innermost IP-ID */
+	{
+		rohc_ip_id_behavior_t innermost_ip_id_behavior;
+		int ret;
+
+		/* get innermost IP-ID behavior from co_common header is present,
+		 * otherwise get it from context */
+		if(innermost_ip_bits->id_behavior_nr > 0)
+		{
+			innermost_ip_id_behavior = innermost_ip_bits->id_behavior;
+		}
+		else
+		{
+			innermost_ip_id_behavior = innermost_ip_ctxt->ctxt.vx.ip_id_behavior;
+		}
+
+		ret = d_optional_ip_id_lsb(ctxt, remain_data, remain_len,
+		                           innermost_ip_id_behavior, co_common->ip_id_ind,
+		                           &innermost_ip_bits->id);
+		if(ret < 0)
+		{
+			rohc_decomp_warn(ctxt, "ip_id_sequential_variable() failed");
+			goto error;
+		}
+		rohc_decomp_debug(ctxt, "found %zu bits of innermost IP-ID encoded "
+		                  "on %d bytes", innermost_ip_bits->id.bits_nr, ret);
+		remain_data += ret;
+		remain_len -= ret;
+		co_common_hdr_len += ret;
+	}
+
+	rohc_decomp_debug(ctxt, "co_common was %zu-byte long", co_common_hdr_len);
+
+	*rohc_hdr_len = co_common_hdr_len;
 
 	return true;
 

@@ -35,6 +35,7 @@
 #include "schemes/ip_ctxt.h"
 #include "schemes/comp_wlsb.h"
 #include "schemes/ip_id_offset.h"
+#include "schemes/rfc4996.h" /* for c_optional_ip_id_lsb */
 #include "crc.h"
 
 #include <assert.h>
@@ -47,17 +48,39 @@
 struct comp_rfc5225_tmp_variables
 {
 	/** Whether at least one of the DF fields changed */
-	bool df_changed;
+	bool at_least_one_df_changed;
 	/** Whether the behavior of at least one of the IP-ID fields changed */
-	bool ip_id_behavior_changed;
+	bool at_least_one_ip_id_behavior_changed;
+
+	/** Whether at least one of the DF fields changed in all outer IP headers */
+	bool outer_df_changed;
+	/** Whether the behavior of at least one of the outer IP-ID fields changed */
+	bool outer_ip_id_behavior_changed;
 	/* Whether at least one TOS/TC or TTL/HL changed in all outer IP headers */
 	bool outer_ip_flag;
+
+	/** Whether the innermost DF field changed */
+	bool innermost_df_changed;
+	/** Whether the behavior of the innermost IP-ID field changed */
+	bool innermost_ip_id_behavior_changed;
+	/** Whether the innermost TOS/TC changed in the innermost IP header */
+	bool innermost_tos_tc_changed;
+	/** Whether the innermost TTL/HL changed in the innermost IP header */
+	bool innermost_ttl_hopl_changed;
 	/** Whether the innermost TOS/TC or TTL/HL changed in the innermost IP header */
 	bool innermost_ip_flag;
+
 	/** The new innermost IP-ID value */
 	uint16_t innermost_ip_id;
 	/** The new innermost IP-ID / SN delta (with bits swapped if necessary) */
 	uint16_t innermost_ip_id_offset;
+
+	/** The new innermost DF value */
+	uint8_t innermost_df;
+	/** The new innermost TTL/HL value */
+	uint8_t innermost_ttl_hopl;
+	/** The new innermost TOS/TC value */
+	uint8_t innermost_tos_tc;
 };
 
 
@@ -165,6 +188,12 @@ static int rohc_comp_rfc5225_ip_build_pt_2_seq_id_pkt(const struct rohc_comp_ctx
                                                       const uint8_t crc,
                                                       uint8_t *const rohc_data,
                                                       const size_t rohc_max_len)
+	__attribute__((nonnull(1, 3), warn_unused_result));
+
+static int rohc_comp_rfc5225_ip_build_co_common_pkt(const struct rohc_comp_ctxt *const context,
+                                                    const uint8_t crc,
+                                                    uint8_t *const rohc_data,
+                                                    const size_t rohc_max_len)
 	__attribute__((nonnull(1, 3), warn_unused_result));
 
 /* static chain */
@@ -953,10 +982,16 @@ static bool rohc_comp_rfc5225_ip_detect_changes(struct rohc_comp_ctxt *const con
 	/* detect changes in all the IP headers */
 	rohc_comp_debug(context, "detect changes the %zu-byte IP packet", remain_len);
 	assert(rfc5225_ctxt->ip_contexts_nr > 0);
+	rfc5225_ctxt->tmp.outer_df_changed = false;
+	rfc5225_ctxt->tmp.outer_ip_id_behavior_changed = false;
 	rfc5225_ctxt->tmp.outer_ip_flag = false;
+	rfc5225_ctxt->tmp.innermost_df_changed = false;
+	rfc5225_ctxt->tmp.innermost_ip_id_behavior_changed = false;
+	rfc5225_ctxt->tmp.innermost_tos_tc_changed = false;
+	rfc5225_ctxt->tmp.innermost_ttl_hopl_changed = false;
 	rfc5225_ctxt->tmp.innermost_ip_flag = false;
-	rfc5225_ctxt->tmp.df_changed = false;
-	rfc5225_ctxt->tmp.ip_id_behavior_changed = false;
+	rfc5225_ctxt->tmp.at_least_one_df_changed = false;
+	rfc5225_ctxt->tmp.at_least_one_ip_id_behavior_changed = false;
 	for(ip_hdr_pos = 0; ip_hdr_pos < rfc5225_ctxt->ip_contexts_nr; ip_hdr_pos++)
 	{
 		const struct ip_hdr *const ip_hdr = (struct ip_hdr *) remain_data;
@@ -1055,14 +1090,27 @@ static int rohc_comp_rfc5225_ip_detect_changes_ipv4(struct rohc_comp_ctxt *const
 	/* TOS or TTL changed? */
 	if(is_innermost)
 	{
-		if(ip_ctxt->ctxt.vx.tos_tc != ipv4->tos ||
-		   ip_ctxt->ctxt.vx.ttl_hopl != ipv4->ttl)
+		/* innermost TOS changed? */
+		if(ip_ctxt->ctxt.vx.tos_tc != ipv4->tos)
 		{
-			rohc_comp_debug(ctxt, "    TOS (%02x -> %02x) or TTL (%u -> %u) changed",
-			                ip_ctxt->ctxt.vx.tos_tc, ipv4->tos,
-			                ip_ctxt->ctxt.vx.ttl_hopl, ipv4->ttl);
+			rohc_comp_debug(ctxt, "    TOS (%02x -> %02x) changed",
+			                ip_ctxt->ctxt.vx.tos_tc, ipv4->tos);
+			rfc5225_ctxt->tmp.innermost_tos_tc_changed = true;
 			rfc5225_ctxt->tmp.innermost_ip_flag = true;
 		}
+		/* innermost TTL changed? */
+		if(ip_ctxt->ctxt.vx.ttl_hopl != ipv4->ttl)
+		{
+			rohc_comp_debug(ctxt, "    TTL (%u -> %u) changed",
+			                ip_ctxt->ctxt.vx.ttl_hopl, ipv4->ttl);
+			rfc5225_ctxt->tmp.innermost_ttl_hopl_changed = true;
+			rfc5225_ctxt->tmp.innermost_ip_flag = true;
+		}
+		/* save the new values of DF, TOS and TTL to easily retrieve them during
+		 * packet creation */
+		rfc5225_ctxt->tmp.innermost_df = ipv4->df;
+		rfc5225_ctxt->tmp.innermost_tos_tc = ipv4->tos;
+		rfc5225_ctxt->tmp.innermost_ttl_hopl = ipv4->ttl;
 	}
 	else
 	{
@@ -1080,7 +1128,15 @@ static int rohc_comp_rfc5225_ip_detect_changes_ipv4(struct rohc_comp_ctxt *const
 	if(ip_ctxt->ctxt.v4.df != ipv4->df)
 	{
 		rohc_comp_debug(ctxt, "    DF (%u -> %u) changed", ip_ctxt->ctxt.v4.df, ipv4->df);
-		rfc5225_ctxt->tmp.df_changed = true;
+		rfc5225_ctxt->tmp.at_least_one_df_changed = true;
+		if(is_innermost)
+		{
+			rfc5225_ctxt->tmp.innermost_df_changed = true;
+		}
+		else
+		{
+			rfc5225_ctxt->tmp.outer_df_changed = true;
+		}
 	}
 
 	/* determine the IP-ID behavior of the IPv4 header */
@@ -1115,7 +1171,15 @@ static int rohc_comp_rfc5225_ip_detect_changes_ipv4(struct rohc_comp_ctxt *const
 		                rohc_ip_id_behavior_get_descr(ip_id_behavior));
 		if(last_ip_id_behavior != ip_id_behavior)
 		{
-			rfc5225_ctxt->tmp.ip_id_behavior_changed = true;
+			rfc5225_ctxt->tmp.at_least_one_ip_id_behavior_changed = true;
+			if(is_innermost)
+			{
+				rfc5225_ctxt->tmp.innermost_ip_id_behavior_changed = true;
+			}
+			else
+			{
+				rfc5225_ctxt->tmp.outer_ip_id_behavior_changed = true;
+			}
 		}
 
 		/* compute the new IP-ID / SN offset of the innermost IP header */
@@ -1165,14 +1229,27 @@ static int rohc_comp_rfc5225_ip_detect_changes_ipv6(struct rohc_comp_ctxt *const
 	/* TC or HL changed? */
 	if(is_innermost)
 	{
-		if(ip_ctxt->ctxt.vx.tos_tc != ipv6_get_tc(ipv6) ||
-		   ip_ctxt->ctxt.vx.ttl_hopl != ipv6->hl)
+		/* innermost TC changed? */
+		if(ip_ctxt->ctxt.vx.tos_tc != ipv6_get_tc(ipv6))
 		{
-			rohc_comp_debug(ctxt, "    TC (%02x -> %02x) or HL (%u -> %u) changed",
-			                ip_ctxt->ctxt.vx.tos_tc, ipv6_get_tc(ipv6),
-			                ip_ctxt->ctxt.vx.ttl_hopl, ipv6->hl);
+			rohc_comp_debug(ctxt, "    TC (%02x -> %02x) changed",
+			                ip_ctxt->ctxt.vx.tos_tc, ipv6_get_tc(ipv6));
+			rfc5225_ctxt->tmp.innermost_tos_tc_changed = true;
 			rfc5225_ctxt->tmp.innermost_ip_flag = true;
 		}
+		/* innermost HL changed? */
+		if(ip_ctxt->ctxt.vx.ttl_hopl != ipv6->hl)
+		{
+			rohc_comp_debug(ctxt, "    HL (%u -> %u) changed",
+			                ip_ctxt->ctxt.vx.ttl_hopl, ipv6->hl);
+			rfc5225_ctxt->tmp.innermost_ttl_hopl_changed = true;
+			rfc5225_ctxt->tmp.innermost_ip_flag = true;
+		}
+		/* save the new values of TOS and TTL to easily retrieve them during
+		 * packet creation */
+		rfc5225_ctxt->tmp.innermost_df = 0; /* no DF, dont_fragment() uses 0 */
+		rfc5225_ctxt->tmp.innermost_tos_tc = ipv6_get_tc(ipv6);
+		rfc5225_ctxt->tmp.innermost_ttl_hopl = ipv6->hl;
 	}
 	else
 	{
@@ -1336,6 +1413,7 @@ static rohc_packet_t rohc_comp_rfc5225_ip_decide_pkt(struct rohc_comp_ctxt *cons
  * @param ctxt  The compression context
  * @return      \li The packet type among ROHC_PACKET_IR,
  *                  ROHC_PACKET_CO_REPAIR,
+ *                  ROHC_PACKET_CO_COMMON,
  *                  ROHC_PACKET_NORTP_PT_0_CRC7, or
  *                  ROHC_PACKET_NORTP_PT_2_SEQ_ID
  *                  in case of success
@@ -1360,6 +1438,7 @@ static rohc_packet_t rohc_comp_rfc5225_ip_decide_FO_pkt(const struct rohc_comp_c
  * @param ctxt  The compression context
  * @return      \li The packet type among ROHC_PACKET_IR,
  *                  ROHC_PACKET_CO_REPAIR,
+ *                  ROHC_PACKET_CO_COMMON,
  *                  ROHC_PACKET_PT_0_CRC3,
  *                  ROHC_PACKET_NORTP_PT_0_CRC7,
  *                  ROHC_PACKET_NORTP_PT_1_SEQ_ID, or
@@ -1381,6 +1460,8 @@ static rohc_packet_t rohc_comp_rfc5225_ip_decide_SO_pkt(const struct rohc_comp_c
  * @param crc7_at_least  Whether packet types with CRC strictly smaller
  *                       than 7 bits are allowed or not
  * @return               \li The packet type among ROHC_PACKET_IR,
+ *                           ROHC_PACKET_CO_REPAIR,
+ *                           ROHC_PACKET_CO_COMMON,
  *                           ROHC_PACKET_PT_0_CRC3,
  *                           ROHC_PACKET_NORTP_PT_0_CRC7,
  *                           ROHC_PACKET_NORTP_PT_1_SEQ_ID, or
@@ -1417,8 +1498,8 @@ static rohc_packet_t rohc_comp_rfc5225_ip_decide_FO_SO_pkt(const struct rohc_com
 	    rohc_comp_rfc5225_is_seq_ipid_inferred(innermost_ip_ctxt, innermost_ip_id)) &&
 	   !rfc5225_ctxt->tmp.outer_ip_flag &&
 	   !rfc5225_ctxt->tmp.innermost_ip_flag &&
-	   !rfc5225_ctxt->tmp.df_changed &&
-	   !rfc5225_ctxt->tmp.ip_id_behavior_changed)
+	   !rfc5225_ctxt->tmp.at_least_one_df_changed &&
+	   !rfc5225_ctxt->tmp.at_least_one_ip_id_behavior_changed)
 	{
 		rohc_comp_debug(ctxt, "code pt_0_crc3 packet");
 		packet_type = ROHC_PACKET_PT_0_CRC3;
@@ -1440,8 +1521,8 @@ static rohc_packet_t rohc_comp_rfc5225_ip_decide_FO_SO_pkt(const struct rohc_com
 	                                                innermost_ip_id)) &&
 	        !rfc5225_ctxt->tmp.outer_ip_flag &&
 	        !rfc5225_ctxt->tmp.innermost_ip_flag &&
-	        !rfc5225_ctxt->tmp.df_changed &&
-	        !rfc5225_ctxt->tmp.ip_id_behavior_changed)
+	        !rfc5225_ctxt->tmp.at_least_one_df_changed &&
+	        !rfc5225_ctxt->tmp.at_least_one_ip_id_behavior_changed)
 	{
 		rohc_comp_debug(ctxt, "code pt_0_crc7 packet");
 		packet_type = ROHC_PACKET_NORTP_PT_0_CRC7;
@@ -1464,8 +1545,8 @@ static rohc_packet_t rohc_comp_rfc5225_ip_decide_FO_SO_pkt(const struct rohc_com
 	                                   rohc_interval_get_rfc5225_id_id_p(4)) &&
 	        !rfc5225_ctxt->tmp.outer_ip_flag &&
 	        !rfc5225_ctxt->tmp.innermost_ip_flag &&
-	        !rfc5225_ctxt->tmp.df_changed &&
-	        !rfc5225_ctxt->tmp.ip_id_behavior_changed)
+	        !rfc5225_ctxt->tmp.at_least_one_df_changed &&
+	        !rfc5225_ctxt->tmp.at_least_one_ip_id_behavior_changed)
 	{
 		assert(innermost_ip_ctxt->ctxt.vx.version == IPV4);
 		rohc_comp_debug(ctxt, "code pt_1_seq_id packet");
@@ -1487,11 +1568,25 @@ static rohc_packet_t rohc_comp_rfc5225_ip_decide_FO_SO_pkt(const struct rohc_com
 	                                              reorder_ratio, 8) &&
 	        !rfc5225_ctxt->tmp.outer_ip_flag &&
 	        !rfc5225_ctxt->tmp.innermost_ip_flag &&
-	        !rfc5225_ctxt->tmp.df_changed &&
-	        !rfc5225_ctxt->tmp.ip_id_behavior_changed)
+	        !rfc5225_ctxt->tmp.at_least_one_df_changed &&
+	        !rfc5225_ctxt->tmp.at_least_one_ip_id_behavior_changed)
 	{
 		rohc_comp_debug(ctxt, "code pt_2_seq_id packet");
 		packet_type = ROHC_PACKET_NORTP_PT_2_SEQ_ID;
+	}
+	/* use co_common only if:
+	 *  - 8 MSN bits are enough
+	 *  - the DF fields of all outer IP headers shall not be changing
+	 *  - the behavior of the outer IP-IDs shall not be changing
+	 */
+	else if(rohc_comp_rfc5225_is_msn_lsb_possible(&rfc5225_ctxt->msn_wlsb,
+	                                              rfc5225_ctxt->msn,
+	                                              reorder_ratio, 8) &&
+	        !rfc5225_ctxt->tmp.outer_df_changed &&
+	        !rfc5225_ctxt->tmp.outer_ip_id_behavior_changed)
+	{
+		rohc_comp_debug(ctxt, "code co_common packet");
+		packet_type = ROHC_PACKET_CO_COMMON;
 	}
 	else /* fallback on co_repair packet */
 	{
@@ -1982,6 +2077,20 @@ static int rohc_comp_rfc5225_ip_code_CO_pkt(const struct rohc_comp_ctxt *const c
 		if(ret < 0)
 		{
 			rohc_comp_warn(context, "failed to build pt_2_seq_id packet");
+			goto error;
+		}
+		rohc_remain_data += ret;
+		rohc_remain_len -= ret;
+	}
+	else if(packet_type == ROHC_PACKET_CO_COMMON)
+	{
+		/* build the co_common ROHC header */
+		ret = rohc_comp_rfc5225_ip_build_co_common_pkt(context, crc_computed,
+		                                               rohc_remain_data,
+		                                               rohc_remain_len);
+		if(ret < 0)
+		{
+			rohc_comp_warn(context, "failed to build co_common packet");
 			goto error;
 		}
 		rohc_remain_data += ret;
@@ -2932,6 +3041,209 @@ static int rohc_comp_rfc5225_ip_build_pt_2_seq_id_pkt(const struct rohc_comp_ctx
 	pt_2_seq_id->msn = rfc5225_ctxt->msn & 0xff;
 
 	return sizeof(pt_2_seq_id_t);
+
+error:
+	return -1;
+}
+
+
+/**
+ * @brief Build a ROHCv2 co_common packet
+ *
+ * @param context         The compression context
+ * @param crc             The CRC on the uncompressed headers
+ * @param[out] rohc_data  The ROHC packet being built
+ * @param rohc_max_len    The max remaining length in the ROHC buffer
+ * @return                The length appended in the ROHC buffer if positive,
+ *                        -1 in case of error
+ */
+static int rohc_comp_rfc5225_ip_build_co_common_pkt(const struct rohc_comp_ctxt *const context,
+                                                    const uint8_t crc,
+                                                    uint8_t *const rohc_data,
+                                                    const size_t rohc_max_len)
+{
+	struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = context->specific;
+	const ip_context_t *const innermost_ip_ctxt =
+		&(rfc5225_ctxt->ip_contexts[rfc5225_ctxt->ip_contexts_nr - 1]);
+	const uint8_t innermost_ip_id_behavior =
+		innermost_ip_ctxt->ctxt.vx.ip_id_behavior;
+	uint8_t *rohc_remain_data = rohc_data;
+	size_t rohc_remain_len = rohc_max_len;
+	co_common_base_t *const co_common = (co_common_base_t *) rohc_remain_data;
+	size_t co_common_hdr_len = 0;
+
+	/* code the fixed part of the co_common packet */
+	if(rohc_remain_len < sizeof(co_common_base_t))
+	{
+		rohc_comp_warn(context, "ROHC buffer too small for the co_common base "
+							"header: %zu bytes required, but only %zu bytes available",
+		               sizeof(co_common_base_t), rohc_remain_len);
+		goto error;
+	}
+	co_common->discriminator = 0xfa; /* '11111010' */
+	/* ip_id_indicator is set later in the function */
+	co_common->header_crc = crc;
+	if(rfc5225_ctxt->tmp.innermost_df_changed ||
+		rfc5225_ctxt->tmp.outer_ip_flag ||
+		rfc5225_ctxt->tmp.innermost_ip_id_behavior_changed)
+	{
+		co_common->flags_ind = 1;
+	}
+	else
+	{
+		co_common->flags_ind = 0;
+	}
+	co_common->ttl_hopl_ind = rfc5225_ctxt->tmp.innermost_ttl_hopl_changed;
+	co_common->tos_tc_ind = rfc5225_ctxt->tmp.innermost_tos_tc_changed;
+	co_common->reorder_ratio = context->compressor->reorder_ratio;
+
+	/* CRC-3 over control fields */
+	{
+		uint8_t ip_id_behaviors[ROHC_MAX_IP_HDRS];
+		size_t ip_hdr_pos;
+
+		for(ip_hdr_pos = 0; ip_hdr_pos < rfc5225_ctxt->ip_contexts_nr; ip_hdr_pos++)
+		{
+			ip_id_behaviors[ip_hdr_pos] =
+				rfc5225_ctxt->ip_contexts[ip_hdr_pos].ctxt.vx.ip_id_behavior;
+			rohc_comp_debug(context, "IP-ID behavior #%zu = 0x%02x", ip_hdr_pos + 1,
+			                ip_id_behaviors[ip_hdr_pos]);
+		}
+		co_common->control_crc3 =
+			compute_crc_ctrl_fields(context->compressor->crc_table_3,
+			                        context->compressor->reorder_ratio,
+			                        rfc5225_ctxt->msn,
+			                        ip_id_behaviors, rfc5225_ctxt->ip_contexts_nr);
+		rohc_comp_debug(context, "CRC-3 on control fields = 0x%x "
+		                "(reorder_ratio = 0x%02x, MSN = 0x%04x, %zu IP-ID behaviors)",
+		                co_common->control_crc3, context->compressor->reorder_ratio,
+		                rfc5225_ctxt->msn, rfc5225_ctxt->ip_contexts_nr);
+	}
+
+	rohc_remain_data += sizeof(co_common_base_t);
+	rohc_remain_len -= sizeof(co_common_base_t);
+	co_common_hdr_len += sizeof(co_common_base_t);
+
+	/* code the variable part of the co_common packet */
+
+	/* profile_2_3_4_flags_enc() */
+	if(co_common->flags_ind == 1)
+	{
+		profile_2_3_4_flags_t *const profile_2_3_4_flags =
+			(profile_2_3_4_flags_t *) rohc_remain_data;
+
+		rohc_comp_debug(context, "add profile_2_3_4_flags to co_common");
+
+		if(rohc_remain_len < sizeof(profile_2_3_4_flags_t))
+		{
+			rohc_comp_warn(context, "ROHC buffer too small for the co_common "
+			               "profile_2_3_4_flags: %zu bytes required, but only "
+			               "%zu bytes available", sizeof(profile_2_3_4_flags_t),
+			               rohc_remain_len);
+			goto error;
+		}
+
+		profile_2_3_4_flags->ip_outer_indicator = rfc5225_ctxt->tmp.outer_ip_flag;
+		profile_2_3_4_flags->df = rfc5225_ctxt->tmp.innermost_df;
+		assert(innermost_ip_id_behavior == (innermost_ip_id_behavior & 0x03));
+		profile_2_3_4_flags->ip_id_behavior = innermost_ip_id_behavior;
+		profile_2_3_4_flags->reserved = 0;
+
+		rohc_remain_data += sizeof(profile_2_3_4_flags_t);
+		rohc_remain_len -= sizeof(profile_2_3_4_flags_t);
+		co_common_hdr_len += sizeof(profile_2_3_4_flags_t);
+	}
+
+	/* innermost TOS/TC */
+	if(co_common->tos_tc_ind)
+	{
+		rohc_comp_debug(context, "add TOS/TC to co_common");
+		if(rohc_remain_len < 1)
+		{
+			rohc_comp_warn(context, "ROHC buffer too small for the co_common "
+			               "innermost TOS/TC: 1 byte required, but only "
+			               "%zu bytes available", rohc_remain_len);
+			goto error;
+		}
+		rohc_remain_data[0] = rfc5225_ctxt->tmp.innermost_tos_tc;
+		rohc_remain_data++;
+		rohc_remain_len--;
+		co_common_hdr_len++;
+	}
+
+	/* innermost TTL/HL */
+	if(co_common->ttl_hopl_ind)
+	{
+		rohc_comp_debug(context, "add TTL/HL to co_common");
+		if(rohc_remain_len < 1)
+		{
+			rohc_comp_warn(context, "ROHC buffer too small for the co_common "
+			               "innermost TTL/HL: 1 byte required, but only "
+			               "%zu bytes available", rohc_remain_len);
+			goto error;
+		}
+		rohc_remain_data[0] = rfc5225_ctxt->tmp.innermost_ttl_hopl;
+		rohc_remain_data++;
+		rohc_remain_len--;
+		co_common_hdr_len++;
+	}
+
+	/* 8 LSB of MSN */
+	rohc_comp_debug(context, "add MSN to co_common");
+	if(rohc_remain_len < 1)
+	{
+		rohc_comp_warn(context, "ROHC buffer too small for the co_common "
+		               "8 LSB of MSN: 1 byte required, but only "
+		               "%zu bytes available", rohc_remain_len);
+			goto error;
+	}
+	rohc_remain_data[0] = rfc5225_ctxt->msn & 0xff;
+	rohc_remain_data++;
+	rohc_remain_len--;
+	co_common_hdr_len++;
+
+	/* innermost IP-ID */	
+	{
+		size_t nr_bits_wlsb;
+		int indicator;
+		int ret;
+
+		if(innermost_ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ ||
+		   innermost_ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
+		{
+			const bool is_8b_possible =
+				wlsb_is_kp_possible_16bits(&rfc5225_ctxt->innermost_ip_id_offset_wlsb,
+				                           rfc5225_ctxt->tmp.innermost_ip_id_offset, 8,
+				                           rohc_interval_get_rfc5225_id_id_p(8));
+			nr_bits_wlsb = (is_8b_possible ? 8 : 16);
+		}
+		else
+		{
+			nr_bits_wlsb = 16;
+		}
+
+		ret = c_optional_ip_id_lsb(innermost_ip_id_behavior,
+		                           rohc_hton16(rfc5225_ctxt->tmp.innermost_ip_id),
+		                           rfc5225_ctxt->tmp.innermost_ip_id_offset,
+		                           nr_bits_wlsb,
+		                           rohc_remain_data, rohc_remain_len, &indicator);
+		if(ret < 0)
+		{
+			rohc_comp_warn(context, "failed to encode ip_id_sequential_variable()");
+			goto error;
+		}
+		rohc_comp_debug(context, "add %d bytes of innermost IP-ID to co_common", ret);
+		co_common->ip_id_ind = indicator;
+		rohc_remain_data += ret;
+		rohc_remain_len -= ret;
+		co_common_hdr_len += ret;
+	}
+
+	/* co_common header was successfully built */
+	rohc_comp_debug(context, "co_common packet, length %zu", co_common_hdr_len);
+	rohc_comp_dump_buf(context, "current ROHC packet", rohc_data, co_common_hdr_len);
+
+	return co_common_hdr_len;
 
 error:
 	return -1;
