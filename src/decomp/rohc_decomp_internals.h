@@ -177,10 +177,8 @@ struct rohc_decomp
 
 	/* segment-related variables */
 
-/** The maximal value for MRRU */
-#define ROHC_MAX_MRRU 65535
 	/** The Reconstructed Reception Unit */
-	uint8_t rru[ROHC_MAX_MRRU];
+	uint8_t *rru;
 	/** The length (in bytes) of the Reconstructed Reception Unit */
 	size_t rru_len;
 	/** The Maximum Reconstructed Reception Unit (MRRU) */

@@ -158,6 +158,10 @@
 #include "rohc.h"
 
 
+/** The maximal value for MRRU */
+#define ROHC_MAX_MRRU 65535
+
+
 /**
  * @brief The padding field defined by the ROHC protocol
  *

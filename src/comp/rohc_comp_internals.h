@@ -155,11 +155,9 @@ struct rohc_comp
 
 	/* segment-related variables */
 
-/** The maximal value for MRRU */
-#define ROHC_MAX_MRRU 65535
 	/** The remaining bytes of the Reconstructed Reception Unit (RRU) waiting
 	 *  to be split into segments */
-	uint8_t rru[ROHC_MAX_MRRU];
+	uint8_t *rru;
 	/** The offset of the remaining bytes in the RRU buffer */
 	size_t rru_off;
 	/** The number of the remaining bytes in the RRU buffer */

@@ -568,6 +568,7 @@ struct rohc_decomp * rohc_decomp_new2(const rohc_cid_type_t cid_type,
 	decomp->rru_len = 0;
 	/* no segmentation by default */
 	decomp->mrru = 0;
+	decomp->rru = NULL;
 
 	/* init the tables for fast CRC computation */
 	rohc_crc_init_table(decomp->crc_table_3, ROHC_CRC_TYPE_3);
@@ -634,6 +635,12 @@ void rohc_decomp_free(struct rohc_decomp *const decomp)
 	}
 	zfree(decomp->contexts);
 	assert(decomp->num_contexts_used == 0);
+
+	/* free RRU buffer */
+	if(decomp->rru != NULL)
+	{
+		zfree(decomp->rru);
+	}
 
 	/* destroy the decompressor itself */
 	free(decomp);
@@ -2930,9 +2937,29 @@ bool rohc_decomp_set_mrru(struct rohc_decomp *const decomp,
 	}
 
 	/* set new MRRU */
+	if(mrru == 0)
+	{
+		decomp->rru = NULL;
+	}
+	else
+	{
+		uint8_t *const new_rru_buf = malloc(mrru);
+		if(new_rru_buf == NULL)
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+			             "failed to set MRRU: failed to allocate %zu bytes "
+			             "of memory for MRRU buffer", mrru);
+			goto error;
+		}
+		if(decomp->rru != NULL)
+		{
+			zfree(decomp->rru);
+		}
+		decomp->rru = new_rru_buf;
+	}
 	decomp->mrru = mrru;
 	rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-	           "MRRU is now set to %zd", decomp->mrru);
+	           "MRRU is now set to %zu", decomp->mrru);
 
 	return true;
 

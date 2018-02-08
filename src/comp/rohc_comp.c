@@ -285,6 +285,7 @@ struct rohc_comp * rohc_comp_new2(const rohc_cid_type_t cid_type,
 	comp->medium.cid_type = cid_type;
 	comp->medium.max_cid = max_cid;
 	comp->mrru = 0; /* no segmentation by default */
+	comp->rru = NULL; /* no segmentation by default */
 	comp->random_cb = rand_cb;
 	comp->random_cb_ctxt = rand_priv;
 
@@ -390,6 +391,12 @@ void rohc_comp_free(struct rohc_comp *const comp)
 
 		/* free memory used by contexts */
 		c_destroy_contexts(comp);
+
+		/* free RRU buffer */
+		if(comp->rru != NULL)
+		{
+			zfree(comp->rru);
+		}
 
 		/* free the compressor */
 		free(comp);
@@ -1843,9 +1850,29 @@ bool rohc_comp_set_mrru(struct rohc_comp *const comp,
 	}
 
 	/* set new MRRU */
+	if(mrru == 0)
+	{
+		comp->rru = NULL;
+	}
+	else
+	{
+		uint8_t *const new_rru_buf = malloc(mrru);
+		if(new_rru_buf == NULL)
+		{
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "failed to set MRRU: failed to allocate %zu bytes "
+			             "of memory for MRRU buffer", mrru);
+			goto error;
+		}
+		if(comp->rru != NULL)
+		{
+			zfree(comp->rru);
+		}
+		comp->rru = new_rru_buf;
+	}
 	comp->mrru = mrru;
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "MRRU is now set to %zd", comp->mrru);
+	           "MRRU is now set to %zu", comp->mrru);
 
 	return true;
 
