@@ -2573,16 +2573,6 @@ static int rohc_comp_rfc5225_ip_dyn_ipv4_part(const struct rohc_comp_ctxt *const
 		}
 	}
 
-#if 0
-	/* TODO: should not update context there */
-	ip_ctxt->ctxt.v4.ip_id_behavior = ipv4_dynamic1->ip_id_behavior;
-	ip_ctxt->ctxt.v4.last_ip_id_behavior = ip_ctxt->ctxt.v4.ip_id_behavior;
-	ip_ctxt->ctxt.v4.dscp = ipv4->dscp;
-	ip_ctxt->ctxt.v4.ttl = ipv4->ttl;
-	ip_ctxt->ctxt.v4.df = ipv4->df;
-	ip_ctxt->ctxt.v4.last_ip_id = rohc_ntoh16(ipv4->id);
-#endif
-
 	rohc_comp_dump_buf(ctxt, "IPv4 dynamic part", rohc_data, ipv4_dyn_len);
 
 	return ipv4_dyn_len;
@@ -2651,12 +2641,6 @@ static int rohc_comp_rfc5225_ip_dyn_ipv6_part(const struct rohc_comp_ctxt *const
 		/* MSN */
 		ipv6_endpoint_dynamic->msn = rohc_hton16(rfc5225_ctxt->msn);
 	}
-
-#if 0
-	/* TODO: should not update context there */
-	ip_ctxt->ctxt.v6.dscp = dscp;
-	ip_ctxt->ctxt.v6.hopl = ipv6->hl;
-#endif
 
 	rohc_comp_dump_buf(ctxt, "IP dynamic part", rohc_data, ipv6_dyn_len);
 

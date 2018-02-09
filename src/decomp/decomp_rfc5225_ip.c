@@ -33,7 +33,7 @@
 #include "schemes/ip_ctxt.h"
 #include "schemes/decomp_wlsb.h"
 #include "schemes/decomp_crc.h"
-#include "schemes/rfc4996.h" /* TODO: useful ? */
+#include "schemes/rfc4996.h"
 #include "rohc_bit_ops.h"
 #include "crc.h"
 #include "rohc_debug.h"
@@ -1618,11 +1618,6 @@ static bool decomp_rfc5225_ip_parse_dyn_chain(const struct rohc_decomp_ctxt *con
 		(*parsed_len) += ret;
 	}
 
-#if 0
-	/* TTL/HL values of outer IP headers are included in the dynamic chain */
-	bits->ttl_dyn_chain_flag = true;
-#endif
-
 	return true;
 
 error:
@@ -2740,11 +2735,7 @@ static bool decomp_rfc5225_ip_build_ipv6_hdr(const struct rohc_decomp_ctxt *cons
 {
 	struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) rohc_buf_data(*uncomp_pkt);
 	const size_t hdr_len = sizeof(struct ipv6_hdr);
-#if 0
-	const size_t ipv6_exts_len = decoded->opts_len;
-#else
 	const size_t ipv6_exts_len = 0; /* TODO: handle IP extension headers */
-#endif
 	const size_t full_ipv6_len = hdr_len + ipv6_exts_len;
 
 	rohc_decomp_debug(ctxt, "  build %zu-byte IPv6 header (with %zu bytes of "
