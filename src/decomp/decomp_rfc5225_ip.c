@@ -1475,7 +1475,12 @@ static int decomp_rfc5225_ip_parse_static_ip(const struct rohc_decomp_ctxt *cons
 		}
 
 		*is_innermost = !!(ipv4_static->innermost_ip == 1);
-		/* TODO: check reserved field in strict mode */
+		if(ipv4_static->reserved != 0)
+		{
+			rohc_decomp_warn(ctxt, "malformed ROHC packet: reserved field is not "
+			                 "zero, but 0x%x", ipv4_static->reserved);
+			goto error;
+		}
 		ip_bits->proto = ipv4_static->protocol;
 		ip_bits->proto_nr = 8;
 		memcpy(ip_bits->saddr, &ipv4_static->src_addr, sizeof(uint32_t));
@@ -1511,8 +1516,18 @@ static int decomp_rfc5225_ip_parse_static_ip(const struct rohc_decomp_ctxt *cons
 			}
 
 			*is_innermost = !!(ipv6_static->innermost_ip == 1);
-			/* TODO: check reserved1 field in strict mode */
-			/* TODO: check reserved2 field in strict mode */
+			if(ipv6_static->reserved1 != 0)
+			{
+				rohc_decomp_warn(ctxt, "malformed ROHC packet: reserved field #1 is "
+				                 "not zero, but 0x%x", ipv6_static->reserved1);
+				goto error;
+			}
+			if(ipv6_static->reserved2 != 0)
+			{
+				rohc_decomp_warn(ctxt, "malformed ROHC packet: reserved field #2 is "
+				                 "not zero, but 0x%x", ipv6_static->reserved2);
+				goto error;
+			}
 			ip_bits->flowid = 0;
 			ip_bits->flowid_nr = 20;
 			ip_bits->proto = ipv6_static->next_header;
@@ -1541,7 +1556,12 @@ static int decomp_rfc5225_ip_parse_static_ip(const struct rohc_decomp_ctxt *cons
 			}
 
 			*is_innermost = !!(ipv6_static->innermost_ip == 1);
-			/* TODO: check reserved field in strict mode */
+			if(ipv6_static->reserved != 0)
+			{
+				rohc_decomp_warn(ctxt, "malformed ROHC packet: reserved field is "
+				                 "not zero, but 0x%x", ipv6_static->reserved);
+				goto error;
+			}
 			ip_bits->flowid = (ipv6_static->flow_label_msb << 16) |
 			                  rohc_ntoh16(ipv6_static->flow_label_lsb);
 			assert((ip_bits->flowid & 0xfffff) == ip_bits->flowid);
@@ -1664,7 +1684,12 @@ static int decomp_rfc5225_ip_parse_dyn_ip(const struct rohc_decomp_ctxt *const c
 				goto error;
 			}
 
-			/* TODO: check reserved field in strict mode */
+			if(ipv4_dynamic->reserved != 0)
+			{
+				rohc_decomp_warn(ctxt, "malformed ROHC packet: reserved field is "
+				                 "not zero, but 0x%x", ipv4_dynamic->reserved);
+				goto error;
+			}
 			bits->reorder_ratio = ipv4_dynamic->reorder_ratio;
 			bits->reorder_ratio_nr = 2;
 			ip_bits->df = ipv4_dynamic->df;
@@ -1733,7 +1758,12 @@ static int decomp_rfc5225_ip_parse_dyn_ip(const struct rohc_decomp_ctxt *const c
 				goto error;
 			}
 
-			/* TODO: check reserved field in strict mode */
+			if(ipv4_dynamic->reserved != 0)
+			{
+				rohc_decomp_warn(ctxt, "malformed ROHC packet: reserved field is "
+				                 "not zero, but 0x%x", ipv4_dynamic->reserved);
+				goto error;
+			}
 			ip_bits->df = ipv4_dynamic->df;
 			ip_bits->df_nr = 1;
 			ip_bits->id_behavior = ipv4_dynamic->ip_id_behavior_outer;
@@ -1810,7 +1840,12 @@ static int decomp_rfc5225_ip_parse_dyn_ip(const struct rohc_decomp_ctxt *const c
 				goto error;
 			}
 
-			/* TODO: check reserved field in strict mode */
+			if(ipv6_endpoint_dynamic->reserved != 0)
+			{
+				rohc_decomp_warn(ctxt, "malformed ROHC packet: reserved field is not "
+				                 "zero, but 0x%x", ipv6_endpoint_dynamic->reserved);
+				goto error;
+			}
 			bits->reorder_ratio = ipv6_endpoint_dynamic->reorder_ratio;
 			bits->reorder_ratio_nr = 2;
 			bits->msn.bits = rohc_ntoh16(ipv6_endpoint_dynamic->msn);
