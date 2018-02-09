@@ -17,8 +17,8 @@
  */
 
 /**
- * @file   decomp_rfc5225_ip.c
- * @brief  ROHC decompression context for the ROHCv2 IP-only profile
+ * @file   decomp_rfc5225_ip_esp.c
+ * @brief  ROHC decompression context for the ROHCv2 IP/ESP profile
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author Didier Barvaux <didier@barvaux.org>
  */
@@ -42,8 +42,8 @@
 #include <string.h>
 
 
-/** Define the ROHCv2 IP-only part of the decompression profile context */
-struct rohc_decomp_rfc5225_ip_ctxt
+/** Define the ROHCv2 IP/ESP part of the decompression profile context */
+struct rohc_decomp_rfc5225_ip_esp_ctxt
 {
 	/** The LSB decoding context of MSN */
 	struct rohc_lsb_decode msn_lsb_ctxt;
@@ -95,7 +95,7 @@ struct rohc_rfc5225_ip_bits
 };
 
 
-/** The bits extracted from ROHCv2 IP-only header */
+/** The bits extracted from ROHCv2 IP/ESP header */
 struct rohc_rfc5225_bits
 {
 	/** The extracted bits related to the IP headers */
@@ -133,7 +133,7 @@ struct rohc_rfc5225_decoded_ip
 };
 
 
-/** The values decoded from the bits extracted from ROHCv2 IP-only header */
+/** The values decoded from the bits extracted from ROHCv2 IP/ESP header */
 struct rohc_rfc5225_decoded
 {
 	/** The decoded values related to the IP headers */
@@ -151,222 +151,208 @@ struct rohc_rfc5225_decoded
  * Prototypes of private functions
  */
 
-static bool decomp_rfc5225_ip_new_context(const struct rohc_decomp_ctxt *const context,
-                                          void **const persist_ctxt,
-                                          struct rohc_decomp_volat_ctxt *const volat_ctxt)
+static bool decomp_rfc5225_ip_esp_new_context(const struct rohc_decomp_ctxt *const context,
+                                              void **const persist_ctxt,
+                                              struct rohc_decomp_volat_ctxt *const volat_ctxt)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static void decomp_rfc5225_ip_free_context(struct rohc_decomp_rfc5225_ip_ctxt *const rfc5225_ctxt,
-                                           const struct rohc_decomp_volat_ctxt *const volat_ctxt)
+static void decomp_rfc5225_ip_esp_free_context(struct rohc_decomp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt,
+                                               const struct rohc_decomp_volat_ctxt *const volat_ctxt)
 	__attribute__((nonnull(1, 2)));
 
-static rohc_packet_t decomp_rfc5225_ip_detect_pkt_type(const struct rohc_decomp_ctxt *const context,
-                                                       const uint8_t *const rohc_packet,
-                                                       const size_t rohc_length,
-                                                       const size_t large_cid_len)
+static rohc_packet_t decomp_rfc5225_ip_esp_detect_pkt_type(const struct rohc_decomp_ctxt *const context,
+                                                           const uint8_t *const rohc_packet,
+                                                           const size_t rohc_length,
+                                                           const size_t large_cid_len)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static bool decomp_rfc5225_ip_parse_pkt(const struct rohc_decomp_ctxt *const context,
-                                        const struct rohc_buf rohc_packet,
-                                        const size_t large_cid_len,
-                                        rohc_packet_t *const packet_type,
-                                        struct rohc_decomp_crc *const extr_crc,
-                                        struct rohc_rfc5225_bits *const bits,
-                                        size_t *const rohc_hdr_len)
+static bool decomp_rfc5225_ip_esp_parse_pkt(const struct rohc_decomp_ctxt *const context,
+                                            const struct rohc_buf rohc_packet,
+                                            const size_t large_cid_len,
+                                            rohc_packet_t *const packet_type,
+                                            struct rohc_decomp_crc *const extr_crc,
+                                            struct rohc_rfc5225_bits *const bits,
+                                            size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 4, 5, 6, 7)));
 
-static void decomp_rfc5225_ip_reset_extr_bits(const struct rohc_decomp_ctxt *const ctxt,
-                                              struct rohc_rfc5225_bits *const bits)
+static void decomp_rfc5225_ip_esp_reset_extr_bits(const struct rohc_decomp_ctxt *const ctxt,
+                                                  struct rohc_rfc5225_bits *const bits)
 	__attribute__((nonnull(1, 2)));
 
-static bool decomp_rfc5225_ip_parse_ir(const struct rohc_decomp_ctxt *const ctxt,
-                                       const struct rohc_buf rohc_pkt,
-                                       const size_t large_cid_len,
-                                       struct rohc_decomp_crc *const extr_crc,
-                                       struct rohc_rfc5225_bits *const bits,
-                                       size_t *const rohc_hdr_len)
+static bool decomp_rfc5225_ip_esp_parse_ir(const struct rohc_decomp_ctxt *const ctxt,
+                                           const struct rohc_buf rohc_pkt,
+                                           const size_t large_cid_len,
+                                           struct rohc_decomp_crc *const extr_crc,
+                                           struct rohc_rfc5225_bits *const bits,
+                                           size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 4, 5, 6)));
 
-static bool decomp_rfc5225_ip_parse_co_repair(const struct rohc_decomp_ctxt *const ctxt,
-                                              const struct rohc_buf rohc_pkt,
-                                              const size_t large_cid_len,
-                                              struct rohc_decomp_crc *const hdr_crc,
-                                              struct rohc_rfc5225_bits *const bits,
-                                              size_t *const rohc_hdr_len)
+static bool decomp_rfc5225_ip_esp_parse_co_repair(const struct rohc_decomp_ctxt *const ctxt,
+                                                  const struct rohc_buf rohc_pkt,
+                                                  const size_t large_cid_len,
+                                                  struct rohc_decomp_crc *const hdr_crc,
+                                                  struct rohc_rfc5225_bits *const bits,
+                                                  size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 4, 5, 6)));
 
-static bool decomp_rfc5225_ip_parse_co(const struct rohc_decomp_ctxt *const ctxt,
-                                       const struct rohc_buf rohc_pkt,
-                                       const size_t large_cid_len,
-                                       const rohc_packet_t packet_type,
-                                       struct rohc_decomp_crc *const extr_crc,
-                                       struct rohc_rfc5225_bits *const bits,
-                                       size_t *const rohc_hdr_len)
+static bool decomp_rfc5225_ip_esp_parse_co(const struct rohc_decomp_ctxt *const ctxt,
+                                           const struct rohc_buf rohc_pkt,
+                                           const size_t large_cid_len,
+                                           const rohc_packet_t packet_type,
+                                           struct rohc_decomp_crc *const extr_crc,
+                                           struct rohc_rfc5225_bits *const bits,
+                                           size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 5, 6, 7)));
 
-static bool decomp_rfc5225_ip_parse_pt_0_crc3(const struct rohc_decomp_ctxt *const ctxt,
-                                              const uint8_t *const rohc_pkt,
-                                              const size_t rohc_len,
-                                              struct rohc_decomp_crc *const extr_crc,
-                                              struct rohc_rfc5225_bits *const bits,
-                                              size_t *const rohc_hdr_len)
+static bool decomp_rfc5225_ip_esp_parse_pt_0_crc3(const struct rohc_decomp_ctxt *const ctxt,
+                                                  const uint8_t *const rohc_pkt,
+                                                  const size_t rohc_len,
+                                                  struct rohc_decomp_crc *const extr_crc,
+                                                  struct rohc_rfc5225_bits *const bits,
+                                                  size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5, 6)));
 
-static bool decomp_rfc5225_ip_parse_pt_0_crc7(const struct rohc_decomp_ctxt *const ctxt,
-                                              const uint8_t *const rohc_pkt,
-                                              const size_t rohc_len,
-                                              struct rohc_decomp_crc *const extr_crc,
-                                              struct rohc_rfc5225_bits *const bits,
-                                              size_t *const rohc_hdr_len)
+static bool decomp_rfc5225_ip_esp_parse_pt_0_crc7(const struct rohc_decomp_ctxt *const ctxt,
+                                                  const uint8_t *const rohc_pkt,
+                                                  const size_t rohc_len,
+                                                  struct rohc_decomp_crc *const extr_crc,
+                                                  struct rohc_rfc5225_bits *const bits,
+                                                  size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
 
-static bool decomp_rfc5225_ip_parse_pt_1_seq_id(const struct rohc_decomp_ctxt *const ctxt,
-                                                const uint8_t *const rohc_pkt,
-                                                const size_t rohc_len,
-                                                struct rohc_decomp_crc *const extr_crc,
-                                                struct rohc_rfc5225_bits *const bits,
-                                                size_t *const rohc_hdr_len)
+static bool decomp_rfc5225_ip_esp_parse_pt_1_seq_id(const struct rohc_decomp_ctxt *const ctxt,
+                                                    const uint8_t *const rohc_pkt,
+                                                    const size_t rohc_len,
+                                                    struct rohc_decomp_crc *const extr_crc,
+                                                    struct rohc_rfc5225_bits *const bits,
+                                                    size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
 
-static bool decomp_rfc5225_ip_parse_pt_2_seq_id(const struct rohc_decomp_ctxt *const ctxt,
-                                                const uint8_t *const rohc_pkt,
-                                                const size_t rohc_len,
-                                                struct rohc_decomp_crc *const extr_crc,
-                                                struct rohc_rfc5225_bits *const bits,
-                                                size_t *const rohc_hdr_len)
+static bool decomp_rfc5225_ip_esp_parse_pt_2_seq_id(const struct rohc_decomp_ctxt *const ctxt,
+                                                    const uint8_t *const rohc_pkt,
+                                                    const size_t rohc_len,
+                                                    struct rohc_decomp_crc *const extr_crc,
+                                                    struct rohc_rfc5225_bits *const bits,
+                                                    size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
 
-static bool decomp_rfc5225_ip_parse_co_common(const struct rohc_decomp_ctxt *const ctxt,
-                                              const uint8_t *const rohc_pkt,
-                                              const size_t rohc_len,
-                                              struct rohc_decomp_crc *const extr_crc,
-                                              struct rohc_rfc5225_bits *const bits,
-                                              size_t *const rohc_hdr_len)
+static bool decomp_rfc5225_ip_esp_parse_co_common(const struct rohc_decomp_ctxt *const ctxt,
+                                                  const uint8_t *const rohc_pkt,
+                                                  const size_t rohc_len,
+                                                  struct rohc_decomp_crc *const extr_crc,
+                                                  struct rohc_rfc5225_bits *const bits,
+                                                  size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
 
 /* static chain */
-static bool decomp_rfc5225_ip_parse_static_chain(const struct rohc_decomp_ctxt *const ctxt,
+static bool decomp_rfc5225_ip_esp_parse_static_chain(const struct rohc_decomp_ctxt *const ctxt,
+                                                     const uint8_t *const rohc_pkt,
+                                                     const size_t rohc_len,
+                                                     struct rohc_rfc5225_bits *const bits,
+                                                     size_t *const parsed_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
+static int decomp_rfc5225_ip_esp_parse_static_ip(const struct rohc_decomp_ctxt *const ctxt,
                                                  const uint8_t *const rohc_pkt,
                                                  const size_t rohc_len,
-                                                 struct rohc_rfc5225_bits *const bits,
-                                                 size_t *const parsed_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
-static int decomp_rfc5225_ip_parse_static_ip(const struct rohc_decomp_ctxt *const ctxt,
-                                             const uint8_t *const rohc_pkt,
-                                             const size_t rohc_len,
-                                             struct rohc_rfc5225_ip_bits *const ip_bits,
-                                             bool *const is_innermost)
+                                                 struct rohc_rfc5225_ip_bits *const ip_bits,
+                                                 bool *const is_innermost)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
 
 /* dynamic chain */
-static bool decomp_rfc5225_ip_parse_dyn_chain(const struct rohc_decomp_ctxt *const ctxt,
+static bool decomp_rfc5225_ip_esp_parse_dyn_chain(const struct rohc_decomp_ctxt *const ctxt,
+                                                  const uint8_t *const rohc_pkt,
+                                                  const size_t rohc_len,
+                                                  struct rohc_rfc5225_bits *const bits,
+                                                  size_t *const parsed_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
+static int decomp_rfc5225_ip_esp_parse_dyn_ip(const struct rohc_decomp_ctxt *const ctxt,
                                               const uint8_t *const rohc_pkt,
                                               const size_t rohc_len,
+                                              const bool is_innermost,
                                               struct rohc_rfc5225_bits *const bits,
-                                              size_t *const parsed_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
-static int decomp_rfc5225_ip_parse_dyn_ip(const struct rohc_decomp_ctxt *const ctxt,
-                                          const uint8_t *const rohc_pkt,
-                                          const size_t rohc_len,
-                                          const bool is_innermost,
-                                          struct rohc_rfc5225_bits *const bits,
-                                          struct rohc_rfc5225_ip_bits *const ip_bits)
-	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6)));
-static int decomp_rfc5225_ip_parse_dyn_ipv4(const struct rohc_decomp_ctxt *const ctxt,
-                                            const uint8_t *const rohc_pkt,
-                                            const size_t rohc_len,
-                                            const bool is_innermost,
-                                            struct rohc_rfc5225_bits *const bits,
-                                            struct rohc_rfc5225_ip_bits *const ip_bits)
-	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6)));
-static int decomp_rfc5225_ip_parse_dyn_ipv6(const struct rohc_decomp_ctxt *const ctxt,
-                                            const uint8_t *const rohc_pkt,
-                                            const size_t rohc_len,
-                                            const bool is_innermost,
-                                            struct rohc_rfc5225_bits *const bits,
-                                            struct rohc_rfc5225_ip_bits *const ip_bits)
+                                              struct rohc_rfc5225_ip_bits *const ip_bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6)));
 
 /* irregular chain */
-static bool decomp_rfc5225_ip_parse_irreg_chain(const struct rohc_decomp_ctxt *const ctxt,
+static bool decomp_rfc5225_ip_esp_parse_irreg_chain(const struct rohc_decomp_ctxt *const ctxt,
+                                                    const uint8_t *const rohc_pkt,
+                                                    const size_t rohc_len,
+                                                    const rohc_ip_id_behavior_t innermost_ip_id_behavior,
+                                                    struct rohc_rfc5225_bits *const bits,
+                                                    size_t *const parsed_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6)));
+static int decomp_rfc5225_ip_esp_parse_irreg_ip(const struct rohc_decomp_ctxt *const ctxt,
                                                 const uint8_t *const rohc_pkt,
                                                 const size_t rohc_len,
-                                                const rohc_ip_id_behavior_t innermost_ip_id_behavior,
-                                                struct rohc_rfc5225_bits *const bits,
-                                                size_t *const parsed_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6)));
-static int decomp_rfc5225_ip_parse_irreg_ip(const struct rohc_decomp_ctxt *const ctxt,
-                                            const uint8_t *const rohc_pkt,
-                                            const size_t rohc_len,
-                                            const bool is_innermost,
-                                            const rohc_ip_id_behavior_t ip_id_behavior,
-                                            const bool outer_ip_flag,
-                                            struct rohc_rfc5225_ip_bits *const ip_bits)
+                                                const bool is_innermost,
+                                                const rohc_ip_id_behavior_t ip_id_behavior,
+                                                const bool outer_ip_flag,
+                                                struct rohc_rfc5225_ip_bits *const ip_bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 7)));
 
 /* decoding parsed fields */
-static bool decomp_rfc5225_ip_decode_bits(const struct rohc_decomp_ctxt *const ctxt,
-                                          const struct rohc_rfc5225_bits *const bits,
-                                          const size_t payload_len,
-                                          struct rohc_rfc5225_decoded *const decoded)
+static bool decomp_rfc5225_ip_esp_decode_bits(const struct rohc_decomp_ctxt *const ctxt,
+                                              const struct rohc_rfc5225_bits *const bits,
+                                              const size_t payload_len,
+                                              struct rohc_rfc5225_decoded *const decoded)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
-static bool decomp_rfc5225_ip_decode_bits_ip_hdrs(const struct rohc_decomp_ctxt *const ctxt,
-                                                  const struct rohc_rfc5225_bits *const bits,
-                                                  struct rohc_rfc5225_decoded *const decoded)
+static bool decomp_rfc5225_ip_esp_decode_bits_ip_hdrs(const struct rohc_decomp_ctxt *const ctxt,
+                                                      const struct rohc_rfc5225_bits *const bits,
+                                                      struct rohc_rfc5225_decoded *const decoded)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
-static bool decomp_rfc5225_ip_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const context,
-                                                 const struct rohc_rfc5225_ip_bits *const ip_bits,
-                                                 const ip_context_t *const ip_ctxt,
-                                                 const uint16_t decoded_msn,
-                                                 struct rohc_rfc5225_decoded_ip *const ip_decoded)
+static bool decomp_rfc5225_ip_esp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const context,
+                                                     const struct rohc_rfc5225_ip_bits *const ip_bits,
+                                                     const ip_context_t *const ip_ctxt,
+                                                     const uint16_t decoded_msn,
+                                                     struct rohc_rfc5225_decoded_ip *const ip_decoded)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
 /* building decompressed headers */
-static rohc_status_t decomp_rfc5225_ip_build_hdrs(const struct rohc_decomp *const decomp,
-                                                  const struct rohc_decomp_ctxt *const context,
-                                                  const rohc_packet_t packet_type,
-                                                  const struct rohc_decomp_crc *const extr_crc,
-                                                  const struct rohc_rfc5225_decoded *const decoded,
-                                                  const size_t payload_len,
-                                                  struct rohc_buf *const uncomp_hdrs,
-                                                  size_t *const uncomp_hdrs_len)
+static rohc_status_t decomp_rfc5225_ip_esp_build_hdrs(const struct rohc_decomp *const decomp,
+                                                      const struct rohc_decomp_ctxt *const context,
+                                                      const rohc_packet_t packet_type,
+                                                      const struct rohc_decomp_crc *const extr_crc,
+                                                      const struct rohc_rfc5225_decoded *const decoded,
+                                                      const size_t payload_len,
+                                                      struct rohc_buf *const uncomp_hdrs,
+                                                      size_t *const uncomp_hdrs_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5, 7, 8)));
-static bool decomp_rfc5225_ip_build_ip_hdrs(const struct rohc_decomp_ctxt *const context,
-                                            const struct rohc_rfc5225_decoded *const decoded,
-                                            struct rohc_buf *const uncomp_packet,
-                                            size_t *const ip_hdrs_len)
+static bool decomp_rfc5225_ip_esp_build_ip_hdrs(const struct rohc_decomp_ctxt *const context,
+                                                const struct rohc_rfc5225_decoded *const decoded,
+                                                struct rohc_buf *const uncomp_packet,
+                                                size_t *const ip_hdrs_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
-static bool decomp_rfc5225_ip_build_ip_hdr(const struct rohc_decomp_ctxt *const ctxt,
-                                           const struct rohc_rfc5225_decoded_ip *const decoded,
-                                           struct rohc_buf *const uncomp_pkt,
-                                           size_t *const ip_hdr_len)
+static bool decomp_rfc5225_ip_esp_build_ip_hdr(const struct rohc_decomp_ctxt *const ctxt,
+                                               const struct rohc_rfc5225_decoded_ip *const decoded,
+                                               struct rohc_buf *const uncomp_pkt,
+                                               size_t *const ip_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
-static bool decomp_rfc5225_ip_build_ipv4_hdr(const struct rohc_decomp_ctxt *const ctxt,
-                                             const struct rohc_rfc5225_decoded_ip *const decoded,
-                                             struct rohc_buf *const uncomp_pkt,
-                                             size_t *const ip_hdr_len)
+static bool decomp_rfc5225_ip_esp_build_ipv4_hdr(const struct rohc_decomp_ctxt *const ctxt,
+                                                 const struct rohc_rfc5225_decoded_ip *const decoded,
+                                                 struct rohc_buf *const uncomp_pkt,
+                                                 size_t *const ip_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
-static bool decomp_rfc5225_ip_build_ipv6_hdr(const struct rohc_decomp_ctxt *const ctxt,
-                                             const struct rohc_rfc5225_decoded_ip *const decoded,
-                                             struct rohc_buf *const uncomp_pkt,
-                                             size_t *const ip_hdr_len)
+static bool decomp_rfc5225_ip_esp_build_ipv6_hdr(const struct rohc_decomp_ctxt *const ctxt,
+                                                 const struct rohc_rfc5225_decoded_ip *const decoded,
+                                                 struct rohc_buf *const uncomp_pkt,
+                                                 size_t *const ip_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 
 /* updating context */
-static void decomp_rfc5225_ip_update_ctxt(struct rohc_decomp_ctxt *const context,
-                                          const struct rohc_rfc5225_decoded *const decoded,
-                                          const size_t payload_len,
-                                          bool *const do_change_mode)
+static void decomp_rfc5225_ip_esp_update_ctxt(struct rohc_decomp_ctxt *const context,
+                                              const struct rohc_rfc5225_decoded *const decoded,
+                                              const size_t payload_len,
+                                              bool *const do_change_mode)
 	__attribute__((nonnull(1, 2, 4)));
 
-static bool decomp_rfc5225_ip_attempt_repair(const struct rohc_decomp *const decomp,
-                                             const struct rohc_decomp_ctxt *const context,
-                                             const struct rohc_ts pkt_arrival_time,
-                                             struct rohc_decomp_crc_corr_ctxt *const crc_corr,
-                                             void *const extr_bits)
+static bool decomp_rfc5225_ip_esp_attempt_repair(const struct rohc_decomp *const decomp,
+                                                 const struct rohc_decomp_ctxt *const context,
+                                                 const struct rohc_ts pkt_arrival_time,
+                                                 struct rohc_decomp_crc_corr_ctxt *const crc_corr,
+                                                 void *const extr_bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
 
-static uint32_t decomp_rfc5225_ip_get_sn(const struct rohc_decomp_ctxt *const context)
+static uint32_t decomp_rfc5225_ip_esp_get_sn(const struct rohc_decomp_ctxt *const context)
 	__attribute__((warn_unused_result, nonnull(1), pure));
 
 /*
@@ -374,7 +360,7 @@ static uint32_t decomp_rfc5225_ip_get_sn(const struct rohc_decomp_ctxt *const co
  */
 
 /**
- * @brief Create the ROHCv2 IP-only volatile and persistent parts of the context
+ * @brief Create the ROHCv2 IP/ESP volatile and persistent parts of the context
  *
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
@@ -382,21 +368,21 @@ static uint32_t decomp_rfc5225_ip_get_sn(const struct rohc_decomp_ctxt *const co
  * @param context            The decompression context
  * @param[out] persist_ctxt  The persistent part of the decompression context
  * @param[out] volat_ctxt    The volatile part of the decompression context
- * @return                   true if the ROHCv2 IP-only context was successfully
+ * @return                   true if the ROHCv2 IP/ESP context was successfully
  *                           created, false if a problem occurred
  */
-static bool decomp_rfc5225_ip_new_context(const struct rohc_decomp_ctxt *const context,
-                                          void **const persist_ctxt,
-                                          struct rohc_decomp_volat_ctxt *const volat_ctxt)
+static bool decomp_rfc5225_ip_esp_new_context(const struct rohc_decomp_ctxt *const context,
+                                              void **const persist_ctxt,
+                                              struct rohc_decomp_volat_ctxt *const volat_ctxt)
 {
-	struct rohc_decomp_rfc5225_ip_ctxt *rfc5225_ctxt;
+	struct rohc_decomp_rfc5225_ip_esp_ctxt *rfc5225_ctxt;
 
 	/* allocate memory for the context */
-	*persist_ctxt = calloc(1, sizeof(struct rohc_decomp_rfc5225_ip_ctxt));
+	*persist_ctxt = calloc(1, sizeof(struct rohc_decomp_rfc5225_ip_esp_ctxt));
 	if((*persist_ctxt) == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "not enough memory for the ROHCv2 IP-only decompression context");
+		           "not enough memory for the ROHCv2 IP/ESP decompression context");
 		goto error;
 	}
 	rfc5225_ctxt = *persist_ctxt;
@@ -416,14 +402,14 @@ static bool decomp_rfc5225_ip_new_context(const struct rohc_decomp_ctxt *const c
 	if(volat_ctxt->extr_bits == NULL)
 	{
 		rohc_decomp_warn(context, "failed to allocate memory for the volatile part "
-		                 "of one of the ROHCv2 IP-only decompression context");
+		                 "of one of the ROHCv2 IP/ESP decompression context");
 		goto destroy_context;
 	}
 	volat_ctxt->decoded_values = malloc(sizeof(struct rohc_rfc5225_decoded));
 	if(volat_ctxt->decoded_values == NULL)
 	{
 		rohc_decomp_warn(context, "failed to allocate memory for the volatile part "
-		                 "of one of the ROHCv2 IP-only decompression context");
+		                 "of one of the ROHCv2 IP/ESP decompression context");
 		goto free_extr_bits;
 	}
 
@@ -440,18 +426,18 @@ error:
 
 /**
  * @brief Destroy profile-specific data, nothing to destroy for the
- *        ROHCv2 IP-only profile
+ *        ROHCv2 IP/ESP profile
  *
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param rfc5225_ctxt  The persistent decompression context for the IP-only profile
+ * @param rfc5225_ctxt  The persistent decompression context for the IP/ESP profile
  * @param volat_ctxt    The volatile part of the decompression context
  */
-static void decomp_rfc5225_ip_free_context(struct rohc_decomp_rfc5225_ip_ctxt *const rfc5225_ctxt,
-                                           const struct rohc_decomp_volat_ctxt *const volat_ctxt)
+static void decomp_rfc5225_ip_esp_free_context(struct rohc_decomp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt,
+                                               const struct rohc_decomp_volat_ctxt *const volat_ctxt)
 {
-	/* free the ROHCv2 IP-only decompression context itself */
+	/* free the ROHCv2 IP/ESP decompression context itself */
 	free(rfc5225_ctxt);
 
 	/* free the volatile part of the decompression context */
@@ -461,7 +447,7 @@ static void decomp_rfc5225_ip_free_context(struct rohc_decomp_rfc5225_ip_ctxt *c
 
 
 /**
- * @brief Detect the type of ROHC packet for the ROHCv2 IP-only profile
+ * @brief Detect the type of ROHC packet for the ROHCv2 IP/ESP profile
  *
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
@@ -472,10 +458,10 @@ static void decomp_rfc5225_ip_free_context(struct rohc_decomp_rfc5225_ip_ctxt *c
  * @param large_cid_len  The length of the optional large CID field
  * @return               The packet type
  */
-static rohc_packet_t decomp_rfc5225_ip_detect_pkt_type(const struct rohc_decomp_ctxt *const context,
-                                                       const uint8_t *const rohc_packet,
-                                                       const size_t rohc_length,
-                                                       const size_t large_cid_len __attribute__((unused)))
+static rohc_packet_t decomp_rfc5225_ip_esp_detect_pkt_type(const struct rohc_decomp_ctxt *const context,
+                                                           const uint8_t *const rohc_packet,
+                                                           const size_t rohc_length,
+                                                           const size_t large_cid_len __attribute__((unused)))
 {
 	rohc_packet_t type;
 
@@ -485,7 +471,7 @@ static rohc_packet_t decomp_rfc5225_ip_detect_pkt_type(const struct rohc_decomp_
 		                 "type (len = %zu)", rohc_length);
 		goto error;
 	}
-
+	
 	if(GET_BIT_7(rohc_packet) == 0) /* 1-bit discriminator '0' */
 	{
 		type = ROHC_PACKET_PT_0_CRC3;
@@ -527,7 +513,7 @@ error:
 
 
 /**
- * @brief Parse one ROHC packet for the ROHCv2 IP-only profile
+ * @brief Parse one ROHC packet for the ROHCv2 IP/ESP profile
  *
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
@@ -543,23 +529,23 @@ error:
  * @return                     true if parsing was successful,
  *                             false if packet was malformed
  */
-static bool decomp_rfc5225_ip_parse_pkt(const struct rohc_decomp_ctxt *const context,
-                                        const struct rohc_buf rohc_packet,
-                                        const size_t large_cid_len,
-                                        rohc_packet_t *const packet_type,
-                                        struct rohc_decomp_crc *const extr_crc,
-                                        struct rohc_rfc5225_bits *const bits,
-                                        size_t *const rohc_hdr_len)
+static bool decomp_rfc5225_ip_esp_parse_pkt(const struct rohc_decomp_ctxt *const context,
+                                            const struct rohc_buf rohc_packet,
+                                            const size_t large_cid_len,
+                                            rohc_packet_t *const packet_type,
+                                            struct rohc_decomp_crc *const extr_crc,
+                                            struct rohc_rfc5225_bits *const bits,
+                                            size_t *const rohc_hdr_len)
 {
 	bool status;
 
 	/* reset all extracted bits */
-	decomp_rfc5225_ip_reset_extr_bits(context, bits);
+	decomp_rfc5225_ip_esp_reset_extr_bits(context, bits);
 
 	if((*packet_type) == ROHC_PACKET_IR)
 	{
-		status = decomp_rfc5225_ip_parse_ir(context, rohc_packet, large_cid_len,
-		                                    extr_crc, bits, rohc_hdr_len);
+		status = decomp_rfc5225_ip_esp_parse_ir(context, rohc_packet, large_cid_len,
+		                                        extr_crc, bits, rohc_hdr_len);
 		if(status == false)
 		{
 			rohc_decomp_warn(context, "failed to parse IR packet");
@@ -568,8 +554,8 @@ static bool decomp_rfc5225_ip_parse_pkt(const struct rohc_decomp_ctxt *const con
 	}
 	else if((*packet_type) == ROHC_PACKET_CO_REPAIR)
 	{
-		status = decomp_rfc5225_ip_parse_co_repair(context, rohc_packet, large_cid_len,
-		                                           extr_crc, bits, rohc_hdr_len);
+		status = decomp_rfc5225_ip_esp_parse_co_repair(context, rohc_packet, large_cid_len,
+		                                               extr_crc, bits, rohc_hdr_len);
 		if(status == false)
 		{
 			rohc_decomp_warn(context, "failed to parse co_repair packet");
@@ -578,9 +564,9 @@ static bool decomp_rfc5225_ip_parse_pkt(const struct rohc_decomp_ctxt *const con
 	}
 	else /* parse the other CO headers */
 	{
-		status = decomp_rfc5225_ip_parse_co(context, rohc_packet,
-		                                    large_cid_len, *packet_type,
-		                                    extr_crc, bits, rohc_hdr_len);
+		status = decomp_rfc5225_ip_esp_parse_co(context, rohc_packet,
+		                                        large_cid_len, *packet_type,
+		                                        extr_crc, bits, rohc_hdr_len);
 		if(status == false)
 		{
 			rohc_decomp_warn(context, "failed to parse CO packet");
@@ -601,10 +587,10 @@ error:
  * @param ctxt       The decompression context
  * @param[out] bits  The extracted bits to reset
  */
-static void decomp_rfc5225_ip_reset_extr_bits(const struct rohc_decomp_ctxt *const ctxt,
-                                              struct rohc_rfc5225_bits *const bits)
+static void decomp_rfc5225_ip_esp_reset_extr_bits(const struct rohc_decomp_ctxt *const ctxt,
+                                                  struct rohc_rfc5225_bits *const bits)
 {
-	const struct rohc_decomp_rfc5225_ip_ctxt *const rfc5225_ctxt =
+	const struct rohc_decomp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt =
 		ctxt->persist_ctxt;
 	size_t i;
 
@@ -649,7 +635,7 @@ static void decomp_rfc5225_ip_reset_extr_bits(const struct rohc_decomp_ctxt *con
 
 
 /**
- * @brief Parse one IR packet for the ROHCv2 IP-only profile
+ * @brief Parse one IR packet for the ROHCv2 IP/ESP profile
  *
  * @param ctxt               The decompression context
  * @param rohc_pkt           The ROHC packet to decode
@@ -660,12 +646,12 @@ static void decomp_rfc5225_ip_reset_extr_bits(const struct rohc_decomp_ctxt *con
  * @return                   true if parsing was successful,
  *                           false if packet was malformed
  */
-static bool decomp_rfc5225_ip_parse_ir(const struct rohc_decomp_ctxt *const ctxt,
-                                       const struct rohc_buf rohc_pkt,
-                                       const size_t large_cid_len,
-                                       struct rohc_decomp_crc *const extr_crc,
-                                       struct rohc_rfc5225_bits *const bits,
-                                       size_t *const rohc_hdr_len)
+static bool decomp_rfc5225_ip_esp_parse_ir(const struct rohc_decomp_ctxt *const ctxt,
+                                           const struct rohc_buf rohc_pkt,
+                                           const size_t large_cid_len,
+                                           struct rohc_decomp_crc *const extr_crc,
+                                           struct rohc_rfc5225_bits *const bits,
+                                           size_t *const rohc_hdr_len)
 {
 	const uint8_t *remain_data = rohc_buf_data(rohc_pkt);
 	size_t remain_len = rohc_pkt.len;
@@ -699,8 +685,8 @@ static bool decomp_rfc5225_ip_parse_ir(const struct rohc_decomp_ctxt *const ctxt
 	remain_len--;
 
 	/* parse static chain */
-	if(!decomp_rfc5225_ip_parse_static_chain(ctxt, remain_data, remain_len,
-	                                         bits, &static_chain_len))
+	if(!decomp_rfc5225_ip_esp_parse_static_chain(ctxt, remain_data, remain_len,
+	                                             bits, &static_chain_len))
 	{
 		rohc_decomp_warn(ctxt, "failed to parse the static chain");
 		goto error;
@@ -709,8 +695,8 @@ static bool decomp_rfc5225_ip_parse_ir(const struct rohc_decomp_ctxt *const ctxt
 	remain_len -= static_chain_len;
 
 	/* parse dynamic chain */
-	if(!decomp_rfc5225_ip_parse_dyn_chain(ctxt, remain_data, remain_len,
-	                                      bits, &dyn_chain_len))
+	if(!decomp_rfc5225_ip_esp_parse_dyn_chain(ctxt, remain_data, remain_len,
+	                                          bits, &dyn_chain_len))
 	{
 		rohc_decomp_warn(ctxt, "failed to parse the dynamic chain");
 		goto error;
@@ -729,7 +715,7 @@ error:
 
 
 /**
- * @brief Parse one co_repair packet for the ROHCv2 IP-only profile
+ * @brief Parse one co_repair packet for the ROHCv2 IP/ESP profile
  *
  * @param ctxt               The decompression context
  * @param rohc_pkt           The ROHC packet to decode
@@ -740,12 +726,12 @@ error:
  * @return                   true if parsing was successful,
  *                           false if packet was malformed
  */
-static bool decomp_rfc5225_ip_parse_co_repair(const struct rohc_decomp_ctxt *const ctxt,
-                                              const struct rohc_buf rohc_pkt,
-                                              const size_t large_cid_len,
-                                              struct rohc_decomp_crc *const hdr_crc,
-                                              struct rohc_rfc5225_bits *const bits,
-                                              size_t *const rohc_hdr_len)
+static bool decomp_rfc5225_ip_esp_parse_co_repair(const struct rohc_decomp_ctxt *const ctxt,
+                                                  const struct rohc_buf rohc_pkt,
+                                                  const size_t large_cid_len,
+                                                  struct rohc_decomp_crc *const hdr_crc,
+                                                  struct rohc_rfc5225_bits *const bits,
+                                                  size_t *const rohc_hdr_len)
 {
 	const uint8_t *remain_data = rohc_buf_data(rohc_pkt);
 	size_t remain_len = rohc_pkt.len;
@@ -768,7 +754,7 @@ static bool decomp_rfc5225_ip_parse_co_repair(const struct rohc_decomp_ctxt *con
 	assert(remain_data[0] == ROHC_PACKET_TYPE_CO_REPAIR);
 	remain_data++;
 	remain_len--;
-
+	
 	/* skip any large CID bytes */
 	remain_data += large_cid_len;
 	remain_len -= large_cid_len;
@@ -807,8 +793,8 @@ static bool decomp_rfc5225_ip_parse_co_repair(const struct rohc_decomp_ctxt *con
 	}
 
 	/* parse dynamic chain */
-	if(!decomp_rfc5225_ip_parse_dyn_chain(ctxt, remain_data, remain_len,
-	                                      bits, &dyn_chain_len))
+	if(!decomp_rfc5225_ip_esp_parse_dyn_chain(ctxt, remain_data, remain_len,
+	                                          bits, &dyn_chain_len))
 	{
 		rohc_decomp_warn(ctxt, "failed to parse the dynamic chain");
 		goto error;
@@ -827,7 +813,7 @@ error:
 
 
 /**
- * @brief Parse CO packet for the ROHCv2 IP-only profile
+ * @brief Parse CO packet for the ROHCv2 IP/ESP profile
  *
  * @param ctxt               The decompression context
  * @param rohc_pkt           The ROHC packet to decode
@@ -839,15 +825,15 @@ error:
  * @return                   true if parsing was successful,
  *                           false if packet was malformed
  */
-static bool decomp_rfc5225_ip_parse_co(const struct rohc_decomp_ctxt *const ctxt,
-                                       const struct rohc_buf rohc_pkt,
-                                       const size_t large_cid_len,
-                                       const rohc_packet_t packet_type,
-                                       struct rohc_decomp_crc *const extr_crc,
-                                       struct rohc_rfc5225_bits *const bits,
-                                       size_t *const rohc_hdr_len)
+static bool decomp_rfc5225_ip_esp_parse_co(const struct rohc_decomp_ctxt *const ctxt,
+                                           const struct rohc_buf rohc_pkt,
+                                           const size_t large_cid_len,
+                                           const rohc_packet_t packet_type,
+                                           struct rohc_decomp_crc *const extr_crc,
+                                           struct rohc_rfc5225_bits *const bits,
+                                           size_t *const rohc_hdr_len)
 {
-	const struct rohc_decomp_rfc5225_ip_ctxt *const rfc5225_ctxt =
+	const struct rohc_decomp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt =
 		ctxt->persist_ctxt;
 	const size_t packed_rohc_packet_max_len =
 		sizeof(co_common_base_t) +
@@ -857,7 +843,7 @@ static bool decomp_rfc5225_ip_parse_co(const struct rohc_decomp_ctxt *const ctxt
 		1 /* MSN */ +
 		2 /* innermost IP-ID */;
 	uint8_t packed_rohc_packet[packed_rohc_packet_max_len];
-
+	
 	const uint8_t *remain_data = rohc_buf_data(rohc_pkt);
 	size_t remain_len = rohc_pkt.len;
 
@@ -889,28 +875,28 @@ static bool decomp_rfc5225_ip_parse_co(const struct rohc_decomp_ctxt *const ctxt
 
 	if(packet_type == ROHC_PACKET_PT_0_CRC3)
 	{
-		status = decomp_rfc5225_ip_parse_pt_0_crc3(ctxt, remain_data, remain_len,
-		                                           extr_crc, bits, rohc_hdr_len);
+		status = decomp_rfc5225_ip_esp_parse_pt_0_crc3(ctxt, remain_data, remain_len,
+		                                               extr_crc, bits, rohc_hdr_len);
 	}
 	else if(packet_type == ROHC_PACKET_NORTP_PT_0_CRC7)
 	{
-		status = decomp_rfc5225_ip_parse_pt_0_crc7(ctxt, remain_data, remain_len,
-		                                           extr_crc, bits, rohc_hdr_len);
+		status = decomp_rfc5225_ip_esp_parse_pt_0_crc7(ctxt, remain_data, remain_len,
+		                                               extr_crc, bits, rohc_hdr_len);
 	}
 	else if(packet_type == ROHC_PACKET_NORTP_PT_1_SEQ_ID)
 	{
-		status = decomp_rfc5225_ip_parse_pt_1_seq_id(ctxt, remain_data, remain_len,
-		                                             extr_crc, bits, rohc_hdr_len);
+		status = decomp_rfc5225_ip_esp_parse_pt_1_seq_id(ctxt, remain_data, remain_len,
+		                                                extr_crc, bits, rohc_hdr_len);
 	}
 	else if(packet_type == ROHC_PACKET_NORTP_PT_2_SEQ_ID)
 	{
-		status = decomp_rfc5225_ip_parse_pt_2_seq_id(ctxt, remain_data, remain_len,
-		                                             extr_crc, bits, rohc_hdr_len);
+		status = decomp_rfc5225_ip_esp_parse_pt_2_seq_id(ctxt, remain_data, remain_len,
+		                                                 extr_crc, bits, rohc_hdr_len);
 	}
 	else if(packet_type == ROHC_PACKET_CO_COMMON)
 	{
-		status = decomp_rfc5225_ip_parse_co_common(ctxt, remain_data, remain_len,
-		                                           extr_crc, bits, rohc_hdr_len);
+		status = decomp_rfc5225_ip_esp_parse_co_common(ctxt, remain_data, remain_len,
+		                                               extr_crc, bits, rohc_hdr_len);
 	}
 	else
 	{
@@ -952,9 +938,9 @@ static bool decomp_rfc5225_ip_parse_co(const struct rohc_decomp_ctxt *const ctxt
 	/* parse irregular chain */
 	{
 		size_t irreg_chain_len;
-		if(!decomp_rfc5225_ip_parse_irreg_chain(ctxt, remain_data, remain_len,
-		                                        innermost_ip_id_behavior, bits,
-		                                        &irreg_chain_len))
+		if(!decomp_rfc5225_ip_esp_parse_irreg_chain(ctxt, remain_data, remain_len,
+		                                            innermost_ip_id_behavior, bits,
+		                                            &irreg_chain_len))
 		{
 			rohc_decomp_warn(ctxt, "failed to parse the irregular chain");
 			goto error;
@@ -974,7 +960,7 @@ error:
 
 
 /**
- * @brief Parse one pt_0_crc3 packet for the ROHCv2 IP-only profile
+ * @brief Parse one pt_0_crc3 packet for the ROHCv2 IP/ESP profile
  *
  * @param ctxt               The decompression context
  * @param rohc_pkt           The ROHC packet to decode
@@ -985,12 +971,12 @@ error:
  * @return                   true if parsing was successful,
  *                           false if packet was malformed
  */
-static bool decomp_rfc5225_ip_parse_pt_0_crc3(const struct rohc_decomp_ctxt *const ctxt,
-                                              const uint8_t *const rohc_pkt,
-                                              const size_t rohc_len,
-                                              struct rohc_decomp_crc *const extr_crc,
-                                              struct rohc_rfc5225_bits *const bits,
-                                              size_t *const rohc_hdr_len)
+static bool decomp_rfc5225_ip_esp_parse_pt_0_crc3(const struct rohc_decomp_ctxt *const ctxt,
+                                                  const uint8_t *const rohc_pkt,
+                                                  const size_t rohc_len,
+                                                  struct rohc_decomp_crc *const extr_crc,
+                                                  struct rohc_rfc5225_bits *const bits,
+                                                  size_t *const rohc_hdr_len)
 {
 	const pt_0_crc3_t *const pt_0_crc3 = (pt_0_crc3_t *) rohc_pkt;
 
@@ -1022,7 +1008,7 @@ error:
 
 
 /**
- * @brief Parse one pt_0_crc7 packet for the ROHCv2 IP-only profile
+ * @brief Parse one pt_0_crc7 packet for the ROHCv2 IP/ESP profile
  *
  * @param ctxt               The decompression context
  * @param rohc_pkt           The ROHC packet to decode
@@ -1033,12 +1019,12 @@ error:
  * @return                   true if parsing was successful,
  *                           false if packet was malformed
  */
-static bool decomp_rfc5225_ip_parse_pt_0_crc7(const struct rohc_decomp_ctxt *const ctxt,
-                                              const uint8_t *const rohc_pkt,
-                                              const size_t rohc_len,
-                                              struct rohc_decomp_crc *const extr_crc,
-                                              struct rohc_rfc5225_bits *const bits,
-                                              size_t *const rohc_hdr_len)
+static bool decomp_rfc5225_ip_esp_parse_pt_0_crc7(const struct rohc_decomp_ctxt *const ctxt,
+                                                  const uint8_t *const rohc_pkt,
+                                                  const size_t rohc_len,
+                                                  struct rohc_decomp_crc *const extr_crc,
+                                                  struct rohc_rfc5225_bits *const bits,
+                                                  size_t *const rohc_hdr_len)
 {
 	const pt_0_crc7_t *const pt_0_crc7 = (pt_0_crc7_t *) rohc_pkt;
 
@@ -1070,7 +1056,7 @@ error:
 
 
 /**
- * @brief Parse one pt_1_seq_id packet for the ROHCv2 IP-only profile
+ * @brief Parse one pt_1_seq_id packet for the ROHCv2 IP/ESP profile
  *
  * @param ctxt               The decompression context
  * @param rohc_pkt           The ROHC packet to decode
@@ -1081,12 +1067,12 @@ error:
  * @return                   true if parsing was successful,
  *                           false if packet was malformed
  */
-static bool decomp_rfc5225_ip_parse_pt_1_seq_id(const struct rohc_decomp_ctxt *const ctxt,
-                                                const uint8_t *const rohc_pkt,
-                                                const size_t rohc_len,
-                                                struct rohc_decomp_crc *const extr_crc,
-                                                struct rohc_rfc5225_bits *const bits,
-                                                size_t *const rohc_hdr_len)
+static bool decomp_rfc5225_ip_esp_parse_pt_1_seq_id(const struct rohc_decomp_ctxt *const ctxt,
+                                                    const uint8_t *const rohc_pkt,
+                                                    const size_t rohc_len,
+                                                    struct rohc_decomp_crc *const extr_crc,
+                                                    struct rohc_rfc5225_bits *const bits,
+                                                    size_t *const rohc_hdr_len)
 {
 	struct rohc_rfc5225_ip_bits *const innermost_ip_bits =
 		&(bits->ip[bits->ip_nr - 1]);
@@ -1102,10 +1088,10 @@ static bool decomp_rfc5225_ip_parse_pt_1_seq_id(const struct rohc_decomp_ctxt *c
 		                 rohc_len);
 		goto error;
 	}
-
+	
 	assert(pt_1_seq_id->discriminator == 0x5);
-	innermost_ip_bits->id.bits = pt_1_seq_id->ip_id;
-	innermost_ip_bits->id.bits_nr = 4;
+	innermost_ip_bits->id.bits = pt_1_seq_id->ip_id; 
+	innermost_ip_bits->id.bits_nr = 4; 
 	innermost_ip_bits->id.p = rohc_interval_get_rfc5225_id_id_p(4);
 	extr_crc->type = ROHC_CRC_TYPE_3;
 	extr_crc->bits = pt_1_seq_id->header_crc;
@@ -1123,7 +1109,7 @@ error:
 
 
 /**
- * @brief Parse one pt_2_seq_id packet for the ROHCv2 IP-only profile
+ * @brief Parse one pt_2_seq_id packet for the ROHCv2 IP/ESP profile
  *
  * @param ctxt               The decompression context
  * @param rohc_pkt           The ROHC packet to decode
@@ -1134,12 +1120,12 @@ error:
  * @return                   true if parsing was successful,
  *                           false if packet was malformed
  */
-static bool decomp_rfc5225_ip_parse_pt_2_seq_id(const struct rohc_decomp_ctxt *const ctxt,
-                                                const uint8_t *const rohc_pkt,
-                                                const size_t rohc_len,
-                                                struct rohc_decomp_crc *const extr_crc,
-                                                struct rohc_rfc5225_bits *const bits,
-                                                size_t *const rohc_hdr_len)
+static bool decomp_rfc5225_ip_esp_parse_pt_2_seq_id(const struct rohc_decomp_ctxt *const ctxt,
+                                                    const uint8_t *const rohc_pkt,
+                                                    const size_t rohc_len,
+                                                    struct rohc_decomp_crc *const extr_crc,
+                                                    struct rohc_rfc5225_bits *const bits,
+                                                    size_t *const rohc_hdr_len)
 {
 	struct rohc_rfc5225_ip_bits *const innermost_ip_bits =
 		&(bits->ip[bits->ip_nr - 1]);
@@ -1155,11 +1141,11 @@ static bool decomp_rfc5225_ip_parse_pt_2_seq_id(const struct rohc_decomp_ctxt *c
 		                 rohc_len);
 		goto error;
 	}
-
+	
 	assert(pt_2_seq_id->discriminator == 0x6);
 	innermost_ip_bits->id.bits =
 		((pt_2_seq_id->ip_id_1 << 1) | pt_2_seq_id->ip_id_2) & 0x3f;
-	innermost_ip_bits->id.bits_nr = 6;
+	innermost_ip_bits->id.bits_nr = 6; 
 	innermost_ip_bits->id.p = rohc_interval_get_rfc5225_id_id_p(6);
 	extr_crc->type = ROHC_CRC_TYPE_7;
 	extr_crc->bits = pt_2_seq_id->header_crc;
@@ -1177,7 +1163,7 @@ error:
 
 
 /**
- * @brief Parse one co_common packet for the ROHCv2 IP-only profile
+ * @brief Parse one co_common packet for the ROHCv2 IP/ESP profile
  *
  * @param ctxt               The decompression context
  * @param rohc_pkt           The ROHC packet to decode
@@ -1188,14 +1174,14 @@ error:
  * @return                   true if parsing was successful,
  *                           false if packet was malformed
  */
-static bool decomp_rfc5225_ip_parse_co_common(const struct rohc_decomp_ctxt *const ctxt,
-                                              const uint8_t *const rohc_pkt,
-                                              const size_t rohc_len,
-                                              struct rohc_decomp_crc *const extr_crc,
-                                              struct rohc_rfc5225_bits *const bits,
-                                              size_t *const rohc_hdr_len)
+static bool decomp_rfc5225_ip_esp_parse_co_common(const struct rohc_decomp_ctxt *const ctxt,
+                                                  const uint8_t *const rohc_pkt,
+                                                  const size_t rohc_len,
+                                                  struct rohc_decomp_crc *const extr_crc,
+                                                  struct rohc_rfc5225_bits *const bits,
+                                                  size_t *const rohc_hdr_len)
 {
-	struct rohc_decomp_rfc5225_ip_ctxt *const rfc5225_ctxt = ctxt->persist_ctxt;
+	struct rohc_decomp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt = ctxt->persist_ctxt;
 	const ip_context_t *const innermost_ip_ctxt =
 		&(rfc5225_ctxt->ip_contexts[rfc5225_ctxt->ip_contexts_nr - 1]);
 	struct rohc_rfc5225_ip_bits *const innermost_ip_bits =
@@ -1217,7 +1203,7 @@ static bool decomp_rfc5225_ip_parse_co_common(const struct rohc_decomp_ctxt *con
 		                 "(len = %zu)", remain_len);
 		goto error;
 	}
-
+	
 	assert(co_common->discriminator == 0xfa);
 
 	/* CRC-7 over uncompressed header */
@@ -1390,11 +1376,11 @@ error:
  * @return                 true in the static chain was successfully parsed,
  *                         false if the ROHC packet was malformed
  */
-static bool decomp_rfc5225_ip_parse_static_chain(const struct rohc_decomp_ctxt *const ctxt,
-                                                 const uint8_t *const rohc_pkt,
-                                                 const size_t rohc_len,
-                                                 struct rohc_rfc5225_bits *const bits,
-                                                 size_t *const parsed_len)
+static bool decomp_rfc5225_ip_esp_parse_static_chain(const struct rohc_decomp_ctxt *const ctxt,
+                                                     const uint8_t *const rohc_pkt,
+                                                     const size_t rohc_len,
+                                                     struct rohc_rfc5225_bits *const bits,
+                                                     size_t *const parsed_len)
 {
 	const uint8_t *remain_data = rohc_pkt;
 	size_t remain_len = rohc_len;
@@ -1410,8 +1396,8 @@ static bool decomp_rfc5225_ip_parse_static_chain(const struct rohc_decomp_ctxt *
 	{
 		struct rohc_rfc5225_ip_bits *const ip_bits = &(bits->ip[ip_hdrs_nr]);
 
-		ret = decomp_rfc5225_ip_parse_static_ip(ctxt, remain_data, remain_len,
-		                                        ip_bits, &is_innermost);
+		ret = decomp_rfc5225_ip_esp_parse_static_ip(ctxt, remain_data, remain_len,
+		                                            ip_bits, &is_innermost);
 		if(ret < 0)
 		{
 			rohc_decomp_warn(ctxt, "malformed ROHC packet: malformed IP static part");
@@ -1453,11 +1439,11 @@ error:
  * @return                   The length of static IP header in case of success,
  *                           -1 if an error occurs
  */
-static int decomp_rfc5225_ip_parse_static_ip(const struct rohc_decomp_ctxt *const ctxt,
-                                             const uint8_t *const rohc_pkt,
-                                             const size_t rohc_len,
-                                             struct rohc_rfc5225_ip_bits *const ip_bits,
-                                             bool *const is_innermost)
+static int decomp_rfc5225_ip_esp_parse_static_ip(const struct rohc_decomp_ctxt *const ctxt,
+                                                 const uint8_t *const rohc_pkt,
+                                                 const size_t rohc_len,
+                                                 struct rohc_rfc5225_ip_bits *const ip_bits,
+                                                 bool *const is_innermost)
 {
 	const uint8_t *remain_data = rohc_pkt;
 	size_t remain_len = rohc_len;
@@ -1617,11 +1603,11 @@ error:
  * @return                 true in the dynamic chain was successfully parsed,
  *                         false if the ROHC packet was malformed
  */
-static bool decomp_rfc5225_ip_parse_dyn_chain(const struct rohc_decomp_ctxt *const ctxt,
-                                              const uint8_t *const rohc_pkt,
-                                              const size_t rohc_len,
-                                              struct rohc_rfc5225_bits *const bits,
-                                              size_t *const parsed_len)
+static bool decomp_rfc5225_ip_esp_parse_dyn_chain(const struct rohc_decomp_ctxt *const ctxt,
+                                                  const uint8_t *const rohc_pkt,
+                                                  const size_t rohc_len,
+                                                  struct rohc_rfc5225_bits *const bits,
+                                                  size_t *const parsed_len)
 {
 	const uint8_t *remain_data = rohc_pkt;
 	size_t remain_len = rohc_len;
@@ -1637,8 +1623,8 @@ static bool decomp_rfc5225_ip_parse_dyn_chain(const struct rohc_decomp_ctxt *con
 		struct rohc_rfc5225_ip_bits *const ip_bits = &(bits->ip[ip_hdrs_nr]);
 		const bool is_innermost = !!(ip_hdrs_nr == (bits->ip_nr - 1));
 
-		ret = decomp_rfc5225_ip_parse_dyn_ip(ctxt, remain_data, remain_len,
-		                                     is_innermost, bits, ip_bits);
+		ret = decomp_rfc5225_ip_esp_parse_dyn_ip(ctxt, remain_data, remain_len,
+		                                         is_innermost, bits, ip_bits);
 		if(ret < 0)
 		{
 			rohc_decomp_warn(ctxt, "malformed ROHC packet: malformed IP dynamic part");
@@ -1671,294 +1657,221 @@ error:
  * @return               The length of dynamic IP header in case of success,
  *                       -1 if an error occurs
  */
-static int decomp_rfc5225_ip_parse_dyn_ip(const struct rohc_decomp_ctxt *const ctxt,
-                                          const uint8_t *const rohc_pkt,
-                                          const size_t rohc_len,
-                                          const bool is_innermost,
-                                          struct rohc_rfc5225_bits *const bits,
-                                          struct rohc_rfc5225_ip_bits *const ip_bits)
-{
-	size_t size;
-	int ret;
-
-	rohc_decomp_debug(ctxt, "parse IP dynamic part");
-
-	if(ip_bits->version == IPV4)
-	{
-		ret = decomp_rfc5225_ip_parse_dyn_ipv4(ctxt, rohc_pkt, rohc_len,
-		                                       is_innermost, bits, ip_bits);
-		if(ret < 0)
-		{
-			rohc_decomp_warn(ctxt, "malformed ROHC packet: malformed IPv4 dynamic part");
-			goto error;
-		}
-		size = ret;
-	}
-	else /* IPv6 header */
-	{
-		ret = decomp_rfc5225_ip_parse_dyn_ipv6(ctxt, rohc_pkt, rohc_len,
-		                                       is_innermost, bits, ip_bits);
-		if(ret < 0)
-		{
-			rohc_decomp_warn(ctxt, "malformed ROHC packet: malformed IPv6 dynamic part");
-			goto error;
-		}
-		size = ret;
-	}
-
-	rohc_decomp_dump_buf(ctxt, "IP dynamic part", rohc_pkt, size);
-
-	return size;
-
-error:
-	return -1;
-}
-
-
-/**
- * @brief Decode the dynamic IPv4 header of the ROHC packet
- *
- * @param ctxt           The decompression context
- * @param rohc_pkt       The remaining part of the ROHC packet
- * @param rohc_len       The remaining length (in bytes) of the ROHC packet
- * @param is_innermost   Whether the IP header is the innermost IP header or not
- * @param[out] bits      The bits extracted from the dynamic chain
- * @param[out] ip_bits   The bits extracted from the IP part of the dynamic chain
- * @return               The length of dynamic IP header in case of success,
- *                       -1 if an error occurs
- */
-static int decomp_rfc5225_ip_parse_dyn_ipv4(const struct rohc_decomp_ctxt *const ctxt,
-                                            const uint8_t *const rohc_pkt,
-                                            const size_t rohc_len,
-                                            const bool is_innermost,
-                                            struct rohc_rfc5225_bits *const bits,
-                                            struct rohc_rfc5225_ip_bits *const ip_bits)
+static int decomp_rfc5225_ip_esp_parse_dyn_ip(const struct rohc_decomp_ctxt *const ctxt,
+                                              const uint8_t *const rohc_pkt,
+                                              const size_t rohc_len,
+                                              const bool is_innermost,
+                                              struct rohc_rfc5225_bits *const bits,
+                                              struct rohc_rfc5225_ip_bits *const ip_bits)
 {
 	const uint8_t *remain_data = rohc_pkt;
 	size_t remain_len = rohc_len;
 	size_t size = 0;
 
-	if(is_innermost)
+	rohc_decomp_debug(ctxt, "parse IP dynamic part");
+
+	if(ip_bits->version == IPV4)
 	{
-		const ipv4_endpoint_innermost_dynamic_noipid_t *const ipv4_dynamic =
-			(ipv4_endpoint_innermost_dynamic_noipid_t *) remain_data;
-
-		if(remain_len < sizeof(ipv4_endpoint_innermost_dynamic_noipid_t))
+		if(is_innermost)
 		{
-			rohc_decomp_warn(ctxt, "malformed ROHC packet: too short for "
-			                 "IPv4 dynamic part");
-			goto error;
-		}
+			const ipv4_endpoint_innermost_dynamic_noipid_t *const ipv4_dynamic =
+				(ipv4_endpoint_innermost_dynamic_noipid_t *) remain_data;
 
-		if(ipv4_dynamic->reserved != 0)
-		{
-			rohc_decomp_warn(ctxt, "malformed ROHC packet: reserved field is "
-			                 "not zero, but 0x%x", ipv4_dynamic->reserved);
-			goto error;
-		}
-		bits->reorder_ratio = ipv4_dynamic->reorder_ratio;
-		bits->reorder_ratio_nr = 2;
-		ip_bits->df = ipv4_dynamic->df;
-		ip_bits->df_nr = 1;
-		ip_bits->id_behavior = ipv4_dynamic->ip_id_behavior_innermost;
-		ip_bits->id_behavior_nr = 2;
-		rohc_decomp_debug(ctxt, "ip_id_behavior_innermost = %d",
-		                  ip_bits->id_behavior);
-		ip_bits->tos_tc_bits = ipv4_dynamic->tos_tc;
-		ip_bits->tos_tc_bits_nr = 8;
-		ip_bits->ttl_hl = ipv4_dynamic->ttl_hopl;
-		ip_bits->ttl_hl_nr = 8;
-		rohc_decomp_debug(ctxt, "TOS/TC = 0x%x, ttl_hopl = 0x%x",
-		                  ip_bits->tos_tc_bits, ip_bits->ttl_hl);
-
-		if(ipv4_dynamic->ip_id_behavior_innermost != ROHC_IP_ID_BEHAVIOR_ZERO)
-		{
-			const ipv4_endpoint_innermost_dynamic_ipid_t *const ipv4_dynamic_ipid =
-				(ipv4_endpoint_innermost_dynamic_ipid_t *) remain_data;
-
-			if(remain_len < sizeof(ipv4_endpoint_innermost_dynamic_ipid_t))
+			if(remain_len < sizeof(ipv4_endpoint_innermost_dynamic_noipid_t))
 			{
 				rohc_decomp_warn(ctxt, "malformed ROHC packet: too short for "
 				                 "IPv4 dynamic part");
 				goto error;
 			}
 
-			ip_bits->id.bits = rohc_ntoh16(ipv4_dynamic_ipid->ip_id_innermost);
-			ip_bits->id.bits_nr = 16;
-			rohc_decomp_debug(ctxt, "IP-ID = 0x%04x", ip_bits->id.bits);
+			if(ipv4_dynamic->reserved != 0)
+			{
+				rohc_decomp_warn(ctxt, "malformed ROHC packet: reserved field is "
+				                 "not zero, but 0x%x", ipv4_dynamic->reserved);
+				goto error;
+			}
+			bits->reorder_ratio = ipv4_dynamic->reorder_ratio;
+			bits->reorder_ratio_nr = 2;
+			ip_bits->df = ipv4_dynamic->df;
+			ip_bits->df_nr = 1;
+			ip_bits->id_behavior = ipv4_dynamic->ip_id_behavior_innermost;
+			ip_bits->id_behavior_nr = 2;
+			rohc_decomp_debug(ctxt, "ip_id_behavior_innermost = %d",
+			                  ip_bits->id_behavior);
+			ip_bits->tos_tc_bits = ipv4_dynamic->tos_tc;
+			ip_bits->tos_tc_bits_nr = 8;
+			ip_bits->ttl_hl = ipv4_dynamic->ttl_hopl;
+			ip_bits->ttl_hl_nr = 8;
+			rohc_decomp_debug(ctxt, "TOS/TC = 0x%x, ttl_hopl = 0x%x",
+			                  ip_bits->tos_tc_bits, ip_bits->ttl_hl);
 
-			bits->msn.bits = rohc_ntoh16(ipv4_dynamic_ipid->msn);
-			bits->msn.bits_nr = 16;
-			rohc_decomp_debug(ctxt, "%zu bits of MSN 0x%04x",
-			                  bits->msn.bits_nr, bits->msn.bits);
+			if(ipv4_dynamic->ip_id_behavior_innermost != ROHC_IP_ID_BEHAVIOR_ZERO)
+			{
+				const ipv4_endpoint_innermost_dynamic_ipid_t *const ipv4_dynamic_ipid =
+					(ipv4_endpoint_innermost_dynamic_ipid_t *) remain_data;
 
-			size += sizeof(ipv4_endpoint_innermost_dynamic_ipid_t);
+				if(remain_len < sizeof(ipv4_endpoint_innermost_dynamic_ipid_t))
+				{
+					rohc_decomp_warn(ctxt, "malformed ROHC packet: too short for "
+					                 "IPv4 dynamic part");
+					goto error;
+				}
+
+				ip_bits->id.bits = rohc_ntoh16(ipv4_dynamic_ipid->ip_id_innermost);
+				ip_bits->id.bits_nr = 16;
+				rohc_decomp_debug(ctxt, "IP-ID = 0x%04x", ip_bits->id.bits);
+
+				bits->msn.bits = rohc_ntoh16(ipv4_dynamic_ipid->msn);
+				bits->msn.bits_nr = 16;
+				rohc_decomp_debug(ctxt, "%zu bits of MSN 0x%04x",
+				                  bits->msn.bits_nr, bits->msn.bits);
+
+				size += sizeof(ipv4_endpoint_innermost_dynamic_ipid_t);
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
-			remain_data += sizeof(ipv4_endpoint_innermost_dynamic_ipid_t);
-			remain_len -= sizeof(ipv4_endpoint_innermost_dynamic_ipid_t);
+				remain_data += sizeof(ipv4_endpoint_innermost_dynamic_ipid_t);
+				remain_len -= sizeof(ipv4_endpoint_innermost_dynamic_ipid_t);
 #endif
-		}
-		else
-		{
-			bits->msn.bits = rohc_ntoh16(ipv4_dynamic->msn);
-			bits->msn.bits_nr = 16;
-			rohc_decomp_debug(ctxt, "%zu bits of MSN 0x%04x",
-			                  bits->msn.bits_nr, bits->msn.bits);
+			}
+			else
+			{
+				bits->msn.bits = rohc_ntoh16(ipv4_dynamic->msn);
+				bits->msn.bits_nr = 16;
+				rohc_decomp_debug(ctxt, "%zu bits of MSN 0x%04x",
+				                  bits->msn.bits_nr, bits->msn.bits);
 
-			size += sizeof(ipv4_endpoint_innermost_dynamic_noipid_t);
+				size += sizeof(ipv4_endpoint_innermost_dynamic_noipid_t);
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
-			remain_data += sizeof(ipv4_endpoint_innermost_dynamic_noipid_t);
-			remain_len -= sizeof(ipv4_endpoint_innermost_dynamic_noipid_t);
+				remain_data += sizeof(ipv4_endpoint_innermost_dynamic_noipid_t);
+				remain_len -= sizeof(ipv4_endpoint_innermost_dynamic_noipid_t);
 #endif
+			}
 		}
-	}
-	else /* any outer IPv4 header */
-	{
-		const ipv4_outer_dynamic_noipid_t *const ipv4_dynamic =
-			(ipv4_outer_dynamic_noipid_t *) remain_data;
-
-		if(remain_len < sizeof(ipv4_outer_dynamic_noipid_t))
+		else /* any outer IPv4 header */
 		{
-			rohc_decomp_warn(ctxt, "malformed ROHC packet: too short for "
-			                 "IPv4 dynamic part");
-			goto error;
-		}
+			const ipv4_outer_dynamic_noipid_t *const ipv4_dynamic =
+				(ipv4_outer_dynamic_noipid_t *) remain_data;
 
-		if(ipv4_dynamic->reserved != 0)
-		{
-			rohc_decomp_warn(ctxt, "malformed ROHC packet: reserved field is "
-			                 "not zero, but 0x%x", ipv4_dynamic->reserved);
-			goto error;
-		}
-		ip_bits->df = ipv4_dynamic->df;
-		ip_bits->df_nr = 1;
-		ip_bits->id_behavior = ipv4_dynamic->ip_id_behavior_outer;
-		ip_bits->id_behavior_nr = 2;
-		rohc_decomp_debug(ctxt, "ip_id_behavior_outer = %d", ip_bits->id_behavior);
-		ip_bits->tos_tc_bits = ipv4_dynamic->tos_tc;
-		ip_bits->tos_tc_bits_nr = 8;
-		ip_bits->ttl_hl = ipv4_dynamic->ttl_hopl;
-		ip_bits->ttl_hl_nr = 8;
-		rohc_decomp_debug(ctxt, "TOS/TC = 0x%x, ttl_hopl = 0x%x",
-		                  ip_bits->tos_tc_bits, ip_bits->ttl_hl);
-
-		if(ipv4_dynamic->ip_id_behavior_outer != ROHC_IP_ID_BEHAVIOR_ZERO)
-		{
-			const ipv4_outer_dynamic_ipid_t *const ipv4_dynamic_ipid =
-				(ipv4_outer_dynamic_ipid_t *) remain_data;
-
-			if(remain_len < sizeof(ipv4_outer_dynamic_ipid_t))
+			if(remain_len < sizeof(ipv4_outer_dynamic_noipid_t))
 			{
 				rohc_decomp_warn(ctxt, "malformed ROHC packet: too short for "
-					                 "IPv4 dynamic part");
+				                 "IPv4 dynamic part");
 				goto error;
 			}
 
-			ip_bits->id.bits = rohc_ntoh16(ipv4_dynamic_ipid->ip_id_outer);
-			ip_bits->id.bits_nr = 16;
-			rohc_decomp_debug(ctxt, "IP-ID = 0x%04x", ip_bits->id.bits);
+			if(ipv4_dynamic->reserved != 0)
+			{
+				rohc_decomp_warn(ctxt, "malformed ROHC packet: reserved field is "
+				                 "not zero, but 0x%x", ipv4_dynamic->reserved);
+				goto error;
+			}
+			ip_bits->df = ipv4_dynamic->df;
+			ip_bits->df_nr = 1;
+			ip_bits->id_behavior = ipv4_dynamic->ip_id_behavior_outer;
+			ip_bits->id_behavior_nr = 2;
+			rohc_decomp_debug(ctxt, "ip_id_behavior_outer = %d",
+			                  ip_bits->id_behavior);
+			ip_bits->tos_tc_bits = ipv4_dynamic->tos_tc;
+			ip_bits->tos_tc_bits_nr = 8;
+			ip_bits->ttl_hl = ipv4_dynamic->ttl_hopl;
+			ip_bits->ttl_hl_nr = 8;
+			rohc_decomp_debug(ctxt, "TOS/TC = 0x%x, ttl_hopl = 0x%x",
+			                  ip_bits->tos_tc_bits, ip_bits->ttl_hl);
 
-			size += sizeof(ipv4_outer_dynamic_ipid_t);
+			if(ipv4_dynamic->ip_id_behavior_outer != ROHC_IP_ID_BEHAVIOR_ZERO)
+			{
+				const ipv4_outer_dynamic_ipid_t *const ipv4_dynamic_ipid =
+					(ipv4_outer_dynamic_ipid_t *) remain_data;
+
+				if(remain_len < sizeof(ipv4_outer_dynamic_ipid_t))
+				{
+					rohc_decomp_warn(ctxt, "malformed ROHC packet: too short for "
+					                 "IPv4 dynamic part");
+					goto error;
+				}
+
+				ip_bits->id.bits = rohc_ntoh16(ipv4_dynamic_ipid->ip_id_outer);
+				ip_bits->id.bits_nr = 16;
+				rohc_decomp_debug(ctxt, "IP-ID = 0x%04x", ip_bits->id.bits);
+
+				size += sizeof(ipv4_outer_dynamic_ipid_t);
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
-			remain_data += sizeof(ipv4_outer_dynamic_ipid_t);
-			remain_len -= sizeof(ipv4_outer_dynamic_ipid_t);
+				remain_data += sizeof(ipv4_outer_dynamic_ipid_t);
+				remain_len -= sizeof(ipv4_outer_dynamic_ipid_t);
 #endif
-		}
-		else
-		{
-			size += sizeof(ipv4_outer_dynamic_noipid_t);
+			}
+			else
+			{
+				size += sizeof(ipv4_outer_dynamic_noipid_t);
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
-			remain_data += sizeof(ipv4_outer_dynamic_noipid_t);
-			remain_len -= sizeof(ipv4_outer_dynamic_noipid_t);
+				remain_data += sizeof(ipv4_outer_dynamic_noipid_t);
+				remain_len -= sizeof(ipv4_outer_dynamic_noipid_t);
 #endif
+			}
 		}
 	}
-
-	return size;
-
-error:
-	return -1;
-}
-
-
-/**
- * @brief Decode the dynamic IPv6 header of the ROHC packet
- *
- * @param ctxt           The decompression context
- * @param rohc_pkt       The remaining part of the ROHC packet
- * @param rohc_len       The remaining length (in bytes) of the ROHC packet
- * @param is_innermost   Whether the IP header is the innermost IP header or not
- * @param[out] bits      The bits extracted from the dynamic chain
- * @param[out] ip_bits   The bits extracted from the IP part of the dynamic chain
- * @return               The length of dynamic IP header in case of success,
- *                       -1 if an error occurs
- */
-static int decomp_rfc5225_ip_parse_dyn_ipv6(const struct rohc_decomp_ctxt *const ctxt,
-                                            const uint8_t *const rohc_pkt,
-                                            const size_t rohc_len,
-                                            const bool is_innermost,
-                                            struct rohc_rfc5225_bits *const bits,
-                                            struct rohc_rfc5225_ip_bits *const ip_bits)
-{
-	const uint8_t *remain_data = rohc_pkt;
-	size_t remain_len = rohc_len;
-	const ipv6_regular_dynamic_t *const ipv6_dynamic =
-		(ipv6_regular_dynamic_t *) remain_data;
-	size_t size = 0;
-
-	if(remain_len < sizeof(ipv6_regular_dynamic_t))
+	else /* IPv6 header */
 	{
-		rohc_decomp_warn(ctxt, "malformed ROHC packet: too short for "
-		                 "IPv6 dynamic part");
-		goto error;
-	}
+		const ipv6_regular_dynamic_t *const ipv6_dynamic =
+			(ipv6_regular_dynamic_t *) remain_data;
 
-	ip_bits->tos_tc_bits = ipv6_dynamic->tos_tc;
-	ip_bits->tos_tc_bits_nr = 8;
-	ip_bits->ttl_hl = ipv6_dynamic->ttl_hopl;
-	ip_bits->ttl_hl_nr = 8;
-	ip_bits->id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
-	ip_bits->id_behavior_nr = 2;
-
-	if(is_innermost)
-	{
-		const ipv6_endpoint_dynamic_t *const ipv6_endpoint_dynamic =
-			(ipv6_endpoint_dynamic_t *) remain_data;
-
-		if(remain_len < sizeof(ipv6_endpoint_dynamic_t))
+		if(remain_len < sizeof(ipv6_regular_dynamic_t))
 		{
 			rohc_decomp_warn(ctxt, "malformed ROHC packet: too short for "
 			                 "IPv6 dynamic part");
 			goto error;
 		}
 
-		if(ipv6_endpoint_dynamic->reserved != 0)
-		{
-			rohc_decomp_warn(ctxt, "malformed ROHC packet: reserved field is not "
-			                 "zero, but 0x%x", ipv6_endpoint_dynamic->reserved);
-			goto error;
-		}
-		bits->reorder_ratio = ipv6_endpoint_dynamic->reorder_ratio;
-		bits->reorder_ratio_nr = 2;
-		bits->msn.bits = rohc_ntoh16(ipv6_endpoint_dynamic->msn);
-		bits->msn.bits_nr = 16;
-		rohc_decomp_debug(ctxt, "%zu bits of MSN 0x%04x",
-		                  bits->msn.bits_nr, bits->msn.bits);
+		ip_bits->tos_tc_bits = ipv6_dynamic->tos_tc;
+		ip_bits->tos_tc_bits_nr = 8;
+		ip_bits->ttl_hl = ipv6_dynamic->ttl_hopl;
+		ip_bits->ttl_hl_nr = 8;
+		ip_bits->id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
+		ip_bits->id_behavior_nr = 2;
 
-		size += sizeof(ipv6_endpoint_dynamic_t);
+		if(is_innermost)
+		{
+			const ipv6_endpoint_dynamic_t *const ipv6_endpoint_dynamic =
+				(ipv6_endpoint_dynamic_t *) remain_data;
+
+			if(remain_len < sizeof(ipv6_endpoint_dynamic_t))
+			{
+				rohc_decomp_warn(ctxt, "malformed ROHC packet: too short for "
+				                 "IPv6 dynamic part");
+				goto error;
+			}
+
+			if(ipv6_endpoint_dynamic->reserved != 0)
+			{
+				rohc_decomp_warn(ctxt, "malformed ROHC packet: reserved field is not "
+				                 "zero, but 0x%x", ipv6_endpoint_dynamic->reserved);
+				goto error;
+			}
+			bits->reorder_ratio = ipv6_endpoint_dynamic->reorder_ratio;
+			bits->reorder_ratio_nr = 2;
+			bits->msn.bits = rohc_ntoh16(ipv6_endpoint_dynamic->msn);
+			bits->msn.bits_nr = 16;
+			rohc_decomp_debug(ctxt, "%zu bits of MSN 0x%04x",
+			                  bits->msn.bits_nr, bits->msn.bits);
+
+			size += sizeof(ipv6_endpoint_dynamic_t);
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
-		remain_data += sizeof(ipv6_endpoint_dynamic_t);
-		remain_len -= sizeof(ipv6_endpoint_dynamic_t);
+			remain_data += sizeof(ipv6_endpoint_dynamic_t);
+			remain_len -= sizeof(ipv6_endpoint_dynamic_t);
 #endif
-	}
-	else
-	{
-		size += sizeof(ipv6_regular_dynamic_t);
+		}
+		else
+		{
+			size += sizeof(ipv6_regular_dynamic_t);
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
-		remain_data += sizeof(ipv6_regular_dynamic_t);
-		remain_len -= sizeof(ipv6_regular_dynamic_t);
+			remain_data += sizeof(ipv6_regular_dynamic_t);
+			remain_len -= sizeof(ipv6_regular_dynamic_t);
 #endif
+		}
+
+		/* TODO: handle IPv6 extension headers */
 	}
+
+	rohc_decomp_dump_buf(ctxt, "IP dynamic part", rohc_pkt, size);
 
 	return size;
 
@@ -1979,14 +1892,14 @@ error:
  * @return                 true in the irregular chain was successfully parsed,
  *                         false if the ROHC packet was malformed
  */
-static bool decomp_rfc5225_ip_parse_irreg_chain(const struct rohc_decomp_ctxt *const ctxt,
-                                                const uint8_t *const rohc_pkt,
-                                                const size_t rohc_len,
-                                                const rohc_ip_id_behavior_t innermost_ip_id_behavior,
-                                                struct rohc_rfc5225_bits *const bits,
-                                                size_t *const parsed_len)
+static bool decomp_rfc5225_ip_esp_parse_irreg_chain(const struct rohc_decomp_ctxt *const ctxt,
+                                                    const uint8_t *const rohc_pkt,
+                                                    const size_t rohc_len,
+                                                    const rohc_ip_id_behavior_t innermost_ip_id_behavior,
+                                                    struct rohc_rfc5225_bits *const bits,
+                                                    size_t *const parsed_len)
 {
-	const struct rohc_decomp_rfc5225_ip_ctxt *const rfc5225_ctxt =
+	const struct rohc_decomp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt =
 		ctxt->persist_ctxt;
 
 	const uint8_t *remain_data = rohc_pkt;
@@ -2027,9 +1940,9 @@ static bool decomp_rfc5225_ip_parse_irreg_chain(const struct rohc_decomp_ctxt *c
 			ip_id_behavior = ip_context->ctxt.vx.ip_id_behavior;
 		}
 
-		ret = decomp_rfc5225_ip_parse_irreg_ip(ctxt, remain_data, remain_len,
-		                                       is_innermost, ip_id_behavior,
-		                                       outer_ip_flag, ip_bits);
+		ret = decomp_rfc5225_ip_esp_parse_irreg_ip(ctxt, remain_data, remain_len,
+		                                           is_innermost, ip_id_behavior,
+		                                           outer_ip_flag, ip_bits);
 		if(ret < 0)
 		{
 			rohc_decomp_warn(ctxt, "malformed ROHC packet: malformed IP irregular part");
@@ -2065,13 +1978,13 @@ error:
  * @return               The length of dynamic IP header in case of success,
  *                       -1 if an error occurs
  */
-static int decomp_rfc5225_ip_parse_irreg_ip(const struct rohc_decomp_ctxt *const ctxt,
-                                            const uint8_t *const rohc_pkt,
-                                            const size_t rohc_len,
-                                            const bool is_innermost,
-                                            const rohc_ip_id_behavior_t ip_id_behavior,
-                                            const bool outer_ip_flag,
-                                            struct rohc_rfc5225_ip_bits *const ip_bits)
+static int decomp_rfc5225_ip_esp_parse_irreg_ip(const struct rohc_decomp_ctxt *const ctxt,
+                                                const uint8_t *const rohc_pkt,
+                                                const size_t rohc_len,
+                                                const bool is_innermost,
+                                                const rohc_ip_id_behavior_t ip_id_behavior,
+                                                const bool outer_ip_flag,
+                                                struct rohc_rfc5225_ip_bits *const ip_bits)
 {
 
 	const uint8_t *remain_data = rohc_pkt;
@@ -2138,7 +2051,7 @@ error:
 
 
 /**
- * @brief Decode values from extracted bits for the ROHCv2 IP-only profile
+ * @brief Decode values from extracted bits for the ROHCv2 IP/ESP profile
  *
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
@@ -2149,12 +2062,12 @@ error:
  * @param[out] decoded  The corresponding decoded values
  * @return              true if decoding is successful, false otherwise
  */
-static bool decomp_rfc5225_ip_decode_bits(const struct rohc_decomp_ctxt *const ctxt,
-                                          const struct rohc_rfc5225_bits *const bits,
-                                          const size_t payload_len __attribute__((unused)),
-                                          struct rohc_rfc5225_decoded *const decoded)
+static bool decomp_rfc5225_ip_esp_decode_bits(const struct rohc_decomp_ctxt *const ctxt,
+                                              const struct rohc_rfc5225_bits *const bits,
+                                              const size_t payload_len __attribute__((unused)),
+                                              struct rohc_rfc5225_decoded *const decoded)
 {
-	const struct rohc_decomp_rfc5225_ip_ctxt *const rfc5225_ctxt =
+	const struct rohc_decomp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt =
 		ctxt->persist_ctxt;
 
 	/* decode MSN */
@@ -2197,7 +2110,7 @@ static bool decomp_rfc5225_ip_decode_bits(const struct rohc_decomp_ctxt *const c
 	}
 
 	/* decode IP headers */
-	if(!decomp_rfc5225_ip_decode_bits_ip_hdrs(ctxt, bits, decoded))
+	if(!decomp_rfc5225_ip_esp_decode_bits_ip_hdrs(ctxt, bits, decoded))
 	{
 		rohc_decomp_warn(ctxt, "failed to decode bits extracted for IP headers");
 		goto error;
@@ -2256,11 +2169,11 @@ error:
  * @param[out] decoded  The corresponding decoded values
  * @return              true if decoding is successful, false otherwise
  */
-static bool decomp_rfc5225_ip_decode_bits_ip_hdrs(const struct rohc_decomp_ctxt *const ctxt,
-                                                  const struct rohc_rfc5225_bits *const bits,
-                                                  struct rohc_rfc5225_decoded *const decoded)
+static bool decomp_rfc5225_ip_esp_decode_bits_ip_hdrs(const struct rohc_decomp_ctxt *const ctxt,
+                                                      const struct rohc_rfc5225_bits *const bits,
+                                                      struct rohc_rfc5225_decoded *const decoded)
 {
-	const struct rohc_decomp_rfc5225_ip_ctxt *const rfc5225_ctxt =
+	const struct rohc_decomp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt =
 		ctxt->persist_ctxt;
 	size_t ip_hdr_nr;
 
@@ -2274,8 +2187,8 @@ static bool decomp_rfc5225_ip_decode_bits_ip_hdrs(const struct rohc_decomp_ctxt 
 
 		rohc_decomp_debug(ctxt, "decode fields of IP header #%zu", ip_hdr_nr + 1);
 
-		if(!decomp_rfc5225_ip_decode_bits_ip_hdr(ctxt, ip_bits, ip_ctxt,
-		                                         decoded->msn, ip_decoded))
+		if(!decomp_rfc5225_ip_esp_decode_bits_ip_hdr(ctxt, ip_bits, ip_ctxt,
+		                                             decoded->msn, ip_decoded))
 		{
 			rohc_decomp_warn(ctxt, "failed to decode received bits for IP "
 			                 "header #%zu", ip_hdr_nr + 1);
@@ -2303,13 +2216,13 @@ error:
  *
  * TODO: factorize with TCP profile
  */
-static bool decomp_rfc5225_ip_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const ctxt,
-                                                 const struct rohc_rfc5225_ip_bits *const ip_bits,
-                                                 const ip_context_t *const ip_ctxt,
-                                                 const uint16_t decoded_msn,
-                                                 struct rohc_rfc5225_decoded_ip *const ip_decoded)
+static bool decomp_rfc5225_ip_esp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const ctxt,
+                                                     const struct rohc_rfc5225_ip_bits *const ip_bits,
+                                                     const ip_context_t *const ip_ctxt,
+                                                     const uint16_t decoded_msn,
+                                                     struct rohc_rfc5225_decoded_ip *const ip_decoded)
 {
-	const struct rohc_decomp_rfc5225_ip_ctxt *const rfc5225_ctxt =
+	const struct rohc_decomp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt =
 		ctxt->persist_ctxt;
 	rohc_ip_id_behavior_t ip_id_behavior;
 
@@ -2553,7 +2466,7 @@ error:
 
 
 /**
- * @brief Build the uncompressed headers for the ROHCv2 IP-only profile
+ * @brief Build the uncompressed headers for the ROHCv2 IP/ESP profile
  *
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
@@ -2573,24 +2486,25 @@ error:
  *                               \li ROHC_STATUS_OUTPUT_TOO_SMALL if
  *                                   \e uncomp_packet is too small
  */
-static rohc_status_t decomp_rfc5225_ip_build_hdrs(const struct rohc_decomp *const decomp,
-                                                  const struct rohc_decomp_ctxt *const context,
-                                                  const rohc_packet_t packet_type __attribute__((unused)),
-                                                  const struct rohc_decomp_crc *const extr_crc,
-                                                  const struct rohc_rfc5225_decoded *const decoded,
-                                                  const size_t payload_len,
-                                                  struct rohc_buf *const uncomp_hdrs,
-                                                  size_t *const uncomp_hdrs_len)
+static rohc_status_t decomp_rfc5225_ip_esp_build_hdrs(const struct rohc_decomp *const decomp,
+                                                      const struct rohc_decomp_ctxt *const context,
+                                                      const rohc_packet_t packet_type __attribute__((unused)),
+                                                      const struct rohc_decomp_crc *const extr_crc,
+                                                      const struct rohc_rfc5225_decoded *const decoded,
+                                                      const size_t payload_len,
+                                                      struct rohc_buf *const uncomp_hdrs,
+                                                      size_t *const uncomp_hdrs_len)
 {
 	size_t ip_hdrs_len = 0;
 	size_t ip_hdr_nr;
 
-	rohc_decomp_debug(context, "build IP-only headers");
+	rohc_decomp_debug(context, "build IP/ESP headers");
 
 	*uncomp_hdrs_len = 0;
 
 	/* build IP headers */
-	if(!decomp_rfc5225_ip_build_ip_hdrs(context, decoded, uncomp_hdrs, &ip_hdrs_len))
+	if(!decomp_rfc5225_ip_esp_build_ip_hdrs(context, decoded, uncomp_hdrs,
+	                                        &ip_hdrs_len))
 	{
 		rohc_decomp_warn(context, "failed to build uncompressed IP headers");
 		goto error_output_too_small;
@@ -2691,10 +2605,10 @@ error_output_too_small:
  *                          false if the output \e uncomp_packet was not
  *                          large enough
  */
-static bool decomp_rfc5225_ip_build_ip_hdrs(const struct rohc_decomp_ctxt *const ctxt,
-                                            const struct rohc_rfc5225_decoded *const decoded,
-                                            struct rohc_buf *const uncomp_pkt,
-                                            size_t *const ip_hdrs_len)
+static bool decomp_rfc5225_ip_esp_build_ip_hdrs(const struct rohc_decomp_ctxt *const ctxt,
+                                                const struct rohc_rfc5225_decoded *const decoded,
+                                                struct rohc_buf *const uncomp_pkt,
+                                                size_t *const ip_hdrs_len)
 {
 	size_t ip_hdr_nr;
 
@@ -2709,7 +2623,8 @@ static bool decomp_rfc5225_ip_build_ip_hdrs(const struct rohc_decomp_ctxt *const
 			&(decoded->ip[ip_hdr_nr]);
 		size_t ip_hdr_len = 0;
 
-		if(!decomp_rfc5225_ip_build_ip_hdr(ctxt, ip_decoded, uncomp_pkt, &ip_hdr_len))
+		if(!decomp_rfc5225_ip_esp_build_ip_hdr(ctxt, ip_decoded, uncomp_pkt,
+		                                       &ip_hdr_len))
 		{
 			rohc_decomp_warn(ctxt, "failed to build uncompressed IP header #%zu",
 			                 ip_hdr_nr + 1);
@@ -2739,14 +2654,15 @@ error:
  *                         false if the output \e uncomp_packet was not
  *                         large enough
  */
-static bool decomp_rfc5225_ip_build_ip_hdr(const struct rohc_decomp_ctxt *const ctxt,
-                                           const struct rohc_rfc5225_decoded_ip *const decoded,
-                                           struct rohc_buf *const uncomp_pkt,
-                                           size_t *const ip_hdr_len)
+static bool decomp_rfc5225_ip_esp_build_ip_hdr(const struct rohc_decomp_ctxt *const ctxt,
+                                               const struct rohc_rfc5225_decoded_ip *const decoded,
+                                               struct rohc_buf *const uncomp_pkt,
+                                               size_t *const ip_hdr_len)
 {
 	if(decoded->version == IPV4)
 	{
-		if(!decomp_rfc5225_ip_build_ipv4_hdr(ctxt, decoded, uncomp_pkt, ip_hdr_len))
+		if(!decomp_rfc5225_ip_esp_build_ipv4_hdr(ctxt, decoded, uncomp_pkt,
+		                                         ip_hdr_len))
 		{
 			rohc_decomp_warn(ctxt, "failed to build uncompressed IPv4 header");
 			goto error;
@@ -2754,7 +2670,7 @@ static bool decomp_rfc5225_ip_build_ip_hdr(const struct rohc_decomp_ctxt *const 
 	}
 	else
 	{
-		if(!decomp_rfc5225_ip_build_ipv6_hdr(ctxt, decoded, uncomp_pkt, ip_hdr_len))
+		if(!decomp_rfc5225_ip_esp_build_ipv6_hdr(ctxt, decoded, uncomp_pkt, ip_hdr_len))
 		{
 			rohc_decomp_warn(ctxt, "failed to build uncompressed IPv6 header");
 			goto error;
@@ -2782,10 +2698,10 @@ error:
  *                         false if the output \e uncomp_packet was not
  *                         large enough
  */
-static bool decomp_rfc5225_ip_build_ipv4_hdr(const struct rohc_decomp_ctxt *const ctxt,
-                                             const struct rohc_rfc5225_decoded_ip *const decoded,
-                                             struct rohc_buf *const uncomp_pkt,
-                                             size_t *const ip_hdr_len)
+static bool decomp_rfc5225_ip_esp_build_ipv4_hdr(const struct rohc_decomp_ctxt *const ctxt,
+                                                 const struct rohc_rfc5225_decoded_ip *const decoded,
+                                                 struct rohc_buf *const uncomp_pkt,
+                                                 size_t *const ip_hdr_len)
 {
 	struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) rohc_buf_data(*uncomp_pkt);
 	const size_t hdr_len = sizeof(struct ipv4_hdr);
@@ -2850,10 +2766,10 @@ error:
  *                         false if the output \e uncomp_packet was not
  *                         large enough
  */
-static bool decomp_rfc5225_ip_build_ipv6_hdr(const struct rohc_decomp_ctxt *const ctxt,
-                                             const struct rohc_rfc5225_decoded_ip *const decoded,
-                                             struct rohc_buf *const uncomp_pkt,
-                                             size_t *const ip_hdr_len)
+static bool decomp_rfc5225_ip_esp_build_ipv6_hdr(const struct rohc_decomp_ctxt *const ctxt,
+                                                 const struct rohc_rfc5225_decoded_ip *const decoded,
+                                                 struct rohc_buf *const uncomp_pkt,
+                                                 size_t *const ip_hdr_len)
 {
 	struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) rohc_buf_data(*uncomp_pkt);
 	const size_t hdr_len = sizeof(struct ipv6_hdr);
@@ -2914,12 +2830,12 @@ error:
  * @param[out] do_change_mode  Whether the profile context wants to change
  *                             its operational mode or not
  */
-static void decomp_rfc5225_ip_update_ctxt(struct rohc_decomp_ctxt *const context,
-                                          const struct rohc_rfc5225_decoded *const decoded,
-                                          const size_t payload_len __attribute__((unused)),
-                                          bool *const do_change_mode __attribute__((unused)))
+static void decomp_rfc5225_ip_esp_update_ctxt(struct rohc_decomp_ctxt *const context,
+                                              const struct rohc_rfc5225_decoded *const decoded,
+                                              const size_t payload_len __attribute__((unused)),
+                                              bool *const do_change_mode __attribute__((unused)))
 {
-	struct rohc_decomp_rfc5225_ip_ctxt *const rfc5225_ctxt = context->persist_ctxt;
+	struct rohc_decomp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt = context->persist_ctxt;
 	const uint16_t msn = decoded->msn;
 	size_t ip_hdr_nr;
 
@@ -3000,11 +2916,11 @@ static void decomp_rfc5225_ip_update_ctxt(struct rohc_decomp_ctxt *const context
  * @param[in,out] extr_bits  The bits extracted from the ROHC header
  * @return                   true if repair is possible, false if not
  */
-static bool decomp_rfc5225_ip_attempt_repair(const struct rohc_decomp *const decomp __attribute__((unused)),
-                                             const struct rohc_decomp_ctxt *const context __attribute__((unused)),
-                                             const struct rohc_ts pkt_arrival_time __attribute__((unused)),
-                                             struct rohc_decomp_crc_corr_ctxt *const crc_corr __attribute__((unused)),
-                                             void *const extr_bits __attribute__((unused)))
+static bool decomp_rfc5225_ip_esp_attempt_repair(const struct rohc_decomp *const decomp __attribute__((unused)),
+                                                 const struct rohc_decomp_ctxt *const context __attribute__((unused)),
+                                                 const struct rohc_ts pkt_arrival_time __attribute__((unused)),
+                                                 struct rohc_decomp_crc_corr_ctxt *const crc_corr __attribute__((unused)),
+                                                 void *const extr_bits __attribute__((unused)))
 {
 	/* TODO: packet/context repair not implemented yet */
 	rohc_decomp_debug(context, "TODO: packet/context repair not implemented yet");
@@ -3015,7 +2931,7 @@ static bool decomp_rfc5225_ip_attempt_repair(const struct rohc_decomp *const dec
 /**
  * @brief Get the reference SN value of the context
  *
- * Always return 0 for the ROHCv2 IP-only profile.
+ * Always return 0 for the ROHCv2 IP/ESP profile.
  *
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
@@ -3023,28 +2939,28 @@ static bool decomp_rfc5225_ip_attempt_repair(const struct rohc_decomp *const dec
  * @param context The decompression context
  * @return        The reference SN value
  */
-static uint32_t decomp_rfc5225_ip_get_sn(const struct rohc_decomp_ctxt *const context __attribute__((unused)))
+static uint32_t decomp_rfc5225_ip_esp_get_sn(const struct rohc_decomp_ctxt *const context __attribute__((unused)))
 {
 	return 0;
 }
 
 
 /**
- * @brief Define the decompression part of the ROHCv2 IP-only profile as
+ * @brief Define the decompression part of the ROHCv2 IP/ESP profile as
  *        described in the RFC 5225
  */
-const struct rohc_decomp_profile rohc_decomp_rfc5225_ip_profile =
+const struct rohc_decomp_profile rohc_decomp_rfc5225_ip_esp_profile =
 {
-	.id              = ROHCv2_PROFILE_IP, /* profile ID (RFC5225, ROHCv2 IP) */
+	.id              = ROHCv2_PROFILE_IP_ESP, /* profile ID (RFC5225, ROHCv2 IP/ESP) */
 	.msn_max_bits    = 0, /* no MSN */
-	.new_context     = decomp_rfc5225_ip_new_context,
-	.free_context    = (rohc_decomp_free_context_t) decomp_rfc5225_ip_free_context,
-	.detect_pkt_type = decomp_rfc5225_ip_detect_pkt_type,
-	.parse_pkt       = (rohc_decomp_parse_pkt_t) decomp_rfc5225_ip_parse_pkt,
-	.decode_bits     = (rohc_decomp_decode_bits_t) decomp_rfc5225_ip_decode_bits,
-	.build_hdrs      = (rohc_decomp_build_hdrs_t) decomp_rfc5225_ip_build_hdrs,
-	.update_ctxt     = (rohc_decomp_update_ctxt_t) decomp_rfc5225_ip_update_ctxt,
-	.attempt_repair  = (rohc_decomp_attempt_repair_t) decomp_rfc5225_ip_attempt_repair,
-	.get_sn          = decomp_rfc5225_ip_get_sn,
+	.new_context     = decomp_rfc5225_ip_esp_new_context,
+	.free_context    = (rohc_decomp_free_context_t) decomp_rfc5225_ip_esp_free_context,
+	.detect_pkt_type = decomp_rfc5225_ip_esp_detect_pkt_type,
+	.parse_pkt       = (rohc_decomp_parse_pkt_t) decomp_rfc5225_ip_esp_parse_pkt,
+	.decode_bits     = (rohc_decomp_decode_bits_t) decomp_rfc5225_ip_esp_decode_bits,
+	.build_hdrs      = (rohc_decomp_build_hdrs_t) decomp_rfc5225_ip_esp_build_hdrs,
+	.update_ctxt     = (rohc_decomp_update_ctxt_t) decomp_rfc5225_ip_esp_update_ctxt,
+	.attempt_repair  = (rohc_decomp_attempt_repair_t) decomp_rfc5225_ip_esp_attempt_repair,
+	.get_sn          = decomp_rfc5225_ip_esp_get_sn,
 };
 
