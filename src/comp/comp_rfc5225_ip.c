@@ -2543,15 +2543,15 @@ static int rohc_comp_rfc5225_ip_dyn_ipv4_part(const struct rohc_comp_ctxt *const
 
 		ipv4_dynamic->reserved = 0;
 		ipv4_dynamic->df = ipv4->df;
-		ipv4_dynamic->ip_id_behavior_outer = ip_ctxt->ctxt.v4.ip_id_behavior;
+		ipv4_dynamic->ip_id_behavior = ip_ctxt->ctxt.v4.ip_id_behavior;
 		ipv4_dynamic->tos_tc = ipv4->tos;
 		ipv4_dynamic->ttl_hopl = ipv4->ttl;
 
 		/* IP-ID */
-		if(ipv4_dynamic->ip_id_behavior_outer == ROHC_IP_ID_BEHAVIOR_ZERO)
+		if(ipv4_dynamic->ip_id_behavior == ROHC_IP_ID_BEHAVIOR_ZERO)
 		{
 			rohc_comp_debug(ctxt, "ip_id_behavior_outer = %d",
-			                ipv4_dynamic->ip_id_behavior_outer);
+			                ipv4_dynamic->ip_id_behavior);
 		}
 		else
 		{
@@ -2567,9 +2567,9 @@ static int rohc_comp_rfc5225_ip_dyn_ipv4_part(const struct rohc_comp_ctxt *const
 				goto error;
 			}
 
-			ipv4_dynamic_ipid->ip_id_outer = ipv4->id;
+			ipv4_dynamic_ipid->ip_id = ipv4->id;
 			rohc_comp_debug(ctxt, "ip_id_behavior = %d, IP-ID = 0x%04x",
-			                ipv4_dynamic->ip_id_behavior_outer, rohc_ntoh16(ipv4->id));
+			                ipv4_dynamic->ip_id_behavior, rohc_ntoh16(ipv4->id));
 		}
 	}
 

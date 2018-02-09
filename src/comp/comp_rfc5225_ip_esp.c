@@ -47,6 +47,9 @@
  */
 struct comp_rfc5225_tmp_variables
 {
+	/** The offset between two consecutive MSN */
+	int32_t msn_offset;
+
 	/** Whether at least one of the DF fields changed */
 	bool at_least_one_df_changed;
 	/** Whether the behavior of at least one of the IP-ID fields changed */
@@ -87,7 +90,7 @@ struct comp_rfc5225_tmp_variables
 /** Define the ROHCv2 IP/ESP part of the profile compression context */
 struct rohc_comp_rfc5225_ip_esp_ctxt
 {
-	uint16_t msn;  /**< The Master Sequence Number (MSN) */
+	uint32_t msn;  /**< The Master Sequence Number (MSN) */
 	struct c_wlsb msn_wlsb;    /**< The W-LSB encoding context for MSN */
 
 	/** The W-LSB encoding context for innermost IP-ID offset */
@@ -217,6 +220,11 @@ static int rohc_comp_rfc5225_ip_esp_static_ipv6_part(const struct rohc_comp_ctxt
                                                  uint8_t *const rohc_data,
                                                  const size_t rohc_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
+static int rohc_comp_rfc5225_ip_esp_static_esp_part(const struct rohc_comp_ctxt *const ctxt,
+                                                    const struct esphdr *const esp,
+                                                    uint8_t *const rohc_data,
+                                                    const size_t rohc_max_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 /* dynamic chain */
 static int rohc_comp_rfc5225_ip_esp_dyn_chain(const struct rohc_comp_ctxt *const ctxt,
@@ -227,17 +235,20 @@ static int rohc_comp_rfc5225_ip_esp_dyn_chain(const struct rohc_comp_ctxt *const
 static int rohc_comp_rfc5225_ip_esp_dyn_ipv4_part(const struct rohc_comp_ctxt *const ctxt,
                                                   const ip_context_t *const ip_ctxt,
                                                   const struct ipv4_hdr *const ipv4,
-                                                  const bool is_innermost,
                                                   uint8_t *const rohc_data,
                                                   const size_t rohc_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 static int rohc_comp_rfc5225_ip_esp_dyn_ipv6_part(const struct rohc_comp_ctxt *const ctxt,
                                                   const ip_context_t *const ip_ctxt,
                                                   const struct ipv6_hdr *const ipv6,
-                                                  const bool is_innermost,
                                                   uint8_t *const rohc_data,
                                                   const size_t rohc_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
+static int rohc_comp_rfc5225_ip_esp_dyn_esp_part(const struct rohc_comp_ctxt *const ctxt,
+                                                 const struct esphdr *const esp,
+                                                 uint8_t *const rohc_data,
+                                                 const size_t rohc_max_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 /* irregular chain */
 static int rohc_comp_rfc5225_ip_esp_irreg_chain(const struct rohc_comp_ctxt *const ctxt,
@@ -289,7 +300,7 @@ static rohc_packet_t rohc_comp_rfc5225_ip_esp_decide_FO_SO_pkt(const struct rohc
 	__attribute__((warn_unused_result, nonnull(1)));
 
 static bool rohc_comp_rfc5225_is_msn_lsb_possible(const struct c_wlsb *const wlsb,
-                                                  const uint16_t value,
+                                                  const uint32_t value,
                                                   const rohc_reordering_offset_t reorder_ratio,
                                                   const size_t k)
 	__attribute__((warn_unused_result, nonnull(1)));
@@ -298,7 +309,8 @@ static bool rohc_comp_rfc5225_is_ipid_sequential(const rohc_ip_id_behavior_t beh
 	__attribute__((warn_unused_result, const));
 
 static bool rohc_comp_rfc5225_is_seq_ipid_inferred(const ip_context_t *const ip_ctxt,
-                                                   const uint16_t new_ip_id)
+                                                   const uint16_t new_ip_id,
+                                                   const int32_t msn_offset)
 	__attribute__((warn_unused_result, nonnull(1)));
 
 
@@ -428,14 +440,10 @@ static bool rohc_comp_rfc5225_ip_esp_create(struct rohc_comp_ctxt *const context
 	assert(remain_len >= sizeof(struct esphdr));
 
 	/* MSN */
-	wlsb_init(&rfc5225_ctxt->msn_wlsb, 16, comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
+	wlsb_init(&rfc5225_ctxt->msn_wlsb, 32, comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
 	/* innermost IP-ID offset */
 	wlsb_init(&rfc5225_ctxt->innermost_ip_id_offset_wlsb, 16,
 	          comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
-
-	/* init the Master Sequence Number to a random value */
-	rfc5225_ctxt->msn = comp->random_cb(comp, comp->random_cb_ctxt) & 0xffff;
-	rohc_comp_debug(context, "MSN = 0x%04x / %u", rfc5225_ctxt->msn, rfc5225_ctxt->msn);
 
 	/* initialize the ESP part of the profile context */
 	{
@@ -443,6 +451,11 @@ static bool rohc_comp_rfc5225_ip_esp_create(struct rohc_comp_ctxt *const context
 
 		/* record the ESP SPI in context */
 		rfc5225_ctxt->esp_spi = rohc_ntoh32(esp->spi);
+
+		/* init the Master Sequence Number to ESP SN */
+		rfc5225_ctxt->msn = rohc_ntoh32(esp->sn);
+		rohc_comp_debug(context, "MSN = 0x%08x / %u",
+		                rfc5225_ctxt->msn, rfc5225_ctxt->msn);
 	}
 
 	return true;
@@ -897,10 +910,6 @@ static int rohc_comp_rfc5225_ip_esp_encode(struct rohc_comp_ctxt *const context,
 	*packet_type = ROHC_PACKET_UNKNOWN;
 	*payload_offset = 0;
 
-	/* compute or find the new SN */
-	rfc5225_ctxt->msn++; /* wraparound on overflow is expected */
-	rohc_comp_debug(context, "MSN = 0x%04x / %u", rfc5225_ctxt->msn, rfc5225_ctxt->msn);
-
 	/* STEP 0: detect changes between new uncompressed packet and context */
 	if(!rohc_comp_rfc5225_ip_esp_detect_changes(context, uncomp_pkt, payload_offset))
 	{
@@ -1028,6 +1037,7 @@ static bool rohc_comp_rfc5225_ip_esp_detect_changes(struct rohc_comp_ctxt *const
 	struct rohc_comp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt = context->specific;
 	const uint8_t *remain_data = uncomp_pkt->data;
 	size_t remain_len = uncomp_pkt->len;
+	const ip_context_t *innermost_ip_ctxt = NULL;
 	size_t ip_hdr_pos;
 	int ret;
 
@@ -1110,6 +1120,49 @@ static bool rohc_comp_rfc5225_ip_esp_detect_changes(struct rohc_comp_ctxt *const
 			assert(0);
 			goto error;
 		}
+
+		/* remember the innermost IP header */
+		innermost_ip_ctxt = ip_context;
+	}
+
+	/* detect changes in ESP header: find the new SN */
+	assert(remain_len >= sizeof(struct esphdr));
+	{
+		const struct esphdr *const esp = (struct esphdr *) remain_data;
+		const uint32_t new_msn = rohc_ntoh32(esp->sn);
+		rfc5225_ctxt->tmp.msn_offset = new_msn - rfc5225_ctxt->msn;
+		rfc5225_ctxt->msn = new_msn;
+		rohc_comp_debug(context, "MSN = 0x%08x / %u",
+		                rfc5225_ctxt->msn, rfc5225_ctxt->msn);
+		rohc_comp_debug(context, "MSN offset = %d", rfc5225_ctxt->tmp.msn_offset);
+
+		/* skip ESP header */
+		remain_data += sizeof(struct esphdr);
+		remain_len -= sizeof(struct esphdr);
+		*payload_offset += sizeof(struct esphdr);
+	}
+
+	/* now that the MSN was updated with the new received IP/ESP packet,
+	 * compute the new IP-ID / MSN offset for the innermost IP header */
+	if(innermost_ip_ctxt->ctxt.vx.version == IPV4)
+	{
+		if(innermost_ip_ctxt->ctxt.v4.ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
+		{
+			/* specific case of IP-ID delta for sequential swapped behavior */
+			rfc5225_ctxt->tmp.innermost_ip_id_offset =
+				swab16(rfc5225_ctxt->tmp.innermost_ip_id) - rfc5225_ctxt->msn;
+		}
+		else
+		{
+			/* compute delta the same way for sequential, zero or random: it is
+			 * important to always compute the IP-ID delta and record it in W-LSB,
+			 * so that the IP-ID deltas of next packets may be correctly encoded */
+			rfc5225_ctxt->tmp.innermost_ip_id_offset =
+				rfc5225_ctxt->tmp.innermost_ip_id - rfc5225_ctxt->msn;
+		}
+		rohc_comp_debug(context, "new IP-ID offset = 0x%x / %u",
+		                rfc5225_ctxt->tmp.innermost_ip_id_offset,
+		                rfc5225_ctxt->tmp.innermost_ip_id_offset);
 	}
 
 	return true;
@@ -1238,21 +1291,6 @@ static int rohc_comp_rfc5225_ip_esp_detect_changes_ipv4(struct rohc_comp_ctxt *c
 		if(is_innermost)
 		{
 			rfc5225_ctxt->tmp.innermost_ip_id = ip_id;
-			if(ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
-			{
-				/* specific case of IP-ID delta for sequential swapped behavior */
-				rfc5225_ctxt->tmp.innermost_ip_id_offset = swab16(ip_id) - rfc5225_ctxt->msn;
-			}
-			else
-			{
-				/* compute delta the same way for sequential, zero or random: it is
-				 * important to always compute the IP-ID delta and record it in W-LSB,
-				 * so that the IP-ID deltas of next packets may be correctly encoded */
-				rfc5225_ctxt->tmp.innermost_ip_id_offset = ip_id - rfc5225_ctxt->msn;
-			}
-			rohc_comp_debug(ctxt, "new IP-ID offset = 0x%x / %u",
-			                rfc5225_ctxt->tmp.innermost_ip_id_offset,
-			                rfc5225_ctxt->tmp.innermost_ip_id_offset);
 		}
 	}
 
@@ -1525,6 +1563,7 @@ static rohc_packet_t rohc_comp_rfc5225_ip_esp_decide_FO_SO_pkt(const struct rohc
                                                                const bool crc7_at_least)
 {
 	struct rohc_comp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt = ctxt->specific;
+	const int32_t msn_offset = rfc5225_ctxt->tmp.msn_offset;
 	const rohc_reordering_offset_t reorder_ratio = ctxt->compressor->reorder_ratio;
 	const ip_context_t *const innermost_ip_ctxt =
 		&(rfc5225_ctxt->ip_contexts[rfc5225_ctxt->ip_contexts_nr - 1]);
@@ -1547,7 +1586,8 @@ static rohc_packet_t rohc_comp_rfc5225_ip_esp_decide_FO_SO_pkt(const struct rohc
 	   rohc_comp_rfc5225_is_msn_lsb_possible(&rfc5225_ctxt->msn_wlsb,
 	                                         rfc5225_ctxt->msn, reorder_ratio, 4) &&
 	   (!rohc_comp_rfc5225_is_ipid_sequential(innermost_ip_id_behavior) ||
-	    rohc_comp_rfc5225_is_seq_ipid_inferred(innermost_ip_ctxt, innermost_ip_id)) &&
+	    rohc_comp_rfc5225_is_seq_ipid_inferred(innermost_ip_ctxt, innermost_ip_id,
+	                                           msn_offset)) &&
 	   !rfc5225_ctxt->tmp.outer_ip_flag &&
 	   !rfc5225_ctxt->tmp.innermost_ip_flag &&
 	   !rfc5225_ctxt->tmp.at_least_one_df_changed &&
@@ -1570,7 +1610,7 @@ static rohc_packet_t rohc_comp_rfc5225_ip_esp_decide_FO_SO_pkt(const struct rohc
 	                                              reorder_ratio, 6) &&
 	        (!rohc_comp_rfc5225_is_ipid_sequential(innermost_ip_id_behavior) ||
 	         rohc_comp_rfc5225_is_seq_ipid_inferred(innermost_ip_ctxt,
-	                                                innermost_ip_id)) &&
+	                                                innermost_ip_id, msn_offset)) &&
 	        !rfc5225_ctxt->tmp.outer_ip_flag &&
 	        !rfc5225_ctxt->tmp.innermost_ip_flag &&
 	        !rfc5225_ctxt->tmp.at_least_one_df_changed &&
@@ -1663,14 +1703,14 @@ static rohc_packet_t rohc_comp_rfc5225_ip_esp_decide_FO_SO_pkt(const struct rohc
  * @return               true if msn_lsb is possible or not
  */
 static bool rohc_comp_rfc5225_is_msn_lsb_possible(const struct c_wlsb *const wlsb,
-		                                            const uint16_t value,
+                                                  const uint32_t value,
                                                   const rohc_reordering_offset_t reorder_ratio,
                                                   const size_t k)
 {
 	/* compute p according to reorder ratio  */
 	rohc_lsb_shift_t p_computed = rohc_interval_get_rfc5225_msn_p(k, reorder_ratio);
 
-	return wlsb_is_kp_possible_16bits(wlsb, value, k, p_computed);
+	return wlsb_is_kp_possible_32bits(wlsb, value, k, p_computed);
 }
 
 
@@ -1696,16 +1736,15 @@ static bool rohc_comp_rfc5225_is_ipid_sequential(const rohc_ip_id_behavior_t beh
  *  - the IP-ID behavior is sequential or sequential swapped,
  *  - the new IP-ID value increases from the last IP-ID by the same delta as the MSN.
  *
- * For the IP-only profile, the MSN is generated by the compressor, so the MSN
- * delta is always 1.
- *
  * @param ip_ctxt    The context for the given IP header
  * @param new_ip_id  The new value of the IP-ID
+ * @param msn_offset The offset between the previous and current MSN
  * @return           true if the given IP-ID is sequential and inferred from MSN,
  *                   false otherwise
  */
 static bool rohc_comp_rfc5225_is_seq_ipid_inferred(const ip_context_t *const ip_ctxt,
-                                                   const uint16_t new_ip_id)
+                                                   const uint16_t new_ip_id,
+                                                   const int32_t msn_offset)
 {
 	bool is_inferred;
 
@@ -1715,11 +1754,12 @@ static bool rohc_comp_rfc5225_is_seq_ipid_inferred(const ip_context_t *const ip_
 	}
 	else if(ip_ctxt->ctxt.vx.ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ)
 	{
-		is_inferred = (new_ip_id == (ip_ctxt->ctxt.v4.last_ip_id + 1));
+		is_inferred = (new_ip_id == (ip_ctxt->ctxt.v4.last_ip_id + msn_offset));
 	}
 	else if(ip_ctxt->ctxt.vx.ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
 	{
-		is_inferred = (swab16(new_ip_id) == (swab16(ip_ctxt->ctxt.v4.last_ip_id) + 1));
+		is_inferred =
+			(swab16(new_ip_id) == (swab16(ip_ctxt->ctxt.v4.last_ip_id) + msn_offset));
 	}
 	else
 	{
@@ -2277,6 +2317,26 @@ static int rohc_comp_rfc5225_ip_esp_static_chain(const struct rohc_comp_ctxt *co
 		}
 	}
 
+	/* add ESP part to static chain */
+	assert(remain_len >= sizeof(struct esphdr));
+	{
+		const struct esphdr *const esp = (struct esphdr*) remain_data;
+
+		ret = rohc_comp_rfc5225_ip_esp_static_esp_part(ctxt, esp, rohc_remain_data,
+		                                               rohc_remain_len);
+		if(ret < 0)
+		{
+			rohc_comp_warn(ctxt, "failed to build the ESP static header part "
+			               "of the static chain");
+			goto error;
+		}
+		rohc_remain_data += ret;
+		rohc_remain_len -= ret;
+
+		remain_data += sizeof(struct esphdr);
+		remain_len -= sizeof(struct esphdr);
+	}
+
 	return (rohc_pkt_max_len - rohc_remain_len);
 
 error:
@@ -2405,6 +2465,43 @@ error:
 
 
 /**
+ * @brief Build the static part of the ESP header
+ *
+ * @param ctxt            The compression context
+ * @param esp             The ESP header
+ * @param[out] rohc_data  The ROHC packet being built
+ * @param rohc_max_len    The max remaining length in the ROHC buffer
+ * @return                The length appended in the ROHC buffer if positive,
+ *                        -1 in case of error
+ */
+static int rohc_comp_rfc5225_ip_esp_static_esp_part(const struct rohc_comp_ctxt *const ctxt,
+                                                    const struct esphdr *const esp,
+                                                    uint8_t *const rohc_data,
+                                                    const size_t rohc_max_len)
+{
+	esp_static_t *const esp_static = (esp_static_t *) rohc_data;
+	const size_t esp_static_len = sizeof(esp_static_t);
+
+	if(rohc_max_len < esp_static_len)
+	{
+		rohc_comp_warn(ctxt, "ROHC buffer too small for the ESP static part: "
+		               "%zu bytes required, but only %zu bytes available",
+		               esp_static_len, rohc_max_len);
+		goto error;
+	}
+
+	esp_static->spi = esp->spi;
+
+	rohc_comp_dump_buf(ctxt, "ESP static part", rohc_data, esp_static_len);
+
+	return esp_static_len;
+
+error:
+	return -1;
+}
+
+
+/**
  * @brief Code the dynamic chain of a ROHCv2 IP/ESP IR packet
  *
  * @param ctxt              The compression context
@@ -2430,7 +2527,7 @@ static int rohc_comp_rfc5225_ip_esp_dyn_chain(const struct rohc_comp_ctxt *const
 	size_t ip_hdr_pos;
 	int ret;
 
-	/* there is at least one IP header otherwise it won't be the IP-only profile */
+	/* there is at least one IP header otherwise it won't be the IP/ESP profile */
 	assert(rfc5225_ctxt->ip_contexts_nr > 0);
 
 	/* add dynamic part for all IP headers */
@@ -2438,7 +2535,6 @@ static int rohc_comp_rfc5225_ip_esp_dyn_chain(const struct rohc_comp_ctxt *const
 	{
 		const struct ip_hdr *const ip_hdr = (struct ip_hdr *) remain_data;
 		const ip_context_t *const ip_ctxt = &(rfc5225_ctxt->ip_contexts[ip_hdr_pos]);
-		const bool is_innermost = !!(ip_hdr_pos + 1 == rfc5225_ctxt->ip_contexts_nr);
 
 		/* retrieve IP version */
 		assert(remain_len >= sizeof(struct ip_hdr));
@@ -2450,7 +2546,7 @@ static int rohc_comp_rfc5225_ip_esp_dyn_chain(const struct rohc_comp_ctxt *const
 
 			assert(remain_len >= sizeof(struct ipv4_hdr));
 
-			ret = rohc_comp_rfc5225_ip_esp_dyn_ipv4_part(ctxt, ip_ctxt, ipv4, is_innermost,
+			ret = rohc_comp_rfc5225_ip_esp_dyn_ipv4_part(ctxt, ip_ctxt, ipv4,
 			                                             rohc_remain_data, rohc_remain_len);
 			if(ret < 0)
 			{
@@ -2470,7 +2566,7 @@ static int rohc_comp_rfc5225_ip_esp_dyn_chain(const struct rohc_comp_ctxt *const
 
 			assert(remain_len >= sizeof(struct ipv6_hdr));
 
-			ret = rohc_comp_rfc5225_ip_esp_dyn_ipv6_part(ctxt, ip_ctxt, ipv6, is_innermost,
+			ret = rohc_comp_rfc5225_ip_esp_dyn_ipv6_part(ctxt, ip_ctxt, ipv6,
 			                                             rohc_remain_data, rohc_remain_len);
 			if(ret < 0)
 			{
@@ -2494,6 +2590,26 @@ static int rohc_comp_rfc5225_ip_esp_dyn_chain(const struct rohc_comp_ctxt *const
 		}
 	}
 
+	/* add ESP part to dynamic chain */
+	assert(remain_len >= sizeof(struct esphdr));
+	{
+		const struct esphdr *const esp = (struct esphdr*) remain_data;
+
+		ret = rohc_comp_rfc5225_ip_esp_dyn_esp_part(ctxt, esp, rohc_remain_data,
+		                                            rohc_remain_len);
+		if(ret < 0)
+		{
+			rohc_comp_warn(ctxt, "failed to build the ESP static header part "
+			               "of the static chain");
+			goto error;
+		}
+		rohc_remain_data += ret;
+		rohc_remain_len -= ret;
+
+		remain_data += sizeof(struct esphdr);
+		remain_len -= sizeof(struct esphdr);
+	}
+
 	return (rohc_pkt_max_len - rohc_remain_len);
 
 error:
@@ -2507,8 +2623,6 @@ error:
  * @param ctxt            The compression context
  * @param ip_ctxt         The specific IP compression context
  * @param ipv4            The IPv4 header
- * @param is_innermost    true if the IP header is the innermost of the packet,
- *                        false otherwise
  * @param[out] rohc_data  The ROHC packet being built
  * @param rohc_max_len    The max remaining length in the ROHC buffer
  * @return                The length appended in the ROHC buffer if positive,
@@ -2517,73 +2631,39 @@ error:
 static int rohc_comp_rfc5225_ip_esp_dyn_ipv4_part(const struct rohc_comp_ctxt *const ctxt,
                                                   const ip_context_t *const ip_ctxt,
                                                   const struct ipv4_hdr *const ipv4,
-                                                  const bool is_innermost,
                                                   uint8_t *const rohc_data,
                                                   const size_t rohc_max_len)
 {
-	const struct rohc_comp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt = ctxt->specific;
-	size_t ipv4_dyn_len;
+	ipv4_regular_dynamic_noipid_t *const ipv4_dynamic =
+		(ipv4_regular_dynamic_noipid_t *) rohc_data;
+	size_t ipv4_dyn_len = sizeof(ipv4_regular_dynamic_noipid_t);
 
 	assert(ip_ctxt->ctxt.vx.version == IPV4);
 
-	if(is_innermost)
+	if(rohc_max_len < ipv4_dyn_len)
 	{
-		ipv4_endpoint_innermost_dynamic_noipid_t *const ipv4_dynamic =
-			(ipv4_endpoint_innermost_dynamic_noipid_t *) rohc_data;
-		ipv4_dyn_len = sizeof(ipv4_endpoint_innermost_dynamic_noipid_t);
-
-		if(rohc_max_len < ipv4_dyn_len)
-		{
-			rohc_comp_warn(ctxt, "ROHC buffer too small for the IPv4 dynamic part: "
-			               "%zu bytes required, but only %zu bytes available",
-			               ipv4_dyn_len, rohc_max_len);
-			goto error;
-		}
-
-		ipv4_dynamic->reserved = 0;
-		ipv4_dynamic->reorder_ratio = ctxt->compressor->reorder_ratio;
-		ipv4_dynamic->df = ipv4->df;
-		ipv4_dynamic->ip_id_behavior_innermost = ip_ctxt->ctxt.v4.ip_id_behavior;
-		ipv4_dynamic->tos_tc = ipv4->tos;
-		ipv4_dynamic->ttl_hopl = ipv4->ttl;
-
-		/* IP-ID */
-		if(ipv4_dynamic->ip_id_behavior_innermost == ROHC_IP_ID_BEHAVIOR_ZERO)
-		{
-			rohc_comp_debug(ctxt, "ip_id_behavior_innermost = %d",
-			                ipv4_dynamic->ip_id_behavior_innermost);
-
-			/* MSN */
-			ipv4_dynamic->msn = rohc_hton16(rfc5225_ctxt->msn);
-		}
-		else
-		{
-			ipv4_endpoint_innermost_dynamic_ipid_t *const ipv4_dynamic_ipid =
-				(ipv4_endpoint_innermost_dynamic_ipid_t *) rohc_data;
-			ipv4_dyn_len = sizeof(ipv4_endpoint_innermost_dynamic_ipid_t);
-
-			if(rohc_max_len < ipv4_dyn_len)
-			{
-				rohc_comp_warn(ctxt, "ROHC buffer too small for the IPv4 dynamic part: "
-				               "%zu bytes required, but only %zu bytes available",
-				               ipv4_dyn_len, rohc_max_len);
-				goto error;
-			}
-
-			ipv4_dynamic_ipid->ip_id_innermost = ipv4->id;
-			rohc_comp_debug(ctxt, "ip_id_behavior_innermost = %d, IP-ID = 0x%04x",
-			                ipv4_dynamic->ip_id_behavior_innermost,
-			                rohc_ntoh16(ipv4->id));
-
-			/* MSN */
-			ipv4_dynamic_ipid->msn = rohc_hton16(rfc5225_ctxt->msn);
-		}
+		rohc_comp_warn(ctxt, "ROHC buffer too small for the IPv4 dynamic part: "
+		               "%zu bytes required, but only %zu bytes available",
+		               ipv4_dyn_len, rohc_max_len);
+		goto error;
 	}
-	else /* any outer IPv4 header */
+
+	ipv4_dynamic->reserved = 0;
+	ipv4_dynamic->df = ipv4->df;
+	ipv4_dynamic->ip_id_behavior = ip_ctxt->ctxt.v4.ip_id_behavior;
+	ipv4_dynamic->tos_tc = ipv4->tos;
+	ipv4_dynamic->ttl_hopl = ipv4->ttl;
+
+	/* IP-ID */
+	if(ipv4_dynamic->ip_id_behavior == ROHC_IP_ID_BEHAVIOR_ZERO)
 	{
-		ipv4_outer_dynamic_noipid_t *const ipv4_dynamic =
-			(ipv4_outer_dynamic_noipid_t *) rohc_data;
-		ipv4_dyn_len = sizeof(ipv4_outer_dynamic_noipid_t);
+		rohc_comp_debug(ctxt, "ip_id_behavior = %d", ipv4_dynamic->ip_id_behavior);
+	}
+	else
+	{
+		ipv4_regular_dynamic_ipid_t *const ipv4_dynamic_ipid =
+			(ipv4_regular_dynamic_ipid_t *) rohc_data;
+		ipv4_dyn_len = sizeof(ipv4_regular_dynamic_ipid_t);
 
 		if(rohc_max_len < ipv4_dyn_len)
 		{
@@ -2593,36 +2673,9 @@ static int rohc_comp_rfc5225_ip_esp_dyn_ipv4_part(const struct rohc_comp_ctxt *c
 			goto error;
 		}
 
-		ipv4_dynamic->reserved = 0;
-		ipv4_dynamic->df = ipv4->df;
-		ipv4_dynamic->ip_id_behavior_outer = ip_ctxt->ctxt.v4.ip_id_behavior;
-		ipv4_dynamic->tos_tc = ipv4->tos;
-		ipv4_dynamic->ttl_hopl = ipv4->ttl;
-
-		/* IP-ID */
-		if(ipv4_dynamic->ip_id_behavior_outer == ROHC_IP_ID_BEHAVIOR_ZERO)
-		{
-			rohc_comp_debug(ctxt, "ip_id_behavior_outer = %d",
-			                ipv4_dynamic->ip_id_behavior_outer);
-		}
-		else
-		{
-			ipv4_outer_dynamic_ipid_t *const ipv4_dynamic_ipid =
-				(ipv4_outer_dynamic_ipid_t *) rohc_data;
-			ipv4_dyn_len = sizeof(ipv4_outer_dynamic_ipid_t);
-
-			if(rohc_max_len < ipv4_dyn_len)
-			{
-				rohc_comp_warn(ctxt, "ROHC buffer too small for the IPv4 dynamic part: "
-				               "%zu bytes required, but only %zu bytes available",
-				               ipv4_dyn_len, rohc_max_len);
-				goto error;
-			}
-
-			ipv4_dynamic_ipid->ip_id_outer = ipv4->id;
-			rohc_comp_debug(ctxt, "ip_id_behavior = %d, IP-ID = 0x%04x",
-			                ipv4_dynamic->ip_id_behavior_outer, rohc_ntoh16(ipv4->id));
-		}
+		ipv4_dynamic_ipid->ip_id = ipv4->id;
+		rohc_comp_debug(ctxt, "ip_id_behavior = %d, IP-ID = 0x%04x",
+		                ipv4_dynamic->ip_id_behavior, rohc_ntoh16(ipv4->id));
 	}
 
 	rohc_comp_dump_buf(ctxt, "IPv4 dynamic part", rohc_data, ipv4_dyn_len);
@@ -2640,8 +2693,6 @@ error:
  * @param ctxt            The compression context
  * @param ip_ctxt         The specific IP compression context
  * @param ipv6            The IPv6 header
- * @param is_innermost    true if the IP header is the innermost of the packet,
- *                        false otherwise
  * @param[out] rohc_data  The ROHC packet being built
  * @param rohc_max_len    The max remaining length in the ROHC buffer
  * @return                The length appended in the ROHC buffer if positive,
@@ -2650,11 +2701,9 @@ error:
 static int rohc_comp_rfc5225_ip_esp_dyn_ipv6_part(const struct rohc_comp_ctxt *const ctxt,
                                                   const ip_context_t *const ip_ctxt,
                                                   const struct ipv6_hdr *const ipv6,
-                                                  const bool is_innermost,
                                                   uint8_t *const rohc_data,
                                                   const size_t rohc_max_len)
 {
-	const struct rohc_comp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt = ctxt->specific;
 	ipv6_regular_dynamic_t *const ipv6_dynamic =
 		(ipv6_regular_dynamic_t *) rohc_data;
 	size_t ipv6_dyn_len = sizeof(ipv6_regular_dynamic_t);
@@ -2673,30 +2722,48 @@ static int rohc_comp_rfc5225_ip_esp_dyn_ipv6_part(const struct rohc_comp_ctxt *c
 	ipv6_dynamic->tos_tc = tc;
 	ipv6_dynamic->ttl_hopl = ipv6->hl;
 
-	if(is_innermost)
-	{
-		ipv6_endpoint_dynamic_t *const ipv6_endpoint_dynamic =
-			(ipv6_endpoint_dynamic_t *) rohc_data;
-		ipv6_dyn_len = sizeof(ipv6_endpoint_dynamic_t);
-
-		if(rohc_max_len < ipv6_dyn_len)
-		{
-			rohc_comp_warn(ctxt, "ROHC buffer too small for the IPv6 dynamic part: "
-			               "%zu bytes required, but only %zu bytes available",
-			               ipv6_dyn_len, rohc_max_len);
-			goto error;
-		}
-
-		ipv6_endpoint_dynamic->reorder_ratio = ctxt->compressor->reorder_ratio;
-		ipv6_endpoint_dynamic->reserved = 0;
-
-		/* MSN */
-		ipv6_endpoint_dynamic->msn = rohc_hton16(rfc5225_ctxt->msn);
-	}
-
 	rohc_comp_dump_buf(ctxt, "IP dynamic part", rohc_data, ipv6_dyn_len);
 
 	return ipv6_dyn_len;
+
+error:
+	return -1;
+}
+
+
+/**
+ * @brief Build the dynamic part of the ESP header
+ *
+ * @param ctxt            The compression context
+ * @param esp             The ESP header
+ * @param[out] rohc_data  The ROHC packet being built
+ * @param rohc_max_len    The max remaining length in the ROHC buffer
+ * @return                The length appended in the ROHC buffer if positive,
+ *                        -1 in case of error
+ */
+static int rohc_comp_rfc5225_ip_esp_dyn_esp_part(const struct rohc_comp_ctxt *const ctxt,
+                                                 const struct esphdr *const esp,
+                                                 uint8_t *const rohc_data,
+                                                 const size_t rohc_max_len)
+{
+	esp_dynamic_t *const esp_dynamic = (esp_dynamic_t *) rohc_data;
+	const size_t esp_dynamic_len = sizeof(esp_dynamic_t);
+
+	if(rohc_max_len < esp_dynamic_len)
+	{
+		rohc_comp_warn(ctxt, "ROHC buffer too small for the ESP static part: "
+		               "%zu bytes required, but only %zu bytes available",
+		               esp_dynamic_len, rohc_max_len);
+		goto error;
+	}
+
+	esp_dynamic->sequence_number = esp->sn;
+	esp_dynamic->reserved = 0;
+	esp_dynamic->reorder_ratio = ctxt->compressor->reorder_ratio;
+
+	rohc_comp_dump_buf(ctxt, "ESP dynamic part", rohc_data, esp_dynamic_len);
+
+	return esp_dynamic_len;
 
 error:
 	return -1;

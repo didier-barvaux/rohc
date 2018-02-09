@@ -1832,7 +1832,7 @@ static int decomp_rfc5225_ip_parse_dyn_ipv4(const struct rohc_decomp_ctxt *const
 		}
 		ip_bits->df = ipv4_dynamic->df;
 		ip_bits->df_nr = 1;
-		ip_bits->id_behavior = ipv4_dynamic->ip_id_behavior_outer;
+		ip_bits->id_behavior = ipv4_dynamic->ip_id_behavior;
 		ip_bits->id_behavior_nr = 2;
 		rohc_decomp_debug(ctxt, "ip_id_behavior_outer = %d", ip_bits->id_behavior);
 		ip_bits->tos_tc_bits = ipv4_dynamic->tos_tc;
@@ -1842,7 +1842,7 @@ static int decomp_rfc5225_ip_parse_dyn_ipv4(const struct rohc_decomp_ctxt *const
 		rohc_decomp_debug(ctxt, "TOS/TC = 0x%x, ttl_hopl = 0x%x",
 		                  ip_bits->tos_tc_bits, ip_bits->ttl_hl);
 
-		if(ipv4_dynamic->ip_id_behavior_outer != ROHC_IP_ID_BEHAVIOR_ZERO)
+		if(ipv4_dynamic->ip_id_behavior != ROHC_IP_ID_BEHAVIOR_ZERO)
 		{
 			const ipv4_outer_dynamic_ipid_t *const ipv4_dynamic_ipid =
 				(ipv4_outer_dynamic_ipid_t *) remain_data;
@@ -1854,7 +1854,7 @@ static int decomp_rfc5225_ip_parse_dyn_ipv4(const struct rohc_decomp_ctxt *const
 				goto error;
 			}
 
-			ip_bits->id.bits = rohc_ntoh16(ipv4_dynamic_ipid->ip_id_outer);
+			ip_bits->id.bits = rohc_ntoh16(ipv4_dynamic_ipid->ip_id);
 			ip_bits->id.bits_nr = 16;
 			rohc_decomp_debug(ctxt, "IP-ID = 0x%04x", ip_bits->id.bits);
 
