@@ -998,6 +998,15 @@ static bool d_tcp_parse_ir_cr(const struct rohc_decomp_ctxt *const context,
 	}
 	base_context = context->decompressor->contexts[base_cid];
 
+	/* reject packet if base context is not initialized at all */
+	if(base_context == NULL)
+	{
+		rohc_decomp_warn(context, "Base CID %zu does not exist, so it cannot be "
+		                 "used for Context Replication by CID %zu", base_cid,
+		                 context->cid);
+		goto error;
+	}
+
 	/* check whether the context identified by the base CID is an acceptable
 	 * candidate for Context Replication */
 	if(base_context->profile->id != context->profile->id)
