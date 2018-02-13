@@ -16,6 +16,8 @@ test_*.sh.trs
 test-driver
 rohc-*.tar.gz
 rohc-*.tar.bz2
+rohc-*.tar.xz
+rohc-*.tar.xz.sha256
 cscope.out
 aclocal.m4
 autom4te.cache
@@ -26,6 +28,7 @@ config.log
 config.status
 config.sub
 configure
+compile
 depcomp
 install-sh
 libtool
