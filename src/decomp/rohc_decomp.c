@@ -1477,6 +1477,12 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 				try_decoding_again = false;
 			}
 		}
+		else if(build_ret == ROHC_STATUS_MALFORMED)
+		{
+			rohc_decomp_warn(context, "CID %zu: failed to build uncompressed "
+			                 "headers: built headers are malformed", context->cid);
+			goto error_malformed;
+		}
 		else if(build_ret == ROHC_STATUS_OUTPUT_TOO_SMALL)
 		{
 			rohc_decomp_warn(context, "CID %zu: failed to build uncompressed "
