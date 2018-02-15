@@ -96,6 +96,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <netinet/in.h>
+#include <unistd.h>
 
 /* includes for network headers */
 #include <protocols/ipv4.h>
@@ -725,8 +726,8 @@ static test_result_t test_run_one_step(test_context_t context,
 
 	/* ask the kernel for the ROHC packet it generated */
 	fprintf(stderr, "receive a ROHC packet from kernel\n");
-	rohc_size = fread(rohc_packet, sizeof(unsigned char), MAX_ROHC_SIZE,
-	                  context.couples[couple_index].proc_comp_out);
+	rohc_size = read(fileno(context.couples[couple_index].proc_comp_out),
+	                 rohc_packet, sizeof(rohc_packet));
 	if(rohc_size <= 0)
 	{
 		fprintf(stderr, "failed to receive a ROHC packet from kernel\n");
@@ -796,8 +797,8 @@ static test_result_t test_run_one_step(test_context_t context,
 
 	/* ask the kernel for the decompressed IP packet it generated */
 	fprintf(stderr, "receive a decompressed IP packet from kernel\n");
-	decomp_size = fread(decomp_packet, sizeof(unsigned char), MAX_ROHC_SIZE,
-	                    context.couples[couple_index].proc_decomp_out);
+	decomp_size = read(fileno(context.couples[couple_index].proc_decomp_out),
+	                   decomp_packet, sizeof(decomp_packet));
 	if(decomp_size <= 0)
 	{
 		fprintf(stderr, "failed to receive a decompressed IP packet from kernel\n");
