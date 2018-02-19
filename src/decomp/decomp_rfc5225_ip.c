@@ -873,9 +873,11 @@ static bool decomp_rfc5225_ip_parse_co(const struct rohc_decomp_ctxt *const ctxt
 	inner_ip_bits = &(bits->ip[bits->ip_nr - 1]);
 
 	/* check if the ROHC packet is large enough to parse first bytes */
-	if(remain_len <= (1 + large_cid_len))
+	if(remain_len < (1 + large_cid_len))
 	{
-		rohc_decomp_warn(ctxt, "rohc packet too small (len = %zu)", remain_len);
+		rohc_decomp_warn(ctxt, "malformed ROHC packet: %zu-byte ROHC packet is "
+		                 "too short for first byte and %zu-byte large CID",
+		                 remain_len, large_cid_len);
 		goto error;
 	}
 

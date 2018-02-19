@@ -1222,10 +1222,11 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 	inner_ip_bits = &(bits->ip[bits->ip_nr - 1]);
 
 	/* check if the ROHC packet is large enough to parse parts 2, 3 and 4 */
-	if(rohc_remain_len <= (1 + large_cid_len))
+	if(rohc_remain_len < (1 + large_cid_len))
 	{
-		rohc_decomp_warn(context, "rohc packet too small (len = %zu)",
-		                 rohc_remain_len);
+		rohc_decomp_warn(context, "malformed ROHC packet: %zu-byte ROHC packet is "
+		                 "too short for first byte and %zu-byte large CID",
+		                 rohc_remain_len, large_cid_len);
 		goto error;
 	}
 
