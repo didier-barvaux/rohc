@@ -471,7 +471,7 @@ static rohc_packet_t decomp_rfc5225_ip_detect_pkt_type(const struct rohc_decomp_
 		                 "type (len = %zu)", rohc_length);
 		goto error;
 	}
-	
+
 	if(GET_BIT_7(rohc_packet) == 0) /* 1-bit discriminator '0' */
 	{
 		type = ROHC_PACKET_PT_0_CRC3;
@@ -754,7 +754,7 @@ static bool decomp_rfc5225_ip_parse_co_repair(const struct rohc_decomp_ctxt *con
 	assert(remain_data[0] == ROHC_PACKET_TYPE_CO_REPAIR);
 	remain_data++;
 	remain_len--;
-	
+
 	/* skip any large CID bytes */
 	remain_data += large_cid_len;
 	remain_len -= large_cid_len;
@@ -843,7 +843,7 @@ static bool decomp_rfc5225_ip_parse_co(const struct rohc_decomp_ctxt *const ctxt
 		1 /* MSN */ +
 		2 /* innermost IP-ID */;
 	uint8_t packed_rohc_packet[packed_rohc_packet_max_len];
-	
+
 	const uint8_t *remain_data = rohc_buf_data(rohc_pkt);
 	size_t remain_len = rohc_pkt.len;
 
@@ -1088,10 +1088,10 @@ static bool decomp_rfc5225_ip_parse_pt_1_seq_id(const struct rohc_decomp_ctxt *c
 		                 rohc_len);
 		goto error;
 	}
-	
+
 	assert(pt_1_seq_id->discriminator == 0x5);
-	innermost_ip_bits->id.bits = pt_1_seq_id->ip_id; 
-	innermost_ip_bits->id.bits_nr = 4; 
+	innermost_ip_bits->id.bits = pt_1_seq_id->ip_id;
+	innermost_ip_bits->id.bits_nr = 4;
 	innermost_ip_bits->id.p = rohc_interval_get_rfc5225_id_id_p(4);
 	extr_crc->type = ROHC_CRC_TYPE_3;
 	extr_crc->bits = pt_1_seq_id->header_crc;
@@ -1141,11 +1141,11 @@ static bool decomp_rfc5225_ip_parse_pt_2_seq_id(const struct rohc_decomp_ctxt *c
 		                 rohc_len);
 		goto error;
 	}
-	
+
 	assert(pt_2_seq_id->discriminator == 0x6);
 	innermost_ip_bits->id.bits =
 		((pt_2_seq_id->ip_id_1 << 1) | pt_2_seq_id->ip_id_2) & 0x3f;
-	innermost_ip_bits->id.bits_nr = 6; 
+	innermost_ip_bits->id.bits_nr = 6;
 	innermost_ip_bits->id.p = rohc_interval_get_rfc5225_id_id_p(6);
 	extr_crc->type = ROHC_CRC_TYPE_7;
 	extr_crc->bits = pt_2_seq_id->header_crc;
@@ -1203,7 +1203,7 @@ static bool decomp_rfc5225_ip_parse_co_common(const struct rohc_decomp_ctxt *con
 		                 "(len = %zu)", remain_len);
 		goto error;
 	}
-	
+
 	assert(co_common->discriminator == 0xfa);
 
 	/* CRC-7 over uncompressed header */

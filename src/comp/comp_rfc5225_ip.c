@@ -3190,7 +3190,7 @@ static int rohc_comp_rfc5225_ip_build_co_common_pkt(const struct rohc_comp_ctxt 
 	rohc_remain_len--;
 	co_common_hdr_len++;
 
-	/* innermost IP-ID */	
+	/* innermost IP-ID */
 	{
 		size_t nr_bits_wlsb;
 		int indicator;
