@@ -1906,7 +1906,8 @@ static int rohc_comp_rfc5225_ip_code_co_repair_pkt(const struct rohc_comp_ctxt *
 			                ip_id_behaviors[ip_hdr_pos]);
 		}
 		co_repair_crc->ctrl_crc =
-			compute_crc_ctrl_fields(context->compressor->crc_table_3,
+			compute_crc_ctrl_fields(context->profile->id,
+			                        context->compressor->crc_table_3,
 			                        context->compressor->reorder_ratio,
 			                        rfc5225_ctxt->msn,
 			                        ip_id_behaviors, rfc5225_ctxt->ip_contexts_nr);
@@ -3098,7 +3099,8 @@ static int rohc_comp_rfc5225_ip_build_co_common_pkt(const struct rohc_comp_ctxt 
 			                ip_id_behaviors[ip_hdr_pos]);
 		}
 		co_common->control_crc3 =
-			compute_crc_ctrl_fields(context->compressor->crc_table_3,
+			compute_crc_ctrl_fields(context->profile->id,
+		                           context->compressor->crc_table_3,
 			                        context->compressor->reorder_ratio,
 			                        rfc5225_ctxt->msn,
 			                        ip_id_behaviors, rfc5225_ctxt->ip_contexts_nr);

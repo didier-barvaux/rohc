@@ -37,6 +37,7 @@
 #include "schemes/ip_id_offset.h"
 #include "schemes/rfc4996.h" /* for c_optional_ip_id_lsb */
 #include "crc.h"
+#include "sdvl.h"
 
 #include <assert.h>
 
@@ -312,6 +313,14 @@ static bool rohc_comp_rfc5225_is_seq_ipid_inferred(const ip_context_t *const ip_
                                                    const uint16_t new_ip_id,
                                                    const int32_t msn_offset)
 	__attribute__((warn_unused_result, nonnull(1)));
+
+static bool sdvl_sn_lsb_encode(uint8_t *const sdvl_bytes,
+                               const size_t sdvl_bytes_max_nr,
+                               size_t *const sdvl_bytes_nr,
+                               const struct c_wlsb *const sn_wlsb,
+                               const rohc_reordering_offset_t reorder_ratio,
+                               const uint32_t sn)
+	__attribute__((warn_unused_result, nonnull(1, 3, 4)));
 
 
 /*
@@ -1137,8 +1146,10 @@ static bool rohc_comp_rfc5225_ip_esp_detect_changes(struct rohc_comp_ctxt *const
 		rohc_comp_debug(context, "MSN offset = %d", rfc5225_ctxt->tmp.msn_offset);
 
 		/* skip ESP header */
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		remain_data += sizeof(struct esphdr);
 		remain_len -= sizeof(struct esphdr);
+#endif
 		*payload_offset += sizeof(struct esphdr);
 	}
 
@@ -1667,14 +1678,10 @@ static rohc_packet_t rohc_comp_rfc5225_ip_esp_decide_FO_SO_pkt(const struct rohc
 		packet_type = ROHC_PACKET_NORTP_PT_2_SEQ_ID;
 	}
 	/* use co_common only if:
-	 *  - 8 MSN bits are enough
 	 *  - the DF fields of all outer IP headers shall not be changing
 	 *  - the behavior of the outer IP-IDs shall not be changing
 	 */
-	else if(rohc_comp_rfc5225_is_msn_lsb_possible(&rfc5225_ctxt->msn_wlsb,
-	                                              rfc5225_ctxt->msn,
-	                                              reorder_ratio, 8) &&
-	        !rfc5225_ctxt->tmp.outer_df_changed &&
+	else if(!rfc5225_ctxt->tmp.outer_df_changed &&
 	        !rfc5225_ctxt->tmp.outer_ip_id_behavior_changed)
 	{
 		rohc_comp_debug(ctxt, "code co_common packet");
@@ -1998,14 +2005,15 @@ static int rohc_comp_rfc5225_ip_esp_code_co_repair_pkt(const struct rohc_comp_ct
 			                ip_id_behaviors[ip_hdr_pos]);
 		}
 		co_repair_crc->ctrl_crc =
-			compute_crc_ctrl_fields(context->compressor->crc_table_3,
+			compute_crc_ctrl_fields(context->profile->id,
+			                        context->compressor->crc_table_3,
 			                        context->compressor->reorder_ratio,
 			                        rfc5225_ctxt->msn,
 			                        ip_id_behaviors, rfc5225_ctxt->ip_contexts_nr);
 		rohc_comp_debug(context, "CRC-3 on control fields = 0x%x "
-		                "(reorder_ratio = 0x%02x, MSN = 0x%04x, %zu IP-ID behaviors)",
+		                "(reorder_ratio = 0x%02x, %zu IP-ID behaviors)",
 		                co_repair_crc->ctrl_crc, context->compressor->reorder_ratio,
-		                rfc5225_ctxt->msn, rfc5225_ctxt->ip_contexts_nr);
+		                rfc5225_ctxt->ip_contexts_nr);
 
 		/* skip CRCs */
 		rohc_remain_data += sizeof(co_repair_crc_t);
@@ -2330,11 +2338,15 @@ static int rohc_comp_rfc5225_ip_esp_static_chain(const struct rohc_comp_ctxt *co
 			               "of the static chain");
 			goto error;
 		}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		rohc_remain_data += ret;
+#endif
 		rohc_remain_len -= ret;
 
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		remain_data += sizeof(struct esphdr);
 		remain_len -= sizeof(struct esphdr);
+#endif
 	}
 
 	return (rohc_pkt_max_len - rohc_remain_len);
@@ -2603,11 +2615,15 @@ static int rohc_comp_rfc5225_ip_esp_dyn_chain(const struct rohc_comp_ctxt *const
 			               "of the static chain");
 			goto error;
 		}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		rohc_remain_data += ret;
+#endif
 		rohc_remain_len -= ret;
 
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		remain_data += sizeof(struct esphdr);
 		remain_len -= sizeof(struct esphdr);
+#endif
 	}
 
 	return (rohc_pkt_max_len - rohc_remain_len);
@@ -3217,14 +3233,15 @@ static int rohc_comp_rfc5225_ip_esp_build_co_common_pkt(const struct rohc_comp_c
 			                ip_id_behaviors[ip_hdr_pos]);
 		}
 		co_common->control_crc3 =
-			compute_crc_ctrl_fields(context->compressor->crc_table_3,
+			compute_crc_ctrl_fields(context->profile->id,
+			                        context->compressor->crc_table_3,
 			                        context->compressor->reorder_ratio,
 			                        rfc5225_ctxt->msn,
 			                        ip_id_behaviors, rfc5225_ctxt->ip_contexts_nr);
 		rohc_comp_debug(context, "CRC-3 on control fields = 0x%x "
-		                "(reorder_ratio = 0x%02x, MSN = 0x%04x, %zu IP-ID behaviors)",
+		                "(reorder_ratio = 0x%02x, %zu IP-ID behaviors)",
 		                co_common->control_crc3, context->compressor->reorder_ratio,
-		                rfc5225_ctxt->msn, rfc5225_ctxt->ip_contexts_nr);
+		                rfc5225_ctxt->ip_contexts_nr);
 	}
 
 	rohc_remain_data += sizeof(co_common_base_t);
@@ -3295,19 +3312,26 @@ static int rohc_comp_rfc5225_ip_esp_build_co_common_pkt(const struct rohc_comp_c
 		co_common_hdr_len++;
 	}
 
-	/* 8 LSB of MSN */
+	/* between 7 and 32 bits of MSN encoded with the sdvl_sn_lsb() scheme */
 	rohc_comp_debug(context, "add MSN to co_common");
-	if(rohc_remain_len < 1)
 	{
-		rohc_comp_warn(context, "ROHC buffer too small for the co_common "
-		               "8 LSB of MSN: 1 byte required, but only "
-		               "%zu bytes available", rohc_remain_len);
+		size_t sdvl_sn_lsb_len;
+
+		if(!sdvl_sn_lsb_encode(rohc_remain_data, rohc_remain_len, &sdvl_sn_lsb_len,
+		                       &rfc5225_ctxt->msn_wlsb, co_common->reorder_ratio,
+		                       rfc5225_ctxt->msn))
+		{
+			rohc_comp_warn(context, "ROHC buffer too small for the co_common "
+			               "sdvl_sn_lsb(MSN): %zu bytes required, but only "
+			               "%zu bytes available", sdvl_sn_lsb_len, rohc_remain_len);
 			goto error;
+		}
+		rohc_comp_debug(context, "sdvl_sn_lsb(MSN) encoded on %zu bytes",
+		                sdvl_sn_lsb_len);
+		rohc_remain_data += sdvl_sn_lsb_len;
+		rohc_remain_len -= sdvl_sn_lsb_len;
+		co_common_hdr_len += sdvl_sn_lsb_len;
 	}
-	rohc_remain_data[0] = rfc5225_ctxt->msn & 0xff;
-	rohc_remain_data++;
-	rohc_remain_len--;
-	co_common_hdr_len++;
 
 	/* innermost IP-ID */
 	{
@@ -3356,6 +3380,110 @@ static int rohc_comp_rfc5225_ip_esp_build_co_common_pkt(const struct rohc_comp_c
 
 error:
 	return -1;
+}
+
+
+/**
+ * @brief Encode a SN value using the sdvl_sn_lsb encoding
+ *
+ * See page 72 in the RFC 5525 for details about the sdvl_sn_lsb encoding.
+ *
+ * @param sdvl_bytes         IN/OUT: The SDVL-encoded bytes
+ * @param sdvl_bytes_max_nr  The maximum available free bytes for SDVL
+ * @param sdvl_bytes_nr      OUT: The number of SDVL bytes written
+ * @param sn_wlsb            The W-LSB object for the SN
+ * @param reorder_ratio      The reorder ratio
+ * @param sn                 The SN value to encode
+ * @return                   true if SDVL encoding is successful,
+ *                           false in case of failure
+ */
+static bool sdvl_sn_lsb_encode(uint8_t *const sdvl_bytes,
+                               const size_t sdvl_bytes_max_nr,
+                               size_t *const sdvl_bytes_nr,
+                               const struct c_wlsb *const sn_wlsb,
+                               const rohc_reordering_offset_t reorder_ratio,
+                               const uint32_t sn)
+{
+	/* encode the value according to the number of available bits */
+	if(rohc_comp_rfc5225_is_msn_lsb_possible(sn_wlsb, sn, reorder_ratio,
+	                                         ROHC_SDVL_MAX_BITS_IN_1_BYTE))
+	{
+		*sdvl_bytes_nr = 1;
+		if(sdvl_bytes_max_nr < (*sdvl_bytes_nr))
+		{
+			/* number of bytes needed is too large for buffer */
+			goto error;
+		}
+
+		/* bit pattern 0 */
+		sdvl_bytes[0] = sn & 0x7f;
+	}
+	else if(rohc_comp_rfc5225_is_msn_lsb_possible(sn_wlsb, sn, reorder_ratio,
+	                                              ROHC_SDVL_MAX_BITS_IN_2_BYTES))
+	{
+		*sdvl_bytes_nr = 2;
+		if(sdvl_bytes_max_nr < (*sdvl_bytes_nr))
+		{
+			/* number of bytes needed is too large for buffer */
+			goto error;
+		}
+
+		/* 0x02 = bit pattern 10 */
+		sdvl_bytes[0] = ((0x02 << 6) | ((sn >> 8) & 0x3f)) & 0xff;
+		sdvl_bytes[1] = sn & 0xff;
+	}
+	else if(rohc_comp_rfc5225_is_msn_lsb_possible(sn_wlsb, sn, reorder_ratio,
+	                                              ROHC_SDVL_MAX_BITS_IN_3_BYTES))
+	{
+		*sdvl_bytes_nr = 3;
+		if(sdvl_bytes_max_nr < (*sdvl_bytes_nr))
+		{
+			/* number of bytes needed is too large for buffer */
+			goto error;
+		}
+
+		/* 0x06 = bit pattern 110 */
+		sdvl_bytes[0] = ((0x06 << 5) | ((sn >> 16) & 0x1f)) & 0xff;
+		sdvl_bytes[1] = (sn >> 8) & 0xff;
+		sdvl_bytes[2] = sn & 0xff;
+	}
+	else if(rohc_comp_rfc5225_is_msn_lsb_possible(sn_wlsb, sn, reorder_ratio,
+	                                              ROHC_SDVL_MAX_BITS_IN_4_BYTES_RFC5225))
+	{
+		*sdvl_bytes_nr = 4;
+		if(sdvl_bytes_max_nr < (*sdvl_bytes_nr))
+		{
+			/* number of bytes needed is too large for buffer */
+			goto error;
+		}
+
+		/* 0x0e = bit pattern 1110 */
+		sdvl_bytes[0] = ((0x0e << 4) | ((sn >> 24) & 0x0f)) & 0xff;
+		sdvl_bytes[1] = (sn >> 16) & 0xff;
+		sdvl_bytes[2] = (sn >> 8) & 0xff;
+		sdvl_bytes[3] = sn & 0xff;
+	}
+	else
+	{
+		*sdvl_bytes_nr = 5;
+		if(sdvl_bytes_max_nr < (*sdvl_bytes_nr))
+		{
+			/* number of bytes needed is too large for buffer */
+			goto error;
+		}
+
+		/* 0xff = bit pattern 11111111 */
+		sdvl_bytes[0] = 0xff;
+		sdvl_bytes[1] = (sn >> 24) & 0xff;
+		sdvl_bytes[2] = (sn >> 16) & 0xff;
+		sdvl_bytes[3] = (sn >> 8) & 0xff;
+		sdvl_bytes[4] = sn & 0xff;
+	}
+
+	return true;
+
+error:
+	return false;
 }
 
 

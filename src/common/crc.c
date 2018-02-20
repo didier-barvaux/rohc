@@ -450,6 +450,7 @@ uint8_t compute_crc_dynamic(const uint8_t *const outer_ip,
 /**
  * @brief Compute the CRC-3 over control fields for ROHCv2 profiles
  *
+ * @param profile_id          The current profile ID
  * @param crc_table           The pre-computed table for fast CRC computation
  * @param reorder_ratio       The 2-bit reorder_ratio control field,
  *                            padded with 6 MSB of zeroes
@@ -460,8 +461,9 @@ uint8_t compute_crc_dynamic(const uint8_t *const outer_ip,
  *                            behavior control fields to compute the CRC over
  * @return                    The computed CRC-3
  */
-uint8_t compute_crc_ctrl_fields(const uint8_t *const crc_table,
-										  const uint8_t reorder_ratio,
+uint8_t compute_crc_ctrl_fields(const rohc_profile_t profile_id,
+                                const uint8_t *const crc_table,
+                                const uint8_t reorder_ratio,
                                 const uint16_t msn,
                                 const uint8_t ip_id_behaviors[],
                                 const size_t ip_id_behaviors_nr)
@@ -474,8 +476,11 @@ uint8_t compute_crc_ctrl_fields(const uint8_t *const crc_table,
 	assert(reorder_ratio == (reorder_ratio & 0x3));
 	crc = crc_calculate(crc_type, &reorder_ratio, 1, crc, crc_table);
 
-	/* 16-bit MSN */
-	crc = crc_calculate(crc_type, (uint8_t *) &msn, 2, crc, crc_table);
+	/* 16-bit MSN (not applicable for the IP/ESP profile) */
+	if(profile_id != ROHCv2_PROFILE_IP_ESP)
+	{
+		crc = crc_calculate(crc_type, (uint8_t *) &msn, 2, crc, crc_table);
+	}
 
 	/* 2-bit IP-ID behaviors, padded with 6 MSB of zeroes, one per IP header */
 	assert(ip_id_behaviors_nr > 0);

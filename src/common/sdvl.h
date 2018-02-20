@@ -42,12 +42,16 @@ typedef enum
 {
 	/** Maximum number of bits in 1 SDVL-encoded byte */
 	ROHC_SDVL_MAX_BITS_IN_1_BYTE = 7U,
-	/** Maximum number of bits in 2 SDVL-encoded byte */
+	/** Maximum number of bits in 2 SDVL-encoded bytes */
 	ROHC_SDVL_MAX_BITS_IN_2_BYTES = 14U,
-	/** Maximum number of bits in 3 SDVL-encoded byte */
+	/** Maximum number of bits in 3 SDVL-encoded bytes */
 	ROHC_SDVL_MAX_BITS_IN_3_BYTES = 21U,
-	/** Maximum number of bits in 4 SDVL-encoded byte */
+	/** Maximum number of bits in 4 sdvl_sn_lsb() bytes as defined in RFC5225 */
+	ROHC_SDVL_MAX_BITS_IN_4_BYTES_RFC5225 = 28U,
+	/** Maximum number of bits in 4 SDVL-encoded bytes */
 	ROHC_SDVL_MAX_BITS_IN_4_BYTES = 29U,
+	/** Maximum number of bits in 5 sdvl_sn_lsb() bytes as defined in RFC5225 */
+	ROHC_SDVL_MAX_BITS_IN_5_BYTES_RFC5225 = 32U,
 } rohc_sdvl_max_bits_t;
 
 

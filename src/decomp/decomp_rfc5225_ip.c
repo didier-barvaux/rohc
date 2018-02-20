@@ -2223,7 +2223,8 @@ static bool decomp_rfc5225_ip_decode_bits(const struct rohc_decomp_ctxt *const c
 			                  ip_id_behaviors[ip_hdr_pos]);
 		}
 		ctrl_crc_computed =
-			compute_crc_ctrl_fields(ctxt->decompressor->crc_table_3,
+			compute_crc_ctrl_fields(ctxt->profile->id,
+			                        ctxt->decompressor->crc_table_3,
 			                        decoded->reorder_ratio, decoded->msn,
 			                        ip_id_behaviors, bits->ip_nr);
 		rohc_decomp_debug(ctxt, "CRC-3 on control fields = 0x%x (reorder_ratio = "

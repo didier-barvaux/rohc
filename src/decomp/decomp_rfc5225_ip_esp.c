@@ -38,6 +38,7 @@
 #include "crc.h"
 #include "rohc_debug.h"
 #include "interval.h"
+#include "sdvl.h"
 
 #include <string.h>
 
@@ -375,6 +376,13 @@ static bool decomp_rfc5225_ip_esp_attempt_repair(const struct rohc_decomp *const
 
 static uint32_t decomp_rfc5225_ip_esp_get_sn(const struct rohc_decomp_ctxt *const context)
 	__attribute__((warn_unused_result, nonnull(1), pure));
+
+static size_t sdvl_sn_lsb_decode(const uint8_t *const data,
+                                 const size_t length,
+                                 uint32_t *const sn,
+                                 size_t *const sn_bits_nr)
+	__attribute__((warn_unused_result, nonnull(1, 3, 4)));
+
 
 /*
  * Definitions of private functions
@@ -1328,19 +1336,30 @@ static bool decomp_rfc5225_ip_esp_parse_co_common(const struct rohc_decomp_ctxt 
 	}
 
 	/* MSN */
-	if(remain_len < 1)
 	{
-		rohc_decomp_warn(ctxt, "ROHC packet too small for co_common MSN "
-		                 "(len = %zu)", remain_len);
-		goto error;
+		size_t sdvl_sn_lsb_len;
+
+		sdvl_sn_lsb_len = sdvl_sn_lsb_decode(remain_data, remain_len,
+		                                     &bits->msn.bits, &bits->msn.bits_nr);
+		if(sdvl_sn_lsb_len == 0)
+		{
+			rohc_decomp_warn(ctxt, "ROHC packet too small for co_common "
+			                 "sdvl_sn_lsb(MSN) or unknown discriminator (len = %zu)",
+			                 remain_len);
+			goto error;
+		}
+		else if(sdvl_sn_lsb_len == 6)
+		{
+			rohc_decomp_warn(ctxt, "malformed ROHC packet: unknown discriminator "
+			                 "for sdvl_sn_lsb(MSN)");
+			goto error;
+		}
+		rohc_decomp_debug(ctxt, "found %zu bits of MSN %u (0x%x)",
+		                  bits->msn.bits_nr, bits->msn.bits, bits->msn.bits);
+		remain_data += sdvl_sn_lsb_len;
+		remain_len -= sdvl_sn_lsb_len;
+		co_common_hdr_len += sdvl_sn_lsb_len;
 	}
-	bits->msn.bits = remain_data[0];
-	bits->msn.bits_nr = 8;
-	rohc_decomp_debug(ctxt, "found %zu bits of MSN %u (0x%02x)",
-	                  bits->msn.bits_nr, bits->msn.bits, bits->msn.bits);
-	remain_data++;
-	remain_len--;
-	co_common_hdr_len++;
 
 	/* innermost IP-ID */
 	{
@@ -1451,8 +1470,10 @@ static bool decomp_rfc5225_ip_esp_parse_static_chain(const struct rohc_decomp_ct
 	}
 	rohc_decomp_debug(ctxt, "ESP static part is %d-byte length",ret);
 	assert(remain_len >= ((size_t) ret));
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	remain_data += ret;
 	remain_len -= ret;
+#endif
 	(*parsed_len) += ret;
 
 	return true;
@@ -1725,8 +1746,10 @@ static bool decomp_rfc5225_ip_esp_parse_dyn_chain(const struct rohc_decomp_ctxt 
 	}
 	rohc_decomp_debug(ctxt, "ESP dynamic part is %d-byte length",ret);
 	assert(remain_len >= ((size_t) ret));
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	remain_data += ret;
 	remain_len -= ret;
+#endif
 	(*parsed_len) += ret;
 
 	return true;
@@ -2171,13 +2194,13 @@ static bool decomp_rfc5225_ip_esp_decode_bits(const struct rohc_decomp_ctxt *con
 			                  ip_id_behaviors[ip_hdr_pos]);
 		}
 		ctrl_crc_computed =
-			compute_crc_ctrl_fields(ctxt->decompressor->crc_table_3,
+			compute_crc_ctrl_fields(ctxt->profile->id,
+			                        ctxt->decompressor->crc_table_3,
 			                        decoded->reorder_ratio, decoded->msn,
 			                        ip_id_behaviors, bits->ip_nr);
 		rohc_decomp_debug(ctxt, "CRC-3 on control fields = 0x%x (reorder_ratio = "
-		                  "0x%02x, MSN = 0x%04x, %zu IP-ID behaviors)",
-		                  ctrl_crc_computed, decoded->reorder_ratio, decoded->msn,
-		                  bits->ip_nr);
+		                  "0x%02x, %zu IP-ID behaviors)",
+		                  ctrl_crc_computed, decoded->reorder_ratio, bits->ip_nr);
 
 		/* does the computed CRC match the one in packet? */
 		if(ctrl_crc_computed != bits->ctrl_crc.bits)
@@ -3036,6 +3059,102 @@ static bool decomp_rfc5225_ip_esp_attempt_repair(const struct rohc_decomp *const
 static uint32_t decomp_rfc5225_ip_esp_get_sn(const struct rohc_decomp_ctxt *const context __attribute__((unused)))
 {
 	return 0;
+}
+
+
+/**
+ * @brief Decode a SN value using the sdvl_sn_lsb encoding
+ *
+ * See page 72 in the RFC 5525 for details about the sdvl_sn_lsb encoding.
+ *
+ * @param data             The SDVL data to decode
+ * @param length           The maximum data length available (in bytes)
+ * @param[out] sn          The decoded MSN value
+ * @param[out] sn_bits_nr  The number of useful MSN bits
+ * @return                 The number of bytes used by the SDVL field
+ *                         (value between 1 and 5) in case of success,
+ *                         0 if ROHC packet is too small,
+ *                         6 if SDVL discriminator is unknown
+ */
+static size_t sdvl_sn_lsb_decode(const uint8_t *const data,
+                                 const size_t length,
+                                 uint32_t *const sn,
+                                 size_t *const sn_bits_nr)
+{
+	size_t sdvl_len;
+
+	if(length < 1)
+	{
+		/* packet too small to decode SDVL field */
+		goto error_too_small;
+	}
+
+	if(GET_BIT_7(data) == 0) /* bit == 0 */
+	{
+		/* 7 bits of SN encoded on 1 byte */
+		sdvl_len = 1;
+		*sn = GET_BIT_0_6(data);
+		*sn_bits_nr = ROHC_SDVL_MAX_BITS_IN_1_BYTE;
+	}
+	else if(GET_BIT_6_7(data) == 0x02) /* bits == 0b10 */
+	{
+		/* 14 bits of SN encoded on 2 bytes */
+		sdvl_len = 2;
+		if(length < sdvl_len)
+		{
+			/* packet too small to decode SDVL field */
+			goto error_too_small;
+		}
+		*sn = (GET_BIT_0_5(data) << 8) | data[1];
+		*sn_bits_nr = ROHC_SDVL_MAX_BITS_IN_2_BYTES;
+	}
+	else if(GET_BIT_5_7(data) == 0x06) /* bits == 0b110 */
+	{
+		/* 21 bits of SN encoded on 3 bytes */
+		sdvl_len = 3;
+		if(length < sdvl_len)
+		{
+			/* packet too small to decode SDVL field */
+			goto error_too_small;
+		}
+		*sn = (GET_BIT_0_4(data) << 16) | (data[1] << 8) | data[2];
+		*sn_bits_nr = ROHC_SDVL_MAX_BITS_IN_3_BYTES;
+	}
+	else if(GET_BIT_4_7(data) == 0x0e) /* bits == 0b1110 */
+	{
+		/* 28 bits of SN encoded on 4 bytes */
+		sdvl_len = 4;
+		if(length < sdvl_len)
+		{
+			/* packet too small to decode SDVL field */
+			goto error_too_small;
+		}
+		*sn = (GET_BIT_0_3(data) << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
+		*sn_bits_nr = ROHC_SDVL_MAX_BITS_IN_4_BYTES_RFC5225;
+	}
+	else if(data[0] == 0xff) /* bits == 0b11111111 */
+	{
+		/* 32 bits of SN encoded on 5 bytes */
+		sdvl_len = 5;
+		if(length < sdvl_len)
+		{
+			/* packet too small to decode SDVL field */
+			goto error_too_small;
+		}
+		*sn = (data[1] << 24) | (data[2] << 16) | (data[3] << 8) | data[4];
+		*sn_bits_nr = ROHC_SDVL_MAX_BITS_IN_5_BYTES_RFC5225;
+	}
+	else
+	{
+		goto error_malformed;
+	}
+
+	return sdvl_len;
+
+error_too_small:
+	return 0;
+error_malformed:
+	return 6;
 }
 
 
