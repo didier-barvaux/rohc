@@ -1157,7 +1157,7 @@ static int rohc_comp_rfc5225_ip_detect_changes_ipv4(struct rohc_comp_ctxt *const
 		}
 		else
 		{
-			ip_id_behavior = rohc_comp_detect_ip_id_behavior(last_ip_id, ip_id, 19);
+			ip_id_behavior = rohc_comp_detect_ip_id_behavior(last_ip_id, ip_id, 1, 19);
 
 			/* no sequential behavior for outer IP headers */
 			if(!is_innermost && ip_id_behavior <= ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
