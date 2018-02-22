@@ -272,6 +272,20 @@ static int decomp_rfc5225_ip_parse_dyn_ip(const struct rohc_decomp_ctxt *const c
                                           struct rohc_rfc5225_bits *const bits,
                                           struct rohc_rfc5225_ip_bits *const ip_bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6)));
+static int decomp_rfc5225_ip_parse_dyn_ipv4(const struct rohc_decomp_ctxt *const ctxt,
+                                            const uint8_t *const rohc_pkt,
+                                            const size_t rohc_len,
+                                            const bool is_innermost,
+                                            struct rohc_rfc5225_bits *const bits,
+                                            struct rohc_rfc5225_ip_bits *const ip_bits)
+	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6)));
+static int decomp_rfc5225_ip_parse_dyn_ipv6(const struct rohc_decomp_ctxt *const ctxt,
+                                            const uint8_t *const rohc_pkt,
+                                            const size_t rohc_len,
+                                            const bool is_innermost,
+                                            struct rohc_rfc5225_bits *const bits,
+                                            struct rohc_rfc5225_ip_bits *const ip_bits)
+	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6)));
 
 /* irregular chain */
 static bool decomp_rfc5225_ip_parse_irreg_chain(const struct rohc_decomp_ctxt *const ctxt,
@@ -1664,214 +1678,287 @@ static int decomp_rfc5225_ip_parse_dyn_ip(const struct rohc_decomp_ctxt *const c
                                           struct rohc_rfc5225_bits *const bits,
                                           struct rohc_rfc5225_ip_bits *const ip_bits)
 {
-	const uint8_t *remain_data = rohc_pkt;
-	size_t remain_len = rohc_len;
-	size_t size = 0;
+	size_t size;
+	int ret;
 
 	rohc_decomp_debug(ctxt, "parse IP dynamic part");
 
 	if(ip_bits->version == IPV4)
 	{
-		if(is_innermost)
+		ret = decomp_rfc5225_ip_parse_dyn_ipv4(ctxt, rohc_pkt, rohc_len,
+		                                       is_innermost, bits, ip_bits);
+		if(ret < 0)
 		{
-			const ipv4_endpoint_innermost_dynamic_noipid_t *const ipv4_dynamic =
-				(ipv4_endpoint_innermost_dynamic_noipid_t *) remain_data;
-
-			if(remain_len < sizeof(ipv4_endpoint_innermost_dynamic_noipid_t))
-			{
-				rohc_decomp_warn(ctxt, "malformed ROHC packet: too short for "
-				                 "IPv4 dynamic part");
-				goto error;
-			}
-
-			if(ipv4_dynamic->reserved != 0)
-			{
-				rohc_decomp_warn(ctxt, "malformed ROHC packet: reserved field is "
-				                 "not zero, but 0x%x", ipv4_dynamic->reserved);
-				goto error;
-			}
-			bits->reorder_ratio = ipv4_dynamic->reorder_ratio;
-			bits->reorder_ratio_nr = 2;
-			ip_bits->df = ipv4_dynamic->df;
-			ip_bits->df_nr = 1;
-			ip_bits->id_behavior = ipv4_dynamic->ip_id_behavior_innermost;
-			ip_bits->id_behavior_nr = 2;
-			rohc_decomp_debug(ctxt, "ip_id_behavior_innermost = %d",
-			                  ip_bits->id_behavior);
-			ip_bits->tos_tc_bits = ipv4_dynamic->tos_tc;
-			ip_bits->tos_tc_bits_nr = 8;
-			ip_bits->ttl_hl = ipv4_dynamic->ttl_hopl;
-			ip_bits->ttl_hl_nr = 8;
-			rohc_decomp_debug(ctxt, "TOS/TC = 0x%x, ttl_hopl = 0x%x",
-			                  ip_bits->tos_tc_bits, ip_bits->ttl_hl);
-
-			if(ipv4_dynamic->ip_id_behavior_innermost != ROHC_IP_ID_BEHAVIOR_ZERO)
-			{
-				const ipv4_endpoint_innermost_dynamic_ipid_t *const ipv4_dynamic_ipid =
-					(ipv4_endpoint_innermost_dynamic_ipid_t *) remain_data;
-
-				if(remain_len < sizeof(ipv4_endpoint_innermost_dynamic_ipid_t))
-				{
-					rohc_decomp_warn(ctxt, "malformed ROHC packet: too short for "
-					                 "IPv4 dynamic part");
-					goto error;
-				}
-
-				ip_bits->id.bits = rohc_ntoh16(ipv4_dynamic_ipid->ip_id_innermost);
-				ip_bits->id.bits_nr = 16;
-				rohc_decomp_debug(ctxt, "IP-ID = 0x%04x", ip_bits->id.bits);
-
-				bits->msn.bits = rohc_ntoh16(ipv4_dynamic_ipid->msn);
-				bits->msn.bits_nr = 16;
-				rohc_decomp_debug(ctxt, "%zu bits of MSN 0x%04x",
-				                  bits->msn.bits_nr, bits->msn.bits);
-
-				size += sizeof(ipv4_endpoint_innermost_dynamic_ipid_t);
-#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
-				remain_data += sizeof(ipv4_endpoint_innermost_dynamic_ipid_t);
-				remain_len -= sizeof(ipv4_endpoint_innermost_dynamic_ipid_t);
-#endif
-			}
-			else
-			{
-				bits->msn.bits = rohc_ntoh16(ipv4_dynamic->msn);
-				bits->msn.bits_nr = 16;
-				rohc_decomp_debug(ctxt, "%zu bits of MSN 0x%04x",
-				                  bits->msn.bits_nr, bits->msn.bits);
-
-				size += sizeof(ipv4_endpoint_innermost_dynamic_noipid_t);
-#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
-				remain_data += sizeof(ipv4_endpoint_innermost_dynamic_noipid_t);
-				remain_len -= sizeof(ipv4_endpoint_innermost_dynamic_noipid_t);
-#endif
-			}
+			rohc_decomp_warn(ctxt, "malformed ROHC packet: malformed IPv4 dynamic part");
+			goto error;
 		}
-		else /* any outer IPv4 header */
-		{
-			const ipv4_outer_dynamic_noipid_t *const ipv4_dynamic =
-				(ipv4_outer_dynamic_noipid_t *) remain_data;
-
-			if(remain_len < sizeof(ipv4_outer_dynamic_noipid_t))
-			{
-				rohc_decomp_warn(ctxt, "malformed ROHC packet: too short for "
-				                 "IPv4 dynamic part");
-				goto error;
-			}
-
-			if(ipv4_dynamic->reserved != 0)
-			{
-				rohc_decomp_warn(ctxt, "malformed ROHC packet: reserved field is "
-				                 "not zero, but 0x%x", ipv4_dynamic->reserved);
-				goto error;
-			}
-			ip_bits->df = ipv4_dynamic->df;
-			ip_bits->df_nr = 1;
-			ip_bits->id_behavior = ipv4_dynamic->ip_id_behavior_outer;
-			ip_bits->id_behavior_nr = 2;
-			rohc_decomp_debug(ctxt, "ip_id_behavior_outer = %d",
-			                  ip_bits->id_behavior);
-			ip_bits->tos_tc_bits = ipv4_dynamic->tos_tc;
-			ip_bits->tos_tc_bits_nr = 8;
-			ip_bits->ttl_hl = ipv4_dynamic->ttl_hopl;
-			ip_bits->ttl_hl_nr = 8;
-			rohc_decomp_debug(ctxt, "TOS/TC = 0x%x, ttl_hopl = 0x%x",
-			                  ip_bits->tos_tc_bits, ip_bits->ttl_hl);
-
-			if(ipv4_dynamic->ip_id_behavior_outer != ROHC_IP_ID_BEHAVIOR_ZERO)
-			{
-				const ipv4_outer_dynamic_ipid_t *const ipv4_dynamic_ipid =
-					(ipv4_outer_dynamic_ipid_t *) remain_data;
-
-				if(remain_len < sizeof(ipv4_outer_dynamic_ipid_t))
-				{
-					rohc_decomp_warn(ctxt, "malformed ROHC packet: too short for "
-					                 "IPv4 dynamic part");
-					goto error;
-				}
-
-				ip_bits->id.bits = rohc_ntoh16(ipv4_dynamic_ipid->ip_id_outer);
-				ip_bits->id.bits_nr = 16;
-				rohc_decomp_debug(ctxt, "IP-ID = 0x%04x", ip_bits->id.bits);
-
-				size += sizeof(ipv4_outer_dynamic_ipid_t);
-#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
-				remain_data += sizeof(ipv4_outer_dynamic_ipid_t);
-				remain_len -= sizeof(ipv4_outer_dynamic_ipid_t);
-#endif
-			}
-			else
-			{
-				size += sizeof(ipv4_outer_dynamic_noipid_t);
-#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
-				remain_data += sizeof(ipv4_outer_dynamic_noipid_t);
-				remain_len -= sizeof(ipv4_outer_dynamic_noipid_t);
-#endif
-			}
-		}
+		size = ret;
 	}
 	else /* IPv6 header */
 	{
-		const ipv6_regular_dynamic_t *const ipv6_dynamic =
-			(ipv6_regular_dynamic_t *) remain_data;
+		ret = decomp_rfc5225_ip_parse_dyn_ipv6(ctxt, rohc_pkt, rohc_len,
+		                                       is_innermost, bits, ip_bits);
+		if(ret < 0)
+		{
+			rohc_decomp_warn(ctxt, "malformed ROHC packet: malformed IPv6 dynamic part");
+			goto error;
+		}
+		size = ret;
+	}
 
-		if(remain_len < sizeof(ipv6_regular_dynamic_t))
+	rohc_decomp_dump_buf(ctxt, "IP dynamic part", rohc_pkt, size);
+
+	return size;
+
+error:
+	return -1;
+}
+
+
+/**
+ * @brief Decode the dynamic IPv4 header of the ROHC packet
+ *
+ * @param ctxt           The decompression context
+ * @param rohc_pkt       The remaining part of the ROHC packet
+ * @param rohc_len       The remaining length (in bytes) of the ROHC packet
+ * @param is_innermost   Whether the IP header is the innermost IP header or not
+ * @param[out] bits      The bits extracted from the dynamic chain
+ * @param[out] ip_bits   The bits extracted from the IP part of the dynamic chain
+ * @return               The length of dynamic IP header in case of success,
+ *                       -1 if an error occurs
+ */
+static int decomp_rfc5225_ip_parse_dyn_ipv4(const struct rohc_decomp_ctxt *const ctxt,
+                                            const uint8_t *const rohc_pkt,
+                                            const size_t rohc_len,
+                                            const bool is_innermost,
+                                            struct rohc_rfc5225_bits *const bits,
+                                            struct rohc_rfc5225_ip_bits *const ip_bits)
+{
+	const uint8_t *remain_data = rohc_pkt;
+	size_t remain_len = rohc_len;
+	size_t size = 0;
+
+	if(is_innermost)
+	{
+		const ipv4_endpoint_innermost_dynamic_noipid_t *const ipv4_dynamic =
+			(ipv4_endpoint_innermost_dynamic_noipid_t *) remain_data;
+
+		if(remain_len < sizeof(ipv4_endpoint_innermost_dynamic_noipid_t))
+		{
+			rohc_decomp_warn(ctxt, "malformed ROHC packet: too short for "
+			                 "IPv4 dynamic part");
+			goto error;
+		}
+
+		if(ipv4_dynamic->reserved != 0)
+		{
+			rohc_decomp_warn(ctxt, "malformed ROHC packet: reserved field is "
+			                 "not zero, but 0x%x", ipv4_dynamic->reserved);
+			goto error;
+		}
+		bits->reorder_ratio = ipv4_dynamic->reorder_ratio;
+		bits->reorder_ratio_nr = 2;
+		ip_bits->df = ipv4_dynamic->df;
+		ip_bits->df_nr = 1;
+		ip_bits->id_behavior = ipv4_dynamic->ip_id_behavior_innermost;
+		ip_bits->id_behavior_nr = 2;
+		rohc_decomp_debug(ctxt, "ip_id_behavior_innermost = %d",
+		                  ip_bits->id_behavior);
+		ip_bits->tos_tc_bits = ipv4_dynamic->tos_tc;
+		ip_bits->tos_tc_bits_nr = 8;
+		ip_bits->ttl_hl = ipv4_dynamic->ttl_hopl;
+		ip_bits->ttl_hl_nr = 8;
+		rohc_decomp_debug(ctxt, "TOS/TC = 0x%x, ttl_hopl = 0x%x",
+		                  ip_bits->tos_tc_bits, ip_bits->ttl_hl);
+
+		if(ipv4_dynamic->ip_id_behavior_innermost != ROHC_IP_ID_BEHAVIOR_ZERO)
+		{
+			const ipv4_endpoint_innermost_dynamic_ipid_t *const ipv4_dynamic_ipid =
+				(ipv4_endpoint_innermost_dynamic_ipid_t *) remain_data;
+
+			if(remain_len < sizeof(ipv4_endpoint_innermost_dynamic_ipid_t))
+			{
+				rohc_decomp_warn(ctxt, "malformed ROHC packet: too short for "
+				                 "IPv4 dynamic part");
+				goto error;
+			}
+
+			ip_bits->id.bits = rohc_ntoh16(ipv4_dynamic_ipid->ip_id_innermost);
+			ip_bits->id.bits_nr = 16;
+			rohc_decomp_debug(ctxt, "IP-ID = 0x%04x", ip_bits->id.bits);
+
+			bits->msn.bits = rohc_ntoh16(ipv4_dynamic_ipid->msn);
+			bits->msn.bits_nr = 16;
+			rohc_decomp_debug(ctxt, "%zu bits of MSN 0x%04x",
+			                  bits->msn.bits_nr, bits->msn.bits);
+
+			size += sizeof(ipv4_endpoint_innermost_dynamic_ipid_t);
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
+			remain_data += sizeof(ipv4_endpoint_innermost_dynamic_ipid_t);
+			remain_len -= sizeof(ipv4_endpoint_innermost_dynamic_ipid_t);
+#endif
+		}
+		else
+		{
+			bits->msn.bits = rohc_ntoh16(ipv4_dynamic->msn);
+			bits->msn.bits_nr = 16;
+			rohc_decomp_debug(ctxt, "%zu bits of MSN 0x%04x",
+			                  bits->msn.bits_nr, bits->msn.bits);
+
+			size += sizeof(ipv4_endpoint_innermost_dynamic_noipid_t);
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
+			remain_data += sizeof(ipv4_endpoint_innermost_dynamic_noipid_t);
+			remain_len -= sizeof(ipv4_endpoint_innermost_dynamic_noipid_t);
+#endif
+		}
+	}
+	else /* any outer IPv4 header */
+	{
+		const ipv4_outer_dynamic_noipid_t *const ipv4_dynamic =
+			(ipv4_outer_dynamic_noipid_t *) remain_data;
+
+		if(remain_len < sizeof(ipv4_outer_dynamic_noipid_t))
+		{
+			rohc_decomp_warn(ctxt, "malformed ROHC packet: too short for "
+			                 "IPv4 dynamic part");
+			goto error;
+		}
+
+		if(ipv4_dynamic->reserved != 0)
+		{
+			rohc_decomp_warn(ctxt, "malformed ROHC packet: reserved field is "
+			                 "not zero, but 0x%x", ipv4_dynamic->reserved);
+			goto error;
+		}
+		ip_bits->df = ipv4_dynamic->df;
+		ip_bits->df_nr = 1;
+		ip_bits->id_behavior = ipv4_dynamic->ip_id_behavior_outer;
+		ip_bits->id_behavior_nr = 2;
+		rohc_decomp_debug(ctxt, "ip_id_behavior_outer = %d", ip_bits->id_behavior);
+		ip_bits->tos_tc_bits = ipv4_dynamic->tos_tc;
+		ip_bits->tos_tc_bits_nr = 8;
+		ip_bits->ttl_hl = ipv4_dynamic->ttl_hopl;
+		ip_bits->ttl_hl_nr = 8;
+		rohc_decomp_debug(ctxt, "TOS/TC = 0x%x, ttl_hopl = 0x%x",
+		                  ip_bits->tos_tc_bits, ip_bits->ttl_hl);
+
+		if(ipv4_dynamic->ip_id_behavior_outer != ROHC_IP_ID_BEHAVIOR_ZERO)
+		{
+			const ipv4_outer_dynamic_ipid_t *const ipv4_dynamic_ipid =
+				(ipv4_outer_dynamic_ipid_t *) remain_data;
+
+			if(remain_len < sizeof(ipv4_outer_dynamic_ipid_t))
+			{
+				rohc_decomp_warn(ctxt, "malformed ROHC packet: too short for "
+					                 "IPv4 dynamic part");
+				goto error;
+			}
+
+			ip_bits->id.bits = rohc_ntoh16(ipv4_dynamic_ipid->ip_id_outer);
+			ip_bits->id.bits_nr = 16;
+			rohc_decomp_debug(ctxt, "IP-ID = 0x%04x", ip_bits->id.bits);
+
+			size += sizeof(ipv4_outer_dynamic_ipid_t);
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
+			remain_data += sizeof(ipv4_outer_dynamic_ipid_t);
+			remain_len -= sizeof(ipv4_outer_dynamic_ipid_t);
+#endif
+		}
+		else
+		{
+			size += sizeof(ipv4_outer_dynamic_noipid_t);
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
+			remain_data += sizeof(ipv4_outer_dynamic_noipid_t);
+			remain_len -= sizeof(ipv4_outer_dynamic_noipid_t);
+#endif
+		}
+	}
+
+	return size;
+
+error:
+	return -1;
+}
+
+
+/**
+ * @brief Decode the dynamic IPv6 header of the ROHC packet
+ *
+ * @param ctxt           The decompression context
+ * @param rohc_pkt       The remaining part of the ROHC packet
+ * @param rohc_len       The remaining length (in bytes) of the ROHC packet
+ * @param is_innermost   Whether the IP header is the innermost IP header or not
+ * @param[out] bits      The bits extracted from the dynamic chain
+ * @param[out] ip_bits   The bits extracted from the IP part of the dynamic chain
+ * @return               The length of dynamic IP header in case of success,
+ *                       -1 if an error occurs
+ */
+static int decomp_rfc5225_ip_parse_dyn_ipv6(const struct rohc_decomp_ctxt *const ctxt,
+                                            const uint8_t *const rohc_pkt,
+                                            const size_t rohc_len,
+                                            const bool is_innermost,
+                                            struct rohc_rfc5225_bits *const bits,
+                                            struct rohc_rfc5225_ip_bits *const ip_bits)
+{
+	const uint8_t *remain_data = rohc_pkt;
+	size_t remain_len = rohc_len;
+	const ipv6_regular_dynamic_t *const ipv6_dynamic =
+		(ipv6_regular_dynamic_t *) remain_data;
+	size_t size = 0;
+
+	if(remain_len < sizeof(ipv6_regular_dynamic_t))
+	{
+		rohc_decomp_warn(ctxt, "malformed ROHC packet: too short for "
+		                 "IPv6 dynamic part");
+		goto error;
+	}
+
+	ip_bits->tos_tc_bits = ipv6_dynamic->tos_tc;
+	ip_bits->tos_tc_bits_nr = 8;
+	ip_bits->ttl_hl = ipv6_dynamic->ttl_hopl;
+	ip_bits->ttl_hl_nr = 8;
+	ip_bits->id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
+	ip_bits->id_behavior_nr = 2;
+
+	if(is_innermost)
+	{
+		const ipv6_endpoint_dynamic_t *const ipv6_endpoint_dynamic =
+			(ipv6_endpoint_dynamic_t *) remain_data;
+
+		if(remain_len < sizeof(ipv6_endpoint_dynamic_t))
 		{
 			rohc_decomp_warn(ctxt, "malformed ROHC packet: too short for "
 			                 "IPv6 dynamic part");
 			goto error;
 		}
 
-		ip_bits->tos_tc_bits = ipv6_dynamic->tos_tc;
-		ip_bits->tos_tc_bits_nr = 8;
-		ip_bits->ttl_hl = ipv6_dynamic->ttl_hopl;
-		ip_bits->ttl_hl_nr = 8;
-		ip_bits->id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
-		ip_bits->id_behavior_nr = 2;
-
-		if(is_innermost)
+		if(ipv6_endpoint_dynamic->reserved != 0)
 		{
-			const ipv6_endpoint_dynamic_t *const ipv6_endpoint_dynamic =
-				(ipv6_endpoint_dynamic_t *) remain_data;
-
-			if(remain_len < sizeof(ipv6_endpoint_dynamic_t))
-			{
-				rohc_decomp_warn(ctxt, "malformed ROHC packet: too short for "
-				                 "IPv6 dynamic part");
-				goto error;
-			}
-
-			if(ipv6_endpoint_dynamic->reserved != 0)
-			{
-				rohc_decomp_warn(ctxt, "malformed ROHC packet: reserved field is not "
-				                 "zero, but 0x%x", ipv6_endpoint_dynamic->reserved);
-				goto error;
-			}
-			bits->reorder_ratio = ipv6_endpoint_dynamic->reorder_ratio;
-			bits->reorder_ratio_nr = 2;
-			bits->msn.bits = rohc_ntoh16(ipv6_endpoint_dynamic->msn);
-			bits->msn.bits_nr = 16;
-			rohc_decomp_debug(ctxt, "%zu bits of MSN 0x%04x",
-			                  bits->msn.bits_nr, bits->msn.bits);
-
-			size += sizeof(ipv6_endpoint_dynamic_t);
-#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
-			remain_data += sizeof(ipv6_endpoint_dynamic_t);
-			remain_len -= sizeof(ipv6_endpoint_dynamic_t);
-#endif
+			rohc_decomp_warn(ctxt, "malformed ROHC packet: reserved field is not "
+			                 "zero, but 0x%x", ipv6_endpoint_dynamic->reserved);
+			goto error;
 		}
-		else
-		{
-			size += sizeof(ipv6_regular_dynamic_t);
-#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
-			remain_data += sizeof(ipv6_regular_dynamic_t);
-			remain_len -= sizeof(ipv6_regular_dynamic_t);
-#endif
-		}
+		bits->reorder_ratio = ipv6_endpoint_dynamic->reorder_ratio;
+		bits->reorder_ratio_nr = 2;
+		bits->msn.bits = rohc_ntoh16(ipv6_endpoint_dynamic->msn);
+		bits->msn.bits_nr = 16;
+		rohc_decomp_debug(ctxt, "%zu bits of MSN 0x%04x",
+		                  bits->msn.bits_nr, bits->msn.bits);
 
-		/* TODO: handle IPv6 extension headers */
+		size += sizeof(ipv6_endpoint_dynamic_t);
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
+		remain_data += sizeof(ipv6_endpoint_dynamic_t);
+		remain_len -= sizeof(ipv6_endpoint_dynamic_t);
+#endif
 	}
-
-	rohc_decomp_dump_buf(ctxt, "IP dynamic part", rohc_pkt, size);
+	else
+	{
+		size += sizeof(ipv6_regular_dynamic_t);
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
+		remain_data += sizeof(ipv6_regular_dynamic_t);
+		remain_len -= sizeof(ipv6_regular_dynamic_t);
+#endif
+	}
 
 	return size;
 
