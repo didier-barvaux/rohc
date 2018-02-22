@@ -33,7 +33,8 @@ TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_IPONLY = \
 	scripts/test_non_reg_ipv6ext_ipv6ext_icmp_mc0_wlsb4_smallcid.sh \
 	scripts/test_non_reg_ipv4_ipv4_icmp_mc0_wlsb4_smallcid.sh \
 	scripts/test_non_reg_ipv4_ipv6_icmp_mc0_wlsb4_smallcid.sh \
-	scripts/test_non_reg_ipv6_ipv6_icmp_mc0_wlsb4_smallcid.sh
+	scripts/test_non_reg_ipv6_ipv6_icmp_mc0_wlsb4_smallcid.sh \
+	scripts/test_non_reg_ipv4-ipv6-mixed_icmp_mc0_wlsb4_smallcid.sh
 
 TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_IP_UDP = \
 	scripts/test_non_reg_ipv4_udp_mc0_wlsb4_smallcid.sh \
@@ -103,7 +104,9 @@ TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_ESP = \
 	scripts/test_non_reg_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_mc0_wlsb4_smallcid.sh \
 	scripts/test_non_reg_ipv4_ipv4_esp_mc0_wlsb4_smallcid.sh \
 	scripts/test_non_reg_ipv6_esp_mc0_wlsb4_smallcid.sh \
-	scripts/test_non_reg_ipv6_esp_afl53-variable-sn_mc0_wlsb4_smallcid.sh
+	scripts/test_non_reg_ipv6_esp_afl53-variable-sn_mc0_wlsb4_smallcid.sh \
+	scripts/test_non_reg_ipv6_ipv4_esp_mc0_wlsb4_smallcid.sh \
+	scripts/test_non_reg_ipv4-ipv6-mixed_esp_mc0_wlsb4_smallcid.sh
 
 TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_BUG804552 = \
 	scripts/test_non_reg_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_mc0_wlsb4_smallcid.sh \
@@ -158,7 +161,8 @@ TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_IPONLY = \
 	scripts/test_non_reg_ipv6ext_ipv6ext_icmp_mc0_wlsb64_smallcid.sh \
 	scripts/test_non_reg_ipv4_ipv4_icmp_mc0_wlsb64_smallcid.sh \
 	scripts/test_non_reg_ipv4_ipv6_icmp_mc0_wlsb64_smallcid.sh \
-	scripts/test_non_reg_ipv6_ipv6_icmp_mc0_wlsb64_smallcid.sh
+	scripts/test_non_reg_ipv6_ipv6_icmp_mc0_wlsb64_smallcid.sh \
+	scripts/test_non_reg_ipv4-ipv6-mixed_icmp_mc0_wlsb64_smallcid.sh
 
 TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_IP_UDP = \
 	scripts/test_non_reg_ipv4_udp_mc0_wlsb64_smallcid.sh \
@@ -228,7 +232,9 @@ TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_ESP = \
 	scripts/test_non_reg_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_mc0_wlsb64_smallcid.sh \
 	scripts/test_non_reg_ipv4_ipv4_esp_mc0_wlsb64_smallcid.sh \
 	scripts/test_non_reg_ipv6_esp_mc0_wlsb64_smallcid.sh \
-	scripts/test_non_reg_ipv6_esp_afl53-variable-sn_mc0_wlsb64_smallcid.sh
+	scripts/test_non_reg_ipv6_esp_afl53-variable-sn_mc0_wlsb64_smallcid.sh \
+	scripts/test_non_reg_ipv6_ipv4_esp_mc0_wlsb64_smallcid.sh \
+	scripts/test_non_reg_ipv4-ipv6-mixed_esp_mc0_wlsb64_smallcid.sh
 
 TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_BUG804552 = \
 	scripts/test_non_reg_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_mc0_wlsb64_smallcid.sh \
@@ -288,7 +294,8 @@ TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_IPONLY = \
 	scripts/test_non_reg_ipv6ext_ipv6ext_icmp_mc1_wlsb4_smallcid.sh \
 	scripts/test_non_reg_ipv4_ipv4_icmp_mc1_wlsb4_smallcid.sh \
 	scripts/test_non_reg_ipv4_ipv6_icmp_mc1_wlsb4_smallcid.sh \
-	scripts/test_non_reg_ipv6_ipv6_icmp_mc1_wlsb4_smallcid.sh
+	scripts/test_non_reg_ipv6_ipv6_icmp_mc1_wlsb4_smallcid.sh \
+	scripts/test_non_reg_ipv4-ipv6-mixed_icmp_mc1_wlsb4_smallcid.sh
 
 TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_IP_UDP = \
 	scripts/test_non_reg_ipv4_udp_mc1_wlsb4_smallcid.sh \
@@ -358,7 +365,9 @@ TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_ESP = \
 	scripts/test_non_reg_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_mc1_wlsb4_smallcid.sh \
 	scripts/test_non_reg_ipv4_ipv4_esp_mc1_wlsb4_smallcid.sh \
 	scripts/test_non_reg_ipv6_esp_mc1_wlsb4_smallcid.sh \
-	scripts/test_non_reg_ipv6_esp_afl53-variable-sn_mc1_wlsb4_smallcid.sh
+	scripts/test_non_reg_ipv6_esp_afl53-variable-sn_mc1_wlsb4_smallcid.sh \
+	scripts/test_non_reg_ipv6_ipv4_esp_mc1_wlsb4_smallcid.sh \
+	scripts/test_non_reg_ipv4-ipv6-mixed_esp_mc1_wlsb4_smallcid.sh
 
 TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_BUG804552 = \
 	scripts/test_non_reg_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_mc1_wlsb4_smallcid.sh \
@@ -413,7 +422,8 @@ TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_IPONLY = \
 	scripts/test_non_reg_ipv6ext_ipv6ext_icmp_mc1_wlsb64_smallcid.sh \
 	scripts/test_non_reg_ipv4_ipv4_icmp_mc1_wlsb64_smallcid.sh \
 	scripts/test_non_reg_ipv4_ipv6_icmp_mc1_wlsb64_smallcid.sh \
-	scripts/test_non_reg_ipv6_ipv6_icmp_mc1_wlsb64_smallcid.sh
+	scripts/test_non_reg_ipv6_ipv6_icmp_mc1_wlsb64_smallcid.sh \
+	scripts/test_non_reg_ipv4-ipv6-mixed_icmp_mc1_wlsb64_smallcid.sh
 
 TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_IP_UDP = \
 	scripts/test_non_reg_ipv4_udp_mc1_wlsb64_smallcid.sh \
@@ -483,7 +493,9 @@ TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_ESP = \
 	scripts/test_non_reg_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_mc1_wlsb64_smallcid.sh \
 	scripts/test_non_reg_ipv4_ipv4_esp_mc1_wlsb64_smallcid.sh \
 	scripts/test_non_reg_ipv6_esp_mc1_wlsb64_smallcid.sh \
-	scripts/test_non_reg_ipv6_esp_afl53-variable-sn_mc1_wlsb64_smallcid.sh
+	scripts/test_non_reg_ipv6_esp_afl53-variable-sn_mc1_wlsb64_smallcid.sh \
+	scripts/test_non_reg_ipv6_ipv4_esp_mc1_wlsb64_smallcid.sh \
+	scripts/test_non_reg_ipv4-ipv6-mixed_esp_mc1_wlsb64_smallcid.sh
 
 TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_BUG804552 = \
 	scripts/test_non_reg_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_mc1_wlsb64_smallcid.sh \
@@ -548,7 +560,8 @@ TESTS_MAXCONTEXTS0_WLSB4_LARGECID_IPONLY = \
 	scripts/test_non_reg_ipv4_ipv4_icmp_mc0_wlsb4_largecid.sh \
 	scripts/test_non_reg_ipv4_ipv6_icmp_mc0_wlsb4_largecid.sh \
 	scripts/test_non_reg_ipv6_ipv6_icmp_mc0_wlsb4_largecid.sh \
-	scripts/test_non_reg_ipv6ext_ipv6ext_icmp_mc0_wlsb4_largecid.sh
+	scripts/test_non_reg_ipv6ext_ipv6ext_icmp_mc0_wlsb4_largecid.sh \
+	scripts/test_non_reg_ipv4-ipv6-mixed_icmp_mc0_wlsb4_largecid.sh
 
 TESTS_MAXCONTEXTS0_WLSB4_LARGECID_IP_UDP = \
 	scripts/test_non_reg_ipv4_udp_mc0_wlsb4_largecid.sh \
@@ -618,7 +631,9 @@ TESTS_MAXCONTEXTS0_WLSB4_LARGECID_ESP = \
 	scripts/test_non_reg_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_mc0_wlsb4_largecid.sh \
 	scripts/test_non_reg_ipv6_esp_mc0_wlsb4_largecid.sh \
 	scripts/test_non_reg_ipv4_ipv4_esp_mc0_wlsb4_largecid.sh \
-	scripts/test_non_reg_ipv6_esp_afl53-variable-sn_mc0_wlsb4_largecid.sh
+	scripts/test_non_reg_ipv6_esp_afl53-variable-sn_mc0_wlsb4_largecid.sh \
+	scripts/test_non_reg_ipv6_ipv4_esp_mc0_wlsb4_largecid.sh \
+	scripts/test_non_reg_ipv4-ipv6-mixed_esp_mc0_wlsb4_largecid.sh
 
 TESTS_MAXCONTEXTS0_WLSB4_LARGECID_BUG804552 = \
 	scripts/test_non_reg_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_mc0_wlsb4_largecid.sh \
@@ -673,7 +688,8 @@ TESTS_MAXCONTEXTS0_WLSB64_LARGECID_IPONLY = \
 	scripts/test_non_reg_ipv4_ipv4_icmp_mc0_wlsb64_largecid.sh \
 	scripts/test_non_reg_ipv4_ipv6_icmp_mc0_wlsb64_largecid.sh \
 	scripts/test_non_reg_ipv6_ipv6_icmp_mc0_wlsb64_largecid.sh \
-	scripts/test_non_reg_ipv6ext_ipv6ext_icmp_mc0_wlsb64_largecid.sh
+	scripts/test_non_reg_ipv6ext_ipv6ext_icmp_mc0_wlsb64_largecid.sh \
+	scripts/test_non_reg_ipv4-ipv6-mixed_icmp_mc0_wlsb64_largecid.sh
 
 TESTS_MAXCONTEXTS0_WLSB64_LARGECID_IP_UDP = \
 	scripts/test_non_reg_ipv4_udp_mc0_wlsb64_largecid.sh \
@@ -743,7 +759,9 @@ TESTS_MAXCONTEXTS0_WLSB64_LARGECID_ESP = \
 	scripts/test_non_reg_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_mc0_wlsb64_largecid.sh \
 	scripts/test_non_reg_ipv6_esp_mc0_wlsb64_largecid.sh \
 	scripts/test_non_reg_ipv4_ipv4_esp_mc0_wlsb64_largecid.sh \
-	scripts/test_non_reg_ipv6_esp_afl53-variable-sn_mc0_wlsb64_largecid.sh
+	scripts/test_non_reg_ipv6_esp_afl53-variable-sn_mc0_wlsb64_largecid.sh \
+	scripts/test_non_reg_ipv6_ipv4_esp_mc0_wlsb64_largecid.sh \
+	scripts/test_non_reg_ipv4-ipv6-mixed_esp_mc0_wlsb64_largecid.sh
 
 TESTS_MAXCONTEXTS0_WLSB64_LARGECID_BUG804552 = \
 	scripts/test_non_reg_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_mc0_wlsb64_largecid.sh \
@@ -803,7 +821,8 @@ TESTS_MAXCONTEXTS1_WLSB4_LARGECID_IPONLY = \
 	scripts/test_non_reg_ipv4_ipv4_icmp_mc1_wlsb4_largecid.sh \
 	scripts/test_non_reg_ipv4_ipv6_icmp_mc1_wlsb4_largecid.sh \
 	scripts/test_non_reg_ipv6_ipv6_icmp_mc1_wlsb4_largecid.sh \
-	scripts/test_non_reg_ipv6ext_ipv6ext_icmp_mc1_wlsb4_largecid.sh
+	scripts/test_non_reg_ipv6ext_ipv6ext_icmp_mc1_wlsb4_largecid.sh \
+	scripts/test_non_reg_ipv4-ipv6-mixed_icmp_mc1_wlsb4_largecid.sh
 
 TESTS_MAXCONTEXTS1_WLSB4_LARGECID_IP_UDP = \
 	scripts/test_non_reg_ipv4_udp_mc1_wlsb4_largecid.sh \
@@ -873,7 +892,9 @@ TESTS_MAXCONTEXTS1_WLSB4_LARGECID_ESP = \
 	scripts/test_non_reg_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_mc1_wlsb4_largecid.sh \
 	scripts/test_non_reg_ipv6_esp_mc1_wlsb4_largecid.sh \
 	scripts/test_non_reg_ipv4_ipv4_esp_mc1_wlsb4_largecid.sh \
-	scripts/test_non_reg_ipv6_esp_afl53-variable-sn_mc1_wlsb4_largecid.sh
+	scripts/test_non_reg_ipv6_esp_afl53-variable-sn_mc1_wlsb4_largecid.sh \
+	scripts/test_non_reg_ipv6_ipv4_esp_mc1_wlsb4_largecid.sh \
+	scripts/test_non_reg_ipv4-ipv6-mixed_esp_mc1_wlsb4_largecid.sh
 
 TESTS_MAXCONTEXTS1_WLSB4_LARGECID_BUG804552 = \
 	scripts/test_non_reg_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_mc1_wlsb4_largecid.sh \
@@ -928,7 +949,8 @@ TESTS_MAXCONTEXTS1_WLSB64_LARGECID_IPONLY = \
 	scripts/test_non_reg_ipv4_ipv4_icmp_mc1_wlsb64_largecid.sh \
 	scripts/test_non_reg_ipv4_ipv6_icmp_mc1_wlsb64_largecid.sh \
 	scripts/test_non_reg_ipv6_ipv6_icmp_mc1_wlsb64_largecid.sh \
-	scripts/test_non_reg_ipv6ext_ipv6ext_icmp_mc1_wlsb64_largecid.sh
+	scripts/test_non_reg_ipv6ext_ipv6ext_icmp_mc1_wlsb64_largecid.sh \
+	scripts/test_non_reg_ipv4-ipv6-mixed_icmp_mc1_wlsb64_largecid.sh
 
 TESTS_MAXCONTEXTS1_WLSB64_LARGECID_IP_UDP = \
 	scripts/test_non_reg_ipv4_udp_mc1_wlsb64_largecid.sh \
@@ -998,7 +1020,9 @@ TESTS_MAXCONTEXTS1_WLSB64_LARGECID_ESP = \
 	scripts/test_non_reg_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_mc1_wlsb64_largecid.sh \
 	scripts/test_non_reg_ipv6_esp_mc1_wlsb64_largecid.sh \
 	scripts/test_non_reg_ipv4_ipv4_esp_mc1_wlsb64_largecid.sh \
-	scripts/test_non_reg_ipv6_esp_afl53-variable-sn_mc1_wlsb64_largecid.sh
+	scripts/test_non_reg_ipv6_esp_afl53-variable-sn_mc1_wlsb64_largecid.sh \
+	scripts/test_non_reg_ipv6_ipv4_esp_mc1_wlsb64_largecid.sh \
+	scripts/test_non_reg_ipv4-ipv6-mixed_esp_mc1_wlsb64_largecid.sh
 
 TESTS_MAXCONTEXTS1_WLSB64_LARGECID_BUG804552 = \
 	scripts/test_non_reg_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_mc1_wlsb64_largecid.sh \

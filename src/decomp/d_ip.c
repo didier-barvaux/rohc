@@ -131,12 +131,12 @@ rohc_packet_t ip_detect_packet_type(const struct rohc_decomp_ctxt *const context
 {
 	rohc_packet_t type;
 
-	if(rohc_length < 1)
-	{
-		rohc_decomp_warn(context, "ROHC packet too small to read the packet "
-		                 "type (len = %zu)", rohc_length);
-		goto error;
-	}
+	/* at least one byte required to check discriminator byte in packet
+	 * (already checked by rohc_decomp_find_context) */
+	assert(rohc_length >= 1);
+
+	rohc_decomp_debug(context, "try to determine the header from first byte "
+	                  "0x%02x", rohc_packet[0]);
 
 	if(rohc_decomp_packet_is_uo0(rohc_packet, rohc_length))
 	{
@@ -172,9 +172,6 @@ rohc_packet_t ip_detect_packet_type(const struct rohc_decomp_ctxt *const context
 	}
 
 	return type;
-
-error:
-	return ROHC_PACKET_UNKNOWN;
 }
 
 

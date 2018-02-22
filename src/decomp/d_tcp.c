@@ -578,12 +578,9 @@ static rohc_packet_t tcp_detect_packet_type(const struct rohc_decomp_ctxt *const
 	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
 	rohc_packet_t type;
 
-	if(rohc_length < 1)
-	{
-		rohc_decomp_warn(context, "ROHC packet too small to read the packet "
-		                 "type (len = %zu)", rohc_length);
-		goto error;
-	}
+	/* at least one byte required to check discriminator byte in packet
+	 * (already checked by rohc_decomp_find_context) */
+	assert(rohc_length >= 1);
 
 	rohc_decomp_debug(context, "try to determine the header from first byte "
 	                  "0x%02x", rohc_packet[0]);
@@ -803,16 +800,11 @@ static bool d_tcp_parse_ir(const struct rohc_decomp_ctxt *const context,
 	remain_data = rohc_packet;
 	remain_len = rohc_length;
 
-	/* skip:
+	/* skip (length checked in rohc_decomp_find_context):
 	 * - the first byte of the ROHC packet
 	 * - the large CID if any
 	 * - the Profile byte */
-	if(remain_len < (1 + large_cid_len + 1))
-	{
-		rohc_decomp_warn(context, "malformed ROHC packet: too short for first "
-		                 "byte, large CID bytes, and profile byte");
-		goto error;
-	}
+	assert(remain_len >= (1 + large_cid_len + 1));
 	remain_data += 1 + large_cid_len + 1;
 	remain_len -= 1 + large_cid_len + 1;
 
@@ -890,15 +882,11 @@ static bool d_tcp_parse_ir_cr(const struct rohc_decomp_ctxt *const context,
 	remain_data = rohc_packet;
 	remain_len = rohc_length;
 
-	/* skip:
-	 * - the first byte of the ROHC packet (field 2)
-	 * - the Profile byte (field 4) */
-	if(remain_len < (1 + large_cid_len + 1))
-	{
-		rohc_decomp_warn(context, "malformed ROHC packet: too short for first "
-		                 "byte, large CID bytes, and profile byte");
-		goto error;
-	}
+	/* skip (length checked in rohc_decomp_find_context):
+	 * - the first byte of the ROHC packet
+	 * - the large CID if any
+	 * - the Profile byte */
+	assert(remain_len >= (1 + large_cid_len + 1));
 	remain_data += 1 + large_cid_len + 1;
 	remain_len -= 1 + large_cid_len + 1;
 
@@ -1078,15 +1066,11 @@ static bool d_tcp_parse_irdyn(const struct rohc_decomp_ctxt *const context,
 	/* check packet usage */
 	assert(context->state != ROHC_DECOMP_STATE_NC);
 
-	/* skip:
-	 * - the first byte of the ROHC packet (field 2)
-	 * - the Profile byte (field 4) */
-	if(remain_len < (1 + large_cid_len + 1))
-	{
-		rohc_decomp_warn(context, "malformed ROHC packet: too short for first "
-		                 "byte, large CID bytes, and profile byte");
-		goto error;
-	}
+	/* skip (length checked in rohc_decomp_find_context):
+	 * - the first byte of the ROHC packet
+	 * - the large CID if any
+	 * - the Profile byte */
+	assert(remain_len >= (1 + large_cid_len + 1));
 	remain_data += 1 + large_cid_len + 1;
 	remain_len -= 1 + large_cid_len + 1;
 

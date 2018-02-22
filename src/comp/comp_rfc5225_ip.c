@@ -1088,7 +1088,7 @@ static int rohc_comp_rfc5225_ip_detect_changes_ipv4(struct rohc_comp_ctxt *const
 		/* innermost TOS changed? */
 		if(ip_ctxt->ctxt.vx.tos_tc != ipv4->tos)
 		{
-			rohc_comp_debug(ctxt, "    TOS (%02x -> %02x) changed",
+			rohc_comp_debug(ctxt, "    TOS (0x%02x -> 0x%02x) changed",
 			                ip_ctxt->ctxt.vx.tos_tc, ipv4->tos);
 			rfc5225_ctxt->tmp.innermost_tos_tc_changed = true;
 			rfc5225_ctxt->tmp.innermost_ip_flag = true;
@@ -1227,7 +1227,7 @@ static int rohc_comp_rfc5225_ip_detect_changes_ipv6(struct rohc_comp_ctxt *const
 		/* innermost TC changed? */
 		if(ip_ctxt->ctxt.vx.tos_tc != ipv6_get_tc(ipv6))
 		{
-			rohc_comp_debug(ctxt, "    TC (%02x -> %02x) changed",
+			rohc_comp_debug(ctxt, "    TC (0x%02x -> 0x%02x) changed",
 			                ip_ctxt->ctxt.vx.tos_tc, ipv6_get_tc(ipv6));
 			rfc5225_ctxt->tmp.innermost_tos_tc_changed = true;
 			rfc5225_ctxt->tmp.innermost_ip_flag = true;
@@ -1251,7 +1251,7 @@ static int rohc_comp_rfc5225_ip_detect_changes_ipv6(struct rohc_comp_ctxt *const
 		if(ip_ctxt->ctxt.vx.tos_tc != ipv6_get_tc(ipv6) ||
 		   ip_ctxt->ctxt.vx.ttl_hopl != ipv6->hl)
 		{
-			rohc_comp_debug(ctxt, "    TC (%02x -> %02x) or HL (%u -> %u) changed",
+			rohc_comp_debug(ctxt, "    TC (0x%02x -> 0x%02x) or HL (%u -> %u) changed",
 			                ip_ctxt->ctxt.vx.tos_tc, ipv6_get_tc(ipv6),
 			                ip_ctxt->ctxt.vx.ttl_hopl, ipv6->hl);
 			rfc5225_ctxt->tmp.outer_ip_flag = true;
@@ -1334,18 +1334,13 @@ static void rohc_comp_rfc5225_ip_decide_state(struct rohc_comp_ctxt *const conte
 			next_state = ROHC_COMP_STATE_SO;
 		}
 	}
-	else if(curr_state == ROHC_COMP_STATE_SO)
+	else /* SO state */
 	{
+		assert(curr_state == ROHC_COMP_STATE_SO);
 		/* do not change state */
 		rohc_comp_debug(context, "stay in SO state");
 		next_state = ROHC_COMP_STATE_SO;
 		/* TODO: handle NACK and STATIC-NACK */
-	}
-	else
-	{
-		rohc_comp_warn(context, "unexpected compressor state %d", curr_state);
-		assert(0);
-		return;
 	}
 
 	rohc_comp_change_state(context, next_state);

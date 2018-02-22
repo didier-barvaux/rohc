@@ -494,12 +494,12 @@ static rohc_packet_t decomp_rfc5225_ip_esp_detect_pkt_type(const struct rohc_dec
 {
 	rohc_packet_t type;
 
-	if(rohc_length < 1)
-	{
-		rohc_decomp_warn(context, "ROHC packet too small to read the packet "
-		                 "type (len = %zu)", rohc_length);
-		goto error;
-	}
+	/* at least one byte required to check discriminator byte in packet
+	 * (already checked by rohc_decomp_find_context) */
+	assert(rohc_length >= 1);
+
+	rohc_decomp_debug(context, "try to determine the header from first byte "
+	                  "0x%02x", rohc_packet[0]);
 
 	if(GET_BIT_7(rohc_packet) == 0) /* 1-bit discriminator '0' */
 	{
@@ -535,9 +535,6 @@ static rohc_packet_t decomp_rfc5225_ip_esp_detect_pkt_type(const struct rohc_dec
 	}
 
 	return type;
-
-error:
-	return ROHC_PACKET_UNKNOWN;
 }
 
 
@@ -575,32 +572,23 @@ static bool decomp_rfc5225_ip_esp_parse_pkt(const struct rohc_decomp_ctxt *const
 	{
 		status = decomp_rfc5225_ip_esp_parse_ir(context, rohc_packet, large_cid_len,
 		                                        extr_crc, bits, rohc_hdr_len);
-		if(status == false)
-		{
-			rohc_decomp_warn(context, "failed to parse IR packet");
-			goto error;
-		}
 	}
 	else if((*packet_type) == ROHC_PACKET_CO_REPAIR)
 	{
 		status = decomp_rfc5225_ip_esp_parse_co_repair(context, rohc_packet, large_cid_len,
 		                                               extr_crc, bits, rohc_hdr_len);
-		if(status == false)
-		{
-			rohc_decomp_warn(context, "failed to parse co_repair packet");
-			goto error;
-		}
 	}
 	else /* parse the other CO headers */
 	{
 		status = decomp_rfc5225_ip_esp_parse_co(context, rohc_packet,
 		                                        large_cid_len, *packet_type,
 		                                        extr_crc, bits, rohc_hdr_len);
-		if(status == false)
-		{
-			rohc_decomp_warn(context, "failed to parse CO packet");
-			goto error;
-		}
+	}
+	if(status == false)
+	{
+		rohc_decomp_warn(context, "failed to parse %s packet",
+		                 rohc_get_packet_descr(*packet_type));
+		goto error;
 	}
 
 	return true;
@@ -687,16 +675,11 @@ static bool decomp_rfc5225_ip_esp_parse_ir(const struct rohc_decomp_ctxt *const 
 	size_t static_chain_len;
 	size_t dyn_chain_len;
 
-	/* skip:
+	/* skip (length checked in rohc_decomp_find_context):
 	 * - the first byte of the ROHC packet
 	 * - the large CID if any
 	 * - the Profile byte */
-	if(remain_len < (1 + large_cid_len + 1))
-	{
-		rohc_decomp_warn(ctxt, "malformed ROHC packet: too short for first "
-		                 "byte, large CID bytes, and profile byte");
-		goto error;
-	}
+	assert(remain_len >= (1 + large_cid_len + 1));
 	remain_data += 1 + large_cid_len + 1;
 	remain_len -= 1 + large_cid_len + 1;
 
@@ -869,7 +852,7 @@ static bool decomp_rfc5225_ip_esp_parse_co(const struct rohc_decomp_ctxt *const 
 		sizeof(profile_2_3_4_flags_t) +
 		1 /* innermost TOS/TC */ +
 		1 /* innermost TTL/HL */ +
-		1 /* MSN */ +
+		5 /* sdvl_sn_lsb(MSN) */ +
 		2 /* innermost IP-ID */;
 	uint8_t packed_rohc_packet[packed_rohc_packet_max_len];
 
@@ -887,14 +870,11 @@ static bool decomp_rfc5225_ip_esp_parse_co(const struct rohc_decomp_ctxt *const 
 	assert(bits->ip_nr > 0);
 	inner_ip_bits = &(bits->ip[bits->ip_nr - 1]);
 
-	/* check if the ROHC packet is large enough to parse first bytes */
-	if(remain_len < (1 + large_cid_len))
-	{
-		rohc_decomp_warn(ctxt, "malformed ROHC packet: %zu-byte ROHC packet is "
-		                 "too short for first byte and %zu-byte large CID",
-		                 remain_len, large_cid_len);
-		goto error;
-	}
+	/* check if the ROHC packet is large enough to parse first bytes
+	 * (length checked in rohc_decomp_decode_cid):
+	 * - the first byte of the ROHC packet
+	 * - the large CID if any */
+	assert(remain_len >= (1 + large_cid_len));
 
 	/* copy the first bytes of header in a contiguous buffer
 	 * to be able to map packet structures to the ROHC bytes */

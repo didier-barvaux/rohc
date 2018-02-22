@@ -938,7 +938,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	trace("=== arrival time %ld seconds %ld us\n", header.ts.tv_sec, header.ts.tv_usec);
 
 	/* check Ethernet frame length */
-	if(header.len <= link_len_src || header.len != header.caplen)
+	if(header.len < link_len_src || header.len != header.caplen)
 	{
 		trace("bad PCAP packet (len = %u, caplen = %u)\n", header.len,
 		      header.caplen);

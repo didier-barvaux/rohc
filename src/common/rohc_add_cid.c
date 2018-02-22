@@ -52,7 +52,7 @@ static bool rohc_add_cid_is_present(const uint8_t *const data, const size_t len)
 {
 	/* we require at least 2 bytes of ROHC data, otherwise we cannot distinguish
 	 * the Add-CID bytes from the FEEDBACK-1 byte */
-	return (len > 1 && GET_BIT_4_7(data) == ROHC_ADD_CID);
+	return (len >= 1 && GET_BIT_4_7(data) == ROHC_ADD_CID);
 }
 
 

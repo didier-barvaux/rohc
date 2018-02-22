@@ -3158,6 +3158,12 @@ static bool rohc_comp_feedback_parse_cid(const struct rohc_comp *const comp,
 		*cid = large_cid;
 		*cid_len = large_cid_size;
 	}
+	else if(feedback_len == 1)
+	{
+		/* no Add-CID if feedback is only 1 byte long */
+		*cid_len = 0;
+		*cid = 0;
+	}
 	else
 	{
 		/* decode small CID if present */
