@@ -159,7 +159,8 @@ codespell:
 	$(AM_V_GEN)codespell \
 		`find . -name \*.md -or -name \*.7.in -or -name ChangeLog -or -name README` \
 		`find . -name configure.ac -or -name Makefile.am` \
-		`find . -name \*.c -or -name \*.h`
+		`find . -name \*.c -and -not -name rohc_wrap.c` \
+		`find . -name \*.h`
 
 # run all Q&A tests
 qa: cppcheck complexity checkpatch codespell
