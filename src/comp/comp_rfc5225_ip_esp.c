@@ -435,14 +435,9 @@ static bool rohc_comp_rfc5225_ip_esp_create(struct rohc_comp_ctxt *const context
 	}
 	while(rohc_is_tunneling(proto) && rfc5225_ctxt->ip_contexts_nr < ROHC_MAX_IP_HDRS);
 
-	/* profile cannot handle the packet if it bypasses internal limit of IP headers */
-	if(rohc_is_tunneling(proto))
-	{
-		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "too many IP headers for RFC5225 IP/ESP profile (%u headers max)",
-		           ROHC_MAX_IP_HDRS);
-		goto free_context;
-	}
+	/* profile cannot handle the packet if it bypasses internal limit of IP headers
+	 * (already checked by check_profile) */
+	assert(rohc_is_tunneling(proto) == false);
 
 	/* transport header shall be ESP (checked in check_profile) */
 	assert(proto == ROHC_IPPROTO_ESP);
