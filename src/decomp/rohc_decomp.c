@@ -182,6 +182,16 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
                                             bool *const do_change_mode)
 	__attribute__((warn_unused_result, nonnull(1, 2, 6, 7, 8)));
 
+static rohc_status_t rohc_decomp_try_decode_pkt(const struct rohc_decomp *const decomp,
+                                                const struct rohc_decomp_ctxt *const context,
+                                                const rohc_packet_t packet_type,
+                                                const struct rohc_decomp_crc *const extr_crc_bits,
+                                                const void *const extr_bits,
+                                                const size_t payload_len,
+                                                void *const decoded_values,
+                                                struct rohc_buf *const uncomp_packet)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5, 7, 8)));
+
 static bool rohc_decomp_check_ir_crc(const struct rohc_decomp *const decomp,
                                      const struct rohc_decomp_ctxt *const context,
                                      const uint8_t *const rohc_hdr,
@@ -1346,8 +1356,7 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 
 	/* helper variables for values returned by functions */
 	bool parsing_ok;
-	bool decode_ok;
-	rohc_status_t build_ret;
+	rohc_status_t status;
 
 	assert(add_cid_len == 0 || add_cid_len == 1);
 	assert(large_cid_len <= 2);
@@ -1366,7 +1375,8 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 	{
 		rohc_decomp_warn(context, "failed to parse the %s header",
 		                 rohc_get_packet_descr(*packet_type));
-		goto error_malformed;
+		status = ROHC_STATUS_MALFORMED;
+		goto error;
 	}
 
 	/* ROHC base header and its optional extension is now fully parsed,
@@ -1407,7 +1417,8 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 				              rohc_hdr_len + add_cid_len);
 			}
 #ifndef ROHC_NO_IR_CRC_CHECK
-			goto error_crc;
+			status = ROHC_STATUS_BAD_CRC;
+			goto error;
 #endif
 		}
 
@@ -1419,6 +1430,8 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 	try_decoding_again = false;
 	do
 	{
+		rohc_status_t decode_ret;
+
 		if(try_decoding_again)
 		{
 			rohc_decomp_warn(context, "CID %zu: CRC repair: try decoding packet "
@@ -1427,38 +1440,22 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 
 
 		/* C. Decode extracted bits
+		 * D. Build uncompressed headers & check for correct decompression
 		 *
-		 * All bits are now extracted from the packet, let's decode them.
-		 */
-
-		decode_ok = profile->decode_bits(context, extr_bits, payload_len,
-		                                 decoded_values);
-		if(!decode_ok)
-		{
-			rohc_decomp_warn(context, "failed to decode values from bits "
-			                 "extracted from ROHC header");
-			goto error;
-		}
-
-
-		/* D. Build uncompressed headers & check for correct decompression
-		 *
-		 * All fields are now decoded, let's build the uncompressed headers.
+		 * All bits are now extracted from the packet, let's decode them,
+		 * and then let's build the uncompressed headers with decoded fields.
 		 *
 		 * Use the CRC on decompressed headers to check whether decompression was
 		 * correct.
 		 */
 
-		/* build the uncompressed headers */
-		build_ret = profile->build_hdrs(decomp, context, *packet_type, extr_crc_bits,
-		                                decoded_values, payload_len,
-		                                uncomp_packet, &uncomp_hdr_len);
-		if(build_ret == ROHC_STATUS_OK)
+		decode_ret = rohc_decomp_try_decode_pkt(decomp, context, *packet_type,
+		                                        extr_crc_bits, extr_bits, payload_len,
+		                                        decoded_values, uncomp_packet);
+		if(decode_ret == ROHC_STATUS_OK)
 		{
 			/* uncompressed headers successfully built and CRC is correct,
 			 * no need to try decoding with different values */
-			rohc_buf_pull(uncomp_packet, uncomp_hdr_len);
-
 			if(context->crc_corr.algo == ROHC_DECOMP_CRC_CORR_SN_NONE)
 			{
 				rohc_decomp_debug(context, "CRC is correct");
@@ -1476,54 +1473,18 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 				try_decoding_again = false;
 			}
 		}
-		else if(build_ret == ROHC_STATUS_MALFORMED)
-		{
-			rohc_decomp_warn(context, "CID %zu: failed to build uncompressed "
-			                 "headers: built headers are malformed", context->cid);
-			goto error_malformed;
-		}
-		else if(build_ret == ROHC_STATUS_OUTPUT_TOO_SMALL)
-		{
-			rohc_decomp_warn(context, "CID %zu: failed to build uncompressed "
-			                 "headers: output buffer too small", context->cid);
-			goto error_output_too_small;
-		}
-		else if(build_ret != ROHC_STATUS_BAD_CRC)
-		{
-			/* uncompressed headers cannot be built, stop decoding */
-			rohc_decomp_warn(context, "CID %zu: failed to build uncompressed "
-			                 "headers", context->cid);
-			if((decomp->features & ROHC_DECOMP_FEATURE_DUMP_PACKETS) != 0)
-			{
-				rohc_dump_packet(decomp->trace_callback, decomp->trace_callback_priv,
-				                 ROHC_TRACE_DECOMP, ROHC_TRACE_WARNING,
-				                 "compressed headers", rohc_packet);
-			}
-			goto error;
-		}
-		else
+		else if(decode_ret == ROHC_STATUS_BAD_CRC)
 		{
 			/* uncompressed headers successfully built but CRC is incorrect,
 			 * try decoding with different values (repair) */
 
 			/* CRC for IR and IR-DYN packets checked before, so cannot fail here */
-			assert((*packet_type) != ROHC_PACKET_IR);
-			assert((*packet_type) != ROHC_PACKET_IR_DYN);
-
-			rohc_decomp_warn(context, "CID %zu: failed to build uncompressed "
-			                 "headers (CRC failure)", context->cid);
+			assert(rohc_packet_is_ir(*packet_type) == false);
 
 			/* attempt a context/packet repair */
 			try_decoding_again =
 				profile->attempt_repair(decomp, context, rohc_packet.time,
 				                        &context->crc_corr, extr_bits);
-
-			if((*packet_type) == ROHC_PACKET_IR_CR)
-			{
-				rohc_decomp_warn(context, "CID %zu: do not attempt context/packet repair "
-				                 "for IR-CR", context->cid);
-				try_decoding_again = false;
-			}
 
 			/* report CRC failure if attempt is not possible */
 			if(!try_decoding_again)
@@ -1538,8 +1499,20 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 					                 ROHC_TRACE_DECOMP, ROHC_TRACE_WARNING,
 					                 "compressed headers", rohc_packet);
 				}
-				goto error_crc;
+				status = ROHC_STATUS_BAD_CRC;
+				goto error;
 			}
+		}
+		else if(decode_ret != ROHC_STATUS_OK)
+		{
+			if((decomp->features & ROHC_DECOMP_FEATURE_DUMP_PACKETS) != 0)
+			{
+				rohc_dump_packet(decomp->trace_callback, decomp->trace_callback_priv,
+				                 ROHC_TRACE_DECOMP, ROHC_TRACE_WARNING,
+				                 "compressed headers", rohc_packet);
+			}
+			status = decode_ret;
+			goto error;
 		}
 	}
 	while(try_decoding_again);
@@ -1560,7 +1533,8 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 			                 "still %zu CRC-valid packets required",
 			                 context->cid, context->crc_corr.counter);
 
-			goto error_crc;
+			status = ROHC_STATUS_BAD_CRC;
+			goto error;
 		}
 		else if(context->crc_corr.counter == 1)
 		{
@@ -1584,12 +1558,15 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 					           "CID %zu: CRC repair: unsupported repair algorithm %d",
 					           context->cid, context->crc_corr.algo);
 					assert(0);
+					status = ROHC_STATUS_ERROR;
 					goto error;
 			}
 			context->crc_corr.algo = ROHC_DECOMP_CRC_CORR_SN_NONE;
 			context->crc_corr.counter--;
 		}
 	}
+	uncomp_hdr_len = uncomp_packet->len;
+	rohc_buf_pull(uncomp_packet, uncomp_hdr_len);
 
 
 	/* E. Copy the payload (if any) */
@@ -1600,6 +1577,7 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 		                 "(%zu bytes) do not match the full ROHC packet "
 		                 "(%zu bytes)", rohc_get_packet_descr(*packet_type),
 		                 rohc_hdr_len, payload_len, rohc_packet.len);
+		status = ROHC_STATUS_ERROR;
 		goto error;
 	}
 	if(rohc_buf_avail_len(*uncomp_packet) < payload_len)
@@ -1607,7 +1585,8 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 		rohc_decomp_warn(context, "uncompressed packet too small (%zu bytes "
 		                 "max) for the %zu-byte payload",
 		                 rohc_buf_avail_len(*uncomp_packet), payload_len);
-		goto error_output_too_small;
+		status = ROHC_STATUS_OUTPUT_TOO_SMALL;
+		goto error;
 	}
 	if(payload_len != 0)
 	{
@@ -1645,16 +1624,84 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 	rohc_decomp_stats_add_success(context, rohc_hdr_len, uncomp_hdr_len);
 
 	/* decompression is successful */
-	return ROHC_STATUS_OK;
+	status = ROHC_STATUS_OK;
 
 error:
-	return ROHC_STATUS_ERROR;
-error_output_too_small:
-	return ROHC_STATUS_OUTPUT_TOO_SMALL;
-error_crc:
-	return ROHC_STATUS_BAD_CRC;
-error_malformed:
-	return ROHC_STATUS_MALFORMED;
+	return status;
+}
+
+
+/**
+ * @brief Try to decode one ROHC packet
+ *
+ * Steps:
+ *  \li A. Decode extracted bits
+ *  \li B. Build uncompressed headers (and check for correct decompression
+ *         for UO* packets)
+ *
+ * @param decomp               The ROHC decompressor
+ * @param context              The decompression context
+ * @param packet_type          The type of the ROHC packet to parse
+ * @param extr_crc_bits        The CRC bits extracted from the ROHC header
+ * @param extr_bits            The bits extracted from the ROHC header
+ * @param payload_len          The length of the packet payload (in bytes)
+ * @param[out] decoded_values  The values decoded from extracted bits
+ * @param[out] uncomp_packet   The uncompressed packet
+ * @return                     ROHC_STATUS_OK if packet is successfully decoded,
+ *                             ROHC_STATUS_MALFORMED if packet is malformed,
+ *                             ROHC_STATUS_BAD_CRC if a CRC error occurs,
+ *                             ROHC_STATUS_ERROR if an error occurs
+ */
+static rohc_status_t rohc_decomp_try_decode_pkt(const struct rohc_decomp *const decomp,
+                                                const struct rohc_decomp_ctxt *const context,
+                                                const rohc_packet_t packet_type,
+                                                const struct rohc_decomp_crc *const extr_crc_bits,
+                                                const void *const extr_bits,
+                                                const size_t payload_len,
+                                                void *const decoded_values,
+                                                struct rohc_buf *const uncomp_packet)
+{
+	const struct rohc_decomp_profile *const profile = context->profile;
+	size_t uncomp_hdr_len; /* length of the uncompressed headers */
+	rohc_status_t status;
+	bool decode_ok;
+
+	assert(packet_type != ROHC_PACKET_UNKNOWN);
+
+	/* A. Decode extracted bits
+	 *
+	 * All bits are now extracted from the packet, let's decode them.
+	 */
+
+	decode_ok = profile->decode_bits(context, extr_bits, payload_len, decoded_values);
+	if(!decode_ok)
+	{
+		rohc_decomp_warn(context, "failed to decode values from bits extracted "
+		                 "from ROHC header");
+		status = ROHC_STATUS_ERROR;
+		goto error;
+	}
+
+	/* B. Build uncompressed headers & check for correct decompression
+	 *
+	 * All fields are now decoded, let's build the uncompressed headers.
+	 *
+	 * Use the CRC on decompressed headers to check whether decompression was
+	 * correct.
+	 */
+
+	/* build the uncompressed headers */
+	status = profile->build_hdrs(decomp, context, packet_type, extr_crc_bits,
+	                             decoded_values, payload_len,
+	                             uncomp_packet, &uncomp_hdr_len);
+	if(status != ROHC_STATUS_OK)
+	{
+		rohc_decomp_warn(context, "CID %zu: failed to build uncompressed headers: %s",
+		                 context->cid, rohc_strerror(status));
+	}
+
+error:
+	return status;
 }
 
 
