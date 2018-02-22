@@ -87,30 +87,33 @@ if [ $? -ne 0 ] ; then
 	echo "failure." >&2
 	exit 1
 fi
-coverage_lines=$( echo -e "${results}" | grep "^  lines" | awk '{ print $2 }' | sed -e 's|\.[0-9]%||' )
-coverage_functions=$( echo -e "${results}" | grep "^  functions" | awk '{ print $2 }' | sed -e 's|\.[0-9]%||')
-coverage_branches=$( echo -e "${results}" | grep "^  branches" | awk '{ print $2 }' | sed -e 's|\.[0-9]%||')
+coverage_lines_float=$( echo -e "${results}" | grep "^  lines" | awk '{ print $2 }' )
+coverage_functions_float=$( echo -e "${results}" | grep "^  functions" | awk '{ print $2 }' )
+coverage_branches_float=$( echo -e "${results}" | grep "^  branches" | awk '{ print $2 }' )
+coverage_lines=$( echo -e "${coverage_lines_float}" | sed -e 's|\.[0-9]%||' )
+coverage_functions=$( echo "${coverage_functions_float}" | sed -e 's|\.[0-9]%||' )
+coverage_branches=$( echo "${coverage_branches_float}" | sed -e 's|\.[0-9]%||' )
 echo "done." >&2
 
 # check results against minimal requirements
 failures=0
 if [ ${coverage_lines} -lt ${coverage_lines_min_req} ] ; then
-	echo "[FAIL] lines coverage: ${coverage_lines} < ${coverage_lines_min_req}%"
+	echo "[FAIL] lines coverage: ${coverage_lines_float} < ${coverage_lines_min_req}%"
 	failures=$(( ${failures} + 1 ))
 else
-	echo "[PASS] lines coverage: ${coverage_lines} >= ${coverage_lines_min_req}%"
+	echo "[PASS] lines coverage: ${coverage_lines_float} >= ${coverage_lines_min_req}%"
 fi
 if [ ${coverage_functions} -lt ${coverage_functions_min_req} ] ; then
-	echo "[FAIL] functions coverage: ${coverage_functions} < ${coverage_functions_min_req}%"
+	echo "[FAIL] functions coverage: ${coverage_functions_float} < ${coverage_functions_min_req}%"
 	failures=$(( ${failures} + 1 ))
 else
-	echo "[PASS] functions coverage: ${coverage_functions} >= ${coverage_functions_min_req}%"
+	echo "[PASS] functions coverage: ${coverage_functions_float} >= ${coverage_functions_min_req}%"
 fi
 if [ ${coverage_branches} -lt ${coverage_branches_min_req} ] ; then
-	echo "[FAIL] branches coverage: ${coverage_branches} < ${coverage_branches_min_req} %"
+	echo "[FAIL] branches coverage: ${coverage_branches_float} < ${coverage_branches_min_req} %"
 	failures=$(( ${failures} + 1 ))
 else
-	echo "[PASS] branches coverage: ${coverage_branches} >= ${coverage_branches_min_req} %"
+	echo "[PASS] branches coverage: ${coverage_branches_float} >= ${coverage_branches_min_req} %"
 fi
 
 echo "" >&2
