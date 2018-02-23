@@ -1,6 +1,6 @@
 #
 # Copyright (c) 2015, Liu Dong
-# Copyright (c) 2015-2016, Didier Barvaux
+# Copyright (c) 2015,2016,2018, Didier Barvaux
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -54,6 +54,7 @@ standard_library.install_aliases()
 import sys
 import io
 import struct
+import six
 
 class FileFormat(object):
     """The different types of PCAP file formats"""
@@ -70,6 +71,35 @@ class LinkLayerType(object):
     LINK_TYPE_IPV4 = 101
     LINK_TYPE_IPV6 = 31
 
+class BlockType(object):
+    """The different types of blocks"""
+    INTERFACE_DESCRIPTION = 0x00000001
+    ENHANCED_PACKET       = 0x00000006
+    SECTION_HEADER        = 0x0A0D0D0A
+    UNKNOWN               = -1
+
+class OptionType(object):
+    """The different types of options"""
+    OPT_END      = 0
+    OPT_COMMENT  = 1
+    OPT_HARDWARE = 2
+    OPT_OS       = 3
+    OPT_USER_APP = 4
+    OPT_UNKNOWN  = -1
+
+def OptionType_str(opt_code):
+    if opt_code == OptionType.OPT_END:
+        return "end of options"
+    elif opt_code == OptionType.OPT_COMMENT:
+        return "comment"
+    elif opt_code == OptionType.OPT_HARDWARE:
+        return "hardware"
+    elif opt_code == OptionType.OPT_OS:
+        return "OS"
+    elif opt_code == OptionType.OPT_USER_APP:
+        return "user application"
+    else:
+        return "unknown"
 
 class PcapFile(object):
     def __init__(self, filename):
@@ -81,6 +111,7 @@ class PcapFile(object):
             self.linktype = self.pcap.link_type
         elif fileformat == FileFormat.PCAP_NG:
             self.pcap = PcapngFile(self.infile, head)
+            self.pcap.parse_info()
             self.linktype = self.pcap.section_info.link_type
         else:
             return None
@@ -209,6 +240,19 @@ class PcapngFile(object):
         self.section_info = SectionInfo()
         # the first 4 byte head has been read by pcap file format checker
         self.head = head
+        self.pkt = None
+
+    def parse_info(self):
+        # parse all blocks before we got a packet
+        print("parse info blocks")
+        block_type = BlockType.SECTION_HEADER
+        while block_type == BlockType.SECTION_HEADER or \
+              block_type == BlockType.INTERFACE_DESCRIPTION:
+            block_info = self.parse_block()
+            if block_info is None:
+                return
+            micro_second, block_type, block_data = block_info
+        self.pkt = block_info
 
     def parse_section_header_block(self, block_header):
         """get section info from section header block"""
@@ -225,19 +269,40 @@ class PcapngFile(object):
             return None
 
         block_len, = struct.unpack(byteorder + b'4xI', block_header)
+        print("section header block: block length = %i bytes" % block_len)
 
         # read version, should be 1, 0
         versions = self.infile.read(4)
         major, minor = struct.unpack(byteorder + b'HH', versions)
+        print("section header block: version = %i.%i" % (major, minor))
 
         # section len
         section_len = self.infile.read(8)
         section_len, = struct.unpack(byteorder + b'q', section_len)
-        if section_len == -1:
-            # usually did not have a known section length
-            pass
+        print("section header block: section length = %i bytes" % section_len)
 
-        self.infile.read(block_len - 12 - 16)
+        # options
+        opt_code = OptionType.OPT_UNKNOWN
+        while opt_code != OptionType.OPT_END:
+            # parse option header
+            opt_hdr = self.infile.read(4)
+            opt_code, opt_len = struct.unpack(byteorder + b'HH', opt_hdr)
+            # compute length with padding
+            opt_len_pad = opt_len
+            if (opt_len % 4) != 0:
+                opt_len_pad += 4 - (opt_len % 4)
+            # dump and skip option
+            opt_data = self.infile.read(opt_len_pad)
+            if opt_code == OptionType.OPT_UNKNOWN or \
+               opt_code == OptionType.OPT_END:
+                print("section header block: %i-byte option '%s' (%i) "\
+                        "[%i bytes of padding]" % (opt_len, \
+                        OptionType_str(opt_code), opt_code, opt_len_pad - opt_len))
+            else:
+                print("section header block: %i-byte option '%s' (%i): %s "\
+                        "[%i bytes of padding]" % (opt_len, \
+                        OptionType_str(opt_code), opt_code, opt_data, \
+                        opt_len_pad - opt_len))
 
         self.section_info.byteorder = byteorder
         self.section_info.major = major
@@ -248,8 +313,10 @@ class PcapngFile(object):
         # read link type and capture size
         buf = self.infile.read(4)
         link_type, = struct.unpack(self.section_info.byteorder + b'H2x', buf)
+        print("interface description block: link type = %i" % link_type)
         buf = self.infile.read(4)
         snap_len = struct.unpack(self.section_info.byteorder + b'I', buf)
+        print("interface description block: snap len = %i bytes" % snap_len)
         self.section_info.link_type = link_type
         self.section_info.snap_len = snap_len
 
@@ -295,7 +362,7 @@ class PcapngFile(object):
         buf = self.infile.read(8)
         h, l, = struct.unpack(self.section_info.byteorder + b'II', buf)
         timestamp = (h << 32) + l
-        if six.is_python2:
+        if six.PY2:
             micro_second = long(timestamp * self.section_info.tsresol + self.section_info.tsoffset)
         else:
             micro_second = timestamp * self.section_info.tsresol + self.section_info.tsoffset
@@ -325,14 +392,17 @@ class PcapngFile(object):
         data = ''
         micro_second = 0
         if block_type == BlockType.SECTION_HEADER:
+            print("section header block")
             self.parse_section_header_block(block_header)
         elif block_type == BlockType.INTERFACE_DESCRIPTION:
+            print("interface description block")
             # read link type and capture size
             self.parse_interface_description_block(block_len)
         elif block_type == BlockType.ENHANCED_PACKET:
             micro_second, data = self.parse_enhanced_packet(block_len)
         elif block_type > 0x80000000:
             # private protocol type, ignore
+            print("unknown block type, ignore")
             data = self.infile.read(block_len - 12)
         else:
             self.infile.read(block_len - 12)
@@ -344,13 +414,22 @@ class PcapngFile(object):
         if block_len_t != block_len:
             print("block_len not equal, header:%d, tail:%d." % (block_len, block_len_t),
                   file=sys.stderr)
-        return micro_second, data
+        return micro_second, block_type, data
 
     def read_packet(self):
-        data = self.parse_block()
-        if data is None:
-            return
-        micro_second, link_packet = data
+        if self.pkt is not None:
+            micro_second, block_type, block_data = self.pkt
+            self.pkt = None
+        else:
+            # parse all blocks until we got a packet
+            block_type = BlockType.UNKNOWN
+            while block_type != BlockType.ENHANCED_PACKET:
+                block_info = self.parse_block()
+                if block_info is None:
+                    return
+                micro_second, block_type, block_data = block_info
+
+        link_packet = block_data
         if len(link_packet) == 0:
             return
         return (self.section_info.link_type, micro_second, link_packet)

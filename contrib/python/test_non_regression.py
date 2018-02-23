@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright 2015,2016 Didier Barvaux
+# Copyright 2015,2016,2018 Didier Barvaux
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -478,11 +478,15 @@ def run_test(cid_type, cid_max, wlsb_width, profiles, verbose, pcap_in, pcap_cmp
         return False
 
     if pcap_cmp is not None:
+        print("open the compare PCAP file")
         pcap_cmp_reader = pcap.PcapFile(pcap_cmp)
+        print("read all the packets from the compare PCAP file")
         pkts_cmp = pcap_cmp_reader.read_all()
 
     # test with the packets from the network capture
+    print("open the source PCAP file")
     pcap_reader = pcap.PcapFile(pcap_in)
+    print("read all the packets from the source PCAP file")
     pkts_in = pcap_reader.read_all()
     print("compress then decompress the", len(pkts_in), "packets found in network capture\n")
     pkts_nr = 0
@@ -493,7 +497,7 @@ def run_test(cid_type, cid_max, wlsb_width, profiles, verbose, pcap_in, pcap_cmp
 
         # prepare comparison packets
         if pcap_cmp is not None:
-            print("linktype =", pcap_cmp_reader.linktype)
+            print("compare PCAP linktype =", pcap_cmp_reader.linktype)
             pkt_cmp1 = pkts_cmp[pkts_nr * 2][2]
             pkt_cmp2 = pkts_cmp[pkts_nr * 2 + 1][2]
             if pcap_cmp_reader.linktype == pcap.LinkLayerType.LINK_TYPE_ETH:
@@ -514,7 +518,7 @@ def run_test(cid_type, cid_max, wlsb_width, profiles, verbose, pcap_in, pcap_cmp
 
         # prepare uncompressed packet
         pkt_uncomp = pkt_in[2]
-        print("linktype =", pcap_reader.linktype)
+        print("source PCAP linktype =", pcap_reader.linktype)
         if pcap_reader.linktype == pcap.LinkLayerType.LINK_TYPE_ETH:
             pkt_uncomp = remove_padding(pkt_uncomp[ETHER_HDR_LEN:])
         elif pcap_reader.linktype == pcap.LinkLayerType.LINK_TYPE_RAW or \
