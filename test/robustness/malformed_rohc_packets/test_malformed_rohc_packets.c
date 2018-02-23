@@ -50,7 +50,7 @@ for ./configure ? If yes, check configure output and config.log"
 /* prototypes of private functions */
 static void usage(void);
 static int test_decomp(const char *const filename,
-                       const size_t failure_start,
+                       const int failure_start,
                        const rohc_cid_type_t cid_type,
                        const rohc_cid_t cid_max,
                        const int proto_version,
@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
 	int proto_version;
 	rohc_cid_t cid_very_max;
 	rohc_cid_t cid_max;
-	int failure_start = -1;
+	int failure_start = -2;
 
 	/* parse program arguments, print the help message in case of failure */
 	if(argc <= 1)
@@ -166,10 +166,10 @@ int main(int argc, char *argv[])
 			 * decompress */
 			filename = argv[0];
 		}
-		else if(failure_start == -1)
+		else if(failure_start == -2)
 		{
 			failure_start = atoi(argv[0]);
-			if(failure_start < 0)
+			if(failure_start < -1)
 			{
 				fprintf(stderr, "invalid start for failed packets\n");
 				goto error;
@@ -246,7 +246,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* the failure start is mandatory */
-	if(failure_start < 0)
+	if(failure_start < -1)
 	{
 		usage();
 		goto error;
@@ -280,6 +280,10 @@ static void usage(void)
 	        "                      If set to 0, no success/failure check\n"
 	        "                      is performed. This is useful for fuzzing\n"
 	        "                      tests.\n"
+	        "                      If set to -1, truncate packets before\n"
+	        "                      decompressing them. This is useful for\n"
+	        "                      stressing the decompressor with malformed\n"
+	        "                      packets.\n"
 	        "\n"
 	        "options:\n"
 	        "  -v                  Print version information and exit\n"
@@ -310,7 +314,7 @@ static void usage(void)
  *                          77 if test is skipped
  */
 static int test_decomp(const char *const filename,
-                       const size_t failure_start,
+                       const int failure_start,
                        const rohc_cid_type_t cid_type,
                        const rohc_cid_t cid_max,
                        const int proto_version,
@@ -432,6 +436,10 @@ static int test_decomp(const char *const filename,
 		struct rohc_buf send_feedback = rohc_buf_init_empty(send_feedback_buf, 7);
 		rohc_status_t status;
 
+		size_t min_len;
+		size_t max_len;
+		size_t trunc_len;
+
 		counter++;
 
 		fprintf(stderr, "decompress malformed packet #%u:\n", counter);
@@ -454,39 +462,63 @@ static int test_decomp(const char *const filename,
 		/* skip the link layer header */
 		rohc_buf_pull(&rohc_packet, link_len);
 
-		/* decompress the ROHC packet */
-		status = rohc_decompress3(decomp, rohc_packet, &ip_packet, &rcvd_feedback,
-		                          &send_feedback);
-		fprintf(stderr, "\tdecompression status: %s\n", rohc_strerror(status));
-		if(failure_start > 0 && status == ROHC_STATUS_OK)
+		if(failure_start == -1)
 		{
-			if(counter >= failure_start)
+			min_len = 0;
+			max_len = rohc_packet.len - 1;
+			if(max_len > 80)
 			{
-				fprintf(stderr, "\tunexpected successful decompression\n");
-				goto destroy_decomp;
-			}
-			else
-			{
-				fprintf(stderr, "\texpected successful decompression\n");
+				max_len = 80;
 			}
 		}
-		else if(failure_start > 0)
+		else
 		{
-			if(counter >= failure_start)
-			{
-				fprintf(stderr, "\texpected decompression failure\n");
-			}
-			else
-			{
-				fprintf(stderr, "\tunexpected decompression failure\n");
-				goto destroy_decomp;
-			}
+			min_len = rohc_packet.len;
+			max_len = rohc_packet.len;
 		}
 
-		/* be ready to get the next received feedback */
-		rohc_buf_reset(&rcvd_feedback);
-		/* be ready to get the next feedback to send */
-		rohc_buf_reset(&send_feedback);
+		/* try to decompress all truncated versions of the packet */
+		for(trunc_len = min_len; trunc_len <= max_len; trunc_len++)
+		{
+			fprintf(stderr, "decompress %zu-byte malformed packet #%u:\n", trunc_len, counter);
+			rohc_packet.len = trunc_len;
+
+			/* decompress the ROHC packet */
+			status = rohc_decompress3(decomp, rohc_packet, &ip_packet, &rcvd_feedback,
+			                          &send_feedback);
+			fprintf(stderr, "\tdecompression status: %s\n", rohc_strerror(status));
+			if((failure_start == -1 || failure_start > 0) && status == ROHC_STATUS_OK)
+			{
+				if(counter >= failure_start)
+				{
+					fprintf(stderr, "\tunexpected successful decompression\n");
+					goto destroy_decomp;
+				}
+				else
+				{
+					fprintf(stderr, "\texpected successful decompression\n");
+				}
+			}
+			else if(failure_start > 0)
+			{
+				if(counter >= failure_start)
+				{
+					fprintf(stderr, "\texpected decompression failure\n");
+				}
+				else
+				{
+					fprintf(stderr, "\tunexpected decompression failure\n");
+					goto destroy_decomp;
+				}
+			}
+
+			/* be ready to get the next uncompressed packet */
+			rohc_buf_reset(&ip_packet);
+			/* be ready to get the next received feedback */
+			rohc_buf_reset(&rcvd_feedback);
+			/* be ready to get the next feedback to send */
+			rohc_buf_reset(&send_feedback);
+		}
 	}
 
 	test_status = 0;

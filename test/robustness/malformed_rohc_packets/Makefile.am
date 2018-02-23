@@ -98,7 +98,23 @@ TESTS = \
 	test_malformed_rohc_packets_rohcv2_ip_ir_03_1.sh \
 	test_malformed_rohc_packets_rohcv2_ip_ir_04_1.sh \
 	test_malformed_rohc_packets_rohcv2_ip_ir_05_178.sh \
-	test_malformed_rohc_packets_rohcv2_ip_ir_06_178.sh
+	test_malformed_rohc_packets_rohcv2_ip_ir_06_178.sh \
+	test_truncated_packets_rohc_mc0_wlsb4_smallcid.sh \
+	test_truncated_packets_rohc_mc0_wlsb64_smallcid.sh \
+	test_truncated_packets_rohc_mc1_wlsb4_smallcid.sh \
+	test_truncated_packets_rohc_mc1_wlsb64_smallcid.sh \
+	test_truncated_packets_rohc_mc0_wlsb4_largecid.sh \
+	test_truncated_packets_rohc_mc0_wlsb64_largecid.sh \
+	test_truncated_packets_rohc_mc1_wlsb4_largecid.sh \
+	test_truncated_packets_rohc_mc1_wlsb64_largecid.sh \
+	test_truncated_packets_rohcv2_mc0_wlsb4_smallcid.sh \
+	test_truncated_packets_rohcv2_mc1_wlsb4_smallcid.sh \
+	test_truncated_packets_rohcv2_mc1_wlsb64_smallcid.sh \
+	test_truncated_packets_rohcv2_mc0_wlsb64_smallcid.sh \
+	test_truncated_packets_rohcv2_mc0_wlsb4_largecid.sh \
+	test_truncated_packets_rohcv2_mc0_wlsb64_largecid.sh \
+	test_truncated_packets_rohcv2_mc1_wlsb4_largecid.sh \
+	test_truncated_packets_rohcv2_mc1_wlsb64_largecid.sh
 
 
 check_PROGRAMS = \
@@ -130,6 +146,7 @@ test_malformed_rohc_packets_LDADD = \
 
 EXTRA_DIST = \
 	test_malformed_rohc_packets.sh \
+	test_truncated_packets.sh \
 	$(TESTS) \
 	inputs
 
