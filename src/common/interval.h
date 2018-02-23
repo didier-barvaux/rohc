@@ -32,7 +32,7 @@
 
 
 /** The maximum width of the W-LSB window (implementation specific) */
-#define ROHC_WLSB_WIDTH_MAX  64U
+#define ROHC_WLSB_WIDTH_MAX  256U
 
 
 /**
