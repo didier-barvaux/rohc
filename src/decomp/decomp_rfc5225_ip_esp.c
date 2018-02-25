@@ -749,6 +749,10 @@ static bool decomp_rfc5225_ip_esp_parse_co_repair(const struct rohc_decomp_ctxt 
 	size_t remain_len = rohc_pkt.len;
 	size_t dyn_chain_len;
 
+	/* check packet usage */
+	assert(ctxt->state == ROHC_DECOMP_STATE_SC ||
+	       ctxt->state == ROHC_DECOMP_STATE_FC);
+
 	/* reject too small co_repair packets, the following fields are mandatory:
 	 *  - 1-byte packet discriminator
 	 *  - 0/1/2-byte large CID
@@ -1040,7 +1044,8 @@ static bool decomp_rfc5225_ip_esp_parse_pt_0_crc7(const struct rohc_decomp_ctxt 
 	const pt_0_crc7_t *const pt_0_crc7 = (pt_0_crc7_t *) rohc_pkt;
 
 	/* check packet usage */
-	assert(ctxt->state == ROHC_DECOMP_STATE_FC);
+	assert(ctxt->state == ROHC_DECOMP_STATE_SC ||
+	       ctxt->state == ROHC_DECOMP_STATE_FC);
 
 	/* check if the ROHC packet is large enough to parse pt_0_crc7 */
 	if(rohc_len < sizeof(pt_0_crc7_t))
@@ -1143,7 +1148,8 @@ static bool decomp_rfc5225_ip_esp_parse_pt_2_seq_id(const struct rohc_decomp_ctx
 	const pt_2_seq_id_t *const pt_2_seq_id = (pt_2_seq_id_t *) rohc_pkt;
 
 	/* check packet usage */
-	assert(ctxt->state == ROHC_DECOMP_STATE_FC);
+	assert(ctxt->state == ROHC_DECOMP_STATE_SC ||
+	       ctxt->state == ROHC_DECOMP_STATE_FC);
 
 	/* check if the ROHC packet is large enough to parse pt_2_seq_id */
 	if(rohc_len < sizeof(pt_2_seq_id_t))
