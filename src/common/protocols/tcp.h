@@ -77,6 +77,15 @@
 
 
 /**
+ * @brief The maximum length of TCP options supported by the TCP protocol
+ *
+ * The TCP data offset is coded on 32-bit words on 4 bits, so the whole TCP
+ * header may be up to 15*4=60 bytes. The base TCP header is 20-byte long.
+ */
+#define ROHC_TCP_OPTS_LEN_MAX_PROTO  (15U * 4U - (uint8_t) sizeof(struct tcphdr))
+
+
+/**
  * @brief The maximum of TCP options supported by the TCP protocol
  *
  * One TCP header may contain up to 40 bytes of options, so it may contain
@@ -84,7 +93,7 @@
  *
  * @see ROHC_TCP_OPTS_MAX
  */
-#define ROHC_TCP_OPTS_MAX_PROTO  40U
+#define ROHC_TCP_OPTS_MAX_PROTO  ROHC_TCP_OPTS_LEN_MAX_PROTO
 
 
 /**
