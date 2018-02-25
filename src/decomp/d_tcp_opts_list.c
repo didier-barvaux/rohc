@@ -1482,6 +1482,15 @@ bool d_tcp_build_tcp_opts(const struct rohc_decomp_ctxt *const context,
 		goto error;
 	}
 
+	/* TCP options shall not be too long, so that they can be stored in the TCP
+	 * data offset field */
+	if((*opts_len) > ROHC_TCP_OPTS_LEN_MAX_PROTO)
+	{
+		rohc_decomp_warn(context, "  %zu-byte TCP options are too long (%u bytes max)",
+		                 *opts_len, ROHC_TCP_OPTS_LEN_MAX_PROTO);
+		goto error;
+	}
+
 	return true;
 
 error:
