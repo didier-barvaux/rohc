@@ -539,8 +539,8 @@ static int test_compression_perfs(char *filename,
 		                              ROHCv1_PROFILE_IP_TCP,
 #if 0
 		                              ROHCv2_PROFILE_IP_UDP_RTP,
-		                              ROHCv2_PROFILE_IP_UDP,
 #endif
+		                              ROHCv2_PROFILE_IP_UDP,
 		                              ROHCv2_PROFILE_IP_ESP,
 		                              ROHCv2_PROFILE_IP,
 #if 0
@@ -819,8 +819,8 @@ static int test_decompression_perfs(char *filename,
 		                                ROHCv1_PROFILE_IP_TCP,
 #if 0
 		                                ROHCv2_PROFILE_IP_UDP_RTP,
-		                                ROHCv2_PROFILE_IP_UDP,
 #endif
+		                                ROHCv2_PROFILE_IP_UDP,
 		                                ROHCv2_PROFILE_IP_ESP,
 		                                ROHCv2_PROFILE_IP,
 #if 0

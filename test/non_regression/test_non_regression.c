@@ -1602,8 +1602,8 @@ static struct rohc_comp * create_compressor(const rohc_cid_type_t cid_type,
 		                              ROHCv1_PROFILE_IP_TCP,
 #if 0
 		                              ROHCv2_PROFILE_IP_UDP_RTP,
-		                              ROHCv2_PROFILE_IP_UDP,
 #endif
+		                              ROHCv2_PROFILE_IP_UDP,
 		                              ROHCv2_PROFILE_IP_ESP,
 		                              ROHCv2_PROFILE_IP,
 #if 0
@@ -1706,8 +1706,8 @@ static struct rohc_decomp * create_decompressor(const rohc_cid_type_t cid_type,
 		                                ROHCv1_PROFILE_IP_TCP,
 #if 0
 		                                ROHCv2_PROFILE_IP_UDP_RTP,
-		                                ROHCv2_PROFILE_IP_UDP,
 #endif
+		                                ROHCv2_PROFILE_IP_UDP,
 		                                ROHCv2_PROFILE_IP_ESP,
 		                                ROHCv2_PROFILE_IP,
 #if 0
