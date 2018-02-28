@@ -274,6 +274,53 @@ typedef struct
 
 
 /************************************************************************
+ * Compressed UDP header                                                *
+ ************************************************************************/
+
+/**
+ * @brief The UDP static part
+ *
+ * See RFC5225 page 63
+ */
+typedef struct
+{
+	uint16_t src_port; /**< The UDP source port */
+	uint16_t dst_port; /**< The UDP destination port */
+} __attribute__((packed)) udp_static_t;
+
+
+/**
+ * @brief The UDP endpoint dynamic part
+ *
+ * See RFC5225 page 63
+ */
+typedef struct
+{
+	uint16_t checksum;  /**< The UDP checksum */
+	uint16_t msn;       /**< The Master Sequence Number (MSN) */
+
+#if WORDS_BIGENDIAN == 1
+	uint8_t reserved:6;        /**< reserved field, shall be zero */
+	uint8_t reorder_ratio:2;   /**< The reorder_ratio use for the transmission */
+#else
+	uint8_t reorder_ratio:2;
+	uint8_t reserved:6;
+#endif
+} __attribute__((packed)) udp_endpoint_dynamic_t;
+
+
+/**
+ * @brief The UDP irregular chain with checksum
+ *
+ * See RFC5225 page 64
+ */
+typedef struct
+{
+	uint16_t checksum; /**< The UDP checksum */
+} __attribute__((packed)) udp_with_checksum_irregular_t;
+
+
+/************************************************************************
  * Compressed ESP header                                                *
  ************************************************************************/
 

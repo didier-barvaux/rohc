@@ -440,7 +440,7 @@ static bool rohc_comp_rfc5225_ip_esp_create(struct rohc_comp_ctxt *const context
 	assert(rohc_is_tunneling(proto) == false);
 
 	/* transport header shall be ESP (checked in check_profile) */
-	assert(proto == ROHC_IPPROTO_ESP);
+	assert(proto == context->profile->protocol);
 	assert(remain_len >= sizeof(struct esphdr));
 
 	/* MSN */
@@ -845,7 +845,7 @@ static bool rohc_comp_rfc5225_ip_esp_check_context(const struct rohc_comp_ctxt *
 	}
 
 	/* transport protocol shall be ESP (checked by check_profile) */
-	assert(next_proto == ROHC_IPPROTO_ESP);
+	assert(next_proto == context->profile->protocol);
 	/* innermost IP payload shall be large enough for ESP header
 	 * (checked by check_profile) */
 	assert(remain_len >= sizeof(struct esphdr));
@@ -2617,8 +2617,8 @@ static int rohc_comp_rfc5225_ip_esp_dyn_chain(const struct rohc_comp_ctxt *const
 		                                            rohc_remain_len);
 		if(ret < 0)
 		{
-			rohc_comp_warn(ctxt, "failed to build the ESP static header part "
-			               "of the static chain");
+			rohc_comp_warn(ctxt, "failed to build the ESP header part "
+			               "of the dynamic chain");
 			goto error;
 		}
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
