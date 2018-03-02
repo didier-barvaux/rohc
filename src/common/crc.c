@@ -482,8 +482,9 @@ uint8_t compute_crc_ctrl_fields(const rohc_profile_t profile_id,
 		crc = crc_calculate(crc_type, (uint8_t *) &msn, 2, crc, crc_table);
 	}
 
-	/* 2-bit IP-ID behaviors, padded with 6 MSB of zeroes, one per IP header */
-	assert(ip_id_behaviors_nr > 0);
+	/* 2-bit IP-ID behaviors, padded with 6 MSB of zeroes, one per IPv4 header:
+	 * see errata 2703 of RFC5225 for reasons to exclude IPv6 headers
+	 * (https://www.rfc-editor.org/errata_search.php?rfc=5225&eid=2703) */
 	for(ip_hdr_pos = 0; ip_hdr_pos < ip_id_behaviors_nr; ip_hdr_pos++)
 	{
 		assert(ip_id_behaviors[ip_hdr_pos] == (ip_id_behaviors[ip_hdr_pos] & 0x3));

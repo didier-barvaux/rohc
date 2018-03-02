@@ -2167,6 +2167,7 @@ static bool decomp_rfc5225_ip_esp_decode_bits(const struct rohc_decomp_ctxt *con
 	if(bits->ctrl_crc.type != ROHC_CRC_TYPE_NONE)
 	{
 		uint8_t ip_id_behaviors[ROHC_MAX_IP_HDRS];
+		size_t ip_id_behaviors_nr;
 		size_t ip_hdr_pos;
 		uint8_t ctrl_crc_computed;
 
@@ -2175,20 +2176,29 @@ static bool decomp_rfc5225_ip_esp_decode_bits(const struct rohc_decomp_ctxt *con
 
 		/* compute the CRC-3 over decoded control fields */
 		assert(bits->ip_nr > 0);
+		ip_id_behaviors_nr = 0;
 		for(ip_hdr_pos = 0; ip_hdr_pos < bits->ip_nr; ip_hdr_pos++)
 		{
-			ip_id_behaviors[ip_hdr_pos] = bits->ip[ip_hdr_pos].id_behavior;
-			rohc_decomp_debug(ctxt, "IP-ID behavior #%zu = 0x%02x", ip_hdr_pos + 1,
-			                  ip_id_behaviors[ip_hdr_pos]);
+			/* only IP-ID behavior of IPv4 headers are part of the CRC, see
+			 * errata 2703 of RFC5225 for reasons to exclude IPv6 headers:
+			 * https://www.rfc-editor.org/errata_search.php?rfc=5225&eid=2703 */
+			if(rfc5225_ctxt->ip_contexts[ip_hdr_pos].ctxt.vx.version == IPV4)
+			{
+				ip_id_behaviors[ip_id_behaviors_nr] = bits->ip[ip_hdr_pos].id_behavior;
+				rohc_decomp_debug(ctxt, "IP-ID behavior #%zu of IPv4 header #%zu "
+				                  "= 0x%02x", ip_id_behaviors_nr + 1, ip_hdr_pos + 1,
+				                  ip_id_behaviors[ip_id_behaviors_nr]);
+				ip_id_behaviors_nr++;
+			}
 		}
 		ctrl_crc_computed =
 			compute_crc_ctrl_fields(ctxt->profile->id,
 			                        ctxt->decompressor->crc_table_3,
 			                        decoded->reorder_ratio, decoded->msn,
-			                        ip_id_behaviors, bits->ip_nr);
+			                        ip_id_behaviors, ip_id_behaviors_nr);
 		rohc_decomp_debug(ctxt, "CRC-3 on control fields = 0x%x (reorder_ratio = "
-		                  "0x%02x, %zu IP-ID behaviors)",
-		                  ctrl_crc_computed, decoded->reorder_ratio, bits->ip_nr);
+		                  "0x%02x, %zu IP-ID behaviors)", ctrl_crc_computed,
+		                  decoded->reorder_ratio, ip_id_behaviors_nr);
 
 		/* does the computed CRC match the one in packet? */
 		if(ctrl_crc_computed != bits->ctrl_crc.bits)

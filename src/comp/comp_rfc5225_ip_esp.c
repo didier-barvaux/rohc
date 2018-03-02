@@ -1989,6 +1989,7 @@ static int rohc_comp_rfc5225_ip_esp_code_co_repair_pkt(const struct rohc_comp_ct
 	{
 		co_repair_crc_t *const co_repair_crc = (co_repair_crc_t *) rohc_remain_data;
 		uint8_t ip_id_behaviors[ROHC_MAX_IP_HDRS];
+		size_t ip_id_behaviors_nr;
 		size_t ip_hdr_pos;
 
 		/* reserved field must be 0 */
@@ -2003,23 +2004,32 @@ static int rohc_comp_rfc5225_ip_esp_code_co_repair_pkt(const struct rohc_comp_ct
 		/* reserved field must be 0 */
 		co_repair_crc->r2 = 0;
 		/* CRC-3 over control fields */
+		ip_id_behaviors_nr = 0;
 		for(ip_hdr_pos = 0; ip_hdr_pos < rfc5225_ctxt->ip_contexts_nr; ip_hdr_pos++)
 		{
-			ip_id_behaviors[ip_hdr_pos] =
-				rfc5225_ctxt->ip_contexts[ip_hdr_pos].ctxt.vx.ip_id_behavior;
-			rohc_comp_debug(context, "IP-ID behavior #%zu = 0x%02x", ip_hdr_pos + 1,
-			                ip_id_behaviors[ip_hdr_pos]);
+			/* only IP-ID behavior of IPv4 headers are part of the CRC, see
+			 * errata 2703 of RFC5225 for reasons to exclude IPv6 headers:
+			 * https://www.rfc-editor.org/errata_search.php?rfc=5225&eid=2703 */
+			if(rfc5225_ctxt->ip_contexts[ip_hdr_pos].ctxt.vx.version == IPV4)
+			{
+				ip_id_behaviors[ip_id_behaviors_nr] =
+					rfc5225_ctxt->ip_contexts[ip_hdr_pos].ctxt.vx.ip_id_behavior;
+				rohc_comp_debug(context, "IP-ID behavior #%zu of IPv4 header #%zu "
+				                "= 0x%02x", ip_id_behaviors_nr + 1, ip_hdr_pos + 1,
+				                ip_id_behaviors[ip_id_behaviors_nr]);
+				ip_id_behaviors_nr++;
+			}
 		}
 		co_repair_crc->ctrl_crc =
 			compute_crc_ctrl_fields(context->profile->id,
 			                        context->compressor->crc_table_3,
 			                        context->compressor->reorder_ratio,
 			                        rfc5225_ctxt->msn,
-			                        ip_id_behaviors, rfc5225_ctxt->ip_contexts_nr);
+			                        ip_id_behaviors, ip_id_behaviors_nr);
 		rohc_comp_debug(context, "CRC-3 on control fields = 0x%x "
 		                "(reorder_ratio = 0x%02x, %zu IP-ID behaviors)",
 		                co_repair_crc->ctrl_crc, context->compressor->reorder_ratio,
-		                rfc5225_ctxt->ip_contexts_nr);
+		                ip_id_behaviors_nr);
 
 		/* skip CRCs */
 		rohc_remain_data += sizeof(co_repair_crc_t);
@@ -3205,7 +3215,7 @@ static int rohc_comp_rfc5225_ip_esp_build_co_common_pkt(const struct rohc_comp_c
 	if(rohc_remain_len < sizeof(co_common_base_t))
 	{
 		rohc_comp_warn(context, "ROHC buffer too small for the co_common base "
-							"header: %zu bytes required, but only %zu bytes available",
+		               "header: %zu bytes required, but only %zu bytes available",
 		               sizeof(co_common_base_t), rohc_remain_len);
 		goto error;
 	}
@@ -3229,25 +3239,35 @@ static int rohc_comp_rfc5225_ip_esp_build_co_common_pkt(const struct rohc_comp_c
 	/* CRC-3 over control fields */
 	{
 		uint8_t ip_id_behaviors[ROHC_MAX_IP_HDRS];
+		size_t ip_id_behaviors_nr;
 		size_t ip_hdr_pos;
 
+		ip_id_behaviors_nr = 0;
 		for(ip_hdr_pos = 0; ip_hdr_pos < rfc5225_ctxt->ip_contexts_nr; ip_hdr_pos++)
 		{
-			ip_id_behaviors[ip_hdr_pos] =
-				rfc5225_ctxt->ip_contexts[ip_hdr_pos].ctxt.vx.ip_id_behavior;
-			rohc_comp_debug(context, "IP-ID behavior #%zu = 0x%02x", ip_hdr_pos + 1,
-			                ip_id_behaviors[ip_hdr_pos]);
+			/* only IP-ID behavior of IPv4 headers are part of the CRC, see
+			 * errata 2703 of RFC5225 for reasons to exclude IPv6 headers:
+			 * https://www.rfc-editor.org/errata_search.php?rfc=5225&eid=2703 */
+			if(rfc5225_ctxt->ip_contexts[ip_hdr_pos].ctxt.vx.version == IPV4)
+			{
+				ip_id_behaviors[ip_id_behaviors_nr] =
+					rfc5225_ctxt->ip_contexts[ip_hdr_pos].ctxt.vx.ip_id_behavior;
+				rohc_comp_debug(context, "IP-ID behavior #%zu of IPv4 header #%zu "
+				                "= 0x%02x", ip_id_behaviors_nr + 1, ip_hdr_pos + 1,
+				                ip_id_behaviors[ip_id_behaviors_nr]);
+				ip_id_behaviors_nr++;
+			}
 		}
 		co_common->control_crc3 =
 			compute_crc_ctrl_fields(context->profile->id,
 			                        context->compressor->crc_table_3,
 			                        context->compressor->reorder_ratio,
 			                        rfc5225_ctxt->msn,
-			                        ip_id_behaviors, rfc5225_ctxt->ip_contexts_nr);
+			                        ip_id_behaviors, ip_id_behaviors_nr);
 		rohc_comp_debug(context, "CRC-3 on control fields = 0x%x "
 		                "(reorder_ratio = 0x%02x, %zu IP-ID behaviors)",
 		                co_common->control_crc3, context->compressor->reorder_ratio,
-		                rfc5225_ctxt->ip_contexts_nr);
+		                ip_id_behaviors_nr);
 	}
 
 	rohc_remain_data += sizeof(co_common_base_t);
