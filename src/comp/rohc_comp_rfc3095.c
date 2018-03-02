@@ -723,6 +723,26 @@ bool rohc_comp_rfc3095_check_profile(const struct rohc_comp *const comp,
 		goto bad_profile;
 	}
 
+	/* check length of every IP extension headers */
+	{
+		uint8_t next_hdr_type;
+		const uint8_t *ext;
+
+		ext = ip_get_next_ext_from_ip(&packet->outer_ip, &next_hdr_type);
+		while(ext != NULL)
+		{
+			const unsigned short ext_len = ip_get_extension_size(ext);
+
+			if(ext_len > IPV6_OPT_HDR_LEN_MAX)
+			{
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "the outer IP packet got too long extension headers");
+				goto bad_profile;
+			}
+			ext = ip_get_next_ext_from_ext(ext, &next_hdr_type);
+		}
+	}
+
 	/* check the inner IP header if there is one */
 	if(packet->ip_hdr_nr > 1)
 	{
@@ -773,6 +793,26 @@ bool rohc_comp_rfc3095_check_profile(const struct rohc_comp *const comp,
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "the inner IP packet is not correct (bad checksum)");
 			goto bad_profile;
+		}
+
+		/* check length of every IP extension headers */
+		{
+			uint8_t next_hdr_type;
+			const uint8_t *ext;
+
+			ext = ip_get_next_ext_from_ip(&packet->inner_ip, &next_hdr_type);
+			while(ext != NULL)
+			{
+				const unsigned short ext_len = ip_get_extension_size(ext);
+
+				if(ext_len > IPV6_OPT_HDR_LEN_MAX)
+				{
+					rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+					           "the outer IP packet got too long extension headers");
+					goto bad_profile;
+				}
+				ext = ip_get_next_ext_from_ext(ext, &next_hdr_type);
+			}
 		}
 	}
 

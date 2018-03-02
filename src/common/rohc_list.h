@@ -93,7 +93,7 @@ struct rohc_list_item
  * Sized for IPv6 extension headers that may reach:
  *   (0xff + 1) * 8 = 2048 bytes
  */
-#define ROHC_LIST_ITEM_DATA_MAX 2048U
+#define ROHC_LIST_ITEM_DATA_MAX  IPV6_OPT_HDR_LEN_MAX
 
 	/** The length of the item data (in bytes) */
 	size_t length;
