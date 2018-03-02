@@ -3037,8 +3037,8 @@ static bool decomp_rfc5225_ip_esp_attempt_repair(const struct rohc_decomp *const
                                                  struct rohc_decomp_crc_corr_ctxt *const crc_corr __attribute__((unused)),
                                                  void *const extr_bits __attribute__((unused)))
 {
-	/* TODO: packet/context repair not implemented yet */
-	rohc_decomp_debug(context, "TODO: packet/context repair not implemented yet");
+	/* there is no packet/context repair for ROHCv2 profiles */
+	rohc_decomp_debug(context, "there is no packet/context repair for ROHCv2");
 	return false;
 }
 
@@ -3054,9 +3054,14 @@ static bool decomp_rfc5225_ip_esp_attempt_repair(const struct rohc_decomp *const
  * @param context The decompression context
  * @return        The reference SN value
  */
-static uint32_t decomp_rfc5225_ip_esp_get_sn(const struct rohc_decomp_ctxt *const context __attribute__((unused)))
+static uint32_t decomp_rfc5225_ip_esp_get_sn(const struct rohc_decomp_ctxt *const context)
 {
-	return 0;
+	struct rohc_decomp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt =
+		context->persist_ctxt;
+	const uint32_t msn =
+		rohc_lsb_get_ref(&rfc5225_ctxt->msn_lsb_ctxt, ROHC_LSB_REF_0);
+	rohc_decomp_debug(context, "MSN = %u (0x%x)", msn, msn);
+	return msn;
 }
 
 
@@ -3163,7 +3168,7 @@ error_malformed:
 const struct rohc_decomp_profile rohc_decomp_rfc5225_ip_esp_profile =
 {
 	.id              = ROHCv2_PROFILE_IP_ESP, /* profile ID (RFC5225, ROHCv2 IP/ESP) */
-	.msn_max_bits    = 0,
+	.msn_max_bits    = 32,
 	.new_context     = decomp_rfc5225_ip_esp_new_context,
 	.free_context    = (rohc_decomp_free_context_t) decomp_rfc5225_ip_esp_free_context,
 	.detect_pkt_type = decomp_rfc5225_ip_esp_detect_pkt_type,

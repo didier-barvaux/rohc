@@ -5337,7 +5337,7 @@ static void c_tcp_feedback_ack(struct rohc_comp_ctxt *const context,
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
 
-	/* the W-LSB encoding scheme as defined by function lsb() in RFC4997 use a
+	/* the W-LSB encoding scheme as defined by function lsb() in RFC4997 uses a
 	 * sliding window with a large limited maximum width ; once the feedback channel
 	 * is established, positive ACKs may remove older values from the windows */
 	if(!sn_not_valid)

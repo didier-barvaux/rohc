@@ -113,8 +113,10 @@ bool f_feedback2(const rohc_profile_t profile_id,
 		assert(0);
 		goto error;
 	}
-	else if(profile_id == ROHC_PROFILE_TCP)
+	else if(profile_id == ROHC_PROFILE_TCP ||
+	        rohc_profile_is_rohcv2(profile_id))
 	{
+		/* FEEDBACK-2 format for TCP and ROHCv2 profiles */
 		feedback->data[feedback->size] = (ack_type & 0x3) << 6;
 		sn_bits_on_first_byte = 6;
 		sn_mask_on_first_byte = 0x3f;
@@ -123,7 +125,7 @@ bool f_feedback2(const rohc_profile_t profile_id,
 		       feedback->data[feedback->size], ack_type);
 #endif
 	}
-	else /* other profiles */
+	else /* FEEDBACK-2 format for the other profiles */
 	{
 		feedback->data[feedback->size] = ((ack_type & 0x3) << 6) | ((mode & 0x3) << 4);
 		sn_bits_on_first_byte = 4;
@@ -136,10 +138,20 @@ bool f_feedback2(const rohc_profile_t profile_id,
 
 	/* how many SN options are required to store the full SN on the base header
 	 * and those SN options? */
-	for(needed_sn_opts_nr = 0; needed_sn_opts_nr <= 3 &&
-	    sn_bits_nr > (sn_bits_on_first_byte + sn_bits_on_2nd_byte + needed_sn_opts_nr * 8);
-	    needed_sn_opts_nr++)
+	if(rohc_profile_is_rohcv2(profile_id))
 	{
+		/* ROHCv2 profiles do not have the (M)SN option, use the 6+8=14 bytes
+		 * of the base FEEDBACK-2 header */
+		needed_sn_opts_nr = 0;
+	}
+	else
+	{
+		/* ROHCv1 profiles may use the (M)SN option */
+		for(needed_sn_opts_nr = 0; needed_sn_opts_nr <= 3 &&
+		    sn_bits_nr > (sn_bits_on_first_byte + sn_bits_on_2nd_byte + needed_sn_opts_nr * 8);
+		    needed_sn_opts_nr++)
+		{
+		}
 	}
 	assert(needed_sn_opts_nr <= 3); /* should never happen: SN is not larger than 32 bits */
 	sn_bits_to_send = sn_bits_on_first_byte + sn_bits_on_2nd_byte + needed_sn_opts_nr * 8;
@@ -170,8 +182,9 @@ bool f_feedback2(const rohc_profile_t profile_id,
 #endif
 	feedback->size++;
 
-	/* base header: CRC for TCP profile */
-	if(profile_id == ROHC_PROFILE_TCP)
+	/* base header: CRC for TCP and ROHCv2 profiles */
+	if(profile_id == ROHC_PROFILE_TCP ||
+	   rohc_profile_is_rohcv2(profile_id))
 	{
 		feedback->data[feedback->size] = 0x00; /* zeroed for computation */
 		feedback->size++;
