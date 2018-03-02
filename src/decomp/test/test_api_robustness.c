@@ -201,8 +201,13 @@ int main(int argc, char *argv[])
 	/* rohc_decomp_set_mrru() */
 	CHECK(rohc_decomp_set_mrru(NULL, 10) == false);
 	CHECK(rohc_decomp_set_mrru(decomp, 65535 + 1) == false);
+	CHECK(rohc_decomp_enable_profile(decomp, ROHCv2_PROFILE_IP_UDP) == true);
+	CHECK(rohc_decomp_set_mrru(decomp, 0) == true);
+	CHECK(rohc_decomp_set_mrru(decomp, 65535) == false);
+	CHECK(rohc_decomp_disable_profile(decomp, ROHCv2_PROFILE_IP_UDP) == true);
 	CHECK(rohc_decomp_set_mrru(decomp, 0) == true);
 	CHECK(rohc_decomp_set_mrru(decomp, 65535) == true);
+	CHECK(rohc_decomp_enable_profile(decomp, ROHCv2_PROFILE_IP_UDP) == false);
 
 	/* rohc_decomp_get_mrru() */
 	{

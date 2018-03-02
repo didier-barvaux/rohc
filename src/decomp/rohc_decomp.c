@@ -2844,6 +2844,9 @@ error:
  * If set to 0, segmentation is disabled as no segment headers are allowed
  * on the channel. Every received segment will be dropped.
  *
+ * According to RF5225 §6.1, ROHC segmentation cannot be enabled if any
+ * ROHCv2 profile is also enabled.
+ *
  * If segmentation is enabled and used by the compressor, the function
  * \ref rohc_decompress3 will return ROHC_OK and one empty uncompressed packet
  * upon decompression until the last segment is received (or a non-segment is
@@ -2881,6 +2884,8 @@ error:
 bool rohc_decomp_set_mrru(struct rohc_decomp *const decomp,
                           const size_t mrru)
 {
+	size_t idx;
+
 	/* decompressor must be valid */
 	if(decomp == NULL)
 	{
@@ -2895,6 +2900,30 @@ bool rohc_decomp_set_mrru(struct rohc_decomp *const decomp,
 		             "unexpected MRRU value: must be in range [0, %d]",
 		             ROHC_MAX_MRRU);
 		goto error;
+	}
+
+	/* RFC5225, §6.1:
+	 * The compressor MUST NOT use ROHC segmentation (see Section 5.2.5 of
+	 * [RFC4995]), i.e., the Maximum Reconstructed Reception Unit (MRRU)
+	 * MUST be set to 0, if the configuration of the ROHC channel contains
+	 * at least one ROHCv2 profile in the list of supported profiles (i.e.,
+	 * the PROFILES parameter) and if the channel cannot guarantee in-order
+	 * delivery of packets between compression endpoints.
+	 */
+	if(mrru > 0)
+	{
+		for(idx = 0; idx < D_NUM_PROFILES; idx++)
+		{
+			if(decomp->enabled_profiles[idx] &&
+			   rohc_profile_is_rohcv2(rohc_decomp_profiles[idx]->id))
+			{
+				rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+				             "failed to set MRRU to %zu bytes: segmentation is not "
+				             "compatible with ROHCv2 profile 0x%04x that is enabled",
+				             mrru, rohc_decomp_profiles[idx]->id);
+				goto error;
+			}
+		}
 	}
 
 	/* set new MRRU */
@@ -3464,6 +3493,19 @@ bool rohc_decomp_enable_profile(struct rohc_decomp *const decomp,
 	 * check if the corresponding profile in the other ROHC version is already
 	 * enabled or not */
 	if(rohc_decomp_profile_enabled(decomp, rohc_profile_get_other_version(profile)))
+	{
+		goto error;
+	}
+
+	/* RFC5225, §6.1:
+	 * The compressor MUST NOT use ROHC segmentation (see Section 5.2.5 of
+	 * [RFC4995]), i.e., the Maximum Reconstructed Reception Unit (MRRU)
+	 * MUST be set to 0, if the configuration of the ROHC channel contains
+	 * at least one ROHCv2 profile in the list of supported profiles (i.e.,
+	 * the PROFILES parameter) and if the channel cannot guarantee in-order
+	 * delivery of packets between compression endpoints.
+	 */
+	if(rohc_profile_is_rohcv2(profile) && decomp->mrru > 0)
 	{
 		goto error;
 	}

@@ -270,8 +270,13 @@ int main(int argc, char *argv[])
 	/* rohc_comp_set_mrru() */
 	CHECK(rohc_comp_set_mrru(NULL, 10) == false);
 	CHECK(rohc_comp_set_mrru(comp, 65535 + 1) == false);
+	CHECK(rohc_comp_enable_profile(comp, ROHCv2_PROFILE_IP_UDP) == true);
+	CHECK(rohc_comp_set_mrru(comp, 0) == true);
+	CHECK(rohc_comp_set_mrru(comp, 65535) == false);
+	CHECK(rohc_comp_disable_profile(comp, ROHCv2_PROFILE_IP_UDP) == true);
 	CHECK(rohc_comp_set_mrru(comp, 0) == true);
 	CHECK(rohc_comp_set_mrru(comp, 65535) == true);
+	CHECK(rohc_comp_enable_profile(comp, ROHCv2_PROFILE_IP_UDP) == false);
 
 	/* rohc_comp_get_mrru() */
 	{

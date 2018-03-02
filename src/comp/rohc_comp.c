@@ -1598,6 +1598,19 @@ bool rohc_comp_enable_profile(struct rohc_comp *const comp,
 		goto error;
 	}
 
+	/* RFC5225, §6.1:
+	 * The compressor MUST NOT use ROHC segmentation (see Section 5.2.5 of
+	 * [RFC4995]), i.e., the Maximum Reconstructed Reception Unit (MRRU)
+	 * MUST be set to 0, if the configuration of the ROHC channel contains
+	 * at least one ROHCv2 profile in the list of supported profiles (i.e.,
+	 * the PROFILES parameter) and if the channel cannot guarantee in-order
+	 * delivery of packets between compression endpoints.
+	 */
+	if(rohc_profile_is_rohcv2(profile) && comp->mrru > 0)
+	{
+		goto error;
+	}
+
 	/* mark the profile as enabled */
 	comp->enabled_profiles[profile_idx] = true;
 	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -1806,6 +1819,9 @@ error:
  * If set to 0, segmentation is disabled as no segment headers are allowed
  * on the channel. No segment will be generated.
  *
+ * According to RF5225 §6.1, ROHC segmentation cannot be enabled if any
+ * ROHCv2 profile is also enabled.
+ *
  * If segmentation is enabled and used by the compressor, the function
  * \ref rohc_comp_get_segment2 can be used to retrieve ROHC segments.
  *
@@ -1833,6 +1849,8 @@ error:
 bool rohc_comp_set_mrru(struct rohc_comp *const comp,
                         const size_t mrru)
 {
+	size_t idx;
+
 	/* compressor must be valid */
 	if(comp == NULL)
 	{
@@ -1847,6 +1865,30 @@ bool rohc_comp_set_mrru(struct rohc_comp *const comp,
 		             "unexpected MRRU value: must be in range [0, %d]",
 		             ROHC_MAX_MRRU);
 		goto error;
+	}
+
+	/* RFC5225, §6.1:
+	 * The compressor MUST NOT use ROHC segmentation (see Section 5.2.5 of
+	 * [RFC4995]), i.e., the Maximum Reconstructed Reception Unit (MRRU)
+	 * MUST be set to 0, if the configuration of the ROHC channel contains
+	 * at least one ROHCv2 profile in the list of supported profiles (i.e.,
+	 * the PROFILES parameter) and if the channel cannot guarantee in-order
+	 * delivery of packets between compression endpoints.
+	 */
+	if(mrru > 0)
+	{
+		for(idx = 0; idx < C_NUM_PROFILES; idx++)
+		{
+			if(comp->enabled_profiles[idx] &&
+			   rohc_profile_is_rohcv2(rohc_comp_profiles[idx]->id))
+			{
+				rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				             "failed to set MRRU to %zu bytes: segmentation is not "
+				             "compatible with ROHCv2 profile 0x%04x that is enabled",
+				             mrru, rohc_comp_profiles[idx]->id);
+				goto error;
+			}
+		}
 	}
 
 	/* set new MRRU */
