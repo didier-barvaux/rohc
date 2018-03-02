@@ -72,30 +72,6 @@ extern const struct rohc_decomp_profile rohc_decomp_rfc5225_ip_esp_profile;
 
 
 /**
- *  * @brief Define the compression part of the ROHCv2 FAKE RTP profile
- *   */
-const struct rohc_decomp_profile fake_rohcv2_d_rtp_profile =
-{
-	 .id             = ROHCv2_PROFILE_IP_UDP_RTP, /* profile ID */
-};
-
-/**
- *  * @brief Define the compression part of the ROHCv2 FAKE UDPLITE RTP profile
- *   */
-const struct rohc_decomp_profile fake_rohcv2_d_udplite_rtp_profile =
-{
-	 .id             = ROHCv2_PROFILE_IP_UDPLITE_RTP, /* profile ID */
-};
-
-/**
- *  * @brief Define the compression part of the ROHCv2 FAKE UDP-Lite profile
- *   */
-const struct rohc_decomp_profile fake_rohcv2_d_udplite_profile =
-{
-	.id             = ROHCv2_PROFILE_IP_UDPLITE, /* profile ID */
-};
-
-/**
  * @brief The decompression parts of the ROHC profiles.
  */
 static const struct rohc_decomp_profile *const rohc_decomp_profiles[D_NUM_PROFILES] =
@@ -107,12 +83,16 @@ static const struct rohc_decomp_profile *const rohc_decomp_profiles[D_NUM_PROFIL
 	&d_ip_profile,
 	&d_tcp_profile,
 	&d_udplite_profile,
-	&fake_rohcv2_d_rtp_profile,
+#if 0
+	&rohc_decomp_rfc5225_ip_udp_rtp_profile,
+#endif
 	&rohc_decomp_rfc5225_ip_udp_profile,
 	&rohc_decomp_rfc5225_ip_esp_profile,
 	&rohc_decomp_rfc5225_ip_profile,
-	&fake_rohcv2_d_udplite_rtp_profile,
-	&fake_rohcv2_d_udplite_profile,
+#if 0
+	&rohc_decomp_rfc5225_ip_udplite_rtp_profile,
+	&rohc_decomp_rfc5225_ip_udplite_profile,
+#endif
 };
 
 
