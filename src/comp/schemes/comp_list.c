@@ -296,7 +296,7 @@ static bool build_ipv6_ext_pkt_list(struct list_comp *const comp,
 		pkt_list->items[pkt_list->items_nr] = &(comp->trans_table[index_table]);
 		pkt_list->items_nr++;
 
-		rc_list_debug(comp, "  extension #%zu: extension type %u uses %s entry #%d "
+		rc_list_debug(comp, "  extension #%u: extension type %u uses %s entry #%d "
 		              "in translation table (%s entry sent %u/%u times)",
 		              pkt_list->items_nr, ext_type,
 		              (entry_changed ? "updated" : "existing"), index_table,
@@ -920,7 +920,7 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 		/* copy the list element if not known yet */
 		if(!item->known)
 		{
-			rc_list_debug(comp, "add %zu-byte not-yet-known item #%zu in "
+			rc_list_debug(comp, "add %u-byte not-yet-known item #%zu in "
 			              "packet", item->length, k);
 			assert(item->length > 1);
 			dest[counter] = item->type & 0xff;
@@ -1112,7 +1112,7 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 		/* copy the list element if not known yet */
 		if(!item->known)
 		{
-			rc_list_debug(comp, "add %zu-byte unknown item #%zu in packet",
+			rc_list_debug(comp, "add %u-byte unknown item #%zu in packet",
 			              item->length, k);
 			assert(item->length > 1);
 			dest[counter] = item->type & 0xff;
@@ -1449,7 +1449,7 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 		/* copy the list element if not known yet */
 		if(!item->known)
 		{
-			rc_list_debug(comp, "add %zu-byte unknown item #%zu in packet",
+			rc_list_debug(comp, "add %u-byte unknown item #%zu in packet",
 			              item->length, k);
 			assert(item->length > 1);
 			dest[counter] = item->type & 0xff;

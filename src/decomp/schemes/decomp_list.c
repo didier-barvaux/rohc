@@ -1177,14 +1177,14 @@ static int rohc_list_parse_removal_scheme(struct list_decomp *const decomp,
 		else
 		{
 			rd_list_debug(decomp, "take item at index %zu of reference list "
-			              "as item at index %zu of current list", i,
+			              "as item at index %u of current list", i,
 			              rem_list->items_nr);
 
 			/* check that reference list is large enough */
 			if(i >= ref_list->items_nr)
 			{
 				rd_list_warn(decomp, "reference list is too short: item at index "
-				             "%zu requested while list contains only %zu items",
+				             "%zu requested while list contains only %u items",
 				             i, ref_list->items_nr);
 				goto error;
 			}

@@ -68,10 +68,18 @@ struct rohc_list
 	/** The items in the list */
 	struct rohc_list_item *items[ROHC_LIST_ITEMS_MAX];
 	/** The number of items in the list */
-	size_t items_nr;
+	uint8_t items_nr;
 	/** How many times the list was transmitted? */
 	uint8_t counter;
 };
+
+/* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
+#if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
+     (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
+      (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
+_Static_assert((sizeof(struct rohc_list) % 8) == 0,
+               "struct rohc_list length should be multiple of 8 bytes");
+#endif
 
 
 /**
@@ -96,10 +104,20 @@ struct rohc_list_item
 #define ROHC_LIST_ITEM_DATA_MAX  IPV6_OPT_HDR_LEN_MAX
 
 	/** The length of the item data (in bytes) */
-	size_t length;
+	uint16_t length;
 	/** The item data */
 	uint8_t data[ROHC_LIST_ITEM_DATA_MAX];
 };
+
+/* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
+#if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
+     (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
+      (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
+_Static_assert((offsetof(struct rohc_list_item, data) % 8) == 0,
+               "data in struct rohc_list_item should be aligned on 8 bytes");
+_Static_assert((sizeof(struct rohc_list_item) % 8) == 0,
+               "struct rohc_list_item length should be multiple of 8 bytes");
+#endif
 
 
 /** The handler used to compare two items */
