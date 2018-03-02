@@ -104,6 +104,31 @@ struct rohc_comp_rfc5225_ip_udp_ctxt
 	ip_context_t ip_contexts[ROHC_MAX_IP_HDRS];
 	size_t ip_contexts_nr;
 
+	/** The number of all DF transmissions since last change */
+	uint8_t all_df_trans_nr;
+	/** The number of innermost DF transmissions since last change */
+	uint8_t innermost_df_trans_nr;
+	/** The number of outer DF transmissions since last change */
+	uint8_t outer_df_trans_nr;
+
+	/** The number of all IP-ID behavior transmissions since last change */
+	uint8_t all_ip_id_behavior_trans_nr;
+	/** The number of innermost IP-ID behavior transmissions since last change */
+	uint8_t innermost_ip_id_behavior_trans_nr;
+	/** The number of outer IP-ID behavior transmissions since last change */
+	uint8_t outer_ip_id_behavior_trans_nr;
+
+	/** The number of innermost IP flag transmissions since last change */
+	uint8_t innermost_ip_flag_trans_nr;
+	/** The number of outer IP flag transmissions since last change */
+	uint8_t outer_ip_flag_trans_nr;
+
+	/** The number of innermost TOS/TC transmissions since last change */
+	uint8_t innermost_tos_tc_trans_nr;
+
+	/** The number of innermost TTL/HL transmissions since last change */
+	uint8_t innermost_ttl_hopl_trans_nr;
+
 	struct comp_rfc5225_tmp_variables tmp;
 
 	/** The UDP Source port */
@@ -112,6 +137,8 @@ struct rohc_comp_rfc5225_ip_udp_ctxt
 	uint16_t udp_dport;
 	/** Whether the UDP checksum is used or not */
 	bool udp_checksum_used;
+	/** The number of 'UDP checksum used' transmissions since last change */
+	uint8_t udp_checksum_used_trans_nr;
 };
 
 
@@ -1043,6 +1070,51 @@ static int rohc_comp_rfc5225_ip_udp_encode(struct rohc_comp_ctxt *const context,
 	}
 	/* update context for the UDP header */
 	rfc5225_ctxt->udp_checksum_used = rfc5225_ctxt->tmp.new_udp_checksum_used;
+	/* update transmission counters */
+	if(rfc5225_ctxt->all_df_trans_nr < MAX_FO_COUNT)
+	{
+		rfc5225_ctxt->all_df_trans_nr++;
+	}
+	if(rfc5225_ctxt->innermost_df_trans_nr < MAX_FO_COUNT)
+	{
+		rfc5225_ctxt->innermost_df_trans_nr++;
+	}
+	if(rfc5225_ctxt->outer_df_trans_nr < MAX_FO_COUNT)
+	{
+		rfc5225_ctxt->outer_df_trans_nr++;
+	}
+	if(rfc5225_ctxt->all_ip_id_behavior_trans_nr < MAX_FO_COUNT)
+	{
+		rfc5225_ctxt->all_ip_id_behavior_trans_nr++;
+	}
+	if(rfc5225_ctxt->innermost_ip_id_behavior_trans_nr < MAX_FO_COUNT)
+	{
+		rfc5225_ctxt->innermost_ip_id_behavior_trans_nr++;
+	}
+	if(rfc5225_ctxt->outer_ip_id_behavior_trans_nr < MAX_FO_COUNT)
+	{
+		rfc5225_ctxt->outer_ip_id_behavior_trans_nr++;
+	}
+	if(rfc5225_ctxt->innermost_ip_flag_trans_nr < MAX_FO_COUNT)
+	{
+		rfc5225_ctxt->innermost_ip_flag_trans_nr++;
+	}
+	if(rfc5225_ctxt->outer_ip_flag_trans_nr < MAX_FO_COUNT)
+	{
+		rfc5225_ctxt->outer_ip_flag_trans_nr++;
+	}
+	if(rfc5225_ctxt->innermost_tos_tc_trans_nr < MAX_FO_COUNT)
+	{
+		rfc5225_ctxt->innermost_tos_tc_trans_nr++;
+	}
+	if(rfc5225_ctxt->innermost_ttl_hopl_trans_nr < MAX_FO_COUNT)
+	{
+		rfc5225_ctxt->innermost_ttl_hopl_trans_nr++;
+	}
+	if(rfc5225_ctxt->udp_checksum_used_trans_nr < MAX_FO_COUNT)
+	{
+		rfc5225_ctxt->udp_checksum_used_trans_nr++;
+	}
 
 	return rohc_len;
 
@@ -1240,6 +1312,167 @@ static bool rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const
 		rohc_comp_debug(context, "new IP-ID offset = 0x%x / %u",
 		                rfc5225_ctxt->tmp.innermost_ip_id_offset,
 		                rfc5225_ctxt->tmp.innermost_ip_id_offset);
+	}
+
+	/* any DF that changes shall be transmitted several times */
+	if(rfc5225_ctxt->tmp.at_least_one_df_changed)
+	{
+		rohc_comp_debug(context, "at least one DF changed in current packet, "
+		                "it shall be transmitted %u times", MAX_FO_COUNT);
+		rfc5225_ctxt->all_df_trans_nr = 0;
+	}
+	else if(rfc5225_ctxt->all_df_trans_nr < MAX_FO_COUNT)
+	{
+		rohc_comp_debug(context, "at least one DF changed in last packets, "
+		                "it shall be transmitted %u times more",
+		                MAX_FO_COUNT - rfc5225_ctxt->all_df_trans_nr);
+		rfc5225_ctxt->tmp.at_least_one_df_changed = true;
+	}
+	/* the innermost DF that changes shall be transmitted several times */
+	if(rfc5225_ctxt->tmp.innermost_df_changed)
+	{
+		rohc_comp_debug(context, "innermost DF changed in current packet, "
+		                "it shall be transmitted %u times", MAX_FO_COUNT);
+		rfc5225_ctxt->innermost_df_trans_nr = 0;
+	}
+	else if(rfc5225_ctxt->innermost_df_trans_nr < MAX_FO_COUNT)
+	{
+		rohc_comp_debug(context, "innermost DF changed in last packets, "
+		                "it shall be transmitted %u times more",
+		                MAX_FO_COUNT - rfc5225_ctxt->innermost_df_trans_nr);
+		rfc5225_ctxt->tmp.innermost_df_changed = true;
+	}
+	/* any outer DF that changes shall be transmitted several times */
+	if(rfc5225_ctxt->tmp.outer_df_changed)
+	{
+		rohc_comp_debug(context, "at least one outer DF changed in current packet, "
+		                "it shall be transmitted %u times", MAX_FO_COUNT);
+		rfc5225_ctxt->outer_df_trans_nr = 0;
+	}
+	else if(rfc5225_ctxt->outer_df_trans_nr < MAX_FO_COUNT)
+	{
+		rohc_comp_debug(context, "at least one outer DF changed in last packets, "
+		                "it shall be transmitted %u times more",
+		                MAX_FO_COUNT - rfc5225_ctxt->outer_df_trans_nr);
+		rfc5225_ctxt->tmp.outer_df_changed = true;
+	}
+
+	/* any IP-ID behavior that changes shall be transmitted several times */
+	if(rfc5225_ctxt->tmp.at_least_one_ip_id_behavior_changed)
+	{
+		rohc_comp_debug(context, "at least one IP-ID behavior changed in current "
+		                "packet, it shall be transmitted %u times", MAX_FO_COUNT);
+		rfc5225_ctxt->all_ip_id_behavior_trans_nr = 0;
+	}
+	else if(rfc5225_ctxt->all_ip_id_behavior_trans_nr < MAX_FO_COUNT)
+	{
+		rohc_comp_debug(context, "at least one IP-ID behavior changed in last "
+		                "packets, it shall be transmitted %u times more",
+		                MAX_FO_COUNT - rfc5225_ctxt->all_ip_id_behavior_trans_nr);
+		rfc5225_ctxt->tmp.at_least_one_ip_id_behavior_changed = true;
+	}
+	/* innermost IP-ID behavior that changes shall be transmitted several times */
+	if(rfc5225_ctxt->tmp.innermost_ip_id_behavior_changed)
+	{
+		rohc_comp_debug(context, "innermost IP-ID behavior changed in current "
+		                "packet, it shall be transmitted %u times", MAX_FO_COUNT);
+		rfc5225_ctxt->innermost_ip_id_behavior_trans_nr = 0;
+	}
+	else if(rfc5225_ctxt->innermost_ip_id_behavior_trans_nr < MAX_FO_COUNT)
+	{
+		rohc_comp_debug(context, "innermost IP-ID behavior changed in last packets, "
+		                "it shall be transmitted %u times more", MAX_FO_COUNT -
+		                rfc5225_ctxt->innermost_ip_id_behavior_trans_nr);
+		rfc5225_ctxt->tmp.innermost_ip_id_behavior_changed = true;
+	}
+	/* any outer IP-ID behavior that changes shall be transmitted several times */
+	if(rfc5225_ctxt->tmp.outer_ip_id_behavior_changed)
+	{
+		rohc_comp_debug(context, "at least one outer IP-ID behavior changed in "
+		                "current packet, it shall be transmitted %u times",
+		                MAX_FO_COUNT);
+		rfc5225_ctxt->outer_ip_id_behavior_trans_nr = 0;
+	}
+	else if(rfc5225_ctxt->outer_ip_id_behavior_trans_nr < MAX_FO_COUNT)
+	{
+		rohc_comp_debug(context, "at least one outer IP-ID behavior changed in "
+		                "last packets, it shall be transmitted %u times more",
+		                MAX_FO_COUNT - rfc5225_ctxt->outer_ip_id_behavior_trans_nr);
+		rfc5225_ctxt->tmp.outer_ip_id_behavior_changed = true;
+	}
+
+	/* innermost IP flag that changes shall be transmitted several times */
+	if(rfc5225_ctxt->tmp.innermost_ip_flag)
+	{
+		rohc_comp_debug(context, "innermost IP flag changed in current packet, "
+		                "it shall be transmitted %u times", MAX_FO_COUNT);
+		rfc5225_ctxt->innermost_ip_flag_trans_nr = 0;
+	}
+	else if(rfc5225_ctxt->innermost_ip_flag_trans_nr < MAX_FO_COUNT)
+	{
+		rohc_comp_debug(context, "innermost IP flag changed in last packets, "
+		                "it shall be transmitted %u times more",
+		                MAX_FO_COUNT - rfc5225_ctxt->innermost_ip_flag_trans_nr);
+		rfc5225_ctxt->tmp.innermost_ip_flag = true;
+	}
+	/* any outer IP-ID behavior that changes shall be transmitted several times */
+	if(rfc5225_ctxt->tmp.outer_ip_flag)
+	{
+		rohc_comp_debug(context, "at least one outer IP flag changed in current "
+		                "packet, it shall be transmitted %u times", MAX_FO_COUNT);
+		rfc5225_ctxt->outer_ip_flag_trans_nr = 0;
+	}
+	else if(rfc5225_ctxt->outer_ip_flag_trans_nr < MAX_FO_COUNT)
+	{
+		rohc_comp_debug(context, "at least one outer IP flag changed in last "
+		                "packets, it shall be transmitted %u times more",
+		                MAX_FO_COUNT - rfc5225_ctxt->outer_ip_flag_trans_nr);
+		rfc5225_ctxt->tmp.outer_ip_flag = true;
+	}
+
+	/* innermost TOS/TC that changes shall be transmitted several times */
+	if(rfc5225_ctxt->tmp.innermost_tos_tc_changed)
+	{
+		rohc_comp_debug(context, "innermost TOS/TC changed in current packet, "
+		                "it shall be transmitted %u times", MAX_FO_COUNT);
+		rfc5225_ctxt->innermost_tos_tc_trans_nr = 0;
+	}
+	else if(rfc5225_ctxt->innermost_tos_tc_trans_nr < MAX_FO_COUNT)
+	{
+		rohc_comp_debug(context, "innermost TOS/TC changed in last packets, "
+		                "it shall be transmitted %u times more",
+		                MAX_FO_COUNT - rfc5225_ctxt->innermost_tos_tc_trans_nr);
+		rfc5225_ctxt->tmp.innermost_tos_tc_changed = true;
+	}
+
+	/* innermost TTL/HL that changes shall be transmitted several times */
+	if(rfc5225_ctxt->tmp.innermost_ttl_hopl_changed)
+	{
+		rohc_comp_debug(context, "innermost TTL/HL changed in current packet, "
+		                "it shall be transmitted %u times", MAX_FO_COUNT);
+		rfc5225_ctxt->innermost_ttl_hopl_trans_nr = 0;
+	}
+	else if(rfc5225_ctxt->innermost_ttl_hopl_trans_nr < MAX_FO_COUNT)
+	{
+		rohc_comp_debug(context, "innermost TTL/HL changed in last packets, "
+		                "it shall be transmitted %u times more",
+		                MAX_FO_COUNT - rfc5225_ctxt->innermost_ttl_hopl_trans_nr);
+		rfc5225_ctxt->tmp.innermost_ttl_hopl_changed = true;
+	}
+
+	/* 'UDP checksum used' that changes shall be transmitted several times */
+	if(rfc5225_ctxt->tmp.udp_checksum_used_changed)
+	{
+		rohc_comp_debug(context, "'UDP checksum used' changed in current packet, "
+		                "it shall be transmitted %u times", MAX_FO_COUNT);
+		rfc5225_ctxt->udp_checksum_used_trans_nr = 0;
+	}
+	else if(rfc5225_ctxt->udp_checksum_used_trans_nr < MAX_FO_COUNT)
+	{
+		rohc_comp_debug(context, "'UDP checksum used' changed in last packets, "
+		                "it shall be transmitted %u times more",
+		                MAX_FO_COUNT - rfc5225_ctxt->udp_checksum_used_trans_nr);
+		rfc5225_ctxt->tmp.udp_checksum_used_changed = true;
 	}
 
 	return true;
