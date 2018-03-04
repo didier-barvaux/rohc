@@ -305,10 +305,10 @@ static int decomp_rfc5225_ip_parse_irreg_ip(const struct rohc_decomp_ctxt *const
 	__attribute__((warn_unused_result, nonnull(1, 2, 7)));
 
 /* decoding parsed fields */
-static bool decomp_rfc5225_ip_decode_bits(const struct rohc_decomp_ctxt *const ctxt,
-                                          const struct rohc_rfc5225_bits *const bits,
-                                          const size_t payload_len,
-                                          struct rohc_rfc5225_decoded *const decoded)
+static rohc_status_t decomp_rfc5225_ip_decode_bits(const struct rohc_decomp_ctxt *const ctxt,
+                                                   const struct rohc_rfc5225_bits *const bits,
+                                                   const size_t payload_len,
+                                                   struct rohc_rfc5225_decoded *const decoded)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 static bool decomp_rfc5225_ip_decode_bits_ip_hdrs(const struct rohc_decomp_ctxt *const ctxt,
                                                   const struct rohc_rfc5225_bits *const bits,
@@ -2135,12 +2135,14 @@ error:
  * @param bits          The bits extracted from the ROHC packet
  * @param payload_len   The length of the packet payload (in bytes)
  * @param[out] decoded  The corresponding decoded values
- * @return              true if decoding is successful, false otherwise
+ * @return              ROHC_STATUS_OK if decoding is successful,
+ *                      ROHC_STATUS_BAD_CRC if control CRC is wrong,
+ *                      ROHC_STATUS_ERROR otherwise
  */
-static bool decomp_rfc5225_ip_decode_bits(const struct rohc_decomp_ctxt *const ctxt,
-                                          const struct rohc_rfc5225_bits *const bits,
-                                          const size_t payload_len __attribute__((unused)),
-                                          struct rohc_rfc5225_decoded *const decoded)
+static rohc_status_t decomp_rfc5225_ip_decode_bits(const struct rohc_decomp_ctxt *const ctxt,
+                                                   const struct rohc_rfc5225_bits *const bits,
+                                                   const size_t payload_len __attribute__((unused)),
+                                                   struct rohc_rfc5225_decoded *const decoded)
 {
 	const struct rohc_decomp_rfc5225_ip_ctxt *const rfc5225_ctxt =
 		ctxt->persist_ctxt;
@@ -2235,15 +2237,16 @@ static bool decomp_rfc5225_ip_decode_bits(const struct rohc_decomp_ctxt *const c
 		{
 			rohc_decomp_warn(ctxt, "control CRC failure (computed = 0x%x, packet = "
 			                 "0x%x)", ctrl_crc_computed, bits->ctrl_crc.bits);
-			goto error;
+			goto error_crc;
 		}
 	}
 
-	return true;
+	return ROHC_STATUS_OK;
 
+error_crc:
+	return ROHC_STATUS_BAD_CRC;
 error:
-	return false;
-
+	return ROHC_STATUS_ERROR;
 }
 
 

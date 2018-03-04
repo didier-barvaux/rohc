@@ -98,10 +98,10 @@ static bool uncomp_parse_normal(const struct rohc_decomp_ctxt *const context,
                                 size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 4, 5, 6)));
 
-static bool uncomp_decode_bits(const struct rohc_decomp_ctxt *const context,
-                               const struct rohc_uncomp_extr_bits *const extr_bits,
-                               const size_t payload_len,
-                               struct rohc_uncomp_decoded *const decoded)
+static rohc_status_t uncomp_decode_bits(const struct rohc_decomp_ctxt *const context,
+                                        const struct rohc_uncomp_extr_bits *const extr_bits,
+                                        const size_t payload_len,
+                                        struct rohc_uncomp_decoded *const decoded)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
 static rohc_status_t uncomp_build_hdrs(const struct rohc_decomp *const decomp,
@@ -409,19 +409,19 @@ error:
  * @param extr_bits     The bits extracted from the ROHC packet
  * @param payload_len   The length of the packet payload (in bytes)
  * @param[out] decoded  The corresponding decoded values
- * @return              true if decoding is successful, false otherwise
+ * @return              ROHC_STATUS_OK (decoding is always successful)
  */
-static bool uncomp_decode_bits(const struct rohc_decomp_ctxt *const context __attribute__((unused)),
-                               const struct rohc_uncomp_extr_bits *const extr_bits,
-                               const size_t payload_len __attribute__((unused)),
-                               struct rohc_uncomp_decoded *const decoded)
+static rohc_status_t uncomp_decode_bits(const struct rohc_decomp_ctxt *const context __attribute__((unused)),
+                                        const struct rohc_uncomp_extr_bits *const extr_bits,
+                                        const size_t payload_len __attribute__((unused)),
+                                        struct rohc_uncomp_decoded *const decoded)
 {
 	/* copy the first byte of the normal packet to be able to build the
 	 * uncompressed packet */
 	decoded->first_byte_used = extr_bits->first_byte_used;
 	decoded->first_byte = extr_bits->first_byte;
 
-	return true;
+	return ROHC_STATUS_OK;
 }
 
 

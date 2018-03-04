@@ -269,10 +269,10 @@ static void d_tcp_reset_extr_bits(const struct rohc_decomp_ctxt *const context,
 	__attribute__((nonnull(1, 2)));
 
 /* decoding */
-static bool d_tcp_decode_bits(const struct rohc_decomp_ctxt *const context,
-                              const struct rohc_tcp_extr_bits *const bits,
-                              const size_t payload_len,
-                              struct rohc_tcp_decoded_values *const decoded)
+static rohc_status_t d_tcp_decode_bits(const struct rohc_decomp_ctxt *const context,
+                                       const struct rohc_tcp_extr_bits *const bits,
+                                       const size_t payload_len,
+                                       struct rohc_tcp_decoded_values *const decoded)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 static bool d_tcp_decode_bits_ip_hdrs(const struct rohc_decomp_ctxt *const context,
                                       const struct rohc_tcp_extr_bits *const bits,
@@ -2766,12 +2766,13 @@ static void d_tcp_reset_extr_bits(const struct rohc_decomp_ctxt *const context,
  * @param bits          The bits extracted from the ROHC packet
  * @param payload_len   The length of the packet payload (in bytes)
  * @param[out] decoded  The corresponding decoded values
- * @return              true if decoding is successful, false otherwise
+ * @return              ROHC_STATUS_OK if decoding is successful,
+ *                      ROHC_STATUS_ERROR otherwise
  */
-static bool d_tcp_decode_bits(const struct rohc_decomp_ctxt *const context,
-                              const struct rohc_tcp_extr_bits *const bits,
-                              const size_t payload_len,
-                              struct rohc_tcp_decoded_values *const decoded)
+static rohc_status_t d_tcp_decode_bits(const struct rohc_decomp_ctxt *const context,
+                                       const struct rohc_tcp_extr_bits *const bits,
+                                       const size_t payload_len,
+                                       struct rohc_tcp_decoded_values *const decoded)
 {
 	const struct rohc_decomp_ctxt *ref_ctxt;
 	const struct d_tcp_context *tcp_context;
@@ -2835,10 +2836,10 @@ static bool d_tcp_decode_bits(const struct rohc_decomp_ctxt *const context,
 		goto error;
 	}
 
-	return true;
+	return ROHC_STATUS_OK;
 
 error:
-	return false;
+	return ROHC_STATUS_ERROR;
 }
 
 

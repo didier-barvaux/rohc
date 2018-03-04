@@ -5561,12 +5561,13 @@ error:
  * @param bits          The bits extracted from the ROHC packet
  * @param payload_len   The length of the packet payload (in bytes)
  * @param[out] decoded  The corresponding decoded values
- * @return              true if decoding is successful, false otherwise
+ * @return              ROHC_STATUS_OK if decoding is successful,
+ *                      ROHC_STATUS_ERROR otherwise
  */
-bool rfc3095_decomp_decode_bits(const struct rohc_decomp_ctxt *const context,
-                                const struct rohc_extr_bits *const bits,
-                                const size_t payload_len __attribute__((unused)),
-                                struct rohc_decoded_values *const decoded)
+rohc_status_t rfc3095_decomp_decode_bits(const struct rohc_decomp_ctxt *const context,
+                                         const struct rohc_extr_bits *const bits,
+                                         const size_t payload_len __attribute__((unused)),
+                                         struct rohc_decoded_values *const decoded)
 {
 	const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	bool decode_ok;
@@ -5666,10 +5667,10 @@ bool rfc3095_decomp_decode_bits(const struct rohc_decomp_ctxt *const context,
 		}
 	}
 
-	return true;
+	return ROHC_STATUS_OK;
 
 error:
-	return false;
+	return ROHC_STATUS_ERROR;
 }
 
 

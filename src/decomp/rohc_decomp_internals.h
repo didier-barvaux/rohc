@@ -370,10 +370,10 @@ typedef bool (*rohc_decomp_parse_pkt_t)(const struct rohc_decomp_ctxt *const con
                                         size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 4, 5, 6, 7)));
 
-typedef bool (*rohc_decomp_decode_bits_t)(const struct rohc_decomp_ctxt *const context,
-                                          const void *const extr_bits,
-                                          const size_t payload_len,
-                                          void *const decoded_values)
+typedef rohc_status_t (*rohc_decomp_decode_bits_t)(const struct rohc_decomp_ctxt *const context,
+                                                   const void *const extr_bits,
+                                                   const size_t payload_len,
+                                                   void *const decoded_values)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
 typedef rohc_status_t (*rohc_decomp_build_hdrs_t)(const struct rohc_decomp *const decomp,

@@ -487,10 +487,10 @@ rohc_status_t rfc3095_decomp_build_hdrs(const struct rohc_decomp *const decomp,
                                         size_t *const uncomp_hdrs_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5, 7, 8)));
 
-bool rfc3095_decomp_decode_bits(const struct rohc_decomp_ctxt *const context,
-                                const struct rohc_extr_bits *const bits,
-                                const size_t payload_len __attribute__((unused)),
-                                struct rohc_decoded_values *const decoded)
+rohc_status_t rfc3095_decomp_decode_bits(const struct rohc_decomp_ctxt *const context,
+                                         const struct rohc_extr_bits *const bits,
+                                         const size_t payload_len,
+                                         struct rohc_decoded_values *const decoded)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
 void rfc3095_decomp_update_ctxt(struct rohc_decomp_ctxt *const context,

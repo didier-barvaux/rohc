@@ -1683,7 +1683,6 @@ static rohc_status_t rohc_decomp_try_decode_pkt(const struct rohc_decomp *const 
 	const struct rohc_decomp_profile *const profile = context->profile;
 	size_t uncomp_hdr_len; /* length of the uncompressed headers */
 	rohc_status_t status;
-	bool decode_ok;
 
 	assert(packet_type != ROHC_PACKET_UNKNOWN);
 
@@ -1692,12 +1691,11 @@ static rohc_status_t rohc_decomp_try_decode_pkt(const struct rohc_decomp *const 
 	 * All bits are now extracted from the packet, let's decode them.
 	 */
 
-	decode_ok = profile->decode_bits(context, extr_bits, payload_len, decoded_values);
-	if(!decode_ok)
+	status = profile->decode_bits(context, extr_bits, payload_len, decoded_values);
+	if(status != ROHC_STATUS_OK)
 	{
 		rohc_decomp_warn(context, "failed to decode values from bits extracted "
 		                 "from ROHC header");
-		status = ROHC_STATUS_ERROR;
 		goto error;
 	}
 
@@ -1717,6 +1715,7 @@ static rohc_status_t rohc_decomp_try_decode_pkt(const struct rohc_decomp *const 
 	{
 		rohc_decomp_warn(context, "CID %zu: failed to build uncompressed headers: %s",
 		                 context->cid, rohc_strerror(status));
+		goto error;
 	}
 
 error:
