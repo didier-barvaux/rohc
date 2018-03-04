@@ -120,6 +120,30 @@ typedef enum
 	ROHC_PACKET_RTP_PT_2_SEQ_TS   = 44, /**< ROHCv2 PT-2-SEQ-TS packet (RTP) */
 	ROHC_PACKET_RTP_PT_2_SEQ_BOTH = 45, /**< ROHCv2 PT-2-SEQ-BOTH packet (RTP) */
 
+	/* UO-1-ID packet with extensions */
+	ROHC_PACKET_UO_1_ID_EXT0      = 46, /**< ROHC UO-1-ID packet with EXT-0 (RTP profile only) */
+	ROHC_PACKET_UO_1_ID_EXT1      = 47, /**< ROHC UO-1-ID packet with EXT-1 (RTP profile only) */
+	ROHC_PACKET_UO_1_ID_EXT2      = 48, /**< ROHC UO-1-ID packet with EXT-2 (RTP profile only) */
+	ROHC_PACKET_UO_1_ID_EXT3      = 49, /**< ROHC UO-1-ID packet with EXT-3 (RTP profile only) */
+
+	/* UOR-2 packets with extensions */
+	ROHC_PACKET_UOR_2_EXT0        = 50, /**< ROHC UOR-2 packet with EXT-0 (non-RTP profiles) */
+	ROHC_PACKET_UOR_2_EXT1        = 51, /**< ROHC UOR-2 packet with EXT-1 (non-RTP profiles) */
+	ROHC_PACKET_UOR_2_EXT2        = 52, /**< ROHC UOR-2 packet with EXT-2 (non-RTP profiles) */
+	ROHC_PACKET_UOR_2_EXT3        = 53, /**< ROHC UOR-2 packet with EXT-3 (non-RTP profiles) */
+	ROHC_PACKET_UOR_2_RTP_EXT0    = 54, /**< ROHC UOR-2 packet with EXT-0 (RTP profile only) */
+	ROHC_PACKET_UOR_2_RTP_EXT1    = 55, /**< ROHC UOR-2 packet with EXT-1 (RTP profile only) */
+	ROHC_PACKET_UOR_2_RTP_EXT2    = 56, /**< ROHC UOR-2 packet with EXT-2 (RTP profile only) */
+	ROHC_PACKET_UOR_2_RTP_EXT3    = 57, /**< ROHC UOR-2 packet with EXT-3 (RTP profile only) */
+	ROHC_PACKET_UOR_2_ID_EXT0     = 58, /**< ROHC UOR-2-ID packet with EXT-0 (RTP profile only) */
+	ROHC_PACKET_UOR_2_ID_EXT1     = 59, /**< ROHC UOR-2-ID packet with EXT-1 (RTP profile only) */
+	ROHC_PACKET_UOR_2_ID_EXT2     = 60, /**< ROHC UOR-2-ID packet with EXT-2 (RTP profile only) */
+	ROHC_PACKET_UOR_2_ID_EXT3     = 61, /**< ROHC UOR-2-ID packet with EXT-3 (RTP profile only) */
+	ROHC_PACKET_UOR_2_TS_EXT0     = 62, /**< ROHC UOR-2-TS packet with EXT-0 (RTP profile only) */
+	ROHC_PACKET_UOR_2_TS_EXT1     = 63, /**< ROHC UOR-2-TS packet with EXT-1 (RTP profile only) */
+	ROHC_PACKET_UOR_2_TS_EXT2     = 64, /**< ROHC UOR-2-TS packet with EXT-2 (RTP profile only) */
+	ROHC_PACKET_UOR_2_TS_EXT3     = 65, /**< ROHC UOR-2-TS packet with EXT-3 (RTP profile only) */
+
 	ROHC_PACKET_MAX                 /**< The number of packet types */
 } rohc_packet_t;
 

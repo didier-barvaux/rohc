@@ -76,7 +76,9 @@ static void rtp_decide_state(struct rohc_comp_ctxt *const context);
 
 static rohc_packet_t c_rtp_decide_FO_packet(const struct rohc_comp_ctxt *context);
 static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *context);
-static rohc_ext_t c_rtp_decide_extension(const struct rohc_comp_ctxt *context);
+static rohc_ext_t c_rtp_decide_extension(const struct rohc_comp_ctxt *const context,
+                                         const rohc_packet_t packet_type)
+	__attribute__((warn_unused_result, nonnull(1)));
 
 static uint32_t c_rtp_get_next_sn(const struct rohc_comp_ctxt *const context,
                                   const struct net_pkt *const uncomp_pkt)
@@ -765,16 +767,18 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *context
 
 
 /**
- * @brief Decide what extension shall be used in the UO-1/UO-2 packet.
+ * @brief Decide what extension shall be used in the UO-1-ID/UOR-2 packet
  *
  * Extensions 0, 1 & 2 are IPv4 only because of the IP-ID.
  *
- * @param context The compression context
- * @return        The extension code among ROHC_EXT_NO, ROHC_EXT_0,
- *                ROHC_EXT_1 and ROHC_EXT_3 if successful,
- *                ROHC_EXT_UNKNOWN otherwise
+ * @param context      The compression context
+ * @param packet_type  The type of ROHC packet that is created
+ * @return             The extension code among ROHC_EXT_NO, ROHC_EXT_0,
+ *                     ROHC_EXT_1 and ROHC_EXT_3 if successful,
+ *                     ROHC_EXT_UNKNOWN otherwise
  */
-static rohc_ext_t c_rtp_decide_extension(const struct rohc_comp_ctxt *context)
+static rohc_ext_t c_rtp_decide_extension(const struct rohc_comp_ctxt *const context,
+                                         const rohc_packet_t packet_type)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	struct sc_rtp_context *rtp_context;
@@ -800,7 +804,7 @@ static rohc_ext_t c_rtp_decide_extension(const struct rohc_comp_ctxt *context)
 	else
 	{
 		/* fallback on the algorithm shared by all IP-based profiles */
-		ext = decide_extension(context);
+		ext = decide_extension(context, packet_type);
 	}
 
 	return ext;

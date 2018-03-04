@@ -72,6 +72,11 @@ static int test_comp_and_decomp(const char *const filename,
                                 const unsigned int packet_to_damage,
                                 const rohc_packet_t expected_packet,
                                 const bool do_repair);
+static bool are_packet_types_equal(const rohc_packet_t packet_type1,
+                                   const rohc_packet_t packet_type2)
+	__attribute__((warn_unused_result, const));
+static rohc_packet_t norm_packet_type(const rohc_packet_t packet_type)
+	__attribute__((warn_unused_result, const));
 static void print_rohc_traces(void *const priv_ctxt,
                               const rohc_trace_level_t level,
                               const rohc_trace_entity_t entity,
@@ -476,7 +481,7 @@ static int test_comp_and_decomp(const char *const filename,
 			unsigned char new_byte;
 
 			/* check packet type of the packet to damage */
-			if(packet_info.packet_type != expected_packet)
+			if(!are_packet_types_equal(packet_info.packet_type, expected_packet))
 			{
 				fprintf(stderr, "\tROHC packet #%u is of type %d while type %d was "
 				        "expected\n", packet_to_damage, packet_info.packet_type,
@@ -609,6 +614,75 @@ close_input:
 	pcap_close(handle);
 error:
 	return is_failure;
+}
+
+
+/**
+ * @brief Compare packet types, ignoring extensions
+ *
+ * @param packet_type1  The first packet type
+ * @param packet_type2  The 2nd packet type
+ * @return              true if packet types are the same (except maybe for
+ *                      extensions), false if they are not
+ */
+static bool are_packet_types_equal(const rohc_packet_t packet_type1,
+                                   const rohc_packet_t packet_type2)
+{
+	const rohc_packet_t packet_type1_normalized = norm_packet_type(packet_type1);
+	const rohc_packet_t packet_type2_normalized = norm_packet_type(packet_type2);
+
+	return (packet_type1_normalized == packet_type2_normalized);
+}
+
+
+/**
+ * @brief Ignore extensions from the given packet type
+ *
+ * @param packet_type  The packet type, maybe with one extension
+ * @return             The packet type without extension
+ */
+static rohc_packet_t norm_packet_type(const rohc_packet_t packet_type)
+{
+	rohc_packet_t packet_type_normalized;
+
+	switch(packet_type)
+	{
+		case ROHC_PACKET_UO_1_ID_EXT0:
+		case ROHC_PACKET_UO_1_ID_EXT1:
+		case ROHC_PACKET_UO_1_ID_EXT2:
+		case ROHC_PACKET_UO_1_ID_EXT3:
+			packet_type_normalized = ROHC_PACKET_UO_1_ID;
+			break;
+		case ROHC_PACKET_UOR_2_EXT0:
+		case ROHC_PACKET_UOR_2_EXT1:
+		case ROHC_PACKET_UOR_2_EXT2:
+		case ROHC_PACKET_UOR_2_EXT3:
+			packet_type_normalized = ROHC_PACKET_UOR_2;
+			break;
+		case ROHC_PACKET_UOR_2_RTP_EXT0:
+		case ROHC_PACKET_UOR_2_RTP_EXT1:
+		case ROHC_PACKET_UOR_2_RTP_EXT2:
+		case ROHC_PACKET_UOR_2_RTP_EXT3:
+			packet_type_normalized = ROHC_PACKET_UOR_2_RTP;
+			break;
+		case ROHC_PACKET_UOR_2_ID_EXT0:
+		case ROHC_PACKET_UOR_2_ID_EXT1:
+		case ROHC_PACKET_UOR_2_ID_EXT2:
+		case ROHC_PACKET_UOR_2_ID_EXT3:
+			packet_type_normalized = ROHC_PACKET_UOR_2_ID;
+			break;
+		case ROHC_PACKET_UOR_2_TS_EXT0:
+		case ROHC_PACKET_UOR_2_TS_EXT1:
+		case ROHC_PACKET_UOR_2_TS_EXT2:
+		case ROHC_PACKET_UOR_2_TS_EXT3:
+			packet_type_normalized = ROHC_PACKET_UOR_2_TS;
+			break;
+		default:
+			packet_type_normalized = packet_type;
+			break;
+	}
+
+	return packet_type_normalized;
 }
 
 
