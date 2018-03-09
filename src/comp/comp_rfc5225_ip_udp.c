@@ -20,6 +20,8 @@
  * @file   comp_rfc5225_ip_udp.c
  * @brief  ROHC compression context for the ROHCv2 IP/UDP profile
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
+ * @author Valentin Boutonné <vboutonne@toulouse.viveris.com>
  */
 
 #include "rohc_comp_internals.h"

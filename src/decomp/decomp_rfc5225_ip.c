@@ -21,6 +21,7 @@
  * @brief  ROHC decompression context for the ROHCv2 IP-only profile
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author Didier Barvaux <didier@barvaux.org>
+ * @author Valentin Boutonné <vboutonne@toulouse.viveris.com>
  */
 
 #include "rohc_decomp.h"
@@ -3024,8 +3025,6 @@ static bool decomp_rfc5225_ip_attempt_repair(const struct rohc_decomp *const dec
 
 /**
  * @brief Get the reference SN value of the context
- *
- * Always return 0 for the ROHCv2 IP-only profile.
  *
  * This function is one of the functions that must exist in one profile for the
  * framework to work.

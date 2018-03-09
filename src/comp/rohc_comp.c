@@ -94,7 +94,7 @@ extern const struct rohc_comp_profile c_uncompressed_profile;
 extern const struct rohc_comp_profile rohc_comp_rfc5225_ip_profile;
 extern const struct rohc_comp_profile rohc_comp_rfc5225_ip_udp_profile;
 extern const struct rohc_comp_profile rohc_comp_rfc5225_ip_esp_profile;
-
+extern const struct rohc_comp_profile rohc_comp_rfc5225_ip_udp_rtp_profile;
 
 /** The ROHC compression profiles */
 static const struct rohc_comp_profile *const
@@ -113,7 +113,7 @@ static const struct rohc_comp_profile *const
 	},
 	[1] = {
 		[0] = NULL,
-		[1] = NULL,
+		[1] = &rohc_comp_rfc5225_ip_udp_rtp_profile,
 		[2] = &rohc_comp_rfc5225_ip_udp_profile,
 		[3] = &rohc_comp_rfc5225_ip_esp_profile,
 		[4] = &rohc_comp_rfc5225_ip_profile,
@@ -846,6 +846,7 @@ static rohc_profile_t rohc_comp_get_profile_l4(const struct rohc_comp *const com
 			           "\tSSRC = 0x%08x", fingerprint->rtp_ssrc);
 		}
 		else if(all_ipv6_exts_len == 0 && /* TODO: ROHCv2: add IPv6 ext hdrs support */
+		        rtp->version == 2 && /* ROHCv2 only supports RTP version 2 */
 		        rohc_comp_profile_enabled_nocheck(comp, ROHCv2_PROFILE_IP_UDP_RTP))
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,

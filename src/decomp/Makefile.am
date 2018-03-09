@@ -35,7 +35,8 @@ librohc_decomp_la_SOURCES = \
 	d_tcp.c \
 	decomp_rfc5225_ip.c \
 	decomp_rfc5225_ip_esp.c \
-	decomp_rfc5225_ip_udp.c
+	decomp_rfc5225_ip_udp.c \
+	decomp_rfc5225_ip_udp_rtp.c
 
 librohc_decomp_la_LIBADD = \
 	$(builddir)/schemes/librohc_decomp_schemes.la \

@@ -310,6 +310,17 @@ typedef struct
 
 
 /**
+ * @brief The UDP regular dynamic part
+ *
+ * See RFC5225 page 63
+ */
+typedef struct
+{
+	uint16_t checksum;  /**< The UDP checksum */
+} __attribute__((packed)) udp_regular_dynamic_t;
+
+
+/**
  * @brief The UDP irregular chain with checksum
  *
  * See RFC5225 page 64
@@ -351,6 +362,57 @@ typedef struct
 	uint8_t reserved:6;
 #endif
 } __attribute__((packed)) esp_dynamic_t;
+
+
+/************************************************************************
+ * Compressed RTP header                                                *
+ ************************************************************************/
+
+/**
+ * @brief The RTP static part
+ *
+ * See RFC5225 page 65
+ */
+typedef struct
+{
+	uint32_t ssrc; /**< The RTP SSRC field */
+} __attribute__((packed)) rtp_static_t;
+
+
+/**
+ * @brief The RTP dynamic part
+ *
+ * See RFC5225 page 65
+ */
+typedef struct
+{
+#if WORDS_BIGENDIAN == 1
+	uint8_t reserved:1;        /**< reserved field, shall be zero */
+	uint8_t reorder_ratio:2;   /**< The reorder_ratio use for the transmission */
+	uint8_t list_present:1;    /**< Whether optional CSRC list is present or not */
+	uint8_t tss_indicator:1;   /**< Whether optional ts_stride is present or not */
+	uint8_t tis_indicator:1;   /**< Whether optional time_stride is present or not */
+	uint8_t pad_bit:1;         /**< The RTP padding bit */
+	uint8_t extension:1;       /**< The RTP extension bit */
+#else
+	uint8_t extension:1;
+	uint8_t pad_bit:1;
+	uint8_t tis_indicator:1;
+	uint8_t tss_indicator:1;
+	uint8_t list_present:1;
+	uint8_t reorder_ratio:2;
+	uint8_t reserved:1;
+#endif
+#if WORDS_BIGENDIAN == 1
+	uint8_t marker:1;          /**< The RTP Marker bit */
+	uint8_t payload_type:7;   /**< The RTP Payload Type (PT) */
+#else
+	uint8_t payload_type:7;
+	uint8_t marker:1;
+#endif
+	uint16_t sequence_number;  /**< The RTP sequence number */
+	uint32_t timestamp;        /**< The RTP Timestamp */
+} __attribute__((packed)) rtp_dynamic_t;
 
 
 /************************************************************************

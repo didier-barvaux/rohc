@@ -70,6 +70,7 @@ extern const struct rohc_decomp_profile d_tcp_profile;
 extern const struct rohc_decomp_profile rohc_decomp_rfc5225_ip_profile;
 extern const struct rohc_decomp_profile rohc_decomp_rfc5225_ip_udp_profile;
 extern const struct rohc_decomp_profile rohc_decomp_rfc5225_ip_esp_profile;
+extern const struct rohc_decomp_profile rohc_decomp_rfc5225_ip_udp_rtp_profile;
 
 
 /** The ROHC decompression profiles */
@@ -89,7 +90,7 @@ static const struct rohc_decomp_profile *const
 	},
 	[1] = {
 		[0] = NULL,
-		[1] = NULL,
+		[1] = &rohc_decomp_rfc5225_ip_udp_rtp_profile,
 		[2] = &rohc_decomp_rfc5225_ip_udp_profile,
 		[3] = &rohc_decomp_rfc5225_ip_esp_profile,
 		[4] = &rohc_decomp_rfc5225_ip_profile,
