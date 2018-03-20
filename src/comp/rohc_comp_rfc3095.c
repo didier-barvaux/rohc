@@ -113,19 +113,22 @@ static rohc_ext_t decide_extension_uo1id(const struct rohc_comp_ctxt *const cont
 static int code_packet(struct rohc_comp_ctxt *const context,
                        const struct net_pkt *const uncomp_pkt,
                        uint8_t *const rohc_pkt,
-                       const size_t rohc_pkt_max_len)
+                       const size_t rohc_pkt_max_len,
+                       const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int code_IR_packet(struct rohc_comp_ctxt *const context,
                           const struct net_pkt *const uncomp_pkt,
                           uint8_t *const rohc_pkt,
-                          const size_t rohc_pkt_max_len)
+                          const size_t rohc_pkt_max_len,
+                          const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int code_IR_DYN_packet(struct rohc_comp_ctxt *const context,
                               const struct net_pkt *const uncomp_pkt,
                               uint8_t *const rohc_pkt,
-                              const size_t rohc_pkt_max_len)
+                              const size_t rohc_pkt_max_len,
+                              const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int rohc_code_static_part(const struct rohc_comp_ctxt *const context,
@@ -193,34 +196,40 @@ static int code_uo_remainder(struct rohc_comp_ctxt *const context,
 static int code_UO0_packet(struct rohc_comp_ctxt *const context,
                            const struct net_pkt *const uncomp_pkt,
                            uint8_t *const rohc_pkt,
-                           const size_t rohc_pkt_max_len)
+                           const size_t rohc_pkt_max_len,
+                           const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int rohc_comp_rfc3095_build_uo1_pkt(struct rohc_comp_ctxt *const context,
                                            const struct net_pkt *const uncomp_pkt,
                                            uint8_t *const rohc_pkt,
-                                           const size_t rohc_pkt_max_len)
+                                           const size_t rohc_pkt_max_len,
+                                           const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 static int rohc_comp_rfc3095_build_uo1rtp_pkt(struct rohc_comp_ctxt *const context,
                                               const struct net_pkt *const uncomp_pkt,
                                               uint8_t *const rohc_pkt,
-                                              const size_t rohc_pkt_max_len)
+                                              const size_t rohc_pkt_max_len,
+                                              const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 static int rohc_comp_rfc3095_build_uo1ts_pkt(struct rohc_comp_ctxt *const context,
                                              const struct net_pkt *const uncomp_pkt,
                                              uint8_t *const rohc_pkt,
-                                             const size_t rohc_pkt_max_len)
+                                             const size_t rohc_pkt_max_len,
+                                             const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const context,
                                              const struct net_pkt *const uncomp_pkt,
                                              uint8_t *const rohc_pkt,
-                                             const size_t rohc_pkt_max_len)
+                                             const size_t rohc_pkt_max_len,
+                                             const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int code_UO2_packet(struct rohc_comp_ctxt *const context,
                            const struct net_pkt *const uncomp_pkt,
                            uint8_t *const rohc_pkt,
-                           const size_t rohc_pkt_max_len)
+                           const size_t rohc_pkt_max_len,
+                           const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int code_UOR2_bytes(const struct rohc_comp_ctxt *const context,
@@ -253,33 +262,39 @@ static int code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
 
 static int code_EXT0_packet(const struct rohc_comp_ctxt *const context,
                             uint8_t *const dest,
-                            int counter)
+                            int counter,
+                            const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int code_EXT1_packet(const struct rohc_comp_ctxt *const context,
                             uint8_t *const dest,
-                            int counter)
+                            int counter,
+                            const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int code_EXT2_packet(const struct rohc_comp_ctxt *const context,
                             uint8_t *const dest,
-                            int counter)
+                            int counter,
+                            const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int code_EXT3_packet(struct rohc_comp_ctxt *const context,
                             const struct net_pkt *const uncomp_pkt,
                             uint8_t *const dest,
-                            int counter)
+                            int counter,
+                            const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 static int code_EXT3_rtp_packet(struct rohc_comp_ctxt *const context,
                                 const struct net_pkt *const uncomp_pkt,
                                 uint8_t *const dest,
-                                int counter)
+                                int counter,
+                                const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 static int code_EXT3_nortp_packet(struct rohc_comp_ctxt *const context,
                                   const struct net_pkt *const uncomp_pkt,
                                   uint8_t *const dest,
-                                  int counter)
+                                  int counter,
+                                  const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int rtp_header_flags_and_fields(const struct rohc_comp_ctxt *const context,
@@ -498,8 +513,6 @@ static void c_init_tmp_variables(struct generic_tmp_vars *const tmp_vars)
 	tmp_vars->nr_sn_bits_more_than_4 = 0;
 	tmp_vars->nr_ip_id_bits = 0;
 	tmp_vars->nr_ip_id_bits2 = 0;
-
-	tmp_vars->packet_type = ROHC_PACKET_UNKNOWN;
 }
 
 
@@ -807,7 +820,8 @@ int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
 
 	rfc3095_ctxt->tmp.changed_fields2 = 0;
 	rfc3095_ctxt->tmp.nr_ip_id_bits2 = 0;
-	rfc3095_ctxt->tmp.packet_type = ROHC_PACKET_UNKNOWN;
+
+	*packet_type = ROHC_PACKET_UNKNOWN;
 
 	/* detect changes between new uncompressed packet and context */
 	if(!rohc_comp_rfc3095_detect_changes(context, uncomp_pkt))
@@ -832,16 +846,16 @@ int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
 	}
 
 	/* decide which packet to send */
-	rfc3095_ctxt->tmp.packet_type = decide_packet(context);
+	*packet_type = decide_packet(context);
 
 	/* does the packet update the decompressor context? */
-	if(rohc_packet_carry_crc_7_or_8(rfc3095_ctxt->tmp.packet_type))
+	if(rohc_packet_carry_crc_7_or_8(*packet_type))
 	{
 		rfc3095_ctxt->msn_of_last_ctxt_updating_pkt = rfc3095_ctxt->sn;
 	}
 
 	/* code the ROHC header (and the extension if needed) */
-	size = code_packet(context, uncomp_pkt, rohc_pkt, rohc_pkt_max_len);
+	size = code_packet(context, uncomp_pkt, rohc_pkt, rohc_pkt_max_len, *packet_type);
 	if(size < 0)
 	{
 		goto error;
@@ -852,9 +866,6 @@ int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
 
 	/* update the context with the new headers */
 	update_context(context, uncomp_pkt);
-
-	/* return the packet type */
-	*packet_type = rfc3095_ctxt->tmp.packet_type;
 
 	/* return the length of the ROHC packet */
 	return size;
@@ -1650,24 +1661,24 @@ error:
  * @param uncomp_pkt        The uncompressed packet to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
+ * @param packet_type       The type of ROHC packet to create
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
-int code_packet(struct rohc_comp_ctxt *const context,
-                const struct net_pkt *const uncomp_pkt,
-                uint8_t *const rohc_pkt,
-                const size_t rohc_pkt_max_len)
+static int code_packet(struct rohc_comp_ctxt *const context,
+                       const struct net_pkt *const uncomp_pkt,
+                       uint8_t *const rohc_pkt,
+                       const size_t rohc_pkt_max_len,
+                       const rohc_packet_t packet_type)
 {
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	int (*code_packet_type)(struct rohc_comp_ctxt *const _context,
 	                        const struct net_pkt *const _uncomp_pkt,
 	                        uint8_t *const _rohc_pkt,
-	                        const size_t _rohc_pkt_max_len)
+	                        const size_t _rohc_pkt_max_len,
+	                        const rohc_packet_t packet_type)
 		__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-
-	switch(rfc3095_ctxt->tmp.packet_type)
+	switch(packet_type)
 	{
 		case ROHC_PACKET_IR:
 			code_packet_type = code_IR_packet;
@@ -1727,7 +1738,8 @@ int code_packet(struct rohc_comp_ctxt *const context,
 			goto error;
 	}
 
-	return code_packet_type(context, uncomp_pkt, rohc_pkt, rohc_pkt_max_len);
+	return code_packet_type(context, uncomp_pkt, rohc_pkt, rohc_pkt_max_len,
+	                        packet_type);
 
 error:
 	return -1;
@@ -1776,13 +1788,15 @@ error:
  * @param uncomp_pkt        The uncompressed packet to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
+ * @param packet_type       The type of ROHC packet that is created
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
 static int code_IR_packet(struct rohc_comp_ctxt *const context,
                           const struct net_pkt *const uncomp_pkt,
                           uint8_t *const rohc_pkt,
-                          const size_t rohc_pkt_max_len)
+                          const size_t rohc_pkt_max_len,
+                          const rohc_packet_t packet_type)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt =
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
@@ -1794,7 +1808,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	int ret;
 
 	assert(context->profile->id != ROHC_PROFILE_UNCOMPRESSED);
-
+	assert(packet_type == ROHC_PACKET_IR);
 	if(context->profile->id != ROHC_PROFILE_ESP)
 	{
 		assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 16);
@@ -1952,13 +1966,15 @@ error:
  * @param uncomp_pkt        The uncompressed packet to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
+ * @param packet_type       The type of ROHC packet that is created
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
 static int code_IR_DYN_packet(struct rohc_comp_ctxt *const context,
                               const struct net_pkt *const uncomp_pkt,
                               uint8_t *const rohc_pkt,
-                              const size_t rohc_pkt_max_len)
+                              const size_t rohc_pkt_max_len,
+                              const rohc_packet_t packet_type)
 {
 	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 	size_t counter;
@@ -1967,6 +1983,8 @@ static int code_IR_DYN_packet(struct rohc_comp_ctxt *const context,
 	int ret;
 
 	rohc_comp_debug(context, "code IR-DYN packet (CID = %zu)", context->cid);
+
+	assert(packet_type == ROHC_PACKET_IR_DYN);
 
 	/* parts 1 and 3:
 	 *  - part 2 will be placed at 'first_position'
@@ -2737,13 +2755,15 @@ static int code_uo_remainder(struct rohc_comp_ctxt *const context,
  * @param uncomp_pkt        The uncompressed packet to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
+ * @param packet_type       The type of ROHC packet that is created
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
 static int code_UO0_packet(struct rohc_comp_ctxt *const context,
                            const struct net_pkt *const uncomp_pkt,
                            uint8_t *const rohc_pkt,
-                           const size_t rohc_pkt_max_len)
+                           const size_t rohc_pkt_max_len,
+                           const rohc_packet_t packet_type)
 {
 	size_t counter;
 	size_t first_position;
@@ -2755,6 +2775,8 @@ static int code_UO0_packet(struct rohc_comp_ctxt *const context,
 	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
 
 	rohc_comp_debug(context, "code UO-0 packet (CID = %zu)", context->cid);
+
+	assert(packet_type == ROHC_PACKET_UO_0);
 
 	/* parts 1 and 3:
 	 *  - part 2 will be placed at 'first_position'
@@ -2837,13 +2859,15 @@ error:
  * @param uncomp_pkt        The uncompressed packet to encode
  * @param[out] rohc_pkt     The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
+ * @param packet_type       The type of ROHC packet that is created
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
 static int rohc_comp_rfc3095_build_uo1_pkt(struct rohc_comp_ctxt *const context,
                                            const struct net_pkt *const uncomp_pkt,
                                            uint8_t *const rohc_pkt,
-                                           const size_t rohc_pkt_max_len)
+                                           const size_t rohc_pkt_max_len,
+                                           const rohc_packet_t packet_type)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	size_t counter;
@@ -2862,7 +2886,7 @@ static int rohc_comp_rfc3095_build_uo1_pkt(struct rohc_comp_ctxt *const context,
 
 	rohc_comp_debug(context, "code UO-1 packet (CID = %zu)", context->cid);
 
-	assert(rfc3095_ctxt->tmp.packet_type == ROHC_PACKET_UO_1);
+	assert(packet_type == ROHC_PACKET_UO_1);
 	rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 	            !is_rtp, error, "UO-1 packet is for non-RTP profiles");
 
@@ -2983,13 +3007,15 @@ error:
  * @param uncomp_pkt        The uncompressed packet to encode
  * @param[out] rohc_pkt     The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
+ * @param packet_type       The type of ROHC packet that is created
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
 static int rohc_comp_rfc3095_build_uo1rtp_pkt(struct rohc_comp_ctxt *const context,
                                               const struct net_pkt *const uncomp_pkt,
                                               uint8_t *const rohc_pkt,
-                                              const size_t rohc_pkt_max_len)
+                                              const size_t rohc_pkt_max_len,
+                                              const rohc_packet_t packet_type)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	size_t counter;
@@ -3010,7 +3036,7 @@ static int rohc_comp_rfc3095_build_uo1rtp_pkt(struct rohc_comp_ctxt *const conte
 
 	rohc_comp_debug(context, "code UO-1-RTP packet (CID = %zu)", context->cid);
 
-	assert(rfc3095_ctxt->tmp.packet_type == ROHC_PACKET_UO_1_RTP);
+	assert(packet_type == ROHC_PACKET_UO_1_RTP);
 	rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 	            is_rtp, error, "UO-1-RTP packet is for RTP profile only");
 
@@ -3121,13 +3147,15 @@ error:
  * @param uncomp_pkt        The uncompressed packet to encode
  * @param[out] rohc_pkt     The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
+ * @param packet_type       The type of ROHC packet that is created
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
 static int rohc_comp_rfc3095_build_uo1ts_pkt(struct rohc_comp_ctxt *const context,
                                              const struct net_pkt *const uncomp_pkt,
                                              uint8_t *const rohc_pkt,
-                                             const size_t rohc_pkt_max_len)
+                                             const size_t rohc_pkt_max_len,
+                                             const rohc_packet_t packet_type)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	size_t counter;
@@ -3148,7 +3176,7 @@ static int rohc_comp_rfc3095_build_uo1ts_pkt(struct rohc_comp_ctxt *const contex
 
 	rohc_comp_debug(context, "code UO-1-TS packet (CID = %zu)", context->cid);
 
-	assert(rfc3095_ctxt->tmp.packet_type == ROHC_PACKET_UO_1_TS);
+	assert(packet_type == ROHC_PACKET_UO_1_TS);
 	rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 	            is_rtp, error, "UO-1-TS packet is for RTP profiles");
 
@@ -3277,13 +3305,15 @@ error:
  * @param uncomp_pkt        The uncompressed packet to encode
  * @param[out] rohc_pkt     The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
+ * @param packet_type       The type of ROHC packet that is created
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
 static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const context,
                                              const struct net_pkt *const uncomp_pkt,
                                              uint8_t *const rohc_pkt,
-                                             const size_t rohc_pkt_max_len)
+                                             const size_t rohc_pkt_max_len,
+                                             const rohc_packet_t packet_type)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	size_t counter;
@@ -3292,7 +3322,6 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 	uint8_t s_byte;
 	int is_rtp;
 	struct sc_rtp_context *rtp_context;
-	rohc_packet_t packet_type;
 	uint8_t crc;
 	int ret;
 
@@ -3304,7 +3333,6 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
 	is_rtp = context->profile->id == ROHC_PROFILE_RTP;
 	rtp_context = (struct sc_rtp_context *) rfc3095_ctxt->specific;
-	packet_type = rfc3095_ctxt->tmp.packet_type;
 
 	rohc_comp_debug(context, "code UO-1-ID packet (CID = %zu)", context->cid);
 
@@ -3563,16 +3591,16 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 			ret = counter;
 			break;
 		case ROHC_PACKET_UO_1_ID_EXT0:
-			ret = code_EXT0_packet(context, rohc_pkt, counter);
+			ret = code_EXT0_packet(context, rohc_pkt, counter, packet_type);
 			break;
 		case ROHC_PACKET_UO_1_ID_EXT1:
-			ret = code_EXT1_packet(context, rohc_pkt, counter);
+			ret = code_EXT1_packet(context, rohc_pkt, counter, packet_type);
 			break;
 		case ROHC_PACKET_UO_1_ID_EXT2:
-			ret = code_EXT2_packet(context, rohc_pkt, counter);
+			ret = code_EXT2_packet(context, rohc_pkt, counter, packet_type);
 			break;
 		case ROHC_PACKET_UO_1_ID_EXT3:
-			ret = code_EXT3_packet(context, uncomp_pkt, rohc_pkt, counter);
+			ret = code_EXT3_packet(context, uncomp_pkt, rohc_pkt, counter, packet_type);
 			break;
 		default:
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -3671,13 +3699,15 @@ error:
  * @param uncomp_pkt        The uncompressed packet to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
+ * @param packet_type       The type of ROHC packet that is created
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
 static int code_UO2_packet(struct rohc_comp_ctxt *const context,
                            const struct net_pkt *const uncomp_pkt,
                            uint8_t *const rohc_pkt,
-                           const size_t rohc_pkt_max_len)
+                           const size_t rohc_pkt_max_len,
+                           const rohc_packet_t packet_type)
 {
 	uint8_t f_byte;     /* part 2 */
 	uint8_t s_byte = 0; /* part 4 */
@@ -3687,7 +3717,6 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 	size_t s_byte_position = 0;
 	size_t t_byte_position;
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	rohc_packet_t packet_type;
 	int is_rtp;
 	int (*code_bytes)(const struct rohc_comp_ctxt *_context,
 	                  const rohc_packet_t _packet_type,
@@ -3698,7 +3727,6 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 
 	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
 	is_rtp = context->profile->id == ROHC_PROFILE_RTP;
-	packet_type = rfc3095_ctxt->tmp.packet_type;
 
 	switch(packet_type)
 	{
@@ -3841,25 +3869,25 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 		case ROHC_PACKET_UOR_2_RTP_EXT0:
 		case ROHC_PACKET_UOR_2_ID_EXT0:
 		case ROHC_PACKET_UOR_2_TS_EXT0:
-			ret = code_EXT0_packet(context, rohc_pkt, counter);
+			ret = code_EXT0_packet(context, rohc_pkt, counter, packet_type);
 			break;
 		case ROHC_PACKET_UOR_2_EXT1:
 		case ROHC_PACKET_UOR_2_RTP_EXT1:
 		case ROHC_PACKET_UOR_2_ID_EXT1:
 		case ROHC_PACKET_UOR_2_TS_EXT1:
-			ret = code_EXT1_packet(context, rohc_pkt, counter);
+			ret = code_EXT1_packet(context, rohc_pkt, counter, packet_type);
 			break;
 		case ROHC_PACKET_UOR_2_EXT2:
 		case ROHC_PACKET_UOR_2_RTP_EXT2:
 		case ROHC_PACKET_UOR_2_ID_EXT2:
 		case ROHC_PACKET_UOR_2_TS_EXT2:
-			ret = code_EXT2_packet(context, rohc_pkt, counter);
+			ret = code_EXT2_packet(context, rohc_pkt, counter, packet_type);
 			break;
 		case ROHC_PACKET_UOR_2_EXT3:
 		case ROHC_PACKET_UOR_2_RTP_EXT3:
 		case ROHC_PACKET_UOR_2_ID_EXT3:
 		case ROHC_PACKET_UOR_2_TS_EXT3:
-			ret = code_EXT3_packet(context, uncomp_pkt, rohc_pkt, counter);
+			ret = code_EXT3_packet(context, uncomp_pkt, rohc_pkt, counter, packet_type);
 			break;
 		default:
 			rohc_comp_warn(context, "unknown packet type (%d)", packet_type);
@@ -4794,22 +4822,22 @@ error:
 
 \endverbatim
  *
- * @param context  The compression context
- * @param dest     The rohc-packet-under-build buffer
- * @param counter  The current position in the rohc-packet-under-build buffer
- * @return         The new position in the rohc-packet-under-build buffer
- *                 if successful, -1 otherwise
+ * @param context      The compression context
+ * @param dest         The rohc-packet-under-build buffer
+ * @param counter      The current position in the rohc-packet-under-build buffer
+ * @param packet_type  The type of ROHC packet that is created
+ * @return             The new position in the rohc-packet-under-build buffer
+ *                     if successful, -1 otherwise
  */
 static int code_EXT0_packet(const struct rohc_comp_ctxt *const context,
                             uint8_t *const dest,
-                            int counter)
+                            int counter,
+                            const rohc_packet_t packet_type)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	uint8_t f_byte;
-	rohc_packet_t packet_type;
 
 	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-	packet_type = rfc3095_ctxt->tmp.packet_type;
 
 	/* part 1: extension type + SN */
 	f_byte = 0;
@@ -4895,23 +4923,23 @@ error:
 
 \endverbatim
  *
- * @param context  The compression context
- * @param dest     The rohc-packet-under-build buffer
- * @param counter  The current position in the rohc-packet-under-build buffer
- * @return         The new position in the rohc-packet-under-build buffer
- *                 if successful, -1 otherwise
+ * @param context      The compression context
+ * @param dest         The rohc-packet-under-build buffer
+ * @param counter      The current position in the rohc-packet-under-build buffer
+ * @param packet_type  The type of ROHC packet that is created
+ * @return             The new position in the rohc-packet-under-build buffer
+ *                     if successful, -1 otherwise
  */
 static int code_EXT1_packet(const struct rohc_comp_ctxt *const context,
                             uint8_t *const dest,
-                            int counter)
+                            int counter,
+                            const rohc_packet_t packet_type)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	rohc_packet_t packet_type;
 	uint8_t f_byte;
 	uint8_t s_byte;
 
 	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-	packet_type = rfc3095_ctxt->tmp.packet_type;
 
 	/* part 1: extension type + SN */
 	f_byte = (rfc3095_ctxt->sn & 0x07) << 3;
@@ -5055,24 +5083,24 @@ error:
 
 \endverbatim
  *
- * @param context  The compression context
- * @param dest     The rohc-packet-under-build buffer
- * @param counter  The current position in the rohc-packet-under-build buffer
- * @return         The new position in the rohc-packet-under-build buffer
- *                 if successful, -1 otherwise
+ * @param context      The compression context
+ * @param dest         The rohc-packet-under-build buffer
+ * @param counter      The current position in the rohc-packet-under-build buffer
+ * @param packet_type  The type of ROHC packet that is created
+ * @return             The new position in the rohc-packet-under-build buffer
+ *                     if successful, -1 otherwise
  */
 static int code_EXT2_packet(const struct rohc_comp_ctxt *const context,
                             uint8_t *const dest,
-                            int counter)
+                            int counter,
+                            const rohc_packet_t packet_type)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	rohc_packet_t packet_type;
 	uint8_t f_byte;
 	uint8_t s_byte;
 	uint8_t t_byte;
 
 	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-	packet_type = rfc3095_ctxt->tmp.packet_type;
 
 	/* part 1: extension type + SN */
 	f_byte = (rfc3095_ctxt->sn & 0x07) << 3;
@@ -5209,21 +5237,23 @@ error:
  * @param uncomp_pkt  The uncompressed packet to encode
  * @param dest        The rohc-packet-under-build buffer
  * @param counter     The current position in the rohc-packet-under-build buffer
+ * @param packet_type The type of ROHC packet that is created
  * @return            The new position in the rohc-packet-under-build buffer
  *                    if successful, -1 otherwise
  */
 static int code_EXT3_packet(struct rohc_comp_ctxt *const context,
                             const struct net_pkt *const uncomp_pkt,
                             uint8_t *const dest,
-                            int counter)
+                            int counter,
+                            const rohc_packet_t packet_type)
 {
 	if(context->profile->id == ROHC_PROFILE_RTP)
 	{
-		return code_EXT3_rtp_packet(context, uncomp_pkt, dest, counter);
+		return code_EXT3_rtp_packet(context, uncomp_pkt, dest, counter, packet_type);
 	}
 	else
 	{
-		return code_EXT3_nortp_packet(context, uncomp_pkt, dest, counter);
+		return code_EXT3_nortp_packet(context, uncomp_pkt, dest, counter, packet_type);
 	}
 }
 
@@ -5270,20 +5300,21 @@ static int code_EXT3_packet(struct rohc_comp_ctxt *const context,
  * @param uncomp_pkt  The uncompressed packet to encode
  * @param dest        The rohc-packet-under-build buffer
  * @param counter     The current position in the rohc-packet-under-build buffer
+ * @param packet_type The type of ROHC packet that is created
  * @return            The new position in the rohc-packet-under-build buffer
  *                    if successful, -1 otherwise
  */
 static int code_EXT3_rtp_packet(struct rohc_comp_ctxt *const context,
                                 const struct net_pkt *const uncomp_pkt,
                                 uint8_t *const dest,
-                                int counter)
+                                int counter,
+                                const rohc_packet_t packet_type)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt; /* TODO: const */
 	int nr_of_ip_hdr;
 	size_t nr_ip_id_bits;
 	size_t nr_ip_id_bits2;
 	ip_header_pos_t innermost_ipv4_non_rnd;
-	rohc_packet_t packet_type;
 	bool is_rtp;
 
 	uint8_t flags;
@@ -5314,7 +5345,6 @@ static int code_EXT3_rtp_packet(struct rohc_comp_ctxt *const context,
 	nr_ip_id_bits = rfc3095_ctxt->tmp.nr_ip_id_bits;
 	nr_ip_id_bits2 = rfc3095_ctxt->tmp.nr_ip_id_bits2;
 	is_rtp = (context->profile->id == ROHC_PROFILE_RTP);
-	packet_type = rfc3095_ctxt->tmp.packet_type;
 
 	assert(packet_type == ROHC_PACKET_UO_1_ID_EXT3 ||
 	       packet_type == ROHC_PACKET_UOR_2_RTP_EXT3 ||
@@ -5600,20 +5630,21 @@ error:
  * @param uncomp_pkt  The uncompressed packet to encode
  * @param dest        The rohc-packet-under-build buffer
  * @param counter     The current position in the rohc-packet-under-build buffer
+ * @param packet_type The type of ROHC packet that is created
  * @return            The new position in the rohc-packet-under-build buffer
  *                    if successful, -1 otherwise
  */
 static int code_EXT3_nortp_packet(struct rohc_comp_ctxt *const context,
                                   const struct net_pkt *const uncomp_pkt,
                                   uint8_t *const dest,
-                                  int counter)
+                                  int counter,
+                                  const rohc_packet_t packet_type)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt; /* TODO: const */
 	int nr_of_ip_hdr;
 	size_t nr_ip_id_bits;
 	size_t nr_ip_id_bits2;
 	ip_header_pos_t innermost_ipv4_non_rnd;
-	rohc_packet_t packet_type;
 	bool is_rtp;
 
 	uint8_t flags;
@@ -5636,7 +5667,6 @@ static int code_EXT3_nortp_packet(struct rohc_comp_ctxt *const context,
 	nr_ip_id_bits = rfc3095_ctxt->tmp.nr_ip_id_bits;
 	nr_ip_id_bits2 = rfc3095_ctxt->tmp.nr_ip_id_bits2;
 	is_rtp = (context->profile->id == ROHC_PROFILE_RTP);
-	packet_type = rfc3095_ctxt->tmp.packet_type;
 
 	assert(packet_type == ROHC_PACKET_UOR_2_EXT3);
 	assert(!is_rtp);

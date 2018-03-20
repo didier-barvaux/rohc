@@ -307,7 +307,7 @@ struct rohc_decomp_ctxt
 	/* below are some statistics */
 
 	/** The type of the last decompressed ROHC packet */
-	rohc_packet_t packet_type;
+	rohc_packet_t last_packet_type;
 
 	/** The cumulated size of the uncompressed packets */
 	unsigned long total_uncompressed_size;

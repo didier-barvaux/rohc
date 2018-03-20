@@ -327,8 +327,8 @@ static int c_esp_encode(struct rohc_comp_ctxt *const context,
 	}
 
 	/* update the context with the new ESP header */
-	if(rfc3095_ctxt->tmp.packet_type == ROHC_PACKET_IR ||
-	   rfc3095_ctxt->tmp.packet_type == ROHC_PACKET_IR_DYN)
+	if((*packet_type) == ROHC_PACKET_IR ||
+	   (*packet_type) == ROHC_PACKET_IR_DYN)
 	{
 		memcpy(&(esp_context->old_esp), esp, sizeof(struct esphdr));
 	}

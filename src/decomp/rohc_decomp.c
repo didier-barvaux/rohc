@@ -875,7 +875,7 @@ rohc_status_t rohc_decompress3(struct rohc_decomp *const decomp,
 			           "update decompressor and context statistics");
 			assert(stream.context != NULL);
 			stream.context->num_recv_packets++;
-			stream.context->packet_type = stream.packet_type;
+			stream.context->last_packet_type = stream.packet_type;
 			stream.context->total_last_uncompressed_size = uncomp_packet->len;
 			stream.context->total_uncompressed_size += uncomp_packet->len;
 			stream.context->total_last_compressed_size = rohc_packet.len;
@@ -2572,7 +2572,7 @@ bool rohc_decomp_get_last_packet_info(const struct rohc_decomp *const decomp,
 			decomp->last_context->corrected_sn_wraparounds;
 		info->corrected_wrong_sn_updates =
 			decomp->last_context->corrected_wrong_sn_updates;
-		info->packet_type = decomp->last_context->packet_type;
+		info->packet_type = decomp->last_context->last_packet_type;
 	}
 
 	/* new fields in 0.2 */

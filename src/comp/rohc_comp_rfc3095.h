@@ -166,9 +166,6 @@ struct generic_tmp_vars
 	size_t nr_ip_id_bits;
 	/// The number of bits needed to encode the IP-ID of the inner IP header
 	size_t nr_ip_id_bits2;
-
-	/// The type of packet the compressor must send: IR, IR-DYN, UO*
-	rohc_packet_t packet_type;
 };
 
 

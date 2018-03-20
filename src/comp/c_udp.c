@@ -363,8 +363,8 @@ static int c_udp_encode(struct rohc_comp_ctxt *const context,
 	}
 
 	/* update the context with the new UDP header */
-	if(rfc3095_ctxt->tmp.packet_type == ROHC_PACKET_IR ||
-	   rfc3095_ctxt->tmp.packet_type == ROHC_PACKET_IR_DYN)
+	if((*packet_type) == ROHC_PACKET_IR ||
+	   (*packet_type) == ROHC_PACKET_IR_DYN)
 	{
 		memcpy(&udp_context->old_udp, udp, sizeof(struct udphdr));
 	}
