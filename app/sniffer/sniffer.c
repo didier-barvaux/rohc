@@ -99,11 +99,27 @@ for ./configure ? If yes, check configure output and config.log"
 /** The length of the Linux Cooked Sockets header */
 #define LINUX_COOKED_HDR_LEN  16U
 
+/** The length (in bytes) of the Ethernet address */
+#define ETH_ALEN  6U
+
 /** The length (in bytes) of the Ethernet header */
 #define ETHER_HDR_LEN  14U
 
 /** The minimum Ethernet length (in bytes) */
 #define ETHER_FRAME_MIN_LEN  60U
+
+/** The 10Mb/s ethernet header */
+struct ether_header
+{
+	uint8_t ether_dhost[ETH_ALEN];  /**< destination eth addr */
+	uint8_t ether_shost[ETH_ALEN];  /**< source ether addr */
+	uint16_t ether_type;            /**< packet type ID field */
+} __attribute__((__packed__));
+
+/** The Ethertype for the IPv4 protocol */
+#define ETHERTYPE_IPV4  0x0800U
+/** The Ethertype for the IPv6 protocol */
+#define ETHERTYPE_IPV6  0x86ddU
 
 
 /** Some statistics collected by the sniffer */
@@ -1221,6 +1237,9 @@ static int compress_decompress(struct rohc_comp *comp,
 	rohc_comp_last_packet_info2_t comp_last_packet_info;
 	rohc_decomp_last_packet_info_t decomp_last_packet_info;
 	unsigned long possible_unit;
+
+	uint16_t protocol;
+
 	rohc_status_t status;
 	int ret;
 
@@ -1233,6 +1252,24 @@ static int compress_decompress(struct rohc_comp *comp,
 		goto error;
 	}
 
+	/* what is the L3 protocol? */
+	if(link_len_src == ETHER_HDR_LEN)
+	{
+		const struct ether_header *const ethhdr =
+			(struct ether_header *) rohc_buf_data(uncomp_packet);
+		protocol = ntohs(ethhdr->ether_type);
+	}
+	else
+	{
+		protocol = 0;
+	}
+
+	/* drop ARP packets */
+	if(protocol == 0x0806)
+	{
+		return 1;
+	}
+
 	/* skip the link layer header */
 	rohc_buf_pull(&uncomp_packet, link_len_src);
 	rohc_packet.len += link_len_src;
@@ -1241,20 +1278,22 @@ static int compress_decompress(struct rohc_comp *comp,
 	/* check for padding after the IP packet in the Ethernet payload */
 	if(link_len_src == ETHER_HDR_LEN && header.len == ETHER_FRAME_MIN_LEN)
 	{
-		int version;
 		uint16_t tot_len;
 
-		version = (rohc_buf_byte(uncomp_packet) >> 4) & 0x0f;
-		if(version == 4)
+		if(protocol == ETHERTYPE_IPV4)
 		{
 			memcpy(&tot_len, rohc_buf_data_at(uncomp_packet, 2), sizeof(uint16_t));
 			tot_len = ntohs(tot_len);
 		}
-		else
+		else if(protocol == ETHERTYPE_IPV6)
 		{
 			const size_t ipv6_header_len = 40;
 			memcpy(&tot_len, rohc_buf_data_at(uncomp_packet, 4), sizeof(uint16_t));
 			tot_len = ipv6_header_len + ntohs(tot_len);
+		}
+		else
+		{
+			tot_len = uncomp_packet.len;
 		}
 
 		if(tot_len < uncomp_packet.len)
@@ -1269,7 +1308,8 @@ static int compress_decompress(struct rohc_comp *comp,
 	/* fix IPv4 packets with non-standard-compliant 0xffff checksums instead
 	 * of 0x0000 (Windows Vista seems to be faulty for the latter), to avoid
 	 * false comparison failures after decompression */
-	if(((rohc_buf_byte_at(uncomp_packet, 0) >> 4) & 0x0f) == 4 &&
+	if(protocol == ETHERTYPE_IPV4 &&
+	   ((rohc_buf_byte_at(uncomp_packet, 0) >> 4) & 0x0f) == 4 &&
 	   uncomp_packet.len >= 20 &&
 	   rohc_buf_byte_at(uncomp_packet, 10) == 0xff &&
 	   rohc_buf_byte_at(uncomp_packet, 11) == 0xff)
