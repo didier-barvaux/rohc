@@ -1197,7 +1197,10 @@ static int compress_decompress(struct rohc_comp *comp,
                                unsigned int *const cid,
                                struct sniffer_stats_t *stats)
 {
-	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
+	const struct rohc_ts arrival_time = {
+		.sec = header.ts.tv_sec,
+		.nsec = header.ts.tv_usec * 1000
+	};
 	struct rohc_buf ip_packet =
 		rohc_buf_init_full(packet, header.caplen, arrival_time);
 
