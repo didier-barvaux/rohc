@@ -27,6 +27,8 @@
 #ifndef ROHC_INTERNAL_H
 #define ROHC_INTERNAL_H
 
+#include <stdint.h>
+
 /**
  * \mainpage
  *
@@ -178,6 +180,12 @@
 \endverbatim
  */
 #define ROHC_PADDING_BYTE  0xe0
+
+
+/**
+ * @brief A number of bits required or retrieved
+ */
+typedef uint8_t bits_nr_t;
 
 
 /**
