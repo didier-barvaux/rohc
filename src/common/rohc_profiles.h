@@ -132,6 +132,14 @@ typedef enum
 const char * ROHC_EXPORT rohc_get_profile_descr(const rohc_profile_t profile)
 	__attribute__((warn_unused_result, const));
 
+bool ROHC_EXPORT rohc_profile_is_rohcv1(const rohc_profile_t profile)
+	__attribute__((warn_unused_result, const));
+
+bool ROHC_EXPORT rohc_profile_is_rohcv2(const rohc_profile_t profile)
+	__attribute__((warn_unused_result, const));
+
+rohc_profile_t rohc_profile_get_other_version(const rohc_profile_t profile)
+	__attribute__((warn_unused_result, const));
 
 #undef ROHC_EXPORT /* do not pollute outside this header */
 

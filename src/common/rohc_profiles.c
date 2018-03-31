@@ -84,3 +84,64 @@ const char * rohc_get_profile_descr(const rohc_profile_t profile)
 	}
 }
 
+
+/**
+ * @brief Is the given profile one ROHCv1 profile?
+ *
+ * @param profile  The profile ID to check for
+ * @return         true if profile is one ROHCv1 profile,
+ *                 false if profile is one ROHCv2 profile
+ *
+ * @ingroup rohc
+ */
+bool rohc_profile_is_rohcv1(const rohc_profile_t profile)
+{
+	return ((profile & 0xff00) == 0x0000);
+}
+
+
+/**
+ * @brief Is the given profile one ROHCv2 profile?
+ *
+ * @param profile  The profile ID to check for
+ * @return         true if profile is one ROHCv2 profile,
+ *                 false if profile is one ROHCv1 profile
+ *
+ * @ingroup rohc
+ */
+bool rohc_profile_is_rohcv2(const rohc_profile_t profile)
+{
+	return ((profile & 0xff00) == 0x0100);
+}
+
+
+/**
+ * @brief Get the other version of the given profile
+ *
+ * @param profile  The profile ID for which to get the other version
+ * @return         The ROHCv1 profile if the given one is ROHCv2,
+ *                 the ROHCv2 profile if the given one is ROHCv1,
+ *                 ROHC_PROFILE_MAX otherwise
+ *
+ * @ingroup rohc
+ */
+rohc_profile_t rohc_profile_get_other_version(const rohc_profile_t profile)
+{
+	rohc_profile_t other_version_profile;
+
+	if(rohc_profile_is_rohcv1(profile))
+	{
+		other_version_profile = profile + 0x0100;
+	}
+	else if(rohc_profile_is_rohcv2(profile))
+	{
+		other_version_profile = profile - 0x0100;
+	}
+	else
+	{
+		other_version_profile = ROHC_PROFILE_MAX;
+	}
+
+	return other_version_profile;
+}
+
