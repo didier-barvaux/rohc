@@ -18,6 +18,7 @@ noinst_LTLIBRARIES = librohc_common.la
 
 sources = \
 	rohc_common.c \
+	rohc_profiles.c \
 	rohc_packets.c \
 	rohc_traces_internal.c \
 	rohc_utils.c \
@@ -32,6 +33,7 @@ sources = \
 
 public_headers = \
 	rohc.h \
+	rohc_profiles.h \
 	rohc_packets.h \
 	rohc_traces.h \
 	rohc_time.h \
