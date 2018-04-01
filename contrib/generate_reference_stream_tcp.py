@@ -41,12 +41,19 @@ payload_len = 418 - 14 - 4 - 20 - 20 - 12
 for num in range(0, payload_len):
     payload = payload + "A"
 
+last_percent_printed = 0
+
 ip_id = 0
 syn_sent = False
 seq_num = 0
 ack_num = 0
 ts = 0
 for num in range(0, pkts_nr):
+    percent = int(num * 100 / pkts_nr)
+    if percent != last_percent_printed and (percent % 10) == 0:
+        print "%i / %i packets generated" % (num, pkts_nr)
+        last_percent_printed = percent
+
     options = []
     if syn_sent is True:
         tcp_flags = "A"
