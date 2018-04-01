@@ -105,7 +105,8 @@ TESTS_MAXCONTEXTS0_WLSB4_SMALLCID = \
 	test_non_reg_ipv6ext_ipv6ext_tcp_mc0_wlsb4_smallcid.sh \
 	test_non_reg_ipv4_tcp_wiki-wireshark-assignment-1_mc0_wlsb4_smallcid.sh \
 	test_non_reg_ipv4_tcp_wiki-wireshark-rtmpt_mc0_wlsb4_smallcid.sh \
-	test_non_reg_ipv4_tcp_snaketrap-hptcp_mc0_wlsb4_smallcid.sh
+	test_non_reg_ipv4_tcp_snaketrap-hptcp_mc0_wlsb4_smallcid.sh \
+	test_non_reg_ipv4_tcp_changing-multipath-option_mc0_wlsb4_smallcid.sh
 
 
 #
@@ -207,7 +208,8 @@ TESTS_MAXCONTEXTS0_WLSB64_SMALLCID = \
 	test_non_reg_ipv6ext_ipv6ext_tcp_mc0_wlsb64_smallcid.sh \
 	test_non_reg_ipv4_tcp_wiki-wireshark-assignment-1_mc0_wlsb64_smallcid.sh \
 	test_non_reg_ipv4_tcp_wiki-wireshark-rtmpt_mc0_wlsb64_smallcid.sh \
-	test_non_reg_ipv4_tcp_snaketrap-hptcp_mc0_wlsb64_smallcid.sh
+	test_non_reg_ipv4_tcp_snaketrap-hptcp_mc0_wlsb64_smallcid.sh \
+	test_non_reg_ipv4_tcp_changing-multipath-option_mc0_wlsb64_smallcid.sh
 
 
 TESTS_MAXCONTEXTS0_SMALLCID = \
@@ -314,7 +316,8 @@ TESTS_MAXCONTEXTS1_WLSB4_SMALLCID = \
 	test_non_reg_ipv6ext_ipv6ext_tcp_mc1_wlsb4_smallcid.sh \
 	test_non_reg_ipv4_tcp_wiki-wireshark-assignment-1_mc1_wlsb4_smallcid.sh \
 	test_non_reg_ipv4_tcp_wiki-wireshark-rtmpt_mc1_wlsb4_smallcid.sh \
-	test_non_reg_ipv4_tcp_snaketrap-hptcp_mc1_wlsb4_smallcid.sh
+	test_non_reg_ipv4_tcp_snaketrap-hptcp_mc1_wlsb4_smallcid.sh \
+	test_non_reg_ipv4_tcp_changing-multipath-option_mc1_wlsb4_smallcid.sh
 
 
 #
@@ -416,7 +419,8 @@ TESTS_MAXCONTEXTS1_WLSB64_SMALLCID = \
 	test_non_reg_ipv6ext_ipv6ext_tcp_mc1_wlsb64_smallcid.sh \
 	test_non_reg_ipv4_tcp_wiki-wireshark-assignment-1_mc1_wlsb64_smallcid.sh \
 	test_non_reg_ipv4_tcp_wiki-wireshark-rtmpt_mc1_wlsb64_smallcid.sh \
-	test_non_reg_ipv4_tcp_snaketrap-hptcp_mc1_wlsb64_smallcid.sh
+	test_non_reg_ipv4_tcp_snaketrap-hptcp_mc1_wlsb64_smallcid.sh \
+	test_non_reg_ipv4_tcp_changing-multipath-option_mc1_wlsb64_smallcid.sh
 
 
 TESTS_MAXCONTEXTS1_SMALLCID = \
@@ -528,7 +532,8 @@ TESTS_MAXCONTEXTS0_WLSB4_LARGECID = \
 	test_non_reg_ipv6ext_ipv6ext_tcp_mc0_wlsb4_largecid.sh \
 	test_non_reg_ipv4_tcp_wiki-wireshark-assignment-1_mc0_wlsb4_largecid.sh \
 	test_non_reg_ipv4_tcp_wiki-wireshark-rtmpt_mc0_wlsb4_largecid.sh \
-	test_non_reg_ipv4_tcp_snaketrap-hptcp_mc0_wlsb4_largecid.sh
+	test_non_reg_ipv4_tcp_snaketrap-hptcp_mc0_wlsb4_largecid.sh \
+	test_non_reg_ipv4_tcp_changing-multipath-option_mc0_wlsb4_largecid.sh
 
 
 #
@@ -630,7 +635,8 @@ TESTS_MAXCONTEXTS0_WLSB64_LARGECID = \
 	test_non_reg_ipv6ext_ipv6ext_tcp_mc0_wlsb64_largecid.sh \
 	test_non_reg_ipv4_tcp_wiki-wireshark-assignment-1_mc0_wlsb64_largecid.sh \
 	test_non_reg_ipv4_tcp_wiki-wireshark-rtmpt_mc0_wlsb64_largecid.sh \
-	test_non_reg_ipv4_tcp_snaketrap-hptcp_mc0_wlsb64_largecid.sh
+	test_non_reg_ipv4_tcp_snaketrap-hptcp_mc0_wlsb64_largecid.sh \
+	test_non_reg_ipv4_tcp_changing-multipath-option_mc0_wlsb64_largecid.sh
 
 
 TESTS_MAXCONTEXTS0_LARGECID = \
@@ -737,7 +743,8 @@ TESTS_MAXCONTEXTS1_WLSB4_LARGECID = \
 	test_non_reg_ipv6ext_ipv6ext_tcp_mc1_wlsb4_largecid.sh \
 	test_non_reg_ipv4_tcp_wiki-wireshark-assignment-1_mc1_wlsb4_largecid.sh \
 	test_non_reg_ipv4_tcp_wiki-wireshark-rtmpt_mc1_wlsb4_largecid.sh \
-	test_non_reg_ipv4_tcp_snaketrap-hptcp_mc1_wlsb4_largecid.sh
+	test_non_reg_ipv4_tcp_snaketrap-hptcp_mc1_wlsb4_largecid.sh \
+	test_non_reg_ipv4_tcp_changing-multipath-option_mc1_wlsb4_largecid.sh
 
 
 #
@@ -839,7 +846,8 @@ TESTS_MAXCONTEXTS1_WLSB64_LARGECID = \
 	test_non_reg_ipv6ext_ipv6ext_tcp_mc1_wlsb64_largecid.sh \
 	test_non_reg_ipv4_tcp_wiki-wireshark-assignment-1_mc1_wlsb64_largecid.sh \
 	test_non_reg_ipv4_tcp_wiki-wireshark-rtmpt_mc1_wlsb64_largecid.sh \
-	test_non_reg_ipv4_tcp_snaketrap-hptcp_mc1_wlsb64_largecid.sh
+	test_non_reg_ipv4_tcp_snaketrap-hptcp_mc1_wlsb64_largecid.sh \
+	test_non_reg_ipv4_tcp_changing-multipath-option_mc1_wlsb64_largecid.sh
 
 
 TESTS_MAXCONTEXTS1_LARGECID = \
