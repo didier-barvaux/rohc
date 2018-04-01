@@ -1,0 +1,22 @@
+
+$ ./autogen.sh --disable-linux-kernel-module --with-libpcap-includes=$HOME/local/include/ --with-libpcap-libraries=$HOME/local/lib/
+$ make clean
+$ make CC='afl-gcc' CFLAGS='-std=gnu99 -m32 -DROHC_NO_IR_CRC_CHECK=1' AFL_USE_ASAN=1 all
+$ make CC='afl-gcc' CFLAGS='-std=gnu99 -m32 -DROHC_NO_IR_CRC_CHECK=1' AFL_USE_ASAN=1 -C test/non_regression/ check # tests will fail, but binary will be built
+
+# echo core >/proc/sys/kernel/core_pattern
+
+# mkdir -p /tmp/rohc_afl/
+# mount -t tmpfs tmpfs /tmp/rohc_afl/
+# cd /tmp/rohc_afl/
+# mkdir -p bin
+# cp $HOME/local/lib/libpcap.* bin/
+# cp /path/to/rohc.git/src/.libs/librohc.so* bin/
+# cp /path/to/rohc.git/test/non_regression/.libs/test_non_regression bin/
+# cp /path/to/rohc.git/app/performance/.libs/rohc_test_performance bin/
+# mkdir -p inputs
+# cp /path/to/inputs/*.pcap inputs/
+# mkdir -p output
+
+# ASAN_OPTIONS='detect_leaks=0:disable_coredump=0:symbolize=0:abort_on_error=1' LD_LIBRARY_PATH=./bin afl-fuzz -i inputs/ -o output/ -t 1000 -m 2048 -- ./bin/test_non_regression --max-contexts 50 --wlsb-width 4 --rohc-version 2 --no-comparison --ignore-malformed --assert-on-error --quiet largecid @@
+# ASAN_OPTIONS='detect_leaks=0:disable_coredump=0:symbolize=0:abort_on_error=1' LD_LIBRARY_PATH=./bin afl-fuzz -i inputs/ -o output/ -t 1000 -m 2048 -- ./bin/rohc_test_performance --wlsb-width 4 --max-contexts 450 --rohc-version 2 decomp largecid @@
