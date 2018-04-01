@@ -1,0 +1,128 @@
+# GUIDELINES FOR HACKING ON ROHC LIBRARY AND TOOLS
+
+
+## Coding rules
+
+### general
+
+* less than 85 columns
+
+### naming
+
+* only ascii characters restricted to minuscules, digits and '_'
+* public functions starts with the 'rohc_' prefixe
+
+### braces
+
+* always use braces even for if/for/while contains only one statement
+* put braces aligned with the if/for/while
+
+### documentation
+
+* every file, function, struct, union, typedef, constant, macro, global variable
+  shall be described with a Doxygen comment
+* every C/header file starts with a header including copyright holders and the
+  license disclaimer
+
+### format code automatically
+
+```
+ $ sh contrib/uncrustify.sh
+```
+
+
+## Check compilation
+
+### GCC
+
+```
+ $ ./autogen.sh
+ $ make clean
+ $ make -jX all     # with X the number of CPU + 1
+```
+
+### Clang
+
+```
+ $ export CC=clang
+ $ ./autogen.sh
+ $ make clean
+ $ make -jX all     # with X the number of CPU + 1
+ $ unset CC
+```
+
+
+## Run tests
+
+### Quick check without Valgrind
+
+```
+ $ make -jX check   # with X the number of CPU + 1
+```
+
+### Full check with Valgrind
+
+```
+ $ ./autogen.sh --enable-rohc-tests-valgrind
+ $ make -jX check   # with X the number of CPU + 1
+```
+
+### Extensive check with external captures from the web
+
+```
+ $ ./test/non_regression/other_inputs/get_captures.sh
+ $ make check -C ./test/non_regression/other_inputs/
+```
+
+
+## Run Q&A checkers
+
+### cppcheck
+
+```
+ $ make cppcheck
+```
+
+### Check spelling
+
+```
+ $ make codespell
+```
+
+### Clang Static Analyzer
+
+```
+ $ export CC=ccc-analyzer
+ $ ./autogen.sh
+ $ make clean
+ $ scan-build -o ./ccc_html_report/ --keep-empty --status-bugs make -j1 all
+ $ $BROWSER ./ccc_html_report/index.html
+ $ unset CC
+```
+
+### Code coverage (GCov)
+
+```
+ $ ./autogen.sh --enable-code-coverage
+ $ make clean
+ $ make -jX check   # with X the number of CPU + 1
+ $ $BROWSER ./coverage-report/index.html
+```
+
+### TODO
+
+* codechecker: https://github.com/Ericsson/codechecker
+* Oclint
+* smatch
+* stack: http://css.csail.mit.edu/stack/
+* libabigail: https://sourceware.org/libabigail/
+* checkbashisms
+* bashate
+
+
+## Fuzzing
+
+### AFL
+
+See howto in contrib/howto.afl
+
