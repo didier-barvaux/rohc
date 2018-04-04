@@ -34,7 +34,7 @@ pcap_file_name = "reference_stream_tcp_%ipkts.pcap" % (pkts_nr)
 
 print "generate one TCP stream with %i packets in file '%s'" % (pkts_nr, pcap_file_name)
 
-packets = []
+pcap_writer = PcapWriter(pcap_file_name)
 
 payload = ""
 payload_len = 418 - 14 - 4 - 20 - 20 - 12
@@ -69,7 +69,11 @@ for num in range(0, pkts_nr):
         options.append(('NOP', None))
         options.append(('WScale', 7))
         cur_payload_len = 0
-    packets.append(Ether(src='00:00:00:00:00:01', dst='00:00:00:00:00:02')/Dot1Q(vlan=1)/IP(src='192.168.0.1', dst='192.168.0.2', id=ip_id)/TCP(sport=4242, dport=4243, flags=tcp_flags, seq=seq_num, ack=ack_num, options=options)/payload[:cur_payload_len])
+
+    packet = Ether(src='00:00:00:00:00:01', dst='00:00:00:00:00:02')/Dot1Q(vlan=1)/IP(src='192.168.0.1', dst='192.168.0.2', id=ip_id)/TCP(sport=4242, dport=4243, flags=tcp_flags, seq=seq_num, ack=ack_num, options=options)/payload[:cur_payload_len]
+    pcap_writer.write(packet)
+    del packet
+
     if syn_sent is True:
         seq_num = (seq_num + cur_payload_len) % 0xffffffff
     else:
@@ -77,6 +81,4 @@ for num in range(0, pkts_nr):
         syn_sent = True
     ts = (ts + 1) % 0xffffffff
     ip_id = (ip_id + 1) % 0xffff
-
-wrpcap(pcap_file_name, packets)
 
