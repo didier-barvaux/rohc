@@ -251,9 +251,6 @@ static bool uncomp_feedback(struct rohc_comp_ctxt *const context,
                             const uint8_t *const feedback_data,
                             const size_t feedback_data_len)
 {
-	const uint8_t *remain_data = feedback_data;
-	size_t remain_len = feedback_data_len;
-
 	/* only FEEDBACK-1 is support by the Uncompressed profile */
 	if(feedback_type != ROHC_FEEDBACK_1)
 	{
@@ -262,13 +259,13 @@ static bool uncomp_feedback(struct rohc_comp_ctxt *const context,
 	}
 
 	rohc_comp_debug(context, "FEEDBACK-1 received");
-	assert(remain_len == 1);
+	assert(feedback_data_len == 1);
 
 	/* FEEDBACK-1 profile-specific octet shall be 0 */
-	if(remain_data[0] != 0x00)
+	if(feedback_data[0] != 0x00)
 	{
 		rohc_comp_warn(context, "profile-specific byte in FEEDBACK-1 should be zero "
-		               "for Uncompressed profile but it is 0x%02x", remain_data[0]);
+		               "for Uncompressed profile but it is 0x%02x", feedback_data[0]);
 #ifdef ROHC_RFC_STRICT_DECOMPRESSOR
 		goto error;
 #endif

@@ -1342,7 +1342,6 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 	uint8_t ins_mask[ROHC_LIST_ITEMS_MAX] = { 0 };
 	size_t rem_mask_len;
 	size_t ins_mask_len;
-	size_t count; /* size of reference list */
 	size_t m; /* the number of elements in current list = number of XIs */
 	size_t k; /* the index of the current element in current list */
 	size_t ps; /* indicate the size of the indexes */
@@ -1353,8 +1352,7 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 	assert(comp->cur_id != ROHC_LIST_GEN_ID_NONE);
 
 	/* retrieve the number of items in the reference list */
-	count = comp->lists[comp->ref_id].items_nr;
-	assert(count <= ROHC_LIST_ITEMS_MAX);
+	assert(comp->lists[comp->ref_id].items_nr <= ROHC_LIST_ITEMS_MAX);
 
 	/* retrieve the number of items in the current list */
 	m = comp->lists[comp->cur_id].items_nr;

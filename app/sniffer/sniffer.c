@@ -1015,7 +1015,6 @@ static bool sniff(const rohc_cid_type_t cid_type,
 	struct rohc_buf feedback_send =
 		rohc_buf_init_empty(feedback_send_buffer, MAX_ROHC_SIZE);
 
-	int ret;
 	unsigned int i;
 
 	/* statistics */
@@ -1152,6 +1151,7 @@ static bool sniff(const rohc_cid_type_t cid_type,
 	while(!stop_program)
 	{
 		unsigned int cid = 0;
+		int ret;
 
 		/* try to capture a packet */
 		packet = (unsigned char *) pcap_next(handle, &header);

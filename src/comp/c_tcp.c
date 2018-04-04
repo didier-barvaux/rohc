@@ -5169,9 +5169,6 @@ static bool c_tcp_feedback(struct rohc_comp_ctxt *const context,
                            const uint8_t *const feedback_data,
                            const size_t feedback_data_len)
 {
-	const uint8_t *remain_data = feedback_data;
-	size_t remain_len = feedback_data_len;
-
 	if(feedback_type == ROHC_FEEDBACK_1)
 	{
 		const bool sn_not_valid = false;
@@ -5179,10 +5176,10 @@ static bool c_tcp_feedback(struct rohc_comp_ctxt *const context,
 		size_t sn_bits_nr;
 
 		rohc_comp_debug(context, "FEEDBACK-1 received");
-		assert(remain_len == 1);
+		assert(feedback_data_len == 1);
 
 		/* get the 8 LSB bits of the acknowledged SN */
-		sn_bits = remain_data[0] & 0xff;
+		sn_bits = feedback_data[0] & 0xff;
 		sn_bits_nr = 8;
 
 		rohc_comp_debug(context, "ACK received (CID = %u, %zu-bit SN = 0x%02x)",
