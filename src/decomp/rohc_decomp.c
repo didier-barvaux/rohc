@@ -1847,7 +1847,9 @@ static bool rohc_decomp_feedback_ack(struct rohc_decomp *const decomp,
                                      const struct rohc_decomp_stream *const infos,
                                      struct rohc_buf *const feedback)
 {
+#ifndef ROHC_NO_TRACES
 	const char mode_short[ROHC_R_MODE + 1] = { '?', 'U', 'O', 'R' };
+#endif
 	bool do_build_ack = false;
 	size_t k;
 

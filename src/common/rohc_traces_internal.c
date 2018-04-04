@@ -29,6 +29,8 @@
 #include "rohc_traces_internal.h"
 #include "rohc_utils.h"
 
+#ifndef ROHC_NO_TRACES
+
 #include <stdio.h> /* for snprintf(3) */
 #include <assert.h>
 
@@ -137,4 +139,6 @@ void rohc_dump_buf(const rohc_trace_callback2_t trace_cb,
 		}
 	}
 }
+
+#endif
 

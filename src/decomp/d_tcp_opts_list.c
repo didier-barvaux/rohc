@@ -99,8 +99,10 @@ static int d_tcp_opt_list_parse_item(const struct rohc_decomp_ctxt *const contex
                                      struct d_tcp_opt_ctxt opts_bits[MAX_TCP_OPTION_INDEX + 1])
 	__attribute__((warn_unused_result, nonnull(1, 4, 6)));
 
+#ifndef ROHC_NO_TRACES
 static size_t d_tcp_opt_list_get_index_len(const uint8_t ps)
 	__attribute__((warn_unused_result, const));
+#endif
 
 static size_t d_tcp_opt_list_get_indexes_len(const uint8_t ps, const uint8_t m)
 	__attribute__((warn_unused_result, const));
@@ -680,12 +682,14 @@ error:
 }
 
 
+#ifndef ROHC_NO_TRACES
 /* TODO */
 static size_t d_tcp_opt_list_get_index_len(const uint8_t ps)
 {
 	assert(ps == 0 || ps == 1);
 	return (ps == 0 ? 4U : 8U);
 }
+#endif
 
 
 /* TODO */
