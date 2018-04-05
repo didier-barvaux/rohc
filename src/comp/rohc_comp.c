@@ -114,11 +114,6 @@ static const struct rohc_comp_profile *const rohc_comp_profiles[C_NUM_PROFILES] 
  */
 
 static const struct rohc_comp_profile *
-	rohc_get_profile_from_id(const struct rohc_comp *comp,
-	                         const rohc_profile_t profile_id)
-	__attribute__((warn_unused_result, nonnull(1)));
-
-static const struct rohc_comp_profile *
 	c_get_profile_from_packet(const struct rohc_comp *const comp,
 	                          const struct net_pkt *const packet)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
@@ -145,8 +140,7 @@ static struct rohc_comp_ctxt *
 	__attribute__((nonnull(1, 2, 3), warn_unused_result));
 static struct rohc_comp_ctxt *
 	rohc_comp_find_ctxt(struct rohc_comp *const comp,
-	                    const struct net_pkt *const packet,
-	                    const int profile_id_hint)
+	                    const struct net_pkt *const packet)
 	__attribute__((nonnull(1, 2), warn_unused_result));
 static struct rohc_comp_ctxt *
 	c_get_context(struct rohc_comp *const comp, const rohc_cid_t cid)
@@ -604,7 +598,7 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 	              comp->trace_callback_priv, ROHC_TRACE_COMP);
 
 	/* find the best context for the packet */
-	c = rohc_comp_find_ctxt(comp, &ip_pkt, -1);
+	c = rohc_comp_find_ctxt(comp, &ip_pkt);
 	if(c == NULL)
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -625,50 +619,10 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 		                   &packet_type, &payload_offset);
 	if(rohc_hdr_size < 0)
 	{
-		/* error while compressing, use the Uncompressed profile
-		 * (except if we were already using the Uncompressed profile) */
-		if(c->profile->id == ROHC_PROFILE_UNCOMPRESSED)
-		{
-			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			             "error while compressing with uncompressed profile, "
-			             "giving up");
-			goto error_free_new_context;
-		}
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		             "error while compressing with the profile, using "
-		             "uncompressed profile");
-
-		/* free context if it was just created */
-		if(c->num_sent_packets <= 1)
-		{
-			c->profile->destroy(c);
-			c->used = 0;
-			assert(comp->num_contexts_used > 0);
-			comp->num_contexts_used--;
-		}
-
-		/* find the best context for the Uncompressed profile */
-		c = rohc_comp_find_ctxt(comp, &ip_pkt, ROHC_PROFILE_UNCOMPRESSED);
-		if(c == NULL)
-		{
-			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			             "failed to find a matching Uncompressed context or to "
-			             "create a new Uncompressed context");
-			goto error;
-		}
-
-		/* use the Uncompressed profile to compress the packet */
-		rohc_hdr_size =
-			c->profile->encode(c, &ip_pkt, rohc_buf_data(*rohc_packet),
-			                   rohc_buf_avail_len(*rohc_packet),
-			                   &packet_type, &payload_offset);
-		if(rohc_hdr_size < 0)
-		{
-			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			             "error while compressing with uncompressed profile, "
-			             "giving up");
-			goto error_free_new_context;
-		}
+		             "error while compressing with profile '%s' (0x%04x)",
+		             rohc_get_profile_descr(c->profile->id), c->profile->id);
+		goto error_free_new_context;
 	}
 	rohc_packet->len += rohc_hdr_size;
 
@@ -2448,33 +2402,6 @@ const char * rohc_comp_get_state_descr(const rohc_comp_state_t state)
 
 
 /**
- * @brief Find out a ROHC profile given a profile ID
- *
- * @param comp       The ROHC compressor
- * @param profile_id The ID of the ROHC profile to find out
- * @return           The ROHC profile if found, NULL otherwise
- */
-static const struct rohc_comp_profile *
-	rohc_get_profile_from_id(const struct rohc_comp *comp,
-	                         const rohc_profile_t profile_id)
-{
-	size_t i;
-
-	/* test all compression profiles */
-	for(i = 0; i < C_NUM_PROFILES; i++)
-	{
-		/* if the profile IDs match and the profile is enabled */
-		if(rohc_comp_profiles[i]->id == profile_id && comp->enabled_profiles[i])
-		{
-			return rohc_comp_profiles[i];
-		}
-	}
-
-	return NULL;
-}
-
-
-/**
  * @brief Find out a ROHC profile given an IP protocol ID
  *
  * @param comp    The ROHC compressor
@@ -2693,14 +2620,12 @@ static struct rohc_comp_ctxt *
  *
  * @param comp             The ROHC compressor
  * @param packet           The packet to find a compression context for
- * @param profile_id_hint  If positive, indicate the profile to use
  * @return                 The context if found or successfully created,
  *                         NULL if not found
  */
 static struct rohc_comp_ctxt *
 	rohc_comp_find_ctxt(struct rohc_comp *const comp,
-	                    const struct net_pkt *const packet,
-	                    const int profile_id_hint)
+	                    const struct net_pkt *const packet)
 {
 	const struct rohc_comp_profile *profile;
 	struct rohc_comp_ctxt *context;
@@ -2711,16 +2636,8 @@ static struct rohc_comp_ctxt *
 	bool do_ctxt_replication = false;
 	rohc_cid_t best_ctxt_for_replication = ROHC_LARGE_CID_MAX + 1;
 
-	/* use the suggested profile if any, otherwise find the best profile for
-	 * the packet */
-	if(profile_id_hint < 0)
-	{
-		profile = c_get_profile_from_packet(comp, packet);
-	}
-	else
-	{
-		profile = rohc_get_profile_from_id(comp, profile_id_hint);
-	}
+	/* find the best profile for the packet */
+	profile = c_get_profile_from_packet(comp, packet);
 	if(profile == NULL)
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
