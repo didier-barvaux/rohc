@@ -55,10 +55,6 @@ static bool c_rtp_create(struct rohc_comp_ctxt *const context,
 static void c_rtp_destroy(struct rohc_comp_ctxt *const context)
 	__attribute__((nonnull(1)));
 
-static bool c_rtp_check_profile(const struct rohc_comp *const comp,
-                                const struct net_pkt *const packet)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
-
 static bool c_rtp_check_context(const struct rohc_comp_ctxt *const context,
                                 const struct net_pkt *const packet,
                                 size_t *const cr_score)
@@ -226,128 +222,6 @@ static void c_rtp_destroy(struct rohc_comp_ctxt *const context)
 
 	c_destroy_sc(&rtp_context->ts_sc);
 	rohc_comp_rfc3095_destroy(context);
-}
-
-
-/**
- * @brief Check if the given packet corresponds to the RTP profile
- *
- * Conditions are:
- *  \li the transport protocol is UDP
- *  \li the version of the outer IP header is 4 or 6
- *  \li the outer IP header is not an IP fragment
- *  \li if there are at least 2 IP headers, the version of the inner IP header
- *      is 4 or 6
- *  \li if there are at least 2 IP headers, the inner IP header is not an IP
- *      fragment
- *  \li the inner IP payload is at least 8-byte long for UDP header
- *  \li the UDP Length field and the UDP payload match
- *  \li the UDP payload is at least 12-byte long for RTP header
- *  \li the UDP ports are in the list of RTP ports or the user-defined RTP
- *      callback function detected one RTP packet
- *
- * @see c_udp_check_profile
- *
- * This function is one of the functions that must exist in one profile for the
- * framework to work.
- *
- * @param comp    The ROHC compressor
- * @param packet  The packet to check
- * @return        Whether the IP packet corresponds to the profile:
- *                  \li true if the IP packet corresponds to the profile,
- *                  \li false if the IP packet does not correspond to
- *                      the profile
- */
-static bool c_rtp_check_profile(const struct rohc_comp *const comp,
-                                const struct net_pkt *const packet)
-{
-	const struct udphdr *udp_header;
-	const uint8_t *udp_payload;
-	unsigned int udp_payload_size;
-	bool udp_check;
-
-	/* check that:
-	 *  - the transport protocol is UDP,
-	 *  - that the versions of outer and inner IP headers are 4 or 6,
-	 *  - that outer and inner IP headers are not IP fragments,
-	 *  - the IP payload is at least 8-byte long for UDP header,
-	 *  - the UDP Length field and the UDP payload match.
-	 */
-	udp_check = c_udp_check_profile(comp, packet);
-	if(!udp_check)
-	{
-		goto bad_profile;
-	}
-
-	/* retrieve the UDP header and the UDP payload */
-	assert(packet->transport->proto == ROHC_IPPROTO_UDP);
-	assert(packet->transport->data != NULL);
-	udp_header = (const struct udphdr *) packet->transport->data;
-	udp_payload = (uint8_t *) (udp_header + 1);
-	udp_payload_size = packet->transport->len - sizeof(struct udphdr);
-
-	/* UDP payload shall be large enough for RTP header  */
-	if(udp_payload_size < sizeof(struct rtphdr))
-	{
-		goto bad_profile;
-	}
-
-	/* check if the IP/UDP packet is a RTP packet */
-	if(comp->rtp_callback != NULL)
-	{
-		const struct rtphdr *rtp;
-
-		/* check if the IP/UDP packet is a RTP packet with the user callback
-		   dedicated to RTP stream detection: if the RTP callback returns 1,
-		   consider that the packet matches the RTP profile */
-
-		const struct ip_packet *innermost_ip_hdr;
-		bool is_rtp_packet;
-
-		/* retrieve the innermost IP header */
-		if(packet->ip_hdr_nr == 1)
-		{
-			innermost_ip_hdr = &packet->outer_ip;
-		}
-		else
-		{
-			innermost_ip_hdr = &packet->inner_ip;
-		}
-
-		is_rtp_packet = comp->rtp_callback(innermost_ip_hdr->data,
-		                                   (uint8_t *) udp_header,
-		                                   udp_payload, udp_payload_size,
-		                                   comp->rtp_private);
-		if(!is_rtp_packet)
-		{
-			goto bad_profile;
-		}
-
-		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "RTP packet detected by the RTP callback");
-
-		/* RTP packets with one or more CSRC items cannot be compressed by the
-		 * RTP profile for the moment */
-		rtp = (struct rtphdr *) udp_payload;
-		if(rtp->cc != 0)
-		{
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "compression of CSRC items is not supported yet by RTP profile");
-			goto bad_profile;
-		}
-	}
-	else
-	{
-		/* no callback for advanced RTP stream detection and no UDP
-		   destination port reserved for RTP traffic, so the IP/UDP packet will
-		   be compressed with another profile (the IP/UDP one probably) */
-		goto bad_profile;
-	}
-
-	return true;
-
-bad_profile:
-	return false;
 }
 
 
@@ -1451,7 +1325,6 @@ const struct rohc_comp_profile c_rtp_profile =
 	.id             = ROHC_PROFILE_RTP, /* profile ID */
 	.create         = c_rtp_create,     /* profile handlers */
 	.destroy        = c_rtp_destroy,
-	.check_profile  = c_rtp_check_profile,
 	.check_context  = c_rtp_check_context,
 	.encode         = c_rtp_encode,
 	.feedback       = rohc_comp_rfc3095_feedback,

@@ -64,10 +64,6 @@ static bool c_esp_create(struct rohc_comp_ctxt *const context,
                          const struct net_pkt *const packet)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static bool c_esp_check_profile(const struct rohc_comp *const comp,
-                                const struct net_pkt *const packet)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
-
 static bool c_esp_check_context(const struct rohc_comp_ctxt *const context,
                                 const struct net_pkt *const packet,
                                 size_t *const ctxt_replication_score)
@@ -175,63 +171,6 @@ static bool c_esp_create(struct rohc_comp_ctxt *const context,
 clean:
 	rohc_comp_rfc3095_destroy(context);
 quit:
-	return false;
-}
-
-
-/**
- * @brief Check if the given packet corresponds to the ESP profile
- *
- * Conditions are:
- *  \li the transport protocol is ESP
- *  \li the version of the outer IP header is 4 or 6
- *  \li the outer IP header is not an IP fragment
- *  \li if there are at least 2 IP headers, the version of the inner IP header
- *      is 4 or 6
- *  \li if there are at least 2 IP headers, the inner IP header is not an IP
- *      fragment
- *
- * @see rohc_comp_rfc3095_check_profile
- *
- * This function is one of the functions that must exist in one profile for the
- * framework to work.
- *
- * @param comp    The ROHC compressor
- * @param packet  The packet to check
- * @return        Whether the IP packet corresponds to the profile:
- *                  \li true if the IP packet corresponds to the profile,
- *                  \li false if the IP packet does not correspond to
- *                      the profile
- */
-static bool c_esp_check_profile(const struct rohc_comp *const comp,
-                                const struct net_pkt *const packet)
-{
-	bool ip_check;
-
-	/* check that the the versions of outer and inner IP headers are 4 or 6
-	   and that outer and inner IP headers are not IP fragments */
-	ip_check = rohc_comp_rfc3095_check_profile(comp, packet);
-	if(!ip_check)
-	{
-		goto bad_profile;
-	}
-
-	/* IP payload shall be large enough for ESP header */
-	if(packet->transport->len < sizeof(struct esphdr))
-	{
-		goto bad_profile;
-	}
-
-	/* check that the transport protocol is ESP */
-	if(packet->transport->data == NULL ||
-	   packet->transport->proto != ROHC_IPPROTO_ESP)
-	{
-		goto bad_profile;
-	}
-
-	return true;
-
-bad_profile:
 	return false;
 }
 
@@ -439,7 +378,6 @@ const struct rohc_comp_profile c_esp_profile =
 	.id             = ROHC_PROFILE_ESP, /* profile ID (see 8 in RFC 3095) */
 	.create         = c_esp_create,     /* profile handlers */
 	.destroy        = rohc_comp_rfc3095_destroy,
-	.check_profile  = c_esp_check_profile,
 	.check_context  = c_esp_check_context,
 	.encode         = c_esp_encode,
 	.feedback       = rohc_comp_rfc3095_feedback,

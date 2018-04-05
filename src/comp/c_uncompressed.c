@@ -44,9 +44,6 @@ static bool c_uncompressed_create(struct rohc_comp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 static void c_uncompressed_destroy(struct rohc_comp_ctxt *const context)
 	__attribute__((nonnull(1)));
-static bool c_uncompressed_check_profile(const struct rohc_comp *const comp,
-                                         const struct net_pkt *const packet)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 /* check whether a packet belongs to a context */
 static bool c_uncompressed_check_context(const struct rohc_comp_ctxt *const context,
@@ -137,30 +134,6 @@ static bool c_uncompressed_create(struct rohc_comp_ctxt *const context,
 static void c_uncompressed_destroy(struct rohc_comp_ctxt *const context)
 {
 	zfree(context->specific);
-}
-
-
-/**
- * @brief Check if the given packet corresponds to the Uncompressed profile
- *
- * There are no condition. If this function is called, the packet always matches
- * the Uncompressed profile.
- *
- * This function is one of the functions that must exist in one profile for the
- * framework to work.
- *
- * @param comp    The ROHC compressor
- * @param packet  The packet to check
- * @return        Whether the packet corresponds to the profile:
- *                  \li true if the packet corresponds to the profile,
- *                  \li false if the packet does not correspond to
- *                      the profile
-
- */
-static bool c_uncompressed_check_profile(const struct rohc_comp *const comp __attribute__((unused)),
-                                         const struct net_pkt *const packet __attribute__((unused)))
-{
-	return true;
 }
 
 
@@ -591,7 +564,6 @@ const struct rohc_comp_profile c_uncompressed_profile =
 	.id             = ROHC_PROFILE_UNCOMPRESSED, /* profile ID (RFC3095, §8) */
 	.create         = c_uncompressed_create,     /* profile handlers */
 	.destroy        = c_uncompressed_destroy,
-	.check_profile  = c_uncompressed_check_profile,
 	.check_context  = c_uncompressed_check_context,
 	.encode         = c_uncompressed_encode,
 	.feedback       = uncomp_feedback,

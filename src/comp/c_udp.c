@@ -186,73 +186,6 @@ quit:
 
 
 /**
- * @brief Check if the given packet corresponds to the UDP profile
- *
- * Conditions are:
- *  \li the transport protocol is UDP
- *  \li the version of the outer IP header is 4 or 6
- *  \li the outer IP header is not an IP fragment
- *  \li if there are at least 2 IP headers, the version of the inner IP header
- *      is 4 or 6
- *  \li if there are at least 2 IP headers, the inner IP header is not an IP
- *      fragment
- *  \li the inner IP payload is at least 8-byte long for UDP header
- *  \li the UDP Length field and the UDP payload match
- *
- * @see rohc_comp_rfc3095_check_profile
- *
- * This function is one of the functions that must exist in one profile for the
- * framework to work.
- *
- * @param comp    The ROHC compressor
- * @param packet  The packet to check
- * @return        Whether the IP packet corresponds to the profile:
- *                  \li true if the IP packet corresponds to the profile,
- *                  \li false if the IP packet does not correspond to
- *                      the profile
- */
-bool c_udp_check_profile(const struct rohc_comp *const comp,
-                         const struct net_pkt *const packet)
-{
-	const struct udphdr *udp_header;
-	bool ip_check;
-
-	/* check that the the versions of outer and inner IP headers are 4 or 6
-	   and that outer and inner IP headers are not IP fragments */
-	ip_check = rohc_comp_rfc3095_check_profile(comp, packet);
-	if(!ip_check)
-	{
-		goto bad_profile;
-	}
-
-	/* IP payload shall be large enough for UDP header */
-	if(packet->transport->len < sizeof(struct udphdr))
-	{
-		goto bad_profile;
-	}
-
-	/* check that the transport protocol is UDP */
-	if(packet->transport->data == NULL ||
-	   packet->transport->proto != ROHC_IPPROTO_UDP)
-	{
-		goto bad_profile;
-	}
-
-	/* retrieve the UDP header */
-	udp_header = (const struct udphdr *) packet->transport->data;
-	if(packet->transport->len != rohc_ntoh16(udp_header->len))
-	{
-		goto bad_profile;
-	}
-
-	return true;
-
-bad_profile:
-	return false;
-}
-
-
-/**
  * @brief Check if the IP/UDP packet belongs to the context
  *
  * Conditions are:
@@ -576,7 +509,6 @@ const struct rohc_comp_profile c_udp_profile =
 	.id             = ROHC_PROFILE_UDP, /* profile ID (see 8 in RFC 3095) */
 	.create         = c_udp_create,     /* profile handlers */
 	.destroy        = rohc_comp_rfc3095_destroy,
-	.check_profile  = c_udp_check_profile,
 	.check_context  = c_udp_check_context,
 	.encode         = c_udp_encode,
 	.feedback       = rohc_comp_rfc3095_feedback,

@@ -501,7 +501,6 @@ const struct rohc_comp_profile c_ip_profile =
 	.id             = ROHC_PROFILE_IP,     /* profile ID (see 5 in RFC 3843) */
 	.create         = rohc_ip_ctxt_create, /* profile handlers */
 	.destroy        = rohc_comp_rfc3095_destroy,
-	.check_profile  = rohc_comp_rfc3095_check_profile,
 	.check_context  = c_ip_check_context,
 	.encode         = rohc_comp_rfc3095_encode,
 	.feedback       = rohc_comp_rfc3095_feedback,

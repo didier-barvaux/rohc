@@ -139,9 +139,6 @@ static bool rohc_comp_rfc5225_ip_create(struct rohc_comp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 static void rohc_comp_rfc5225_ip_destroy(struct rohc_comp_ctxt *const context)
 	__attribute__((nonnull(1)));
-static bool rohc_comp_rfc5225_ip_check_profile(const struct rohc_comp *const comp,
-                                               const struct net_pkt *const packet)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 /* check whether a packet belongs to a context */
 static bool rohc_comp_rfc5225_ip_check_context(const struct rohc_comp_ctxt *const context,
@@ -498,177 +495,6 @@ static void rohc_comp_rfc5225_ip_destroy(struct rohc_comp_ctxt *const context)
 	wlsb_free(&rfc5225_ctxt->innermost_ip_id_offset_wlsb);
 	wlsb_free(&rfc5225_ctxt->msn_wlsb);
 	free(rfc5225_ctxt);
-}
-
-
-/**
- * @brief Check if the given packet corresponds to the ROHCv2 IP-only profile
- *
- * Conditions are:
- *  \li the versions of the IP headers are all 4 or 6
- *  \li none of the IP headers is an IP fragment
- *
- * This function is one of the functions that must exist in one profile for the
- * framework to work.
- *
- * @param comp    The ROHC compressor
- * @param packet  The packet to check
- * @return        Whether the packet corresponds to the profile:
- *                  \li true if the packet corresponds to the profile,
- *                  \li false if the packet does not correspond to
- *                      the profile
-
- */
-static bool rohc_comp_rfc5225_ip_check_profile(const struct rohc_comp *const comp,
-                                               const struct net_pkt *const packet)
-{
-	/* TODO: should avoid code duplication by using net_pkt as
-	 * rohc_comp_rfc3095_check_profile() does */
-	const uint8_t *remain_data;
-	size_t remain_len;
-	size_t ip_hdrs_nr;
-	uint8_t next_proto;
-
-	remain_data = packet->outer_ip.data;
-	remain_len = packet->outer_ip.size;
-
-	/* check that the the versions of IP headers are 4 or 6 and that IP headers
-	 * are not IP fragments */
-	ip_hdrs_nr = 0;
-	do
-	{
-		const struct ip_hdr *const ip = (struct ip_hdr *) remain_data;
-
-		/* check minimal length for IP version */
-		if(remain_len < sizeof(struct ip_hdr))
-		{
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "failed to determine the version of IP header #%zu",
-			           ip_hdrs_nr + 1);
-			goto bad_profile;
-		}
-
-		if(ip->version == IPV4)
-		{
-			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) remain_data;
-			const size_t ipv4_min_words_nr = sizeof(struct ipv4_hdr) / sizeof(uint32_t);
-
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "found IPv4");
-			if(remain_len < sizeof(struct ipv4_hdr))
-			{
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "uncompressed packet too short for IP header #%zu",
-				           ip_hdrs_nr + 1);
-				goto bad_profile;
-			}
-
-			/* IPv4 options are not supported by the ROHCv2 IP-only profile */
-			if(ipv4->ihl != ipv4_min_words_nr)
-			{
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "IP packet #%zu is not supported by the profile: "
-				           "IP options are not accepted", ip_hdrs_nr + 1);
-				goto bad_profile;
-			}
-
-			/* IPv4 total length shall be correct */
-			if(rohc_ntoh16(ipv4->tot_len) != remain_len)
-			{
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "IP packet #%zu is not supported by the profile: total "
-				           "length is %u while it shall be %zu", ip_hdrs_nr + 1,
-				           rohc_ntoh16(ipv4->tot_len), remain_len);
-				goto bad_profile;
-			}
-
-			/* check if the IPv4 header is a fragment */
-			if(ipv4_is_fragment(ipv4))
-			{
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "IP packet #%zu is fragmented", ip_hdrs_nr + 1);
-				goto bad_profile;
-			}
-
-			/* check if the checksum of the IPv4 header is correct */
-			if((comp->features & ROHC_COMP_FEATURE_NO_IP_CHECKSUMS) == 0 &&
-			   ip_fast_csum(remain_data, ipv4_min_words_nr) != 0)
-			{
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "IP packet #%zu is not correct (bad checksum)",
-				           ip_hdrs_nr + 1);
-				goto bad_profile;
-			}
-
-			next_proto = ipv4->protocol;
-			remain_data += sizeof(struct ipv4_hdr);
-			remain_len -= sizeof(struct ipv4_hdr);
-		}
-		else if(ip->version == IPV6)
-		{
-			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
-			size_t ipv6_exts_len;
-
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "found IPv6");
-			if(remain_len < sizeof(struct ipv6_hdr))
-			{
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "uncompressed packet too short for IP header #%zu",
-				           ip_hdrs_nr + 1);
-				goto bad_profile;
-			}
-			next_proto = ipv6->nh;
-			remain_data += sizeof(struct ipv6_hdr);
-			remain_len -= sizeof(struct ipv6_hdr);
-
-			/* payload length shall be correct */
-			if(rohc_ntoh16(ipv6->plen) != remain_len)
-			{
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "IP packet #%zu is not supported by the profile: payload "
-				           "length is %u while it shall be %zu", ip_hdrs_nr + 1,
-				           rohc_ntoh16(ipv6->plen), remain_len);
-				goto bad_profile;
-			}
-
-			/* reject packets with malformed IPv6 extension headers or IPv6
-			 * extension headers that are not compatible with the ROHCv2 IP-only
-			 * profile */
-			if(!rohc_comp_ipv6_exts_are_acceptable(comp, &next_proto,
-			                                       remain_data, remain_len,
-			                                       &ipv6_exts_len))
-			{
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "IP packet #%zu is not supported by the profile: "
-				           "malformed or incompatible IPv6 extension headers "
-				           "detected", ip_hdrs_nr + 1);
-				goto bad_profile;
-			}
-			/* TODO: handle IPv6 extension headers */
-			if(ipv6_exts_len > 0)
-			{
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "IP packet #%zu is not supported by the profile: "
-				           "IPv6 extension headers detected", ip_hdrs_nr + 1);
-				goto bad_profile;
-			}
-			remain_data += ipv6_exts_len;
-			remain_len -= ipv6_exts_len;
-		}
-		else
-		{
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "unsupported version %u for header #%zu",
-			           ip->version, ip_hdrs_nr + 1);
-			goto bad_profile;
-		}
-		ip_hdrs_nr++;
-	}
-	while(rohc_is_tunneling(next_proto) && ip_hdrs_nr < ROHC_MAX_IP_HDRS);
-
-	return true;
-
-bad_profile:
-	return false;
 }
 
 
@@ -3729,7 +3555,6 @@ const struct rohc_comp_profile rohc_comp_rfc5225_ip_profile =
 	.create         = rohc_comp_rfc5225_ip_create,     /* profile handlers */
 	.clone          = NULL,
 	.destroy        = rohc_comp_rfc5225_ip_destroy,
-	.check_profile  = rohc_comp_rfc5225_ip_check_profile,
 	.check_context  = rohc_comp_rfc5225_ip_check_context,
 	.encode         = rohc_comp_rfc5225_ip_encode,
 	.feedback       = rohc_comp_rfc5225_ip_feedback,

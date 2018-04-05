@@ -264,14 +264,6 @@ struct rohc_comp_profile
 
 	/**
 	 * @brief The handler used to check whether an uncompressed IP packet
-	 *        fits the current profile or not
-	 */
-	bool (*check_profile)(const struct rohc_comp *const comp,
-	                      const struct net_pkt *const packet)
-		__attribute__((warn_unused_result, nonnull(1, 2)));
-
-	/**
-	 * @brief The handler used to check whether an uncompressed IP packet
 	 *        belongs to a context or not
 	 */
 	bool (*check_context)(const struct rohc_comp_ctxt *const context,
