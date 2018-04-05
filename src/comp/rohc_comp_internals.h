@@ -142,6 +142,8 @@ struct rohc_comp
 	/** Which profiles are enabled and with one are not? */
 	bool enabled_profiles[C_NUM_PROFILES];
 
+	/** TODO */
+	bool enabled_profiles2[2][9];
 
 	/* CRC-related variables: */
 
