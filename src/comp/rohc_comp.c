@@ -140,15 +140,13 @@ static struct rohc_comp_ctxt *
 	c_create_context(struct rohc_comp *const comp,
 	                 const struct rohc_comp_profile *const profile,
 	                 const struct net_pkt *const packet,
-	                 const struct rohc_ts arrival_time,
 	                 const bool do_ctxt_replication,
 	                 const rohc_cid_t cid_for_replication)
 	__attribute__((nonnull(1, 2, 3), warn_unused_result));
 static struct rohc_comp_ctxt *
 	rohc_comp_find_ctxt(struct rohc_comp *const comp,
 	                    const struct net_pkt *const packet,
-	                    const int profile_id_hint,
-	                    const struct rohc_ts arrival_time)
+	                    const int profile_id_hint)
 	__attribute__((nonnull(1, 2), warn_unused_result));
 static struct rohc_comp_ctxt *
 	c_get_context(struct rohc_comp *const comp, const rohc_cid_t cid)
@@ -606,7 +604,7 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 	              comp->trace_callback_priv, ROHC_TRACE_COMP);
 
 	/* find the best context for the packet */
-	c = rohc_comp_find_ctxt(comp, &ip_pkt, -1, uncomp_packet.time);
+	c = rohc_comp_find_ctxt(comp, &ip_pkt, -1);
 	if(c == NULL)
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -650,8 +648,7 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 		}
 
 		/* find the best context for the Uncompressed profile */
-		c = rohc_comp_find_ctxt(comp, &ip_pkt, ROHC_PROFILE_UNCOMPRESSED,
-		                        uncomp_packet.time);
+		c = rohc_comp_find_ctxt(comp, &ip_pkt, ROHC_PROFILE_UNCOMPRESSED);
 		if(c == NULL)
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -2534,8 +2531,6 @@ static const struct rohc_comp_profile *
  * @param comp          The ROHC compressor
  * @param profile       The profile to associate the context with
  * @param packet        The packet to create a compression context for
- * @param arrival_time  The time at which packet was received (0 if unknown,
- *                      or to disable time-related features in ROHC protocol)
  * @param do_ctxt_replication  Are we able to replicate an existing context?
  * @param cid_for_replication  The context to replicate if any
  * @return              The compression context if successful, NULL otherwise
@@ -2544,7 +2539,6 @@ static struct rohc_comp_ctxt *
 	c_create_context(struct rohc_comp *const comp,
 	                 const struct rohc_comp_profile *const profile,
 	                 const struct net_pkt *const packet,
-	                 const struct rohc_ts arrival_time,
 	                 const bool do_ctxt_replication,
 	                 const rohc_cid_t cid_for_replication)
 {
@@ -2631,9 +2625,9 @@ static struct rohc_comp_ctxt *
 	c->fo_count = 0;
 	c->so_count = 0;
 	c->go_back_fo_count = 0;
-	c->go_back_fo_time = arrival_time;
+	c->go_back_fo_time = packet->time;
 	c->go_back_ir_count = 0;
-	c->go_back_ir_time = arrival_time;
+	c->go_back_ir_time = packet->time;
 
 	c->total_uncompressed_size = 0;
 	c->total_compressed_size = 0;
@@ -2682,8 +2676,8 @@ static struct rohc_comp_ctxt *
 
 	/* if creation is successful, mark the context as used */
 	c->used = 1;
-	c->first_used = arrival_time.sec;
-	c->latest_used = arrival_time.sec;
+	c->first_used = packet->time.sec;
+	c->latest_used = packet->time.sec;
 	assert(comp->num_contexts_used <= comp->medium.max_cid);
 	comp->num_contexts_used++;
 
@@ -2700,17 +2694,13 @@ static struct rohc_comp_ctxt *
  * @param comp             The ROHC compressor
  * @param packet           The packet to find a compression context for
  * @param profile_id_hint  If positive, indicate the profile to use
- * @param arrival_time     The time at which packet was received
- *                         (0 if unknown, or to disable time-related features
- *                          in the ROHC protocol)
  * @return                 The context if found or successfully created,
  *                         NULL if not found
  */
 static struct rohc_comp_ctxt *
 	rohc_comp_find_ctxt(struct rohc_comp *const comp,
 	                    const struct net_pkt *const packet,
-	                    const int profile_id_hint,
-	                    const struct rohc_ts arrival_time)
+	                    const int profile_id_hint)
 {
 	const struct rohc_comp_profile *profile;
 	struct rohc_comp_ctxt *context;
@@ -2848,7 +2838,7 @@ static struct rohc_comp_ctxt *
 		/* context not found, create a new one */
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "no existing context found for packet, create a new one");
-		context = c_create_context(comp, profile, packet, arrival_time,
+		context = c_create_context(comp, profile, packet,
 		                           do_ctxt_replication, best_ctxt_for_replication);
 		if(context == NULL)
 		{
@@ -2860,7 +2850,7 @@ static struct rohc_comp_ctxt *
 	else
 	{
 		/* matching context found, update use timestamp */
-		context->latest_used = arrival_time.sec;
+		context->latest_used = packet->time.sec;
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "context (CID = %zu) used at %" PRIu64 " seconds",
 		           context->cid, context->latest_used);
