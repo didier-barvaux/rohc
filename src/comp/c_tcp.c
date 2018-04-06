@@ -80,6 +80,10 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 static void c_tcp_destroy(struct rohc_comp_ctxt *const context)
 	__attribute__((nonnull(1)));
 
+static bool c_tcp_is_cr_possible(const struct rohc_comp_ctxt *const ctxt,
+	                              const struct rohc_pkt_hdrs *const pkt_hdrs)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
+
 static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
                                 const struct rohc_buf *const packet,
                                 size_t *const cr_score)
@@ -849,6 +853,50 @@ static void c_tcp_destroy(struct rohc_comp_ctxt *const context)
 	wlsb_free(&tcp_context->ttl_hopl_wlsb);
 	wlsb_free(&tcp_context->msn_wlsb);
 	free(tcp_context);
+}
+
+
+/**
+ * @brief Check whether the given context is valid for Context Replication (CR)
+ *
+ * @param ctxt             The context to check Context Replication for
+ * @param pkt_hdrs         The information collected about packet headers
+ * @return                 true if CR is possible, false if CR is not possible
+ */
+static bool c_tcp_is_cr_possible(const struct rohc_comp_ctxt *const ctxt,
+	                              const struct rohc_pkt_hdrs *const pkt_hdrs)
+{
+	const struct sc_tcp_context *const tcp_context = ctxt->specific;
+	bool at_least_one_ipv6_hl_changed = false;
+	size_t ip_hdr_pos;
+
+	/* Context Replication is not possible if the IPv6 HL changed in any of the
+	 * IP headers: indeed the IR-CR cannot transmit the changes */
+	for(ip_hdr_pos = 0; ip_hdr_pos < pkt_hdrs->ip_hdrs_nr; ip_hdr_pos++)
+	{
+		const ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
+		const struct rohc_pkt_ip_hdr *const pkt_ip = &(pkt_hdrs->ip_hdrs[ip_hdr_pos]);
+
+		if(pkt_ip->ipv6->version == IPV6 &&
+		   pkt_ip->ipv6->hl != ip_context->ttl_hopl)
+		{
+			at_least_one_ipv6_hl_changed = true;
+		}
+	}
+	if(at_least_one_ipv6_hl_changed)
+	{
+		return false;
+	}
+
+	/* Context Replication is not possible if the TCP RSF flags are abnormal:
+	 * indeed the IR-CR packet encodes the TCP RSF flags with the rsf_index_enc()
+	 * method that does not support the combination of RST, SYN or FIN flags */
+	if(!rsf_index_enc_possible(pkt_hdrs->tcp->rsf_flags))
+	{
+		return false;
+	}
+
+	return true;
 }
 
 
@@ -5239,6 +5287,7 @@ const struct rohc_comp_profile c_tcp_profile =
 	.clone          = c_tcp_create_from_ctxt,
 	.destroy        = c_tcp_destroy,
 	.check_context  = c_tcp_check_context,
+	.is_cr_possible = c_tcp_is_cr_possible,
 	.encode         = c_tcp_encode,
 	.feedback       = c_tcp_feedback,
 };

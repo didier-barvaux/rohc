@@ -52,6 +52,11 @@ int main(void)
 	/* context */
 	printf("\n");
 	printf("sizeof(struct rohc_comp_ctxt) = %zu\n", sizeof(struct rohc_comp_ctxt));
+	printf("\tsizeof(struct rohc_fingerprint) = %zu\n", sizeof(struct rohc_fingerprint));
+	printf("\t\tsizeof(struct rohc_fingerprint_base) = %zu\n", sizeof(struct rohc_fingerprint_base));
+	printf("\t\t\tsizeof(struct rohc_fingerprint_ip) = %zu\n", sizeof(struct rohc_fingerprint_ip));
+	printf("sizeof(struct rohc_pkt_hdrs) = %zu\n", sizeof(struct rohc_pkt_hdrs));
+	printf("\tsizeof(struct rohc_pkt_ip_hdr) = %zu\n", sizeof(struct rohc_pkt_ip_hdr));
 
 	/* RFC3095 */
 	printf("\n");
