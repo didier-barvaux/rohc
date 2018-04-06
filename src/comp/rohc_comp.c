@@ -141,14 +141,14 @@ static void c_destroy_contexts(struct rohc_comp *const comp)
 static struct rohc_comp_ctxt *
 	c_create_context(struct rohc_comp *const comp,
 	                 const struct rohc_comp_profile *const profile,
-	                 const struct net_pkt *const packet,
+	                 const struct rohc_buf *const packet,
 	                 const bool do_ctxt_replication,
 	                 const rohc_cid_t cid_for_replication)
 	__attribute__((nonnull(1, 2, 3), warn_unused_result));
 static struct rohc_comp_ctxt *
 	rohc_comp_find_ctxt(struct rohc_comp *const comp,
 	                    const struct rohc_comp_profile *const profile,
-	                    const struct net_pkt *const packet)
+	                    const struct rohc_buf *const packet)
 	__attribute__((nonnull(1, 2, 3), warn_unused_result));
 static struct rohc_comp_ctxt *
 	c_get_context(struct rohc_comp *const comp, const rohc_cid_t cid)
@@ -943,7 +943,6 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
                              const struct rohc_buf uncomp_packet,
                              struct rohc_buf *const rohc_packet)
 {
-	struct net_pkt ip_pkt;
 	struct rohc_comp_ctxt *c;
 	rohc_packet_t packet_type;
 	int rohc_hdr_size;
@@ -1019,12 +1018,8 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 		goto error;
 	}
 
-	/* parse the uncompressed packet */
-	net_pkt_parse(&ip_pkt, uncomp_packet, comp->trace_callback,
-	              comp->trace_callback_priv, ROHC_TRACE_COMP);
-
 	/* find the best profile context for the packet */
-	c = rohc_comp_find_ctxt(comp, profile, &ip_pkt);
+	c = rohc_comp_find_ctxt(comp, profile, &uncomp_packet);
 	if(c == NULL)
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -1040,7 +1035,7 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	           "compress the packet #%d", comp->num_packets + 1);
 	rohc_hdr_size =
-		c->profile->encode(c, &ip_pkt, rohc_buf_data(*rohc_packet),
+		c->profile->encode(c, &uncomp_packet, rohc_buf_data(*rohc_packet),
 		                   rohc_buf_avail_len(*rohc_packet),
 		                   &packet_type, &payload_offset);
 	if(rohc_hdr_size < 0)
@@ -1054,7 +1049,7 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 
 	/* the payload starts after the header, skip it */
 	rohc_buf_pull(rohc_packet, rohc_hdr_size);
-	payload_size = ip_pkt.len - payload_offset;
+	payload_size = uncomp_packet.len - payload_offset;
 
 	/* is packet too large for output buffer? */
 	if(payload_size > rohc_buf_avail_len(*rohc_packet))
@@ -2877,7 +2872,7 @@ static const struct rohc_comp_profile *
 static struct rohc_comp_ctxt *
 	c_create_context(struct rohc_comp *const comp,
 	                 const struct rohc_comp_profile *const profile,
-	                 const struct net_pkt *const packet,
+	                 const struct rohc_buf *const packet,
 	                 const bool do_ctxt_replication,
 	                 const rohc_cid_t cid_for_replication)
 {
@@ -3039,7 +3034,7 @@ static struct rohc_comp_ctxt *
 static struct rohc_comp_ctxt *
 	rohc_comp_find_ctxt(struct rohc_comp *const comp,
 	                    const struct rohc_comp_profile *const profile,
-	                    const struct net_pkt *const packet)
+	                    const struct rohc_buf *const packet)
 {
 	struct rohc_comp_ctxt *context;
 	size_t num_used_ctxt_seen = 0;

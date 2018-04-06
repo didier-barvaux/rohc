@@ -32,7 +32,6 @@
 #include "rohc_packets.h"
 #include "rohc_comp.h"
 #include "schemes/comp_wlsb.h"
-#include "net_pkt.h"
 #include "feedback.h"
 
 #include <stdbool.h>
@@ -244,7 +243,7 @@ struct rohc_comp_profile
 	 *        compression context from a given packet
 	 */
 	bool (*create)(struct rohc_comp_ctxt *const context,
-	               const struct net_pkt *const packet)
+	               const struct rohc_buf *const packet)
 		__attribute__((warn_unused_result, nonnull(1, 2)));
 
 	/**
@@ -267,7 +266,7 @@ struct rohc_comp_profile
 	 *        belongs to a context or not
 	 */
 	bool (*check_context)(const struct rohc_comp_ctxt *const context,
-	                      const struct net_pkt *const packet,
+	                      const struct rohc_buf *const packet,
 	                      size_t *const cr_score)
 		__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
@@ -285,7 +284,7 @@ struct rohc_comp_profile
 	 *                           -1 otherwise
 	 */
 	int (*encode)(struct rohc_comp_ctxt *const context,
-	              const struct net_pkt *const uncomp_pkt,
+	              const struct rohc_buf *const uncomp_pkt,
 	              uint8_t *const rohc_pkt,
 	              const size_t rohc_pkt_max_len,
 	              rohc_packet_t *const packet_type,

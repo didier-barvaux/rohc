@@ -30,13 +30,13 @@
 #define ROHC_COMP_TCP_DYNAMIC_H
 
 #include "rohc_comp_internals.h"
-#include "ip.h"
+#include "rohc_buf.h"
 
 #include <stdint.h>
 #include <stdlib.h>
 
 int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
-                      const struct ip_packet *const ip,
+                      const struct rohc_buf *const uncomp_pkt,
                       uint8_t *const rohc_pkt,
                       const size_t rohc_pkt_max_len,
                       size_t *const parsed_len)

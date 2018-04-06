@@ -135,20 +135,20 @@ struct rohc_comp_rfc5225_ip_ctxt
 
 /* create/destroy context */
 static bool rohc_comp_rfc5225_ip_create(struct rohc_comp_ctxt *const context,
-                                        const struct net_pkt *const packet)
+                                        const struct rohc_buf *const packet)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 static void rohc_comp_rfc5225_ip_destroy(struct rohc_comp_ctxt *const context)
 	__attribute__((nonnull(1)));
 
 /* check whether a packet belongs to a context */
 static bool rohc_comp_rfc5225_ip_check_context(const struct rohc_comp_ctxt *const context,
-                                               const struct net_pkt *const packet,
+                                               const struct rohc_buf *const packet,
                                                size_t *const cr_score)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 /* encode ROHCv2 IP-only packets */
 static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
-                                       const struct net_pkt *const uncomp_pkt,
+                                       const struct rohc_buf *const uncomp_pkt,
                                        uint8_t *const rohc_pkt,
                                        const size_t rohc_pkt_max_len,
                                        rohc_packet_t *const packet_type,
@@ -156,7 +156,7 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
 
 static bool rohc_comp_rfc5225_ip_detect_changes(struct rohc_comp_ctxt *const context,
-                                                const struct net_pkt *const uncomp_pkt,
+                                                const struct rohc_buf *const uncomp_pkt,
                                                 size_t *const payload_offset)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 static int rohc_comp_rfc5225_ip_detect_changes_ipv4(struct rohc_comp_ctxt *const ctxt,
@@ -172,20 +172,20 @@ static int rohc_comp_rfc5225_ip_detect_changes_ipv6(struct rohc_comp_ctxt *const
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int rohc_comp_rfc5225_ip_code_IR_pkt(const struct rohc_comp_ctxt *const ctxt,
-                                            const struct ip_packet *const ip,
+                                            const struct rohc_buf *const uncomp_pkt,
                                             uint8_t *const rohc_pkt,
                                             const size_t rohc_pkt_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int rohc_comp_rfc5225_ip_code_co_repair_pkt(const struct rohc_comp_ctxt *const ctxt,
-                                                   const struct ip_packet *const ip,
+                                                   const struct rohc_buf *const uncomp_pkt,
                                                    uint8_t *const rohc_pkt,
                                                    const size_t rohc_pkt_max_len,
                                                    const size_t payload_offset)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int rohc_comp_rfc5225_ip_code_CO_pkt(const struct rohc_comp_ctxt *const context,
-                                            const struct ip_packet *const ip,
+                                            const struct rohc_buf *const uncomp_pkt,
                                             uint8_t *const rohc_pkt,
                                             const size_t rohc_pkt_max_len,
                                             const rohc_packet_t packet_type,
@@ -224,7 +224,7 @@ static int rohc_comp_rfc5225_ip_build_co_common_pkt(const struct rohc_comp_ctxt 
 
 /* static chain */
 static int rohc_comp_rfc5225_ip_static_chain(const struct rohc_comp_ctxt *const ctxt,
-                                             const struct ip_packet *const ip,
+                                             const struct rohc_buf *const uncomp_pkt,
                                              uint8_t *const rohc_pkt,
                                              const size_t rohc_pkt_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
@@ -243,7 +243,7 @@ static int rohc_comp_rfc5225_ip_static_ipv6_part(const struct rohc_comp_ctxt *co
 
 /* dynamic chain */
 static int rohc_comp_rfc5225_ip_dyn_chain(const struct rohc_comp_ctxt *const ctxt,
-                                          const struct ip_packet *const ip,
+                                          const struct rohc_buf *const uncomp_pkt,
                                           uint8_t *const rohc_pkt,
                                           const size_t rohc_pkt_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
@@ -264,7 +264,7 @@ static int rohc_comp_rfc5225_ip_dyn_ipv6_part(const struct rohc_comp_ctxt *const
 
 /* irregular chain */
 static int rohc_comp_rfc5225_ip_irreg_chain(const struct rohc_comp_ctxt *const ctxt,
-                                            const struct ip_packet *const ip,
+                                            const struct rohc_buf *const uncomp_pkt,
                                             uint8_t *const rohc_pkt,
                                             const size_t rohc_pkt_max_len)
         __attribute__((warn_unused_result, nonnull(1, 2, 3)));
@@ -353,12 +353,12 @@ static bool rohc_comp_rfc5225_is_seq_ipid_inferred(const ip_context_t *const ip_
  * @return         true if successful, false otherwise
  */
 static bool rohc_comp_rfc5225_ip_create(struct rohc_comp_ctxt *const context,
-                                        const struct net_pkt *const packet)
+                                        const struct rohc_buf *const packet)
 {
 	const struct rohc_comp *const comp = context->compressor;
 	struct rohc_comp_rfc5225_ip_ctxt *rfc5225_ctxt;
-	const uint8_t *remain_data = packet->outer_ip.data;
-	size_t remain_len = packet->outer_ip.size;
+	const uint8_t *remain_data = rohc_buf_data(*packet);
+	size_t remain_len = packet->len;
 	uint8_t proto;
 	bool is_ok;
 
@@ -524,12 +524,12 @@ static void rohc_comp_rfc5225_ip_destroy(struct rohc_comp_ctxt *const context)
  *             probably be re-used (and maybe enhanced if needed)
  */
 static bool rohc_comp_rfc5225_ip_check_context(const struct rohc_comp_ctxt *const context,
-                                               const struct net_pkt *const packet,
+                                               const struct rohc_buf *const packet,
                                                size_t *const cr_score)
 {
 	struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = context->specific;
-	const uint8_t *remain_data = packet->outer_ip.data;
-	size_t remain_len = packet->outer_ip.size;
+	const uint8_t *remain_data = rohc_buf_data(*packet);
+	size_t remain_len = packet->len;
 	size_t ip_hdr_pos;
 	uint8_t next_proto = ROHC_IPPROTO_IPIP;
 
@@ -685,7 +685,7 @@ bad_context:
  *                          -1 otherwise
  */
 static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
-                                       const struct net_pkt *const uncomp_pkt,
+                                       const struct rohc_buf *const uncomp_pkt,
                                        uint8_t *const rohc_pkt,
                                        const size_t rohc_pkt_max_len,
                                        rohc_packet_t *const packet_type,
@@ -738,7 +738,7 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 	/* STEP 3: code packet */
 	if((*packet_type) == ROHC_PACKET_IR)
 	{
-		ret = rohc_comp_rfc5225_ip_code_IR_pkt(context, &uncomp_pkt->outer_ip,
+		ret = rohc_comp_rfc5225_ip_code_IR_pkt(context, uncomp_pkt,
 		                                       rohc_remain_data, rohc_remain_len);
 		if(ret < 0)
 		{
@@ -749,7 +749,7 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 	}
 	else if((*packet_type) == ROHC_PACKET_CO_REPAIR)
 	{
-		ret = rohc_comp_rfc5225_ip_code_co_repair_pkt(context, &uncomp_pkt->outer_ip,
+		ret = rohc_comp_rfc5225_ip_code_co_repair_pkt(context, uncomp_pkt,
 		                                              rohc_remain_data, rohc_remain_len,
 		                                              *payload_offset);
 		if(ret < 0)
@@ -761,7 +761,7 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 	}
 	else /* other CO packets */
 	{
-		ret = rohc_comp_rfc5225_ip_code_CO_pkt(context, &uncomp_pkt->outer_ip,
+		ret = rohc_comp_rfc5225_ip_code_CO_pkt(context, uncomp_pkt,
 		                                       rohc_remain_data, rohc_remain_len,
 		                                       *packet_type, *payload_offset);
 		if(ret < 0)
@@ -781,7 +781,7 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 	/* add the new MSN to the W-LSB encoding object */
 	c_add_wlsb(&rfc5225_ctxt->msn_wlsb, rfc5225_ctxt->msn, rfc5225_ctxt->msn);
 	/* update context for all IP headers */
-	remain_data = uncomp_pkt->data;
+	remain_data = rohc_buf_data(*uncomp_pkt);
 	remain_len = uncomp_pkt->len;
 	for(ip_hdr_pos = 0; ip_hdr_pos < rfc5225_ctxt->ip_contexts_nr; ip_hdr_pos++)
 	{
@@ -881,11 +881,11 @@ error:
  *                            false if a problem occurred
  */
 static bool rohc_comp_rfc5225_ip_detect_changes(struct rohc_comp_ctxt *const context,
-                                                const struct net_pkt *const uncomp_pkt,
+                                                const struct rohc_buf *const uncomp_pkt,
                                                 size_t *const payload_offset)
 {
 	struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = context->specific;
-	const uint8_t *remain_data = uncomp_pkt->data;
+	const uint8_t *remain_data = rohc_buf_data(*uncomp_pkt);
 	size_t remain_len = uncomp_pkt->len;
 	size_t ip_hdr_pos;
 	int ret;
@@ -1980,14 +1980,14 @@ static bool rohc_comp_rfc5225_is_seq_ipid_inferred(const ip_context_t *const ip_
  * @brief Encode an IP packet as IR packet
  *
  * @param context           The compression context
- * @param ip                The outer IP header
+ * @param uncomp_pkt        The uncompressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
 static int rohc_comp_rfc5225_ip_code_IR_pkt(const struct rohc_comp_ctxt *context,
-                                            const struct ip_packet *const ip,
+                                            const struct rohc_buf *const uncomp_pkt,
                                             uint8_t *const rohc_pkt,
                                             const size_t rohc_pkt_max_len)
 {
@@ -2050,7 +2050,7 @@ static int rohc_comp_rfc5225_ip_code_IR_pkt(const struct rohc_comp_ctxt *context
 	rohc_hdr_len++;
 
 	/* add static chain */
-	ret = rohc_comp_rfc5225_ip_static_chain(context, ip, rohc_remain_data,
+	ret = rohc_comp_rfc5225_ip_static_chain(context, uncomp_pkt, rohc_remain_data,
 	                                        rohc_remain_len);
 	if(ret < 0)
 	{
@@ -2064,7 +2064,7 @@ static int rohc_comp_rfc5225_ip_code_IR_pkt(const struct rohc_comp_ctxt *context
 	                   rohc_pkt, rohc_hdr_len);
 
 	/* add dynamic chain */
-	ret = rohc_comp_rfc5225_ip_dyn_chain(context, ip, rohc_remain_data,
+	ret = rohc_comp_rfc5225_ip_dyn_chain(context, uncomp_pkt, rohc_remain_data,
 	                                     rohc_remain_len);
 	if(ret < 0)
 	{
@@ -2123,7 +2123,7 @@ error:
 \endverbatim
  *
  * @param context           The compression context
- * @param ip                The outer IP header
+ * @param uncomp_pkt        The uncompressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param payload_offset    The offset for the payload in the IP packet
@@ -2131,7 +2131,7 @@ error:
  *                          -1 otherwise
  */
 static int rohc_comp_rfc5225_ip_code_co_repair_pkt(const struct rohc_comp_ctxt *context,
-                                                   const struct ip_packet *const ip,
+                                                   const struct rohc_buf *const uncomp_pkt,
                                                    uint8_t *const rohc_pkt,
                                                    const size_t rohc_pkt_max_len,
                                                    const size_t payload_offset)
@@ -2189,7 +2189,7 @@ static int rohc_comp_rfc5225_ip_code_co_repair_pkt(const struct rohc_comp_ctxt *
 		co_repair_crc->r1 = 0;
 		/* CRC-7 over uncompressed headers */
 		co_repair_crc->header_crc =
-			crc_calculate(ROHC_CRC_TYPE_7, ip->data, payload_offset,
+			crc_calculate(ROHC_CRC_TYPE_7, rohc_buf_data(*uncomp_pkt), payload_offset,
 			              CRC_INIT_7, context->compressor->crc_table_7);
 		rohc_comp_debug(context, "CRC-7 on %zu-byte uncompressed header = 0x%x",
 		                payload_offset, co_repair_crc->header_crc);
@@ -2231,7 +2231,7 @@ static int rohc_comp_rfc5225_ip_code_co_repair_pkt(const struct rohc_comp_ctxt *
 	}
 
 	/* add dynamic chain */
-	ret = rohc_comp_rfc5225_ip_dyn_chain(context, ip, rohc_remain_data,
+	ret = rohc_comp_rfc5225_ip_dyn_chain(context, uncomp_pkt, rohc_remain_data,
 	                                     rohc_remain_len);
 	if(ret < 0)
 	{
@@ -2262,7 +2262,7 @@ error:
  * @brief Encode an IP packet as CO packet
  *
  * @param context           The compression context
- * @param ip                The outer IP header
+ * @param uncomp_pkt        The uncompressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       The type of ROHC packet to create
@@ -2271,7 +2271,7 @@ error:
  *                          -1 otherwise
  */
 static int rohc_comp_rfc5225_ip_code_CO_pkt(const struct rohc_comp_ctxt *const context,
-                                            const struct ip_packet *const ip,
+                                            const struct rohc_buf *const uncomp_pkt,
                                             uint8_t *const rohc_pkt,
                                             const size_t rohc_pkt_max_len,
                                             const rohc_packet_t packet_type,
@@ -2290,7 +2290,7 @@ static int rohc_comp_rfc5225_ip_code_CO_pkt(const struct rohc_comp_ctxt *const c
 	   packet_type == ROHC_PACKET_NORTP_PT_1_SEQ_ID)
 	{
 		crc_computed =
-			crc_calculate(ROHC_CRC_TYPE_3, ip->data, payload_offset,
+			crc_calculate(ROHC_CRC_TYPE_3, rohc_buf_data(*uncomp_pkt), payload_offset,
 			              CRC_INIT_3, context->compressor->crc_table_3);
 		rohc_comp_debug(context, "CRC-3 on %zu-byte uncompressed header = 0x%x",
 		                payload_offset, crc_computed);
@@ -2298,7 +2298,7 @@ static int rohc_comp_rfc5225_ip_code_CO_pkt(const struct rohc_comp_ctxt *const c
 	else
 	{
 		crc_computed =
-			crc_calculate(ROHC_CRC_TYPE_7, ip->data, payload_offset,
+			crc_calculate(ROHC_CRC_TYPE_7, rohc_buf_data(*uncomp_pkt), payload_offset,
 			              CRC_INIT_7, context->compressor->crc_table_7);
 		rohc_comp_debug(context, "CRC-7 on %zu-byte uncompressed header = 0x%x",
 		                payload_offset, crc_computed);
@@ -2419,7 +2419,7 @@ static int rohc_comp_rfc5225_ip_code_CO_pkt(const struct rohc_comp_ctxt *const c
 	}
 
 	/* add the irregular chain at the very end of the CO header */
-	ret = rohc_comp_rfc5225_ip_irreg_chain(context, ip, rohc_remain_data,
+	ret = rohc_comp_rfc5225_ip_irreg_chain(context, uncomp_pkt, rohc_remain_data,
 	                                       rohc_remain_len);
 	if(ret < 0)
 	{
@@ -2452,21 +2452,21 @@ error:
  * @brief Code the static chain of an ROHCv2 IP-only IR packet
  *
  * @param ctxt              The compression context
- * @param ip                The outer IP header
+ * @param uncomp_pkt        The uncompressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
 static int rohc_comp_rfc5225_ip_static_chain(const struct rohc_comp_ctxt *const ctxt,
-                                             const struct ip_packet *const ip,
+                                             const struct rohc_buf *const uncomp_pkt,
                                              uint8_t *const rohc_pkt,
                                              const size_t rohc_pkt_max_len)
 {
 	const struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = ctxt->specific;
 
-	const uint8_t *remain_data = ip->data;
-	size_t remain_len = ip->size;
+	const uint8_t *remain_data = rohc_buf_data(*uncomp_pkt);
+	size_t remain_len = uncomp_pkt->len;
 
 	uint8_t *rohc_remain_data = rohc_pkt;
 	size_t rohc_remain_len = rohc_pkt_max_len;
@@ -2665,21 +2665,21 @@ error:
  * @brief Code the dynamic chain of a ROHCv2 IP-only IR packet
  *
  * @param ctxt              The compression context
- * @param ip                The outer IP header
+ * @param uncomp_pkt        The uncompressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
 static int rohc_comp_rfc5225_ip_dyn_chain(const struct rohc_comp_ctxt *const ctxt,
-                                          const struct ip_packet *const ip,
+                                          const struct rohc_buf *const uncomp_pkt,
                                           uint8_t *const rohc_pkt,
                                           const size_t rohc_pkt_max_len)
 {
 	struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = ctxt->specific;
 
-	const uint8_t *remain_data = ip->data;
-	size_t remain_len = ip->size;
+	const uint8_t *remain_data = rohc_buf_data(*uncomp_pkt);
+	size_t remain_len = uncomp_pkt->len;
 
 	uint8_t *rohc_remain_data = rohc_pkt;
 	size_t rohc_remain_len = rohc_pkt_max_len;
@@ -2964,21 +2964,21 @@ error:
  * @brief Code the irregular chain of a ROHCv2 IP-only IR packet
  *
  * @param ctxt              The compression context
- * @param ip                The outer IP header
+ * @param uncomp_pkt        The uncompressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
 static int rohc_comp_rfc5225_ip_irreg_chain(const struct rohc_comp_ctxt *const ctxt,
-                                            const struct ip_packet *const ip,
+                                            const struct rohc_buf *const uncomp_pkt,
                                             uint8_t *const rohc_pkt,
                                             const size_t rohc_pkt_max_len)
 {
 	const struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = ctxt->specific;
 
-	const uint8_t *remain_data = ip->data;
-	size_t remain_len = ip->size;
+	const uint8_t *remain_data = rohc_buf_data(*uncomp_pkt);
+	size_t remain_len = uncomp_pkt->len;
 
 	uint8_t *rohc_remain_data = rohc_pkt;
 	size_t rohc_remain_len = rohc_pkt_max_len;

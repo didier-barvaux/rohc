@@ -31,6 +31,7 @@
 
 #include "rohc_comp_internals.h"
 #include "rohc_packets.h"
+#include "net_pkt.h"
 #include "schemes/comp_list.h"
 #include "ip.h"
 #include "crc.h"
@@ -339,7 +340,7 @@ rohc_ext_t decide_extension(const struct rohc_comp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1)));
 
 int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
-                             const struct net_pkt *const uncomp_pkt,
+                             const struct rohc_buf *const uncomp_pkt,
                              uint8_t *const rohc_pkt,
                              const size_t rohc_pkt_max_len,
                              rohc_packet_t *const packet_type,

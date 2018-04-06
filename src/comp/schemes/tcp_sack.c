@@ -24,6 +24,8 @@
 
 #include "tcp_sack.h"
 
+#include "rohc_utils.h"
+
 
 static int c_tcp_sack_code_block(const struct rohc_comp_ctxt *const context,
                                  const uint32_t reference,

@@ -30,6 +30,7 @@
 
 #include "schemes/tcp_ts.h"
 #include "schemes/tcp_sack.h"
+#include "rohc_utils.h"
 
 #include <string.h>
 

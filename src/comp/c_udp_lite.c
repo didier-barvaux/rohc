@@ -107,16 +107,16 @@ struct sc_udp_lite_context
  */
 
 static bool c_udp_lite_create(struct rohc_comp_ctxt *const context,
-                              const struct net_pkt *const packet)
+                              const struct rohc_buf *const packet)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static bool c_udp_lite_check_context(const struct rohc_comp_ctxt *const context,
-                                     const struct net_pkt *const packet,
+                                     const struct rohc_buf *const packet,
                                      size_t *const cr_score)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int c_udp_lite_encode(struct rohc_comp_ctxt *const context,
-                             const struct net_pkt *const uncomp_pkt,
+                             const struct rohc_buf *const uncomp_pkt,
                              uint8_t *const rohc_pkt,
                              const size_t rohc_pkt_max_len,
                              rohc_packet_t *const packet_type,
@@ -164,15 +164,20 @@ static void udp_lite_init_cc(struct rohc_comp_ctxt *const context,
  * @return         true if successful, false otherwise
  */
 static bool c_udp_lite_create(struct rohc_comp_ctxt *const context,
-                              const struct net_pkt *const packet)
+                              const struct rohc_buf *const packet)
 {
 	const struct rohc_comp *const comp = context->compressor;
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	struct sc_udp_lite_context *udp_lite_context;
 	const struct udphdr *udp_lite;
+	struct net_pkt ip_pkt;
+
+	/* parse the uncompressed packet */
+	net_pkt_parse(&ip_pkt, *packet, context->compressor->trace_callback,
+	              context->compressor->trace_callback_priv, ROHC_TRACE_COMP);
 
 	/* create and initialize the generic part of the profile context */
-	if(!rohc_comp_rfc3095_create(context, packet))
+	if(!rohc_comp_rfc3095_create(context, &ip_pkt))
 	{
 		rohc_comp_warn(context, "generic context creation failed");
 		goto quit;
@@ -185,9 +190,9 @@ static bool c_udp_lite_create(struct rohc_comp_ctxt *const context,
 	                rfc3095_ctxt->sn);
 
 	/* check that transport protocol is UDP-Lite */
-	assert(packet->transport->proto == ROHC_IPPROTO_UDPLITE);
-	assert(packet->transport->data != NULL);
-	udp_lite = (struct udphdr *) packet->transport->data;
+	assert(ip_pkt.transport->proto == ROHC_IPPROTO_UDPLITE);
+	assert(ip_pkt.transport->data != NULL);
+	udp_lite = (struct udphdr *) ip_pkt.transport->data;
 
 	/* create the UDP-Lite part of the profile context */
 	udp_lite_context = malloc(sizeof(struct sc_udp_lite_context));
@@ -263,20 +268,26 @@ quit:
  *                       false if it does not belong to the context
  */
 static bool c_udp_lite_check_context(const struct rohc_comp_ctxt *const context,
-                                     const struct net_pkt *const packet,
+                                     const struct rohc_buf *const packet,
                                      size_t *const cr_score)
 {
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
 	const struct sc_udp_lite_context *const udp_lite_context =
 	(struct sc_udp_lite_context *) rfc3095_ctxt->specific;
-	const struct udphdr *const udp_lite = (struct udphdr *) packet->transport->data;
+	const struct udphdr *udp_lite;
+	struct net_pkt ip_pkt;
 
 	/* first, check the same parameters as for the IP-only profile */
 	if(!c_ip_check_context(context, packet, cr_score))
 	{
 		goto bad_context;
 	}
+
+	/* parse the uncompressed packet and get the UDP-Lite header */
+	net_pkt_parse(&ip_pkt, *packet, context->compressor->trace_callback,
+	              context->compressor->trace_callback_priv, ROHC_TRACE_COMP);
+	udp_lite = (struct udphdr *) ip_pkt.transport->data;
 
 	/* check UDP-Lite source port */
 	if(udp_lite_context->old_udp_lite.source != udp_lite->source)
@@ -311,7 +322,7 @@ bad_context:
  *                          -1 otherwise
  */
 static int c_udp_lite_encode(struct rohc_comp_ctxt *const context,
-                             const struct net_pkt *const uncomp_pkt,
+                             const struct rohc_buf *const uncomp_pkt,
                              uint8_t *const rohc_pkt,
                              const size_t rohc_pkt_max_len,
                              rohc_packet_t *const packet_type,
@@ -320,12 +331,17 @@ static int c_udp_lite_encode(struct rohc_comp_ctxt *const context,
 	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 	struct sc_udp_lite_context *const udp_lite_context = rfc3095_ctxt->specific;
 	const struct udphdr *udp_lite;
+	struct net_pkt ip_pkt;
 	int size;
 
+	/* parse the uncompressed packet */
+	net_pkt_parse(&ip_pkt, *uncomp_pkt, context->compressor->trace_callback,
+	              context->compressor->trace_callback_priv, ROHC_TRACE_COMP);
+
 	/* retrieve the UDP-Lite header */
-	assert(uncomp_pkt->transport->data != NULL);
-	udp_lite = (struct udphdr *) uncomp_pkt->transport->data;
-	udp_lite_context->tmp.udp_size = uncomp_pkt->transport->len;
+	assert(ip_pkt.transport->data != NULL);
+	udp_lite = (struct udphdr *) ip_pkt.transport->data;
+	udp_lite_context->tmp.udp_size = ip_pkt.transport->len;
 
 	/* encode the IP packet */
 	size = rohc_comp_rfc3095_encode(context, uncomp_pkt, rohc_pkt, rohc_pkt_max_len,

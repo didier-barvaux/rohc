@@ -744,19 +744,24 @@ void rohc_comp_rfc3095_destroy(struct rohc_comp_ctxt *const context)
  *                          -1 otherwise
  */
 int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
-                             const struct net_pkt *const uncomp_pkt,
+                             const struct rohc_buf *const uncomp_pkt,
                              uint8_t *const rohc_pkt,
                              const size_t rohc_pkt_max_len,
                              rohc_packet_t *const packet_type,
                              size_t *const payload_offset)
 {
 	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
+	struct net_pkt ip_pkt;
 	int size;
 
 	*packet_type = ROHC_PACKET_UNKNOWN;
 
+	/* parse the uncompressed packet */
+	net_pkt_parse(&ip_pkt, *uncomp_pkt, context->compressor->trace_callback,
+	              context->compressor->trace_callback_priv, ROHC_TRACE_COMP);
+
 	/* detect changes between new uncompressed packet and context */
-	if(!rohc_comp_rfc3095_detect_changes(context, uncomp_pkt))
+	if(!rohc_comp_rfc3095_detect_changes(context, &ip_pkt))
 	{
 		rohc_comp_warn(context, "failed to detect changes in uncompressed packet");
 		goto error;
@@ -770,7 +775,7 @@ int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
 	}
 
 	/* compute how many bits are needed to send header fields */
-	if(!encode_uncomp_fields(context, uncomp_pkt))
+	if(!encode_uncomp_fields(context, &ip_pkt))
 	{
 		rohc_comp_warn(context, "failed to compute how many bits are needed "
 		               "to send header fields");
@@ -787,17 +792,17 @@ int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
 	}
 
 	/* code the ROHC header (and the extension if needed) */
-	size = code_packet(context, uncomp_pkt, rohc_pkt, rohc_pkt_max_len, *packet_type);
+	size = code_packet(context, &ip_pkt, rohc_pkt, rohc_pkt_max_len, *packet_type);
 	if(size < 0)
 	{
 		goto error;
 	}
 	/* determine the offset of the payload */
-	*payload_offset = net_pkt_get_payload_offset(uncomp_pkt);
+	*payload_offset = net_pkt_get_payload_offset(&ip_pkt);
 	*payload_offset += rfc3095_ctxt->next_header_len;
 
 	/* update the context with the new headers */
-	update_context(context, uncomp_pkt);
+	update_context(context, &ip_pkt);
 
 	/* return the length of the ROHC packet */
 	return size;

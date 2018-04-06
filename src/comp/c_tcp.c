@@ -30,7 +30,7 @@
 #include "rohc_traces_internal.h"
 #include "rohc_utils.h"
 #include "rohc_packets.h"
-#include "net_pkt.h"
+#include "rohc_buf.h"
 #include "rohc_time_internal.h"
 #include "protocols/ip_numbers.h"
 #include "protocols/ip.h"
@@ -74,19 +74,19 @@ static bool c_tcp_create_from_ctxt(struct rohc_comp_ctxt *const ctxt,
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
-                                  const struct net_pkt *const packet)
+                                  const struct rohc_buf *const packet)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static void c_tcp_destroy(struct rohc_comp_ctxt *const context)
 	__attribute__((nonnull(1)));
 
 static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
-                                const struct net_pkt *const packet,
+                                const struct rohc_buf *const packet,
                                 size_t *const cr_score)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int c_tcp_encode(struct rohc_comp_ctxt *const context,
-                        const struct net_pkt *const uncomp_pkt,
+                        const struct rohc_buf *const uncomp_pkt,
                         uint8_t *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
                         rohc_packet_t *const packet_type,
@@ -97,7 +97,7 @@ static uint16_t c_tcp_get_next_msn(const struct rohc_comp_ctxt *const context)
 	__attribute__((warn_unused_result, nonnull(1)));
 
 static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
-                               const struct net_pkt *const uncomp_pkt,
+                               const struct rohc_buf *const uncomp_pkt,
                                ip_context_t **const ip_inner_context,
                                const struct tcphdr **const tcp)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
@@ -115,11 +115,11 @@ static void tcp_decide_state(struct rohc_comp_ctxt *const context,
 	__attribute__((nonnull(1)));
 
 static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
-                                     const struct net_pkt *const uncomp_pkt,
+                                     const struct rohc_buf *const uncomp_pkt,
                                      const struct tcphdr *const tcp)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 static bool tcp_encode_uncomp_ip_fields(struct rohc_comp_ctxt *const context,
-                                        const struct net_pkt *const uncomp_pkt)
+                                        const struct rohc_buf *const uncomp_pkt)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 static bool tcp_encode_uncomp_tcp_fields(struct rohc_comp_ctxt *const context,
                                          const struct tcphdr *const tcp)
@@ -160,7 +160,7 @@ static bool tcp_opt_ts_one_can_be_encoded(const struct c_wlsb *const wlsb,
 
 /* IR and CO packets */
 static int code_IR_packet(struct rohc_comp_ctxt *const context,
-                          const struct ip_packet *const ip,
+                          const struct rohc_buf *const uncomp_pkt,
                           uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
                           const rohc_packet_t packet_type,
@@ -168,7 +168,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 6)));
 
 static int code_CO_packet(struct rohc_comp_ctxt *const context,
-                          const struct ip_packet *ip,
+                          const struct rohc_buf *const uncomp_pkt,
                           uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
                           const rohc_packet_t packet_type,
@@ -576,12 +576,12 @@ error:
  *             probably be re-used (and maybe enhanced if needed)
  */
 static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
-                                  const struct net_pkt *const packet)
+                                  const struct rohc_buf *const packet)
 {
 	const struct rohc_comp *const comp = context->compressor;
 	struct sc_tcp_context *tcp_context;
-	const uint8_t *remain_data = packet->outer_ip.data;
-	size_t remain_len = packet->outer_ip.size;
+	const uint8_t *remain_data = rohc_buf_data(*packet);
+	size_t remain_len = packet->len;
 	const struct tcphdr *tcp;
 	uint8_t proto;
 	size_t i;
@@ -880,12 +880,12 @@ static void c_tcp_destroy(struct rohc_comp_ctxt *const context)
  *             probably be re-used (and maybe enhanced if needed)
  */
 static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
-                                const struct net_pkt *const packet,
+                                const struct rohc_buf *const packet,
                                 size_t *const cr_score)
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
-	const uint8_t *remain_data = packet->outer_ip.data;
-	size_t remain_len = packet->outer_ip.size;
+	const uint8_t *remain_data = rohc_buf_data(*packet);
+	size_t remain_len = packet->len;
 	size_t ip_hdr_pos;
 	uint8_t next_proto = ROHC_IPPROTO_IPIP;
 	const struct tcphdr *tcp;
@@ -1104,7 +1104,7 @@ bad_context:
  *             probably be re-used (and maybe enhanced if needed)
  */
 static int c_tcp_encode(struct rohc_comp_ctxt *const context,
-                        const struct net_pkt *const uncomp_pkt,
+                        const struct rohc_buf *const uncomp_pkt,
                         uint8_t *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
                         rohc_packet_t *const packet_type,
@@ -1162,7 +1162,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	        (*packet_type) != ROHC_PACKET_IR_DYN)
 	{
 		/* co_common, seq_X, or rnd_X */
-		counter = code_CO_packet(context, &uncomp_pkt->outer_ip, rohc_pkt,
+		counter = code_CO_packet(context, uncomp_pkt, rohc_pkt,
 		                         rohc_pkt_max_len, *packet_type, payload_offset);
 		if(counter < 0)
 		{
@@ -1176,7 +1176,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		       (*packet_type) == ROHC_PACKET_IR_CR ||
 		       (*packet_type) == ROHC_PACKET_IR_DYN);
 
-		counter = code_IR_packet(context, &uncomp_pkt->outer_ip, rohc_pkt,
+		counter = code_IR_packet(context, uncomp_pkt, rohc_pkt,
 		                         rohc_pkt_max_len, *packet_type, payload_offset);
 		if(counter < 0)
 		{
@@ -1273,7 +1273,7 @@ error:
  * @brief Encode an IP/TCP packet as IR, IR-CR or IR-DYN packet
  *
  * @param context           The compression context
- * @param ip                The outer IP header
+ * @param uncomp_pkt        The uncompressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       The type of ROHC packet that is created
@@ -1282,7 +1282,7 @@ error:
  *                          -1 otherwise
  */
 static int code_IR_packet(struct rohc_comp_ctxt *const context,
-                          const struct ip_packet *const ip,
+                          const struct rohc_buf *const uncomp_pkt,
                           uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
                           const rohc_packet_t packet_type,
@@ -1362,7 +1362,8 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 		/* add static chain for IR packet only */
 		if(packet_type == ROHC_PACKET_IR)
 		{
-			ret = tcp_code_static_part(context, ip, rohc_remain_data, rohc_remain_len);
+			ret = tcp_code_static_part(context, uncomp_pkt,
+			                           rohc_remain_data, rohc_remain_len);
 			if(ret < 0)
 			{
 				rohc_comp_warn(context, "failed to build the static chain of the "
@@ -1377,7 +1378,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 		}
 
 		/* add dynamic chain for IR and IR-DYN packets only */
-		ret = tcp_code_dyn_part(context, ip, rohc_remain_data,
+		ret = tcp_code_dyn_part(context, uncomp_pkt, rohc_remain_data,
 		                        rohc_remain_len, payload_offset);
 		if(ret < 0)
 		{
@@ -1466,7 +1467,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 		}
 
 		/* add replicate chain for IR-CR packet only */
-		ret = tcp_code_replicate_chain(context, ip, rohc_remain_data,
+		ret = tcp_code_replicate_chain(context, uncomp_pkt, rohc_remain_data,
 		                               rohc_remain_len, payload_offset);
 		if(ret < 0)
 		{
@@ -1535,7 +1536,7 @@ error:
 \endverbatim
  *
  * @param context           The compression context
- * @param ip                The outer IP header
+ * @param uncomp_pkt        The uncompressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       The type of ROHC packet to create
@@ -1544,7 +1545,7 @@ error:
  *                          -1 otherwise
  */
 static int code_CO_packet(struct rohc_comp_ctxt *const context,
-                          const struct ip_packet *ip,
+                          const struct rohc_buf *const uncomp_pkt,
                           uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
                           const rohc_packet_t packet_type,
@@ -1552,8 +1553,9 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
 
-	const uint8_t *remain_data = ip->data;
-	size_t remain_len = ip->size;
+	const uint8_t *const uncomp_data = rohc_buf_data(*uncomp_pkt);
+	const uint8_t *remain_data = uncomp_data;
+	size_t remain_len = uncomp_pkt->len;
 
 	uint8_t *rohc_remain_data = rohc_pkt;
 	size_t rohc_remain_len = rohc_pkt_max_len;
@@ -1659,8 +1661,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 		assert(payload_size >= tcp_data_offset);
 		payload_size -= tcp_data_offset;
 
-		assert(((uint8_t *) tcp) >= ip->data);
-		*payload_offset = ((uint8_t *) tcp) + tcp_data_offset - ip->data;
+		*payload_offset = ((uint8_t *) tcp) + tcp_data_offset - uncomp_data;
 		rohc_comp_debug(context, "payload offset = %zu", *payload_offset);
 		rohc_comp_debug(context, "payload size = %zu", payload_size);
 	}
@@ -1671,14 +1672,14 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	   packet_type == ROHC_PACKET_TCP_RND_8 ||
 	   packet_type == ROHC_PACKET_TCP_CO_COMMON)
 	{
-		crc_computed = crc_calculate(ROHC_CRC_TYPE_7, ip->data, *payload_offset,
+		crc_computed = crc_calculate(ROHC_CRC_TYPE_7, uncomp_data, *payload_offset,
 		                             CRC_INIT_7, context->compressor->crc_table_7);
 		rohc_comp_debug(context, "CRC-7 on %zu-byte uncompressed header = 0x%x",
 		                *payload_offset, crc_computed);
 	}
 	else
 	{
-		crc_computed = crc_calculate(ROHC_CRC_TYPE_3, ip->data, *payload_offset,
+		crc_computed = crc_calculate(ROHC_CRC_TYPE_3, uncomp_data, *payload_offset,
 		                             CRC_INIT_3, context->compressor->crc_table_3);
 		rohc_comp_debug(context, "CRC-3 on %zu-byte uncompressed header = 0x%x",
 		                *payload_offset, crc_computed);
@@ -1727,7 +1728,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	rohc_remain_len -= ret;
 
 	/* add irregular chain */
-	ret = tcp_code_irreg_chain(context, ip, ip_inner_ecn, tcp,
+	ret = tcp_code_irreg_chain(context, uncomp_pkt, ip_inner_ecn, tcp,
 	                           rohc_remain_data, rohc_remain_len);
 	if(ret < 0)
 	{
@@ -3270,13 +3271,13 @@ error:
  *                            false if a problem occurred
  */
 static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
-                               const struct net_pkt *const uncomp_pkt,
+                               const struct rohc_buf *const uncomp_pkt,
                                ip_context_t **const ip_inner_ctxt,
                                const struct tcphdr **const tcp)
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
-	const uint8_t *remain_data = uncomp_pkt->outer_ip.data;
-	size_t remain_len = uncomp_pkt->outer_ip.size;
+	const uint8_t *remain_data = rohc_buf_data(*uncomp_pkt);
+	size_t remain_len = uncomp_pkt->len;
 
 	const uint8_t *inner_ip_hdr = NULL;
 
@@ -3376,7 +3377,7 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 
 		ip_hdrs_nr++;
 	}
-	while(protocol != ROHC_IPPROTO_TCP && hdrs_len < uncomp_pkt->outer_ip.size);
+	while(protocol != ROHC_IPPROTO_TCP && hdrs_len < uncomp_pkt->len);
 
 	/* next header is the TCP header */
 	if(remain_len < sizeof(struct tcphdr))
@@ -3742,7 +3743,7 @@ static void tcp_decide_state(struct rohc_comp_ctxt *const context,
  *                     false otherwise
  */
 static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
-                                     const struct net_pkt *const uncomp_pkt,
+                                     const struct rohc_buf *const uncomp_pkt,
                                      const struct tcphdr *const tcp)
 {
 	if(!tcp_encode_uncomp_ip_fields(context, uncomp_pkt))
@@ -3775,11 +3776,11 @@ error:
  *                     false otherwise
  */
 static bool tcp_encode_uncomp_ip_fields(struct rohc_comp_ctxt *const context,
-                                        const struct net_pkt *const uncomp_pkt)
+                                        const struct rohc_buf *const uncomp_pkt)
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
 
-	const uint8_t *remain_data = uncomp_pkt->data;
+	const uint8_t *remain_data = rohc_buf_data(*uncomp_pkt);
 	size_t remain_len = uncomp_pkt->len;
 
 	const ip_context_t *inner_ip_ctxt = NULL;

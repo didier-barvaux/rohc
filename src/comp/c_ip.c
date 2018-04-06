@@ -38,7 +38,7 @@
  */
 
 static bool rohc_ip_ctxt_create(struct rohc_comp_ctxt *const context,
-                                const struct net_pkt *const packet)
+                                const struct rohc_buf *const packet)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 
@@ -57,13 +57,18 @@ static bool rohc_ip_ctxt_create(struct rohc_comp_ctxt *const context,
  * @return         true if successful, false otherwise
  */
 static bool rohc_ip_ctxt_create(struct rohc_comp_ctxt *const context,
-                                const struct net_pkt *const packet)
+                                const struct rohc_buf *const packet)
 {
 	const struct rohc_comp *const comp = context->compressor;
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
+	struct net_pkt ip_pkt;
+
+	/* parse the uncompressed packet */
+	net_pkt_parse(&ip_pkt, *packet, context->compressor->trace_callback,
+	              context->compressor->trace_callback_priv, ROHC_TRACE_COMP);
 
 	/* call the generic function for all IP-based profiles */
-	if(!rohc_comp_rfc3095_create(context, packet))
+	if(!rohc_comp_rfc3095_create(context, &ip_pkt))
 	{
 		rohc_comp_warn(context, "generic context creation failed");
 		goto error;
@@ -112,10 +117,11 @@ error:
  *                       false if it does not belong to the context
  */
 bool c_ip_check_context(const struct rohc_comp_ctxt *const context,
-                        const struct net_pkt *const packet,
+                        const struct rohc_buf *const packet,
                         size_t *const cr_score)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
+	struct net_pkt ip_pkt;
 	struct ip_header_info *outer_ip_flags;
 	struct ip_header_info *inner_ip_flags;
 	ip_version version;
@@ -130,8 +136,12 @@ bool c_ip_check_context(const struct rohc_comp_ctxt *const context,
 
 	*cr_score = 0;
 
+	/* parse the uncompressed packet */
+	net_pkt_parse(&ip_pkt, *packet, context->compressor->trace_callback,
+	              context->compressor->trace_callback_priv, ROHC_TRACE_COMP);
+
 	/* check the IP version of the first header */
-	version = ip_get_version(&packet->outer_ip);
+	version = ip_get_version(&(ip_pkt.outer_ip));
 	if(version != outer_ip_flags->version)
 	{
 		goto bad_context;
@@ -140,15 +150,15 @@ bool c_ip_check_context(const struct rohc_comp_ctxt *const context,
 	/* compare the addresses of the first header */
 	if(version == IPV4)
 	{
-		same_src = outer_ip_flags->info.v4.old_ip.saddr == ipv4_get_saddr(&packet->outer_ip);
-		same_dest = outer_ip_flags->info.v4.old_ip.daddr == ipv4_get_daddr(&packet->outer_ip);
+		same_src = outer_ip_flags->info.v4.old_ip.saddr == ipv4_get_saddr(&(ip_pkt.outer_ip));
+		same_dest = outer_ip_flags->info.v4.old_ip.daddr == ipv4_get_daddr(&(ip_pkt.outer_ip));
 	}
 	else /* IPV6 */
 	{
 		same_src = IPV6_ADDR_CMP(&outer_ip_flags->info.v6.old_ip.saddr,
-		                         ipv6_get_saddr(&packet->outer_ip));
+		                         ipv6_get_saddr(&(ip_pkt.outer_ip)));
 		same_dest = IPV6_ADDR_CMP(&outer_ip_flags->info.v6.old_ip.daddr,
-		                          ipv6_get_daddr(&packet->outer_ip));
+		                          ipv6_get_daddr(&(ip_pkt.outer_ip)));
 	}
 	if(!same_src)
 	{
@@ -160,14 +170,14 @@ bool c_ip_check_context(const struct rohc_comp_ctxt *const context,
 	}
 
 	/* compare the Flow Label of the first header if IPv6 */
-	if(version == IPV6 && ip_get_flow_label(&packet->outer_ip) !=
+	if(version == IPV6 && ip_get_flow_label(&(ip_pkt.outer_ip)) !=
 	   ipv6_get_flow_label(&outer_ip_flags->info.v6.old_ip))
 	{
 		goto bad_context;
 	}
 
 	/* check the second IP header */
-	if(packet->ip_hdr_nr == 1)
+	if(ip_pkt.ip_hdr_nr == 1)
 	{
 		/* no second IP header: check if the context used not to have a
 		 * second header */
@@ -185,7 +195,7 @@ bool c_ip_check_context(const struct rohc_comp_ctxt *const context,
 		}
 
 		/* check the IP version of the second header */
-		version = ip_get_version(&packet->inner_ip);
+		version = ip_get_version(&(ip_pkt.inner_ip));
 		if(version != inner_ip_flags->version)
 		{
 			goto bad_context;
@@ -194,15 +204,15 @@ bool c_ip_check_context(const struct rohc_comp_ctxt *const context,
 		/* compare the addresses of the second header */
 		if(version == IPV4)
 		{
-			same_src2 = inner_ip_flags->info.v4.old_ip.saddr == ipv4_get_saddr(&packet->inner_ip);
-			same_dest2 = inner_ip_flags->info.v4.old_ip.daddr == ipv4_get_daddr(&packet->inner_ip);
+			same_src2 = inner_ip_flags->info.v4.old_ip.saddr == ipv4_get_saddr(&(ip_pkt.inner_ip));
+			same_dest2 = inner_ip_flags->info.v4.old_ip.daddr == ipv4_get_daddr(&(ip_pkt.inner_ip));
 		}
 		else /* IPV6 */
 		{
 			same_src2 = IPV6_ADDR_CMP(&inner_ip_flags->info.v6.old_ip.saddr,
-			                          ipv6_get_saddr(&packet->inner_ip));
+			                          ipv6_get_saddr(&(ip_pkt.inner_ip)));
 			same_dest2 = IPV6_ADDR_CMP(&inner_ip_flags->info.v6.old_ip.daddr,
-			                           ipv6_get_daddr(&packet->inner_ip));
+			                           ipv6_get_daddr(&(ip_pkt.inner_ip)));
 		}
 		if(!same_src2)
 		{
@@ -214,7 +224,7 @@ bool c_ip_check_context(const struct rohc_comp_ctxt *const context,
 		}
 
 		/* compare the Flow Label of the second header if IPv6 */
-		if(version == IPV6 && ip_get_flow_label(&packet->inner_ip) !=
+		if(version == IPV6 && ip_get_flow_label(&(ip_pkt.inner_ip)) !=
 		   ipv6_get_flow_label(&inner_ip_flags->info.v6.old_ip))
 		{
 			goto bad_context;
@@ -222,7 +232,7 @@ bool c_ip_check_context(const struct rohc_comp_ctxt *const context,
 	}
 
 	/* check the transport protocol */
-	if(packet->transport->proto != rfc3095_ctxt->next_header_proto)
+	if(ip_pkt.transport->proto != rfc3095_ctxt->next_header_proto)
 	{
 		goto bad_context;
 	}
