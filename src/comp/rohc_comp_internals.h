@@ -302,15 +302,6 @@ struct rohc_comp_profile
 		__attribute__((nonnull(1)));
 
 	/**
-	 * @brief The handler used to check whether an uncompressed IP packet
-	 *        belongs to a context or not
-	 */
-	bool (*check_context)(const struct rohc_comp_ctxt *const context,
-	                      const struct rohc_buf *const packet,
-	                      size_t *const cr_score)
-		__attribute__((warn_unused_result, nonnull(1, 2, 3)));
-
-	/**
 	 * @brief The handler used to check whether Context Replication is possible
 	 */
 	bool (*is_cr_possible)(const struct rohc_comp_ctxt *const ctxt,

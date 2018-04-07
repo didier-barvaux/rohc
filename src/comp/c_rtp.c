@@ -55,11 +55,6 @@ static bool c_rtp_create(struct rohc_comp_ctxt *const context,
 static void c_rtp_destroy(struct rohc_comp_ctxt *const context)
 	__attribute__((nonnull(1)));
 
-static bool c_rtp_check_context(const struct rohc_comp_ctxt *const context,
-                                const struct rohc_buf *const packet,
-                                size_t *const cr_score)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
-
 static int c_rtp_encode(struct rohc_comp_ctxt *const context,
                         const struct rohc_buf *const uncomp_pkt,
                         uint8_t *const rohc_pkt,
@@ -227,75 +222,6 @@ static void c_rtp_destroy(struct rohc_comp_ctxt *const context)
 
 	c_destroy_sc(&rtp_context->ts_sc);
 	rohc_comp_rfc3095_destroy(context);
-}
-
-
-/**
- * @brief Check if the IP/UDP/RTP packet belongs to the context
- *
- * Conditions are:
- *  - the number of IP headers must be the same as in context
- *  - IP version of the two IP headers must be the same as in context
- *  - IP packets must not be fragmented
- *  - the source and destination addresses of the two IP headers must match the
- *    ones in the context
- *  - the transport protocol must be UDP
- *  - the source and destination ports of the UDP header must match the ones in
- *    the context
- *  - IPv6 only: the Flow Label of the two IP headers must match the ones the
- *    context
- *  - the SSRC field of the RTP header must match the one in the context
- *
- * All the context but the last one are done by the c_udp_check_context()
- * function.
- *
- * This function is one of the functions that must exist in one profile for the
- * framework to work.
- *
- * @param context        The compression context
- * @param packet         The IP/UDP/RTP packet to check
- * @param[out] cr_score  The score of the context for Context Replication (CR)
- * @return               true if the IP/UDP/RTP packet belongs to the context
- *                       false if it does not belong to the context
- *
- * @see c_udp_check_context
- */
-static bool c_rtp_check_context(const struct rohc_comp_ctxt *const context,
-                                const struct rohc_buf *const packet,
-                                size_t *const cr_score)
-{
-	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
-		(struct rohc_comp_rfc3095_ctxt *) context->specific;
-	const struct sc_rtp_context *const rtp_context =
-		(struct sc_rtp_context *) rfc3095_ctxt->specific;
-	const struct udphdr *udp;
-	const struct rtphdr *rtp;
-	struct net_pkt ip_pkt;
-	bool udp_check;
-
-	/* check IP and UDP headers */
-	udp_check = c_udp_check_context(context, packet, cr_score);
-	if(!udp_check)
-	{
-		goto bad_context;
-	}
-
-	/* parse the uncompressed packet and get the UDP-Lite header */
-	net_pkt_parse(&ip_pkt, *packet, context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv, ROHC_TRACE_COMP);
-	udp = (struct udphdr *) ip_pkt.transport->data;
-	rtp = (struct rtphdr *) (udp + 1);
-
-	/* check the RTP SSRC field */
-	if(rtp_context->old_rtp.ssrc != rtp->ssrc)
-	{
-		goto bad_context;
-	}
-
-	return true;
-
-bad_context:
-	return false;
 }
 
 
@@ -1342,7 +1268,6 @@ const struct rohc_comp_profile c_rtp_profile =
 	.id             = ROHC_PROFILE_RTP, /* profile ID */
 	.create         = c_rtp_create,     /* profile handlers */
 	.destroy        = c_rtp_destroy,
-	.check_context  = c_rtp_check_context,
 	.encode         = c_rtp_encode,
 	.feedback       = rohc_comp_rfc3095_feedback,
 };

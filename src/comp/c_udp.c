@@ -191,71 +191,6 @@ quit:
 
 
 /**
- * @brief Check if the IP/UDP packet belongs to the context
- *
- * Conditions are:
- *  - the number of IP headers must be the same as in context
- *  - IP version of the two IP headers must be the same as in context
- *  - IP packets must not be fragmented
- *  - the source and destination addresses of the two IP headers must match the
- *    ones in the context
- *  - the transport protocol must be UDP
- *  - the source and destination ports of the UDP header must match the ones in
- *    the context
- *  - IPv6 only: the Flow Label of the two IP headers must match the ones the
- *    context
- *
- * This function is one of the functions that must exist in one profile for the
- * framework to work.
- *
- * @param context        The compression context
- * @param packet         The IP/UDP packet to check
- * @param[out] cr_score  The score of the context for Context Replication (CR)
- * @return               true if the IP/UDP packet belongs to the context
- *                       false if it does not belong to the context
- */
-bool c_udp_check_context(const struct rohc_comp_ctxt *const context,
-                         const struct rohc_buf *const packet,
-                         size_t *const cr_score)
-{
-	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
-		(struct rohc_comp_rfc3095_ctxt *) context->specific;
-	const struct sc_udp_context *const udp_context =
-		(struct sc_udp_context *) rfc3095_ctxt->specific;
-	const struct udphdr *udp;
-	struct net_pkt ip_pkt;
-
-	/* first, check the same parameters as for the IP-only profile */
-	if(!c_ip_check_context(context, packet, cr_score))
-	{
-		goto bad_context;
-	}
-
-	/* parse the uncompressed packet and get the UDP header */
-	net_pkt_parse(&ip_pkt, *packet, context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv, ROHC_TRACE_COMP);
-	udp = (struct udphdr *) ip_pkt.transport->data;
-
-	/* check UDP source port */
-	if(udp_context->old_udp.source != udp->source)
-	{
-		goto bad_context;
-	}
-
-	/* check UDP destination port */
-	if(udp_context->old_udp.dest != udp->dest)
-	{
-		goto bad_context;
-	}
-
-	return true;
-
-bad_context:
-	return false;
-}
-
-
-/**
  * @brief Encode an IP/UDP packet according to a pattern decided by several
  *        different factors.
  *
@@ -525,7 +460,6 @@ const struct rohc_comp_profile c_udp_profile =
 	.id             = ROHC_PROFILE_UDP, /* profile ID (see 8 in RFC 3095) */
 	.create         = c_udp_create,     /* profile handlers */
 	.destroy        = rohc_comp_rfc3095_destroy,
-	.check_context  = c_udp_check_context,
 	.encode         = c_udp_encode,
 	.feedback       = rohc_comp_rfc3095_feedback,
 };

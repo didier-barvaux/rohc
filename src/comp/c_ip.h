@@ -33,11 +33,6 @@
  * Public function prototypes.
  */
 
-bool c_ip_check_context(const struct rohc_comp_ctxt *const context,
-                        const struct rohc_buf *const packet,
-                        size_t *const cr_score)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
-
 rohc_packet_t c_ip_decide_FO_packet(const struct rohc_comp_ctxt *const context)
 	__attribute__((warn_unused_result, nonnull(1)));
 rohc_packet_t c_ip_decide_SO_packet(const struct rohc_comp_ctxt *const context)

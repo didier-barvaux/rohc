@@ -53,12 +53,6 @@
 	(x)[8], (x)[9], (x)[10], (x)[11], (x)[12], (x)[13], (x)[14], (x)[15]
 
 
-/** Compare two IPv6 addresses in (struct ipv6_addr *) format */
-#define IPV6_ADDR_CMP(x, y) \
-	((x)->u32[0] == (y)->u32[0] && (x)->u32[1] == (y)->u32[1] && \
-	 (x)->u32[2] == (y)->u32[2] && (x)->u32[3] == (y)->u32[3])
-
-
 /**
  * @brief The IPv6 address
  */

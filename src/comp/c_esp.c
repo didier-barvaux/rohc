@@ -64,11 +64,6 @@ static bool c_esp_create(struct rohc_comp_ctxt *const context,
                          const struct rohc_buf *const packet)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static bool c_esp_check_context(const struct rohc_comp_ctxt *const context,
-                                const struct rohc_buf *const packet,
-                                size_t *const ctxt_replication_score)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
-
 static int c_esp_encode(struct rohc_comp_ctxt *const context,
                         const struct rohc_buf *const packet,
                         uint8_t *const rohc_pkt,
@@ -176,65 +171,6 @@ static bool c_esp_create(struct rohc_comp_ctxt *const context,
 clean:
 	rohc_comp_rfc3095_destroy(context);
 quit:
-	return false;
-}
-
-
-/**
- * @brief Check if the IP/ESP packet belongs to the context
- *
- * Conditions are:
- *  - the number of IP headers must be the same as in context
- *  - IP version of the two IP headers must be the same as in context
- *  - IP packets must not be fragmented
- *  - the source and destination addresses of the two IP headers must match the
- *    ones in the context
- *  - the transport protocol must be ESP
- *  - the security parameters index of the ESP header must match the one in
- *    the context
- *  - IPv6 only: the Flow Label of the two IP headers must match the ones the
- *    context
- *
- * This function is one of the functions that must exist in one profile for the
- * framework to work.
- *
- * @param context        The compression context
- * @param packet         The IP/ESP packet to check
- * @param[out] cr_score  The score of the context for Context Replication (CR)
- * @return               true if the packet belongs to the context,
- *                       false if it does not belong to the context
- */
-static bool c_esp_check_context(const struct rohc_comp_ctxt *const context,
-                                const struct rohc_buf *const packet,
-                                size_t *const cr_score)
-{
-	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
-		(struct rohc_comp_rfc3095_ctxt *) context->specific;
-	const struct sc_esp_context *const esp_context =
-		(struct sc_esp_context *) rfc3095_ctxt->specific;
-	const struct esphdr *esp;
-	struct net_pkt ip_pkt;
-
-	/* first, check the same parameters as for the IP-only profile */
-	if(!c_ip_check_context(context, packet, cr_score))
-	{
-		goto bad_context;
-	}
-
-	/* parse the uncompressed packet and get the ESP header */
-	net_pkt_parse(&ip_pkt, *packet, context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv, ROHC_TRACE_COMP);
-	esp = (struct esphdr *) ip_pkt.transport->data;
-
-	/* in addition, check Security parameters index (SPI) */
-	if(esp_context->old_esp.spi != esp->spi)
-	{
-		goto bad_context;
-	}
-
-	return true;
-
-bad_context:
 	return false;
 }
 
@@ -394,7 +330,6 @@ const struct rohc_comp_profile c_esp_profile =
 	.id             = ROHC_PROFILE_ESP, /* profile ID (see 8 in RFC 3095) */
 	.create         = c_esp_create,     /* profile handlers */
 	.destroy        = rohc_comp_rfc3095_destroy,
-	.check_context  = c_esp_check_context,
 	.encode         = c_esp_encode,
 	.feedback       = rohc_comp_rfc3095_feedback,
 };

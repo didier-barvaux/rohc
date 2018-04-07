@@ -45,12 +45,6 @@ static bool c_uncompressed_create(struct rohc_comp_ctxt *const context,
 static void c_uncompressed_destroy(struct rohc_comp_ctxt *const context)
 	__attribute__((nonnull(1)));
 
-/* check whether a packet belongs to a context */
-static bool c_uncompressed_check_context(const struct rohc_comp_ctxt *const context,
-                                         const struct rohc_buf *const packet,
-                                         size_t *const cr_score)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
-
 /* encode uncompressed packets */
 static int c_uncompressed_encode(struct rohc_comp_ctxt *const context,
                                  const struct rohc_buf *const uncomp_pkt,
@@ -134,27 +128,6 @@ static bool c_uncompressed_create(struct rohc_comp_ctxt *const context,
 static void c_uncompressed_destroy(struct rohc_comp_ctxt *const context)
 {
 	zfree(context->specific);
-}
-
-
-/**
- * @brief Check if an IP packet belongs to the Uncompressed context.
- *
- * This function is one of the functions that must exist in one profile for the
- * framework to work.
- *
- * @param context        The compression context
- * @param packet         The packet to check
- * @param[out] cr_score  The score of the context for Context Replication (CR)
- * @return               Always return true to tell that the packet belongs
- *                       to the context
- */
-static bool c_uncompressed_check_context(const struct rohc_comp_ctxt *const context __attribute__((unused)),
-                                         const struct rohc_buf *const packet __attribute__((unused)),
-                                         size_t *const cr_score)
-{
-	*cr_score = 0; /* Context Replication is useless from Uncompressed profile */
-	return true;
 }
 
 
@@ -564,7 +537,6 @@ const struct rohc_comp_profile c_uncompressed_profile =
 	.id             = ROHC_PROFILE_UNCOMPRESSED, /* profile ID (RFC3095, §8) */
 	.create         = c_uncompressed_create,     /* profile handlers */
 	.destroy        = c_uncompressed_destroy,
-	.check_context  = c_uncompressed_check_context,
 	.encode         = c_uncompressed_encode,
 	.feedback       = uncomp_feedback,
 };
