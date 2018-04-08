@@ -36,6 +36,12 @@
  * Private function prototypes:
  */
 
+static bool wlsb_is_kp_possible_8bits(const struct c_wlsb *const wlsb,
+                                      const uint8_t value,
+                                      const size_t k,
+                                      const rohc_lsb_shift_t p)
+	__attribute__((warn_unused_result, nonnull(1)));
+
 static size_t wlsb_get_minkp_32bits(const struct c_wlsb *const wlsb,
                                     const uint32_t value,
                                     const size_t min_k,
@@ -175,101 +181,20 @@ void c_add_wlsb(struct c_wlsb *const wlsb,
 
 
 /**
- * @brief Find out the minimal number of bits of the to-be-encoded value
- *        required to be able to uniquely recreate it given the window
+ * @brief Find out whether the given number of bits is enough to encode value
  *
  * The function is dedicated to 8-bit fields.
  *
  * @param wlsb   The W-LSB object
  * @param value  The value to encode using the LSB algorithm
- * @return       The number of bits required to uniquely recreate the value
+ * @param k      The number of bits for encoding
+ * @return       true if the number of bits is enough for encoding or not
  */
-size_t wlsb_get_k_8bits(const struct c_wlsb *const wlsb, const uint8_t value)
+bool wlsb_is_k_possible_8bits(const struct c_wlsb *const wlsb,
+                              const uint8_t value,
+                              const size_t k)
 {
-	return wlsb_get_kp_8bits(wlsb, value, wlsb->p);
-}
-
-
-/**
- * @brief Find out the minimal number of bits of the to-be-encoded value
- *        required to be able to uniquely recreate it given the window
- *
- * The function is dedicated to 8-bit fields.
- *
- * @param wlsb   The W-LSB object
- * @param value  The value to encode using the LSB algorithm
- * @param p      The shift parameter p
- * @return       The number of bits required to uniquely recreate the value
- */
-size_t wlsb_get_kp_8bits(const struct c_wlsb *const wlsb,
-                         const uint8_t value,
-                         const rohc_lsb_shift_t p)
-{
-	size_t bits_nr;
-
-	/* use all bits if the window contains no value */
-	if(wlsb->count == 0)
-	{
-		bits_nr = wlsb->bits;
-	}
-	else
-	{
-		size_t k;
-
-		bits_nr = 0;
-
-		for(k = bits_nr; k < wlsb->bits; k++)
-		{
-			const uint8_t interval_width = (1U << k) - 1; /* interval width = 2^k - 1 */
-			size_t entry;
-			size_t i;
-
-			/* find the minimal number of bits of the value required to be able
-			 * to recreate it thanks to ANY value in the window */
-			for(i = wlsb->count, entry = wlsb->oldest;
-			    i > 0;
-			    i--, entry = (entry + 1) % wlsb->window_width)
-			{
-				const uint8_t v_ref = wlsb->window[entry].value;
-
-				/* compute the minimal and maximal values of the interval:
-				 *   min = v_ref - p
-				 *   max = v_ref + interval_with - p
-				 *
-				 * Straddling the lower and upper wraparound boundaries
-				 * is handled without additional operation */
-				const uint8_t min = v_ref - p;
-				const uint8_t max = min + interval_width;
-
-				if(min <= max)
-				{
-					/* interpretation interval does not straddle field boundaries,
-					 * check if value is in [min, max] */
-					if(value < min || value > max)
-					{
-						break;
-					}
-				}
-				else
-				{
-					/* the interpretation interval does straddle the field boundaries,
-					 * check if value is in [min, 0xffff] or [0, max] */
-					if(value < min && value > max)
-					{
-						break;
-					}
-				}
-			}
-
-			if(i == 0)
-			{
-				break;
-			}
-		}
-		bits_nr = k;
-	}
-
-	return bits_nr;
+	return wlsb_is_kp_possible_8bits(wlsb, value, k, wlsb->p);
 }
 
 

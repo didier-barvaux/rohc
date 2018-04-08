@@ -121,18 +121,9 @@ void c_add_wlsb(struct c_wlsb *const wlsb,
                 const uint32_t value)
 	__attribute__((nonnull(1)));
 
-size_t wlsb_get_k_8bits(const struct c_wlsb *const wlsb,
-                        const uint8_t value)
-	__attribute__((warn_unused_result, nonnull(1)));
-size_t wlsb_get_kp_8bits(const struct c_wlsb *const wlsb,
-                         const uint8_t value,
-                         const rohc_lsb_shift_t p)
-	__attribute__((warn_unused_result, nonnull(1)));
-
-bool wlsb_is_kp_possible_8bits(const struct c_wlsb *const wlsb,
-                               const uint8_t value,
-                               const size_t k,
-                               const rohc_lsb_shift_t p)
+bool wlsb_is_k_possible_8bits(const struct c_wlsb *const wlsb,
+                              const uint8_t value,
+                              const size_t k)
 	__attribute__((warn_unused_result, nonnull(1)));
 
 size_t wlsb_get_k_16bits(const struct c_wlsb *const wlsb,

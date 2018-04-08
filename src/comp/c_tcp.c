@@ -4608,7 +4608,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet(const struct rohc_comp_ctxt *const 
 		   wlsb_is_kp_possible_16bits(&tcp_context->ip_id_wlsb, tcp_context->tmp.ip_id_delta, 4, 3) &&
 		   wlsb_is_kp_possible_32bits(&tcp_context->seq_wlsb, seq_num_hbo, 14, 8191) &&
 		   wlsb_is_kp_possible_32bits(&tcp_context->ack_wlsb, ack_num_hbo, 15, 8191) &&
-		   wlsb_is_kp_possible_8bits(&tcp_context->ttl_hopl_wlsb, tcp_context->tmp.ttl_hopl, 3, 3) &&
+		   wlsb_is_k_possible_8bits(&tcp_context->ttl_hopl_wlsb, tcp_context->tmp.ttl_hopl, 3) &&
 		   !tcp_context->tmp.tcp_window_changed)
 		{
 			/* ROHC_IP_ID_BEHAVIOR_SEQ or ROHC_IP_ID_BEHAVIOR_SEQ_SWAP */
@@ -4618,7 +4618,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet(const struct rohc_comp_ctxt *const 
 		else if(ip_inner_context->ip_id_behavior > ROHC_IP_ID_BEHAVIOR_SEQ_SWAP &&
 		        wlsb_is_kp_possible_32bits(&tcp_context->seq_wlsb, seq_num_hbo, 16, 65535) &&
 		        wlsb_is_kp_possible_32bits(&tcp_context->ack_wlsb, ack_num_hbo, 16, 16383) &&
-		        wlsb_is_kp_possible_8bits(&tcp_context->ttl_hopl_wlsb, tcp_context->tmp.ttl_hopl, 3, 3) &&
+		        wlsb_is_k_possible_8bits(&tcp_context->ttl_hopl_wlsb, tcp_context->tmp.ttl_hopl, 3) &&
 		        !tcp_context->tmp.tcp_window_changed)
 		{
 			TRACE_GOTO_CHOICE;
@@ -4700,7 +4700,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 		                              tcp_context->tmp.ip_id_delta, 4, 3) &&
 		   wlsb_is_kp_possible_32bits(&tcp_context->seq_wlsb, seq_num_hbo, 14, 8191) &&
 		   wlsb_is_kp_possible_32bits(&tcp_context->ack_wlsb, ack_num_hbo, 15, 8191) &&
-		   wlsb_is_kp_possible_8bits(&tcp_context->ttl_hopl_wlsb, tcp_context->tmp.ttl_hopl, 3, 3) &&
+		   wlsb_is_k_possible_8bits(&tcp_context->ttl_hopl_wlsb, tcp_context->tmp.ttl_hopl, 3) &&
 		   !tcp_context->tmp.tcp_window_changed)
 		{
 			/* seq_8 is possible */
@@ -4837,7 +4837,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 		}
 		else if(wlsb_is_kp_possible_32bits(&tcp_context->seq_wlsb, seq_num_hbo, 14, 8191) &&
 		        wlsb_is_kp_possible_32bits(&tcp_context->ack_wlsb, ack_num_hbo, 15, 8191) &&
-		        wlsb_is_kp_possible_8bits(&tcp_context->ttl_hopl_wlsb, tcp_context->tmp.ttl_hopl, 3, 3) &&
+		        wlsb_is_k_possible_8bits(&tcp_context->ttl_hopl_wlsb, tcp_context->tmp.ttl_hopl, 3) &&
 		        !tcp_context->tmp.tcp_window_changed)
 		{
 			TRACE_GOTO_CHOICE;
