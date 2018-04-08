@@ -114,6 +114,7 @@
  */
 
 struct rohc_comp_ctxt;
+struct rohc_pkt_hdrs;
 
 
 /*
@@ -264,6 +265,10 @@ struct rohc_pkt_hdrs
 	};
 
 	const struct rtphdr *rtp;          /**< The RTP header (if any) */
+
+	size_t all_hdrs_len;               /**< The cumulated length of all headers */
+	size_t payload_len;                /**< The length of the packet payload */
+	const uint8_t *payload;            /**< The packet payload */
 };
 
 
@@ -317,17 +322,16 @@ struct rohc_comp_profile
 	 * @param rohc_pkt           OUT: The ROHC packet
 	 * @param rohc_pkt_max_len   The maximum length of the ROHC packet
 	 * @param packet_type        OUT: The type of ROHC packet that is created
-	 * @param payload_offset     OUT: The offset for the payload in the IP packet
 	 * @return                   The length of the ROHC packet if successful,
 	 *                           -1 otherwise
 	 */
 	int (*encode)(struct rohc_comp_ctxt *const context,
+	              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
 	              const struct rohc_buf *const uncomp_pkt,
 	              uint8_t *const rohc_pkt,
 	              const size_t rohc_pkt_max_len,
-	              rohc_packet_t *const packet_type,
-	              size_t *const payload_offset)
-		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
+	              rohc_packet_t *const packet_type)
+		__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 6)));
 
 	/**
 	 * @brief The handler used to warn the profile-specific part of the

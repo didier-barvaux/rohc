@@ -85,12 +85,12 @@ static bool c_tcp_is_cr_possible(const struct rohc_comp_ctxt *const ctxt,
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int c_tcp_encode(struct rohc_comp_ctxt *const context,
+                        const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                         const struct rohc_buf *const uncomp_pkt,
                         uint8_t *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
-                        rohc_packet_t *const packet_type,
-                        size_t *const payload_offset)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
+                        rohc_packet_t *const packet_type)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 6)));
 
 static uint16_t c_tcp_get_next_msn(const struct rohc_comp_ctxt *const context)
 	__attribute__((warn_unused_result, nonnull(1)));
@@ -159,20 +159,20 @@ static bool tcp_opt_ts_one_can_be_encoded(const struct c_wlsb *const wlsb,
 
 /* IR and CO packets */
 static int code_IR_packet(struct rohc_comp_ctxt *const context,
+                          const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                           const struct rohc_buf *const uncomp_pkt,
                           uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
-                          const rohc_packet_t packet_type,
-                          size_t *const payload_offset)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 6)));
+                          const rohc_packet_t packet_type)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int code_CO_packet(struct rohc_comp_ctxt *const context,
+                          const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                           const struct rohc_buf *const uncomp_pkt,
                           uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
-                          const rohc_packet_t packet_type,
-                          size_t *const payload_offset)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 6)));
+                          const rohc_packet_t packet_type)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 static int co_baseheader(struct rohc_comp_ctxt *const context,
                          struct sc_tcp_context *const tcp_context,
                          ip_context_t *const ip_inner_context,
@@ -908,11 +908,11 @@ static bool c_tcp_is_cr_possible(const struct rohc_comp_ctxt *const ctxt,
  * 6. Code the packet.\n
  *
  * @param context           The compression context
+ * @param uncomp_pkt_hdrs   The uncompressed headers to encode
  * @param uncomp_pkt        The uncompressed packet to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       OUT: The type of ROHC packet that is created
- * @param payload_offset    OUT: The offset for the payload in the IP packet
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  *
@@ -920,11 +920,11 @@ static bool c_tcp_is_cr_possible(const struct rohc_comp_ctxt *const ctxt,
  *             probably be re-used (and maybe enhanced if needed)
  */
 static int c_tcp_encode(struct rohc_comp_ctxt *const context,
+                        const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                         const struct rohc_buf *const uncomp_pkt,
                         uint8_t *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
-                        rohc_packet_t *const packet_type,
-                        size_t *const payload_offset)
+                        rohc_packet_t *const packet_type)
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
 	ip_context_t *ip_inner_context;
@@ -978,8 +978,8 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	        (*packet_type) != ROHC_PACKET_IR_DYN)
 	{
 		/* co_common, seq_X, or rnd_X */
-		counter = code_CO_packet(context, uncomp_pkt, rohc_pkt,
-		                         rohc_pkt_max_len, *packet_type, payload_offset);
+		counter = code_CO_packet(context, uncomp_pkt_hdrs, uncomp_pkt,
+		                         rohc_pkt, rohc_pkt_max_len, *packet_type);
 		if(counter < 0)
 		{
 			rohc_comp_warn(context, "failed to build CO packet");
@@ -992,8 +992,8 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		       (*packet_type) == ROHC_PACKET_IR_CR ||
 		       (*packet_type) == ROHC_PACKET_IR_DYN);
 
-		counter = code_IR_packet(context, uncomp_pkt, rohc_pkt,
-		                         rohc_pkt_max_len, *packet_type, payload_offset);
+		counter = code_IR_packet(context, uncomp_pkt_hdrs, uncomp_pkt,
+		                         rohc_pkt, rohc_pkt_max_len, *packet_type);
 		if(counter < 0)
 		{
 			rohc_comp_warn(context, "failed to build IR(-DYN) packet");
@@ -1001,8 +1001,6 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		}
 	}
 	rohc_comp_dump_buf(context, "current ROHC packet", rohc_pkt, counter);
-
-	rohc_comp_debug(context, "payload_offset = %zu", *payload_offset);
 
 	rohc_comp_debug(context, "update context:");
 
@@ -1089,20 +1087,20 @@ error:
  * @brief Encode an IP/TCP packet as IR, IR-CR or IR-DYN packet
  *
  * @param context           The compression context
+ * @param uncomp_pkt_hdrs   The uncompressed headers to encode
  * @param uncomp_pkt        The uncompressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       The type of ROHC packet that is created
- * @param payload_offset    OUT: The offset for the payload in the IP packet
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
 static int code_IR_packet(struct rohc_comp_ctxt *const context,
+                          const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs __attribute__((unused)),
                           const struct rohc_buf *const uncomp_pkt,
                           uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
-                          const rohc_packet_t packet_type,
-                          size_t *const payload_offset)
+                          const rohc_packet_t packet_type)
 {
 	uint8_t *rohc_remain_data = rohc_pkt;
 	size_t rohc_remain_len = rohc_pkt_max_len;
@@ -1195,7 +1193,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 
 		/* add dynamic chain for IR and IR-DYN packets only */
 		ret = tcp_code_dyn_part(context, uncomp_pkt, rohc_remain_data,
-		                        rohc_remain_len, payload_offset);
+		                        rohc_remain_len);
 		if(ret < 0)
 		{
 			rohc_comp_warn(context, "failed to build the dynamic chain of the "
@@ -1284,7 +1282,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 
 		/* add replicate chain for IR-CR packet only */
 		ret = tcp_code_replicate_chain(context, uncomp_pkt, rohc_remain_data,
-		                               rohc_remain_len, payload_offset);
+		                               rohc_remain_len);
 		if(ret < 0)
 		{
 			rohc_comp_warn(context, "failed to build the replicate chain of the "
@@ -1352,20 +1350,20 @@ error:
 \endverbatim
  *
  * @param context           The compression context
+ * @param uncomp_pkt_hdrs   The uncompressed headers to encode
  * @param uncomp_pkt        The uncompressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       The type of ROHC packet to create
- * @param payload_offset    OUT: The offset for the payload in the IP packet
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
 static int code_CO_packet(struct rohc_comp_ctxt *const context,
+                          const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                           const struct rohc_buf *const uncomp_pkt,
                           uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
-                          const rohc_packet_t packet_type,
-                          size_t *const payload_offset)
+                          const rohc_packet_t packet_type)
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
 
@@ -1384,7 +1382,6 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	size_t pos_1st_byte;
 	size_t pos_2nd_byte;
 	uint8_t save_first_byte;
-	size_t payload_size = 0;
 	uint8_t ip_inner_ecn = 0;
 	uint8_t crc_computed;
 	size_t ip_hdr_pos;
@@ -1419,7 +1416,6 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 			protocol = ipv4->protocol;
 			ip_inner_ecn = ipv4->ecn;
 			ipv4_hdr_len = ipv4->ihl * sizeof(uint32_t);
-			payload_size = rohc_ntoh16(ipv4->tot_len) - ipv4_hdr_len;
 
 			/* skip IPv4 header */
 			rohc_comp_debug(context, "skip %zu-byte IPv4 header with "
@@ -1436,7 +1432,6 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 
 			protocol = ipv6->nh;
 			ip_inner_ecn = ipv6->ecn;
-			payload_size = rohc_ntoh16(ipv6->plen);
 
 			/* skip IPv6 header */
 			rohc_comp_debug(context, "skip %zu-byte IPv6 header with Next Header "
@@ -1470,17 +1465,6 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	/* parse the TCP header */
 	assert(remain_len >= sizeof(struct tcphdr));
 	tcp = (struct tcphdr *) remain_data;
-	{
-		const size_t tcp_data_offset = tcp->data_offset << 2;
-
-		assert(remain_len >= tcp_data_offset);
-		assert(payload_size >= tcp_data_offset);
-		payload_size -= tcp_data_offset;
-
-		*payload_offset = ((uint8_t *) tcp) + tcp_data_offset - uncomp_data;
-		rohc_comp_debug(context, "payload offset = %zu", *payload_offset);
-		rohc_comp_debug(context, "payload size = %zu", payload_size);
-	}
 
 	/* we have just identified the IP and TCP headers (options included), so
 	 * let's compute the CRC on uncompressed headers */
@@ -1488,17 +1472,19 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	   packet_type == ROHC_PACKET_TCP_RND_8 ||
 	   packet_type == ROHC_PACKET_TCP_CO_COMMON)
 	{
-		crc_computed = crc_calculate(ROHC_CRC_TYPE_7, uncomp_data, *payload_offset,
-		                             CRC_INIT_7, context->compressor->crc_table_7);
+		crc_computed =
+			crc_calculate(ROHC_CRC_TYPE_7, uncomp_data, uncomp_pkt_hdrs->all_hdrs_len,
+			              CRC_INIT_7, context->compressor->crc_table_7);
 		rohc_comp_debug(context, "CRC-7 on %zu-byte uncompressed header = 0x%x",
-		                *payload_offset, crc_computed);
+		                uncomp_pkt_hdrs->all_hdrs_len, crc_computed);
 	}
 	else
 	{
-		crc_computed = crc_calculate(ROHC_CRC_TYPE_3, uncomp_data, *payload_offset,
-		                             CRC_INIT_3, context->compressor->crc_table_3);
+		crc_computed =
+			crc_calculate(ROHC_CRC_TYPE_3, uncomp_data, uncomp_pkt_hdrs->all_hdrs_len,
+			              CRC_INIT_3, context->compressor->crc_table_3);
 		rohc_comp_debug(context, "CRC-3 on %zu-byte uncompressed header = 0x%x",
-		                *payload_offset, crc_computed);
+		                uncomp_pkt_hdrs->all_hdrs_len, crc_computed);
 	}
 
 	/* write Add-CID or large CID bytes: 'pos_1st_byte' indicates the location

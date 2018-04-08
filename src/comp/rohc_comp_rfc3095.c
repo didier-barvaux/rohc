@@ -735,20 +735,20 @@ void rohc_comp_rfc3095_destroy(struct rohc_comp_ctxt *const context)
  * framework to work.
  *
  * @param context           The compression context
+ * @param uncomp_pkt_hdrs   The uncompressed headers to encode
  * @param uncomp_pkt        The uncompressed packet to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       OUT: The type of ROHC packet that is created
- * @param payload_offset    OUT: The offset for the payload in the IP packet
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
 int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
+                             const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs __attribute__((unused)),
                              const struct rohc_buf *const uncomp_pkt,
                              uint8_t *const rohc_pkt,
                              const size_t rohc_pkt_max_len,
-                             rohc_packet_t *const packet_type,
-                             size_t *const payload_offset)
+                             rohc_packet_t *const packet_type)
 {
 	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 	struct net_pkt ip_pkt;
@@ -797,9 +797,6 @@ int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
 	{
 		goto error;
 	}
-	/* determine the offset of the payload */
-	*payload_offset = net_pkt_get_payload_offset(&ip_pkt);
-	*payload_offset += rfc3095_ctxt->next_header_len;
 
 	/* update the context with the new headers */
 	update_context(context, &ip_pkt);

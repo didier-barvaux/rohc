@@ -71,15 +71,13 @@ static int tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *const context,
  * @param uncomp_pkt        The uncompressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
- * @param[out] parsed_len   The length of uncompressed data parsed
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
 int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
                       const struct rohc_buf *const uncomp_pkt,
                       uint8_t *const rohc_pkt,
-                      const size_t rohc_pkt_max_len,
-                      size_t *const parsed_len)
+                      const size_t rohc_pkt_max_len)
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
 	ip_context_t *inner_ip_context = NULL;
@@ -211,7 +209,6 @@ int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		remain_len -= (tcp->data_offset << 2);
 #endif
-		*parsed_len = remain_data - rohc_buf_data(*uncomp_pkt);
 	}
 
 	/* update context with new values (done at the very end to avoid wrongly

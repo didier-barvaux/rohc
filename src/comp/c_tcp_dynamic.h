@@ -38,9 +38,8 @@
 int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
                       const struct rohc_buf *const uncomp_pkt,
                       uint8_t *const rohc_pkt,
-                      const size_t rohc_pkt_max_len,
-                      size_t *const parsed_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
+                      const size_t rohc_pkt_max_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 #endif /* ROHC_COMP_TCP_DYNAMIC_H */
 
