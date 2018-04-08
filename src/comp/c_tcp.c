@@ -1436,6 +1436,9 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		c_add_wlsb(&tcp_context->ip_id_wlsb, tcp_context->msn,
 		           tcp_context->tmp.ip_id_delta);
 	}
+	/* add the new TTL/Hop Limit to the W-LSB encoding object */
+	c_add_wlsb(&tcp_context->ttl_hopl_wlsb, tcp_context->msn,
+	           tcp_context->tmp.ttl_hopl);
 
 	/* sequence number */
 	c_add_wlsb(&tcp_context->seq_wlsb, tcp_context->msn, tcp_context->seq_num);
@@ -4177,16 +4180,6 @@ static bool tcp_encode_uncomp_ip_fields(struct rohc_comp_ctxt *const context,
 	{
 		tcp_context->tmp.ttl_hopl_changed = false;
 	}
-	tcp_context->tmp.nr_ttl_hopl_bits =
-		wlsb_get_k_8bits(&tcp_context->ttl_hopl_wlsb, tcp_context->tmp.ttl_hopl);
-	rohc_comp_debug(context, "%u bits are required to encode new innermost "
-	                "TTL/Hop Limit 0x%02x with p = 3",
-	                tcp_context->tmp.nr_ttl_hopl_bits,
-	                tcp_context->tmp.ttl_hopl);
-	/* add the new TTL/Hop Limit to the W-LSB encoding object */
-	/* TODO: move this after successful packet compression */
-	c_add_wlsb(&tcp_context->ttl_hopl_wlsb, tcp_context->msn,
-	           tcp_context->tmp.ttl_hopl);
 
 	return true;
 
@@ -4615,7 +4608,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet(const struct rohc_comp_ctxt *const 
 		   wlsb_is_kp_possible_16bits(&tcp_context->ip_id_wlsb, tcp_context->tmp.ip_id_delta, 4, 3) &&
 		   wlsb_is_kp_possible_32bits(&tcp_context->seq_wlsb, seq_num_hbo, 14, 8191) &&
 		   wlsb_is_kp_possible_32bits(&tcp_context->ack_wlsb, ack_num_hbo, 15, 8191) &&
-		   tcp_context->tmp.nr_ttl_hopl_bits <= 3 &&
+		   wlsb_is_kp_possible_8bits(&tcp_context->ttl_hopl_wlsb, tcp_context->tmp.ttl_hopl, 3, 3) &&
 		   !tcp_context->tmp.tcp_window_changed)
 		{
 			/* ROHC_IP_ID_BEHAVIOR_SEQ or ROHC_IP_ID_BEHAVIOR_SEQ_SWAP */
@@ -4625,7 +4618,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet(const struct rohc_comp_ctxt *const 
 		else if(ip_inner_context->ip_id_behavior > ROHC_IP_ID_BEHAVIOR_SEQ_SWAP &&
 		        wlsb_is_kp_possible_32bits(&tcp_context->seq_wlsb, seq_num_hbo, 16, 65535) &&
 		        wlsb_is_kp_possible_32bits(&tcp_context->ack_wlsb, ack_num_hbo, 16, 16383) &&
-		        tcp_context->tmp.nr_ttl_hopl_bits <= 3 &&
+		        wlsb_is_kp_possible_8bits(&tcp_context->ttl_hopl_wlsb, tcp_context->tmp.ttl_hopl, 3, 3) &&
 		        !tcp_context->tmp.tcp_window_changed)
 		{
 			TRACE_GOTO_CHOICE;
@@ -4707,7 +4700,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 		                              tcp_context->tmp.ip_id_delta, 4, 3) &&
 		   wlsb_is_kp_possible_32bits(&tcp_context->seq_wlsb, seq_num_hbo, 14, 8191) &&
 		   wlsb_is_kp_possible_32bits(&tcp_context->ack_wlsb, ack_num_hbo, 15, 8191) &&
-		   tcp_context->tmp.nr_ttl_hopl_bits <= 3 &&
+		   wlsb_is_kp_possible_8bits(&tcp_context->ttl_hopl_wlsb, tcp_context->tmp.ttl_hopl, 3, 3) &&
 		   !tcp_context->tmp.tcp_window_changed)
 		{
 			/* seq_8 is possible */
@@ -4844,7 +4837,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 		}
 		else if(wlsb_is_kp_possible_32bits(&tcp_context->seq_wlsb, seq_num_hbo, 14, 8191) &&
 		        wlsb_is_kp_possible_32bits(&tcp_context->ack_wlsb, ack_num_hbo, 15, 8191) &&
-		        tcp_context->tmp.nr_ttl_hopl_bits <= 3 &&
+		        wlsb_is_kp_possible_8bits(&tcp_context->ttl_hopl_wlsb, tcp_context->tmp.ttl_hopl, 3, 3) &&
 		        !tcp_context->tmp.tcp_window_changed)
 		{
 			TRACE_GOTO_CHOICE;

@@ -60,7 +60,6 @@ struct tcp_tmp_variables
 
 	/* innermost IPv4 TTL or IPv6 Hop Limit */
 	uint8_t ttl_hopl;
-	bits_nr_t nr_ttl_hopl_bits;
 
 	/** Whether at least one of the static part of the IPv6 extensions changed
 	 * in the current packet */
