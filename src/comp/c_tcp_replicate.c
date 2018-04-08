@@ -64,6 +64,7 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
  * @brief Code the replicate chain of an IR packet
  *
  * @param context           The compression context
+ * @param uncomp_pkt_hdrs   The uncompressed headers to encode
  * @param uncomp_pkt        The uncompressed packet to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
@@ -71,6 +72,7 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
  *                          -1 otherwise
  */
 int tcp_code_replicate_chain(struct rohc_comp_ctxt *const context,
+                             const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                              const struct rohc_buf *const uncomp_pkt,
                              uint8_t *const rohc_pkt,
                              const size_t rohc_pkt_max_len)
@@ -141,7 +143,7 @@ int tcp_code_replicate_chain(struct rohc_comp_ctxt *const context,
 			remain_len -= sizeof(struct ipv6_hdr);
 
 			for(ip_ext_pos = 0;
-			    ip_ext_pos < tcp_context->tmp.ip_exts_nr[ip_hdr_pos];
+			    ip_ext_pos < uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos].exts_nr;
 			    ip_ext_pos++)
 			{
 				const struct ipv6_opt *const ipv6_opt = (struct ipv6_opt *) remain_data;
@@ -226,7 +228,6 @@ static int tcp_code_replicate_ipv4_part(const struct rohc_comp_ctxt *const conte
                                         uint8_t *const rohc_data,
                                         const size_t rohc_max_len)
 {
-	struct sc_tcp_context *const tcp_context = context->specific;
 	ipv4_replicate_t *const ipv4_replicate = (ipv4_replicate_t *) rohc_data;
 	size_t ipv4_replicate_len = sizeof(ipv4_replicate_t);
 	int ttl_hopl_indicator;
@@ -296,11 +297,10 @@ static int tcp_code_replicate_ipv4_part(const struct rohc_comp_ctxt *const conte
 
 	/* ttl_hopl */
 	{
-		const bool is_ttl_hopl_static =
-			(ip_context->ttl_hopl == tcp_context->tmp.ttl_hopl);
+		const bool is_ttl_hopl_static = (ip_context->ttl_hopl == ipv4->ttl);
 		const bool cr_ttl_hopl_needed =
 			(!is_ttl_hopl_static || ip_context->cr_ttl_hopl_present);
-		ret = c_static_or_irreg8(tcp_context->tmp.ttl_hopl, !cr_ttl_hopl_needed,
+		ret = c_static_or_irreg8(ipv4->ttl, !cr_ttl_hopl_needed,
 		                         rohc_data + ipv4_replicate_len,
 		                         rohc_max_len - ipv4_replicate_len, &ttl_hopl_indicator);
 		if(ret < 0)
@@ -310,7 +310,7 @@ static int tcp_code_replicate_ipv4_part(const struct rohc_comp_ctxt *const conte
 		}
 		ipv4_replicate_len += ret;
 		rohc_comp_debug(context, "TTL = 0x%02x -> 0x%02x",
-		                ip_context->ttl_hopl, tcp_context->tmp.ttl_hopl);
+		                ip_context->ttl_hopl, ipv4->ttl);
 		ipv4_replicate->ttl_flag = ttl_hopl_indicator;
 		ip_context->cr_ttl_hopl_present = !!ttl_hopl_indicator;
 	}

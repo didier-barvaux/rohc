@@ -475,17 +475,16 @@ bad_opts:
  * @param context            The compression context
  * @param tcp                The TCP header
  * @param[in,out] opts_ctxt  The compression context for TCP options
- * @param[out] opts_len      The length (in bytes) of the TCP options
  * @return                   true if the TCP options were successfully parsed and
  *                           can be compressed, false otherwise
  */
 bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
                                 const struct tcphdr *const tcp,
-                                struct c_tcp_opts_ctxt *const opts_ctxt,
-                                size_t *const opts_len)
+                                struct c_tcp_opts_ctxt *const opts_ctxt)
 {
 	bool indexes_in_use[MAX_TCP_OPTION_INDEX + 1] = { false };
-	uint8_t *opts;
+	const uint8_t *const opts = ((uint8_t *) tcp) + sizeof(struct tcphdr);
+	const size_t opts_len = (tcp->data_offset << 2) - sizeof(struct tcphdr);
 	size_t opt_pos;
 	uint8_t opt_len;
 	size_t opts_offset;
@@ -500,10 +499,7 @@ bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 	opts_ctxt->tmp.nr = 0;
 	opts_ctxt->tmp.idx_max = 0;
 
-	opts = ((uint8_t *) tcp) + sizeof(struct tcphdr);
-	*opts_len = (tcp->data_offset << 2) - sizeof(struct tcphdr);
-
-	rohc_comp_debug(context, "parse %zu-byte TCP options", *opts_len);
+	rohc_comp_debug(context, "parse %zu-byte TCP options", opts_len);
 
 	for(opt_idx = TCP_INDEX_GENERIC7; opt_idx <= MAX_TCP_OPTION_INDEX; opt_idx++)
 	{
@@ -517,13 +513,13 @@ bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 	}
 
 	for(opt_pos = 0, opts_offset = 0;
-	    opt_pos < ROHC_TCP_OPTS_MAX && opts_offset < (*opts_len);
+	    opt_pos < ROHC_TCP_OPTS_MAX && opts_offset < opts_len;
 	    opt_pos++, opts_offset += opt_len)
 	{
 		uint8_t opt_type;
 
 		/* get type and length of the next TCP option */
-		if(!c_tcp_opt_get_type_len(opts + opts_offset, (*opts_len) - opts_offset,
+		if(!c_tcp_opt_get_type_len(opts + opts_offset, opts_len - opts_offset,
 		                           &opt_type, &opt_len))
 		{
 			rohc_comp_warn(context, "malformed TCP header: failed to parse "
@@ -619,7 +615,7 @@ bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 		/* record the structure of the current list TCP options in context */
 		opts_ctxt->structure[opt_pos] = opt_type;
 	}
-	if(opt_pos >= ROHC_TCP_OPTS_MAX && opts_offset != (*opts_len))
+	if(opt_pos >= ROHC_TCP_OPTS_MAX && opts_offset != opts_len)
 	{
 		rohc_comp_warn(context, "unexpected TCP header: too many TCP options: "
 		               "%zu options found in packet but only %u options "

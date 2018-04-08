@@ -231,11 +231,14 @@ struct rohc_pkt_ip_hdr
 {
 	union
 	{
+		const struct ip_hdr *ip;
 		const struct ipv4_hdr *ipv4;
 		const struct ipv6_hdr *ipv6;
 	};
 	uint8_t version;
 	uint16_t tot_len;
+	uint8_t ttl_hl;    /**< The IPv4 TTL or IPv6 Hop Limit */
+	uint8_t exts_nr;   /**< The new number of IP extensions headers */
 };
 
 

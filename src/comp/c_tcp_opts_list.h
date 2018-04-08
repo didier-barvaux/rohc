@@ -167,8 +167,7 @@ bool rohc_comp_tcp_are_options_acceptable(const struct rohc_comp *const comp,
 
 bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
                                 const struct tcphdr *const tcp,
-                                struct c_tcp_opts_ctxt *const opts_ctxt,
-                                size_t *const opts_len)
+                                struct c_tcp_opts_ctxt *const opts_ctxt)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,

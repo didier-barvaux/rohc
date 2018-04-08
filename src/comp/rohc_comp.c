@@ -626,6 +626,8 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 			remain_len -= sizeof(struct ipv4_hdr);
 
 			pkt_hdrs->ip_hdrs[ip_hdrs_nr].ipv4 = ipv4;
+			pkt_hdrs->ip_hdrs[ip_hdrs_nr].ttl_hl = ipv4->ttl;
+			pkt_hdrs->ip_hdrs[ip_hdrs_nr].exts_nr = 0;
 			fingerprint->base.ip_hdrs[ip_hdrs_nr].saddr.u32[0] = ipv4->saddr;
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "\tsource address = " IPV4_ADDR_FORMAT,
@@ -638,6 +640,7 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 		else if(ip->version == IPV6)
 		{
 			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
+			size_t ipv6_exts_nr;
 			size_t ipv6_exts_len;
 
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "found IPv6");
@@ -666,7 +669,7 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 			 * extension headers that are not compatible with the TCP profile */
 			if(!rohc_comp_ipv6_exts_are_acceptable(comp, &next_proto,
 			                                       remain_data, remain_len,
-			                                       &ipv6_exts_len))
+			                                       &ipv6_exts_nr, &ipv6_exts_len))
 			{
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 				           "IP packet #%zu is not supported: malformed or incompatible "
@@ -678,6 +681,8 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 			remain_len -= ipv6_exts_len;
 
 			pkt_hdrs->ip_hdrs[ip_hdrs_nr].ipv6 = ipv6;
+			pkt_hdrs->ip_hdrs[ip_hdrs_nr].ttl_hl = ipv6->hl;
+			pkt_hdrs->ip_hdrs[ip_hdrs_nr].exts_nr = ipv6_exts_nr;
 			memcpy(&fingerprint->base.ip_hdrs[ip_hdrs_nr].saddr.u8, &ipv6->saddr,
 			       sizeof(struct ipv6_addr));
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,

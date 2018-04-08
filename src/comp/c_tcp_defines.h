@@ -46,20 +46,8 @@
  */
 struct tcp_tmp_variables
 {
-	/* The length of the TCP payload (headers and options excluded) */
-	uint16_t payload_len;
-
 	/** The IP-ID / SN delta (with bits swapped if necessary) */
 	uint16_t ip_id_delta;
-
-	/** The version if the innermost IP header */
-	uint8_t innermost_ip_version;
-
-	/** The new number of IP extensions headers (for every IP header) */
-	uint8_t ip_exts_nr[ROHC_MAX_IP_HDRS];
-
-	/* innermost IPv4 TTL or IPv6 Hop Limit */
-	uint8_t ttl_hopl;
 
 	/** Whether at least one of the static part of the IPv6 extensions changed
 	 * in the current packet */
@@ -84,7 +72,7 @@ struct tcp_tmp_variables
 	uint16_t ecn_used_changed:1; /**< Whether the ecn_used flag changed or not */
 	uint16_t unused:2;
 
-	uint8_t unused2[5];
+	uint8_t unused2[4];
 };
 
 
