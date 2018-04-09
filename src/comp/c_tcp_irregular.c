@@ -75,6 +75,7 @@ static int tcp_code_irregular_tcp_part(const struct rohc_comp_ctxt *const contex
  *
  * @param context           The compression context
  * @param uncomp_pkt_hdrs   The uncompressed headers to encode
+ * @param tmp               The temporary state for the compressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @return                  The length of the ROHC packet if successful,
@@ -82,6 +83,7 @@ static int tcp_code_irregular_tcp_part(const struct rohc_comp_ctxt *const contex
  */
 int tcp_code_irreg_chain(struct rohc_comp_ctxt *const context,
                          const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                         const struct tcp_tmp_variables *const tmp,
                          uint8_t *const rohc_pkt,
                          const size_t rohc_pkt_max_len)
 {
@@ -105,7 +107,7 @@ int tcp_code_irreg_chain(struct rohc_comp_ctxt *const context,
 
 			ret = tcp_code_irregular_ipv4_part(context, ip_context, ipv4, is_innermost,
 			                                   tcp_context->ecn_used,
-			                                   tcp_context->tmp.ttl_irreg_chain_flag,
+			                                   tmp->ttl_irreg_chain_flag,
 			                                   rohc_remain_data, rohc_remain_len);
 			if(ret < 0)
 			{
@@ -127,7 +129,7 @@ int tcp_code_irreg_chain(struct rohc_comp_ctxt *const context,
 
 			ret = tcp_code_irregular_ipv6_part(context, ip_context, ipv6, is_innermost,
 			                                   tcp_context->ecn_used,
-			                                   tcp_context->tmp.ttl_irreg_chain_flag,
+			                                   tmp->ttl_irreg_chain_flag,
 			                                   rohc_remain_data, rohc_remain_len);
 			if(ret < 0)
 			{

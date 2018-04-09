@@ -55,9 +55,10 @@ static int tcp_code_replicate_ipv6_opt_part(const struct rohc_comp_ctxt *const c
 
 static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const context,
                                        const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                                       const struct tcp_tmp_variables *const tmp,
                                        uint8_t *const rohc_data,
                                        const size_t rohc_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 
 
 /**
@@ -65,6 +66,7 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
  *
  * @param context           The compression context
  * @param uncomp_pkt_hdrs   The uncompressed headers to encode
+ * @param tmp               The temporary state for the compressed packet
  * @param[out] rohc_pkt     The ROHC packet being built
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @return                  The length of the ROHC packet if successful,
@@ -72,6 +74,7 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
  */
 int tcp_code_replicate_chain(struct rohc_comp_ctxt *const context,
                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                             const struct tcp_tmp_variables *const tmp,
                              uint8_t *const rohc_pkt,
                              const size_t rohc_pkt_max_len)
 {
@@ -153,7 +156,7 @@ int tcp_code_replicate_chain(struct rohc_comp_ctxt *const context,
 	}
 
 	/* add TCP replicate part */
-	ret = tcp_code_replicate_tcp_part(context, uncomp_pkt_hdrs,
+	ret = tcp_code_replicate_tcp_part(context, uncomp_pkt_hdrs, tmp,
 	                                  rohc_remain_data, rohc_remain_len);
 	if(ret < 0)
 	{
@@ -433,6 +436,7 @@ error:
  *
  * @param context         The compression context
  * @param uncomp_pkt_hdrs The uncompressed headers to encode
+ * @param tmp             The temporary state for the compressed packet
  * @param[out] rohc_data  The ROHC packet being built
  * @param rohc_max_len    The max remaining length in the ROHC buffer
  * @return                The length appended in the ROHC buffer if positive,
@@ -440,6 +444,7 @@ error:
  */
 static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const context,
                                        const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                                       const struct tcp_tmp_variables *const tmp,
                                        uint8_t *const rohc_data,
                                        const size_t rohc_max_len)
 {
@@ -520,7 +525,7 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
 
 	/* window */
 	{
-		const bool cr_tcp_window_needed = (tcp_context->tmp.tcp_window_changed ||
+		const bool cr_tcp_window_needed = (tmp->tcp_window_changed ||
 		                                   tcp_context->cr_tcp_window_present);
 		ret = c_static_or_irreg16(tcp->window, !cr_tcp_window_needed,
 		                          rohc_remain_data, rohc_remain_len, &indicator);
@@ -565,7 +570,7 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
 	 * important to transmit all packets without any change, even if those bits
 	 * will be ignored at reception */
 	{
-		const bool cr_tcp_ack_num_needed = (tcp_context->tmp.tcp_ack_num_changed ||
+		const bool cr_tcp_ack_num_needed = (tmp->tcp_ack_num_changed ||
 		                                    tcp_context->cr_tcp_ack_num_present);
 		ret = c_static_or_irreg32(tcp->ack_num, !cr_tcp_ack_num_needed,
 		                          rohc_remain_data, rohc_remain_len, &indicator);

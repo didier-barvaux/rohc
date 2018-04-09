@@ -124,10 +124,6 @@ struct sc_tcp_context
 	/** The compression context for TCP options */
 	struct c_tcp_opts_ctxt tcp_opts;
 
-	/// @brief TCP-specific temporary variables that are used during one single
-	///        compression of packet
-	struct tcp_tmp_variables tmp;
-
 	/// The previous TCP header
 	struct tcphdr old_tcphdr;
 	uint8_t unused2[3];
