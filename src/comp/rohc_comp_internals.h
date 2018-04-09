@@ -237,6 +237,20 @@ struct rohc_pkt_ip_hdr
 	};
 	uint8_t version;
 	uint16_t tot_len;
+	union
+	{
+		uint8_t tos_tc;     /**< The IPv4 TOS or IPv6 TC field */
+		struct
+		{
+#if WORDS_BIGENDIAN == 1
+			uint8_t dscp:6;  /**< The IPv4/v6 DSCP value */
+			uint8_t ecn:2;   /**< The IPv4/v6 ECN value */
+#else
+			uint8_t ecn:2;
+			uint8_t dscp:6;
+#endif
+		} __attribute__((packed));
+	};
 	uint8_t ttl_hl;    /**< The IPv4 TTL or IPv6 Hop Limit */
 	uint8_t exts_nr;   /**< The new number of IP extensions headers */
 };

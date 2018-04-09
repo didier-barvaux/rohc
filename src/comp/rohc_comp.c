@@ -626,6 +626,7 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 			remain_len -= sizeof(struct ipv4_hdr);
 
 			pkt_hdrs->ip_hdrs[ip_hdrs_nr].ipv4 = ipv4;
+			pkt_hdrs->ip_hdrs[ip_hdrs_nr].tos_tc = ipv4->tos;
 			pkt_hdrs->ip_hdrs[ip_hdrs_nr].ttl_hl = ipv4->ttl;
 			pkt_hdrs->ip_hdrs[ip_hdrs_nr].exts_nr = 0;
 			fingerprint->base.ip_hdrs[ip_hdrs_nr].saddr.u32[0] = ipv4->saddr;
@@ -681,6 +682,7 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 			remain_len -= ipv6_exts_len;
 
 			pkt_hdrs->ip_hdrs[ip_hdrs_nr].ipv6 = ipv6;
+			pkt_hdrs->ip_hdrs[ip_hdrs_nr].tos_tc = ipv6_get_tc(ipv6);
 			pkt_hdrs->ip_hdrs[ip_hdrs_nr].ttl_hl = ipv6->hl;
 			pkt_hdrs->ip_hdrs[ip_hdrs_nr].exts_nr = ipv6_exts_nr;
 			memcpy(&fingerprint->base.ip_hdrs[ip_hdrs_nr].saddr.u8, &ipv6->saddr,

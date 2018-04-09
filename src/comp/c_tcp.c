@@ -2988,34 +2988,41 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 	tcp_context->tmp.ttl_irreg_chain_flag = 0;
 	for(ip_hdr_pos = 0; ip_hdr_pos < uncomp_pkt_hdrs->ip_hdrs_nr; ip_hdr_pos++)
 	{
-		const struct ip_hdr *const ip = uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos].ip;
 		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
 		const bool is_innermost = !!((ip_hdr_pos + 1) == uncomp_pkt_hdrs->ip_hdrs_nr);
-		uint8_t ttl_hl;
+		const struct rohc_pkt_ip_hdr *const ip_hdr = &(uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos]);
+		const uint8_t dscp = ip_hdr->dscp;
+		const uint8_t ecn = ip_hdr->ecn;
+		const uint8_t ttl_hl = ip_hdr->ttl_hl;
 
-		rohc_comp_debug(context, "found IPv%d header #%zu",
-		                ip->version, ip_hdr_pos + 1);
+		rohc_comp_debug(context, "detect changes of IPv%d header #%zu",
+		                ip_hdr->version, ip_hdr_pos + 1);
 
+		/* IP DSCP */
 		pkt_outer_dscp_changed =
 			!!(pkt_outer_dscp_changed || last_pkt_outer_dscp_changed);
+		last_pkt_outer_dscp_changed = !!(dscp != ip_context->dscp);
+		rohc_comp_debug(context, "  DSCP did%s change: 0x%02x -> 0x%02x",
+		                last_pkt_outer_dscp_changed ? "" : "n't",
+		                ip_context->dscp, dscp);
 
-		if(ip->version == IPV4)
+		/* IP ECN */
+		pkt_ecn_vals |= ecn;
+
+		/* IP TTL/HL */
+		if(!is_innermost && ttl_hl != ip_context->ttl_hopl)
 		{
-			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) ip;
-			last_pkt_outer_dscp_changed = !!(ipv4->dscp != ip_context->dscp);
-			pkt_ecn_vals |= ipv4->ecn;
-			ttl_hl = ipv4->ttl;
+			tcp_context->tmp.ttl_irreg_chain_flag |= 1;
+			rohc_comp_debug(context, "  TTL/HL did change: 0x%02x -> 0x%02x",
+			                ip_context->ttl_hopl, ttl_hl);
 		}
-		else /* IPv6 */
-		{
-			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) ip;
-			const uint8_t *const ipv6_payload = (const uint8_t *const) (ipv6 + 1);
-			const size_t ipv6_payload_len =
-				uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos].tot_len - sizeof(struct ipv6_hdr);
 
-			last_pkt_outer_dscp_changed = !!(ipv6_get_dscp(ipv6) != ip_context->dscp);
-			pkt_ecn_vals |= ipv6->ecn;
-			ttl_hl = ipv6->hl;
+		/* IPv6 extension headers */
+		if(ip_hdr->version == IPV6)
+		{
+			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) ip_hdr->ipv6;
+			const uint8_t *const ipv6_payload = (const uint8_t *const) (ipv6 + 1);
+			const size_t ipv6_payload_len = ip_hdr->tot_len - sizeof(struct ipv6_hdr);
 
 			if(!tcp_detect_changes_ipv6_exts(context, ip_context, ipv6->nh,
 			                                 ipv6_payload, ipv6_payload_len))
@@ -3024,21 +3031,11 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 				goto error;
 			}
 		}
-		rohc_comp_debug(context, "  DSCP did%s change",
-		                last_pkt_outer_dscp_changed ? "" : "n't");
 
-		if(!is_innermost && ttl_hl != ip_context->ttl_hopl)
-		{
-			tcp_context->tmp.ttl_irreg_chain_flag |= 1;
-			rohc_comp_debug(context, "last ttl_hopl = 0x%02x, ttl_hopl = "
-			                "0x%02x, ttl_irreg_chain_flag = %d",
-			                ip_context->ttl_hopl, ttl_hl,
-			                tcp_context->tmp.ttl_irreg_chain_flag);
-		}
 	}
 	tcp_context->tmp.outer_ip_ttl_changed =
 		(tcp_context->tmp.ttl_irreg_chain_flag != 0);
-	tcp_field_descr_change(context, "one or more outer TTL values",
+	tcp_field_descr_change(context, "one or more outer TTL/HL values",
 	                       tcp_context->tmp.outer_ip_ttl_changed, 0);
 
 	/* TCP ECN */
