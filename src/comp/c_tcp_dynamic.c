@@ -58,7 +58,7 @@ static int tcp_code_dynamic_ipv6_opt_part(const struct rohc_comp_ctxt *const con
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
 static int tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *const context,
-                                     const struct tcphdr *const tcp,
+                                     const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                      uint8_t *const rohc_data,
                                      const size_t rohc_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
@@ -87,7 +87,6 @@ int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
 	ip_context_t *const inner_ip_context =
 		&(tcp_context->ip_contexts[uncomp_pkt_hdrs->ip_hdrs_nr - 1]);
 	const struct ip_hdr *inner_ip_hdr = uncomp_pkt_hdrs->innermost_ip_hdr->ip;
-	const struct tcphdr *const tcp = (struct tcphdr *) uncomp_pkt_hdrs->tcp;
 
 	size_t ip_hdr_pos;
 	int ret;
@@ -161,7 +160,8 @@ int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
 	}
 
 	/* add TCP dynamic part */
-	ret = tcp_code_dynamic_tcp_part(context, tcp, rohc_remain_data, rohc_remain_len);
+	ret = tcp_code_dynamic_tcp_part(context, uncomp_pkt_hdrs,
+	                                rohc_remain_data, rohc_remain_len);
 	if(ret < 0)
 	{
 		rohc_comp_warn(context, "failed to build the TCP header part of the "
@@ -435,19 +435,19 @@ TODO
 \endverbatim
  *
  * @param context         The compression context
- * @param tcp             The TCP header
+ * @param uncomp_pkt_hdrs The uncompressed headers to encode
  * @param[out] rohc_data  The ROHC packet being built
  * @param rohc_max_len    The max remaining length in the ROHC buffer
  * @return                The length appended in the ROHC buffer if positive,
  *                        -1 in case of error
  */
 static int tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *const context,
-                                     const struct tcphdr *const tcp,
+                                     const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                      uint8_t *const rohc_data,
                                      const size_t rohc_max_len)
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
-	const size_t min_tcp_hdr_len = sizeof(struct tcphdr) / sizeof(uint32_t);
+	const struct tcphdr *const tcp = (struct tcphdr *) uncomp_pkt_hdrs->tcp;
 
 	uint8_t *rohc_remain_data = rohc_data;
 	size_t rohc_remain_len = rohc_max_len;
@@ -570,7 +570,7 @@ static int tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *const context,
 	}
 
 	/* list of TCP options */
-	if(tcp->data_offset == min_tcp_hdr_len)
+	if(uncomp_pkt_hdrs->tcp_opts.nr == 0)
 	{
 		rohc_comp_debug(context, "TCP no options!");
 
@@ -590,7 +590,7 @@ static int tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *const context,
 	{
 		bool no_item_needed;
 
-		ret = c_tcp_code_tcp_opts_list_item(context, tcp, tcp_context->msn,
+		ret = c_tcp_code_tcp_opts_list_item(context, uncomp_pkt_hdrs, tcp_context->msn,
 		                                    ROHC_CHAIN_DYNAMIC,
 		                                    &tcp_context->tcp_opts,
 		                                    rohc_remain_data, rohc_remain_len,

@@ -54,7 +54,7 @@ static int tcp_code_replicate_ipv6_opt_part(const struct rohc_comp_ctxt *const c
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
 static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const context,
-                                       const struct tcphdr *const tcp,
+                                       const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                        uint8_t *const rohc_data,
                                        const size_t rohc_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
@@ -65,22 +65,17 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
  *
  * @param context           The compression context
  * @param uncomp_pkt_hdrs   The uncompressed headers to encode
- * @param uncomp_pkt        The uncompressed packet to encode
- * @param rohc_pkt          OUT: The ROHC packet
+ * @param[out] rohc_pkt     The ROHC packet being built
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
 int tcp_code_replicate_chain(struct rohc_comp_ctxt *const context,
                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                             const struct rohc_buf *const uncomp_pkt,
                              uint8_t *const rohc_pkt,
                              const size_t rohc_pkt_max_len)
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
-
-	const uint8_t *remain_data = rohc_buf_data(*uncomp_pkt);
-	size_t remain_len = uncomp_pkt->len;
 
 	uint8_t *rohc_remain_data = rohc_pkt;
 	size_t rohc_remain_len = rohc_pkt_max_len;
@@ -89,22 +84,15 @@ int tcp_code_replicate_chain(struct rohc_comp_ctxt *const context,
 	int ret;
 
 	/* add IP parts of replicate chain */
-	for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)
+	for(ip_hdr_pos = 0; ip_hdr_pos < uncomp_pkt_hdrs->ip_hdrs_nr; ip_hdr_pos++)
 	{
-		const struct ip_hdr *const ip_hdr = (struct ip_hdr *) remain_data;
+		const struct ip_hdr *const ip = uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos].ip;
 		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
 		const bool is_inner = !!(ip_hdr_pos + 1 == tcp_context->ip_contexts_nr);
-		size_t ip_ext_pos;
 
-		/* retrieve IP version */
-		assert(remain_len >= sizeof(struct ip_hdr));
-		rohc_comp_debug(context, "found IPv%d", ip_hdr->version);
-
-		if(ip_hdr->version == IPV4)
+		if(ip->version == IPV4)
 		{
-			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) remain_data;
-
-			assert(remain_len >= sizeof(struct ipv4_hdr));
+			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) ip;
 
 			ret = tcp_code_replicate_ipv4_part(context, ip_context, ipv4, is_inner,
 			                                   rohc_remain_data, rohc_remain_len);
@@ -116,16 +104,15 @@ int tcp_code_replicate_chain(struct rohc_comp_ctxt *const context,
 			}
 			rohc_remain_data += ret;
 			rohc_remain_len -= ret;
-
-			remain_data += sizeof(struct ipv4_hdr);
-			remain_len -= sizeof(struct ipv4_hdr);
 		}
-		else if(ip_hdr->version == IPV6)
+		else /* IPv6 */
 		{
-			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
-			uint8_t protocol;
-
-			assert(remain_len >= sizeof(struct ipv6_hdr));
+			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) ip;
+			const uint8_t *remain_data = (const uint8_t *) (ipv6 + 1);
+			size_t remain_len =
+				uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos].tot_len - sizeof(struct ipv6_hdr);
+			uint8_t protocol = ipv6->nh;
+			size_t ip_ext_pos;
 
 			ret = tcp_code_replicate_ipv6_part(context, ip_context, ipv6,
 			                                   rohc_remain_data, rohc_remain_len);
@@ -137,10 +124,6 @@ int tcp_code_replicate_chain(struct rohc_comp_ctxt *const context,
 			}
 			rohc_remain_data += ret;
 			rohc_remain_len -= ret;
-
-			protocol = ipv6->nh;
-			remain_data += sizeof(struct ipv6_hdr);
-			remain_len -= sizeof(struct ipv6_hdr);
 
 			for(ip_ext_pos = 0;
 			    ip_ext_pos < uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos].exts_nr;
@@ -167,39 +150,21 @@ int tcp_code_replicate_chain(struct rohc_comp_ctxt *const context,
 				remain_len -= opt_len;
 			}
 		}
-		else
-		{
-			rohc_comp_warn(context, "unexpected IP version %u", ip_hdr->version);
-			assert(0);
-			goto error;
-		}
 	}
 
 	/* add TCP replicate part */
+	ret = tcp_code_replicate_tcp_part(context, uncomp_pkt_hdrs,
+	                                  rohc_remain_data, rohc_remain_len);
+	if(ret < 0)
 	{
-		const struct tcphdr *const tcp = (struct tcphdr *) remain_data;
-
-		assert(remain_len >= sizeof(struct tcphdr));
-
-		ret = tcp_code_replicate_tcp_part(context, tcp, rohc_remain_data,
-		                                  rohc_remain_len);
-		if(ret < 0)
-		{
-			rohc_comp_warn(context, "failed to build the TCP header part of the "
-			               "replicate chain");
-			goto error;
-		}
-#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
-		rohc_remain_data += ret;
-#endif
-		rohc_remain_len -= ret;
-
-		/* skip TCP header and options */
-		remain_data += (tcp->data_offset << 2);
-#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
-		remain_len -= (tcp->data_offset << 2);
-#endif
+		rohc_comp_warn(context, "failed to build the TCP header part of the "
+		               "replicate chain");
+		goto error;
 	}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
+	rohc_remain_data += ret;
+#endif
+	rohc_remain_len -= ret;
 
 	return (rohc_pkt_max_len - rohc_remain_len);
 
@@ -467,18 +432,19 @@ error:
  * @brief Build the replicate part of the TCP header
  *
  * @param context         The compression context
- * @param tcp             The TCP header
+ * @param uncomp_pkt_hdrs The uncompressed headers to encode
  * @param[out] rohc_data  The ROHC packet being built
  * @param rohc_max_len    The max remaining length in the ROHC buffer
  * @return                The length appended in the ROHC buffer if positive,
  *                        -1 in case of error
  */
 static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const context,
-                                       const struct tcphdr *const tcp,
+                                       const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                        uint8_t *const rohc_data,
                                        const size_t rohc_max_len)
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
+	const struct tcphdr *const tcp = (struct tcphdr *) uncomp_pkt_hdrs->tcp;
 
 	uint8_t *rohc_remain_data = rohc_data;
 	size_t rohc_remain_len = rohc_max_len;
@@ -669,7 +635,7 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
 
 	/* the structure of the list of TCP options changed or at least one of
 	 * the option changed, compress them */
-	ret = c_tcp_code_tcp_opts_list_item(context, tcp, tcp_context->msn,
+	ret = c_tcp_code_tcp_opts_list_item(context, uncomp_pkt_hdrs, tcp_context->msn,
 	                                    ROHC_CHAIN_REPLICATE,
 	                                    &tcp_context->tcp_opts,
 	                                    rohc_remain_data, rohc_remain_len,

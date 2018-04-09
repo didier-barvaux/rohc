@@ -787,7 +787,7 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 		/* reject packets with malformed TCP options or TCP options that are not
 		 * compatible with the TCP profile */
 		if(!rohc_comp_tcp_are_options_acceptable(comp, tcp_header->options,
-		                                         tcp_header->data_offset))
+		                                         tcp_header->data_offset, pkt_hdrs))
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "malformed or incompatible TCP options detected");

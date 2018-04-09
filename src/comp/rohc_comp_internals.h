@@ -34,6 +34,7 @@
 #include "schemes/comp_wlsb.h"
 #include "protocols/ip.h"
 #include "protocols/ipv6.h"
+#include "protocols/tcp.h"
 #include "feedback.h"
 
 #include <stdbool.h>
@@ -275,7 +276,18 @@ struct rohc_pkt_hdrs
 	/* The transport header */
 	union
 	{
-		const struct tcphdr *tcp;       /**< The TCP header (if any) */
+		struct
+		{
+			const struct tcphdr *tcp;    /**< The TCP header (if any) */
+			struct
+			{
+				uint8_t nr;
+				uint8_t tot_len;
+				const uint8_t *data[ROHC_TCP_OPTS_MAX];
+				uint8_t types[ROHC_TCP_OPTS_MAX];
+				uint8_t lengths[ROHC_TCP_OPTS_MAX];
+			} tcp_opts;
+		};
 		const struct udphdr *udp;       /**< The UDP header (if any) */
 		const struct udphdr *udp_lite;  /**< The UDP-Lite header (if any) */
 		const struct esphdr *esp;       /**< The ESP header (if any) */
