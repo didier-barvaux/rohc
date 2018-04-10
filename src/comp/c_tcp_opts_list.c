@@ -31,6 +31,7 @@
 #include "schemes/tcp_ts.h"
 #include "schemes/tcp_sack.h"
 #include "rohc_utils.h"
+#include "sdvl.h"
 
 #include <string.h>
 
@@ -57,6 +58,10 @@ struct c_tcp_opt
 		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 };
 
+
+static uint8_t tcp_opt_ts_one_can_be_encoded(const struct c_wlsb *const wlsb,
+                                             const uint32_t ts)
+	__attribute__((warn_unused_result, nonnull(1)));
 
 static bool c_tcp_opt_get_type_len(const uint8_t *const opts_data,
                                    const size_t opts_len,
@@ -543,11 +548,19 @@ void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 
 		if(opt_type == TCP_OPT_TS)
 		{
+			opts_ctxt->tmp.opt_ts_present = true;
+
 			memcpy(&opts_ctxt->tmp.ts_req, opt_data + 2, sizeof(uint32_t));
 			opts_ctxt->tmp.ts_req = rohc_ntoh32(opts_ctxt->tmp.ts_req);
+			opts_ctxt->tmp.ts_req_bytes_nr =
+				tcp_opt_ts_one_can_be_encoded(&opts_ctxt->ts_req_wlsb,
+				                              opts_ctxt->tmp.ts_req);
+
 			memcpy(&opts_ctxt->tmp.ts_reply, opt_data + 6, sizeof(uint32_t));
 			opts_ctxt->tmp.ts_reply = rohc_ntoh32(opts_ctxt->tmp.ts_reply);
-			opts_ctxt->tmp.opt_ts_present = true;
+			opts_ctxt->tmp.ts_reply_bytes_nr =
+				tcp_opt_ts_one_can_be_encoded(&opts_ctxt->ts_reply_wlsb,
+				                              opts_ctxt->tmp.ts_reply);
 		}
 
 		/* determine the index of the TCP option */
@@ -908,7 +921,7 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 
 			/* encode TS with ts_lsb() */
 			is_ok = c_tcp_ts_lsb_code(context, rohc_ntoh32(opt_ts->ts),
-			                          &opts_ctxt->ts_req_wlsb,
+			                          opts_ctxt->tmp.ts_req_bytes_nr,
 			                          rohc_remain_data, rohc_remain_len,
 			                          &encoded_ts_lsb_len);
 			if(!is_ok)
@@ -923,7 +936,7 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 
 			/* encode TS reply with ts_lsb()*/
 			is_ok = c_tcp_ts_lsb_code(context, rohc_ntoh32(opt_ts->ts_reply),
-			                          &opts_ctxt->ts_reply_wlsb,
+			                          opts_ctxt->tmp.ts_reply_bytes_nr,
 			                          rohc_remain_data, rohc_remain_len,
 			                          &encoded_ts_lsb_len);
 			if(!is_ok)
@@ -1026,6 +1039,48 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 
 error:
 	return -1;
+}
+
+
+/**
+ * @brief Whether the TCP Timestamp (TS) reply/request field can be encoded or not
+ *
+ * @param wlsb  The W-LSB compression context of the TS reply/request field
+ * @param ts    The TS reply/request field
+ * @return      true if the TS reply/request field can be encoded,
+ *              false if the TS reply/request field shall be sent in full
+ */
+static uint8_t tcp_opt_ts_one_can_be_encoded(const struct c_wlsb *const wlsb,
+                                             const uint32_t ts)
+{
+	uint8_t is_possible;
+
+	if(wlsb_is_kp_possible_32bits(wlsb, ts, ROHC_SDVL_MAX_BITS_IN_1_BYTE,
+	                              ROHC_LSB_SHIFT_TCP_TS_1B))
+	{
+		is_possible = 1;
+	}
+	else if(wlsb_is_kp_possible_32bits(wlsb, ts, ROHC_SDVL_MAX_BITS_IN_2_BYTES,
+	                                   ROHC_LSB_SHIFT_TCP_TS_2B))
+	{
+		is_possible = 2;
+	}
+	else if(wlsb_is_kp_possible_32bits(wlsb, ts, ROHC_SDVL_MAX_BITS_IN_3_BYTES,
+	                                   ROHC_LSB_SHIFT_TCP_TS_3B))
+	{
+		is_possible = 3;
+	}
+	else if(wlsb_is_kp_possible_32bits(wlsb, ts, ROHC_SDVL_MAX_BITS_IN_4_BYTES,
+	                                   ROHC_LSB_SHIFT_TCP_TS_4B))
+	{
+		is_possible = 4;
+	}
+	else
+	{
+		is_possible = 0;
+	}
+
+	return is_possible;
 }
 
 

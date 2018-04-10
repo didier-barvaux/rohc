@@ -152,10 +152,6 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 static bool tcp_opt_ts_can_be_encoded(const struct c_tcp_opts_ctxt *const opts)
 	__attribute__((warn_unused_result, nonnull(1)));
 
-static bool tcp_opt_ts_one_can_be_encoded(const struct c_wlsb *const wlsb,
-                                          const uint32_t ts)
-	__attribute__((warn_unused_result, nonnull(1)));
-
 /* IR and CO packets */
 static int code_IR_packet(struct rohc_comp_ctxt *const context,
                           const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
@@ -3668,37 +3664,8 @@ static bool tcp_detect_changes_tcp_hdr(struct rohc_comp_ctxt *const context,
 static bool tcp_opt_ts_can_be_encoded(const struct c_tcp_opts_ctxt *const opts)
 {
 	return (opts->is_timestamp_init &&
-	        tcp_opt_ts_one_can_be_encoded(&opts->ts_req_wlsb, opts->tmp.ts_req) &&
-	        tcp_opt_ts_one_can_be_encoded(&opts->ts_reply_wlsb, opts->tmp.ts_reply));
-}
-
-
-/**
- * @brief Whether the TCP Timestamp (TS) reply/request field can be encoded or not
- *
- * @param wlsb  The W-LSB compression context of the TS reply/request field
- * @param ts    The TS reply/request field
- * @return      true if the TS reply/request field can be encoded,
- *              false if the TS reply/request field shall be sent in full
- */
-static bool tcp_opt_ts_one_can_be_encoded(const struct c_wlsb *const wlsb,
-                                          const uint32_t ts)
-{
-	bool on_1_byte;
-	bool on_2_bytes;
-	bool on_3_bytes;
-	bool on_4_bytes;
-
-	on_1_byte = wlsb_is_kp_possible_32bits(wlsb, ts, ROHC_SDVL_MAX_BITS_IN_1_BYTE,
-	                                       ROHC_LSB_SHIFT_TCP_TS_1B);
-	on_2_bytes = wlsb_is_kp_possible_32bits(wlsb, ts, ROHC_SDVL_MAX_BITS_IN_2_BYTES,
-	                                        ROHC_LSB_SHIFT_TCP_TS_2B);
-	on_3_bytes = wlsb_is_kp_possible_32bits(wlsb, ts, ROHC_SDVL_MAX_BITS_IN_3_BYTES,
-	                                        ROHC_LSB_SHIFT_TCP_TS_3B);
-	on_4_bytes = wlsb_is_kp_possible_32bits(wlsb, ts, ROHC_SDVL_MAX_BITS_IN_4_BYTES,
-	                                        ROHC_LSB_SHIFT_TCP_TS_4B);
-
-	return (on_1_byte || on_2_bytes || on_3_bytes || on_4_bytes);
+	        opts->tmp.ts_req_bytes_nr != 0 &&
+	        opts->tmp.ts_reply_bytes_nr != 0);
 }
 
 

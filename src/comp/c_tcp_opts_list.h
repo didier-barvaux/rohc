@@ -103,7 +103,10 @@ struct c_tcp_opts_ctxt_tmp
 	uint8_t opt_ts_present:1;
 	uint8_t unused:5;
 
-	uint8_t unused2[5];
+	uint8_t ts_req_bytes_nr:4;
+	uint8_t ts_reply_bytes_nr:4;
+
+	uint8_t unused4[4];
 };
 
 /* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
