@@ -41,9 +41,6 @@
  * Constants and macros
  */
 
-/** The number of ROHC profiles ready to be used */
-#define C_NUM_PROFILES 10U
-
 /** The default maximal number of packets sent in > IR states (= FO and SO
  *  states) before changing back the state to IR (periodic refreshes) */
 #define CHANGE_TO_IR_COUNT  1700
@@ -139,10 +136,7 @@ struct rohc_comp
 	uint16_t num_contexts_used;
 
 	/** Which profiles are enabled and with one are not? */
-	bool enabled_profiles[C_NUM_PROFILES];
-
-	/** TODO */
-	bool enabled_profiles2[2][9];
+	bool enabled_profiles[ROHC_PROFILE_ID_MAJOR_MAX + 1][ROHC_PROFILE_ID_MINOR_MAX + 1];
 
 	/* CRC-related variables: */
 

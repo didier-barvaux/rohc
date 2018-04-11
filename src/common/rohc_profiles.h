@@ -50,6 +50,12 @@ extern "C"
  * ROHC profiles numbers allocated by the IANA (see 8 in the RFC 3095):
  */
 
+/** The maximum major number for the supported ROHC profile IDs */
+#define ROHC_PROFILE_ID_MAJOR_MAX  0x01U
+
+/** The maximum minor number for the supported ROHC profile IDs */
+#define ROHC_PROFILE_ID_MINOR_MAX  0x08U
+
 /**
  * @brief The different ROHC compression/decompression profiles
  *

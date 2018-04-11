@@ -84,31 +84,32 @@ extern const struct rohc_comp_profile rohc_comp_rfc5225_ip_udp_profile;
 extern const struct rohc_comp_profile rohc_comp_rfc5225_ip_esp_profile;
 
 
-/**
- * @brief The compression parts of the ROHC profiles.
- *
- * The order of profiles declaration is important: they are evaluated in that
- * order. The RTP profile shall be declared before the UDP one for example.
- */
-static const struct rohc_comp_profile *const rohc_comp_profiles[C_NUM_PROFILES] =
+/** The ROHC compression profiles */
+static const struct rohc_comp_profile *const
+	rohc_comp_profiles[ROHC_PROFILE_ID_MAJOR_MAX + 1][ROHC_PROFILE_ID_MINOR_MAX + 1] =
 {
-	&c_rtp_profile,
-#if 0
-	&rohc_comp_rfc5225_ip_udp_rtp_profile,
-	&rohc_comp_rfc5225_ip_udplite_rtp_profile,
-#endif
-	&c_udp_profile,  /* must be declared after RTP profiles */
-	&rohc_comp_rfc5225_ip_udp_profile,
-	&c_udp_lite_profile,
-#if 0
-	&rohc_comp_rfc5225_ip__udplite_profile,
-#endif
-	&c_esp_profile,
-	&rohc_comp_rfc5225_ip_esp_profile,
-	&c_tcp_profile,
-	&c_ip_profile,  /* must be declared after all IP-based profiles */
-	&rohc_comp_rfc5225_ip_profile,
-	&c_uncompressed_profile, /* must be declared last */
+	[0] = {
+		[0] = &c_uncompressed_profile,
+		[1] = &c_rtp_profile,
+		[2] = &c_udp_profile,
+		[3] = &c_esp_profile,
+		[4] = &c_ip_profile,
+		[5] = NULL,
+		[6] = &c_tcp_profile,
+		[7] = NULL,
+		[8] = &c_udp_lite_profile,
+	},
+	[1] = {
+		[0] = NULL,
+		[1] = NULL,
+		[2] = &rohc_comp_rfc5225_ip_udp_profile,
+		[3] = &rohc_comp_rfc5225_ip_esp_profile,
+		[4] = &rohc_comp_rfc5225_ip_profile,
+		[5] = NULL,
+		[6] = NULL,
+		[7] = NULL,
+		[8] = NULL,
+	},
 };
 
 
@@ -116,17 +117,13 @@ static const struct rohc_comp_profile *const rohc_comp_profiles[C_NUM_PROFILES] 
  * Prototypes of private functions related to ROHC compression profiles
  */
 
-static const struct rohc_comp_profile *
-	rohc_get_profile_from_id(const struct rohc_comp *comp,
-	                         const rohc_profile_t profile_id)
-	__attribute__((warn_unused_result, nonnull(1)));
-
-static int rohc_comp_get_profile_index(const rohc_profile_t profile)
-	__attribute__((warn_unused_result));
-
 static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
                                             const struct rohc_buf *const packet)
 	__attribute__((nonnull(1, 2), warn_unused_result));
+
+static bool rohc_comp_profile_enabled_nocheck(const struct rohc_comp *const comp,
+                                              const rohc_profile_t profile)
+	__attribute__((warn_unused_result, nonnull(1)));
 
 
 /*
@@ -253,8 +250,8 @@ struct rohc_comp * rohc_comp_new2(const rohc_cid_type_t cid_type,
 	const size_t wlsb_width = 4; /* default window width for W-LSB encoding */
 	const size_t reorder_ratio = ROHC_REORDERING_NONE; /* default reordering ratio */
 	struct rohc_comp *comp;
+	uint8_t profile_major;
 	bool is_fine;
-	uint16_t i;
 
 	/* check input parameters */
 	if(cid_type == ROHC_SMALL_CID)
@@ -298,16 +295,13 @@ struct rohc_comp * rohc_comp_new2(const rohc_cid_type_t cid_type,
 	comp->random_cb_ctxt = rand_priv;
 
 	/* all compression profiles are disabled by default */
-	for(i = 0; i < C_NUM_PROFILES; i++)
+	for(profile_major = 0; profile_major <= ROHC_PROFILE_ID_MAJOR_MAX; profile_major++)
 	{
-		comp->enabled_profiles[i] = false;
-	}
-	for(i = 0; i < 2; i++)
-	{
-		size_t j;
-		for(j = 0; j < 9; j++)
+		uint8_t profile_minor;
+
+		for(profile_minor = 0; profile_minor <= ROHC_PROFILE_ID_MINOR_MAX; profile_minor++)
 		{
-			comp->enabled_profiles2[i][j] = false;
+			comp->enabled_profiles[profile_major][profile_minor] = false;
 		}
 	}
 
@@ -512,7 +506,7 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 	rohc_profile_t profile = ROHC_PROFILE_MAX;
 
 	/* ROHCv1 Uncompressed profile is possible if it is enabled */
-	if(rohc_comp_profile_enabled(comp, ROHCv1_PROFILE_UNCOMPRESSED))
+	if(rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_UNCOMPRESSED))
 	{
 		profile = ROHCv1_PROFILE_UNCOMPRESSED;
 	}
@@ -647,12 +641,12 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 	/* ROHCv1/v2 IP-only profiles are possible if they are enabled */
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	           "IP packet detected");
-	if(rohc_comp_profile_enabled(comp, ROHCv1_PROFILE_IP))
+	if(rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_IP))
 	{
 		profile = ROHCv1_PROFILE_IP;
 	}
 	else if(all_ipv6_exts_len == 0 && /* TODO: ROHCv2: add IPv6 ext hdrs support */
-	        rohc_comp_profile_enabled(comp, ROHCv2_PROFILE_IP))
+	        rohc_comp_profile_enabled_nocheck(comp, ROHCv2_PROFILE_IP))
 	{
 		profile = ROHCv2_PROFILE_IP;
 	}
@@ -709,7 +703,7 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 		/* ROHCv1 IP/TCP profiles is possible if it is enabled */
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "IP/TCP packet detected");
-		if(rohc_comp_profile_enabled(comp, ROHCv1_PROFILE_IP_TCP))
+		if(rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_IP_TCP))
 		{
 			profile = ROHCv1_PROFILE_IP_TCP;
 		}
@@ -746,12 +740,12 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "IP/UDP packet detected");
 		if(ip_hdrs_nr <= ROHC_MAX_IP_HDRS_RFC3095 &&
-		   rohc_comp_profile_enabled(comp, ROHCv1_PROFILE_IP_UDP))
+		   rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_IP_UDP))
 		{
 			profile = ROHCv1_PROFILE_IP_UDP;
 		}
 		else if(all_ipv6_exts_len == 0 && /* TODO: ROHCv2: add IPv6 ext hdrs support */
-		        rohc_comp_profile_enabled(comp, ROHCv2_PROFILE_IP_UDP))
+		        rohc_comp_profile_enabled_nocheck(comp, ROHCv2_PROFILE_IP_UDP))
 		{
 			profile = ROHCv2_PROFILE_IP_UDP;
 		}
@@ -799,12 +793,12 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "IP/UDP/RTP packet detected by the RTP callback");
 			if(ip_hdrs_nr <= ROHC_MAX_IP_HDRS_RFC3095 &&
-			   rohc_comp_profile_enabled(comp, ROHCv1_PROFILE_IP_UDP_RTP))
+			   rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_IP_UDP_RTP))
 			{
 				profile = ROHCv1_PROFILE_IP_UDP_RTP;
 			}
 			else if(all_ipv6_exts_len == 0 && /* TODO: ROHCv2: add IPv6 ext hdrs support */
-			        rohc_comp_profile_enabled(comp, ROHCv2_PROFILE_IP_UDP_RTP))
+			        rohc_comp_profile_enabled_nocheck(comp, ROHCv2_PROFILE_IP_UDP_RTP))
 			{
 				profile = ROHCv2_PROFILE_IP_UDP_RTP;
 			}
@@ -824,12 +818,12 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "IP/ESP packet detected");
 		if(ip_hdrs_nr <= ROHC_MAX_IP_HDRS_RFC3095 &&
-		   rohc_comp_profile_enabled(comp, ROHCv1_PROFILE_IP_ESP))
+		   rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_IP_ESP))
 		{
 			profile = ROHCv1_PROFILE_IP_ESP;
 		}
 		else if(all_ipv6_exts_len == 0 && /* TODO: ROHCv2: add IPv6 ext hdrs support */
-		        rohc_comp_profile_enabled(comp, ROHCv2_PROFILE_IP_ESP))
+		        rohc_comp_profile_enabled_nocheck(comp, ROHCv2_PROFILE_IP_ESP))
 		{
 			profile = ROHCv2_PROFILE_IP_ESP;
 		}
@@ -848,12 +842,12 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "IP/UDP-Lite packet detected");
 		if(ip_hdrs_nr <= ROHC_MAX_IP_HDRS_RFC3095 &&
-		   rohc_comp_profile_enabled(comp, ROHCv1_PROFILE_IP_UDPLITE))
+		   rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_IP_UDPLITE))
 		{
 			profile = ROHCv1_PROFILE_IP_UDPLITE;
 		}
 		else if(all_ipv6_exts_len == 0 && /* TODO: ROHCv2: add IPv6 ext hdrs support */
-		        rohc_comp_profile_enabled(comp, ROHCv2_PROFILE_IP_UDPLITE))
+		        rohc_comp_profile_enabled_nocheck(comp, ROHCv2_PROFILE_IP_UDPLITE))
 		{
 			profile = ROHCv2_PROFILE_IP_UDPLITE;
 		}
@@ -1009,13 +1003,17 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 	}
 
 	/* find the profile identified by the given profile ID */
-	profile = rohc_get_profile_from_id(comp, profile_id);
-	if(profile == NULL)
 	{
-		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		             "profile '%s' (0x%04x) is not implemented yet",
-		             rohc_get_profile_descr(profile_id), profile_id);
-		goto error;
+		const uint8_t profile_major = (profile_id >> 8) & 0xff;
+		const uint8_t profile_minor = profile_id & 0xff;
+		profile = rohc_comp_profiles[profile_major][profile_minor];
+		if(profile == NULL)
+		{
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "profile '%s' (0x%04x) is not implemented yet",
+			             rohc_get_profile_descr(profile_id), profile_id);
+			goto error;
+		}
 	}
 
 	/* find the best profile context for the packet */
@@ -1829,35 +1827,23 @@ bool rohc_comp_set_rtp_detection_cb(struct rohc_comp *const comp,
 
 
 /**
- * @brief Get profile index if profile exists
+ * @brief Is the given compression profile enabled for a compressor?
  *
- * @param profile  The profile to enable
- * @return         The profile index if the profile exists,
- *                 -1 if the profile does not exist
+ * @param comp     The ROHC compressor, shall be valid
+ * @param profile  The profile to ask status for
+ * @return         Possible return values:
+ *                  \li true if the profile exists and is enabled,
+ *                  \li false if the profile does not exist,
+ *                  \li false if the profile is disabled
+ *
+ * @see rohc_comp_profile_enabled
  */
-static int rohc_comp_get_profile_index(const rohc_profile_t profile)
+static bool rohc_comp_profile_enabled_nocheck(const struct rohc_comp *const comp,
+                                              const rohc_profile_t profile)
 {
-	size_t idx;
-
-	/* search for the profile location */
-	for(idx = 0; idx < C_NUM_PROFILES; idx++)
-	{
-		if(rohc_comp_profiles[idx]->id == profile)
-		{
-			/* found */
-			break;
-		}
-	}
-
-	if(idx == C_NUM_PROFILES)
-	{
-		goto error;
-	}
-
-	return idx;
-
-error :
-	return -1;
+	const uint8_t profile_major = (profile >> 8) & 0xff;
+	const uint8_t profile_minor = profile & 0xff;
+	return comp->enabled_profiles[profile_major][profile_minor];
 }
 
 
@@ -1883,15 +1869,22 @@ error :
 bool rohc_comp_profile_enabled(const struct rohc_comp *const comp,
                                const rohc_profile_t profile)
 {
-	if(comp == NULL)
+	const uint8_t profile_major = (profile >> 8) & 0xff;
+	const uint8_t profile_minor = profile & 0xff;
+	bool is_profile_enabled;
+
+	if(comp == NULL ||
+	   profile_major > ROHC_PROFILE_ID_MAJOR_MAX ||
+	   profile_minor > ROHC_PROFILE_ID_MINOR_MAX)
 	{
-		goto error;
+		is_profile_enabled = false;
+	}
+	else
+	{
+		is_profile_enabled = comp->enabled_profiles[profile_major][profile_minor];
 	}
 
-	return comp->enabled_profiles2[(profile >> 8) & 0xff][profile & 0xff];
-
-error:
-	return false;
+	return is_profile_enabled;
 }
 
 
@@ -1934,26 +1927,24 @@ error:
 bool rohc_comp_enable_profile(struct rohc_comp *const comp,
                               const rohc_profile_t profile)
 {
-	size_t profile_idx;
-	int ret;
+	const uint8_t profile_major = (profile >> 8) & 0xff;
+	const uint8_t profile_minor = profile & 0xff;
 
 	if(comp == NULL)
 	{
 		goto error;
 	}
-
-	/* search the profile location */
-	ret = rohc_comp_get_profile_index(profile);
-	if(ret < 0)
+	if(profile_major > ROHC_PROFILE_ID_MAJOR_MAX ||
+	   profile_minor > ROHC_PROFILE_ID_MINOR_MAX ||
+	   rohc_comp_profiles[profile_major][profile_minor] == NULL)
 	{
 		goto error;
 	}
-	profile_idx = ret;
 
 	/* the same profile cannot be enabled in both ROHCv1 and ROHCv2 versions:
 	 * check if the corresponding profile in the other ROHC version is already
 	 * enabled or not */
-	if(rohc_comp_profile_enabled(comp, rohc_profile_get_other_version(profile)))
+	if(rohc_comp_profile_enabled_nocheck(comp, rohc_profile_get_other_version(profile)))
 	{
 		goto error;
 	}
@@ -1972,8 +1963,7 @@ bool rohc_comp_enable_profile(struct rohc_comp *const comp,
 	}
 
 	/* mark the profile as enabled */
-	comp->enabled_profiles[profile_idx] = true;
-	comp->enabled_profiles2[(profile >> 8) & 0xff][profile & 0xff] = true;
+	comp->enabled_profiles[profile_major][profile_minor] = true;
 	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	          "ROHC compression profile (ID = 0x%04x) enabled", profile);
 
@@ -2010,25 +2000,22 @@ error:
 bool rohc_comp_disable_profile(struct rohc_comp *const comp,
                                const rohc_profile_t profile)
 {
-	size_t profile_idx;
-	int ret;
+	const uint8_t profile_major = (profile >> 8) & 0xff;
+	const uint8_t profile_minor = profile & 0xff;
 
 	if(comp == NULL)
 	{
 		goto error;
 	}
-
-	/* search the profile location */
-	ret = rohc_comp_get_profile_index(profile);
-	if(ret < 0)
+	if(profile_major > ROHC_PROFILE_ID_MAJOR_MAX ||
+	   profile_minor > ROHC_PROFILE_ID_MINOR_MAX ||
+	   rohc_comp_profiles[profile_major][profile_minor] == NULL)
 	{
 		goto error;
 	}
-	profile_idx = ret;
 
 	/* mark the profile as disabled */
-	comp->enabled_profiles[profile_idx] = false;
-	comp->enabled_profiles2[(profile >> 8) & 0xff][profile & 0xff] = false;
+	comp->enabled_profiles[profile_major][profile_minor] = false;
 	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	          "ROHC compression profile (ID = 0x%04x) disabled", profile);
 
@@ -2211,8 +2198,6 @@ error:
 bool rohc_comp_set_mrru(struct rohc_comp *const comp,
                         const size_t mrru)
 {
-	size_t idx;
-
 	/* compressor must be valid */
 	if(comp == NULL)
 	{
@@ -2239,16 +2224,25 @@ bool rohc_comp_set_mrru(struct rohc_comp *const comp,
 	 */
 	if(mrru > 0)
 	{
-		for(idx = 0; idx < C_NUM_PROFILES; idx++)
+		uint8_t profile_major;
+
+		for(profile_major = 0; profile_major <= ROHC_PROFILE_ID_MAJOR_MAX; profile_major++)
 		{
-			if(comp->enabled_profiles[idx] &&
-			   rohc_profile_is_rohcv2(rohc_comp_profiles[idx]->id))
+			uint8_t profile_minor;
+
+			for(profile_minor = 0; profile_minor <= ROHC_PROFILE_ID_MINOR_MAX; profile_minor++)
 			{
-				rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				             "failed to set MRRU to %zu bytes: segmentation is not "
-				             "compatible with ROHCv2 profile 0x%04x that is enabled",
-				             mrru, rohc_comp_profiles[idx]->id);
-				goto error;
+				const uint16_t profile_id = (profile_major << 8) | profile_minor;
+
+				if(rohc_comp_profile_enabled_nocheck(comp, profile_id) &&
+				   rohc_profile_is_rohcv2(profile_id))
+				{
+					rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+					             "failed to set MRRU to %zu bytes: segmentation is not "
+					             "compatible with ROHCv2 profile 0x%04x that is enabled",
+					             mrru, profile_id);
+					goto error;
+				}
 			}
 		}
 	}
@@ -2830,33 +2824,6 @@ const char * rohc_comp_get_state_descr(const rohc_comp_state_t state)
 /*
  * Definitions of private functions
  */
-
-
-/**
- * @brief Find out a ROHC profile given a profile ID
- *
- * @param comp       The ROHC compressor
- * @param profile_id The ID of the ROHC profile to find out
- * @return           The ROHC profile if found, NULL otherwise
- */
-static const struct rohc_comp_profile *
-	rohc_get_profile_from_id(const struct rohc_comp *comp,
-	                         const rohc_profile_t profile_id)
-{
-	size_t i;
-
-	/* test all compression profiles */
-	for(i = 0; i < C_NUM_PROFILES; i++)
-	{
-		/* if the profile IDs match and the profile is enabled */
-		if(rohc_comp_profiles[i]->id == profile_id && comp->enabled_profiles[i])
-		{
-			return rohc_comp_profiles[i];
-		}
-	}
-
-	return NULL;
-}
 
 
 /**
