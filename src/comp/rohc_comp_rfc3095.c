@@ -3577,11 +3577,11 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 
 			/* transmit all TS bits in extension 3 */
 			rtp_context->tmp.nr_ts_bits_ext3 =
-				sdvl_get_min_len(rtp_context->tmp.nr_ts_bits_more_than_2, 0);
+				sdvl_get_min_len(rtp_context->tmp.nr_ts_bits, 0);
 			assert(rtp_context->tmp.nr_ts_bits_ext3 < 32);
 			rtp_context->tmp.ts_send &= (1U << rtp_context->tmp.nr_ts_bits_ext3) - 1;
 			rohc_comp_debug(context, "%zu bits of TS (0 in header, %zu in EXT3)",
-			                rtp_context->tmp.nr_ts_bits_more_than_2,
+			                rtp_context->tmp.nr_ts_bits,
 			                rtp_context->tmp.nr_ts_bits_ext3);
 
 			/* invalid CRC-STATIC cache since some STATIC fields may have changed */
@@ -4301,7 +4301,7 @@ static int code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
 
 		case ROHC_PACKET_UOR_2_RTP_EXT3:
 		{
-			const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits_more_than_2;
+			const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits;
 			size_t nr_ts_bits_ext3; /* number of bits to send in EXT 3 */
 			uint8_t ts_bits_for_f_byte;
 
@@ -4548,7 +4548,7 @@ static int code_UOR2_TS_bytes(const struct rohc_comp_ctxt *const context,
 
 		case ROHC_PACKET_UOR_2_TS_EXT3:
 		{
-			const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits_more_than_2;
+			const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits;
 			size_t nr_ts_bits_ext3; /* number of bits to send in EXT 3 */
 			uint32_t ts_mask;
 			uint8_t ts_bits_for_f_byte;
@@ -4772,7 +4772,7 @@ static int code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
 		case ROHC_PACKET_UOR_2_ID_EXT3:
 		{
 			/* number of TS bits to transmit overall and in extension 3 */
-			const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits_more_than_2;
+			const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits;
 			size_t nr_ts_bits_ext3;
 			size_t innermost_ip_id_rnd_count;
 
@@ -5417,7 +5417,7 @@ static int code_EXT3_rtp_packet(struct rohc_comp_ctxt *const context,
 
 	rtp_context = (struct sc_rtp_context *) rfc3095_ctxt->specific;
 	ts_send = rtp_context->tmp.ts_send;
-	nr_ts_bits = rtp_context->tmp.nr_ts_bits_more_than_2;
+	nr_ts_bits = rtp_context->tmp.nr_ts_bits;
 	nr_ts_bits_ext3 = rtp_context->tmp.nr_ts_bits_ext3;
 
 	/* determine the innermost IPv4 header with non-random IP-ID, but also the
@@ -7365,7 +7365,7 @@ static rohc_ext_t decide_extension_uor2rtp(const struct rohc_comp_ctxt *const co
 {
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 	const struct sc_rtp_context *const rtp_context = rfc3095_ctxt->specific;
-	const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits_more_than_2;
+	const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits;
 	rohc_ext_t ext;
 
 	if(rfc3095_ctxt->tmp.sn_6bits_possible &&
@@ -7425,7 +7425,7 @@ static rohc_ext_t decide_extension_uor2ts(const struct rohc_comp_ctxt *const con
 {
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 	const struct sc_rtp_context *const rtp_context = rfc3095_ctxt->specific;
-	const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits_more_than_2;
+	const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits;
 	rohc_ext_t ext;
 
 	if(rfc3095_ctxt->tmp.sn_6bits_possible &&
@@ -7486,7 +7486,7 @@ static rohc_ext_t decide_extension_uor2id(const struct rohc_comp_ctxt *const con
 {
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 	const struct sc_rtp_context *const rtp_context = rfc3095_ctxt->specific;
-	const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits_more_than_2;
+	const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits;
 	rohc_ext_t ext;
 
 	if(rfc3095_ctxt->tmp.sn_6bits_possible &&
@@ -7547,7 +7547,7 @@ static rohc_ext_t decide_extension_uo1id(const struct rohc_comp_ctxt *const cont
 {
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 	const struct sc_rtp_context *const rtp_context = rfc3095_ctxt->specific;
-	const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits_more_than_2;
+	const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits;
 	rohc_ext_t ext;
 
 	if(rfc3095_ctxt->tmp.sn_4bits_possible &&

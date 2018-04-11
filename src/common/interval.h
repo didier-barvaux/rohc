@@ -140,6 +140,9 @@ struct rohc_interval32 rohc_f_32bits(const uint32_t v_ref,
                                      const rohc_lsb_shift_t p)
 	__attribute__((warn_unused_result, const));
 
+static inline int32_t rohc_interval_compute_p_rtp_ts(const size_t k)
+	__attribute__((warn_unused_result, const));
+
 static inline int32_t rohc_interval_compute_p_rtp_sn(const size_t k)
 	__attribute__((warn_unused_result, const));
 
@@ -185,6 +188,19 @@ static inline int32_t rohc_interval_compute_p(const size_t k,
 	}
 
 	return computed_p;
+}
+
+
+/**
+ * @brief Compute the shift parameter p for the f function
+ *
+ * @param k  The number of least significant bits of the value that are
+ *           transmitted
+ * @return   The computed shift parameter p
+ */
+static inline int32_t rohc_interval_compute_p_rtp_ts(const size_t k)
+{
+	return (k <= 2 ? 0 : (1 << (k - 2)) - 1);
 }
 
 

@@ -367,22 +367,109 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
 /**
  * @brief Return the number of bits needed to encode unscaled TS
  *
- * @param ts_sc                           The ts_sc_comp object
- * @param[out] bits_nr_less_equal_than_2  The number of bits needed to encode
- *                                        TS_SCALED in a field that is smaller
- *                                        than or equal to 2 bits
- * @param[out] bits_nr_more_than_2        The number of bits needed to encode
- *                                        TS_SCALED in a field that is strictly
- *                                        larger than to 2 bits
+ * @param ts_sc  The ts_sc_comp object
+ * @return       The number of bits needed to encode the unscaled TS
  */
-void nb_bits_unscaled(const struct ts_sc_comp *const ts_sc,
-                      size_t *const bits_nr_less_equal_than_2,
-                      size_t *const bits_nr_more_than_2)
+size_t nb_bits_unscaled(const struct ts_sc_comp *const ts_sc)
 {
-	*bits_nr_less_equal_than_2 =
-		wlsb_get_kp_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts, 0);
-	*bits_nr_more_than_2 =
-		wlsb_get_mink_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts, 3);
+	size_t nr_ts_bits;
+
+	if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	                              0, rohc_interval_compute_p_rtp_ts(0)))
+	{
+		nr_ts_bits = 0;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	                                   5, rohc_interval_compute_p_rtp_ts(5)))
+	{
+		nr_ts_bits = 5;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	                                   6, rohc_interval_compute_p_rtp_ts(6)))
+	{
+		nr_ts_bits = 6;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	                                   7, rohc_interval_compute_p_rtp_ts(7)))
+	{
+		nr_ts_bits = 7;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	                                   8, rohc_interval_compute_p_rtp_ts(8)))
+	{
+		nr_ts_bits = 8;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	                                   9, rohc_interval_compute_p_rtp_ts(9)))
+	{
+		nr_ts_bits = 9;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	                                   12, rohc_interval_compute_p_rtp_ts(12)))
+	{
+		nr_ts_bits = 12;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	                                   13, rohc_interval_compute_p_rtp_ts(13)))
+	{
+		nr_ts_bits = 13;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	                                   14, rohc_interval_compute_p_rtp_ts(14)))
+	{
+		nr_ts_bits = 14;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	                                   16, rohc_interval_compute_p_rtp_ts(16)))
+	{
+		nr_ts_bits = 16;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	                                   17, rohc_interval_compute_p_rtp_ts(17)))
+	{
+		nr_ts_bits = 17;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	                                   19, rohc_interval_compute_p_rtp_ts(19)))
+	{
+		nr_ts_bits = 19;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	                                   20, rohc_interval_compute_p_rtp_ts(20)))
+	{
+		nr_ts_bits = 20;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	                                   21, rohc_interval_compute_p_rtp_ts(21)))
+	{
+		nr_ts_bits = 21;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	                                   25, rohc_interval_compute_p_rtp_ts(25)))
+	{
+		nr_ts_bits = 25;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	                                   26, rohc_interval_compute_p_rtp_ts(26)))
+	{
+		nr_ts_bits = 26;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	                                   27, rohc_interval_compute_p_rtp_ts(27)))
+	{
+		nr_ts_bits = 27;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	                                   29, rohc_interval_compute_p_rtp_ts(29)))
+	{
+		nr_ts_bits = 29;
+	}
+	else
+	{
+		nr_ts_bits = 32;
+	}
+
+	return nr_ts_bits;
 }
 
 
@@ -401,36 +488,116 @@ void add_unscaled(struct ts_sc_comp *const ts_sc, const uint16_t sn)
 /**
  * @brief Return the number of bits needed to encode TS_SCALED
  *
- * @param ts_sc                           The ts_sc_comp object
- * @param[out] bits_nr_less_equal_than_2  The number of bits needed to encode
- *                                        TS_SCALED in a field that is smaller
- *                                        than or equal to 2 bits
- * @param[out] bits_nr_more_than_2        The number of bits needed to encode
- *                                        TS_SCALED in a field that is strictly
- *                                        larger than to 2 bits
+ * @param ts_sc  The ts_sc_comp object
+ * @return       The number of bits needed to encode TS_SCALED
  */
-void nb_bits_scaled(const struct ts_sc_comp *const ts_sc,
-                    size_t *const bits_nr_less_equal_than_2,
-                    size_t *const bits_nr_more_than_2)
+size_t nb_bits_scaled(const struct ts_sc_comp *const ts_sc)
 {
-	*bits_nr_less_equal_than_2 =
-		wlsb_get_kp_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled, 0);
-	*bits_nr_more_than_2 =
-		wlsb_get_mink_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled, 3);
+	size_t nr_ts_bits;
+
+	if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
+	                              0, rohc_interval_compute_p_rtp_ts(0)))
+	{
+		nr_ts_bits = 0;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
+	                                   5, rohc_interval_compute_p_rtp_ts(5)))
+	{
+		nr_ts_bits = 5;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
+	                                   6, rohc_interval_compute_p_rtp_ts(6)))
+	{
+		nr_ts_bits = 6;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
+	                                   7, rohc_interval_compute_p_rtp_ts(7)))
+	{
+		nr_ts_bits = 7;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
+	                                   8, rohc_interval_compute_p_rtp_ts(8)))
+	{
+		nr_ts_bits = 8;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
+	                                   9, rohc_interval_compute_p_rtp_ts(9)))
+	{
+		nr_ts_bits = 9;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
+	                                   12, rohc_interval_compute_p_rtp_ts(12)))
+	{
+		nr_ts_bits = 12;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
+	                                   13, rohc_interval_compute_p_rtp_ts(13)))
+	{
+		nr_ts_bits = 13;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
+	                                   14, rohc_interval_compute_p_rtp_ts(14)))
+	{
+		nr_ts_bits = 14;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
+	                                   16, rohc_interval_compute_p_rtp_ts(16)))
+	{
+		nr_ts_bits = 16;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
+	                                   17, rohc_interval_compute_p_rtp_ts(17)))
+	{
+		nr_ts_bits = 17;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
+	                                   19, rohc_interval_compute_p_rtp_ts(19)))
+	{
+		nr_ts_bits = 19;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
+	                                   20, rohc_interval_compute_p_rtp_ts(20)))
+	{
+		nr_ts_bits = 20;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
+	                                   21, rohc_interval_compute_p_rtp_ts(21)))
+	{
+		nr_ts_bits = 21;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
+	                                   25, rohc_interval_compute_p_rtp_ts(25)))
+	{
+		nr_ts_bits = 25;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
+	                                   26, rohc_interval_compute_p_rtp_ts(26)))
+	{
+		nr_ts_bits = 26;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
+	                                   27, rohc_interval_compute_p_rtp_ts(27)))
+	{
+		nr_ts_bits = 27;
+	}
+	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
+	                                   29, rohc_interval_compute_p_rtp_ts(29)))
+	{
+		nr_ts_bits = 29;
+	}
+	else
+	{
+		nr_ts_bits = 32;
+	}
 
 	/* do not send 0 bit of TS if TS is not deducible, because decompressor
 	 * will interprets a 0-bit value as deducible */
 	if(!ts_sc->is_deducible)
 	{
-		if((*bits_nr_less_equal_than_2) == 0)
-		{
-			(*bits_nr_less_equal_than_2) = 1;
-		}
-		if((*bits_nr_more_than_2) == 0)
-		{
-			(*bits_nr_more_than_2) = 1;
-		}
+		nr_ts_bits = 1;
 	}
+
+	return nr_ts_bits;
 }
 
 
