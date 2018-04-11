@@ -332,9 +332,10 @@ static uint8_t compute_uo_crc(struct rohc_comp_ctxt *const context,
 static void update_context(struct rohc_comp_ctxt *const context,
                            const struct net_pkt *const uncomp_pkt)
 	__attribute__((nonnull(1, 2)));
-static void update_context_ip_hdr(struct ip_header_info *const ip_flags,
+static void update_context_ip_hdr(const struct rohc_comp_ctxt *const context,
+											 struct ip_header_info *const ip_flags,
                                   const struct ip_packet *const ip)
-	__attribute__((nonnull(1, 2)));
+	__attribute__((nonnull(1, 2, 3)));
 
 static bool rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const context,
                                              const struct net_pkt *const uncomp_pkt)
@@ -525,10 +526,19 @@ static void c_init_tmp_variables(struct generic_tmp_vars *const tmp_vars)
 	tmp_vars->send_static = -1;
 	tmp_vars->send_dynamic = -1;
 
-	/* do not send any bits of SN, outer/inner IP-IDs, outer/inner IPv6
-	 * extension header list by default */
-	tmp_vars->nr_sn_bits_less_equal_than_4 = 0;
-	tmp_vars->nr_sn_bits_more_than_4 = 0;
+	/* do not send any bits of outer/inner IP-IDs by default */
+	tmp_vars->sn_4bits_possible = false;
+	tmp_vars->sn_7bits_possible = false;
+	tmp_vars->sn_12bits_possible = false;
+
+	tmp_vars->sn_5bits_possible = false;
+	tmp_vars->sn_8bits_possible = false;
+	tmp_vars->sn_13bits_possible = false;
+
+	tmp_vars->sn_6bits_possible = false;
+	tmp_vars->sn_9bits_possible = false;
+	tmp_vars->sn_14bits_possible = false;
+
 	tmp_vars->nr_ip_id_bits = 0;
 	tmp_vars->nr_ip_id_bits2 = 0;
 }
@@ -1897,10 +1907,6 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 
 	assert(context->profile->id != ROHC_PROFILE_UNCOMPRESSED);
 	assert(packet_type == ROHC_PACKET_IR);
-	if(context->profile->id != ROHC_PROFILE_ESP)
-	{
-		assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 16);
-	}
 	assert((ip_get_version(&uncomp_pkt->outer_ip) == IPV4 &&
 	        rfc3095_ctxt->tmp.nr_ip_id_bits <= 16) ||
 	       (ip_get_version(&uncomp_pkt->outer_ip) != IPV4 &&
@@ -2895,7 +2901,6 @@ static int code_UO0_packet(struct rohc_comp_ctxt *const context,
 	/* part 2: SN + CRC
 	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
 	 * if the CRC-STATIC fields did not change */
-	assert(rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 <= 4);
 	f_byte = (rfc3095_ctxt->sn & 0x0f) << 3;
 	crc = compute_uo_crc(context, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3,
 	                     context->compressor->crc_table_3);
@@ -3609,7 +3614,6 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 		case ROHC_PACKET_UO_1_ID:
 		{
 			s_byte &= ~0x80;
-			assert(rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 <= 4);
 			s_byte |= (rfc3095_ctxt->sn & 0x0f) << 3;
 			rohc_comp_debug(context, "4 bits of 4-bit SN = 0x%x",
 			                (s_byte >> 3) & 0x0f);
@@ -3618,7 +3622,6 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 		case ROHC_PACKET_UO_1_ID_EXT0:
 		{
 			s_byte |= 0x80;
-			assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 7);
 			s_byte |= ((rfc3095_ctxt->sn >> 3) & 0x0f) << 3;
 			rohc_comp_debug(context, "4 bits of 7-bit SN = 0x%x",
 			                (s_byte >> 3) & 0x0f);
@@ -3627,7 +3630,6 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 		case ROHC_PACKET_UO_1_ID_EXT1:
 		{
 			s_byte |= 0x80;
-			assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 7);
 			s_byte |= ((rfc3095_ctxt->sn >> 3) & 0x0f) << 3;
 			rohc_comp_debug(context, "4 bits of 7-bit SN = 0x%x",
 			                (s_byte >> 3) & 0x0f);
@@ -3636,7 +3638,6 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 		case ROHC_PACKET_UO_1_ID_EXT2:
 		{
 			s_byte |= 0x80;
-			assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 7);
 			s_byte |= ((rfc3095_ctxt->sn >> 3) & 0x0f) << 3;
 			rohc_comp_debug(context, "4 bits of 7-bit SN = 0x%x",
 			                (s_byte >> 3) & 0x0f);
@@ -3645,7 +3646,7 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 		case ROHC_PACKET_UO_1_ID_EXT3:
 		{
 			s_byte |= 0x80;
-			if(rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 <= 4)
+			if(rfc3095_ctxt->tmp.sn_4bits_possible)
 			{
 				s_byte |= (rfc3095_ctxt->sn & 0x0f) << 3;
 				rohc_comp_debug(context, "4 bits of 4-bit SN = 0x%x",
@@ -3653,7 +3654,6 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 			}
 			else
 			{
-				assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 12);
 				s_byte |= ((rfc3095_ctxt->sn >> 8) & 0x0f) << 3;
 				rohc_comp_debug(context, "4 bits of 12-bit SN = 0x%x",
 				                (s_byte >> 3) & 0x0f);
@@ -4043,7 +4043,6 @@ static int code_UOR2_bytes(const struct rohc_comp_ctxt *const context,
 			rohc_comp_debug(context, "code UOR-2 packet with no extension");
 
 			/* part 2: SN bits */
-			assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 5);
 			*f_byte |= rfc3095_ctxt->sn & 0x1f;
 
 			/* part 5: set the X bit to 0 */
@@ -4057,7 +4056,6 @@ static int code_UOR2_bytes(const struct rohc_comp_ctxt *const context,
 			rohc_comp_debug(context, "code UOR-2 packet with extension 0");
 
 			/* part 2 */
-			assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 8);
 			*f_byte |= (rfc3095_ctxt->sn >> 3) & 0x1f;
 
 			/* part 5: set the X bit to 1 */
@@ -4071,7 +4069,6 @@ static int code_UOR2_bytes(const struct rohc_comp_ctxt *const context,
 			rohc_comp_debug(context, "code UOR-2 packet with extension 1");
 
 			/* part 2 */
-			assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 8);
 			*f_byte |= (rfc3095_ctxt->sn >> 3) & 0x1f;
 
 			/* part 5: set the X bit to 1 */
@@ -4085,7 +4082,6 @@ static int code_UOR2_bytes(const struct rohc_comp_ctxt *const context,
 			rohc_comp_debug(context, "code UOR-2 packet with extension 2");
 
 			/* part 2 */
-			assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 8);
 			*f_byte |= (rfc3095_ctxt->sn >> 3) & 0x1f;
 
 			/* part 5: set the X bit to 1 */
@@ -4099,13 +4095,12 @@ static int code_UOR2_bytes(const struct rohc_comp_ctxt *const context,
 			rohc_comp_debug(context, "code UOR-2 packet with extension 3");
 
 			/* part 2: check if the s-field needs to be used */
-			if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 5)
+			if(rfc3095_ctxt->tmp.sn_5bits_possible)
 			{
 				*f_byte |= rfc3095_ctxt->sn & 0x1f;
 			}
 			else
 			{
-				assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 13);
 				*f_byte |= (rfc3095_ctxt->sn >> 8) & 0x1f;
 			}
 
@@ -4212,7 +4207,6 @@ static int code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
 			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
-			assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 6);
 			*s_byte |= rfc3095_ctxt->sn & 0x3f;
 			rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x",
 			                (*s_byte) & 0x3f);
@@ -4240,7 +4234,6 @@ static int code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
 			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
-			assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9);
 			*s_byte |= (rfc3095_ctxt->sn >> 3) & 0x3f;
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x",
 			                (*s_byte) & 0x3f);
@@ -4268,7 +4261,6 @@ static int code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
 			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
-			assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9);
 			*s_byte |= (rfc3095_ctxt->sn >> 3) & 0x3f;
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x",
 			                (*s_byte) & 0x3f);
@@ -4296,7 +4288,6 @@ static int code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
 			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
-			assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9);
 			*s_byte |= (rfc3095_ctxt->sn >> 3) & 0x3f;
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x",
 			                (*s_byte) & 0x3f);
@@ -4340,7 +4331,7 @@ static int code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
 			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
-			if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 6)
+			if(rfc3095_ctxt->tmp.sn_6bits_possible)
 			{
 				*s_byte |= rfc3095_ctxt->sn & 0x3f;
 				rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x",
@@ -4348,7 +4339,6 @@ static int code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
 			}
 			else
 			{
-				assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 14);
 				*s_byte |= (rfc3095_ctxt->sn >> 8) & 0x3f;
 				rohc_comp_debug(context, "6 bits of 14-bit SN = 0x%x",
 				                (*s_byte) & 0x3f);
@@ -4476,7 +4466,6 @@ static int code_UOR2_TS_bytes(const struct rohc_comp_ctxt *const context,
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
 			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
-			assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 6);
 			*s_byte |= rfc3095_ctxt->sn & 0x3f;
 			rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x",
 			                (*s_byte) & 0x3f);
@@ -4500,7 +4489,6 @@ static int code_UOR2_TS_bytes(const struct rohc_comp_ctxt *const context,
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
 			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
-			assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9);
 			*s_byte |= (rfc3095_ctxt->sn >> 3) & 0x3f;
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x",
 			                (*s_byte) & 0x3f);
@@ -4524,7 +4512,6 @@ static int code_UOR2_TS_bytes(const struct rohc_comp_ctxt *const context,
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
 			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
-			assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9);
 			*s_byte |= (rfc3095_ctxt->sn >> 3) & 0x3f;
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x",
 			                (*s_byte) & 0x3f);
@@ -4548,7 +4535,6 @@ static int code_UOR2_TS_bytes(const struct rohc_comp_ctxt *const context,
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
 			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
-			assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9);
 			*s_byte |= (rfc3095_ctxt->sn >> 3) & 0x3f;
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x",
 			                (*s_byte) & 0x3f);
@@ -4601,7 +4587,7 @@ static int code_UOR2_TS_bytes(const struct rohc_comp_ctxt *const context,
 			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
 			rohc_comp_debug(context, "SN to send = 0x%x", rfc3095_ctxt->sn);
-			if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 6)
+			if(rfc3095_ctxt->tmp.sn_6bits_possible)
 			{
 				*s_byte |= rfc3095_ctxt->sn & 0x3f;
 				rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x",
@@ -4609,7 +4595,6 @@ static int code_UOR2_TS_bytes(const struct rohc_comp_ctxt *const context,
 			}
 			else
 			{
-				assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 14);
 				*s_byte |= (rfc3095_ctxt->sn >> 8) & 0x3f;
 				rohc_comp_debug(context, "6 bits of 14-bit SN = 0x%x",
 				                (*s_byte) & 0x3f);
@@ -4708,7 +4693,6 @@ static int code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
 			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
-			assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 6);
 			*s_byte |= rfc3095_ctxt->sn & 0x3f;
 			rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x", (*s_byte) & 0x3f);
 
@@ -4731,7 +4715,6 @@ static int code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
 			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
-			assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9);
 			*s_byte |= (rfc3095_ctxt->sn >> 3) & 0x3f;
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x", (*s_byte) & 0x3f);
 
@@ -4754,7 +4737,6 @@ static int code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
 			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
-			assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9);
 			*s_byte |= (rfc3095_ctxt->sn >> 3) & 0x3f;
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x", (*s_byte) & 0x3f);
 
@@ -4777,7 +4759,6 @@ static int code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
 			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
-			assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9);
 			*s_byte |= (rfc3095_ctxt->sn >> 3) & 0x3f;
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x", (*s_byte) & 0x3f);
 
@@ -4841,7 +4822,7 @@ static int code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
 			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
-			if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 6)
+			if(rfc3095_ctxt->tmp.sn_6bits_possible)
 			{
 				*s_byte |= rfc3095_ctxt->sn & 0x3f;
 				rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x",
@@ -4849,7 +4830,6 @@ static int code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
 			}
 			else
 			{
-				assert(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 14);
 				*s_byte |= (rfc3095_ctxt->sn >> 8) & 0x3f;
 				rohc_comp_debug(context, "6 bits of 14-bit SN = 0x%x",
 				                (*s_byte) & 0x3f);
@@ -5472,11 +5452,11 @@ static int code_EXT3_rtp_packet(struct rohc_comp_ctxt *const context,
 	/* S bit */
 	if(packet_type == ROHC_PACKET_UO_1_ID_EXT3)
 	{
-		S = !(rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 <= 4);
+		S = !rfc3095_ctxt->tmp.sn_4bits_possible;
 	}
 	else
 	{
-		S = (rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 > 6);
+		S = !rfc3095_ctxt->tmp.sn_6bits_possible;
 	}
 
 	/* R-TS bit */
@@ -5784,7 +5764,7 @@ static int code_EXT3_nortp_packet(struct rohc_comp_ctxt *const context,
 	}
 
 	/* S bit */
-	S = (rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 > 5);
+	S = !rfc3095_ctxt->tmp.sn_5bits_possible;
 
 	/* ip2 bit (force ip2=1 if I2=1, otherwise I2 is not sent) */
 	if(nr_of_ip_hdr == 1)
@@ -6347,26 +6327,34 @@ static void update_context(struct rohc_comp_ctxt *const context,
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
 
 	/* update the context with the new headers */
-	update_context_ip_hdr(&rfc3095_ctxt->outer_ip_flags,
+	update_context_ip_hdr(context, &rfc3095_ctxt->outer_ip_flags,
 	                      &uncomp_pkt->outer_ip);
 
 	if(uncomp_pkt->ip_hdr_nr > 1)
 	{
-		update_context_ip_hdr(&rfc3095_ctxt->inner_ip_flags,
+		update_context_ip_hdr(context, &rfc3095_ctxt->inner_ip_flags,
 		                      &uncomp_pkt->inner_ip);
 	}
+
+	/* add the new SN to the W-LSB encoding object */
+	c_add_wlsb(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn, rfc3095_ctxt->sn);
 }
 
 
 /**
  * @brief Update the IP information with the IP header
  *
+ * @param context   The compression context
  * @param ip_flags  The IP context to update
  * @param ip        The uncompressed IP header that updates the context
  */
-static void update_context_ip_hdr(struct ip_header_info *const ip_flags,
+static void update_context_ip_hdr(const struct rohc_comp_ctxt *const context,
+											 struct ip_header_info *const ip_flags,
                                   const struct ip_packet *const ip)
 {
+	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
+		(const struct rohc_comp_rfc3095_ctxt *const) context->specific;
+
 	ip_flags->is_first_header = false;
 
 	if(ip_get_version(ip) == IPV4)
@@ -6375,6 +6363,10 @@ static void update_context_ip_hdr(struct ip_header_info *const ip_flags,
 		ip_flags->info.v4.old_rnd = ip_flags->info.v4.rnd;
 		ip_flags->info.v4.old_nbo = ip_flags->info.v4.nbo;
 		ip_flags->info.v4.old_sid = ip_flags->info.v4.sid;
+
+		/* add the new IP-ID / SN delta to the W-LSB encoding object */
+		c_add_wlsb(&ip_flags->info.v4.ip_id_window, rfc3095_ctxt->sn,
+		           ip_flags->info.v4.id_delta);
 	}
 	else /* IPV6 */
 	{
@@ -6929,42 +6921,99 @@ static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 
 	/* always update the info related to the SN */
 	{
+
 		rohc_comp_debug(context, "new SN = %u / 0x%x", rfc3095_ctxt->sn,
 		                rfc3095_ctxt->sn);
-
-		/* how many bits are required to encode the new SN ? */
 		if(context->profile->id == ROHC_PROFILE_RTP)
 		{
-			rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 =
-				wlsb_get_mink_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn, 5);
-			rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 =
-				wlsb_get_k_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn);
+			rfc3095_ctxt->tmp.sn_4bits_possible =
+				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+				                           4, rohc_interval_compute_p_rtp_sn(4));
+			rfc3095_ctxt->tmp.sn_7bits_possible =
+				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+				                           7, rohc_interval_compute_p_rtp_sn(7));
+			rfc3095_ctxt->tmp.sn_12bits_possible =
+				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+				                           12, rohc_interval_compute_p_rtp_sn(12));
+
+			rfc3095_ctxt->tmp.sn_6bits_possible =
+				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+				                           6, rohc_interval_compute_p_rtp_sn(6));
+			rfc3095_ctxt->tmp.sn_9bits_possible =
+				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+				                           9, rohc_interval_compute_p_rtp_sn(9));
+			rfc3095_ctxt->tmp.sn_14bits_possible =
+				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+				                           14, rohc_interval_compute_p_rtp_sn(14));
 		}
 		else if(context->profile->id == ROHC_PROFILE_ESP)
 		{
-			rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 =
-				wlsb_get_mink_32bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn, 5);
-			rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 =
-				wlsb_get_k_32bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn);
+			rfc3095_ctxt->tmp.sn_4bits_possible =
+				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+				                           4, rohc_interval_compute_p_esp_sn(4));
+
+			rfc3095_ctxt->tmp.sn_5bits_possible =
+				wlsb_is_kp_possible_32bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+				                           5, rohc_interval_compute_p_esp_sn(5));
+			rfc3095_ctxt->tmp.sn_8bits_possible =
+				wlsb_is_kp_possible_32bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+				                           8, rohc_interval_compute_p_esp_sn(8));
+			rfc3095_ctxt->tmp.sn_13bits_possible =
+				wlsb_is_kp_possible_32bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+				                           13, rohc_interval_compute_p_esp_sn(13));
 		}
 		else
 		{
-			rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 =
-				wlsb_get_k_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn);
-			rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 =
-				rfc3095_ctxt->tmp.nr_sn_bits_more_than_4;
-		}
-		rohc_comp_debug(context, "SN can%s be encoded with %zu bits in a field "
-		                "smaller than or equal to 4 bits",
-		                (rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 <= 4 ? "" : "not"),
-		                rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4);
-		rohc_comp_debug(context, "SN can%s be encoded with %zu bits in a field "
-		                "strictly larger than 4 bits",
-		                (rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 > 4 ? "" : "not"),
-		                rfc3095_ctxt->tmp.nr_sn_bits_more_than_4);
+			rfc3095_ctxt->tmp.sn_4bits_possible =
+				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+				                           4, ROHC_LSB_SHIFT_SN);
 
-		/* add the new SN to the W-LSB encoding object */
-		c_add_wlsb(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn, rfc3095_ctxt->sn);
+			rfc3095_ctxt->tmp.sn_5bits_possible =
+				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+				                           5, ROHC_LSB_SHIFT_SN);
+			rfc3095_ctxt->tmp.sn_8bits_possible =
+				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+				                           8, ROHC_LSB_SHIFT_SN);
+			rfc3095_ctxt->tmp.sn_13bits_possible =
+				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+				                           13, ROHC_LSB_SHIFT_SN);
+		}
+		if(rfc3095_ctxt->tmp.sn_4bits_possible)
+		{
+			rohc_comp_debug(context, "4 bits may encode new SN");
+		}
+		if(rfc3095_ctxt->tmp.sn_5bits_possible)
+		{
+			rohc_comp_debug(context, "5 bits may encode new SN");
+		}
+		if(rfc3095_ctxt->tmp.sn_6bits_possible)
+		{
+			rohc_comp_debug(context, "6 bits may encode new SN");
+		}
+		if(rfc3095_ctxt->tmp.sn_7bits_possible)
+		{
+			rohc_comp_debug(context, "7 bits may encode new SN");
+		}
+		if(rfc3095_ctxt->tmp.sn_8bits_possible)
+		{
+			rohc_comp_debug(context, "8 bits may encode new SN");
+		}
+		if(rfc3095_ctxt->tmp.sn_9bits_possible)
+		{
+			rohc_comp_debug(context, "9 bits may encode new SN");
+		}
+		if(rfc3095_ctxt->tmp.sn_12bits_possible)
+		{
+			rohc_comp_debug(context, "12 bits may encode new SN");
+		}
+		if(rfc3095_ctxt->tmp.sn_13bits_possible)
+		{
+			rohc_comp_debug(context, "13 bits may encode new SN");
+		}
+		if(rfc3095_ctxt->tmp.sn_14bits_possible)
+		{
+			rohc_comp_debug(context, "14 bits may encode new SN");
+		}
 	}
 
 	/* update info related to the IP-ID of the outer header
@@ -7001,10 +7050,6 @@ static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		}
 		rohc_comp_debug(context, "%zd bits are required to encode new outer "
 		                "IP-ID delta", rfc3095_ctxt->tmp.nr_ip_id_bits);
-
-		/* add the new IP-ID / SN delta to the W-LSB encoding object */
-		c_add_wlsb(&rfc3095_ctxt->outer_ip_flags.info.v4.ip_id_window, rfc3095_ctxt->sn,
-		           rfc3095_ctxt->outer_ip_flags.info.v4.id_delta);
 	}
 	else /* IPV6 */
 	{
@@ -7047,10 +7092,6 @@ static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		}
 		rohc_comp_debug(context, "%zd bits are required to encode new inner "
 		                "IP-ID delta", rfc3095_ctxt->tmp.nr_ip_id_bits2);
-
-		/* add the new IP-ID / SN delta to the W-LSB encoding object */
-		c_add_wlsb(&rfc3095_ctxt->inner_ip_flags.info.v4.ip_id_window, rfc3095_ctxt->sn,
-		           rfc3095_ctxt->inner_ip_flags.info.v4.id_delta);
 	}
 	else if(uncomp_pkt->ip_hdr_nr > 1) /* IPV6 */
 	{
@@ -7161,26 +7202,26 @@ static rohc_ext_t decide_extension_uor2(const struct rohc_comp_ctxt *const conte
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 	rohc_ext_t ext;
 
-	if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 5 &&
+	if(rfc3095_ctxt->tmp.sn_5bits_possible &&
 	   nr_innermost_ip_id_bits == 0 &&
 	   nr_outermost_ip_id_bits == 0)
 	{
 		ext = ROHC_EXT_NONE;
 	}
-	else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 8 &&
+	else if(rfc3095_ctxt->tmp.sn_8bits_possible &&
 	        nr_innermost_ip_id_bits != 0 && nr_innermost_ip_id_bits <= 3 &&
 	        nr_outermost_ip_id_bits == 0)
 	{
 		ext = ROHC_EXT_0;
 	}
-	else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 8 &&
+	else if(rfc3095_ctxt->tmp.sn_8bits_possible &&
 	        nr_innermost_ip_id_bits != 0 && nr_innermost_ip_id_bits <= 11 &&
 	        nr_outermost_ip_id_bits == 0)
 	{
 		ext = ROHC_EXT_1;
 	}
 	else if(rfc3095_ctxt->ip_hdr_nr > 1 &&
-	        rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 8 &&
+	        rfc3095_ctxt->tmp.sn_8bits_possible &&
 	        nr_innermost_ip_id_bits != 0 && nr_innermost_ip_id_bits <= 8 &&
 	        nr_outermost_ip_id_bits <= 11)
 	{
@@ -7217,28 +7258,28 @@ static rohc_ext_t decide_extension_uor2rtp(const struct rohc_comp_ctxt *const co
 	const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits_more_than_2;
 	rohc_ext_t ext;
 
-	if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 6 &&
+	if(rfc3095_ctxt->tmp.sn_6bits_possible &&
 	   nr_ts_bits <= 6 &&
 	   nr_innermost_ip_id_bits == 0 &&
 	   nr_outermost_ip_id_bits == 0)
 	{
 		ext = ROHC_EXT_NONE;
 	}
-	else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9 &&
+	else if(rfc3095_ctxt->tmp.sn_9bits_possible &&
 	        nr_ts_bits <= 9 &&
 	        nr_innermost_ip_id_bits == 0 &&
 	        nr_outermost_ip_id_bits == 0)
 	{
 		ext = ROHC_EXT_0;
 	}
-	else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9 &&
+	else if(rfc3095_ctxt->tmp.sn_9bits_possible &&
 	        nr_ts_bits <= 17 &&
 	        nr_innermost_ip_id_bits == 0 &&
 	        nr_outermost_ip_id_bits == 0)
 	{
 		ext = ROHC_EXT_1;
 	}
-	else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9 &&
+	else if(rfc3095_ctxt->tmp.sn_9bits_possible &&
 	        nr_ts_bits <= 25 &&
 	        nr_innermost_ip_id_bits == 0 &&
 	        nr_outermost_ip_id_bits == 0)
@@ -7276,28 +7317,28 @@ static rohc_ext_t decide_extension_uor2ts(const struct rohc_comp_ctxt *const con
 	const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits_more_than_2;
 	rohc_ext_t ext;
 
-	if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 6 &&
+	if(rfc3095_ctxt->tmp.sn_6bits_possible &&
 	   nr_ts_bits <= 5 &&
 	   nr_innermost_ip_id_bits == 0 &&
 	   nr_outermost_ip_id_bits == 0)
 	{
 		ext = ROHC_EXT_NONE;
 	}
-	else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9 &&
+	else if(rfc3095_ctxt->tmp.sn_9bits_possible &&
 	        nr_ts_bits <= 8 &&
 	        nr_innermost_ip_id_bits == 0 &&
 	        nr_outermost_ip_id_bits == 0)
 	{
 		ext = ROHC_EXT_0;
 	}
-	else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9 &&
+	else if(rfc3095_ctxt->tmp.sn_9bits_possible &&
 	        nr_ts_bits <= 8 &&
 	        nr_innermost_ip_id_bits <= 8 &&
 	        nr_outermost_ip_id_bits == 0)
 	{
 		ext = ROHC_EXT_1;
 	}
-	else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9 &&
+	else if(rfc3095_ctxt->tmp.sn_9bits_possible &&
 	        nr_ts_bits <= 16 &&
 	        nr_innermost_ip_id_bits <= 8 &&
 	        nr_outermost_ip_id_bits == 0)
@@ -7335,28 +7376,28 @@ static rohc_ext_t decide_extension_uor2id(const struct rohc_comp_ctxt *const con
 	const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits_more_than_2;
 	rohc_ext_t ext;
 
-	if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 6 &&
+	if(rfc3095_ctxt->tmp.sn_6bits_possible &&
 	   (nr_ts_bits == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
 	   nr_innermost_ip_id_bits <= 5 &&
 	   nr_outermost_ip_id_bits == 0)
 	{
 		ext = ROHC_EXT_NONE;
 	}
-	else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9 &&
+	else if(rfc3095_ctxt->tmp.sn_9bits_possible &&
 	        (nr_ts_bits == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
 	        nr_innermost_ip_id_bits <= 8 &&
 	        nr_outermost_ip_id_bits == 0)
 	{
 		ext = ROHC_EXT_0;
 	}
-	else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9 &&
+	else if(rfc3095_ctxt->tmp.sn_9bits_possible &&
 	        nr_ts_bits <= 8 &&
 	        nr_innermost_ip_id_bits <= 8 &&
 	        nr_outermost_ip_id_bits == 0)
 	{
 		ext = ROHC_EXT_1;
 	}
-	else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 9 &&
+	else if(rfc3095_ctxt->tmp.sn_9bits_possible &&
 	        nr_ts_bits <= 8 &&
 	        nr_innermost_ip_id_bits <= 16 &&
 	        nr_outermost_ip_id_bits == 0)
@@ -7394,7 +7435,7 @@ static rohc_ext_t decide_extension_uo1id(const struct rohc_comp_ctxt *const cont
 	const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits_more_than_2;
 	rohc_ext_t ext;
 
-	if(rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 <= 4 &&
+	if(rfc3095_ctxt->tmp.sn_4bits_possible &&
 	   (nr_ts_bits == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
 	   nr_innermost_ip_id_bits <= 5 &&
 	   nr_outermost_ip_id_bits == 0 &&
@@ -7402,7 +7443,7 @@ static rohc_ext_t decide_extension_uo1id(const struct rohc_comp_ctxt *const cont
 	{
 		ext = ROHC_EXT_NONE;
 	}
-	else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 7 &&
+	else if(rfc3095_ctxt->tmp.sn_7bits_possible &&
 	        (nr_ts_bits == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
 	        nr_innermost_ip_id_bits <= 8 &&
 	        nr_outermost_ip_id_bits == 0 &&
@@ -7410,7 +7451,7 @@ static rohc_ext_t decide_extension_uo1id(const struct rohc_comp_ctxt *const cont
 	{
 		ext = ROHC_EXT_0;
 	}
-	else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 7 &&
+	else if(rfc3095_ctxt->tmp.sn_7bits_possible &&
 	        nr_ts_bits <= 8 &&
 	        nr_innermost_ip_id_bits <= 8 &&
 	        nr_outermost_ip_id_bits == 0 &&
@@ -7418,7 +7459,7 @@ static rohc_ext_t decide_extension_uo1id(const struct rohc_comp_ctxt *const cont
 	{
 		ext = ROHC_EXT_1;
 	}
-	else if(rfc3095_ctxt->tmp.nr_sn_bits_more_than_4 <= 7 &&
+	else if(rfc3095_ctxt->tmp.sn_7bits_possible &&
 	        nr_ts_bits <= 8 &&
 	        nr_innermost_ip_id_bits <= 16 &&
 	        nr_outermost_ip_id_bits == 0 &&
@@ -7525,29 +7566,6 @@ void rohc_get_ipid_bits(const struct rohc_comp_ctxt *const context,
 		*nr_innermost_bits = 0;
 		*nr_outermost_bits = 0;
 	}
-}
-
-
-/**
- * @brief Are the given SN field sizes possible?
- *
- * @param rfc3095_ctxt  The compression context
- * @param bits_nr       The base number of SN bits
- * @param add_bits_nr   The additional number of SN bits
- * @return              true if the SN field is usable, false if not
- */
-bool rohc_comp_rfc3095_is_sn_possible(const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt,
-                                      const size_t bits_nr,
-                                      const size_t add_bits_nr)
-{
-	const size_t required_bits =
-		(bits_nr <= 4 ? rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 :
-		 rfc3095_ctxt->tmp.nr_sn_bits_more_than_4);
-	const size_t required_add_bits =
-		((bits_nr + add_bits_nr) <= 4 ? rfc3095_ctxt->tmp.nr_sn_bits_less_equal_than_4 :
-		 rfc3095_ctxt->tmp.nr_sn_bits_more_than_4);
-
-	return (required_bits <= bits_nr || required_add_bits <= (bits_nr + add_bits_nr));
 }
 
 

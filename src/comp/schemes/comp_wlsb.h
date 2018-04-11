@@ -143,6 +143,10 @@ size_t wlsb_get_minkp_16bits(const struct c_wlsb *const wlsb,
                              const rohc_lsb_shift_t p)
 	__attribute__((warn_unused_result, nonnull(1)));
 
+bool wlsb_is_k_possible_16bits(const struct c_wlsb *const wlsb,
+                               const uint16_t value,
+                               const size_t k)
+	__attribute__((warn_unused_result, nonnull(1)));
 bool wlsb_is_kp_possible_16bits(const struct c_wlsb *const wlsb,
                                 const uint16_t value,
                                 const size_t k,

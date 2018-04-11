@@ -157,10 +157,17 @@ struct generic_tmp_vars
 	/// The number of dynamic fields that changed in the two IP headers
 	int send_dynamic;
 
-	/// The number of bits needed to encode the Sequence Number (SN)
-	size_t nr_sn_bits_less_equal_than_4;
-	/// The number of bits needed to encode the Sequence Number (SN)
-	size_t nr_sn_bits_more_than_4;
+	bool sn_4bits_possible;
+	bool sn_7bits_possible;
+	bool sn_12bits_possible;
+
+	bool sn_5bits_possible;
+	bool sn_8bits_possible;
+	bool sn_13bits_possible;
+
+	bool sn_6bits_possible;
+	bool sn_9bits_possible;
+	bool sn_14bits_possible;
 
 	/// The number of bits needed to encode the IP-ID of the outer IP header
 	size_t nr_ip_id_bits;
@@ -350,12 +357,6 @@ void rohc_get_ipid_bits(const struct rohc_comp_ctxt *const context,
                         size_t *const nr_innermost_bits,
                         size_t *const nr_outermost_bits)
 	__attribute__((nonnull(1, 2, 3)));
-
-bool rohc_comp_rfc3095_is_sn_possible(const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt,
-                                      const size_t bits_nr,
-                                      const size_t add_bits_nr)
-	__attribute__((warn_unused_result, nonnull(1), pure));
-
 
 /**
  * @brief Does the outer IP header require to transmit no non-random IP-ID bit?

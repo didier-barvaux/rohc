@@ -462,7 +462,7 @@ static rohc_packet_t c_rtp_decide_FO_packet(const struct rohc_comp_ctxt *context
 		                "SID flag changed");
 	}
 	else if(rfc3095_ctxt->tmp.send_static &&
-	        rohc_comp_rfc3095_is_sn_possible(rfc3095_ctxt, 6, 8))
+	        (rfc3095_ctxt->tmp.sn_6bits_possible || rfc3095_ctxt->tmp.sn_14bits_possible))
 	{
 		packet = ROHC_PACKET_UOR_2_RTP;
 		rohc_comp_debug(context, "choose packet UOR-2-RTP because at least one "
@@ -483,7 +483,7 @@ static rohc_packet_t c_rtp_decide_FO_packet(const struct rohc_comp_ctxt *context
 		                "fields changed with double IP headers",
 		                rfc3095_ctxt->tmp.send_dynamic);
 	}
-	else if(rohc_comp_rfc3095_is_sn_possible(rfc3095_ctxt, 6, 8))
+	else if(rfc3095_ctxt->tmp.sn_6bits_possible || rfc3095_ctxt->tmp.sn_14bits_possible)
 	{
 		/* UOR-2* packets can be used only if SN stand on <= 14 bits (6 bits
 		 * in base header + 8 bits in extension 3): determine which UOR-2*
@@ -657,7 +657,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *context
 		rohc_comp_debug(context, "choose packet IR-DYN because RTP Version "
 		                "changed");
 	}
-	else if(rohc_comp_rfc3095_is_sn_possible(rfc3095_ctxt, 4, 0) &&
+	else if(rfc3095_ctxt->tmp.sn_4bits_possible &&
 	        nr_ipv4_non_rnd_with_bits == 0 &&
 	        is_ts_scaled &&
 	        (is_ts_deducible ||
@@ -673,7 +673,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *context
 		                "or TS bits are deducible from SN ), and RTP M bit is "
 		                "not set", nr_of_ip_hdr);
 	}
-	else if(rohc_comp_rfc3095_is_sn_possible(rfc3095_ctxt, 4, 0) &&
+	else if(rfc3095_ctxt->tmp.sn_4bits_possible &&
 	        nr_ipv4_non_rnd == 0 &&
 	        is_ts_scaled && rtp_context->tmp.nr_ts_bits_more_than_2 <= 6)
 	{
@@ -684,7 +684,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *context
 		                "%zu <= 6 TS bits must be transmitted", nr_of_ip_hdr,
 		                rtp_context->tmp.nr_ts_bits_more_than_2);
 	}
-	else if(rohc_comp_rfc3095_is_sn_possible(rfc3095_ctxt, 4, 0) &&
+	else if(rfc3095_ctxt->tmp.sn_4bits_possible &&
 	        nr_ipv4_non_rnd_with_bits == 1 && nr_innermost_ip_id_bits <= 5 &&
 	        is_ts_scaled &&
 	        (is_ts_deducible ||
@@ -701,7 +701,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *context
 		                "or TS bits are deducible from SN ), and RTP M bit is not "
 		                "set", nr_of_ip_hdr, nr_innermost_ip_id_bits);
 	}
-	else if(rohc_comp_rfc3095_is_sn_possible(rfc3095_ctxt, 4, 0) &&
+	else if(rfc3095_ctxt->tmp.sn_4bits_possible &&
 	        nr_ipv4_non_rnd_with_bits == 0 &&
 	        is_ts_scaled && rtp_context->tmp.nr_ts_bits_more_than_2 <= 5)
 	{
@@ -713,7 +713,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *context
 		                "%zu <= 6 TS bits must be transmitted", nr_of_ip_hdr,
 		                rtp_context->tmp.nr_ts_bits_more_than_2);
 	}
-	else if(rohc_comp_rfc3095_is_sn_possible(rfc3095_ctxt, 4, 8) &&
+	else if((rfc3095_ctxt->tmp.sn_4bits_possible || rfc3095_ctxt->tmp.sn_12bits_possible) &&
 	        nr_ipv4_non_rnd_with_bits >= 1 &&
 	        sdvl_can_length_be_encoded(rtp_context->tmp.nr_ts_bits_more_than_2))
 	{
@@ -728,7 +728,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *context
 		                "and %zu TS bits can be SDVL-encoded", nr_of_ip_hdr,
 		                rtp_context->tmp.nr_ts_bits_more_than_2);
 	}
-	else if(rohc_comp_rfc3095_is_sn_possible(rfc3095_ctxt, 6, 8))
+	else if(rfc3095_ctxt->tmp.sn_6bits_possible || rfc3095_ctxt->tmp.sn_14bits_possible)
 	{
 		/* UOR-2* packets can be used only if SN stand on <= 14 bits (6 bits
 		 * in base header + 8 bits in extension 3): determine which UOR-2*

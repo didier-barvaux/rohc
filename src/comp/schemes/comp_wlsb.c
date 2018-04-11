@@ -436,6 +436,24 @@ size_t wlsb_get_minkp_16bits(const struct c_wlsb *const wlsb,
  * @param wlsb   The W-LSB object
  * @param value  The value to encode using the LSB algorithm
  * @param k      The number of bits for encoding
+ * @return       true if the number of bits is enough for encoding or not
+ */
+bool wlsb_is_k_possible_16bits(const struct c_wlsb *const wlsb,
+                               const uint16_t value,
+                               const size_t k)
+{
+	return wlsb_is_kp_possible_16bits(wlsb, value, k, wlsb->p);
+}
+
+
+/**
+ * @brief Find out whether the given number of bits is enough to encode value
+ *
+ * The function is dedicated to 16-bit fields.
+ *
+ * @param wlsb   The W-LSB object
+ * @param value  The value to encode using the LSB algorithm
+ * @param k      The number of bits for encoding
  * @param p      The shift parameter p
  * @return       true if the number of bits is enough for encoding or not
  */
