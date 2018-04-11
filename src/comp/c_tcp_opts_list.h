@@ -42,6 +42,13 @@
  */
 struct c_tcp_opt_ctxt
 {
+	/** The TCP option data */
+	union
+	{
+		uint8_t raw[ROHC_TCP_OPT_MAX_LEN];
+		sack_block_t sack_blocks[4];
+		struct tcp_option_timestamp timestamp;
+	} data;
 	/** The number of times the TCP option was transmitted */
 	uint8_t nr_trans;
 	/** Whether the option context is in use or not */
@@ -51,16 +58,7 @@ struct c_tcp_opt_ctxt
 	uint8_t age;
 	/** The length of the TCP option */
 	uint8_t data_len;
-	uint8_t unused[3];
-/** The maximum size (in bytes) of one TCP option */
-#define MAX_TCP_OPT_SIZE 40U
-	/** The TCP option data */
-	union
-	{
-		uint8_t raw[MAX_TCP_OPT_SIZE];
-		sack_block_t sack_blocks[4];
-		struct tcp_option_timestamp timestamp;
-	} data;
+	uint8_t unused[1];
 };
 
 /* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
