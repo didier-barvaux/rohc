@@ -2314,7 +2314,6 @@ static rohc_status_t decomp_rfc5225_ip_udp_decode_bits(const struct rohc_decomp_
 		}
 		ctrl_crc_computed =
 			compute_crc_ctrl_fields(ctxt->profile->id,
-			                        ctxt->decompressor->crc_table_3,
 			                        decoded->reorder_ratio, decoded->msn,
 			                        ip_id_behaviors, ip_id_behaviors_nr);
 		rohc_decomp_debug(ctxt, "CRC-3 on control fields = 0x%x (reorder_ratio = "
@@ -2744,7 +2743,7 @@ static rohc_status_t decomp_rfc5225_ip_udp_build_hdrs(const struct rohc_decomp *
 	if(extr_crc->type != ROHC_CRC_TYPE_NONE)
 	{
 		const bool crc_ok =
-			rohc_decomp_check_uncomp_crc(decomp, context, uncomp_hdrs,
+			rohc_decomp_check_uncomp_crc(context, uncomp_hdrs,
 			                             extr_crc->type, extr_crc->bits);
 		if(!crc_ok)
 		{

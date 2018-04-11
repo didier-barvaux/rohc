@@ -317,14 +317,13 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
  * Private function prototypes for miscellaneous functions
  */
 
-static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
-                             const struct rohc_decomp_ctxt *const context,
+static bool check_uncomp_crc(const struct rohc_decomp_ctxt *const context,
                              const uint8_t *const outer_ip_hdr,
                              const uint8_t *const inner_ip_hdr,
                              const uint8_t *const next_header,
                              const rohc_crc_type_t crc_type,
                              const uint8_t crc_packet)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static bool is_sn_wraparound(const struct rohc_ts cur_arrival_time,
                              const struct rohc_ts arrival_times[ROHC_MAX_ARRIVAL_TIMES],
@@ -5025,7 +5024,7 @@ rohc_status_t rfc3095_decomp_build_hdrs(const struct rohc_decomp *const decomp,
 
 		assert(extr_crc->bits_nr > 0);
 
-		crc_ok = check_uncomp_crc(decomp, context, outer_ip_hdr, inner_ip_hdr,
+		crc_ok = check_uncomp_crc(context, outer_ip_hdr, inner_ip_hdr,
 		                          next_header, extr_crc->type, extr_crc->bits);
 		if(!crc_ok)
 		{
@@ -5241,7 +5240,6 @@ error:
  * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
  *       if the CRC-STATIC fields did not change.
  *
- * @param decomp        The ROHC decompressor
  * @param context       The decompression context
  * @param outer_ip_hdr  The outer IP header
  * @param inner_ip_hdr  The inner IP header if it exists, NULL otherwise
@@ -5250,8 +5248,7 @@ error:
  * @param crc_packet    The CRC extracted from the ROHC header
  * @return              true if the CRC is correct, false otherwise
  */
-static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
-                             const struct rohc_decomp_ctxt *const context,
+static bool check_uncomp_crc(const struct rohc_decomp_ctxt *const context,
                              const uint8_t *const outer_ip_hdr,
                              const uint8_t *const inner_ip_hdr,
                              const uint8_t *const next_header,
@@ -5259,7 +5256,6 @@ static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
                              const uint8_t crc_packet)
 {
 	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
-	const uint8_t *crc_table;
 	uint8_t crc_computed;
 
 	assert(rfc3095_ctxt != NULL);
@@ -5270,15 +5266,12 @@ static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
 	{
 		case ROHC_CRC_TYPE_3:
 			crc_computed = CRC_INIT_3;
-			crc_table = decomp->crc_table_3;
 			break;
 		case ROHC_CRC_TYPE_7:
 			crc_computed = CRC_INIT_7;
-			crc_table = decomp->crc_table_7;
 			break;
 		case ROHC_CRC_TYPE_8:
 			crc_computed = CRC_INIT_8;
-			crc_table = decomp->crc_table_8;
 			break;
 		case ROHC_CRC_TYPE_NONE:
 		default:
@@ -5302,7 +5295,7 @@ static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
 	{
 		crc_computed = rfc3095_ctxt->compute_crc_static(outer_ip_hdr, inner_ip_hdr,
 		                                                next_header, crc_type,
-		                                                crc_computed, crc_table);
+		                                                crc_computed);
 		rohc_decomp_debug(context, "compute CRC-STATIC-%d = 0x%x from packet",
 		                  crc_type, crc_computed);
 
@@ -5324,7 +5317,7 @@ static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
 	/* compute the CRC on CRC-DYNAMIC fields of built uncompressed headers */
 	crc_computed = rfc3095_ctxt->compute_crc_dynamic(outer_ip_hdr, inner_ip_hdr,
 	                                                 next_header, crc_type,
-	                                                 crc_computed, crc_table);
+	                                                 crc_computed);
 	rohc_decomp_debug(context, "CRC-%d on uncompressed header = 0x%x",
 	                  crc_type, crc_computed);
 

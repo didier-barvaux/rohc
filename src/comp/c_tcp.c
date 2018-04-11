@@ -1304,8 +1304,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 
 	/* IR(-CR|-DYN) header was successfully built, compute the CRC */
 	rohc_pkt[crc_position] = crc_calculate(ROHC_CRC_TYPE_8, rohc_pkt,
-	                                       rohc_hdr_len, CRC_INIT_8,
-	                                       context->compressor->crc_table_8);
+	                                       rohc_hdr_len, CRC_INIT_8);
 	rohc_comp_debug(context, "CRC (header length = %zu, crc = 0x%x)",
 	                rohc_hdr_len, rohc_pkt[crc_position]);
 
@@ -1396,7 +1395,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	{
 		crc_computed =
 			crc_calculate(ROHC_CRC_TYPE_7, uncomp_data, uncomp_pkt_hdrs->all_hdrs_len,
-			              CRC_INIT_7, context->compressor->crc_table_7);
+			              CRC_INIT_7);
 		rohc_comp_debug(context, "CRC-7 on %zu-byte uncompressed header = 0x%x",
 		                uncomp_pkt_hdrs->all_hdrs_len, crc_computed);
 	}
@@ -1404,7 +1403,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	{
 		crc_computed =
 			crc_calculate(ROHC_CRC_TYPE_3, uncomp_data, uncomp_pkt_hdrs->all_hdrs_len,
-			              CRC_INIT_3, context->compressor->crc_table_3);
+			              CRC_INIT_3);
 		rohc_comp_debug(context, "CRC-3 on %zu-byte uncompressed header = 0x%x",
 		                uncomp_pkt_hdrs->all_hdrs_len, crc_computed);
 	}

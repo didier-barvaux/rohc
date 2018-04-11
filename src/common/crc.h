@@ -64,20 +64,124 @@ typedef enum
 } rohc_crc_type_t;
 
 
+/** The table to enable fast CRC-3 computation */
+static const uint8_t crc_table_3[256] =
+{
+	0x00, 0x06, 0x01, 0x07, 0x02, 0x04, 0x03, 0x05,
+	0x04, 0x02, 0x05, 0x03, 0x06, 0x00, 0x07, 0x01,
+	0x05, 0x03, 0x04, 0x02, 0x07, 0x01, 0x06, 0x00,
+	0x01, 0x07, 0x00, 0x06, 0x03, 0x05, 0x02, 0x04,
+	0x07, 0x01, 0x06, 0x00, 0x05, 0x03, 0x04, 0x02,
+	0x03, 0x05, 0x02, 0x04, 0x01, 0x07, 0x00, 0x06,
+	0x02, 0x04, 0x03, 0x05, 0x00, 0x06, 0x01, 0x07,
+	0x06, 0x00, 0x07, 0x01, 0x04, 0x02, 0x05, 0x03,
+	0x03, 0x05, 0x02, 0x04, 0x01, 0x07, 0x00, 0x06,
+	0x07, 0x01, 0x06, 0x00, 0x05, 0x03, 0x04, 0x02,
+	0x06, 0x00, 0x07, 0x01, 0x04, 0x02, 0x05, 0x03,
+	0x02, 0x04, 0x03, 0x05, 0x00, 0x06, 0x01, 0x07,
+	0x04, 0x02, 0x05, 0x03, 0x06, 0x00, 0x07, 0x01,
+	0x00, 0x06, 0x01, 0x07, 0x02, 0x04, 0x03, 0x05,
+	0x01, 0x07, 0x00, 0x06, 0x03, 0x05, 0x02, 0x04,
+	0x05, 0x03, 0x04, 0x02, 0x07, 0x01, 0x06, 0x00,
+	0x06, 0x00, 0x07, 0x01, 0x04, 0x02, 0x05, 0x03,
+	0x02, 0x04, 0x03, 0x05, 0x00, 0x06, 0x01, 0x07,
+	0x03, 0x05, 0x02, 0x04, 0x01, 0x07, 0x00, 0x06,
+	0x07, 0x01, 0x06, 0x00, 0x05, 0x03, 0x04, 0x02,
+	0x01, 0x07, 0x00, 0x06, 0x03, 0x05, 0x02, 0x04,
+	0x05, 0x03, 0x04, 0x02, 0x07, 0x01, 0x06, 0x00,
+	0x04, 0x02, 0x05, 0x03, 0x06, 0x00, 0x07, 0x01,
+	0x00, 0x06, 0x01, 0x07, 0x02, 0x04, 0x03, 0x05,
+	0x05, 0x03, 0x04, 0x02, 0x07, 0x01, 0x06, 0x00,
+	0x01, 0x07, 0x00, 0x06, 0x03, 0x05, 0x02, 0x04,
+	0x00, 0x06, 0x01, 0x07, 0x02, 0x04, 0x03, 0x05,
+	0x04, 0x02, 0x05, 0x03, 0x06, 0x00, 0x07, 0x01,
+	0x02, 0x04, 0x03, 0x05, 0x00, 0x06, 0x01, 0x07,
+	0x06, 0x00, 0x07, 0x01, 0x04, 0x02, 0x05, 0x03,
+	0x07, 0x01, 0x06, 0x00, 0x05, 0x03, 0x04, 0x02,
+	0x03, 0x05, 0x02, 0x04, 0x01, 0x07, 0x00, 0x06,
+};
+
+
+/** The table to enable fast CRC-7 computation */
+static const uint8_t crc_table_7[256] =
+{
+	0x00, 0x40, 0x73, 0x33, 0x15, 0x55, 0x66, 0x26,
+	0x2a, 0x6a, 0x59, 0x19, 0x3f, 0x7f, 0x4c, 0x0c,
+	0x54, 0x14, 0x27, 0x67, 0x41, 0x01, 0x32, 0x72,
+	0x7e, 0x3e, 0x0d, 0x4d, 0x6b, 0x2b, 0x18, 0x58,
+	0x5b, 0x1b, 0x28, 0x68, 0x4e, 0x0e, 0x3d, 0x7d,
+	0x71, 0x31, 0x02, 0x42, 0x64, 0x24, 0x17, 0x57,
+	0x0f, 0x4f, 0x7c, 0x3c, 0x1a, 0x5a, 0x69, 0x29,
+	0x25, 0x65, 0x56, 0x16, 0x30, 0x70, 0x43, 0x03,
+	0x45, 0x05, 0x36, 0x76, 0x50, 0x10, 0x23, 0x63,
+	0x6f, 0x2f, 0x1c, 0x5c, 0x7a, 0x3a, 0x09, 0x49,
+	0x11, 0x51, 0x62, 0x22, 0x04, 0x44, 0x77, 0x37,
+	0x3b, 0x7b, 0x48, 0x08, 0x2e, 0x6e, 0x5d, 0x1d,
+	0x1e, 0x5e, 0x6d, 0x2d, 0x0b, 0x4b, 0x78, 0x38,
+	0x34, 0x74, 0x47, 0x07, 0x21, 0x61, 0x52, 0x12,
+	0x4a, 0x0a, 0x39, 0x79, 0x5f, 0x1f, 0x2c, 0x6c,
+	0x60, 0x20, 0x13, 0x53, 0x75, 0x35, 0x06, 0x46,
+	0x79, 0x39, 0x0a, 0x4a, 0x6c, 0x2c, 0x1f, 0x5f,
+	0x53, 0x13, 0x20, 0x60, 0x46, 0x06, 0x35, 0x75,
+	0x2d, 0x6d, 0x5e, 0x1e, 0x38, 0x78, 0x4b, 0x0b,
+	0x07, 0x47, 0x74, 0x34, 0x12, 0x52, 0x61, 0x21,
+	0x22, 0x62, 0x51, 0x11, 0x37, 0x77, 0x44, 0x04,
+	0x08, 0x48, 0x7b, 0x3b, 0x1d, 0x5d, 0x6e, 0x2e,
+	0x76, 0x36, 0x05, 0x45, 0x63, 0x23, 0x10, 0x50,
+	0x5c, 0x1c, 0x2f, 0x6f, 0x49, 0x09, 0x3a, 0x7a,
+	0x3c, 0x7c, 0x4f, 0x0f, 0x29, 0x69, 0x5a, 0x1a,
+	0x16, 0x56, 0x65, 0x25, 0x03, 0x43, 0x70, 0x30,
+	0x68, 0x28, 0x1b, 0x5b, 0x7d, 0x3d, 0x0e, 0x4e,
+	0x42, 0x02, 0x31, 0x71, 0x57, 0x17, 0x24, 0x64,
+	0x67, 0x27, 0x14, 0x54, 0x72, 0x32, 0x01, 0x41,
+	0x4d, 0x0d, 0x3e, 0x7e, 0x58, 0x18, 0x2b, 0x6b,
+	0x33, 0x73, 0x40, 0x00, 0x26, 0x66, 0x55, 0x15,
+	0x19, 0x59, 0x6a, 0x2a, 0x0c, 0x4c, 0x7f, 0x3f,
+};
+
+
+/** The table to enable fast CRC-8 computation */
+static const uint8_t crc_table_8[256] =
+{
+	0x00, 0x91, 0xe3, 0x72, 0x07, 0x96, 0xe4, 0x75,
+	0x0e, 0x9f, 0xed, 0x7c, 0x09, 0x98, 0xea, 0x7b,
+	0x1c, 0x8d, 0xff, 0x6e, 0x1b, 0x8a, 0xf8, 0x69,
+	0x12, 0x83, 0xf1, 0x60, 0x15, 0x84, 0xf6, 0x67,
+	0x38, 0xa9, 0xdb, 0x4a, 0x3f, 0xae, 0xdc, 0x4d,
+	0x36, 0xa7, 0xd5, 0x44, 0x31, 0xa0, 0xd2, 0x43,
+	0x24, 0xb5, 0xc7, 0x56, 0x23, 0xb2, 0xc0, 0x51,
+	0x2a, 0xbb, 0xc9, 0x58, 0x2d, 0xbc, 0xce, 0x5f,
+	0x70, 0xe1, 0x93, 0x02, 0x77, 0xe6, 0x94, 0x05,
+	0x7e, 0xef, 0x9d, 0x0c, 0x79, 0xe8, 0x9a, 0x0b,
+	0x6c, 0xfd, 0x8f, 0x1e, 0x6b, 0xfa, 0x88, 0x19,
+	0x62, 0xf3, 0x81, 0x10, 0x65, 0xf4, 0x86, 0x17,
+	0x48, 0xd9, 0xab, 0x3a, 0x4f, 0xde, 0xac, 0x3d,
+	0x46, 0xd7, 0xa5, 0x34, 0x41, 0xd0, 0xa2, 0x33,
+	0x54, 0xc5, 0xb7, 0x26, 0x53, 0xc2, 0xb0, 0x21,
+	0x5a, 0xcb, 0xb9, 0x28, 0x5d, 0xcc, 0xbe, 0x2f,
+	0xe0, 0x71, 0x03, 0x92, 0xe7, 0x76, 0x04, 0x95,
+	0xee, 0x7f, 0x0d, 0x9c, 0xe9, 0x78, 0x0a, 0x9b,
+	0xfc, 0x6d, 0x1f, 0x8e, 0xfb, 0x6a, 0x18, 0x89,
+	0xf2, 0x63, 0x11, 0x80, 0xf5, 0x64, 0x16, 0x87,
+	0xd8, 0x49, 0x3b, 0xaa, 0xdf, 0x4e, 0x3c, 0xad,
+	0xd6, 0x47, 0x35, 0xa4, 0xd1, 0x40, 0x32, 0xa3,
+	0xc4, 0x55, 0x27, 0xb6, 0xc3, 0x52, 0x20, 0xb1,
+	0xca, 0x5b, 0x29, 0xb8, 0xcd, 0x5c, 0x2e, 0xbf,
+	0x90, 0x01, 0x73, 0xe2, 0x97, 0x06, 0x74, 0xe5,
+	0x9e, 0x0f, 0x7d, 0xec, 0x99, 0x08, 0x7a, 0xeb,
+	0x8c, 0x1d, 0x6f, 0xfe, 0x8b, 0x1a, 0x68, 0xf9,
+	0x82, 0x13, 0x61, 0xf0, 0x85, 0x14, 0x66, 0xf7,
+	0xa8, 0x39, 0x4b, 0xda, 0xaf, 0x3e, 0x4c, 0xdd,
+	0xa6, 0x37, 0x45, 0xd4, 0xa1, 0x30, 0x42, 0xd3,
+	0xb4, 0x25, 0x57, 0xc6, 0xb3, 0x22, 0x50, 0xc1,
+	0xba, 0x2b, 0x59, 0xc8, 0xbd, 0x2c, 0x5e, 0xcf,
+};
+
+
+
 /*
  * Function prototypes.
  */
-
-void rohc_crc_init_table(uint8_t *const table,
-                         const rohc_crc_type_t crc_type)
-	__attribute__((nonnull(1)));
-
-uint8_t crc_calculate(const rohc_crc_type_t crc_type,
-                      const uint8_t *const data,
-                      const size_t length,
-                      const uint8_t init_val,
-                      const uint8_t *const crc_table)
-	__attribute__((nonnull(2, 5), warn_unused_result));
 
 uint32_t crc_calc_fcs32(const uint8_t *const data,
                         const size_t length,
@@ -88,75 +192,197 @@ uint8_t compute_crc_static(const uint8_t *const outer_ip,
                            const uint8_t *const inner_ip,
                            const uint8_t *const next_header,
                            const rohc_crc_type_t crc_type,
-                           const uint8_t init_val,
-                           const uint8_t *const crc_table)
-	__attribute__((nonnull(1, 6), warn_unused_result));
+                           const uint8_t init_val)
+	__attribute__((nonnull(1), warn_unused_result));
 uint8_t compute_crc_dynamic(const uint8_t *const outer_ip,
                             const uint8_t *const inner_ip,
                             const uint8_t *const next_header,
                             const rohc_crc_type_t crc_type,
-                            const uint8_t init_val,
-                            const uint8_t *const crc_table)
-	__attribute__((nonnull(1, 6), warn_unused_result));
+                            const uint8_t init_val)
+	__attribute__((nonnull(1), warn_unused_result));
 
 static inline
 uint8_t udp_compute_crc_static(const uint8_t *const outer_ip,
                                const uint8_t *const inner_ip,
                                const uint8_t *const next_header,
                                const rohc_crc_type_t crc_type,
-                               const uint8_t init_val,
-                               const uint8_t *const crc_table)
-	__attribute__((nonnull(1, 3, 6), warn_unused_result));
+                               const uint8_t init_val)
+	__attribute__((nonnull(1, 3), warn_unused_result));
 static inline
 uint8_t udp_compute_crc_dynamic(const uint8_t *const outer_ip,
                                 const uint8_t *const inner_ip,
                                 const uint8_t *const next_header,
                                 const rohc_crc_type_t crc_type,
-                                const uint8_t init_val,
-                                const uint8_t *const crc_table)
-	__attribute__((nonnull(1, 3, 6), warn_unused_result));
+                                const uint8_t init_val)
+	__attribute__((nonnull(1, 3), warn_unused_result));
 
 static inline
 uint8_t esp_compute_crc_static(const uint8_t *const outer_ip,
                                const uint8_t *const inner_ip,
                                const uint8_t *const next_header,
                                const rohc_crc_type_t crc_type,
-                               const uint8_t init_val,
-                               const uint8_t *const crc_table)
-	__attribute__((nonnull(1, 3, 6), warn_unused_result));
+                               const uint8_t init_val)
+	__attribute__((nonnull(1, 3), warn_unused_result));
 static inline
 uint8_t esp_compute_crc_dynamic(const uint8_t *const outer_ip,
                                 const uint8_t *const inner_ip,
                                 const uint8_t *const next_header,
                                 const rohc_crc_type_t crc_type,
-                                const uint8_t init_val,
-                                const uint8_t *const crc_table)
-	__attribute__((nonnull(1, 3, 6), warn_unused_result));
+                                const uint8_t init_val)
+	__attribute__((nonnull(1, 3), warn_unused_result));
 
 static inline
 uint8_t rtp_compute_crc_static(const uint8_t *const outer_ip,
                                const uint8_t *const inner_ip,
                                const uint8_t *const next_header,
                                const rohc_crc_type_t crc_type,
-                               const uint8_t init_val,
-                               const uint8_t *const crc_table)
-	__attribute__((nonnull(1, 3, 6), warn_unused_result));
+                               const uint8_t init_val)
+	__attribute__((nonnull(1, 3), warn_unused_result));
 static inline
 uint8_t rtp_compute_crc_dynamic(const uint8_t *const outer_ip,
                                 const uint8_t *const inner_ip,
                                 const uint8_t *const next_header,
                                 const rohc_crc_type_t crc_type,
-                                const uint8_t init_val,
-                                const uint8_t *const crc_table)
-	__attribute__((nonnull(1, 3, 6), warn_unused_result));
+                                const uint8_t init_val)
+	__attribute__((nonnull(1, 3), warn_unused_result));
 
 uint8_t compute_crc_ctrl_fields(const rohc_profile_t profile_id,
-                                const uint8_t *const crc_table,
                                 const uint8_t reorder_ratio,
                                 const uint16_t msn,
                                 const uint8_t ip_id_behaviors[],
                                 const size_t ip_id_behaviors_nr)
+	__attribute__((warn_unused_result));
+
+static inline
+uint8_t crc_calculate(const rohc_crc_type_t crc_type,
+                      const uint8_t *const data,
+                      const size_t length,
+                      const uint8_t init_val)
 	__attribute__((nonnull(2), warn_unused_result));
+
+static inline uint8_t crc_calc_8(const uint8_t *const buf,
+                                 const size_t size,
+                                 const uint8_t init_val)
+	__attribute__((nonnull(1), warn_unused_result, pure));
+static inline uint8_t crc_calc_7(const uint8_t *const buf,
+                                 const size_t size,
+                                 const uint8_t init_val)
+	__attribute__((nonnull(1), warn_unused_result, pure));
+static inline uint8_t crc_calc_3(const uint8_t *const buf,
+                                 const size_t size,
+                                 const uint8_t init_val)
+	__attribute__((nonnull(1), warn_unused_result, pure));
+
+
+/**
+ * @brief Calculate the checksum for the given data.
+ *
+ * @param crc_type   The CRC type
+ * @param data       The data to calculate the checksum on
+ * @param length     The length of the data
+ * @param init_val   The initial CRC value
+ * @return           The checksum
+ */
+static inline
+uint8_t crc_calculate(const rohc_crc_type_t crc_type,
+                      const uint8_t *const data,
+                      const size_t length,
+                      const uint8_t init_val)
+{
+	uint8_t crc;
+
+	/* call the function that corresponds to the CRC type */
+	switch(crc_type)
+	{
+		case ROHC_CRC_TYPE_8:
+			crc = crc_calc_8(data, length, init_val);
+			break;
+		case ROHC_CRC_TYPE_7:
+			crc = crc_calc_7(data, length, init_val);
+			break;
+		case ROHC_CRC_TYPE_3:
+			crc = crc_calc_3(data, length, init_val);
+			break;
+		case ROHC_CRC_TYPE_NONE:
+		default:
+			crc = 0;
+			break;
+	}
+
+	return crc;
+}
+
+
+/**
+ * @brief Optimized CRC-8 calculation using a table
+ *
+ * @param buf        The data to compute the CRC for
+ * @param size       The size of the data
+ * @param init_val   The initial CRC value
+ * @return           The CRC byte
+ */
+static inline uint8_t crc_calc_8(const uint8_t *const buf,
+                                 const size_t size,
+                                 const uint8_t init_val)
+{
+	uint8_t crc = init_val;
+	size_t i;
+
+	for(i = 0; i < size; i++)
+	{
+		crc = crc_table_8[buf[i] ^ crc];
+	}
+
+	return crc;
+}
+
+
+/**
+ * @brief Optimized CRC-7 calculation using a table
+ *
+ * @param buf        The data to compute the CRC for
+ * @param size       The size of the data
+ * @param init_val   The initial CRC value
+ * @return           The CRC byte
+ */
+static inline uint8_t crc_calc_7(const uint8_t *const buf,
+                                 const size_t size,
+                                 const uint8_t init_val)
+{
+	uint8_t crc = init_val;
+	size_t i;
+
+	for(i = 0; i < size; i++)
+	{
+		crc = crc_table_7[buf[i] ^ (crc & 127)];
+	}
+
+	return crc;
+}
+
+
+/**
+ * @brief Optimized CRC-3 calculation using a table
+ *
+ * @param buf        The data to compute the CRC for
+ * @param size       The size of the data
+ * @param init_val   The initial CRC value
+ * @return           The CRC byte
+ */
+static inline uint8_t crc_calc_3(const uint8_t *const buf,
+                                 const size_t size,
+                                 const uint8_t init_val)
+{
+	uint8_t crc = init_val;
+	size_t i;
+
+	for(i = 0; i < size; i++)
+	{
+		crc = crc_table_3[buf[i] ^ (crc & 7)];
+	}
+
+	return crc;
+}
 
 
 /**
@@ -171,7 +397,6 @@ uint8_t compute_crc_ctrl_fields(const rohc_profile_t profile_id,
  * @param next_header The next header located after the IP header(s)
  * @param crc_type    The type of CRC
  * @param init_val    The initial CRC value
- * @param crc_table   The pre-computed table for fast CRC computation
  * @return            The checksum
  */
 static inline
@@ -179,22 +404,16 @@ uint8_t udp_compute_crc_static(const uint8_t *const outer_ip,
                                const uint8_t *const inner_ip,
                                const uint8_t *const next_header,
                                const rohc_crc_type_t crc_type,
-                               const uint8_t init_val,
-                               const uint8_t *const crc_table)
+                               const uint8_t init_val)
 {
+	const struct udphdr *const udp = (struct udphdr *) next_header;
 	uint8_t crc = init_val;
-	const struct udphdr *udp;
 
 	/* compute the CRC-STATIC value for IP and IP2 headers */
-	crc = compute_crc_static(outer_ip, inner_ip, next_header,
-	                         crc_type, crc, crc_table);
-
-	/* get the start of UDP header */
-	udp = (struct udphdr *) next_header;
+	crc = compute_crc_static(outer_ip, inner_ip, next_header, crc_type, crc);
 
 	/* bytes 1-4 (Source Port, Destination Port) */
-	crc = crc_calculate(crc_type, (uint8_t *)(&udp->source), 4,
-	                    crc, crc_table);
+	crc = crc_calculate(crc_type, (uint8_t *)(&udp->source), 4, crc);
 
 	return crc;
 }
@@ -211,7 +430,6 @@ uint8_t udp_compute_crc_static(const uint8_t *const outer_ip,
  * @param next_header The next header located after the IP header(s)
  * @param crc_type    The type of CRC
  * @param init_val    The initial CRC value
- * @param crc_table   The pre-computed table for fast CRC computation
  * @return            The checksum
  */
 static inline
@@ -219,22 +437,16 @@ uint8_t udp_compute_crc_dynamic(const uint8_t *const outer_ip,
                                 const uint8_t *const inner_ip,
                                 const uint8_t *const next_header,
                                 const rohc_crc_type_t crc_type,
-                                const uint8_t init_val,
-                                const uint8_t *const crc_table)
+                               const uint8_t init_val)
 {
+	const struct udphdr *const udp = (struct udphdr *) next_header;
 	uint8_t crc = init_val;
-	const struct udphdr *udp;
 
 	/* compute the CRC-DYNAMIC value for IP and IP2 headers */
-	crc = compute_crc_dynamic(outer_ip, inner_ip, next_header,
-	                          crc_type, crc, crc_table);
-
-	/* get the start of UDP header */
-	udp = (struct udphdr *) next_header;
+	crc = compute_crc_dynamic(outer_ip, inner_ip, next_header, crc_type, crc);
 
 	/* bytes 5-8 (Length, Checksum) */
-	crc = crc_calculate(crc_type, (uint8_t *)(&udp->len), 4,
-	                    crc, crc_table);
+	crc = crc_calculate(crc_type, (uint8_t *)(&udp->len), 4, crc);
 
 	return crc;
 }
@@ -252,7 +464,6 @@ uint8_t udp_compute_crc_dynamic(const uint8_t *const outer_ip,
  * @param next_header The next header located after the IP header(s)
  * @param crc_type    The type of CRC
  * @param init_val    The initial CRC value
- * @param crc_table   The pre-computed table for fast CRC computation
  * @return            The checksum
  */
 static inline
@@ -260,22 +471,16 @@ uint8_t esp_compute_crc_static(const uint8_t *const outer_ip,
                                const uint8_t *const inner_ip,
                                const uint8_t *const next_header,
                                const rohc_crc_type_t crc_type,
-                               const uint8_t init_val,
-                               const uint8_t *const crc_table)
+                               const uint8_t init_val)
 {
+	const struct esphdr *const esp = (struct esphdr *) next_header;
 	uint8_t crc = init_val;
-	const struct esphdr *esp;
 
 	/* compute the CRC-STATIC value for IP and IP2 headers */
-	crc = compute_crc_static(outer_ip, inner_ip, next_header,
-	                         crc_type, crc, crc_table);
-
-	/* get the start of ESP header */
-	esp = (struct esphdr *) next_header;
+	crc = compute_crc_static(outer_ip, inner_ip, next_header, crc_type, crc);
 
 	/* bytes 1-4 (Security parameters index) */
-	crc = crc_calculate(crc_type, (uint8_t *)(&esp->spi), 4,
-	                    crc, crc_table);
+	crc = crc_calculate(crc_type, (uint8_t *)(&esp->spi), 4, crc);
 
 	return crc;
 }
@@ -292,7 +497,6 @@ uint8_t esp_compute_crc_static(const uint8_t *const outer_ip,
  * @param next_header The next header located after the IP header(s)
  * @param crc_type    The type of CRC
  * @param init_val    The initial CRC value
- * @param crc_table   The pre-computed table for fast CRC computation
  * @return            The checksum
  */
 static inline
@@ -300,22 +504,16 @@ uint8_t esp_compute_crc_dynamic(const uint8_t *const outer_ip,
                                 const uint8_t *const inner_ip,
                                 const uint8_t *const next_header,
                                 const rohc_crc_type_t crc_type,
-                                const uint8_t init_val,
-                                const uint8_t *const crc_table)
+                                const uint8_t init_val)
 {
+	const struct esphdr *const esp = (struct esphdr *) next_header;
 	uint8_t crc = init_val;
-	const struct esphdr *esp;
 
 	/* compute the CRC-DYNAMIC value for IP and IP2 headers */
-	crc = compute_crc_dynamic(outer_ip, inner_ip, next_header,
-	                          crc_type, crc, crc_table);
-
-	/* get the start of ESP header */
-	esp = (struct esphdr *) next_header;
+	crc = compute_crc_dynamic(outer_ip, inner_ip, next_header, crc_type, crc);
 
 	/* bytes 5-8 (Sequence number) */
-	crc = crc_calculate(crc_type, (uint8_t *)(&esp->sn), 4,
-	                    crc, crc_table);
+	crc = crc_calculate(crc_type, (uint8_t *)(&esp->sn), 4, crc);
 
 	return crc;
 }
@@ -333,7 +531,6 @@ uint8_t esp_compute_crc_dynamic(const uint8_t *const outer_ip,
  * @param next_header The next header located after the IP header(s)
  * @param crc_type    The type of CRC
  * @param init_val    The initial CRC value
- * @param crc_table   The pre-computed table for fast CRC computation
  * @return            The checksum
  */
 static inline
@@ -341,25 +538,20 @@ uint8_t rtp_compute_crc_static(const uint8_t *const outer_ip,
                                const uint8_t *const inner_ip,
                                const uint8_t *const next_header,
                                const rohc_crc_type_t crc_type,
-                               const uint8_t init_val,
-                               const uint8_t *const crc_table)
+                               const uint8_t init_val)
 {
+	const struct rtphdr *const rtp =
+		(struct rtphdr *) (next_header + sizeof(struct udphdr));
 	uint8_t crc = init_val;
-	const struct rtphdr *rtp;
 
 	/* compute the CRC-STATIC value for IP, IP2 and UDP headers */
-	crc = udp_compute_crc_static(outer_ip, inner_ip, next_header,
-	                             crc_type, crc, crc_table);
-
-	/* get the start of RTP header */
-	rtp = (struct rtphdr *) (next_header + sizeof(struct udphdr));
+	crc = udp_compute_crc_static(outer_ip, inner_ip, next_header, crc_type, crc);
 
 	/* byte 1 (Version, P, X, CC) */
-	crc = crc_calculate(crc_type, (uint8_t *)rtp, 1, crc, crc_table);
+	crc = crc_calculate(crc_type, (uint8_t *)rtp, 1, crc);
 
 	/* bytes 9-12 (SSRC identifier) */
-	crc = crc_calculate(crc_type, (uint8_t *)(&rtp->ssrc), 4,
-	                    crc, crc_table);
+	crc = crc_calculate(crc_type, (uint8_t *)(&rtp->ssrc), 4, crc);
 
 	/* TODO: CSRC identifiers */
 
@@ -378,7 +570,6 @@ uint8_t rtp_compute_crc_static(const uint8_t *const outer_ip,
  * @param next_header The next header located after the IP header(s)
  * @param crc_type    The type of CRC
  * @param init_val    The initial CRC value
- * @param crc_table   The pre-computed table for fast CRC computation
  * @return            The checksum
  */
 static inline
@@ -386,22 +577,17 @@ uint8_t rtp_compute_crc_dynamic(const uint8_t *const outer_ip,
                                 const uint8_t *const inner_ip,
                                 const uint8_t *const next_header,
                                 const rohc_crc_type_t crc_type,
-                                const uint8_t init_val,
-                                const uint8_t *const crc_table)
+                                const uint8_t init_val)
 {
+	const struct rtphdr *const rtp =
+		(struct rtphdr *) (next_header + sizeof(struct udphdr));
 	uint8_t crc = init_val;
-	const struct rtphdr *rtp;
 
 	/* compute the CRC-DYNAMIC value for IP, IP2 and UDP headers */
-	crc = udp_compute_crc_dynamic(outer_ip, inner_ip, next_header,
-	                              crc_type, crc, crc_table);
-
-	/* get the start of RTP header */
-	rtp = (struct rtphdr *) (next_header + sizeof(struct udphdr));
+	crc = udp_compute_crc_dynamic(outer_ip, inner_ip, next_header, crc_type, crc);
 
 	/* bytes 2-8 (Marker, Payload Type, Sequence Number, Timestamp) */
-	crc = crc_calculate(crc_type, ((uint8_t *) rtp) + 1, 7,
-	                    crc, crc_table);
+	crc = crc_calculate(crc_type, ((uint8_t *) rtp) + 1, 7, crc);
 
 	return crc;
 }

@@ -1980,8 +1980,7 @@ static int rohc_comp_rfc5225_ip_esp_code_IR_pkt(const struct rohc_comp_ctxt *con
 
 	/* IR header was successfully built, compute the CRC */
 	rohc_pkt[crc_position] = crc_calculate(ROHC_CRC_TYPE_8, rohc_pkt,
-	                                       rohc_hdr_len, CRC_INIT_8,
-	                                       context->compressor->crc_table_8);
+	                                       rohc_hdr_len, CRC_INIT_8);
 	rohc_comp_debug(context, "CRC (header length = %zu, crc = 0x%x)",
 	                rohc_hdr_len, rohc_pkt[crc_position]);
 
@@ -2089,8 +2088,7 @@ static int rohc_comp_rfc5225_ip_esp_code_co_repair_pkt(const struct rohc_comp_ct
 		/* CRC-7 over uncompressed headers */
 		co_repair_crc->header_crc =
 			crc_calculate(ROHC_CRC_TYPE_7, rohc_buf_data(*uncomp_pkt),
-			              uncomp_pkt_hdrs->all_hdrs_len,
-			              CRC_INIT_7, context->compressor->crc_table_7);
+			              uncomp_pkt_hdrs->all_hdrs_len, CRC_INIT_7);
 		rohc_comp_debug(context, "CRC-7 on %zu-byte uncompressed header = 0x%x",
 		                uncomp_pkt_hdrs->all_hdrs_len, co_repair_crc->header_crc);
 
@@ -2115,7 +2113,6 @@ static int rohc_comp_rfc5225_ip_esp_code_co_repair_pkt(const struct rohc_comp_ct
 		}
 		co_repair_crc->ctrl_crc =
 			compute_crc_ctrl_fields(context->profile->id,
-			                        context->compressor->crc_table_3,
 			                        context->compressor->reorder_ratio,
 			                        rfc5225_ctxt->msn,
 			                        ip_id_behaviors, ip_id_behaviors_nr);
@@ -2191,8 +2188,7 @@ static int rohc_comp_rfc5225_ip_esp_code_CO_pkt(const struct rohc_comp_ctxt *con
 	{
 		crc_computed =
 			crc_calculate(ROHC_CRC_TYPE_3, rohc_buf_data(*uncomp_pkt),
-			              uncomp_pkt_hdrs->all_hdrs_len,
-			              CRC_INIT_3, context->compressor->crc_table_3);
+			              uncomp_pkt_hdrs->all_hdrs_len, CRC_INIT_3);
 		rohc_comp_debug(context, "CRC-3 on %zu-byte uncompressed header = 0x%x",
 		                uncomp_pkt_hdrs->all_hdrs_len, crc_computed);
 	}
@@ -2200,8 +2196,7 @@ static int rohc_comp_rfc5225_ip_esp_code_CO_pkt(const struct rohc_comp_ctxt *con
 	{
 		crc_computed =
 			crc_calculate(ROHC_CRC_TYPE_7, rohc_buf_data(*uncomp_pkt),
-			              uncomp_pkt_hdrs->all_hdrs_len,
-			              CRC_INIT_7, context->compressor->crc_table_7);
+			              uncomp_pkt_hdrs->all_hdrs_len, CRC_INIT_7);
 		rohc_comp_debug(context, "CRC-7 on %zu-byte uncompressed header = 0x%x",
 		                uncomp_pkt_hdrs->all_hdrs_len, crc_computed);
 	}
@@ -3354,7 +3349,6 @@ static int rohc_comp_rfc5225_ip_esp_build_co_common_pkt(const struct rohc_comp_c
 		}
 		co_common->control_crc3 =
 			compute_crc_ctrl_fields(context->profile->id,
-			                        context->compressor->crc_table_3,
 			                        context->compressor->reorder_ratio,
 			                        rfc5225_ctxt->msn,
 			                        ip_id_behaviors, ip_id_behaviors_nr);
