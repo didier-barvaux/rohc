@@ -338,7 +338,7 @@ rohc_packet_t c_ip_decide_SO_packet(const struct rohc_comp_ctxt *const context)
 			                "non-random IP-ID but 0 IP-ID bit to transmit");
 		}
 		else if(rfc3095_ctxt->tmp.sn_5bits_possible &&
-		        is_outer_ip_id_bits_possible(rfc3095_ctxt, 6))
+		        is_outer_ip_id_6bits_possible(rfc3095_ctxt))
 		{
 			packet = ROHC_PACKET_UO_1; /* IPv4 only */
 			rohc_comp_debug(context, "choose packet UO-1 because <= 5 SN bits "
@@ -384,7 +384,7 @@ rohc_packet_t c_ip_decide_SO_packet(const struct rohc_comp_ctxt *const context)
 			rohc_comp_debug(context, "choose packet UO-0");
 		}
 		else if(rfc3095_ctxt->tmp.sn_5bits_possible &&
-		        is_outer_ip_id_bits_possible(rfc3095_ctxt, 6) &&
+		        is_outer_ip_id_6bits_possible(rfc3095_ctxt) &&
 		        no_inner_ip_id_bits_required(rfc3095_ctxt))
 		{
 			packet = ROHC_PACKET_UO_1; /* IPv4 only for outer header */
