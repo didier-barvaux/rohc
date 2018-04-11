@@ -90,8 +90,8 @@ static void c_tcp_opt_trace(const struct rohc_comp_ctxt *const context,
 static uint8_t c_tcp_get_opt_index(const struct rohc_comp_ctxt *const context,
                                    struct c_tcp_opts_ctxt *const opts_ctxt,
                                    const uint8_t opt_type,
-                                   const bool indexes_in_use[MAX_TCP_OPTION_INDEX + 1])
-	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
+                                   const uint16_t indexes_in_use)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int c_tcp_opt_compute_ps(const uint8_t idx_max)
 	__attribute__((warn_unused_result, const));
@@ -496,7 +496,7 @@ void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
                                 const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                 struct c_tcp_opts_ctxt *const opts_ctxt)
 {
-	bool indexes_in_use[MAX_TCP_OPTION_INDEX + 1] = { false };
+	uint16_t indexes_in_use = 0;
 	const uint8_t opts_nr = uncomp_pkt_hdrs->tcp_opts.nr;
 	uint8_t opt_idx;
 	uint8_t opt_pos;
@@ -548,16 +548,17 @@ void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 
 		if(opt_type == TCP_OPT_TS)
 		{
+			const struct tcp_option_timestamp *const opt_ts =
+				(struct tcp_option_timestamp *) (opt_data + 2);
+
 			opts_ctxt->tmp.opt_ts_present = true;
 
-			memcpy(&opts_ctxt->tmp.ts_req, opt_data + 2, sizeof(uint32_t));
-			opts_ctxt->tmp.ts_req = rohc_ntoh32(opts_ctxt->tmp.ts_req);
+			opts_ctxt->tmp.ts_req = rohc_ntoh32(opt_ts->ts);
 			opts_ctxt->tmp.ts_req_bytes_nr =
 				tcp_opt_ts_one_can_be_encoded(&opts_ctxt->ts_req_wlsb,
 				                              opts_ctxt->tmp.ts_req);
 
-			memcpy(&opts_ctxt->tmp.ts_reply, opt_data + 6, sizeof(uint32_t));
-			opts_ctxt->tmp.ts_reply = rohc_ntoh32(opts_ctxt->tmp.ts_reply);
+			opts_ctxt->tmp.ts_reply = rohc_ntoh32(opt_ts->ts_reply);
 			opts_ctxt->tmp.ts_reply_bytes_nr =
 				tcp_opt_ts_one_can_be_encoded(&opts_ctxt->ts_reply_wlsb,
 				                              opts_ctxt->tmp.ts_reply);
@@ -565,16 +566,31 @@ void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 
 		/* determine the index of the TCP option */
 		opt_idx = c_tcp_get_opt_index(context, opts_ctxt, opt_type, indexes_in_use);
-		indexes_in_use[opt_idx] = true;
+		indexes_in_use |= (1 << opt_idx);
 
 		/* the EOL, MSS, and WS options are 'static options': they cannot be
 		 * transmitted in irregular chain if their value changed, so the compressor
 		 * needs to detect such changes and to select a packet type that can
 		 * transmit their changes, ie. IR, IR-DYN, co_common, rnd_8 or seq_8 */
-		if(opt_type == TCP_OPT_EOL || opt_type == TCP_OPT_MSS || opt_type == TCP_OPT_WS)
+		if(opts_ctxt->list[opt_idx].used)
 		{
-			if(opts_ctxt->list[opt_idx].used &&
-			   c_tcp_opt_changed(opts_ctxt, opt_idx, opt_data, opt_len))
+			if(opt_type == TCP_OPT_EOL &&
+			   opts_ctxt->list[opt_idx].data_len != opt_len)
+			{
+				rohc_comp_debug(context, "    static option changed of value");
+				opts_ctxt->tmp.do_list_static_changed = true;
+			}
+			else if(opt_type == TCP_OPT_WS &&
+			        (opts_ctxt->list[opt_idx].data_len != opt_len ||
+			         opts_ctxt->list[opt_idx].data.raw[2] != opt_data[2]))
+			{
+				rohc_comp_debug(context, "    static option changed of value");
+				opts_ctxt->tmp.do_list_static_changed = true;
+			}
+			else if(opt_type == TCP_OPT_MSS &&
+			        (opts_ctxt->list[opt_idx].data_len != opt_len ||
+			         opts_ctxt->list[opt_idx].data.raw[2] != opt_data[2] ||
+			         opts_ctxt->list[opt_idx].data.raw[3] != opt_data[3]))
 			{
 				rohc_comp_debug(context, "    static option changed of value");
 				opts_ctxt->tmp.do_list_static_changed = true;
@@ -1257,7 +1273,7 @@ static void c_tcp_opt_trace(const struct rohc_comp_ctxt *const context,
 static uint8_t c_tcp_get_opt_index(const struct rohc_comp_ctxt *const context,
                                    struct c_tcp_opts_ctxt *const opts_ctxt,
                                    const uint8_t opt_type,
-                                   const bool indexes_in_use[MAX_TCP_OPTION_INDEX + 1])
+                                   const uint16_t indexes_in_use)
 {
 	uint8_t opt_idx;
 
@@ -1306,7 +1322,7 @@ static uint8_t c_tcp_get_opt_index(const struct rohc_comp_ctxt *const context,
 
 			for(opt_idx = TCP_INDEX_GENERIC7; opt_idx <= MAX_TCP_OPTION_INDEX; opt_idx++)
 			{
-				if(!indexes_in_use[opt_idx] &&
+				if((indexes_in_use & (1 << opt_idx)) == 0 &&
 				   opts_ctxt->list[opt_idx].used &&
 				   opts_ctxt->list[opt_idx].age > oldest_idx_age)
 				{
