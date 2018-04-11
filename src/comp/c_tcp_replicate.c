@@ -548,7 +548,7 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
 	 * bits will be ignored at reception */
 	{
 		const bool cr_tcp_urg_ptr_needed =
-			(tcp_context->old_tcphdr.urg_ptr != tcp->urg_ptr ||
+			(tmp->tcp_urg_ptr_changed ||
 			 tcp_context->cr_tcp_urg_ptr_present);
 		ret = c_static_or_irreg16(tcp->urg_ptr, !cr_tcp_urg_ptr_needed,
 		                          rohc_remain_data, rohc_remain_len, &indicator);
@@ -570,7 +570,7 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
 	 * important to transmit all packets without any change, even if those bits
 	 * will be ignored at reception */
 	{
-		const bool cr_tcp_ack_num_needed = (tmp->tcp_ack_num_changed ||
+		const bool cr_tcp_ack_num_needed = (!tmp->tcp_ack_num_unchanged ||
 		                                    tcp_context->cr_tcp_ack_num_present);
 		ret = c_static_or_irreg32(tcp->ack_num, !cr_tcp_ack_num_needed,
 		                          rohc_remain_data, rohc_remain_len, &indicator);

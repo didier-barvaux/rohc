@@ -931,12 +931,10 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 		/* encode the TCP option in its irregular form */
 		if(opt_type == TCP_OPT_TS)
 		{
-			const struct tcp_option_timestamp *const opt_ts =
-				(struct tcp_option_timestamp *) (opt_data + 2);
 			size_t encoded_ts_lsb_len;
 
 			/* encode TS with ts_lsb() */
-			is_ok = c_tcp_ts_lsb_code(context, rohc_ntoh32(opt_ts->ts),
+			is_ok = c_tcp_ts_lsb_code(context, opts_ctxt->tmp.ts_req,
 			                          opts_ctxt->tmp.ts_req_bytes_nr,
 			                          rohc_remain_data, rohc_remain_len,
 			                          &encoded_ts_lsb_len);
@@ -951,7 +949,7 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 			comp_opt_len += encoded_ts_lsb_len;
 
 			/* encode TS reply with ts_lsb()*/
-			is_ok = c_tcp_ts_lsb_code(context, rohc_ntoh32(opt_ts->ts_reply),
+			is_ok = c_tcp_ts_lsb_code(context, opts_ctxt->tmp.ts_reply,
 			                          opts_ctxt->tmp.ts_reply_bytes_nr,
 			                          rohc_remain_data, rohc_remain_len,
 			                          &encoded_ts_lsb_len);
@@ -968,8 +966,12 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 			/* TODO: move at the very end of compression to avoid altering
 			 *       context in case of compression failure */
 			opts_ctxt->is_timestamp_init = true;
-			c_add_wlsb(&opts_ctxt->ts_req_wlsb, msn, rohc_ntoh32(opt_ts->ts));
-			c_add_wlsb(&opts_ctxt->ts_reply_wlsb, msn, rohc_ntoh32(opt_ts->ts_reply));
+			c_add_wlsb(&opts_ctxt->ts_req_wlsb, msn, opts_ctxt->tmp.ts_req);
+			c_add_wlsb(&opts_ctxt->ts_reply_wlsb, msn, opts_ctxt->tmp.ts_reply);
+			/* save the option in context */
+			/* TODO: move at the very end of compression to avoid altering
+			 *       context in case of compression failure */
+			c_tcp_opt_record(opts_ctxt, opt_idx, opt_data, opt_len);
 		}
 		else if(opt_type == TCP_OPT_SACK)
 		{
@@ -988,6 +990,11 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 			rohc_remain_data += ret;
 			rohc_remain_len -= ret;
 			comp_opt_len += ret;
+
+			/* save the option in context */
+			/* TODO: move at the very end of compression to avoid altering
+			 *       context in case of compression failure */
+			c_tcp_opt_record(opts_ctxt, opt_idx, opt_data, opt_len);
 		}
 		else if(opt_type != TCP_OPT_EOL &&
 		        opt_type != TCP_OPT_NOP &&
@@ -1040,15 +1047,15 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 				rohc_remain_len -= contents_len;
 				comp_opt_len += contents_len;
 			}
+
+			/* save the option in context */
+			/* TODO: move at the very end of compression to avoid altering
+			 *       context in case of compression failure */
+			c_tcp_opt_record(opts_ctxt, opt_idx, opt_data, opt_len);
 		}
 		rohc_comp_debug(context, "irregular chain: added %zu bytes of irregular "
 		                "content for TCP option %u", comp_opt_len, opt_type);
 		comp_opts_len += comp_opt_len;
-
-		/* save the option in context */
-		/* TODO: move at the very end of compression to avoid altering
-		 *       context in case of compression failure */
-		c_tcp_opt_record(opts_ctxt, opt_idx, opt_data, opt_len);
 	}
 
 	return comp_opts_len;

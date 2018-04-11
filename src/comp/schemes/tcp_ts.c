@@ -48,19 +48,19 @@ bool c_tcp_ts_lsb_code(const struct rohc_comp_ctxt *const context,
                        const size_t rohc_max_len,
                        size_t *const rohc_len)
 {
-	size_t encoded_len;
+	const size_t encoded_len = bytes_nr;
+
+	if(rohc_max_len < encoded_len)
+	{
+		rohc_comp_warn(context, "ROHC buffer too short for encoding the TCP TS "
+		               "option: %zu byte(s) required but only %zu byte(s) "
+		               "available", encoded_len, rohc_max_len);
+		goto error;
+	}
 
 	if(bytes_nr == 1)
 	{
 		/* encoding on 1 byte with discriminator '0' */
-		encoded_len = 1;
-		if(rohc_max_len < encoded_len)
-		{
-			rohc_comp_warn(context, "ROHC buffer too short for encoding the TCP TS "
-			               "option: %zu byte required but only %zu byte(s) "
-			               "available", encoded_len, rohc_max_len);
-			goto error;
-		}
 		rohc_data[0] = timestamp & 0x7F;
 		rohc_comp_debug(context, "encode timestamp = 0x%08x on 1 byte: 0x%02x",
 		                timestamp, rohc_data[0]);
@@ -68,14 +68,6 @@ bool c_tcp_ts_lsb_code(const struct rohc_comp_ctxt *const context,
 	else if(bytes_nr == 2)
 	{
 		/* encoding on 2 bytes with discriminator '10' */
-		encoded_len = 2;
-		if(rohc_max_len < encoded_len)
-		{
-			rohc_comp_warn(context, "ROHC buffer too short for encoding the TCP TS "
-			               "option: %zu byte(s) required but only %zu byte(s) "
-			               "available", encoded_len, rohc_max_len);
-			goto error;
-		}
 		rohc_data[0] = 0x80 | ((timestamp >> 8) & 0x3F);
 		rohc_data[1] = timestamp;
 		rohc_comp_debug(context, "encode timestamp = 0x%08x on 2 bytes: 0x%02x "
@@ -84,14 +76,6 @@ bool c_tcp_ts_lsb_code(const struct rohc_comp_ctxt *const context,
 	else if(bytes_nr == 3)
 	{
 		/* encoding on 3 bytes with discriminator '110' */
-		encoded_len = 3;
-		if(rohc_max_len < encoded_len)
-		{
-			rohc_comp_warn(context, "ROHC buffer too short for encoding the TCP TS "
-			               "option: %zu byte(s) required but only %zu byte(s) "
-			               "available", encoded_len, rohc_max_len);
-			goto error;
-		}
 		rohc_data[0] = 0xC0 | ((timestamp >> 16) & 0x1F);
 		rohc_data[1] = timestamp >> 8;
 		rohc_data[2] = timestamp;
@@ -102,14 +86,6 @@ bool c_tcp_ts_lsb_code(const struct rohc_comp_ctxt *const context,
 	else if(bytes_nr == 4)
 	{
 		/* encoding on 4 bytes with discriminator '111' */
-		encoded_len = 4;
-		if(rohc_max_len < encoded_len)
-		{
-			rohc_comp_warn(context, "ROHC buffer too short for encoding the TCP TS "
-			               "option: %zu byte(s) required but only %zu byte(s) "
-			               "available", encoded_len, rohc_max_len);
-			goto error;
-		}
 		rohc_data[0] = 0xE0 | ((timestamp >> 24) & 0x1F);
 		rohc_data[1] = timestamp >> 16;
 		rohc_data[2] = timestamp >> 8;
