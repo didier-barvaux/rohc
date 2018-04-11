@@ -126,23 +126,6 @@ bool wlsb_is_k_possible_8bits(const struct c_wlsb *const wlsb,
                               const size_t k)
 	__attribute__((warn_unused_result, nonnull(1)));
 
-size_t wlsb_get_k_16bits(const struct c_wlsb *const wlsb,
-                         const uint16_t value)
-	__attribute__((warn_unused_result, nonnull(1)));
-size_t wlsb_get_mink_16bits(const struct c_wlsb *const wlsb,
-                            const uint16_t value,
-                            const size_t min_k)
-	__attribute__((warn_unused_result, nonnull(1)));
-size_t wlsb_get_kp_16bits(const struct c_wlsb *const wlsb,
-                          const uint16_t value,
-                          const rohc_lsb_shift_t p)
-	__attribute__((warn_unused_result, nonnull(1)));
-size_t wlsb_get_minkp_16bits(const struct c_wlsb *const wlsb,
-                             const uint16_t value,
-                             const size_t min_k,
-                             const rohc_lsb_shift_t p)
-	__attribute__((warn_unused_result, nonnull(1)));
-
 bool wlsb_is_k_possible_16bits(const struct c_wlsb *const wlsb,
                                const uint16_t value,
                                const size_t k)

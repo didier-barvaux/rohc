@@ -401,7 +401,11 @@ static bool run_test16_with_shift_param(bool be_verbose,
 
 		/* encode */
 		trace(be_verbose, "\tencode value 0x%04x ...\n", value16);
-		required_bits = wlsb_get_k_16bits(&wlsb, value16);
+		for(required_bits = 0;
+		    required_bits <= 16 && !wlsb_is_k_possible_16bits(&wlsb, value16, required_bits);
+		    required_bits++)
+		{
+		}
 		assert(required_bits <= 16);
 		if(required_bits == 16)
 		{
