@@ -50,6 +50,8 @@ struct rohc_extr_ip_bits
 {
 	uint8_t version:4;  /**< The version bits found in static chain of IR
 	                         header */
+	bool static_chain_end; /**< Whether the IP header indicates Static Chain
+	                            Termination */
 
 	uint8_t tos;     /**< The TOS/TC bits found in dynamic chain of IR/IR-DYN
 	                      header or in extension header */
