@@ -224,11 +224,7 @@ bool wlsb_is_kp_possible_8bits(const struct c_wlsb *const wlsb,
 	else
 	{
 		const uint8_t interval_width = (1U << k) - 1; /* interval width = 2^k - 1 */
-		int8_t computed_p;
 		size_t i;
-
-		/* determine the real p value to use */
-		computed_p = rohc_interval_compute_p(k, p);
 
 		/* find the minimal number of bits of the value required to be able
 		 * to recreate it thanks to ANY value in the window */
@@ -246,7 +242,7 @@ bool wlsb_is_kp_possible_8bits(const struct c_wlsb *const wlsb,
 				 *
 				 * Straddling the lower and upper wraparound boundaries
 				 * is handled without additional operation */
-				const uint8_t min = v_ref - computed_p;
+				const uint8_t min = v_ref - p;
 				const uint8_t max = min + interval_width;
 
 				if(min <= max)
@@ -321,11 +317,7 @@ bool wlsb_is_kp_possible_16bits(const struct c_wlsb *const wlsb,
 	else
 	{
 		const uint16_t interval_width = (1U << k) - 1; /* interval width = 2^k - 1 */
-		int16_t computed_p;
 		size_t i;
-
-		/* determine the real p value to use */
-		computed_p = rohc_interval_compute_p(k, p);
 
 		/* find the minimal number of bits of the value required to be able
 		 * to recreate it thanks to ANY value in the window */
@@ -343,7 +335,7 @@ bool wlsb_is_kp_possible_16bits(const struct c_wlsb *const wlsb,
 				 *
 				 * Straddling the lower and upper wraparound boundaries
 				 * is handled without additional operation */
-				const uint16_t min = v_ref - computed_p;
+				const uint16_t min = v_ref - p;
 				const uint16_t max = min + interval_width;
 
 				if(min <= max)
@@ -426,11 +418,7 @@ bool wlsb_is_kp_possible_32bits(const struct c_wlsb *const wlsb,
 	else
 	{
 		const uint32_t interval_width = (1U << k) - 1; /* interval width = 2^k - 1 */
-		int32_t computed_p;
 		size_t i;
-
-		/* determine the real p value to use */
-		computed_p = rohc_interval_compute_p(k, p);
 
 		/* find the minimal number of bits of the value required to be able
 		 * to recreate it thanks to ANY value in the window */
@@ -448,7 +436,7 @@ bool wlsb_is_kp_possible_32bits(const struct c_wlsb *const wlsb,
 				 *
 				 * Straddling the lower and upper wraparound boundaries
 				 * is handled without additional operation */
-				const uint32_t min = v_ref - computed_p;
+				const uint32_t min = v_ref - p;
 				const uint32_t max = min + interval_width;
 
 				if(min <= max)
