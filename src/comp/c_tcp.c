@@ -3965,9 +3965,27 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 	const struct tcphdr *const tcp = uncomp_pkt_hdrs->tcp;
 	rohc_packet_t packet_type;
 
-	if(tcp->rsf_flags != 0 ||
-	   tmp->tcp_opts.do_list_struct_changed ||
-	   tmp->tcp_opts.do_list_static_changed)
+	if(tcp->rsf_flags == 0 &&
+	   !tmp->tcp_opts.do_list_struct_changed &&
+	   !tmp->tcp_opts.do_list_static_changed &&
+	   !tmp->tcp_window_changed &&
+	   (tcp->ack_flag == 0 || tmp->tcp_ack_num_unchanged) &&
+	   !crc7_at_least &&
+	   wlsb_is_kp_possible_16bits(&tcp_context->ip_id_wlsb,
+	                              tmp->ip_id_delta, 7, 3) &&
+	   tcp_context->seq_num_factor > 0 &&
+	   tcp_context->seq_num_scaling_nr >= ROHC_INIT_TS_STRIDE_MIN &&
+	   wlsb_is_kp_possible_32bits(&tcp_context->seq_scaled_wlsb,
+	                              tcp_context->seq_num_scaled, 4, 7))
+	{
+		/* seq_2 is possible */
+		TRACE_GOTO_CHOICE;
+		assert(uncomp_pkt_hdrs->payload_len > 0);
+		packet_type = ROHC_PACKET_TCP_SEQ_2;
+	}
+	else if(tcp->rsf_flags != 0 ||
+	        tmp->tcp_opts.do_list_struct_changed ||
+	        tmp->tcp_opts.do_list_static_changed)
 	{
 		/* seq_8 or co_common
 		 *
