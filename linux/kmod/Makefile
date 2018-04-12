@@ -18,6 +18,7 @@ rohc_common_sources = \
 	../../src/common/rohc_packets.c \
 	../../src/common/rohc_traces_internal.c \
 	../../src/common/rohc_utils.c \
+	../../src/common/crcany.c \
 	../../src/common/crc.c \
 	../../src/common/rohc_add_cid.c \
 	../../src/common/interval.c \

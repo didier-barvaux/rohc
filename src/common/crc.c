@@ -1,9 +1,9 @@
 /*
  * Copyright 2007,2008 CNES
- * Copyright 2010,2011,2012,2013,2014 Didier Barvaux
+ * Copyright 2010,2011,2012,2013,2014,2018 Didier Barvaux
  * Copyright 2007,2008 Thales Alenia Space
  * Copyright 2009,2010 Thales Communications
- * Copyright 2007,2009,2010,2012,2013 Viveris Technologies
+ * Copyright 2007,2009,2010,2012,2013,2018 Viveris Technologies
  * Copyright 2012 WBX
  *
  * This library is free software; you can redistribute it and/or
