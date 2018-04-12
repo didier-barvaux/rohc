@@ -479,7 +479,8 @@ uint8_t compute_crc_ctrl_fields(const rohc_profile_t profile_id,
 	/* 16-bit MSN (not applicable for the IP/ESP profile) */
 	if(profile_id != ROHCv2_PROFILE_IP_ESP)
 	{
-		crc = crc_calculate(crc_type, (uint8_t *) &msn, 2, crc, crc_table);
+		const uint16_t msn_nbo = rohc_hton16(msn);
+		crc = crc_calculate(crc_type, (uint8_t *) &msn_nbo, 2, crc, crc_table);
 	}
 
 	/* 2-bit IP-ID behaviors, padded with 6 MSB of zeroes, one per IPv4 header:
