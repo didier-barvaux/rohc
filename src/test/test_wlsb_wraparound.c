@@ -693,7 +693,11 @@ static bool test_wlsb_32(struct c_wlsb *const wlsb,
 
 	/* encode */
 	trace(be_verbose, "\tencode value 0x%08x ...\n", value32);
-	required_bits = wlsb_get_k_32bits(wlsb, value32);
+	for(required_bits = 0;
+	    required_bits <= 32 && !wlsb_is_k_possible_32bits(wlsb, value32, required_bits);
+	    required_bits++)
+	{
+	}
 	assert(required_bits <= 32);
 	if(required_bits == 32)
 	{

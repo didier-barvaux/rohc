@@ -42,12 +42,6 @@ static bool wlsb_is_kp_possible_8bits(const struct c_wlsb *const wlsb,
                                       const rohc_lsb_shift_t p)
 	__attribute__((warn_unused_result, nonnull(1)));
 
-static size_t wlsb_get_minkp_32bits(const struct c_wlsb *const wlsb,
-                                    const uint32_t value,
-                                    const size_t min_k,
-                                    const rohc_lsb_shift_t p)
-	__attribute__((warn_unused_result, nonnull(1)));
-
 static size_t wlsb_get_next_older(const size_t entry, const size_t max)
 	__attribute__((warn_unused_result, const));
 
@@ -383,148 +377,20 @@ bool wlsb_is_kp_possible_16bits(const struct c_wlsb *const wlsb,
 
 
 /**
- * @brief Find out the minimal number of bits of the to-be-encoded value
- *        required to be able to uniquely recreate it given the window
+ * @brief Find out whether the given number of bits is enough to encode value
  *
  * The function is dedicated to 32-bit fields.
  *
  * @param wlsb   The W-LSB object
  * @param value  The value to encode using the LSB algorithm
- * @return       The number of bits required to uniquely recreate the value
+ * @param k      The number of bits for encoding
+ * @return       true if the number of bits is enough for encoding or not
  */
-size_t wlsb_get_k_32bits(const struct c_wlsb *const wlsb, const uint32_t value)
+bool wlsb_is_k_possible_32bits(const struct c_wlsb *const wlsb,
+                               const uint32_t value,
+                               const size_t k)
 {
-	const size_t min_k = 0;
-	return wlsb_get_mink_32bits(wlsb, value, min_k);
-}
-
-
-/**
- * @brief Find out the minimal number of bits of the to-be-encoded value
- *        required to be able to uniquely recreate it given the window
- *
- * The function is dedicated to 32-bit fields.
- *
- * @param wlsb   The W-LSB object
- * @param value  The value to encode using the LSB algorithm
- * @param min_k  The minimum number of bits to find out
- * @return       The number of bits required to uniquely recreate the value
- */
-size_t wlsb_get_mink_32bits(const struct c_wlsb *const wlsb,
-                            const uint32_t value,
-                            const size_t min_k)
-{
-	return wlsb_get_minkp_32bits(wlsb, value, min_k, wlsb->p);
-}
-
-
-/**
- * @brief Find out the minimal number of bits of the to-be-encoded value
- *        required to be able to uniquely recreate it given the window
- *
- * The function is dedicated to 32-bit fields.
- *
- * @param wlsb   The W-LSB object
- * @param value  The value to encode using the LSB algorithm
- * @param p      The shift parameter p
- * @return       The number of bits required to uniquely recreate the value
- */
-size_t wlsb_get_kp_32bits(const struct c_wlsb *const wlsb,
-                          const uint32_t value,
-                          const rohc_lsb_shift_t p)
-{
-	const size_t min_k = 0;
-	return wlsb_get_minkp_32bits(wlsb, value, min_k, p);
-}
-
-
-/**
- * @brief Find out the minimal number of bits of the to-be-encoded value
- *        required to be able to uniquely recreate it given the window
- *
- * The function is dedicated to 32-bit fields.
- *
- * @param wlsb   The W-LSB object
- * @param value  The value to encode using the LSB algorithm
- * @param min_k  The minimum number of bits to find out
- * @param p      The shift parameter p
- * @return       The number of bits required to uniquely recreate the value
- */
-static size_t wlsb_get_minkp_32bits(const struct c_wlsb *const wlsb,
-                                    const uint32_t value,
-                                    const size_t min_k,
-                                    const rohc_lsb_shift_t p)
-{
-	size_t bits_nr;
-
-	/* use all bits if the window contains no value */
-	if(wlsb->count == 0)
-	{
-		bits_nr = wlsb->bits;
-	}
-	else
-	{
-		size_t k;
-
-		bits_nr = min_k;
-
-		for(k = bits_nr; k < 32; k++)
-		{
-			const uint32_t interval_width = (1U << k) - 1; /* interval width = 2^k - 1 */
-			int32_t computed_p;
-			size_t i;
-
-			/* determine the real p value to use */
-			computed_p = rohc_interval_compute_p(k, p);
-
-			/* find the minimal number of bits of the value required to be able
-			 * to recreate it thanks to ANY value in the window */
-			for(i = 0; i < wlsb->window_width; i++)
-			{
-				const struct c_window *const entry = wlsb->window + i;
-
-				if(entry->used)
-				{
-					const uint32_t v_ref = entry->value;
-
-					/* compute the minimal and maximal values of the interval:
-					 *   min = v_ref - p
-					 *   max = v_ref + interval_with - p
-					 *
-					 * Straddling the lower and upper wraparound boundaries
-					 * is handled without additional operation */
-					const uint32_t min = v_ref - computed_p;
-					const uint32_t max = min + interval_width;
-
-					if(min <= max)
-					{
-						/* interpretation interval does not straddle field boundaries,
-						 * check if value is in [min, max] */
-						if(value < min || value > max)
-						{
-							break;
-						}
-					}
-					else
-					{
-						/* the interpretation interval does straddle the field boundaries,
-						 * check if value is in [min, 0xffff] or [0, max] */
-						if(value < min && value > max)
-						{
-							break;
-						}
-					}
-				}
-			}
-			if(i == wlsb->window_width)
-			{
-				break;
-			}
-		}
-		bits_nr = k;
-	}
-
-	return bits_nr;
+	return wlsb_is_kp_possible_32bits(wlsb, value, k, wlsb->p);
 }
 
 
