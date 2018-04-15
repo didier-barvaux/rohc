@@ -168,7 +168,7 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 	};
 
 	/* create the W-LSB context */
-	is_ok = wlsb_new(&wlsb, 32, ROHC_WLSB_WINDOW_WIDTH, ROHC_LSB_SHIFT_VAR);
+	is_ok = wlsb_new(&wlsb, 32, ROHC_WLSB_WINDOW_WIDTH);
 	if(!is_ok)
 	{
 		trace(be_verbose, "failed to create W-LSB context\n");

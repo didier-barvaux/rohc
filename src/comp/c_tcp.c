@@ -699,7 +699,7 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 	memcpy(&(tcp_context->old_tcphdr), tcp, sizeof(struct tcphdr));
 
 	/* MSN */
-	is_ok = wlsb_new(&tcp_context->msn_wlsb, 16, comp->wlsb_window_width, ROHC_LSB_SHIFT_TCP_SN);
+	is_ok = wlsb_new(&tcp_context->msn_wlsb, 16, comp->wlsb_window_width);
 	if(!is_ok)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -708,7 +708,7 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 	}
 
 	/* IP-ID offset */
-	is_ok = wlsb_new(&tcp_context->ip_id_wlsb, 16, comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
+	is_ok = wlsb_new(&tcp_context->ip_id_wlsb, 16, comp->wlsb_window_width);
 	if(!is_ok)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -717,7 +717,7 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 	}
 
 	/* innermost IPv4 TTL or IPv6 Hop Limit */
-	is_ok = wlsb_new(&tcp_context->ttl_hopl_wlsb, 8, comp->wlsb_window_width, ROHC_LSB_SHIFT_TCP_TTL);
+	is_ok = wlsb_new(&tcp_context->ttl_hopl_wlsb, 8, comp->wlsb_window_width);
 	if(!is_ok)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -727,7 +727,7 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 	}
 
 	/* TCP window */
-	is_ok = wlsb_new(&tcp_context->window_wlsb, 16, comp->wlsb_window_width, ROHC_LSB_SHIFT_TCP_WINDOW);
+	is_ok = wlsb_new(&tcp_context->window_wlsb, 16, comp->wlsb_window_width);
 	if(!is_ok)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -737,14 +737,14 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 
 	/* TCP sequence number */
 	tcp_context->seq_num = rohc_ntoh32(tcp->seq_num);
-	is_ok = wlsb_new(&tcp_context->seq_wlsb, 32, comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
+	is_ok = wlsb_new(&tcp_context->seq_wlsb, 32, comp->wlsb_window_width);
 	if(!is_ok)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		           "failed to create W-LSB context for TCP sequence number");
 		goto free_wlsb_window;
 	}
-	is_ok = wlsb_new(&tcp_context->seq_scaled_wlsb, 32, comp->wlsb_window_width, 7);
+	is_ok = wlsb_new(&tcp_context->seq_scaled_wlsb, 32, comp->wlsb_window_width);
 	if(!is_ok)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -755,14 +755,14 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 
 	/* TCP acknowledgment (ACK) number */
 	tcp_context->ack_num = rohc_ntoh32(tcp->ack_num);
-	is_ok = wlsb_new(&tcp_context->ack_wlsb, 32, comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
+	is_ok = wlsb_new(&tcp_context->ack_wlsb, 32, comp->wlsb_window_width);
 	if(!is_ok)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		           "failed to create W-LSB context for TCP ACK number");
 		goto free_wlsb_seq_scaled;
 	}
-	is_ok = wlsb_new(&tcp_context->ack_scaled_wlsb, 32, comp->wlsb_window_width, 3);
+	is_ok = wlsb_new(&tcp_context->ack_scaled_wlsb, 32, comp->wlsb_window_width);
 	if(!is_ok)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -788,7 +788,7 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 	/* no TCP option Timestamp received yet */
 	tcp_context->tcp_opts.is_timestamp_init = false;
 	/* TCP option Timestamp (request) */
-	is_ok = wlsb_new(&tcp_context->tcp_opts.ts_req_wlsb, 32, comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
+	is_ok = wlsb_new(&tcp_context->tcp_opts.ts_req_wlsb, 32, comp->wlsb_window_width);
 	if(!is_ok)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -797,7 +797,7 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 		goto free_wlsb_ack_scaled;
 	}
 	/* TCP option Timestamp (reply) */
-	is_ok = wlsb_new(&tcp_context->tcp_opts.ts_reply_wlsb, 32, comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
+	is_ok = wlsb_new(&tcp_context->tcp_opts.ts_reply_wlsb, 32, comp->wlsb_window_width);
 	if(!is_ok)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -4608,7 +4608,8 @@ static rohc_packet_t tcp_decide_FO_SO_packet(const struct rohc_comp_ctxt *const 
 		   wlsb_is_kp_possible_16bits(&tcp_context->ip_id_wlsb, tcp_context->tmp.ip_id_delta, 4, 3) &&
 		   wlsb_is_kp_possible_32bits(&tcp_context->seq_wlsb, seq_num_hbo, 14, 8191) &&
 		   wlsb_is_kp_possible_32bits(&tcp_context->ack_wlsb, ack_num_hbo, 15, 8191) &&
-		   wlsb_is_k_possible_8bits(&tcp_context->ttl_hopl_wlsb, tcp_context->tmp.ttl_hopl, 3) &&
+		   wlsb_is_kp_possible_8bits(&tcp_context->ttl_hopl_wlsb, tcp_context->tmp.ttl_hopl,
+		                             3, ROHC_LSB_SHIFT_TCP_TTL) &&
 		   !tcp_context->tmp.tcp_window_changed)
 		{
 			/* ROHC_IP_ID_BEHAVIOR_SEQ or ROHC_IP_ID_BEHAVIOR_SEQ_SWAP */
@@ -4618,7 +4619,8 @@ static rohc_packet_t tcp_decide_FO_SO_packet(const struct rohc_comp_ctxt *const 
 		else if(ip_inner_context->ip_id_behavior > ROHC_IP_ID_BEHAVIOR_SEQ_SWAP &&
 		        wlsb_is_kp_possible_32bits(&tcp_context->seq_wlsb, seq_num_hbo, 16, 65535) &&
 		        wlsb_is_kp_possible_32bits(&tcp_context->ack_wlsb, ack_num_hbo, 16, 16383) &&
-		        wlsb_is_k_possible_8bits(&tcp_context->ttl_hopl_wlsb, tcp_context->tmp.ttl_hopl, 3) &&
+		        wlsb_is_kp_possible_8bits(&tcp_context->ttl_hopl_wlsb, tcp_context->tmp.ttl_hopl,
+		                                  3, ROHC_LSB_SHIFT_TCP_TTL) &&
 		        !tcp_context->tmp.tcp_window_changed)
 		{
 			TRACE_GOTO_CHOICE;
@@ -4700,7 +4702,8 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 		                              tcp_context->tmp.ip_id_delta, 4, 3) &&
 		   wlsb_is_kp_possible_32bits(&tcp_context->seq_wlsb, seq_num_hbo, 14, 8191) &&
 		   wlsb_is_kp_possible_32bits(&tcp_context->ack_wlsb, ack_num_hbo, 15, 8191) &&
-		   wlsb_is_k_possible_8bits(&tcp_context->ttl_hopl_wlsb, tcp_context->tmp.ttl_hopl, 3) &&
+		   wlsb_is_kp_possible_8bits(&tcp_context->ttl_hopl_wlsb, tcp_context->tmp.ttl_hopl,
+		                             3, ROHC_LSB_SHIFT_TCP_TTL) &&
 		   !tcp_context->tmp.tcp_window_changed)
 		{
 			/* seq_8 is possible */
@@ -4837,7 +4840,8 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 		}
 		else if(wlsb_is_kp_possible_32bits(&tcp_context->seq_wlsb, seq_num_hbo, 14, 8191) &&
 		        wlsb_is_kp_possible_32bits(&tcp_context->ack_wlsb, ack_num_hbo, 15, 8191) &&
-		        wlsb_is_k_possible_8bits(&tcp_context->ttl_hopl_wlsb, tcp_context->tmp.ttl_hopl, 3) &&
+		        wlsb_is_kp_possible_8bits(&tcp_context->ttl_hopl_wlsb, tcp_context->tmp.ttl_hopl,
+		                                  3, ROHC_LSB_SHIFT_TCP_TTL) &&
 		        !tcp_context->tmp.tcp_window_changed)
 		{
 			TRACE_GOTO_CHOICE;

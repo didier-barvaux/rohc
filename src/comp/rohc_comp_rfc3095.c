@@ -466,7 +466,7 @@ static bool ip_header_info_new(struct ip_header_info *const header_info,
 	{
 		/* init the parameters to encode the IP-ID with W-LSB encoding */
 		const bool is_ok =
-			wlsb_new(&header_info->info.v4.ip_id_window, 16, wlsb_window_width, ROHC_LSB_SHIFT_IP_ID);
+			wlsb_new(&header_info->info.v4.ip_id_window, 16, wlsb_window_width);
 		if(!is_ok)
 		{
 			__rohc_print(trace_cb, trace_cb_priv, ROHC_TRACE_ERROR,
@@ -564,13 +564,11 @@ static void c_init_tmp_variables(struct generic_tmp_vars *const tmp_vars)
  *
  * @param context     The compression context
  * @param sn_bits_nr  The maximum number of bits used for SN
- * @param sn_shift    The shift parameter (p) to use for encoding SN with W-LSB
  * @param packet      The packet given to initialize the new context
  * @return            true if successful, false otherwise
  */
 bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
                               const size_t sn_bits_nr,
-                              const rohc_lsb_shift_t sn_shift,
                               const struct net_pkt *const packet)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
@@ -599,16 +597,15 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 	 */
 
 	/* step 1 */
-	rohc_comp_debug(context, "use shift parameter %d for LSB-encoding of the "
-	                "%zu-bit SN", sn_shift, sn_bits_nr);
-	is_ok = wlsb_new(&rfc3095_ctxt->sn_window, sn_bits_nr, context->compressor->wlsb_window_width, sn_shift);
+	rohc_comp_debug(context, "use %zu-bit SN", sn_bits_nr);
+	is_ok = wlsb_new(&rfc3095_ctxt->sn_window, sn_bits_nr, context->compressor->wlsb_window_width);
 	if(!is_ok)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		           "no memory to allocate W-LSB encoding for SN");
 		goto free_generic_context;
 	}
-	is_ok = wlsb_new(&rfc3095_ctxt->msn_non_acked, 16, context->compressor->wlsb_window_width, sn_shift);
+	is_ok = wlsb_new(&rfc3095_ctxt->msn_non_acked, 16, context->compressor->wlsb_window_width);
 	if(!is_ok)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -7039,23 +7036,29 @@ static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		{
 			/* send only required bits in FO or SO states */
 			rfc3095_ctxt->tmp.ip_id_changed =
-				!wlsb_is_k_possible_16bits(&rfc3095_ctxt->outer_ip_flags.info.v4.ip_id_window,
-				                           rfc3095_ctxt->outer_ip_flags.info.v4.id_delta, 0);
+				!wlsb_is_kp_possible_16bits(&rfc3095_ctxt->outer_ip_flags.info.v4.ip_id_window,
+				                            rfc3095_ctxt->outer_ip_flags.info.v4.id_delta,
+				                            0, ROHC_LSB_SHIFT_IP_ID);
 			rfc3095_ctxt->tmp.ip_id_3bits_possible =
-				wlsb_is_k_possible_16bits(&rfc3095_ctxt->outer_ip_flags.info.v4.ip_id_window,
-				                          rfc3095_ctxt->outer_ip_flags.info.v4.id_delta, 3);
+				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->outer_ip_flags.info.v4.ip_id_window,
+				                           rfc3095_ctxt->outer_ip_flags.info.v4.id_delta,
+				                           3, ROHC_LSB_SHIFT_IP_ID);
 			rfc3095_ctxt->tmp.ip_id_5bits_possible =
-				wlsb_is_k_possible_16bits(&rfc3095_ctxt->outer_ip_flags.info.v4.ip_id_window,
-				                          rfc3095_ctxt->outer_ip_flags.info.v4.id_delta, 5);
+				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->outer_ip_flags.info.v4.ip_id_window,
+				                           rfc3095_ctxt->outer_ip_flags.info.v4.id_delta,
+				                           5, ROHC_LSB_SHIFT_IP_ID);
 			rfc3095_ctxt->tmp.ip_id_6bits_possible =
-				wlsb_is_k_possible_16bits(&rfc3095_ctxt->outer_ip_flags.info.v4.ip_id_window,
-				                          rfc3095_ctxt->outer_ip_flags.info.v4.id_delta, 6);
+				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->outer_ip_flags.info.v4.ip_id_window,
+				                           rfc3095_ctxt->outer_ip_flags.info.v4.id_delta,
+				                           6, ROHC_LSB_SHIFT_IP_ID);
 			rfc3095_ctxt->tmp.ip_id_8bits_possible =
-				wlsb_is_k_possible_16bits(&rfc3095_ctxt->outer_ip_flags.info.v4.ip_id_window,
-				                          rfc3095_ctxt->outer_ip_flags.info.v4.id_delta, 8);
+				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->outer_ip_flags.info.v4.ip_id_window,
+				                           rfc3095_ctxt->outer_ip_flags.info.v4.id_delta,
+				                           8, ROHC_LSB_SHIFT_IP_ID);
 			rfc3095_ctxt->tmp.ip_id_11bits_possible =
-				wlsb_is_k_possible_16bits(&rfc3095_ctxt->outer_ip_flags.info.v4.ip_id_window,
-				                          rfc3095_ctxt->outer_ip_flags.info.v4.id_delta, 11);
+				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->outer_ip_flags.info.v4.ip_id_window,
+				                           rfc3095_ctxt->outer_ip_flags.info.v4.id_delta,
+				                           11, ROHC_LSB_SHIFT_IP_ID);
 		}
 		rohc_comp_debug(context, "%s bits are required to encode new outer "
 		                "IP-ID delta", rfc3095_ctxt->tmp.ip_id_changed ? "some" : "no");
@@ -7126,23 +7129,29 @@ static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		{
 			/* send only required bits in FO or SO states */
 			rfc3095_ctxt->tmp.ip_id2_changed =
-				!wlsb_is_k_possible_16bits(&rfc3095_ctxt->inner_ip_flags.info.v4.ip_id_window,
-				                           rfc3095_ctxt->inner_ip_flags.info.v4.id_delta, 0);
+				!wlsb_is_kp_possible_16bits(&rfc3095_ctxt->inner_ip_flags.info.v4.ip_id_window,
+				                            rfc3095_ctxt->inner_ip_flags.info.v4.id_delta,
+				                            0, ROHC_LSB_SHIFT_IP_ID);
 			rfc3095_ctxt->tmp.ip_id2_3bits_possible =
-				wlsb_is_k_possible_16bits(&rfc3095_ctxt->inner_ip_flags.info.v4.ip_id_window,
-				                          rfc3095_ctxt->inner_ip_flags.info.v4.id_delta, 3);
+				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->inner_ip_flags.info.v4.ip_id_window,
+				                           rfc3095_ctxt->inner_ip_flags.info.v4.id_delta,
+				                           3, ROHC_LSB_SHIFT_IP_ID);
 			rfc3095_ctxt->tmp.ip_id2_5bits_possible =
-				wlsb_is_k_possible_16bits(&rfc3095_ctxt->inner_ip_flags.info.v4.ip_id_window,
-				                          rfc3095_ctxt->inner_ip_flags.info.v4.id_delta, 5);
+				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->inner_ip_flags.info.v4.ip_id_window,
+				                           rfc3095_ctxt->inner_ip_flags.info.v4.id_delta,
+				                           5, ROHC_LSB_SHIFT_IP_ID);
 			rfc3095_ctxt->tmp.ip_id2_6bits_possible =
-				wlsb_is_k_possible_16bits(&rfc3095_ctxt->inner_ip_flags.info.v4.ip_id_window,
-				                          rfc3095_ctxt->inner_ip_flags.info.v4.id_delta, 6);
+				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->inner_ip_flags.info.v4.ip_id_window,
+				                           rfc3095_ctxt->inner_ip_flags.info.v4.id_delta,
+				                           6, ROHC_LSB_SHIFT_IP_ID);
 			rfc3095_ctxt->tmp.ip_id2_8bits_possible =
-				wlsb_is_k_possible_16bits(&rfc3095_ctxt->inner_ip_flags.info.v4.ip_id_window,
-				                          rfc3095_ctxt->inner_ip_flags.info.v4.id_delta, 8);
+				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->inner_ip_flags.info.v4.ip_id_window,
+				                           rfc3095_ctxt->inner_ip_flags.info.v4.id_delta,
+				                           8, ROHC_LSB_SHIFT_IP_ID);
 			rfc3095_ctxt->tmp.ip_id2_11bits_possible =
-				wlsb_is_k_possible_16bits(&rfc3095_ctxt->inner_ip_flags.info.v4.ip_id_window,
-				                          rfc3095_ctxt->inner_ip_flags.info.v4.id_delta, 11);
+				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->inner_ip_flags.info.v4.ip_id_window,
+				                           rfc3095_ctxt->inner_ip_flags.info.v4.id_delta,
+				                           11, ROHC_LSB_SHIFT_IP_ID);
 		}
 		rohc_comp_debug(context, "%s bits are required to encode new inner "
 		                "IP-ID delta", rfc3095_ctxt->tmp.ip_id2_changed ? "some" : "no");

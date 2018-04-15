@@ -339,8 +339,6 @@ struct rohc_decomp_rfc3095_ctxt
 	/// Information about the inner IP header
 	struct rohc_decomp_rfc3095_changes *inner_ip_changes;
 
-	/** The LSB shift parameter for the Sequence Number (SN) */
-	rohc_lsb_shift_t sn_lsb_p;
 	/// The LSB decoding context for the Sequence Number (SN)
 	struct rohc_lsb_decode sn_lsb_ctxt;
 	/// The IP-ID of the outer IP header

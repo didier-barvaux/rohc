@@ -123,7 +123,7 @@ static bool c_esp_create(struct rohc_comp_ctxt *const context,
 	assert(context->profile != NULL);
 
 	/* create and initialize the generic part of the profile context */
-	if(!rohc_comp_rfc3095_create(context, 32, ROHC_LSB_SHIFT_ESP_SN, packet))
+	if(!rohc_comp_rfc3095_create(context, 32, packet))
 	{
 		rohc_comp_warn(context, "generic context creation failed");
 		goto quit;

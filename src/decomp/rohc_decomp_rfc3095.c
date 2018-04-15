@@ -5366,6 +5366,7 @@ bool rfc3095_decomp_attempt_repair(const struct rohc_decomp *const decomp,
 	                                           ROHC_LSB_REF_0);
 	const uint32_t sn_ref_minus_1 = rohc_lsb_get_ref(&rfc3095_ctxt->sn_lsb_ctxt,
 	                                                 ROHC_LSB_REF_MINUS_1);
+	rohc_lsb_shift_t p;
 	bool verdict = false;
 
 	/* do not try to repair packet/context if feature is disabled */
@@ -5391,6 +5392,19 @@ bool rfc3095_decomp_attempt_repair(const struct rohc_decomp *const decomp,
 	rohc_decomp_warn(context, "CID %u: CRC repair: attempt to correct SN",
 	                 context->cid);
 
+	if(context->profile->id == ROHCv1_PROFILE_IP_UDP_RTP)
+	{
+		p = rohc_interval_compute_p_rtp_sn(extr_bits->sn_nr);
+	}
+	else if(context->profile->id == ROHCv1_PROFILE_IP_ESP)
+	{
+		p = rohc_interval_compute_p_esp_sn(extr_bits->sn_nr);
+	}
+	else
+	{
+		p = ROHC_LSB_SHIFT_SN;
+	}
+
 	/* step b of RFC3095, §5.3.2.2.4. Correction of SN LSB wraparound:
 	 *   When decompression fails, the decompressor computes the time
 	 *   elapsed between the arrival of the previous, correctly decompressed
@@ -5402,7 +5416,7 @@ bool rfc3095_decomp_attempt_repair(const struct rohc_decomp *const decomp,
 	 *   current header. */
 	if(is_sn_wraparound(pkt_arrival_time, crc_corr->arrival_times,
 	                    crc_corr->arrival_times_nr, crc_corr->arrival_times_index,
-	                    extr_bits->sn_nr, rfc3095_ctxt->sn_lsb_p))
+	                    extr_bits->sn_nr, p))
 	{
 		rohc_decomp_warn(context, "CID %u: CRC repair: CRC failure seems to "
 		                 "be caused by a sequence number LSB wraparound",
@@ -5609,9 +5623,22 @@ rohc_status_t rfc3095_decomp_decode_bits(const struct rohc_decomp_ctxt *const co
 	else
 	{
 		/* decode SN from packet bits and context */
+		rohc_lsb_shift_t p;
+		if(context->profile->id == ROHCv1_PROFILE_IP_UDP_RTP)
+		{
+			p = rohc_interval_compute_p_rtp_sn(bits->sn_nr);
+		}
+		else if(context->profile->id == ROHCv1_PROFILE_IP_ESP)
+		{
+			p = rohc_interval_compute_p_esp_sn(bits->sn_nr);
+		}
+		else
+		{
+			p = ROHC_LSB_SHIFT_SN;
+		}
 		decode_ok = rohc_lsb_decode(&rfc3095_ctxt->sn_lsb_ctxt, bits->lsb_ref_type,
 		                            bits->sn_ref_offset, bits->sn, bits->sn_nr,
-		                            rfc3095_ctxt->sn_lsb_p, &decoded->sn);
+		                            p, &decoded->sn);
 		if(!decode_ok)
 		{
 			rohc_decomp_warn(context, "failed to decode %zu SN bits 0x%x",

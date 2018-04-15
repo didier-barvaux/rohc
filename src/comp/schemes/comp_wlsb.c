@@ -36,12 +36,6 @@
  * Private function prototypes:
  */
 
-static bool wlsb_is_kp_possible_8bits(const struct c_wlsb *const wlsb,
-                                      const uint8_t value,
-                                      const size_t k,
-                                      const rohc_lsb_shift_t p)
-	__attribute__((warn_unused_result, nonnull(1)));
-
 static size_t wlsb_get_next_older(const size_t entry, const size_t max)
 	__attribute__((warn_unused_result, const));
 
@@ -60,14 +54,12 @@ static size_t wlsb_ack_remove(struct c_wlsb *const wlsb, const size_t pos)
  * @param[in,out] wlsb The W-LSB encoding object to create
  * @param bits         The maximal number of bits for representing a value
  * @param window_width The number of entries in the window (power of 2)
- * @param p            Shift parameter (see 4.5.2 in the RFC 3095)
  * @return             true if the W-LSB encoding object was created,
  *                     false if it was not
  */
 bool wlsb_new(struct c_wlsb *const wlsb,
               const size_t bits,
-              const size_t window_width,
-              const rohc_lsb_shift_t p)
+              const size_t window_width)
 {
 	size_t i;
 
@@ -86,7 +78,6 @@ bool wlsb_new(struct c_wlsb *const wlsb,
 	wlsb->count = 0;
 	wlsb->window_width = window_width;
 	wlsb->bits = bits;
-	wlsb->p = p;
 
 	for(i = 0; i < wlsb->window_width; i++)
 	{
@@ -119,7 +110,6 @@ bool wlsb_copy(struct c_wlsb *const dst,
 	dst->count = src->count;
 	dst->window_width = src->window_width;
 	dst->bits = src->bits;
-	dst->p = src->p;
 
 	dst->window = malloc(window_mem_size);
 	if(dst->window == NULL)
@@ -171,24 +161,6 @@ void c_add_wlsb(struct c_wlsb *const wlsb,
 	wlsb->window[wlsb->next].sn = sn;
 	wlsb->window[wlsb->next].value = value;
 	wlsb->next = (wlsb->next + 1) % wlsb->window_width;
-}
-
-
-/**
- * @brief Find out whether the given number of bits is enough to encode value
- *
- * The function is dedicated to 8-bit fields.
- *
- * @param wlsb   The W-LSB object
- * @param value  The value to encode using the LSB algorithm
- * @param k      The number of bits for encoding
- * @return       true if the number of bits is enough for encoding or not
- */
-bool wlsb_is_k_possible_8bits(const struct c_wlsb *const wlsb,
-                              const uint8_t value,
-                              const size_t k)
-{
-	return wlsb_is_kp_possible_8bits(wlsb, value, k, wlsb->p);
 }
 
 
@@ -281,24 +253,6 @@ bool wlsb_is_kp_possible_8bits(const struct c_wlsb *const wlsb,
  * @param wlsb   The W-LSB object
  * @param value  The value to encode using the LSB algorithm
  * @param k      The number of bits for encoding
- * @return       true if the number of bits is enough for encoding or not
- */
-bool wlsb_is_k_possible_16bits(const struct c_wlsb *const wlsb,
-                               const uint16_t value,
-                               const size_t k)
-{
-	return wlsb_is_kp_possible_16bits(wlsb, value, k, wlsb->p);
-}
-
-
-/**
- * @brief Find out whether the given number of bits is enough to encode value
- *
- * The function is dedicated to 16-bit fields.
- *
- * @param wlsb   The W-LSB object
- * @param value  The value to encode using the LSB algorithm
- * @param k      The number of bits for encoding
  * @param p      The shift parameter p
  * @return       true if the number of bits is enough for encoding or not
  */
@@ -365,24 +319,6 @@ bool wlsb_is_kp_possible_16bits(const struct c_wlsb *const wlsb,
 	}
 
 	return enc_possible;
-}
-
-
-/**
- * @brief Find out whether the given number of bits is enough to encode value
- *
- * The function is dedicated to 32-bit fields.
- *
- * @param wlsb   The W-LSB object
- * @param value  The value to encode using the LSB algorithm
- * @param k      The number of bits for encoding
- * @return       true if the number of bits is enough for encoding or not
- */
-bool wlsb_is_k_possible_32bits(const struct c_wlsb *const wlsb,
-                               const uint32_t value,
-                               const size_t k)
-{
-	return wlsb_is_kp_possible_32bits(wlsb, value, k, wlsb->p);
 }
 
 

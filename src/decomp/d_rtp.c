@@ -208,7 +208,6 @@ static bool d_rtp_create(const struct rohc_decomp_ctxt *const context,
 	rfc3095_ctxt->specific = rtp_context;
 
 	/* create the LSB decoding context for SN */
-	rfc3095_ctxt->sn_lsb_p = ROHC_LSB_SHIFT_RTP_SN;
 	rohc_lsb_init(&rfc3095_ctxt->sn_lsb_ctxt, 16);
 
 	/* the UDP checksum field present flag will be initialized

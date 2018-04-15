@@ -75,7 +75,7 @@ bool c_create_sc(struct ts_sc_comp *const ts_sc,
 	ts_sc->trace_callback_priv = trace_cb_priv;
 
 	/* W-LSB context for TS_SCALED */
-	is_ok = wlsb_new(&ts_sc->ts_scaled_wlsb, 32, wlsb_window_width, ROHC_LSB_SHIFT_RTP_TS);
+	is_ok = wlsb_new(&ts_sc->ts_scaled_wlsb, 32, wlsb_window_width);
 	if(!is_ok)
 	{
 		rohc_error(ts_sc, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -84,7 +84,7 @@ bool c_create_sc(struct ts_sc_comp *const ts_sc,
 	}
 
 	/* W-LSB context for unscaled TS */
-	is_ok = wlsb_new(&ts_sc->ts_unscaled_wlsb, 32, wlsb_window_width, ROHC_LSB_SHIFT_RTP_TS);
+	is_ok = wlsb_new(&ts_sc->ts_unscaled_wlsb, 32, wlsb_window_width);
 	if(!is_ok)
 	{
 		rohc_error(ts_sc, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,

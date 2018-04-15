@@ -85,8 +85,6 @@ struct c_wlsb
 
 	/** The maximal number of bits for representing the value */
 	uint8_t bits;
-	/** The shift parameter (see 4.5.2 in the RFC 3095) */
-	rohc_lsb_shift_t p;
 };
 
 /* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
@@ -107,8 +105,7 @@ _Static_assert((sizeof(struct c_wlsb) % 8) == 0,
 
 bool wlsb_new(struct c_wlsb *const wlsb,
               const size_t bits,
-              const size_t window_width,
-              const rohc_lsb_shift_t p)
+              const size_t window_width)
 	__attribute__((warn_unused_result, nonnull(1)));
 bool wlsb_copy(struct c_wlsb *const dst,
                const struct c_wlsb *const src)
@@ -121,25 +118,18 @@ void c_add_wlsb(struct c_wlsb *const wlsb,
                 const uint32_t value)
 	__attribute__((nonnull(1)));
 
-bool wlsb_is_k_possible_8bits(const struct c_wlsb *const wlsb,
-                              const uint8_t value,
-                              const size_t k)
+bool wlsb_is_kp_possible_8bits(const struct c_wlsb *const wlsb,
+                               const uint8_t value,
+                               const size_t k,
+                               const rohc_lsb_shift_t p)
 	__attribute__((warn_unused_result, nonnull(1)));
 
-bool wlsb_is_k_possible_16bits(const struct c_wlsb *const wlsb,
-                               const uint16_t value,
-                               const size_t k)
-	__attribute__((warn_unused_result, nonnull(1)));
 bool wlsb_is_kp_possible_16bits(const struct c_wlsb *const wlsb,
                                 const uint16_t value,
                                 const size_t k,
                                 const rohc_lsb_shift_t p)
 	__attribute__((warn_unused_result, nonnull(1)));
 
-bool wlsb_is_k_possible_32bits(const struct c_wlsb *const wlsb,
-                               const uint32_t value,
-                               const size_t k)
-	__attribute__((warn_unused_result, nonnull(1)));
 bool wlsb_is_kp_possible_32bits(const struct c_wlsb *const wlsb,
                                 const uint32_t value,
                                 const size_t k,
