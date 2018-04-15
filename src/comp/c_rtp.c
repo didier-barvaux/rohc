@@ -128,7 +128,7 @@ static bool c_rtp_create(struct rohc_comp_ctxt *const context,
 	assert(context->profile != NULL);
 
 	/* create and initialize the generic part of the profile context */
-	if(!rohc_comp_rfc3095_create(context, 16, packet))
+	if(!rohc_comp_rfc3095_create(context, packet))
 	{
 		rohc_comp_warn(context, "generic context creation failed");
 		goto quit;

@@ -63,7 +63,7 @@ static bool rohc_ip_ctxt_create(struct rohc_comp_ctxt *const context,
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 
 	/* call the generic function for all IP-based profiles */
-	if(!rohc_comp_rfc3095_create(context, 16, packet))
+	if(!rohc_comp_rfc3095_create(context, packet))
 	{
 		rohc_comp_warn(context, "generic context creation failed");
 		goto error;

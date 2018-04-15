@@ -204,7 +204,7 @@ static bool run_test8_with_shift_param(bool be_verbose,
 	assert(win_size > 0);
 
 	/* create the W-LSB encoding context */
-	is_ok = wlsb_new(&wlsb, 8, win_size);
+	is_ok = wlsb_new(&wlsb, win_size);
 	if(!is_ok)
 	{
 		fprintf(stderr, "no memory to allocate W-LSB encoding context\n");
@@ -352,7 +352,7 @@ static bool run_test16_with_shift_param(bool be_verbose,
 	assert(win_size > 0);
 
 	/* create the W-LSB encoding context */
-	is_ok = wlsb_new(&wlsb, 16, win_size);
+	is_ok = wlsb_new(&wlsb, win_size);
 	if(!is_ok)
 	{
 		fprintf(stderr, "no memory to allocate W-LSB encoding context\n");
@@ -500,7 +500,7 @@ static bool run_test32_with_shift_param(bool be_verbose,
 	assert(win_size > 0);
 
 	/* create the W-LSB encoding context */
-	is_ok = wlsb_new(&wlsb, 32, win_size);
+	is_ok = wlsb_new(&wlsb, win_size);
 	if(!is_ok)
 	{
 		fprintf(stderr, "no memory to allocate W-LSB encoding context\n");

@@ -201,7 +201,7 @@ bool run_test8_with_shift_param(bool be_verbose, const short p)
 	bool is_ok;
 
 	/* create the W-LSB encoding context */
-	is_ok = wlsb_new(&wlsb, 8, ROHC_WLSB_WINDOW_WIDTH);
+	is_ok = wlsb_new(&wlsb, ROHC_WLSB_WINDOW_WIDTH);
 	if(!is_ok)
 	{
 		fprintf(stderr, "no memory to allocate W-LSB encoding context\n");
@@ -264,7 +264,7 @@ bool run_test16_with_shift_param(bool be_verbose, const short p)
 	bool is_ok;
 
 	/* create the W-LSB encoding context */
-	is_ok = wlsb_new(&wlsb, 16, ROHC_WLSB_WINDOW_WIDTH);
+	is_ok = wlsb_new(&wlsb, ROHC_WLSB_WINDOW_WIDTH);
 	if(!is_ok)
 	{
 		fprintf(stderr, "no memory to allocate W-LSB encoding context\n");
@@ -328,7 +328,7 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 	bool is_ok;
 
 	/* create the W-LSB encoding context */
-	is_ok = wlsb_new(&wlsb, 32, ROHC_WLSB_WINDOW_WIDTH);
+	is_ok = wlsb_new(&wlsb, ROHC_WLSB_WINDOW_WIDTH);
 	if(!is_ok)
 	{
 		fprintf(stderr, "no memory to allocate W-LSB encoding context\n");
@@ -365,7 +365,7 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 	wlsb_free(&wlsb);
 
 	/* create the W-LSB encoding context again */
-	is_ok = wlsb_new(&wlsb, 32, ROHC_WLSB_WINDOW_WIDTH);
+	is_ok = wlsb_new(&wlsb, ROHC_WLSB_WINDOW_WIDTH);
 	if(!is_ok)
 	{
 		fprintf(stderr, "no memory to allocate W-LSB encoding\n");
@@ -403,7 +403,7 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 	wlsb_free(&wlsb);
 
 	/* create the W-LSB encoding context again */
-	is_ok = wlsb_new(&wlsb, 32, 64U);
+	is_ok = wlsb_new(&wlsb, 64U);
 	if(!is_ok)
 	{
 		fprintf(stderr, "no memory to allocate W-LSB encoding\n");

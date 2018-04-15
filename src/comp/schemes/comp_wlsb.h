@@ -83,8 +83,6 @@ struct c_wlsb
 	/** The count of entries in the window */
 	uint8_t count;
 
-	/** The maximal number of bits for representing the value */
-	uint8_t bits;
 };
 
 /* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
@@ -104,7 +102,6 @@ _Static_assert((sizeof(struct c_wlsb) % 8) == 0,
  */
 
 bool wlsb_new(struct c_wlsb *const wlsb,
-              const size_t bits,
               const size_t window_width)
 	__attribute__((warn_unused_result, nonnull(1)));
 bool wlsb_copy(struct c_wlsb *const dst,

@@ -466,7 +466,7 @@ static bool ip_header_info_new(struct ip_header_info *const header_info,
 	{
 		/* init the parameters to encode the IP-ID with W-LSB encoding */
 		const bool is_ok =
-			wlsb_new(&header_info->info.v4.ip_id_window, 16, wlsb_window_width);
+			wlsb_new(&header_info->info.v4.ip_id_window, wlsb_window_width);
 		if(!is_ok)
 		{
 			__rohc_print(trace_cb, trace_cb_priv, ROHC_TRACE_ERROR,
@@ -563,12 +563,10 @@ static void c_init_tmp_variables(struct generic_tmp_vars *const tmp_vars)
  * @brief Create a new context and initialize it thanks to the given IP packet.
  *
  * @param context     The compression context
- * @param sn_bits_nr  The maximum number of bits used for SN
  * @param packet      The packet given to initialize the new context
  * @return            true if successful, false otherwise
  */
 bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
-                              const size_t sn_bits_nr,
                               const struct net_pkt *const packet)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
@@ -597,15 +595,14 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 	 */
 
 	/* step 1 */
-	rohc_comp_debug(context, "use %zu-bit SN", sn_bits_nr);
-	is_ok = wlsb_new(&rfc3095_ctxt->sn_window, sn_bits_nr, context->compressor->wlsb_window_width);
+	is_ok = wlsb_new(&rfc3095_ctxt->sn_window, context->compressor->wlsb_window_width);
 	if(!is_ok)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		           "no memory to allocate W-LSB encoding for SN");
 		goto free_generic_context;
 	}
-	is_ok = wlsb_new(&rfc3095_ctxt->msn_non_acked, 16, context->compressor->wlsb_window_width);
+	is_ok = wlsb_new(&rfc3095_ctxt->msn_non_acked, context->compressor->wlsb_window_width);
 	if(!is_ok)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,

@@ -328,9 +328,8 @@ struct rohc_comp_rfc3095_ctxt
  */
 
 bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
-                              const size_t sn_bits_nr,
                               const struct net_pkt *const packet)
-	__attribute__((warn_unused_result, nonnull(1, 3)));
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 void rohc_comp_rfc3095_destroy(struct rohc_comp_ctxt *const context)
 	__attribute__((nonnull(1)));

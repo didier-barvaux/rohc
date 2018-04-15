@@ -52,18 +52,15 @@ static size_t wlsb_ack_remove(struct c_wlsb *const wlsb, const size_t pos)
  *        object
  *
  * @param[in,out] wlsb The W-LSB encoding object to create
- * @param bits         The maximal number of bits for representing a value
  * @param window_width The number of entries in the window (power of 2)
  * @return             true if the W-LSB encoding object was created,
  *                     false if it was not
  */
 bool wlsb_new(struct c_wlsb *const wlsb,
-              const size_t bits,
               const size_t window_width)
 {
 	size_t i;
 
-	assert(bits > 0);
 	assert(window_width > 0);
 	assert(window_width <= ROHC_WLSB_WIDTH_MAX);
 
@@ -77,7 +74,6 @@ bool wlsb_new(struct c_wlsb *const wlsb,
 	wlsb->next = 0;
 	wlsb->count = 0;
 	wlsb->window_width = window_width;
-	wlsb->bits = bits;
 
 	for(i = 0; i < wlsb->window_width; i++)
 	{
@@ -109,7 +105,6 @@ bool wlsb_copy(struct c_wlsb *const dst,
 	dst->next = src->next;
 	dst->count = src->count;
 	dst->window_width = src->window_width;
-	dst->bits = src->bits;
 
 	dst->window = malloc(window_mem_size);
 	if(dst->window == NULL)
@@ -180,18 +175,19 @@ bool wlsb_is_kp_possible_8bits(const struct c_wlsb *const wlsb,
                                const size_t k,
                                const rohc_lsb_shift_t p)
 {
+	const uint8_t max_bits_nr = 8;
 	bool enc_possible = false;
 
-	assert(k <= wlsb->bits);
+	assert(k <= max_bits_nr);
 
-	if(k == wlsb->bits)
+	if(k == max_bits_nr)
 	{
 		enc_possible = true;
 	}
 	/* use all bits if the window contains no value */
 	else if(wlsb->count == 0)
 	{
-		enc_possible = !!(k >= wlsb->bits);
+		enc_possible = !!(k == max_bits_nr);
 	}
 	else
 	{
@@ -261,12 +257,19 @@ bool wlsb_is_kp_possible_16bits(const struct c_wlsb *const wlsb,
                                 const size_t k,
                                 const rohc_lsb_shift_t p)
 {
+	const uint8_t max_bits_nr = 16;
 	bool enc_possible = false;
 
-	/* use all bits if the window contains no value */
-	if(wlsb->count == 0)
+	assert(k <= max_bits_nr);
+
+	if(k == max_bits_nr)
 	{
-		enc_possible = !!(k >= wlsb->bits);
+		enc_possible = true;
+	}
+	/* use all bits if the window contains no value */
+	else if(wlsb->count == 0)
+	{
+		enc_possible = !!(k == max_bits_nr);
 	}
 	else
 	{
@@ -338,18 +341,19 @@ bool wlsb_is_kp_possible_32bits(const struct c_wlsb *const wlsb,
                                 const size_t k,
                                 const rohc_lsb_shift_t p)
 {
+	const uint8_t max_bits_nr = 32;
 	bool enc_possible = false;
 
-	assert(k <= wlsb->bits);
+	assert(k <= max_bits_nr);
 
-	if(k == wlsb->bits)
+	if(k == max_bits_nr)
 	{
 		enc_possible = true;
 	}
 	/* use all bits if the window contains no value */
 	else if(wlsb->count == 0)
 	{
-		enc_possible = !!(k >= wlsb->bits);
+		enc_possible = !!(k == max_bits_nr);
 	}
 	else
 	{

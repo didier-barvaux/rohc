@@ -478,7 +478,7 @@ static bool rohc_comp_rfc5225_ip_esp_create(struct rohc_comp_ctxt *const context
 	assert(rohc_is_tunneling(proto) == false);
 
 	/* MSN */
-	is_ok = wlsb_new(&rfc5225_ctxt->msn_wlsb, 32, comp->wlsb_window_width);
+	is_ok = wlsb_new(&rfc5225_ctxt->msn_wlsb, comp->wlsb_window_width);
 	if(!is_ok)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -487,7 +487,7 @@ static bool rohc_comp_rfc5225_ip_esp_create(struct rohc_comp_ctxt *const context
 	}
 
 	/* innermost IP-ID offset */
-	is_ok = wlsb_new(&rfc5225_ctxt->innermost_ip_id_offset_wlsb, 16,
+	is_ok = wlsb_new(&rfc5225_ctxt->innermost_ip_id_offset_wlsb,
 	                 comp->wlsb_window_width);
 	if(!is_ok)
 	{
