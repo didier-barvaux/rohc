@@ -55,7 +55,7 @@ static int tcp_code_replicate_ipv6_opt_part(const struct rohc_comp_ctxt *const c
 
 static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const context,
                                        const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                                       const struct tcp_tmp_variables *const tmp,
+                                       struct tcp_tmp_variables *const tmp,
                                        uint8_t *const rohc_data,
                                        const size_t rohc_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
@@ -74,7 +74,7 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
  */
 int tcp_code_replicate_chain(struct rohc_comp_ctxt *const context,
                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                             const struct tcp_tmp_variables *const tmp,
+                             struct tcp_tmp_variables *const tmp,
                              uint8_t *const rohc_pkt,
                              const size_t rohc_pkt_max_len)
 {
@@ -444,7 +444,7 @@ error:
  */
 static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const context,
                                        const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                                       const struct tcp_tmp_variables *const tmp,
+                                       struct tcp_tmp_variables *const tmp,
                                        uint8_t *const rohc_data,
                                        const size_t rohc_max_len)
 {
@@ -642,7 +642,7 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
 	 * the option changed, compress them */
 	ret = c_tcp_code_tcp_opts_list_item(context, uncomp_pkt_hdrs,
 	                                    ROHC_CHAIN_REPLICATE,
-	                                    &tcp_context->tcp_opts,
+	                                    &tcp_context->tcp_opts, &tmp->tcp_opts,
 	                                    rohc_remain_data, rohc_remain_len,
 	                                    &no_item_needed);
 	if(ret < 0)
@@ -650,8 +650,8 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
 		rohc_comp_warn(context, "failed to compress TCP options");
 		goto error;
 	}
-	if(tcp_context->tcp_opts.tmp.do_list_struct_changed ||
-	   tcp_context->tcp_opts.tmp.do_list_static_changed ||
+	if(tmp->tcp_opts.do_list_struct_changed ||
+	   tmp->tcp_opts.do_list_static_changed ||
 	   !no_item_needed)
 	{
 		rohc_comp_debug(context, "compressed list of TCP options: list present");

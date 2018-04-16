@@ -76,6 +76,9 @@ struct tcp_tmp_variables
 	uint16_t tcp_urg_flag_changed:1;
 	uint16_t tcp_urg_ptr_changed:1;
 	uint16_t ecn_used_changed:1; /**< Whether the ecn_used flag changed or not */
+
+	/** The temporary part of the context for TCP options */
+	struct c_tcp_opts_ctxt_tmp tcp_opts;
 };
 
 

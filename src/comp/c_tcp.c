@@ -149,13 +149,14 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
                                                  const bool crc7_at_least)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static bool tcp_opt_ts_can_be_encoded(const struct c_tcp_opts_ctxt *const opts)
-	__attribute__((warn_unused_result, nonnull(1)));
+static bool tcp_opt_ts_can_be_encoded(const struct c_tcp_opts_ctxt *const opts,
+                                      const struct c_tcp_opts_ctxt_tmp *const tmp)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 /* IR and CO packets */
 static int code_IR_packet(struct rohc_comp_ctxt *const context,
                           const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                          const struct tcp_tmp_variables *const tmp,
+                          struct tcp_tmp_variables *const tmp,
                           uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
                           const rohc_packet_t packet_type)
@@ -163,7 +164,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 
 static int code_CO_packet(struct rohc_comp_ctxt *const context,
                           const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                          const struct tcp_tmp_variables *const tmp,
+                          struct tcp_tmp_variables *const tmp,
                           const struct rohc_buf *const uncomp_pkt,
                           uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
@@ -173,7 +174,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
                          struct sc_tcp_context *const tcp_context,
                          ip_context_t *const ip_inner_context,
                          const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                         const struct tcp_tmp_variables *const tmp,
+                         struct tcp_tmp_variables *const tmp,
                          uint8_t *const rohc_pkt,
                          const size_t rohc_pkt_max_len,
                          const rohc_packet_t packet_type,
@@ -245,10 +246,11 @@ static int c_tcp_build_rnd_8(const struct rohc_comp_ctxt *const context,
                              const ip_context_t *const inner_ip_ctxt,
                              struct sc_tcp_context *const tcp_context,
                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                             struct tcp_tmp_variables *const tmp,
                              const uint8_t crc,
                              uint8_t *const rohc_data,
                              const size_t rohc_max_len)
-	__attribute__((nonnull(1, 2, 3, 4, 6), warn_unused_result));
+	__attribute__((nonnull(1, 2, 3, 4, 5, 7), warn_unused_result));
 
 
 /*
@@ -343,17 +345,18 @@ static int c_tcp_build_seq_8(const struct rohc_comp_ctxt *const context,
                              const ip_context_t *const inner_ip_ctxt,
                              struct sc_tcp_context *const tcp_context,
                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                             struct tcp_tmp_variables *const tmp,
                              const uint16_t innermost_ip_id_delta,
                              const uint8_t crc,
                              uint8_t *const rohc_data,
                              const size_t rohc_max_len)
-	__attribute__((nonnull(1, 2, 3, 4, 7), warn_unused_result));
+	__attribute__((nonnull(1, 2, 3, 4, 5, 8), warn_unused_result));
 
 static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
                                  const ip_context_t *const inner_ip_ctxt,
                                  struct sc_tcp_context *const tcp_context,
                                  const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                                 const struct tcp_tmp_variables *const tmp,
+                                 struct tcp_tmp_variables *const tmp,
                                  const uint8_t crc,
                                  uint8_t *const rohc_data,
                                  const size_t rohc_max_len)
@@ -935,15 +938,8 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		&(tcp_context->ip_contexts[uncomp_pkt_hdrs->ip_hdrs_nr - 1]);
 	struct tcp_tmp_variables tmp;
 	int counter;
-	size_t i;
 
 	*packet_type = ROHC_PACKET_UNKNOWN;
-
-	/* at the beginning, no item transmitted for the compressed list of TCP options */
-	for(i = 0; i <= MAX_TCP_OPTION_INDEX; i++)
-	{
-		tcp_opts->tmp.is_list_item_present[i] = false;
-	}
 
 	/* detect changes between new uncompressed packet and context */
 	if(!tcp_detect_changes(context, ip_inner_context, uncomp_pkt_hdrs, &tmp))
@@ -1077,11 +1073,11 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	c_add_wlsb(&tcp_context->window_wlsb, tcp_context->msn, rohc_ntoh16(tcp->window));
 
 	/* TCP Timestamp option */
-	if(tcp_opts->tmp.opt_ts_present)
+	if(tmp.tcp_opts.opt_ts_present)
 	{
 		tcp_opts->is_timestamp_init = true;
-		c_add_wlsb(&tcp_opts->ts_req_wlsb, tcp_context->msn, tcp_opts->tmp.ts_req);
-		c_add_wlsb(&tcp_opts->ts_reply_wlsb, tcp_context->msn, tcp_opts->tmp.ts_reply);
+		c_add_wlsb(&tcp_opts->ts_req_wlsb, tcp_context->msn, tmp.tcp_opts.ts_req);
+		c_add_wlsb(&tcp_opts->ts_reply_wlsb, tcp_context->msn, tmp.tcp_opts.ts_reply);
 	}
 
 	return counter;
@@ -1105,7 +1101,7 @@ error:
  */
 static int code_IR_packet(struct rohc_comp_ctxt *const context,
                           const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                          const struct tcp_tmp_variables *const tmp,
+                          struct tcp_tmp_variables *const tmp,
                           uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
                           const rohc_packet_t packet_type)
@@ -1200,7 +1196,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 		}
 
 		/* add dynamic chain for IR and IR-DYN packets only */
-		ret = tcp_code_dyn_part(context, uncomp_pkt_hdrs,
+		ret = tcp_code_dyn_part(context, uncomp_pkt_hdrs, tmp,
 		                        rohc_remain_data, rohc_remain_len);
 		if(ret < 0)
 		{
@@ -1369,7 +1365,7 @@ error:
  */
 static int code_CO_packet(struct rohc_comp_ctxt *const context,
                           const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                          const struct tcp_tmp_variables *const tmp,
+                          struct tcp_tmp_variables *const tmp,
                           const struct rohc_buf *const uncomp_pkt,
                           uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
@@ -1506,7 +1502,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
                          struct sc_tcp_context *const tcp_context,
                          ip_context_t *const inner_ip_ctxt,
                          const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                         const struct tcp_tmp_variables *const tmp,
+                         struct tcp_tmp_variables *const tmp,
                          uint8_t *const rohc_pkt,
                          const size_t rohc_pkt_max_len,
                          const rohc_packet_t packet_type,
@@ -1552,7 +1548,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 			break;
 		case ROHC_PACKET_TCP_RND_8:
 			ret = c_tcp_build_rnd_8(context, inner_ip_ctxt, tcp_context,
-			                        uncomp_pkt_hdrs, crc,
+			                        uncomp_pkt_hdrs, tmp, crc,
 			                        rohc_pkt, rohc_pkt_max_len);
 			break;
 		case ROHC_PACKET_TCP_SEQ_1:
@@ -1599,7 +1595,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 			break;
 		case ROHC_PACKET_TCP_SEQ_8:
 			ret = c_tcp_build_seq_8(context, inner_ip_ctxt, tcp_context,
-			                        uncomp_pkt_hdrs, tmp->ip_id_delta, crc,
+			                        uncomp_pkt_hdrs, tmp, tmp->ip_id_delta, crc,
 			                        rohc_pkt, rohc_pkt_max_len);
 			break;
 		case ROHC_PACKET_TCP_CO_COMMON:
@@ -2003,6 +1999,7 @@ error:
  * @param inner_ip_ctxt     The specific IP innermost context
  * @param tcp_context       The specific TCP context
  * @param uncomp_pkt_hdrs   The uncompressed headers to encode
+ * @param tmp               The temporary state for compressed packet
  * @param crc               The CRC on the uncompressed headers
  * @param[out] rohc_data    The ROHC packet being built
  * @param rohc_max_len      The max remaining length in the ROHC buffer
@@ -2013,6 +2010,7 @@ static int c_tcp_build_rnd_8(const struct rohc_comp_ctxt *const context,
                              const ip_context_t *const inner_ip_ctxt,
                              struct sc_tcp_context *const tcp_context,
                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                             struct tcp_tmp_variables *const tmp,
                              const uint8_t crc,
                              uint8_t *const rohc_data,
                              const size_t rohc_max_len)
@@ -2079,8 +2077,8 @@ static int c_tcp_build_rnd_8(const struct rohc_comp_ctxt *const context,
 	/* include the list of TCP options if the structure of the list changed
 	 * or if some static options changed (irregular chain cannot transmit
 	 * static options) */
-	if(tcp_context->tcp_opts.tmp.do_list_struct_changed ||
-	   tcp_context->tcp_opts.tmp.do_list_static_changed)
+	if(tmp->tcp_opts.do_list_struct_changed ||
+	   tmp->tcp_opts.do_list_static_changed)
 	{
 		/* the structure of the list of TCP options changed or at least one of
 		 * the static option changed, compress them */
@@ -2088,7 +2086,7 @@ static int c_tcp_build_rnd_8(const struct rohc_comp_ctxt *const context,
 		rnd8->list_present = 1;
 		ret = c_tcp_code_tcp_opts_list_item(context, uncomp_pkt_hdrs,
 		                                    ROHC_CHAIN_CO, &tcp_context->tcp_opts,
-		                                    rnd8->options,
+		                                    &tmp->tcp_opts, rnd8->options,
 		                                    rohc_max_len - sizeof(rnd_8_t),
 		                                    &no_item_needed);
 		if(ret < 0)
@@ -2559,6 +2557,7 @@ error:
  * @param inner_ip_ctxt     The specific IP innermost context
  * @param tcp_context       The specific TCP context
  * @param uncomp_pkt_hdrs   The uncompressed headers to encode
+ * @param tmp               The temporary state for compressed packet
  * @param innermost_ip_id_delta  The offset between the innermost IP-ID and MSN
  * @param crc               The CRC on the uncompressed headers
  * @param[out] rohc_data    The ROHC packet being built
@@ -2570,6 +2569,7 @@ static int c_tcp_build_seq_8(const struct rohc_comp_ctxt *const context,
                              const ip_context_t *const inner_ip_ctxt,
                              struct sc_tcp_context *const tcp_context,
                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                             struct tcp_tmp_variables *const tmp,
                              const uint16_t innermost_ip_id_delta,
                              const uint8_t crc,
                              uint8_t *const rohc_data,
@@ -2631,8 +2631,8 @@ static int c_tcp_build_seq_8(const struct rohc_comp_ctxt *const context,
 	/* include the list of TCP options if the structure of the list changed
 	 * or if some static options changed (irregular chain cannot transmit
 	 * static options) */
-	if(tcp_context->tcp_opts.tmp.do_list_struct_changed ||
-	   tcp_context->tcp_opts.tmp.do_list_static_changed)
+	if(tmp->tcp_opts.do_list_struct_changed ||
+	   tmp->tcp_opts.do_list_static_changed)
 	{
 		/* the structure of the list of TCP options changed or at least one of
 		 * the static option changed, compress them */
@@ -2640,7 +2640,7 @@ static int c_tcp_build_seq_8(const struct rohc_comp_ctxt *const context,
 		seq8->list_present = 1;
 		ret = c_tcp_code_tcp_opts_list_item(context, uncomp_pkt_hdrs,
 		                                    ROHC_CHAIN_CO, &tcp_context->tcp_opts,
-		                                    seq8->options,
+		                                    &tmp->tcp_opts, seq8->options,
 		                                    rohc_max_len - sizeof(seq_8_t),
 		                                    &no_item_needed);
 		if(ret < 0)
@@ -2683,7 +2683,7 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
                                  const ip_context_t *const inner_ip_ctxt,
                                  struct sc_tcp_context *const tcp_context,
                                  const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                                 const struct tcp_tmp_variables *const tmp,
+                                 struct tcp_tmp_variables *const tmp,
                                  const uint8_t crc,
                                  uint8_t *const rohc_data,
                                  const size_t rohc_max_len)
@@ -2962,8 +2962,8 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 	/* include the list of TCP options if the structure of the list changed
 	 * or if some static options changed (irregular chain cannot transmit
 	 * static options) */
-	if(tcp_context->tcp_opts.tmp.do_list_struct_changed ||
-	   tcp_context->tcp_opts.tmp.do_list_static_changed)
+	if(tmp->tcp_opts.do_list_struct_changed ||
+	   tmp->tcp_opts.do_list_static_changed)
 	{
 		/* the structure of the list of TCP options changed or at least one of
 		 * the static option changed, compress them */
@@ -2971,6 +2971,7 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 		co_common->list_present = 1;
 		ret = c_tcp_code_tcp_opts_list_item(context, uncomp_pkt_hdrs,
 		                                    ROHC_CHAIN_CO, &tcp_context->tcp_opts,
+		                                    &tmp->tcp_opts,
 		                                    co_common_opt, rohc_remain_len,
 		                                    &no_item_needed);
 		if(ret < 0)
@@ -3093,7 +3094,8 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 	pkt_ecn_vals |= uncomp_pkt_hdrs->tcp->ecn_flags;
 
 	/* parse TCP options for changes */
-	tcp_detect_options_changes(context, uncomp_pkt_hdrs, &tcp_context->tcp_opts);
+	tcp_detect_options_changes(context, uncomp_pkt_hdrs,
+	                           &tcp_context->tcp_opts, &tmp->tcp_opts);
 
 	/* what value for ecn_used? */
 	tmp->ecn_used_changed =
@@ -3675,14 +3677,16 @@ static bool tcp_detect_changes_tcp_hdr(struct rohc_comp_ctxt *const context,
  * @brief Whether the TCP Timestamp (TS) option can be encoded or not
  *
  * @param opts  The compression context of the TCP options
+ * @param tmp   The temporary state for compressed TCP options
  * @return      true if the TCP Timestamp (TS) option can be encoded,
  *              false if the TCP Timestamp (TS) option shall be sent in full
  */
-static bool tcp_opt_ts_can_be_encoded(const struct c_tcp_opts_ctxt *const opts)
+static bool tcp_opt_ts_can_be_encoded(const struct c_tcp_opts_ctxt *const opts,
+                                      const struct c_tcp_opts_ctxt_tmp *const tmp)
 {
 	return (opts->is_timestamp_init &&
-	        opts->tmp.ts_req_bytes_nr != 0 &&
-	        opts->tmp.ts_reply_bytes_nr != 0);
+	        tmp->ts_req_bytes_nr != 0 &&
+	        tmp->ts_reply_bytes_nr != 0);
 }
 
 
@@ -3835,8 +3839,8 @@ static rohc_packet_t tcp_decide_FO_SO_packet(const struct rohc_comp_ctxt *const 
 		                "changed its dynamic part");
 		packet_type = ROHC_PACKET_IR_DYN;
 	}
-	else if(tcp_context->tcp_opts.tmp.opt_ts_present &&
-	        !tcp_opt_ts_can_be_encoded(&tcp_context->tcp_opts))
+	else if(tmp->tcp_opts.opt_ts_present &&
+	        !tcp_opt_ts_can_be_encoded(&tcp_context->tcp_opts, &tmp->tcp_opts))
 	{
 		rohc_comp_debug(context, "force packet IR-DYN because the TCP TS option "
 		                "changed too much");
@@ -3962,8 +3966,8 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 	rohc_packet_t packet_type;
 
 	if(tcp->rsf_flags != 0 ||
-	   tcp_context->tcp_opts.tmp.do_list_struct_changed ||
-	   tcp_context->tcp_opts.tmp.do_list_static_changed)
+	   tmp->tcp_opts.do_list_struct_changed ||
+	   tmp->tcp_opts.do_list_static_changed)
 	{
 		/* seq_8 or co_common
 		 *
@@ -4167,8 +4171,8 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 	rohc_packet_t packet_type;
 
 	if(tcp->rsf_flags != 0 ||
-	   tcp_context->tcp_opts.tmp.do_list_struct_changed ||
-	   tcp_context->tcp_opts.tmp.do_list_static_changed)
+	   tmp->tcp_opts.do_list_struct_changed ||
+	   tmp->tcp_opts.do_list_static_changed)
 	{
 		if(!tmp->tcp_window_changed &&
 		   wlsb_is_kp_possible_32bits(&tcp_context->seq_wlsb, tmp->seq_num, 16, 65535) &&

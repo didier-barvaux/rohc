@@ -79,7 +79,7 @@ int main(void)
 	       sizeof(ipv6_generic_option_context_t));
 	printf("\tsizeof(struct c_tcp_opts_ctxt) = %zu\n", sizeof(struct c_tcp_opts_ctxt));
 	printf("\t\tsizeof(struct c_tcp_opt_ctxt) = %zu\n", sizeof(struct c_tcp_opt_ctxt));
-	printf("\t\tsizeof(struct c_tcp_opts_ctxt_tmp) = %zu\n", sizeof(struct c_tcp_opts_ctxt_tmp));
+	printf("sizeof(struct c_tcp_opts_ctxt_tmp) = %zu\n", sizeof(struct c_tcp_opts_ctxt_tmp));
 	printf("sizeof(struct tcp_tmp_variables) = %zu\n", sizeof(struct tcp_tmp_variables));
 
 	return 0;
