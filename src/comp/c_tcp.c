@@ -929,6 +929,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
                         rohc_packet_t *const packet_type)
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
+	struct c_tcp_opts_ctxt *const tcp_opts = &(tcp_context->tcp_opts);
 	const struct tcphdr *const tcp = uncomp_pkt_hdrs->tcp;
 	ip_context_t *const ip_inner_context =
 		&(tcp_context->ip_contexts[uncomp_pkt_hdrs->ip_hdrs_nr - 1]);
@@ -941,7 +942,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	/* at the beginning, no item transmitted for the compressed list of TCP options */
 	for(i = 0; i <= MAX_TCP_OPTION_INDEX; i++)
 	{
-		tcp_context->tcp_opts.tmp.is_list_item_present[i] = false;
+		tcp_opts->tmp.is_list_item_present[i] = false;
 	}
 
 	/* detect changes between new uncompressed packet and context */
@@ -1074,6 +1075,14 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 
 	/* TCP window */
 	c_add_wlsb(&tcp_context->window_wlsb, tcp_context->msn, rohc_ntoh16(tcp->window));
+
+	/* TCP Timestamp option */
+	if(tcp_opts->tmp.opt_ts_present)
+	{
+		tcp_opts->is_timestamp_init = true;
+		c_add_wlsb(&tcp_opts->ts_req_wlsb, tcp_context->msn, tcp_opts->tmp.ts_req);
+		c_add_wlsb(&tcp_opts->ts_reply_wlsb, tcp_context->msn, tcp_opts->tmp.ts_reply);
+	}
 
 	return counter;
 
@@ -2077,7 +2086,7 @@ static int c_tcp_build_rnd_8(const struct rohc_comp_ctxt *const context,
 		 * the static option changed, compress them */
 		bool no_item_needed;
 		rnd8->list_present = 1;
-		ret = c_tcp_code_tcp_opts_list_item(context, uncomp_pkt_hdrs, tcp_context->msn,
+		ret = c_tcp_code_tcp_opts_list_item(context, uncomp_pkt_hdrs,
 		                                    ROHC_CHAIN_CO, &tcp_context->tcp_opts,
 		                                    rnd8->options,
 		                                    rohc_max_len - sizeof(rnd_8_t),
@@ -2629,7 +2638,7 @@ static int c_tcp_build_seq_8(const struct rohc_comp_ctxt *const context,
 		 * the static option changed, compress them */
 		bool no_item_needed;
 		seq8->list_present = 1;
-		ret = c_tcp_code_tcp_opts_list_item(context, uncomp_pkt_hdrs, tcp_context->msn,
+		ret = c_tcp_code_tcp_opts_list_item(context, uncomp_pkt_hdrs,
 		                                    ROHC_CHAIN_CO, &tcp_context->tcp_opts,
 		                                    seq8->options,
 		                                    rohc_max_len - sizeof(seq_8_t),
@@ -2960,7 +2969,7 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 		 * the static option changed, compress them */
 		bool no_item_needed;
 		co_common->list_present = 1;
-		ret = c_tcp_code_tcp_opts_list_item(context, uncomp_pkt_hdrs, tcp_context->msn,
+		ret = c_tcp_code_tcp_opts_list_item(context, uncomp_pkt_hdrs,
 		                                    ROHC_CHAIN_CO, &tcp_context->tcp_opts,
 		                                    co_common_opt, rohc_remain_len,
 		                                    &no_item_needed);

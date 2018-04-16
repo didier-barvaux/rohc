@@ -640,7 +640,7 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
 
 	/* the structure of the list of TCP options changed or at least one of
 	 * the option changed, compress them */
-	ret = c_tcp_code_tcp_opts_list_item(context, uncomp_pkt_hdrs, tcp_context->msn,
+	ret = c_tcp_code_tcp_opts_list_item(context, uncomp_pkt_hdrs,
 	                                    ROHC_CHAIN_REPLICATE,
 	                                    &tcp_context->tcp_opts,
 	                                    rohc_remain_data, rohc_remain_len,

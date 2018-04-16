@@ -174,21 +174,19 @@ void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 
 int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
                                   const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                                  const uint16_t msn,
                                   const rohc_chain_t chain_type,
                                   struct c_tcp_opts_ctxt *const opts_ctxt,
                                   uint8_t *const comp_opts,
                                   const size_t comp_opts_max_len,
                                   bool *const no_item_needed)
-	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6, 8)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5, 7)));
 
 int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
                               const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                              const uint16_t msn,
                               struct c_tcp_opts_ctxt *const opts_ctxt,
                               uint8_t *const comp_opts,
                               const size_t comp_opts_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 
 #endif /* ROHC_COMP_TCP_OPTS_LIST_H */
 

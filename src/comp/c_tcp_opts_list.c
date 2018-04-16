@@ -716,7 +716,6 @@ void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
  *
  * @param context            The compression context
  * @param uncomp_pkt_hdrs    The uncompressed headers to encode
- * @param msn                The Master Sequence Number (MSN) of the packet to compress
  * @param chain_type         The TCP chain for which the list of items is
  * @param[in,out] opts_ctxt  The compression context for TCP options
  * @param[out] comp_opts     The compressed TCP options
@@ -727,7 +726,6 @@ void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
  */
 int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
                                   const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                                  const uint16_t msn,
                                   const rohc_chain_t chain_type,
                                   struct c_tcp_opts_ctxt *const opts_ctxt,
                                   uint8_t *const comp_opts,
@@ -845,17 +843,6 @@ int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
 			                "%zu bytes of item", tcp_opt_get_descr(opt_type),
 			                opt_type, comp_opt_len);
 		comp_opts_len += comp_opt_len;
-
-		/* TODO: move at the very end of compression to avoid altering
-		 *       context in case of compression failure */
-		if(opt_type == TCP_OPT_TS)
-		{
-			const struct tcp_option_timestamp *const opt_ts =
-				(struct tcp_option_timestamp *) (opt_data + 2);
-			opts_ctxt->is_timestamp_init = true;
-			c_add_wlsb(&opts_ctxt->ts_req_wlsb, msn, rohc_ntoh32(opt_ts->ts));
-			c_add_wlsb(&opts_ctxt->ts_reply_wlsb, msn, rohc_ntoh32(opt_ts->ts_reply));
-		}
 	}
 
 	rohc_comp_dump_buf(context, "TCP compressed options", comp_opts, comp_opts_len);
@@ -874,7 +861,6 @@ error:
  *
  * @param context            The compression context
  * @param uncomp_pkt_hdrs    The uncompressed headers to encode
- * @param msn                The Master Sequence Number (MSN) of the packet to compress
  * @param[in,out] opts_ctxt  The compression context for TCP options
  * @param[out] comp_opts     The compressed TCP options
  * @param comp_opts_max_len  The max remaining length in the ROHC buffer
@@ -885,7 +871,6 @@ error:
  */
 int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
                               const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                              const uint16_t msn,
                               struct c_tcp_opts_ctxt *const opts_ctxt,
                               uint8_t *const comp_opts,
                               const size_t comp_opts_max_len)
@@ -963,11 +948,6 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 			rohc_remain_len -= encoded_ts_lsb_len;
 			comp_opt_len += encoded_ts_lsb_len;
 
-			/* TODO: move at the very end of compression to avoid altering
-			 *       context in case of compression failure */
-			opts_ctxt->is_timestamp_init = true;
-			c_add_wlsb(&opts_ctxt->ts_req_wlsb, msn, opts_ctxt->tmp.ts_req);
-			c_add_wlsb(&opts_ctxt->ts_reply_wlsb, msn, opts_ctxt->tmp.ts_reply);
 			/* save the option in context */
 			/* TODO: move at the very end of compression to avoid altering
 			 *       context in case of compression failure */
@@ -1527,14 +1507,6 @@ static bool c_tcp_is_list_item_needed(const struct rohc_comp_ctxt *const context
 		                tcp_opt_get_descr(opt_type));
 		item_needed = true;
 	}
-	else if(c_tcp_opt_changed(opts_ctxt, opt_idx, opt, opt_len))
-	{
-		/* option was already transmitted but it changed since then,
-		 * item must be transmitted again */
-		rohc_comp_debug(context, "TCP options list: option '%s' changed",
-		                tcp_opt_get_descr(opt_type));
-		item_needed = true;
-	}
 	else if(opts_ctxt->list[opt_idx].nr_trans < context->compressor->list_trans_nr)
 	{
 		/* option was already transmitted and didn't change since then, but the
@@ -1544,6 +1516,14 @@ static bool c_tcp_is_list_item_needed(const struct rohc_comp_ctxt *const context
 		                tcp_opt_get_descr(opt_type),
 		                context->compressor->list_trans_nr -
 		                opts_ctxt->list[opt_idx].nr_trans);
+		item_needed = true;
+	}
+	else if(c_tcp_opt_changed(opts_ctxt, opt_idx, opt, opt_len))
+	{
+		/* option was already transmitted but it changed since then,
+		 * item must be transmitted again */
+		rohc_comp_debug(context, "TCP options list: option '%s' changed",
+		                tcp_opt_get_descr(opt_type));
 		item_needed = true;
 	}
 	else
