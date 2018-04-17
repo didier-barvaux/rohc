@@ -185,6 +185,8 @@ bool wlsb_is_kp_possible_8bits(const struct c_wlsb *const wlsb,
 		const uint8_t interval_width = (1U << k) - 1; /* interval width = 2^k - 1 */
 		size_t i;
 
+		enc_possible = true;
+
 		/* find the minimal number of bits of the value required to be able
 		 * to recreate it thanks to ANY value in the window */
 		for(i = 0; i < wlsb->window_width; i++)
@@ -207,20 +209,16 @@ bool wlsb_is_kp_possible_8bits(const struct c_wlsb *const wlsb,
 				 * check if value is in [min, max] */
 				if(value < min || value > max)
 				{
-					break;
+					enc_possible = false;
 				}
 			}
 			else
 			{
 				if(value < min && value > max)
 				{
-					break;
+					enc_possible = false;
 				}
 			}
-		}
-		if(i == wlsb->window_width)
-		{
-			enc_possible = true;
 		}
 	}
 
@@ -263,6 +261,8 @@ bool wlsb_is_kp_possible_16bits(const struct c_wlsb *const wlsb,
 		const uint16_t interval_width = (1U << k) - 1; /* interval width = 2^k - 1 */
 		size_t i;
 
+		enc_possible = true;
+
 		/* find the minimal number of bits of the value required to be able
 		 * to recreate it thanks to ANY value in the window */
 		for(i = 0; i < wlsb->window_width; i++)
@@ -285,7 +285,7 @@ bool wlsb_is_kp_possible_16bits(const struct c_wlsb *const wlsb,
 				 * check if value is in [min, max] */
 				if(value < min || value > max)
 				{
-					break;
+					enc_possible = false;
 				}
 			}
 			else
@@ -294,13 +294,9 @@ bool wlsb_is_kp_possible_16bits(const struct c_wlsb *const wlsb,
 				 * check if value is in [min, 0xffff] or [0, max] */
 				if(value < min && value > max)
 				{
-					break;
+					enc_possible = false;
 				}
 			}
-		}
-		if(i == wlsb->window_width)
-		{
-			enc_possible = true;
 		}
 	}
 
@@ -343,6 +339,8 @@ bool wlsb_is_kp_possible_32bits(const struct c_wlsb *const wlsb,
 		const uint32_t interval_width = (1U << k) - 1; /* interval width = 2^k - 1 */
 		size_t i;
 
+		enc_possible = true;
+
 		/* find the minimal number of bits of the value required to be able
 		 * to recreate it thanks to ANY value in the window */
 		for(i = 0; i < wlsb->window_width; i++)
@@ -365,20 +363,16 @@ bool wlsb_is_kp_possible_32bits(const struct c_wlsb *const wlsb,
 				 * check if value is in [min, max] */
 				if(value < min || value > max)
 				{
-					break;
+					enc_possible = false;
 				}
 			}
 			else
 			{
 				if(value < min && value > max)
 				{
-					break;
+					enc_possible = false;
 				}
 			}
-		}
-		if(i == wlsb->window_width)
-		{
-			enc_possible = true;
 		}
 	}
 
