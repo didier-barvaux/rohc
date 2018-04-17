@@ -968,8 +968,11 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 			ip_ctxt->ctxt.v4.last_ip_id_behavior = ip_ctxt->ctxt.v4.ip_id_behavior;
 			ip_ctxt->ctxt.v4.last_ip_id = rohc_ntoh16(ipv4->id);
 			/* add the new IP-ID offset to the W-LSB encoding object */
-			c_add_wlsb(&rfc5225_ctxt->innermost_ip_id_offset_wlsb, rfc5225_ctxt->msn,
-			           rfc5225_ctxt->tmp.innermost_ip_id_offset);
+			if((ip_hdr_pos + 1) == rfc5225_ctxt->ip_contexts_nr)
+			{
+				c_add_wlsb(&rfc5225_ctxt->innermost_ip_id_offset_wlsb, rfc5225_ctxt->msn,
+				           rfc5225_ctxt->tmp.innermost_ip_id_offset);
+			}
 			ip_ctxt->ctxt.v4.df = ipv4->df;
 			ip_ctxt->ctxt.vx.tos_tc = ipv4->tos;
 			ip_ctxt->ctxt.vx.ttl_hopl = ipv4->ttl;
