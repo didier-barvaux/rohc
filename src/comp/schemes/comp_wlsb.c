@@ -39,9 +39,6 @@
 static size_t wlsb_get_next_older(const size_t entry, const size_t max)
 	__attribute__((warn_unused_result, const));
 
-static size_t wlsb_ack_remove(struct c_wlsb *const wlsb, const size_t pos)
-	__attribute__((warn_unused_result, nonnull(1)));
-
 
 /*
  * Public functions
@@ -59,8 +56,6 @@ static size_t wlsb_ack_remove(struct c_wlsb *const wlsb, const size_t pos)
 bool wlsb_new(struct c_wlsb *const wlsb,
               const size_t window_width)
 {
-	size_t i;
-
 	assert(window_width > 0);
 	assert(window_width <= ROHC_WLSB_WIDTH_MAX);
 
@@ -70,15 +65,9 @@ bool wlsb_new(struct c_wlsb *const wlsb,
 		goto error;
 	}
 
-	wlsb->oldest = 0;
 	wlsb->next = 0;
 	wlsb->count = 0;
 	wlsb->window_width = window_width;
-
-	for(i = 0; i < wlsb->window_width; i++)
-	{
-		wlsb->window[i].used = false;
-	}
 
 	return true;
 
@@ -101,7 +90,6 @@ bool wlsb_copy(struct c_wlsb *const dst,
 {
 	const size_t window_mem_size = sizeof(struct c_window) * dst->window_width;
 
-	dst->oldest = src->oldest;
 	dst->next = src->next;
 	dst->count = src->count;
 	dst->window_width = src->window_width;
@@ -142,20 +130,23 @@ void c_add_wlsb(struct c_wlsb *const wlsb,
                 const uint32_t sn,
                 const uint32_t value)
 {
-	/* if window is full, an entry is overwritten */
-	if(wlsb->count == wlsb->window_width)
+	if(wlsb->count == 0)
 	{
-		wlsb->oldest = (wlsb->oldest + 1) % wlsb->window_width;
+		uint8_t i;
+		for(i = 0; i < wlsb->window_width; i++)
+		{
+			wlsb->window[i].sn = sn;
+			wlsb->window[i].value = value;
+			wlsb->next = 1;
+		}
+		wlsb->count = wlsb->window_width;
 	}
 	else
 	{
-		wlsb->count++;
+		wlsb->window[wlsb->next].sn = sn;
+		wlsb->window[wlsb->next].value = value;
+		wlsb->next = (wlsb->next + 1) % wlsb->window_width;
 	}
-
-	wlsb->window[wlsb->next].used = true;
-	wlsb->window[wlsb->next].sn = sn;
-	wlsb->window[wlsb->next].value = value;
-	wlsb->next = (wlsb->next + 1) % wlsb->window_width;
 }
 
 
@@ -199,35 +190,31 @@ bool wlsb_is_kp_possible_8bits(const struct c_wlsb *const wlsb,
 		for(i = 0; i < wlsb->window_width; i++)
 		{
 			const struct c_window *const entry = wlsb->window + i;
+			const uint8_t v_ref = entry->value;
 
-			if(entry->used)
+			/* compute the minimal and maximal values of the interval:
+			 *   min = v_ref - p
+			 *   max = v_ref + interval_with - p
+			 *
+			 * Straddling the lower and upper wraparound boundaries
+			 * is handled without additional operation */
+			const uint8_t min = v_ref - p;
+			const uint8_t max = min + interval_width;
+
+			if(min <= max)
 			{
-				const uint8_t v_ref = entry->value;
-
-				/* compute the minimal and maximal values of the interval:
-				 *   min = v_ref - p
-				 *   max = v_ref + interval_with - p
-				 *
-				 * Straddling the lower and upper wraparound boundaries
-				 * is handled without additional operation */
-				const uint8_t min = v_ref - p;
-				const uint8_t max = min + interval_width;
-
-				if(min <= max)
+				/* interpretation interval does not straddle field boundaries,
+				 * check if value is in [min, max] */
+				if(value < min || value > max)
 				{
-					/* interpretation interval does not straddle field boundaries,
-					 * check if value is in [min, max] */
-					if(value < min || value > max)
-					{
-						break;
-					}
+					break;
 				}
-				else
+			}
+			else
+			{
+				if(value < min && value > max)
 				{
-					if(value < min && value > max)
-					{
-						break;
-					}
+					break;
 				}
 			}
 		}
@@ -281,37 +268,33 @@ bool wlsb_is_kp_possible_16bits(const struct c_wlsb *const wlsb,
 		for(i = 0; i < wlsb->window_width; i++)
 		{
 			const struct c_window *const entry = wlsb->window + i;
+			const uint16_t v_ref = entry->value;
 
-			if(entry->used)
+			/* compute the minimal and maximal values of the interval:
+			 *   min = v_ref - p
+			 *   max = v_ref + interval_with - p
+			 *
+			 * Straddling the lower and upper wraparound boundaries
+			 * is handled without additional operation */
+			const uint16_t min = v_ref - p;
+			const uint16_t max = min + interval_width;
+
+			if(min <= max)
 			{
-				const uint16_t v_ref = entry->value;
-
-				/* compute the minimal and maximal values of the interval:
-				 *   min = v_ref - p
-				 *   max = v_ref + interval_with - p
-				 *
-				 * Straddling the lower and upper wraparound boundaries
-				 * is handled without additional operation */
-				const uint16_t min = v_ref - p;
-				const uint16_t max = min + interval_width;
-
-				if(min <= max)
+				/* interpretation interval does not straddle field boundaries,
+				 * check if value is in [min, max] */
+				if(value < min || value > max)
 				{
-					/* interpretation interval does not straddle field boundaries,
-					 * check if value is in [min, max] */
-					if(value < min || value > max)
-					{
-						break;
-					}
+					break;
 				}
-				else
+			}
+			else
+			{
+				/* the interpretation interval does straddle the field boundaries,
+				 * check if value is in [min, 0xffff] or [0, max] */
+				if(value < min && value > max)
 				{
-					/* the interpretation interval does straddle the field boundaries,
-					 * check if value is in [min, 0xffff] or [0, max] */
-					if(value < min && value > max)
-					{
-						break;
-					}
+					break;
 				}
 			}
 		}
@@ -365,35 +348,31 @@ bool wlsb_is_kp_possible_32bits(const struct c_wlsb *const wlsb,
 		for(i = 0; i < wlsb->window_width; i++)
 		{
 			const struct c_window *const entry = wlsb->window + i;
+			const uint32_t v_ref = entry->value;
 
-			if(entry->used)
+			/* compute the minimal and maximal values of the interval:
+			 *   min = v_ref - p
+			 *   max = v_ref + interval_with - p
+			 *
+			 * Straddling the lower and upper wraparound boundaries
+			 * is handled without additional operation */
+			const uint32_t min = v_ref - p;
+			const uint32_t max = min + interval_width;
+
+			if(min <= max)
 			{
-				const uint32_t v_ref = entry->value;
-
-				/* compute the minimal and maximal values of the interval:
-				 *   min = v_ref - p
-				 *   max = v_ref + interval_with - p
-				 *
-				 * Straddling the lower and upper wraparound boundaries
-				 * is handled without additional operation */
-				const uint32_t min = v_ref - p;
-				const uint32_t max = min + interval_width;
-
-				if(min <= max)
+				/* interpretation interval does not straddle field boundaries,
+				 * check if value is in [min, max] */
+				if(value < min || value > max)
 				{
-					/* interpretation interval does not straddle field boundaries,
-					 * check if value is in [min, max] */
-					if(value < min || value > max)
-					{
-						break;
-					}
+					break;
 				}
-				else
+			}
+			else
+			{
+				if(value < min && value > max)
 				{
-					if(value < min && value > max)
-					{
-						break;
-					}
+					break;
 				}
 			}
 		}
@@ -424,7 +403,11 @@ size_t wlsb_ack(struct c_wlsb *const wlsb,
 {
 	size_t entry = wlsb->next;
 	uint32_t sn_mask;
-	size_t i;
+	bool do_remove = false;
+	uint32_t sn;
+	uint32_t value;
+	uint8_t i;
+	size_t acked_nr = 0;
 
 	if(sn_bits_nr < 32)
 	{
@@ -440,14 +423,22 @@ size_t wlsb_ack(struct c_wlsb *const wlsb,
 	for(i = 0; i < wlsb->count; i++)
 	{
 		entry = wlsb_get_next_older(entry, wlsb->window_width - 1);
-		if((wlsb->window[entry].sn & sn_mask) == sn_bits)
+		if(do_remove)
 		{
-			/* remove the window entry and all the older ones if found */
-			return wlsb_ack_remove(wlsb, entry);
+			wlsb->window[entry].sn = sn;
+			wlsb->window[entry].value = value;
+			acked_nr++;
+		}
+		else if((wlsb->window[entry].sn & sn_mask) == sn_bits)
+		{
+			/* remove all the older window entries */
+			do_remove = true;
+			sn = wlsb->window[entry].sn;
+			value = wlsb->window[entry].value;
 		}
 	}
 
-	return 0;
+	return acked_nr;
 }
 
 
@@ -497,29 +488,5 @@ bool wlsb_is_sn_present(struct c_wlsb *const wlsb, const uint32_t sn)
 static size_t wlsb_get_next_older(const size_t entry, const size_t max)
 {
 	return ((entry == 0) ? max : (entry - 1));
-}
-
-
-/**
- * @brief Removes all W-LSB window entries prior to the given position
- *
- * @param wlsb  The W-LSB object
- * @param pos   The position to set as the oldest
- * @return      The number of acked window entries
- */
-static size_t wlsb_ack_remove(struct c_wlsb *const wlsb, const size_t pos)
-{
-	size_t acked_nr = 0;
-
-	while(wlsb->oldest != pos)
-	{
-		/* remove the oldest entry */
-		wlsb->window[wlsb->oldest].used = false;
-		wlsb->oldest = (wlsb->oldest + 1) % wlsb->window_width;
-		wlsb->count--;
-		acked_nr++;
-	}
-
-	return acked_nr;
 }
 

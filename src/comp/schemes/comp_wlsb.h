@@ -47,8 +47,6 @@ struct c_window
 	uint32_t sn;     /**< The Sequence Number (SN) associated with the entry
 	                      (used to acknowledge the entry) */
 	uint32_t value;  /**< The value stored in the window entry */
-	bool used;       /**< Whether the window entry is used or not */
-	uint8_t unused[7];
 };
 
 /* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
@@ -75,9 +73,7 @@ struct c_wlsb
 	/** The width of the window */
 	uint8_t window_width; /* TODO: R-mode needs a non-fixed window width */
 
-	/** A pointer on the oldest entry in the window (change on acknowledgement) */
-	uint8_t oldest;
-	/** A pointer on the current entry in the window  (change on add and ack) */
+	/** A pointer on the next entry in the window */
 	uint8_t next;
 
 	/** The count of entries in the window */
