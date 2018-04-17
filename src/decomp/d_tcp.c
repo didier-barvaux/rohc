@@ -2618,7 +2618,7 @@ static bool d_tcp_parse_co_common(const struct rohc_decomp_ctxt *const context,
 		innermost_ip_bits->dscp_bits = (rohc_remain_data[0] >> 2) & 0x3f;
 		innermost_ip_bits->dscp_bits_nr = 6;
 		rohc_decomp_debug(context, "found %zu bits of innermost DSCP encoded "
-		                  "on %d bytes", innermost_ip_bits->dscp_bits_nr, ret);
+		                  "on 1 byte", innermost_ip_bits->dscp_bits_nr);
 		dscp_padding = rohc_remain_data[0] & 0x3;
 		rohc_remain_data++;
 		rohc_remain_len--;
@@ -2640,8 +2640,8 @@ static bool d_tcp_parse_co_common(const struct rohc_decomp_ctxt *const context,
 	{
 		innermost_ip_bits->df = co_common->df;
 		innermost_ip_bits->df_nr = 1;
-		rohc_decomp_debug(context, "found %zu bits of innermost DF encoded "
-		                  "on %d bytes", innermost_ip_bits->df_nr, ret);
+		rohc_decomp_debug(context, "found %zu bits of innermost DF = %u",
+		                  innermost_ip_bits->df_nr, innermost_ip_bits->df);
 	}
 
 	/* TTL / HL */
