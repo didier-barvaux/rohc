@@ -46,3 +46,9 @@ check_udp:
 	@echo
 	@echo
 
+check_tcp:
+	@echo '========= dissect ROHCv1 IP/TCP packet'
+	tshark -V -c 1 -r ../../test/non_regression/rfc6846/inputs/ipv4/tcp/rohc_maxcontexts0_wlsb4_smallcid.pcap 
+	@echo
+	@echo
+
