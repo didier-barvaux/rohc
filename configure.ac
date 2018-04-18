@@ -1007,6 +1007,7 @@ AC_CONFIG_FILES([ \
 	doc/rohc.7 \
 	doc/rohc_protocol.7 \
 	doc/rohc_library.7 \
+	doc/figures/Makefile \
 	contrib/Makefile \
 	contrib/rohc.spec \
 	contrib/python/Makefile \

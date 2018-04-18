@@ -1,0 +1,4 @@
+ uncompressed                 ROHC                     uncompressed
+    packets   +------------+ packets  +--------------+ packets
+ -----------> | Compressor | -------> | Decompressor | ----------->
+              +------------+          +--------------+
