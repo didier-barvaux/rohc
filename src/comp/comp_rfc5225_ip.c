@@ -451,10 +451,6 @@ static bool rohc_comp_rfc5225_ip_create(struct rohc_comp_ctxt *const context,
 	}
 	while(rohc_is_tunneling(proto) && rfc5225_ctxt->ip_contexts_nr < ROHC_MAX_IP_HDRS);
 
-	/* profile cannot handle the packet if it bypasses internal limit of IP headers
-	 * (already checked by check_profile) */
-	assert(rohc_is_tunneling(proto) == false);
-
 	/* MSN */
 	wlsb_init(&rfc5225_ctxt->msn_wlsb, 16, comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
 	/* innermost IP-ID offset */
@@ -653,15 +649,6 @@ static bool rohc_comp_rfc5225_ip_check_profile(const struct rohc_comp *const com
 		ip_hdrs_nr++;
 	}
 	while(rohc_is_tunneling(next_proto) && ip_hdrs_nr < ROHC_MAX_IP_HDRS);
-
-	/* profile cannot handle the packet if it bypasses internal limit of IP headers */
-	if(rohc_is_tunneling(next_proto))
-	{
-		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "too many IP headers for ROHCv2 IP-only profile (%u headers max)",
-		           ROHC_MAX_IP_HDRS);
-		goto bad_profile;
-	}
 
 	return true;
 
