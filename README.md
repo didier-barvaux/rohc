@@ -96,14 +96,48 @@ IETF RFC:
   ROHC: Framework and four profiles: RTP, UDP, ESP, and uncompressed
 * [RFC 3096](https://www.ietf.org/rfc/rfc3096.txt)
   Requirements for robust IP/UDP/RTP header compression
+* [RFC 3241](https://www.ietf.org/rfc/rfc3241.txt)
+  ROHC over PPP
+* [RFC 3242](https://www.ietf.org/rfc/rfc3242.txt)
+  ROHC: A Link-Layer Assisted Profile for IP/UDP/RTP
+* [RFC 3243](https://www.ietf.org/rfc/rfc3243.txt)
+  ROHC: Requirements and Assumptions for 0-byte IP/UDP/RTP Compression
+* [RFC 3408](https://www.ietf.org/rfc/rfc3408.txt)
+  ROHC: Zero-byte Support for R-mode in Extended Link-Layer Assisted ROHC Profile
+* [RFC 3409](https://www.ietf.org/rfc/rfc3409.txt)
+  ROHC: Lower Layer Guidelines for Robust RTP/UDP/IP Header Compression
+* [RFC 3759](https://www.ietf.org/rfc/rfc3759.txt)
+  ROHC: Terminology and Channel Mapping Examples
+* [RFC 3816](https://www.ietf.org/rfc/rfc3816.txt)
+  ROHC: Definitions of Managed Objects (SNMP MIB) for ROHC
 * [RFC 3828](https://www.ietf.org/rfc/rfc3828.txt)
   The Lightweight User Datagram Protocol (UDP-Lite)
 * [RFC 3843](https://www.ietf.org/rfc/rfc3843.txt)
   ROHC: A Compression Profile for IP
 * [RFC 4019](https://www.ietf.org/rfc/rfc4019.txt)
   ROHC: Profiles for User Datagram Protocol (UDP) Lite
+* [RFC 4163](https://www.ietf.org/rfc/rfc4163.txt)
+  ROHC: Requirements on TCP/IP Header Compression
+* [RFC 4224](https://www.ietf.org/rfc/rfc4224.txt)
+  ROHC over Channels That Can Reorder Packets
+* [RFC 4362](https://www.ietf.org/rfc/rfc4362.txt)
+  ROHC: A Link-Layer Assisted Profile for IP/UDP/RTP
+* [RFC 4995](https://www.ietf.org/rfc/rfc4995.txt)
+  The RObust Header Compression (ROHC) Framework
+* [RFC 4996](https://www.ietf.org/rfc/rfc4996.txt)
+  ROHC: A Profile for TCP/IP (ROHC-TCP)
 * [RFC 4997](https://www.ietf.org/rfc/rfc4997.txt)
   Formal Notation for RObust Header Compression (ROHC-FN)
+* [RFC 5225](https://www.ietf.org/rfc/rfc5225.txt)
+  ROHCv2: Profiles for RTP, UDP, IP, ESP and UDP-Lite
+* [RFC 5795](https://www.ietf.org/rfc/rfc5795.txt)
+  The RObust Header Compression (ROHC) Framework
+* [RFC 5856](https://www.ietf.org/rfc/rfc5856.txt)
+  ROHC: Integration of ROHC over IPsec Security Associations
+* [RFC 5857](https://www.ietf.org/rfc/rfc5857.txt)
+  ROHC: IKEv2 Extensions to Support ROHC over IPsec
+* [RFC 5858](https://www.ietf.org/rfc/rfc5858.txt)
+  ROHC: IPsec Extensions to Support ROHC over IPsec
 * [RFC 6846](https://www.ietf.org/rfc/rfc6846.txt)
   ROHC: A Profile for TCP/IP (ROHC-TCP)
 
