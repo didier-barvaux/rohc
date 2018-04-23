@@ -114,6 +114,7 @@ struct ipv6_header_info
 struct ip_header_info
 {
 	ip_version version;            ///< The version of the IP header
+	bool static_chain_end;
 
 	/// The number of times the TOS/TC field was added to the compressed header
 	size_t tos_count;

@@ -439,6 +439,7 @@ static void ip_header_info_new(struct ip_header_info *const header_info,
 
 	/* store the IP version in the header info */
 	header_info->version = ip_get_version(ip);
+	header_info->static_chain_end = false;
 
 	/* we haven't seen any header so far */
 	header_info->is_first_header = true;
@@ -573,6 +574,20 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 		                   context->compressor->trace_callback_priv,
 		                   context->profile->id);
 		rfc3095_ctxt->ip_hdr_nr = 2;
+
+		/* RFC 3843, §3.1 Static Chain Termination:
+		 *   [...] the static chain is terminated if the "Next Header / Protocol"
+		 *   field of a static IP header part indicates anything but IP (IPinIP or
+		 *   IPv6).  Alternatively, the compressor can choose to end the static chain
+		 *   at any IP header, and indicate this by setting the MSB of the IP version
+		 *   field to 1 (0xC for IPv4 or 0xE or IPv6).  The decompressor must store
+		 *   this indication in the context for correct decompression of subsequent
+		 *   headers.
+		 */
+		if(rohc_is_tunneling(packet->inner_ip.nl.proto))
+		{
+			rfc3095_ctxt->inner_ip_flags.static_chain_end = true;
+		}
 	}
 	else
 	{
@@ -1303,6 +1318,20 @@ static bool rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const contex
 			                   context->compressor->trace_callback,
 			                   context->compressor->trace_callback_priv,
 			                   context->profile->id);
+
+			/* RFC 3843, §3.1 Static Chain Termination:
+			 *   [...] the static chain is terminated if the "Next Header / Protocol"
+			 *   field of a static IP header part indicates anything but IP (IPinIP or
+			 *   IPv6).  Alternatively, the compressor can choose to end the static chain
+			 *   at any IP header, and indicate this by setting the MSB of the IP version
+			 *   field to 1 (0xC for IPv4 or 0xE or IPv6).  The decompressor must store
+			 *   this indication in the context for correct decompression of subsequent
+			 *   headers.
+			 */
+			if(rohc_is_tunneling(uncomp_pkt->inner_ip.nl.proto))
+			{
+				rfc3095_ctxt->inner_ip_flags.static_chain_end = true;
+			}
 		}
 		else
 		{
@@ -2117,7 +2146,12 @@ static int code_ipv4_static_part(const struct rohc_comp_ctxt *const context,
 
 	/* part 1 */
 	dest[counter] = 0x40;
-	rohc_comp_debug(context, "version = 0x40");
+	if(header_info->static_chain_end)
+	{
+		rohc_comp_debug(context, "indicate Static Chain Termination in version field");
+		dest[counter] |= 0x80;
+	}
+	rohc_comp_debug(context, "version = 0x%02x", dest[counter]);
 	counter++;
 
 	/* part 2 */
@@ -2185,6 +2219,11 @@ static int code_ipv6_static_part(const struct rohc_comp_ctxt *const context,
 
 	/* part 1 */
 	dest[counter] = ((6 << 4) & 0xf0) | ip->header.v6.flow1;
+	if(header_info->static_chain_end)
+	{
+		rohc_comp_debug(context, "indicate Static Chain Termination in version field");
+		dest[counter] |= 0x80;
+	}
 	rohc_comp_debug(context, "version + flow label (msb) = 0x%02x",
 	                dest[counter]);
 	counter++;

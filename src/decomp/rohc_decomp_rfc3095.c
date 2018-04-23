@@ -743,7 +743,7 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 
 	/* check for the presence of a second IP header */
 	assert(bits->outer_ip.proto_nr == 8);
-	if(rohc_is_tunneling(bits->outer_ip.proto))
+	if(!bits->outer_ip.static_chain_end && rohc_is_tunneling(bits->outer_ip.proto))
 	{
 		rohc_decomp_debug(context, "second IP header detected");
 
@@ -915,6 +915,27 @@ static int parse_static_part_ip(const struct rohc_decomp_ctxt *const context,
 
 	/* retrieve the IP version */
 	bits->version = GET_BIT_4_7(packet);
+
+	/* RFC 3843, §3.1 Static Chain Termination:
+	 *   [...] the static chain is terminated if the "Next Header / Protocol"
+	 *   field of a static IP header part indicates anything but IP (IPinIP or
+	 *   IPv6).  Alternatively, the compressor can choose to end the static chain
+	 *   at any IP header, and indicate this by setting the MSB of the IP version
+	 *   field to 1 (0xC for IPv4 or 0xE or IPv6).  The decompressor must store
+	 *   this indication in the context for correct decompression of subsequent
+	 *   headers.
+	 */
+	if((bits->version & 0x8) != 0)
+	{
+		bits->static_chain_end = true;
+		bits->version &= 0x7; /* restore real IP version */
+		rohc_decomp_debug(context, "current IPv%u static part indicates "
+		                  "termination of the static chain", bits->version);
+	}
+	else
+	{
+		bits->static_chain_end = false;
+	}
 
 	/* reject non IPv4/IPv6 packets */
 	if(bits->version != IPV4 && bits->version != IPV6)
