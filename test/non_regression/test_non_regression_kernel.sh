@@ -17,7 +17,7 @@ for standard in rfc3095 rfc6846 ; do
 		echo -n "running ${testfile}... "
 		tests_nr=$(( ${tests_nr} + 1 ))
 
-		KERNEL_SUFFIX=_kernel ./${testfile} &>/dev/null
+		KERNEL_SUFFIX=_kernel ./${testfile} >/dev/null 2>&1
 		ret=$?
 		statuses=$(( ${statuses} + ${ret} ))
 

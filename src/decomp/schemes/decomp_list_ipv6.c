@@ -175,8 +175,6 @@ static bool create_ip6_item(const uint8_t *const data,
 	uint8_t item_type;
 	int ret;
 
-	assert(decomp != NULL);
-
 	/* check minimal length for Next Header and Length fields */
 	if(length < 2)
 	{
@@ -221,9 +219,6 @@ static size_t rohc_build_ip6_extension(const struct list_decomp *const decomp,
 {
 	size_t size = 0;
 	size_t i;
-
-	assert(decomp != NULL);
-	assert(dest != NULL);
 
 	/* copy IPv6 extension headers if any */
 	for(i = 0; i < decomp->pkt_list.items_nr; i++)

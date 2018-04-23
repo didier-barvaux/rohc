@@ -151,7 +151,8 @@ static size_t udp_lite_code_uo_remainder(const struct rohc_comp_ctxt *const cont
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static void udp_lite_init_cc(struct rohc_comp_ctxt *const context,
-                             const uint8_t *const next_header);
+                             const uint8_t *const next_header)
+	__attribute__((nonnull(1, 2)));
 
 
 
@@ -270,9 +271,6 @@ static bool c_udp_lite_check_profile(const struct rohc_comp *const comp,
 {
 	bool ip_check;
 
-	assert(comp != NULL);
-	assert(packet != NULL);
-
 	/* check that the the versions of outer and inner IP headers are 4 or 6
 	   and that outer and inner IP headers are not IP fragments */
 	ip_check = rohc_comp_rfc3095_check_profile(comp, packet);
@@ -380,16 +378,10 @@ static int c_udp_lite_encode(struct rohc_comp_ctxt *const context,
                              rohc_packet_t *const packet_type,
                              size_t *const payload_offset)
 {
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	struct sc_udp_lite_context *udp_lite_context;
+	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
+	struct sc_udp_lite_context *const udp_lite_context = rfc3095_ctxt->specific;
 	const struct udphdr *udp_lite;
 	int size;
-
-	assert(context != NULL);
-	assert(context->specific != NULL);
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-	assert(rfc3095_ctxt->specific != NULL);
-	udp_lite_context = (struct sc_udp_lite_context *) rfc3095_ctxt->specific;
 
 	/* retrieve the UDP-Lite header */
 	assert(uncomp_pkt->transport->data != NULL);
@@ -607,16 +599,10 @@ static size_t udp_lite_code_dynamic_udplite_part(const struct rohc_comp_ctxt *co
 static void udp_lite_init_cc(struct rohc_comp_ctxt *const context,
                              const uint8_t *const next_header)
 {
-	const struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	struct sc_udp_lite_context *udp_lite_context;
-	const struct udphdr *udp_lite;
-	int packet_length;
-
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-	udp_lite_context = (struct sc_udp_lite_context *) rfc3095_ctxt->specific;
-
-	packet_length = udp_lite_context->tmp.udp_size;
-	udp_lite = (struct udphdr *) next_header;
+	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
+	struct sc_udp_lite_context *const udp_lite_context = rfc3095_ctxt->specific;
+	const struct udphdr *const udp_lite = (struct udphdr *) next_header;
+	int packet_length = udp_lite_context->tmp.udp_size;
 
 	if(context->ir_count == 1)
 	{
@@ -657,16 +643,10 @@ static void udp_lite_init_cc(struct rohc_comp_ctxt *const context,
 static bool udp_lite_send_cce_packet(const struct rohc_comp_ctxt *const context,
                                      const struct udphdr *const udp_lite)
 {
-	const struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	struct sc_udp_lite_context *udp_lite_context;
+	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
+	struct sc_udp_lite_context *const udp_lite_context = rfc3095_ctxt->specific;
 	int is_coverage_inferred;
 	int is_coverage_same;
-
-	assert(context != NULL);
-	assert(context->specific != NULL);
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-	assert(rfc3095_ctxt->specific != NULL);
-	udp_lite_context = (struct sc_udp_lite_context *) rfc3095_ctxt->specific;
 
 	rohc_comp_debug(context, "CFP = %d, CFI = %d", udp_lite_context->cfp,
 	                udp_lite_context->cfi);

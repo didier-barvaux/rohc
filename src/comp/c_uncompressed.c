@@ -119,11 +119,9 @@ static void uncompressed_decide_state(struct rohc_comp_ctxt *const context,
  * @return         true if successful, false otherwise
  */
 static bool c_uncompressed_create(struct rohc_comp_ctxt *const context,
-                                  const struct net_pkt *const packet)
+                                  const struct net_pkt *const packet __attribute__((unused)))
 {
-	assert(context != NULL);
 	assert(context->profile != NULL);
-	assert(packet != NULL);
 
 	context->specific = NULL;
 

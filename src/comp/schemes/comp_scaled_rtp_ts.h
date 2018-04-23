@@ -118,7 +118,8 @@ void c_init_sc(struct ts_sc_comp *const ts_sc,
 
 void c_add_ts(struct ts_sc_comp *const ts_sc,
               const uint32_t ts,
-              const uint16_t sn);
+              const uint16_t sn)
+	__attribute__((nonnull(1)));
 
 void nb_bits_unscaled(const struct ts_sc_comp *const ts_sc,
                       size_t *const bits_nr_less_equal_than_2,
