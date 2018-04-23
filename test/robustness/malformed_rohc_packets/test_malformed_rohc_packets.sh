@@ -72,7 +72,8 @@ if [ ! -r "${CAPTURE_SOURCE}" ] ; then
 fi
 
 CMD="${CROSS_COMPILATION_EMULATOR} ${APP} ${CAPTURE_SOURCE} ${FAILURE_START}"
-if [ "${CAPTURE_NAME}" = "afl12_ipv6_ext_list_malformed_ins_mask" ] ; then
+echo "${CAPTURE_NAME}" | grep -q 'largecid'
+if [ $? -eq 0 ] ; then
 	CMD="${CMD} --cid-type large"
 else
 	CMD="${CMD} --cid-type small"

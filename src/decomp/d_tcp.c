@@ -328,10 +328,10 @@ static bool d_tcp_build_ip_hdrs(const struct rohc_decomp_ctxt *const context,
                                 struct rohc_buf *const uncomp_packet,
                                 size_t *const ip_hdrs_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
-static bool d_tcp_build_tcp_hdr(const struct rohc_decomp_ctxt *const context,
-                                const struct rohc_tcp_decoded_values *const decoded,
-                                struct rohc_buf *const uncomp_packet,
-                                size_t *const tcp_full_len)
+static rohc_status_t d_tcp_build_tcp_hdr(const struct rohc_decomp_ctxt *const context,
+                                         const struct rohc_tcp_decoded_values *const decoded,
+                                         struct rohc_buf *const uncomp_packet,
+                                         size_t *const tcp_full_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 static rohc_status_t d_tcp_build_hdrs(const struct rohc_decomp *const decomp,
                                       const struct rohc_decomp_ctxt *const context,
@@ -2621,7 +2621,7 @@ static bool d_tcp_parse_co_common(const struct rohc_decomp_ctxt *const context,
 		innermost_ip_bits->dscp_bits = (rohc_remain_data[0] >> 2) & 0x3f;
 		innermost_ip_bits->dscp_bits_nr = 6;
 		rohc_decomp_debug(context, "found %zu bits of innermost DSCP encoded "
-		                  "on %d bytes", innermost_ip_bits->dscp_bits_nr, ret);
+		                  "on 1 byte", innermost_ip_bits->dscp_bits_nr);
 		dscp_padding = rohc_remain_data[0] & 0x3;
 		rohc_remain_data++;
 		rohc_remain_len--;
@@ -2643,8 +2643,8 @@ static bool d_tcp_parse_co_common(const struct rohc_decomp_ctxt *const context,
 	{
 		innermost_ip_bits->df = co_common->df;
 		innermost_ip_bits->df_nr = 1;
-		rohc_decomp_debug(context, "found %zu bits of innermost DF encoded "
-		                  "on %d bytes", innermost_ip_bits->df_nr, ret);
+		rohc_decomp_debug(context, "found %zu bits of innermost DF = %u",
+		                  innermost_ip_bits->df_nr, innermost_ip_bits->df);
 	}
 
 	/* TTL / HL */
@@ -4081,14 +4081,15 @@ error:
  * @param decoded             The values decoded from ROHC header
  * @param[out] uncomp_packet  The uncompressed packet being built
  * @param[out] tcp_full_len   The length of the TCP header (in bytes)
- * @return                    true if TCP header was successfully built,
- *                            false if the output \e uncomp_packet was not
- *                            large enough
+ * @return                    ROHC_STATUS_OK if TCP header was successfully built,
+ *                            ROHC_STATUS_MALFORMED if generated packet is malformed,
+ *                            ROHC_STATUS_OUTPUT_TOO_SMALL if the output
+ *                            \e uncomp_packet was not large enough
  */
-static bool d_tcp_build_tcp_hdr(const struct rohc_decomp_ctxt *const context,
-                                const struct rohc_tcp_decoded_values *const decoded,
-                                struct rohc_buf *const uncomp_packet,
-                                size_t *const tcp_full_len)
+static rohc_status_t d_tcp_build_tcp_hdr(const struct rohc_decomp_ctxt *const context,
+                                         const struct rohc_tcp_decoded_values *const decoded,
+                                         struct rohc_buf *const uncomp_packet,
+                                         size_t *const tcp_full_len)
 {
 	struct tcphdr *const tcp = (struct tcphdr *) rohc_buf_data(*uncomp_packet);
 	const size_t tcp_hdr_len = sizeof(struct tcphdr);
@@ -4100,7 +4101,7 @@ static bool d_tcp_build_tcp_hdr(const struct rohc_decomp_ctxt *const context,
 	{
 		rohc_decomp_warn(context, "output buffer too small for the %zu-byte "
 		                 "TCP header", tcp_hdr_len);
-		goto error;
+		goto error_too_small;
 	}
 	rohc_decomp_debug(context, "build %zu-byte TCP header", tcp_hdr_len);
 
@@ -4134,19 +4135,24 @@ static bool d_tcp_build_tcp_hdr(const struct rohc_decomp_ctxt *const context,
 	if(!d_tcp_build_tcp_opts(context, decoded, uncomp_packet, &tcp_opts_len))
 	{
 		rohc_decomp_warn(context, "failed to build TCP options");
-		goto error;
+		goto error_malformed;
 	}
 	*tcp_full_len += tcp_opts_len;
 
 	/* now, compute data offset */
 	rohc_decomp_debug(context, "TCP header is %zu-byte long with TCP options",
 	                  *tcp_full_len);
+	/* TCP data offset shall be a multiple of 32-bit words and coded on max 4 bits */
+	assert(((*tcp_full_len) & 0x3c) == (*tcp_full_len));
 	tcp->data_offset = ((*tcp_full_len) >> 2) & 0xf;
 
-	return true;
+	return ROHC_STATUS_OK;
 
-error:
-	return false;
+error_malformed:
+	return ROHC_STATUS_MALFORMED;
+
+error_too_small:
+	return ROHC_STATUS_OUTPUT_TOO_SMALL;
 }
 
 
@@ -4168,6 +4174,8 @@ error:
  * @return                      Possible values:
  *                               \li ROHC_STATUS_OK if headers are built
  *                                   successfully,
+ *                               \li ROHC_STATUS_MALFORMED if built headers
+ *                                   are malformed,
  *                               \li ROHC_STATUS_BAD_CRC if headers do not
  *                                   match CRC,
  *                               \li ROHC_STATUS_OUTPUT_TOO_SMALL if
@@ -4182,6 +4190,7 @@ static rohc_status_t d_tcp_build_hdrs(const struct rohc_decomp *const decomp,
                                       struct rohc_buf *const uncomp_hdrs,
                                       size_t *const uncomp_hdrs_len)
 {
+	rohc_status_t status = ROHC_STATUS_ERROR;
 	size_t ip_hdrs_len = 0;
 	size_t tcp_hdr_len = 0;
 	size_t ip_hdr_nr;
@@ -4194,15 +4203,18 @@ static rohc_status_t d_tcp_build_hdrs(const struct rohc_decomp *const decomp,
 	if(!d_tcp_build_ip_hdrs(context, decoded, uncomp_hdrs, &ip_hdrs_len))
 	{
 		rohc_decomp_warn(context, "failed to build uncompressed IP headers");
-		goto error_output_too_small;
+		status = ROHC_STATUS_OUTPUT_TOO_SMALL;
+		goto error;
 	}
 	*uncomp_hdrs_len += ip_hdrs_len;
 
 	/* build TCP header */
-	if(!d_tcp_build_tcp_hdr(context, decoded, uncomp_hdrs, &tcp_hdr_len))
+	status = d_tcp_build_tcp_hdr(context, decoded, uncomp_hdrs, &tcp_hdr_len);
+	if(status != ROHC_STATUS_OK)
 	{
-		rohc_decomp_warn(context, "failed to build uncompressed TCP header");
-		goto error_output_too_small;
+		rohc_decomp_warn(context, "failed to build uncompressed TCP header: %s (%d)",
+		                 rohc_strerror(status), status);
+		goto error;
 	}
 	*uncomp_hdrs_len += tcp_hdr_len;
 
@@ -4265,7 +4277,8 @@ static rohc_status_t d_tcp_build_hdrs(const struct rohc_decomp *const decomp,
 				                 ROHC_TRACE_DECOMP, ROHC_TRACE_WARNING,
 				                 "uncompressed headers", *uncomp_hdrs);
 			}
-			goto error_crc;
+			status = ROHC_STATUS_BAD_CRC;
+			goto error;
 		}
 	}
 
@@ -4276,12 +4289,10 @@ static rohc_status_t d_tcp_build_hdrs(const struct rohc_decomp *const decomp,
 		                 "IP/TCP headers", *uncomp_hdrs);
 	}
 
-	return ROHC_STATUS_OK;
+	status = ROHC_STATUS_OK;
 
-error_crc:
-	return ROHC_STATUS_BAD_CRC;
-error_output_too_small:
-	return ROHC_STATUS_OUTPUT_TOO_SMALL;
+error:
+	return status;
 }
 
 

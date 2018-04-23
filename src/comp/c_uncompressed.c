@@ -495,7 +495,8 @@ static int uncompressed_code_IR_packet(const struct rohc_comp_ctxt *context,
 
 	/* part 2 */
 	rohc_pkt[first_position] = 0xfc;
-	rohc_comp_debug(context, "first byte = 0x%02x", rohc_pkt[first_position]);
+	rohc_comp_debug(context, "first byte = 0x%02x (IR packet type + reserved "
+	                "field)", rohc_pkt[first_position]);
 
 	/* is ROHC buffer large enough for parts 4 and 5 ? */
 	if((rohc_pkt_max_len - counter) < 2)

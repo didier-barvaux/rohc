@@ -357,10 +357,10 @@ static int test_decomp(const char *const filename,
 			rohc_buf_init_full(packet, header.caplen, arrival_time);
 		uint8_t ip_buffer[MAX_ROHC_SIZE];
 		struct rohc_buf ip_packet = rohc_buf_init_empty(ip_buffer, MAX_ROHC_SIZE);
-		uint8_t rcvd_feedback_buf[6];
-		struct rohc_buf rcvd_feedback = rohc_buf_init_empty(rcvd_feedback_buf, 6);
-		uint8_t send_feedback_buf[6];
-		struct rohc_buf send_feedback = rohc_buf_init_empty(send_feedback_buf, 6);
+		uint8_t rcvd_feedback_buf[7];
+		struct rohc_buf rcvd_feedback = rohc_buf_init_empty(rcvd_feedback_buf, 7);
+		uint8_t send_feedback_buf[7];
+		struct rohc_buf send_feedback = rohc_buf_init_empty(send_feedback_buf, 7);
 		rohc_status_t status;
 
 		counter++;

@@ -1471,11 +1471,25 @@ bool d_tcp_build_tcp_opts(const struct rohc_decomp_ctxt *const context,
 		*opts_len += opt_len;
 	}
 
-	/* TCP options shall be aligned on 32-bit words */
-	assert(((*opts_len) % sizeof(uint32_t)) == 0);
-
 	rohc_decomp_debug(context, "  %zu TCP options built on %zu bytes",
 	                  decoded->tcp_opts.nr, *opts_len);
+
+	/* TCP options shall be aligned on 32-bit words */
+	if(((*opts_len) % sizeof(uint32_t)) != 0)
+	{
+		rohc_decomp_warn(context, "  %zu-byte TCP options are not aligned on 32-bit "
+		                 "words as they should", *opts_len);
+		goto error;
+	}
+
+	/* TCP options shall not be too long, so that they can be stored in the TCP
+	 * data offset field */
+	if((*opts_len) > ROHC_TCP_OPTS_LEN_MAX_PROTO)
+	{
+		rohc_decomp_warn(context, "  %zu-byte TCP options are too long (%u bytes max)",
+		                 *opts_len, ROHC_TCP_OPTS_LEN_MAX_PROTO);
+		goto error;
+	}
 
 	return true;
 

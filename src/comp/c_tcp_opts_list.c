@@ -557,6 +557,18 @@ bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 			{
 				opts_ctxt->list[opt_idx].age--;
 			}
+
+			/* generic options cannot be transmitted in irregular chain if their
+			 * length changed, so the compressor needs to detect such changes and
+			 * to select a packet type that can transmit their changes, ie. IR,
+			 * IR-DYN, co_common, rnd_8 or seq_8 */
+			if(opt_idx >= TCP_INDEX_GENERIC7 &&
+			   opt_len != opts_ctxt->list[opt_idx].data_len)
+			{
+				rohc_comp_debug(context, "    generic option changed of length (%zu -> %u)",
+				                opts_ctxt->list[opt_idx].data_len, opt_len);
+				opts_ctxt->tmp.do_list_static_changed = true;
+			}
 		}
 		else
 		{

@@ -64,7 +64,10 @@ TESTS = \
 	test_malformed_rohc_packets_afl09_rtp_uor2ts_ext3_too_short_0.sh \
 	test_malformed_rohc_packets_afl10_uncompressed_irdyn_feedback_0.sh \
 	test_malformed_rohc_packets_afl11_unknown_packet_type_0.sh \
-	test_malformed_rohc_packets_afl12_ipv6_ext_list_malformed_ins_mask_0.sh
+	test_malformed_rohc_packets_afl12_largecid_ipv6_ext_list_malformed_ins_mask_0.sh \
+	test_malformed_rohc_packets_afl13_largecid_tcp_options_not_multiple_32bit_words_0.sh \
+	test_malformed_rohc_packets_afl14_largecid_tcp_options_too_long_0.sh \
+	test_malformed_rohc_packets_tcp_context_replication_bad_base_cid_0.sh
 
 
 check_PROGRAMS = \
