@@ -99,11 +99,27 @@ for ./configure ? If yes, check configure output and config.log"
 /** The length of the Linux Cooked Sockets header */
 #define LINUX_COOKED_HDR_LEN  16U
 
+/** The length (in bytes) of the Ethernet address */
+#define ETH_ALEN  6U
+
 /** The length (in bytes) of the Ethernet header */
 #define ETHER_HDR_LEN  14U
 
 /** The minimum Ethernet length (in bytes) */
 #define ETHER_FRAME_MIN_LEN  60U
+
+/** The 10Mb/s ethernet header */
+struct ether_header
+{
+	uint8_t ether_dhost[ETH_ALEN];  /**< destination eth addr */
+	uint8_t ether_shost[ETH_ALEN];  /**< source ether addr */
+	uint16_t ether_type;            /**< packet type ID field */
+} __attribute__((__packed__));
+
+/** The Ethertype for the IPv4 protocol */
+#define ETHERTYPE_IPV4  0x0800U
+/** The Ethertype for the IPv6 protocol */
+#define ETHERTYPE_IPV6  0x86ddU
 
 
 /** Some statistics collected by the sniffer */
@@ -1197,8 +1213,11 @@ static int compress_decompress(struct rohc_comp *comp,
                                unsigned int *const cid,
                                struct sniffer_stats_t *stats)
 {
-	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
-	struct rohc_buf ip_packet =
+	const struct rohc_ts arrival_time = {
+		.sec = header.ts.tv_sec,
+		.nsec = header.ts.tv_usec * 1000
+	};
+	struct rohc_buf uncomp_packet =
 		rohc_buf_init_full(packet, header.caplen, arrival_time);
 
 	const size_t output_packet_max_len =
@@ -1218,6 +1237,9 @@ static int compress_decompress(struct rohc_comp *comp,
 	rohc_comp_last_packet_info2_t comp_last_packet_info;
 	rohc_decomp_last_packet_info_t decomp_last_packet_info;
 	unsigned long possible_unit;
+
+	uint16_t protocol;
+
 	rohc_status_t status;
 	int ret;
 
@@ -1230,49 +1252,70 @@ static int compress_decompress(struct rohc_comp *comp,
 		goto error;
 	}
 
+	/* what is the L3 protocol? */
+	if(link_len_src == ETHER_HDR_LEN)
+	{
+		const struct ether_header *const ethhdr =
+			(struct ether_header *) rohc_buf_data(uncomp_packet);
+		protocol = ntohs(ethhdr->ether_type);
+	}
+	else
+	{
+		protocol = 0;
+	}
+
+	/* drop ARP packets */
+	if(protocol == 0x0806)
+	{
+		return 1;
+	}
+
 	/* skip the link layer header */
-	rohc_buf_pull(&ip_packet, link_len_src);
+	rohc_buf_pull(&uncomp_packet, link_len_src);
 	rohc_packet.len += link_len_src;
 	rohc_buf_pull(&rohc_packet, link_len_src);
 
 	/* check for padding after the IP packet in the Ethernet payload */
 	if(link_len_src == ETHER_HDR_LEN && header.len == ETHER_FRAME_MIN_LEN)
 	{
-		int version;
 		uint16_t tot_len;
 
-		version = (rohc_buf_byte(ip_packet) >> 4) & 0x0f;
-		if(version == 4)
+		if(protocol == ETHERTYPE_IPV4)
 		{
-			memcpy(&tot_len, rohc_buf_data_at(ip_packet, 2), sizeof(uint16_t));
+			memcpy(&tot_len, rohc_buf_data_at(uncomp_packet, 2), sizeof(uint16_t));
 			tot_len = ntohs(tot_len);
+		}
+		else if(protocol == ETHERTYPE_IPV6)
+		{
+			const size_t ipv6_header_len = 40;
+			memcpy(&tot_len, rohc_buf_data_at(uncomp_packet, 4), sizeof(uint16_t));
+			tot_len = ipv6_header_len + ntohs(tot_len);
 		}
 		else
 		{
-			const size_t ipv6_header_len = 40;
-			memcpy(&tot_len, rohc_buf_data_at(ip_packet, 4), sizeof(uint16_t));
-			tot_len = ipv6_header_len + ntohs(tot_len);
+			tot_len = uncomp_packet.len;
 		}
 
-		if(tot_len < ip_packet.len)
+		if(tot_len < uncomp_packet.len)
 		{
 			SNIFFER_LOG(LOG_INFO, "the Ethernet frame has %zu bytes of "
 			            "padding after the %u byte IP packet!",
-			            ip_packet.len - tot_len, tot_len);
-			ip_packet.len = tot_len;
+			            uncomp_packet.len - tot_len, tot_len);
+			uncomp_packet.len = tot_len;
 		}
 	}
 
 	/* fix IPv4 packets with non-standard-compliant 0xffff checksums instead
 	 * of 0x0000 (Windows Vista seems to be faulty for the latter), to avoid
 	 * false comparison failures after decompression */
-	if(((rohc_buf_byte_at(ip_packet, 0) >> 4) & 0x0f) == 4 &&
-	   ip_packet.len >= 20 &&
-	   rohc_buf_byte_at(ip_packet, 10) == 0xff &&
-	   rohc_buf_byte_at(ip_packet, 11) == 0xff)
+	if(protocol == ETHERTYPE_IPV4 &&
+	   ((rohc_buf_byte_at(uncomp_packet, 0) >> 4) & 0x0f) == 4 &&
+	   uncomp_packet.len >= 20 &&
+	   rohc_buf_byte_at(uncomp_packet, 10) == 0xff &&
+	   rohc_buf_byte_at(uncomp_packet, 11) == 0xff)
 	{
-		rohc_buf_byte_at(ip_packet, 10) = 0x00;
-		rohc_buf_byte_at(ip_packet, 11) = 0x00;
+		rohc_buf_byte_at(uncomp_packet, 10) = 0x00;
+		rohc_buf_byte_at(uncomp_packet, 11) = 0x00;
 	}
 
 	/* piggyback the feedback */
@@ -1280,14 +1323,14 @@ static int compress_decompress(struct rohc_comp *comp,
 	rohc_buf_pull(&rohc_packet, feedback_send->len);
 
 	/* compress the IP packet */
-	status = rohc_compress4(comp, ip_packet, &rohc_packet);
+	status = rohc_compress4(comp, uncomp_packet, &rohc_packet);
 	if(status != ROHC_STATUS_OK)
 	{
 		pcap_dumper_t *dumper;
 
 		SNIFFER_LOG(LOG_WARNING, "compression failed");
 		ret = -1;
-		rohc_buf_push(&ip_packet, link_len_src);
+		rohc_buf_push(&uncomp_packet, link_len_src);
 
 		/* open the new dumper */
 		dumper = pcap_dump_open(handle, "./dump_stream_default.pcap");
@@ -1319,7 +1362,7 @@ static int compress_decompress(struct rohc_comp *comp,
 		ret = -4;
 		goto error;
 	}
-	stats->comp_pre_nr_bytes += ip_packet.len;
+	stats->comp_pre_nr_bytes += uncomp_packet.len;
 	stats->comp_pre_nr_hdr_bytes += comp_last_packet_info.header_last_uncomp_size;
 	stats->comp_post_nr_bytes += rohc_packet.len;
 	stats->comp_post_nr_hdr_bytes += comp_last_packet_info.header_last_comp_size;
@@ -1421,10 +1464,10 @@ static int compress_decompress(struct rohc_comp *comp,
 	}
 
 	/* dump the IP packet */
-	rohc_buf_push(&ip_packet, link_len_src);
+	rohc_buf_push(&uncomp_packet, link_len_src);
 	pcap_dump((u_char *) dumpers[comp_last_packet_info.context_id],
 	          &header, packet);
-	rohc_buf_pull(&ip_packet, link_len_src);
+	rohc_buf_pull(&uncomp_packet, link_len_src);
 
 	/* record the CID */
 	*cid = comp_last_packet_info.context_id;
@@ -1481,7 +1524,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	}
 
 	/* compare the decompressed packet with the original one */
-	if(!compare_packets(ip_packet, decomp_packet))
+	if(!compare_packets(uncomp_packet, decomp_packet))
 	{
 		SNIFFER_LOG(LOG_WARNING, "comparison with original packet failed");
 		ret = 0;
