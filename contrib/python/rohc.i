@@ -24,6 +24,7 @@
 
 %module rohc
 %{
+#include "rohc/rohc_profiles.h"
 #include "rohc/rohc_packets.h"
 #include "rohc/rohc_time.h"
 #include "rohc/rohc_buf.h"
@@ -39,6 +40,7 @@
 #define __attribute__(x)
 #define ROHC_DEPRECATED(x)
 
+%include "rohc/rohc_profiles.h"
 %include "rohc/rohc_packets.h"
 
 %include "rohc/rohc_time.h"
