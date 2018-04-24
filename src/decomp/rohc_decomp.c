@@ -1,6 +1,6 @@
 /*
  * Copyright 2010,2011,2012,2013,2014 Didier Barvaux
- * Copyright 2007,2009,2010,2012,2013,2014 Viveris Technologies
+ * Copyright 2007,2009,2010,2012,2013,2014,2018 Viveris Technologies
  * Copyright 2012 WBX
  *
  * This library is free software; you can redistribute it and/or
@@ -56,6 +56,7 @@
 #include <assert.h>
 
 
+/* ROHCv1 profiles */
 extern const struct rohc_decomp_profile d_uncomp_profile;
 extern const struct rohc_decomp_profile d_udp_profile;
 extern const struct rohc_decomp_profile d_ip_profile;
@@ -63,6 +64,10 @@ extern const struct rohc_decomp_profile d_udplite_profile;
 extern const struct rohc_decomp_profile d_esp_profile;
 extern const struct rohc_decomp_profile d_rtp_profile;
 extern const struct rohc_decomp_profile d_tcp_profile;
+
+/* ROHCv2 profiles */
+extern const struct rohc_decomp_profile rohc_decomp_rfc5225_ip_profile;
+
 
 /**
  *  * @brief Define the compression part of the ROHCv2 FAKE RTP profile
@@ -96,21 +101,12 @@ const struct rohc_decomp_profile fake_rohcv2_d_udplite_profile =
 	.id             = ROHCv2_PROFILE_IP_UDPLITE, /* profile ID */
 };
 
-
 /**
  *  * @brief Define the compression part of the ESP profile
  *   */
 const struct rohc_decomp_profile fake_rohcv2_d_esp_profile =
 {
 	.id             = ROHCv2_PROFILE_IP_ESP, /* profile ID */
-};
-
-/**
- *  * @brief Define the compression part of the FAKE IP-only profile
- *   */
-const struct rohc_decomp_profile fake_rohcv2_d_ip_profile =
-{
-	.id             = ROHCv2_PROFILE_IP,   /* profile ID (see in RFC 5225) */
 };
 
 /**
@@ -128,7 +124,7 @@ static const struct rohc_decomp_profile *const rohc_decomp_profiles[D_NUM_PROFIL
 	&fake_rohcv2_d_rtp_profile,
 	&fake_rohcv2_d_udp_profile,
 	&fake_rohcv2_d_esp_profile,
-	&fake_rohcv2_d_ip_profile,
+	&rohc_decomp_rfc5225_ip_profile,
 	&fake_rohcv2_d_udplite_rtp_profile,
 	&fake_rohcv2_d_udplite_profile,
 };
@@ -3994,13 +3990,25 @@ static rohc_status_t rohc_decomp_find_context(struct rohc_decomp *const decomp,
 			goto error_malformed;
 		}
 		pkt_profile_id = remain_data[0];
-		*profile_id = pkt_profile_id; /* TODO: ROHCv2 profiles not handled yet */
 		remain_data++;
 		remain_len--;
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		           "profile octet 0x%02x found in IR(-CR|-DYN) packet",
+		           pkt_profile_id);
+
+		/* ROHCv1 or ROHCv2? use ROHCv2 if profile exists and is enabled */
+		if(rohc_decomp_profile_enabled(decomp, 0x0100 + pkt_profile_id))
+		{
+			*profile_id = 0x0100 + pkt_profile_id; /* ROHCv2 profile */
+		}
+		else
+		{
+			*profile_id = pkt_profile_id; /* ROHCv1 profile */
+		}
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		           "profile ID 0x%04x found in IR(-CR|-DYN) packet", *profile_id);
 
-		is_packet_ir_cr = !!(pkt_profile_id == ROHC_PROFILE_TCP && (pkt_type & 0x01) == 0);
+		is_packet_ir_cr = !!((*profile_id) == ROHC_PROFILE_TCP && (pkt_type & 0x01) == 0);
 		is_packet_ir = (is_packet_ir && !is_packet_ir_cr);
 	}
 	else

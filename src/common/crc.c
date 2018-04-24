@@ -448,6 +448,50 @@ uint8_t compute_crc_dynamic(const uint8_t *const outer_ip,
 
 
 /**
+ * @brief Compute the CRC-3 over control fields for ROHCv2 profiles
+ *
+ * @param crc_table           The pre-computed table for fast CRC computation
+ * @param reorder_ratio       The 2-bit reorder_ratio control field,
+ *                            padded with 6 MSB of zeroes
+ * @param msn                 The 16-bit MSN control field
+ * @param ip_id_behaviors     The 2-bit control fields behavior of IP-ID, one
+ *                            per IP header, all are padded with 6 MSB of zeroes
+ * @param ip_id_behaviors_nr  The number of IP headers, ie. the number of IP-ID
+ *                            behavior control fields to compute the CRC over
+ * @return                    The computed CRC-3
+ */
+uint8_t compute_crc_ctrl_fields(const uint8_t *const crc_table,
+										  const uint8_t reorder_ratio,
+                                const uint16_t msn,
+                                const uint8_t ip_id_behaviors[],
+                                const size_t ip_id_behaviors_nr)
+{
+	const rohc_crc_type_t crc_type = ROHC_CRC_TYPE_3;
+	uint8_t crc = CRC_INIT_3;
+	size_t ip_hdr_pos;
+
+	/* 2-bit reorder_ratio, padded with 6 MSB of zeroes */
+	assert(reorder_ratio == (reorder_ratio & 0x3));
+	crc = crc_calculate(crc_type, &reorder_ratio, 1, crc, crc_table);
+
+	/* 16-bit MSN */
+	crc = crc_calculate(crc_type, (uint8_t *) &msn, 2, crc, crc_table);
+
+	/* 2-bit IP-ID behaviors, padded with 6 MSB of zeroes, one per IP header */
+	assert(ip_id_behaviors_nr > 0);
+	for(ip_hdr_pos = 0; ip_hdr_pos < ip_id_behaviors_nr; ip_hdr_pos++)
+	{
+		assert(ip_id_behaviors[ip_hdr_pos] == (ip_id_behaviors[ip_hdr_pos] & 0x3));
+		crc = crc_calculate(crc_type, ip_id_behaviors + ip_hdr_pos, 1, crc, crc_table);
+	}
+
+	assert(crc == (crc & 0x7));
+
+	return crc;
+}
+
+
+/**
  * Private functions
  */
 

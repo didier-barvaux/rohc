@@ -6676,7 +6676,7 @@ static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
 			header_info->info.v4.nbo = 1;
 			header_info->info.v4.sid = 1;
 		}
-		else if(is_ip_id_increasing(old_id, new_id))
+		else if(is_ip_id_increasing(old_id, new_id, 19))
 		{
 			/* IP-ID is increasing in NBO */
 			rohc_comp_debug(context, "IP-ID is increasing in NBO");
@@ -6693,7 +6693,7 @@ static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
 			rohc_comp_debug(context, "2) old_id = 0x%04x new_id = 0x%04x",
 			                old_id, new_id);
 
-			if(is_ip_id_increasing(old_id, new_id))
+			if(is_ip_id_increasing(old_id, new_id, 19))
 			{
 				/* IP-ID is increasing in Little Endian */
 				rohc_comp_debug(context, "IP-ID is increasing in Little Endian");

@@ -1,6 +1,7 @@
 ################################################################################
 # Name       : Makefile
 # Author     : Valentin Boutonné <vboutonne@toulouse.viveris.fr>
+#              Didier Barvaux <didier.barvaux@toulouse.viveris.com>
 # Description: create and run the ROHC RFC5225 non-regression tests
 ################################################################################
 
@@ -20,6 +21,7 @@ TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_MISC = \
 
 TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_IPONLY = \
 	scripts/test_non_reg_ipv4_icmp_mc0_wlsb4_smallcid.sh \
+	scripts/test_non_reg_ipv4_icmp_ip-id-is-seq-but-not-inferred_mc0_wlsb4_smallcid.sh \
 	scripts/test_non_reg_ipv4_icmp_bug580491_mc0_wlsb4_smallcid.sh \
 	scripts/test_non_reg_ipv4_icmp+tcp_mc0_wlsb4_smallcid.sh \
 	scripts/test_non_reg_ipv4_tcp_ip-9-times_mc0_wlsb4_smallcid.sh \
@@ -144,6 +146,7 @@ TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_MISC = \
 
 TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_IPONLY = \
 	scripts/test_non_reg_ipv4_icmp_mc0_wlsb64_smallcid.sh \
+	scripts/test_non_reg_ipv4_icmp_ip-id-is-seq-but-not-inferred_mc0_wlsb64_smallcid.sh \
 	scripts/test_non_reg_ipv4_icmp_bug580491_mc0_wlsb64_smallcid.sh \
 	scripts/test_non_reg_ipv4_icmp+tcp_mc0_wlsb64_smallcid.sh \
 	scripts/test_non_reg_ipv4_tcp_ip-9-times_mc0_wlsb64_smallcid.sh \
@@ -273,6 +276,7 @@ TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_MISC = \
 
 TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_IPONLY = \
 	scripts/test_non_reg_ipv4_icmp_mc1_wlsb4_smallcid.sh \
+	scripts/test_non_reg_ipv4_icmp_ip-id-is-seq-but-not-inferred_mc1_wlsb4_smallcid.sh \
 	scripts/test_non_reg_ipv4_icmp_bug580491_mc1_wlsb4_smallcid.sh \
 	scripts/test_non_reg_ipv4_icmp+tcp_mc1_wlsb4_smallcid.sh \
 	scripts/test_non_reg_ipv4_tcp_ip-9-times_mc1_wlsb4_smallcid.sh \
@@ -397,6 +401,7 @@ TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_MISC = \
 
 TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_IPONLY = \
 	scripts/test_non_reg_ipv4_icmp_mc1_wlsb64_smallcid.sh \
+	scripts/test_non_reg_ipv4_icmp_ip-id-is-seq-but-not-inferred_mc1_wlsb64_smallcid.sh \
 	scripts/test_non_reg_ipv4_icmp_bug580491_mc1_wlsb64_smallcid.sh \
 	scripts/test_non_reg_ipv4_icmp+tcp_mc1_wlsb64_smallcid.sh \
 	scripts/test_non_reg_ipv4_tcp_ip-9-times_mc1_wlsb64_smallcid.sh \
@@ -531,6 +536,7 @@ TESTS_MAXCONTEXTS0_WLSB4_LARGECID_MISC = \
 
 TESTS_MAXCONTEXTS0_WLSB4_LARGECID_IPONLY = \
 	scripts/test_non_reg_ipv4_icmp_mc0_wlsb4_largecid.sh \
+	scripts/test_non_reg_ipv4_icmp_ip-id-is-seq-but-not-inferred_mc0_wlsb4_largecid.sh \
 	scripts/test_non_reg_ipv4_icmp_bug580491_mc0_wlsb4_largecid.sh \
 	scripts/test_non_reg_ipv4_icmp+tcp_mc0_wlsb4_largecid.sh \
 	scripts/test_non_reg_ipv4_tcp_ip-9-times_mc0_wlsb4_largecid.sh \
@@ -655,6 +661,7 @@ TESTS_MAXCONTEXTS0_WLSB64_LARGECID_MISC = \
 
 TESTS_MAXCONTEXTS0_WLSB64_LARGECID_IPONLY = \
 	scripts/test_non_reg_ipv4_icmp_mc0_wlsb64_largecid.sh \
+	scripts/test_non_reg_ipv4_icmp_ip-id-is-seq-but-not-inferred_mc0_wlsb64_largecid.sh \
 	scripts/test_non_reg_ipv4_icmp_bug580491_mc0_wlsb64_largecid.sh \
 	scripts/test_non_reg_ipv4_icmp+tcp_mc0_wlsb64_largecid.sh \
 	scripts/test_non_reg_ipv4_tcp_ip-9-times_mc0_wlsb64_largecid.sh \
@@ -784,6 +791,7 @@ TESTS_MAXCONTEXTS1_WLSB4_LARGECID_MISC = \
 
 TESTS_MAXCONTEXTS1_WLSB4_LARGECID_IPONLY = \
 	scripts/test_non_reg_ipv4_icmp_mc1_wlsb4_largecid.sh \
+	scripts/test_non_reg_ipv4_icmp_ip-id-is-seq-but-not-inferred_mc1_wlsb4_largecid.sh \
 	scripts/test_non_reg_ipv4_icmp_bug580491_mc1_wlsb4_largecid.sh \
 	scripts/test_non_reg_ipv4_icmp+tcp_mc1_wlsb4_largecid.sh \
 	scripts/test_non_reg_ipv4_tcp_ip-9-times_mc1_wlsb4_largecid.sh \
@@ -908,6 +916,7 @@ TESTS_MAXCONTEXTS1_WLSB64_LARGECID_MISC = \
 
 TESTS_MAXCONTEXTS1_WLSB64_LARGECID_IPONLY = \
 	scripts/test_non_reg_ipv4_icmp_mc1_wlsb64_largecid.sh \
+	scripts/test_non_reg_ipv4_icmp_ip-id-is-seq-but-not-inferred_mc1_wlsb64_largecid.sh \
 	scripts/test_non_reg_ipv4_icmp_bug580491_mc1_wlsb64_largecid.sh \
 	scripts/test_non_reg_ipv4_icmp+tcp_mc1_wlsb64_largecid.sh \
 	scripts/test_non_reg_ipv4_tcp_ip-9-times_mc1_wlsb64_largecid.sh \

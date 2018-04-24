@@ -195,6 +195,20 @@ typedef enum
 typedef size_t rohc_cid_t;
 
 
+/**
+ * @brief The different values of reordering offset
+ *
+ * @ingroup rohc_comp
+ */
+typedef enum
+{
+	ROHC_REORDERING_NONE          = 0, /**< No reordering accepted */
+	ROHC_REORDERING_QUARTER       = 1, /**< Reordering accepted on 1/4 of the WLSB */
+	ROHC_REORDERING_HALF          = 2, /**< Reordering accepted on 1/2 of the WLSB */
+	ROHC_REORDERING_THREEQUARTERS = 3, /**< Reordering accepted on 3/4 of the WLSB */
+} rohc_reordering_offset_t;
+
+
 /*
  * Prototypes of public functions
  */

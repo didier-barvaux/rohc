@@ -78,3 +78,51 @@ struct rohc_interval32 rohc_f_32bits(const uint32_t v_ref,
 	return interval32;
 }
 
+
+/**
+ * @brief Get shift parameter p from number of bytes k and reorder ratio
+ *
+ * @param k              The number of least significant bits of the value
+ *                       that are transmitted
+ * @param reorder_ratio  The reordering ratio
+ * @return               The shift parameter p
+ */
+int32_t rohc_interval_get_rfc5225_msn_p(const size_t k,
+                                        rohc_reordering_offset_t reorder_ratio)
+{
+	rohc_lsb_shift_t p;
+
+	if(reorder_ratio == ROHC_REORDERING_NONE)
+	{
+		p = 1;
+	}
+	else if(reorder_ratio == ROHC_REORDERING_QUARTER)
+	{
+		p = (1 << k) / 4 - 1;
+	}
+	else if(reorder_ratio == ROHC_REORDERING_HALF)
+	{
+		p = (1 << k) / 2 - 1;
+	}
+	else
+	{
+		assert(reorder_ratio == ROHC_REORDERING_THREEQUARTERS);
+		p = (1 << k) * 3 / 4 - 1;
+	}
+
+	return p;
+}
+
+
+/**
+ * @brief Get shift parameter p from number of bytes k for ip_id_lsb 
+ *
+ * @param k  The number of least significant bits of the value
+ *           that are transmitted
+ * @return   The shift parameter p
+ */
+int32_t rohc_interval_get_rfc5225_id_id_p(const size_t k)
+{
+	return ((1 << k) / 4 - 1);
+}
+

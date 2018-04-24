@@ -23,6 +23,8 @@
  */
 
 #include "ip_id_offset.h"
+#include "ip.h"
+
 
 /**
  * @brief Whether the new IP-ID is increasing
@@ -31,15 +33,18 @@
  * small delta then the previous IP-ID. Wraparound shall be taken into
  * account.
  *
- * @param old_id  The IP-ID of the previous IPv4 header
- * @param new_id  The IP-ID of the current IPv4 header
- * @return        Whether the IP-ID is increasing
+ * @param old_id     The IP-ID of the previous IPv4 header
+ * @param new_id     The IP-ID of the current IPv4 header
+ * @param max_delta  The maximum allowed delta
+ * @return           Whether the IP-ID is increasing
  */
-bool is_ip_id_increasing(const uint16_t old_id, const uint16_t new_id)
+bool is_ip_id_increasing(const uint16_t old_id,
+                         const uint16_t new_id,
+                         const uint16_t max_delta)
 {
 	/* The maximal delta accepted between two consecutive IPv4 ID so that it
 	 * can be considered as increasing */
-	const uint16_t max_id_delta = 20;
+	const uint16_t max_id_delta = max_delta + 1;
 	bool is_increasing;
 
 	/* the new IP-ID is increasing if it belongs to:
@@ -61,5 +66,48 @@ bool is_ip_id_increasing(const uint16_t old_id, const uint16_t new_id)
 	}
 
 	return is_increasing;
+}
+
+
+/**
+ * @brief Detect the behavior of the IPv4 Identification field
+ *
+ * @param last_ip_id  The IP-ID value of the previous packet (in HBO)
+ * @param new_ip_id   The IP-ID value of the current packet (in HBO)
+ * @param max_delta   The maximum allowed delta
+ * @return            The IP-ID behavior among: ROHC_IP_ID_BEHAVIOR_SEQ,
+ *                    ROHC_IP_ID_BEHAVIOR_SEQ_SWAP, ROHC_IP_ID_BEHAVIOR_ZERO, or
+ *                    ROHC_IP_ID_BEHAVIOR_RAND
+ */
+rohc_ip_id_behavior_t rohc_comp_detect_ip_id_behavior(const uint16_t last_ip_id,
+                                                      const uint16_t new_ip_id,
+                                                      const uint16_t max_delta)
+{
+	rohc_ip_id_behavior_t behavior;
+
+	if(is_ip_id_increasing(last_ip_id, new_ip_id, max_delta))
+	{
+		behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
+	}
+	else
+	{
+		const uint16_t swapped_last_ip_id = swab16(last_ip_id);
+		const uint16_t swapped_new_ip_id = swab16(new_ip_id);
+
+		if(is_ip_id_increasing(swapped_last_ip_id, swapped_new_ip_id, max_delta))
+		{
+			behavior = ROHC_IP_ID_BEHAVIOR_SEQ_SWAP;
+		}
+		else if(new_ip_id == 0)
+		{
+			behavior = ROHC_IP_ID_BEHAVIOR_ZERO;
+		}
+		else
+		{
+			behavior = ROHC_IP_ID_BEHAVIOR_RAND;
+		}
+	}
+
+	return behavior;
 }
 

@@ -148,6 +148,14 @@ uint8_t rtp_compute_crc_dynamic(const uint8_t *const outer_ip,
                                 const uint8_t *const crc_table)
 	__attribute__((nonnull(1, 3, 6), warn_unused_result));
 
+uint8_t compute_crc_ctrl_fields(const uint8_t *const crc_table,
+										  const uint8_t reorder_ratio,
+                                const uint16_t msn,
+                                const uint8_t ip_id_behaviors[],
+                                const size_t ip_id_behaviors_nr)
+	__attribute__((nonnull(1), warn_unused_result));
+
+
 /**
  * @brief Compute the CRC-STATIC part of an UDP or UDP-Lite header
  *

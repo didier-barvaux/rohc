@@ -51,9 +51,11 @@ rohc_comp_sources = \
 	../../src/comp/c_tcp_dynamic.c \
 	../../src/comp/c_tcp_replicate.c \
 	../../src/comp/c_tcp_irregular.c \
-	../../src/comp/c_tcp.c
+	../../src/comp/c_tcp.c \
+	../../src/comp/comp_rfc5225_ip.c
 
 rohc_decomp_sources = \
+	../../src/decomp/schemes/decomp_crc.c \
 	../../src/decomp/schemes/decomp_wlsb.c \
 	../../src/decomp/schemes/ip_id_offset.c \
 	../../src/decomp/schemes/decomp_scaled_rtp_ts.c \
@@ -77,7 +79,8 @@ rohc_decomp_sources = \
 	../../src/decomp/d_tcp_replicate.c \
 	../../src/decomp/d_tcp_irregular.c \
 	../../src/decomp/d_tcp_opts_list.c \
-	../../src/decomp/d_tcp.c
+	../../src/decomp/d_tcp.c \
+	../../src/decomp/decomp_rfc5225_ip.c
 
 rohc_sources = \
 	../kmod.c \

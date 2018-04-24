@@ -14,7 +14,8 @@ noinst_HEADERS = \
 	rtp.h \
 	tcp.h \
 	esp.h \
-	rfc6846.h
+	rfc6846.h \
+	rfc5225.h
 
 noinst_LTLIBRARIES = librohc_proto.la
 

@@ -2,7 +2,7 @@
  * Copyright 2010,2011,2012,2013,2014 Didier Barvaux
  * Copyright 2013 Friedrich
  * Copyright 2009,2010 Thales Communications
- * Copyright 2007,2009,2010,2012,2013,2014,2017 Viveris Technologies
+ * Copyright 2007,2009,2010,2012,2013,2014,2017,2018 Viveris Technologies
  * Copyright 2012 WBX
  *
  * This library is free software; you can redistribute it and/or
@@ -66,6 +66,7 @@
 #include <stdarg.h>
 
 
+/* ROHCv1 profiles */
 extern const struct rohc_comp_profile c_rtp_profile;
 extern const struct rohc_comp_profile c_udp_profile;
 extern const struct rohc_comp_profile c_udp_lite_profile;
@@ -73,6 +74,10 @@ extern const struct rohc_comp_profile c_esp_profile;
 extern const struct rohc_comp_profile c_tcp_profile;
 extern const struct rohc_comp_profile c_ip_profile;
 extern const struct rohc_comp_profile c_uncompressed_profile;
+
+/* ROHCv2 profiles */
+extern const struct rohc_comp_profile rohc_comp_rfc5225_ip_profile;
+
 
 /**
  * @brief Define the compression part of the ROHCv2 FAKE RTP profile
@@ -120,15 +125,6 @@ const struct rohc_comp_profile fake_rohcv2_c_esp_profile =
 };
 
 /**
- * @brief Define the compression part of the FAKE IP-only profile
- */
-const struct rohc_comp_profile fake_rohcv2_c_ip_profile =
-{
-	.id             = ROHCv2_PROFILE_IP,   /* profile ID (see in RFC 5225) */
-	.protocol       = 0,                   /* IP protocol */
-};
-
-/**
  * @brief The compression parts of the ROHC profiles.
  *
  * The order of profiles declaration is important: they are evaluated in that
@@ -147,7 +143,7 @@ static const struct rohc_comp_profile *const rohc_comp_profiles[C_NUM_PROFILES] 
 	&fake_rohcv2_c_esp_profile,
 	&c_tcp_profile,
 	&c_ip_profile,  /* must be declared after all IP-based profiles */
-	&fake_rohcv2_c_ip_profile,
+	&rohc_comp_rfc5225_ip_profile,
 	&c_uncompressed_profile, /* must be declared last */
 };
 
@@ -294,6 +290,7 @@ struct rohc_comp * rohc_comp_new2(const rohc_cid_type_t cid_type,
                                   void *const rand_priv)
 {
 	const size_t wlsb_width = 4; /* default window width for W-LSB encoding */
+	const size_t reorder_ratio = ROHC_REORDERING_NONE; /* default reordering ratio */
 	struct rohc_comp *comp;
 	bool is_fine;
 	size_t i;
@@ -352,6 +349,13 @@ struct rohc_comp * rohc_comp_new2(const rohc_cid_type_t cid_type,
 
 	/* set the default W-LSB window width */
 	is_fine = rohc_comp_set_wlsb_window_width(comp, wlsb_width);
+	if(is_fine != true)
+	{
+		goto destroy_comp;
+	}
+
+	/* set the default reordering ratio for W-LSB MSN in ROHCv2 profiles */
+	is_fine = rohc_comp_set_reorder_ratio(comp, reorder_ratio);
 	if(is_fine != true)
 	{
 		goto destroy_comp;
@@ -1191,6 +1195,60 @@ bool rohc_comp_set_wlsb_window_width(struct rohc_comp *const comp,
 
 	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	          "width of W-LSB sliding window set to %zd", width);
+
+	return true;
+}
+
+
+/**
+ * @brief Set the reordering ratio for the W-LSB encoding scheme
+ *
+ * The control field reorder_ratio specifies how much reordering is
+ * handled by the W-LSB encoding of the MSN in ROHCv2 profiles.
+ *
+ * The reordering ration is set to ROHC_REORDERING_NONE by default.
+ *
+ * @param comp           The ROHC compressor
+ * @param reorder_ratio  The reordering ratio
+ * @return               true in case of success,
+ *                       false in case of failure
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_comp_set_reorder_ratio(struct rohc_comp *const comp,
+                                 const rohc_reordering_offset_t reorder_ratio)
+{
+	/* we need a valid compressor */
+	if(comp == NULL)
+	{
+		return false;
+	}
+
+	/* Check value of reorder ratio */
+	if(reorder_ratio != ROHC_REORDERING_NONE &&
+	   reorder_ratio != ROHC_REORDERING_QUARTER &&
+	   reorder_ratio != ROHC_REORDERING_HALF &&
+	   reorder_ratio != ROHC_REORDERING_THREEQUARTERS)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "failed to "
+		             "set reorder ratio to %u: reorder ratio must be in range "
+		             "[%u;%u]", reorder_ratio, ROHC_REORDERING_NONE,
+		             ROHC_REORDERING_THREEQUARTERS);
+		return false;
+	}
+
+	/* refuse to set a value if compressor is in use */
+	if(comp->num_packets > 0)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "unable to "
+		             "modify reorder ratio after initialization");
+		return false;
+	}
+
+	comp->reorder_ratio = reorder_ratio;
+
+	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	          "Reorder ratio set to %u", reorder_ratio);
 
 	return true;
 }
