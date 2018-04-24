@@ -77,6 +77,7 @@ extern const struct rohc_comp_profile c_uncompressed_profile;
 
 /* ROHCv2 profiles */
 extern const struct rohc_comp_profile rohc_comp_rfc5225_ip_profile;
+extern const struct rohc_comp_profile rohc_comp_rfc5225_ip_udp_profile;
 extern const struct rohc_comp_profile rohc_comp_rfc5225_ip_esp_profile;
 
 
@@ -96,15 +97,6 @@ const struct rohc_comp_profile fake_rohcv2_c_udplite_rtp_profile =
 {
 	.id             = ROHCv2_PROFILE_IP_UDPLITE_RTP, /* profile ID */
 	.protocol       = ROHC_IPPROTO_UDPLITE,          /* IP protocol */
-};
-
-/**
- * @brief Define the compression part of the ROHCv2 FAKE UDP profile
- */
-const struct rohc_comp_profile fake_rohcv2_c_udp_profile =
-{
-	.id             = ROHCv2_PROFILE_IP_UDP, /* profile ID */
-	.protocol       = ROHC_IPPROTO_UDP,      /* IP protocol */
 };
 
 /**
@@ -128,7 +120,7 @@ static const struct rohc_comp_profile *const rohc_comp_profiles[C_NUM_PROFILES] 
 	&fake_rohcv2_c_rtp_profile,
 	&fake_rohcv2_c_udplite_rtp_profile,
 	&c_udp_profile,  /* must be declared after RTP profiles */
-	&fake_rohcv2_c_udp_profile,
+	&rohc_comp_rfc5225_ip_udp_profile,
 	&c_udp_lite_profile,
 	&fake_rohcv2_c_udplite_profile,
 	&c_esp_profile,

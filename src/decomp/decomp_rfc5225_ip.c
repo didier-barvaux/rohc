@@ -2401,7 +2401,6 @@ static bool decomp_rfc5225_ip_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *
 				rohc_decomp_debug(ctxt, "  IP-ID = 0x%04x (inferred from context "
 				                  "IP-ID 0x%x, and MSN %u -> %u)", ip_decoded->id,
 				                  ip_ctxt->ctxt.v4.ip_id, last_msn, decoded_msn);
-
 			}
 			else
 			{

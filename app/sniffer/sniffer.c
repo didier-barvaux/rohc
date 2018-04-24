@@ -509,12 +509,8 @@ int main(int argc, char *argv[])
 #endif
 		enabled_profiles[ROHCv1_PROFILE_IP_UDP_RTP] = 0;
 
-#if 0
 		enabled_profiles[ROHCv2_PROFILE_IP_UDP] =
 			enabled_profiles[ROHCv1_PROFILE_IP_UDP];
-#else
-		enabled_profiles[ROHCv2_PROFILE_IP_UDP] = 0;
-#endif
 		enabled_profiles[ROHCv1_PROFILE_IP_UDP] = 0;
 
 		enabled_profiles[ROHCv2_PROFILE_IP_ESP] =
