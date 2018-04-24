@@ -15,6 +15,7 @@ SUBDIRS = . $(DECOMP_SCHEMES_TESTS_DIR)
 noinst_LTLIBRARIES = librohc_decomp_schemes.la
 
 librohc_decomp_schemes_la_SOURCES = \
+	decomp_crc.c \
 	decomp_wlsb.c \
 	ip_id_offset.c \
 	decomp_scaled_rtp_ts.c \
@@ -40,6 +41,7 @@ librohc_decomp_schemes_la_CPPFLAGS = \
 	-I$(srcdir)/..
 
 noinst_HEADERS = \
+	decomp_crc.h \
 	decomp_wlsb.h \
 	ip_id_offset.h \
 	decomp_scaled_rtp_ts.h \
@@ -47,5 +49,6 @@ noinst_HEADERS = \
 	decomp_list_ipv6.h \
 	rfc4996.h \
 	tcp_sack.h \
-	tcp_ts.h
+	tcp_ts.h \
+	ip_ctxt.h
 

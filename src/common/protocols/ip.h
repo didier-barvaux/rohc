@@ -34,6 +34,30 @@
 #endif
 
 
+/**
+ * @brief The maximum number of IP headers supported
+ *
+ * Used by the ROHCv1 TCP and ROHCv2 profiles. Not used by the other ROHCv1
+ * profiles.
+ *
+ * The limit value was chosen arbitrarily. It should handle most real-life case
+ * without hurting performances nor memory footprint.
+ */
+#define ROHC_MAX_IP_HDRS  2U
+
+
+/**
+ * @brief The maximum number of IP extension headers supported
+ *
+ * Used by the ROHCv1 TCP and ROHCv2 profiles. Not used by the other ROHCv1
+ * profiles.
+ *
+ * The limit value was chosen arbitrarily. It should handle most real-life case
+ * without hurting performances nor memory footprint.
+ */
+#define ROHC_MAX_IP_EXT_HDRS    5U
+
+
 /** The common IPv4/v6 header */
 struct ip_hdr
 {

@@ -143,7 +143,7 @@ struct sniffer_stats_t
 	unsigned long comp_post_nr_hdr_bytes;
 
 	/** Cumulative number of packets per ROHC profile */
-	unsigned long comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE + 1];
+	unsigned long comp_nr_pkts_per_profile[ROHC_PROFILE_MAX];
 	/** Cumulative number of packets per ROHC mode */
 	unsigned long comp_nr_pkts_per_mode[ROHC_R_MODE + 1];
 	/** Cumulative number of packets per state */
@@ -285,12 +285,13 @@ int main(int argc, char *argv[])
 {
 	const int do_change_dir = 1;
 	const int do_close_fds = 1;
-	int enabled_profiles[ROHC_PROFILE_UDPLITE + 1];
+	int enabled_profiles[ROHC_PROFILE_MAX];
 	char *pidfilename = NULL;
 	bool pidfile_created = false;
 	char *cid_type_name = NULL;
 	char *device_name = NULL;
 	int max_contexts = ROHC_SMALL_CID_MAX + 1;
+	int proto_version = 1; /* ROHC protocol version, v1 by default */
 	rohc_cid_type_t cid_type;
 	int args_used;
 	int ret;
@@ -310,15 +311,17 @@ int main(int argc, char *argv[])
 	/* disable daemon mode by default */
 	is_daemon = false;
 
-	/* enable all ROHC profiles by default */
+	/* enable all available ROHC profiles by default */
+	for(i = ROHC_PROFILE_UNCOMPRESSED; i < ROHC_PROFILE_MAX; i++)
+	{
+		enabled_profiles[i] = -1;
+	}
 	enabled_profiles[ROHC_PROFILE_UNCOMPRESSED] = 1;
 	enabled_profiles[ROHC_PROFILE_RTP] = 1;
 	enabled_profiles[ROHC_PROFILE_UDP] = 1;
 	enabled_profiles[ROHC_PROFILE_ESP] = 1;
 	enabled_profiles[ROHC_PROFILE_IP] = 1;
-	enabled_profiles[0x0005] = -1;
 	enabled_profiles[ROHC_PROFILE_TCP] = 1;
-	enabled_profiles[0x0007] = -1;
 	enabled_profiles[ROHC_PROFILE_UDPLITE] = 1;
 
 	/* no traces at the moment */
@@ -375,7 +378,7 @@ int main(int argc, char *argv[])
 			/* get the name of the pidfile */
 			if(argc <= 1)
 			{
-				SNIFFER_LOG(LOG_WARNING, "missing mandatory -p/--pidfile parameter\n");
+				SNIFFER_LOG(LOG_WARNING, "missing mandatory -p/--pidfile parameter");
 				usage();
 				goto error;
 			}
@@ -387,11 +390,23 @@ int main(int argc, char *argv[])
 			/* get the maximum number of contexts the test should use */
 			if(argc <= 1)
 			{
-				SNIFFER_LOG(LOG_WARNING, "missing mandatory -m/--max-contexts parameter\n");
+				SNIFFER_LOG(LOG_WARNING, "missing mandatory -m/--max-contexts parameter");
 				usage();
 				goto error;
 			}
 			max_contexts = atoi(argv[1]);
+			args_used++;
+		}
+		else if(!strcmp(*argv, "--rohc-version"))
+		{
+			/* get the ROHC version to use */
+			if(argc <= 1)
+			{
+				SNIFFER_LOG(LOG_WARNING, "option --rohc-version takes one argument");
+				usage();
+				goto error;
+			}
+			proto_version = atoi(argv[1]);
 			args_used++;
 		}
 		else if(!strcmp(*argv, "--disable"))
@@ -399,13 +414,13 @@ int main(int argc, char *argv[])
 			/* disable the given ROHC profile */
 			if(argc <= 1)
 			{
-				SNIFFER_LOG(LOG_WARNING, "missing mandatory --disable parameter\n");
+				SNIFFER_LOG(LOG_WARNING, "missing mandatory --disable parameter");
 				usage();
 				goto error;
 			}
 			const int rohc_profile = atoi(argv[1]);
 			if(rohc_profile >= ROHC_PROFILE_UNCOMPRESSED &&
-			   rohc_profile <= ROHC_PROFILE_UDPLITE)
+			   rohc_profile < ROHC_PROFILE_MAX)
 			{
 				enabled_profiles[rohc_profile] = 0;
 				SNIFFER_LOG(LOG_INFO, "disable ROHC profile 0x%04x", rohc_profile);
@@ -475,6 +490,52 @@ int main(int argc, char *argv[])
 		SNIFFER_LOG(LOG_WARNING, "invalid CID type, only 'smallcid' and "
 		            "'largecid' expected");
 		goto error;
+	}
+
+	if(proto_version != 1 && proto_version != 2)
+	{
+		SNIFFER_LOG(LOG_WARNING, "invalid ROHC version '%d': specify 1 for ROHCv1 and "
+		            "2 for ROHCv2", proto_version);
+		usage();
+		goto error;
+	}
+	if(proto_version == 2)
+	{
+#if 0
+		enabled_profiles[ROHCv2_PROFILE_IP_UDP_RTP] =
+			enabled_profiles[ROHCv1_PROFILE_IP_UDP_RTP];
+#else
+		enabled_profiles[ROHCv2_PROFILE_IP_UDP_RTP] = -1;
+#endif
+		enabled_profiles[ROHCv1_PROFILE_IP_UDP_RTP] = 0;
+
+		enabled_profiles[ROHCv2_PROFILE_IP_UDP] =
+			enabled_profiles[ROHCv1_PROFILE_IP_UDP];
+		enabled_profiles[ROHCv1_PROFILE_IP_UDP] = 0;
+
+		enabled_profiles[ROHCv2_PROFILE_IP_ESP] =
+			enabled_profiles[ROHCv1_PROFILE_IP_ESP];
+		enabled_profiles[ROHCv1_PROFILE_IP_ESP] = 0;
+
+		enabled_profiles[ROHCv2_PROFILE_IP] =
+			enabled_profiles[ROHCv1_PROFILE_IP];
+		enabled_profiles[ROHCv1_PROFILE_IP] = 0;
+
+#if 0
+		enabled_profiles[ROHCv2_PROFILE_IP_UDPLITE_RTP] =
+			enabled_profiles[ROHCv1_PROFILE_IP_UDPLITE_RTP];
+#else
+		enabled_profiles[ROHCv2_PROFILE_IP_UDPLITE_RTP] = -1;
+#endif
+		enabled_profiles[ROHCv1_PROFILE_IP_UDPLITE_RTP] = -1;
+
+#if 0
+		enabled_profiles[ROHCv2_PROFILE_IP_UDPLITE] =
+			enabled_profiles[ROHCv1_PROFILE_IP_UDPLITE];
+#else
+		enabled_profiles[ROHCv2_PROFILE_IP_UDPLITE] = -1;
+#endif
+		enabled_profiles[ROHCv1_PROFILE_IP_UDPLITE] = 0;
 	}
 
 	/* the source filename is mandatory */
@@ -619,6 +680,8 @@ static void usage(void)
 	       "  -p, --pidfile FILE      Write daemon PID in the given file\n"
 	       "  -m, --max-contexts NUM  The maximum number of ROHC contexts to\n"
 	       "                          simultaneously use during the test\n"
+	       "      --rohc-version NUM  The ROHC version to use: 1 for ROHCv1\n"
+	       "                          and 2 for ROHCv2\n"
 	       "      --disable PROFILE   A ROHC profile to disable\n"
 	       "                          (may be specified several times)\n"
 	       "      --verbose           Make the test more verbose\n"
@@ -836,27 +899,39 @@ static void sniffer_print_stats(int signum __attribute__((unused)))
 	        sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDP] +
 	        sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_IP] +
 	        sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_TCP] +
-	        sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE];
+	        sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE] +
+	        sniffer_stats.comp_nr_pkts_per_profile[ROHCv2_PROFILE_IP_UDP] +
+	        sniffer_stats.comp_nr_pkts_per_profile[ROHCv2_PROFILE_IP_ESP] +
+	        sniffer_stats.comp_nr_pkts_per_profile[ROHCv2_PROFILE_IP];
 	SNIFFER_LOG(LOG_INFO, "packets per profile:");
-	SNIFFER_LOG(LOG_INFO, "  Uncompressed profile: %lu packets (%llu%%)",
+	SNIFFER_LOG(LOG_INFO, "  ROHCv1 Uncompressed profile: %lu packets (%llu%%)",
 	            sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UNCOMPRESSED],
 	            compute_percent(sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UNCOMPRESSED],
 	                            total));
-	SNIFFER_LOG(LOG_INFO, "  IP/UDP/RTP profile: %lu packets (%llu%%)",
+	SNIFFER_LOG(LOG_INFO, "  ROHCv1 IP/UDP/RTP profile: %lu packets (%llu%%)",
 	            sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_RTP],
 	            compute_percent(sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_RTP], total));
-	SNIFFER_LOG(LOG_INFO, "  IP/UDP profile: %lu packets (%llu%%)",
+	SNIFFER_LOG(LOG_INFO, "  ROHCv1 IP/UDP profile: %lu packets (%llu%%)",
 	            sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDP],
 	            compute_percent(sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDP], total));
-	SNIFFER_LOG(LOG_INFO, "  IP-only profile: %lu packets (%llu%%)",
+	SNIFFER_LOG(LOG_INFO, "  ROHCv1 IP-only profile: %lu packets (%llu%%)",
 	            sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_IP],
 	            compute_percent(sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_IP], total));
-	SNIFFER_LOG(LOG_INFO, "  IP/TCP profile: %lu packets (%llu%%)",
+	SNIFFER_LOG(LOG_INFO, "  ROHCv1 IP/TCP profile: %lu packets (%llu%%)",
 	            sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_TCP],
 	            compute_percent(sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_TCP], total));
-	SNIFFER_LOG(LOG_INFO, "  IP/UDP-Lite profile: %lu packets (%llu%%)",
+	SNIFFER_LOG(LOG_INFO, "  ROHCv1 IP/UDP-Lite profile: %lu packets (%llu%%)",
 	            sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE],
 	            compute_percent(sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE], total));
+	SNIFFER_LOG(LOG_INFO, "  ROHCv2 IP/UDP profile: %lu packets (%llu%%)",
+	            sniffer_stats.comp_nr_pkts_per_profile[ROHCv2_PROFILE_IP_UDP],
+	            compute_percent(sniffer_stats.comp_nr_pkts_per_profile[ROHCv2_PROFILE_IP_UDP], total));
+	SNIFFER_LOG(LOG_INFO, "  ROHCv2 IP/ESP profile: %lu packets (%llu%%)",
+	            sniffer_stats.comp_nr_pkts_per_profile[ROHCv2_PROFILE_IP_ESP],
+	            compute_percent(sniffer_stats.comp_nr_pkts_per_profile[ROHCv2_PROFILE_IP_ESP], total));
+	SNIFFER_LOG(LOG_INFO, "  ROHCv2 IP-only profile: %lu packets (%llu%%)",
+	            sniffer_stats.comp_nr_pkts_per_profile[ROHCv2_PROFILE_IP],
+	            compute_percent(sniffer_stats.comp_nr_pkts_per_profile[ROHCv2_PROFILE_IP], total));
 
 	/* packets per mode */
 	total = sniffer_stats.comp_nr_pkts_per_mode[ROHC_U_MODE] +
@@ -1007,7 +1082,7 @@ static bool sniff(const rohc_cid_type_t cid_type,
 	}
 
 	/* enable the compression profiles */
-	for(i = ROHC_PROFILE_UNCOMPRESSED; i <= ROHC_PROFILE_UDPLITE; i++)
+	for(i = ROHC_PROFILE_UNCOMPRESSED; i < ROHC_PROFILE_MAX; i++)
 	{
 		if(enabled_profiles[i] == 1 && !rohc_comp_enable_profile(comp, i))
 		{
@@ -1048,7 +1123,7 @@ static bool sniff(const rohc_cid_type_t cid_type,
 	}
 
 	/* enable the decompression profiles */
-	for(i = ROHC_PROFILE_UNCOMPRESSED; i <= ROHC_PROFILE_UDPLITE; i++)
+	for(i = ROHC_PROFILE_UNCOMPRESSED; i < ROHC_PROFILE_MAX; i++)
 	{
 		if(enabled_profiles[i] == 1 && !rohc_decomp_enable_profile(decomp, i))
 		{

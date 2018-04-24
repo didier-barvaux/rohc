@@ -48,7 +48,7 @@ echo "" >&2
 rm -f "${LCOV_FILE}" "${LCOV_FILTERED}"
 
 # run the non-regression test in verbose mode to cover those bits
-$(dirname $0)/non_regression/rfc3095/test_non_reg_ipv4_udp_rtp_voip_mc1_wlsb64_smallcid.sh verbose &>/dev/null
+$(dirname $0)/non_regression/rfc3095/scripts/test_non_reg_ipv4_udp_rtp_voip_mc1_wlsb64_smallcid.sh verbose &>/dev/null
 if [ $? -ne 0 ] ; then
 	echo "fail to run non-regression test in verbose mode to improve coverage" >&2
 	exit 1

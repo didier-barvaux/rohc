@@ -31,172 +31,15 @@
 
 #include "ip.h"
 #include "interval.h"
+#include "protocols/ip.h"
 #include "protocols/tcp.h"
+#include "protocols/rfc6846.h"
+#include "schemes/ip_ctxt.h"
 #include "schemes/decomp_wlsb.h"
 #include "schemes/tcp_ts.h"
 #include "schemes/tcp_sack.h"
 
 #include <stdint.h>
-
-/**
- * @brief Define the IPv6 option context for Destination, Hop-by-Hop
- *        and Routing option
- */
-typedef struct __attribute__((packed))
-{
-	size_t data_len;
-	uint8_t data[IPV6_OPT_CTXT_LEN_MAX];
-
-} ipv6_generic_option_context_t;
-
-
-/**
- * @brief Define the IPv6 option context for GRE option
- */
-typedef struct __attribute__((packed)) ipv6_gre_option_context
-{
-	uint8_t c_flag:1;
-	uint8_t k_flag:1;
-	uint8_t s_flag:1;
-	uint8_t protocol:1;
-	uint8_t padding:4;
-
-	uint32_t key;               // if k_flag set
-	uint32_t sequence_number;   // if s_flag set
-
-} ipv6_gre_option_context_t;
-
-
-/**
- * @brief Define the IPv6 option context for MIME option
- */
-typedef struct __attribute__((packed)) ipv6_mime_option_context
-{
-	uint8_t s_bit:1;
-	uint8_t res_bits:7;
-	uint32_t orig_dest;
-	uint32_t orig_src;         // if s_bit set
-
-} ipv6_mime_option_context_t;
-
-
-/**
- * @brief Define the IPv6 option context for AH option
- */
-typedef struct __attribute__((packed)) ipv6_ah_option_context
-{
-	uint32_t spi;
-	uint32_t sequence_number;
-	uint32_t auth_data[1];
-} ipv6_ah_option_context_t;
-
-
-/** The decompression context for one IP extension header */
-typedef struct
-{
-	size_t len;        /**< The length (in bytes) of the extension header */
-	uint8_t proto;     /**< The protocol of the extension header */
-	uint8_t nh_proto;  /**< The protocol of the next header */
-
-	union
-	{
-		ipv6_generic_option_context_t generic; /**< IPv6 generic extension header */
-		ipv6_gre_option_context_t gre;         /**< IPv6 GRE extension header */
-		ipv6_mime_option_context_t mime;       /**< IPv6 MIME extension header */
-		ipv6_ah_option_context_t ah;           /**< IPv6 AH extension header */
-	};
-
-} ip_option_context_t;
-
-
-/**
- * @brief Define the common IP header context to IPv4 and IPv6.
- */
-typedef struct __attribute__((packed)) ipvx_context
-{
-	uint8_t version:4;
-	uint8_t unused:4;
-
-	uint8_t dscp:6;
-	uint8_t ip_ecn_flags:2;
-
-	uint8_t next_header;
-
-	uint8_t ttl_hopl;
-
-	uint8_t ip_id_behavior;
-
-} ipvx_context_t;
-
-
-/**
- * @brief Define the IPv4 header context.
- */
-typedef struct __attribute__((packed)) ipv4_context
-{
-	uint8_t version:4;
-	uint8_t df:1;
-	uint8_t unused:3;
-
-	uint8_t dscp:6;
-	uint8_t ip_ecn_flags:2;
-
-	uint8_t protocol;
-
-	uint8_t ttl_hopl;
-
-	uint8_t ip_id_behavior;
-	uint16_t ip_id;
-
-	uint32_t src_addr;
-	uint32_t dst_addr;
-
-} ipv4_context_t;
-
-
-/**
- * @brief Define the IPv6 header context.
- */
-typedef struct __attribute__((packed)) ipv6_context
-{
-	uint8_t version:4;
-	uint8_t unused:4;
-
-	uint8_t dscp:6;
-	uint8_t ip_ecn_flags:2;
-
-	uint8_t next_header;
-
-	uint8_t ttl_hopl;
-
-	uint8_t ip_id_behavior;
-
-	uint32_t flow_label:20; /**< IPv6 Flow Label */
-
-	uint32_t src_addr[4];
-	uint32_t dest_addr[4];
-
-} ipv6_context_t;
-
-
-/**
- * @brief Define union of IP contexts
- */
-typedef struct
-{
-	ip_version version;
-	union
-	{
-		ipvx_context_t vx;
-		ipv4_context_t v4;
-		ipv6_context_t v6;
-	} ctxt;
-
-	size_t opts_nr;
-	size_t opts_len;
-	ip_option_context_t opts[ROHC_TCP_MAX_IP_EXT_HDRS];
-
-} ip_context_t;
 
 
 /** The decompression context for one TCP option */
@@ -312,7 +155,7 @@ struct d_tcp_context
 	struct d_tcp_opt_sack opt_sack_blocks;  /**< The TCP SACK blocks */
 
 	size_t ip_contexts_nr;
-	ip_context_t ip_contexts[ROHC_TCP_MAX_IP_HDRS];
+	ip_context_t ip_contexts[ROHC_MAX_IP_HDRS];
 };
 
 
@@ -352,7 +195,7 @@ struct rohc_tcp_extr_ip_bits
 	size_t daddr_nr;     /**< The number of source address bits */
 
 	/** The parsed IP extension headers */
-	ip_option_context_t opts[ROHC_TCP_MAX_IP_EXT_HDRS];
+	ip_option_context_t opts[ROHC_MAX_IP_EXT_HDRS];
 	size_t opts_nr;  /**< The number of parsed IP extension headers */
 	size_t opts_len; /**< The length of the parsed IP extension headers */
 };
@@ -367,7 +210,7 @@ struct rohc_tcp_extr_bits
 	rohc_cid_t cr_base_cid;
 
 	/** The extracted bits related to the IP headers */
-	struct rohc_tcp_extr_ip_bits ip[ROHC_TCP_MAX_IP_HDRS];
+	struct rohc_tcp_extr_ip_bits ip[ROHC_MAX_IP_HDRS];
 	size_t ip_nr;   /**< The number of parsed IP headers */
 
 	/** The extracted bits of the Master Sequence Number (MSN) of the packet */
@@ -419,7 +262,7 @@ struct rohc_tcp_decoded_ip_values
 	uint8_t version:4;   /**< The decoded version field */
 	uint8_t ecn_flags:2; /**< The decoded ECN flags */
 	uint8_t dscp:6;      /**< The decoded DSCP field */
-	tcp_ip_id_behavior_t id_behavior; /**< The decoded IP-ID behavior (Ipv4 only) */
+	rohc_ip_id_behavior_t id_behavior; /**< The decoded IP-ID behavior (IPv4 only) */
 	uint16_t id;         /**< The decoded IP-ID field (IPv4 only) */
 	uint8_t df:1;        /**< The decoded DF field (IPv4 only) */
 	uint8_t ttl;         /**< The decoded TTL/HL field */
@@ -431,7 +274,7 @@ struct rohc_tcp_decoded_ip_values
 	uint8_t daddr[16];   /**< The decoded destination address field */
 
 	/** The decoded IP extension headers */
-	ip_option_context_t opts[ROHC_TCP_MAX_IP_EXT_HDRS];
+	ip_option_context_t opts[ROHC_MAX_IP_EXT_HDRS];
 	size_t opts_nr;  /**< The number of decoded IP extension headers */
 	size_t opts_len; /**< The length of the decoded IP extension headers */
 };
@@ -446,7 +289,7 @@ struct rohc_tcp_decoded_values
 	rohc_cid_t cr_base_cid;
 
 	/** The decoded values related to the IP headers */
-	struct rohc_tcp_decoded_ip_values ip[ROHC_TCP_MAX_IP_HDRS];
+	struct rohc_tcp_decoded_ip_values ip[ROHC_MAX_IP_HDRS];
 	size_t ip_nr;  /**< The number of the decoded IP headers */
 
 	/** The Master Sequence Number (MSN) of the packet */

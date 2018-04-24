@@ -43,7 +43,7 @@
  */
 
 /** The number of ROHC profiles ready to be used */
-#define C_NUM_PROFILES 7U
+#define C_NUM_PROFILES 10U
 
 /** The default maximal number of packets sent in > IR states (= FO and SO
  *  states) before changing back the state to IR (periodic refreshes) */
@@ -199,6 +199,9 @@ struct rohc_comp
 
 	/** The width of the W-LSB sliding window */
 	size_t wlsb_window_width;
+	/** The reorder offset specifies how much reordering is handled by the
+	 *  W-LSB encoding of the MSN in ROHCv2 profiles */
+	rohc_reordering_offset_t reorder_ratio;
 	/** The maximal number of packets sent in > IR states (= FO and SO
 	 *  states) before changing back the state to IR (periodic refreshes) */
 	size_t periodic_refreshes_ir_timeout_pkts;

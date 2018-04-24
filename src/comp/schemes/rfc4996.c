@@ -27,6 +27,7 @@
 #include "rohc_comp_internals.h"
 #include "rohc_utils.h"
 #include "protocols/tcp.h"
+#include "protocols/rfc6846.h"
 
 #include <string.h>
 #ifdef __KERNEL__
@@ -435,8 +436,8 @@ int c_optional_ip_id_lsb(const int behavior,
 
 	switch(behavior)
 	{
-		case IP_ID_BEHAVIOR_SEQ_SWAP:
-		case IP_ID_BEHAVIOR_SEQ:
+		case ROHC_IP_ID_BEHAVIOR_SEQ_SWAP:
+		case ROHC_IP_ID_BEHAVIOR_SEQ:
 			if(nr_bits_wlsb <= 8)
 			{
 				if(rohc_max_len < 1)
@@ -458,8 +459,8 @@ int c_optional_ip_id_lsb(const int behavior,
 				*indicator = 1;
 			}
 			break;
-		case IP_ID_BEHAVIOR_RAND:
-		case IP_ID_BEHAVIOR_ZERO:
+		case ROHC_IP_ID_BEHAVIOR_RAND:
+		case ROHC_IP_ID_BEHAVIOR_ZERO:
 			*indicator = 0;
 			break;
 		default:

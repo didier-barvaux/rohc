@@ -141,6 +141,7 @@ static void usage(void);
 static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
                                 const size_t wlsb_width,
                                 const size_t max_contexts,
+                                const size_t proto_version,
                                 const size_t padding_up_to,
                                 const bool no_comparison,
                                 const bool ignore_malformed,
@@ -170,10 +171,12 @@ static int compress_decompress(struct rohc_comp *comp,
 
 static struct rohc_comp * create_compressor(const rohc_cid_type_t cid_type,
                                             const size_t wlsb_width,
-                                            const size_t max_contexts)
+                                            const size_t max_contexts,
+                                            const size_t proto_version)
 	__attribute__((warn_unused_result));
 static struct rohc_decomp * create_decompressor(const rohc_cid_type_t cid_type,
-                                                const size_t max_contexts)
+                                                const size_t max_contexts,
+                                                const size_t proto_version)
 	__attribute__((warn_unused_result));
 
 static void print_rohc_traces(void *const priv_ctxt,
@@ -249,7 +252,6 @@ static size_t nr_rohc_warnings = 0;
 /** The stats about packet sizes */
 static size_t nr_pkts_per_size[MAX_ROHC_SIZE + 1] = { 0 };
 
-
 /**
  * @brief Main function for the ROHC test program
  *
@@ -271,6 +273,7 @@ int main(int argc, char *argv[])
 	int max_contexts = ROHC_SMALL_CID_MAX + 1;
 	int wlsb_width = 4;
 	int padding_up_to = 0;
+	int proto_version = 1; /* ROHC protocol version, v1 by default */
 	bool no_comparison = false;
 	bool ignore_malformed = false;
 	bool assert_on_error = false;
@@ -290,6 +293,7 @@ int main(int argc, char *argv[])
 		usage();
 		goto error;
 	}
+
 
 	for(argc--, argv++; argc > 0; argc -= args_used, argv += args_used)
 	{
@@ -411,6 +415,18 @@ int main(int argc, char *argv[])
 			/* print some stats at the very end of the test */
 			print_stats = true;
 		}
+		else if(!strcmp(*argv, "--rohc-version"))
+		{
+			/* get the ROHC version to use */
+			if(argc <= 1)
+			{
+				fprintf(stderr, "option --rohc-version takes one argument\n\n");
+				usage();
+				goto error;
+			}
+			proto_version = atoi(argv[1]);
+			args_used++;
+		}
 		else if(cid_type_name == NULL)
 		{
 			/* get the type of CID to use within the ROHC library */
@@ -494,6 +510,13 @@ int main(int argc, char *argv[])
 		goto error;
 	}
 
+	if(proto_version != 1 && proto_version != 2)
+	{
+		fprintf(stderr, "invalid ROHC version '%d': specify 1 for ROHCv1 and "
+		        "2 for ROHCv2\n", proto_version);
+		goto error;
+	}
+
 	/* at least one source filename is mandatory */
 	if(src_filenames[0] == NULL)
 	{
@@ -503,7 +526,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* test ROHC compression/decompression with the packets from the file */
-	status = test_comp_and_decomp(cid_type, wlsb_width, max_contexts,
+	status = test_comp_and_decomp(cid_type, wlsb_width, max_contexts, proto_version,
 	                              padding_up_to, no_comparison, ignore_malformed,
 	                              (const char *const *) src_filenames, src_filenames_nr,
 	                              ofilename, cmp_filename,
@@ -572,6 +595,8 @@ static void usage(void)
 	        "  --max-contexts NUM      The maximum number of ROHC contexts to\n"
 	        "                          simultaneously use during the test\n"
 	        "  --wlsb-width NUM        The width of the WLSB window to use\n"
+	        "  --rohc-version NUM      The ROHC version to use: 1 for ROHCv1\n"
+	        "                          and 2 for ROHCv2\n"
 	        "  --print-stats           Print some stats at the end of test\n"
 	        "  --no-comparison         Is comparison with ROHC reference optional for test\n"
 	        "  --ignore-malformed      Ignore malformed packets for test\n"
@@ -913,7 +938,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	trace("=== arrival time %ld seconds %ld us\n", header.ts.tv_sec, header.ts.tv_usec);
 
 	/* check Ethernet frame length */
-	if(header.len <= link_len_src || header.len != header.caplen)
+	if(header.len < link_len_src || header.len != header.caplen)
 	{
 		trace("bad PCAP packet (len = %u, caplen = %u)\n", header.len,
 		      header.caplen);
@@ -1199,8 +1224,9 @@ exit:
  *
  * @param cid_type             The type of CIDs the compressor shall use
  * @param wlsb_width           The width of the WLSB window to use
- * @param padding_up_to        The amount of padding to use
  * @param max_contexts         The maximum number of ROHC contexts to use
+ * @param proto_version        The version of the ROHC protocol to use: v1 or v2
+ * @param padding_up_to        The amount of padding to use
  * @param no_comparison        Whether to handle comparison as fatal for test or not
  * @param ignore_malformed     Whether to handle malformed packets as fatal for test
  * @param src_filenames        The names of the PCAP files that contain the
@@ -1218,6 +1244,7 @@ exit:
 static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
                                 const size_t wlsb_width,
                                 const size_t max_contexts,
+                                const size_t proto_version,
                                 const size_t padding_up_to,
                                 const bool no_comparison,
                                 const bool ignore_malformed,
@@ -1322,7 +1349,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 	}
 
 	/* create the compressor 1 */
-	comp1 = create_compressor(cid_type, wlsb_width, max_contexts);
+	comp1 = create_compressor(cid_type, wlsb_width, max_contexts, proto_version);
 	if(comp1 == NULL)
 	{
 		trace("failed to create the compressor 1\n");
@@ -1330,7 +1357,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 	}
 
 	/* create the compressor 2 */
-	comp2 = create_compressor(cid_type, wlsb_width, max_contexts);
+	comp2 = create_compressor(cid_type, wlsb_width, max_contexts, proto_version);
 	if(comp2 == NULL)
 	{
 		trace("failed to create the compressor 2\n");
@@ -1338,7 +1365,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 	}
 
 	/* create the decompressor 1 */
-	decomp1 = create_decompressor(cid_type, max_contexts);
+	decomp1 = create_decompressor(cid_type, max_contexts, proto_version);
 	if(decomp1 == NULL)
 	{
 		trace("failed to create the decompressor 1\n");
@@ -1346,7 +1373,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 	}
 
 	/* create the decompressor 2 */
-	decomp2 = create_decompressor(cid_type, max_contexts);
+	decomp2 = create_decompressor(cid_type, max_contexts, proto_version);
 	if(decomp2 == NULL)
 	{
 		trace("failed to create the decompressor 2\n");
@@ -1512,11 +1539,13 @@ error:
  * @param cid_type      The type of CIDs the compressor shall use
  * @param max_contexts  The maximum number of ROHC contexts to use
  * @param wlsb_width    The width of the WLSB window to use
+ * @param proto_version The version of the ROHC protocol to use: v1 or v2
  * @return              The new ROHC compressor
  */
 static struct rohc_comp * create_compressor(const rohc_cid_type_t cid_type,
                                             const size_t wlsb_width,
-                                            const size_t max_contexts)
+                                            const size_t max_contexts,
+                                            const size_t proto_version)
 {
 	struct rohc_comp *comp;
 
@@ -1548,13 +1577,44 @@ static struct rohc_comp * create_compressor(const rohc_cid_type_t cid_type,
 	}
 
 	/* enable profiles */
-	if(!rohc_comp_enable_profiles(comp, ROHC_PROFILE_UNCOMPRESSED,
-	                              ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
-	                              ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
-	                              ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
+	if(proto_version == 1)
 	{
-		trace("failed to enable the compression profiles\n");
-		goto destroy_comp;
+		/* enable ROHCv1 profiles */
+		if(!rohc_comp_enable_profiles(comp,
+		                              ROHCv1_PROFILE_UNCOMPRESSED,
+		                              ROHCv1_PROFILE_IP_UDP_RTP,
+		                              ROHCv1_PROFILE_IP_UDP,
+		                              ROHCv1_PROFILE_IP_ESP,
+		                              ROHCv1_PROFILE_IP,
+		                              ROHCv1_PROFILE_IP_TCP,
+		                              ROHCv1_PROFILE_IP_UDPLITE,
+		                              -1))
+		{
+			trace("failed to enable the compression profiles\n");
+			goto destroy_comp;
+		}
+	}
+	else
+	{
+		/* enable ROHCv2 profiles */
+		if(!rohc_comp_enable_profiles(comp,
+		                              ROHCv1_PROFILE_UNCOMPRESSED,
+		                              ROHCv1_PROFILE_IP_TCP,
+#if 0
+		                              ROHCv2_PROFILE_IP_UDP_RTP,
+#endif
+		                              ROHCv2_PROFILE_IP_UDP,
+		                              ROHCv2_PROFILE_IP_ESP,
+		                              ROHCv2_PROFILE_IP,
+#if 0
+		                              ROHCv2_PROFILE_IP_UDPLITE_RTP,
+		                              ROHCv2_PROFILE_IP_UDPLITE,
+#endif
+		                              -1))
+		{
+			trace("failed to enable the compression profiles\n");
+			goto destroy_comp;
+		}
 	}
 
 	/* set the WLSB window width */
@@ -1585,10 +1645,12 @@ error:
  *
  * @param cid_type      The type of CIDs the compressor shall use
  * @param max_contexts  The maximum number of ROHC contexts to use
+ * @param proto_version The version of the ROHC protocol to use: v1 or v2
  * @return              The new ROHC decompressor
  */
 static struct rohc_decomp * create_decompressor(const rohc_cid_type_t cid_type,
-                                                const size_t max_contexts)
+                                                const size_t max_contexts,
+                                                const size_t proto_version)
 {
 	struct rohc_decomp *decomp;
 
@@ -1619,13 +1681,44 @@ static struct rohc_decomp * create_decompressor(const rohc_cid_type_t cid_type,
 	}
 
 	/* enable decompression profiles */
-	if(!rohc_decomp_enable_profiles(decomp, ROHC_PROFILE_UNCOMPRESSED,
-	                                ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
-	                                ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
-	                                ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
+	if(proto_version == 1)
 	{
-		trace("failed to enable the decompression profiles\n");
-		goto destroy_decomp;
+		/* enable ROHCv1 profiles */
+		if(!rohc_decomp_enable_profiles(decomp,
+		                                ROHCv1_PROFILE_UNCOMPRESSED,
+		                                ROHCv1_PROFILE_IP_UDP_RTP,
+		                                ROHCv1_PROFILE_IP_UDP,
+		                                ROHCv1_PROFILE_IP_ESP,
+		                                ROHCv1_PROFILE_IP,
+		                                ROHCv1_PROFILE_IP_TCP,
+		                                ROHCv1_PROFILE_IP_UDPLITE,
+		                                -1))
+		{
+			trace("failed to enable the decompression profiles\n");
+			goto destroy_decomp;
+		}
+	}
+	else
+	{
+		/* enable ROHCv2 profiles */
+		if(!rohc_decomp_enable_profiles(decomp,
+		                                ROHCv1_PROFILE_UNCOMPRESSED,
+		                                ROHCv1_PROFILE_IP_TCP,
+#if 0
+		                                ROHCv2_PROFILE_IP_UDP_RTP,
+#endif
+		                                ROHCv2_PROFILE_IP_UDP,
+		                                ROHCv2_PROFILE_IP_ESP,
+		                                ROHCv2_PROFILE_IP,
+#if 0
+		                                ROHCv2_PROFILE_IP_UDPLITE_RTP,
+		                                ROHCv2_PROFILE_IP_UDPLITE,
+#endif
+		                                -1))
+		{
+			trace("failed to enable the decompression profiles\n");
+			goto destroy_decomp;
+		}
 	}
 
 	return decomp;

@@ -39,7 +39,7 @@
 bool tcp_parse_irreg_chain(const struct rohc_decomp_ctxt *const context,
                            const uint8_t *const rohc_packet,
                            const size_t rohc_length,
-                           const tcp_ip_id_behavior_t innermost_ip_id_behavior,
+                           const rohc_ip_id_behavior_t innermost_ip_id_behavior,
                            struct rohc_tcp_extr_bits *const bits,
                            size_t *const parsed_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6)));

@@ -33,6 +33,7 @@
 #include "rohc_utils.h"
 #include "crc.h"
 #include "protocols/tcp.h"
+#include "protocols/rfc6846.h"
 #include "rohc_packets.h"
 #include "rohc_decomp.h"
 
@@ -337,8 +338,8 @@ int d_optional_ip_id_lsb(const struct rohc_decomp_ctxt *const context,
 
 	switch(behavior)
 	{
-		case IP_ID_BEHAVIOR_SEQ:
-		case IP_ID_BEHAVIOR_SEQ_SWAP:
+		case ROHC_IP_ID_BEHAVIOR_SEQ:
+		case ROHC_IP_ID_BEHAVIOR_SEQ_SWAP:
 		{
 			if(indicator == 0)
 			{
@@ -369,8 +370,8 @@ int d_optional_ip_id_lsb(const struct rohc_decomp_ctxt *const context,
 			}
 			break;
 		}
-		case IP_ID_BEHAVIOR_RAND:
-		case IP_ID_BEHAVIOR_ZERO:
+		case ROHC_IP_ID_BEHAVIOR_RAND:
+		case ROHC_IP_ID_BEHAVIOR_ZERO:
 		{
 			rohc_decomp_debug(context, "IP-ID not present since IP-ID behavior is %d",
 			                  behavior);

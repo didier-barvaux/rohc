@@ -1,6 +1,6 @@
 /*
  * Copyright 2010,2011,2012,2013,2014 Didier Barvaux
- * Copyright 2007,2009,2010,2012,2013,2014 Viveris Technologies
+ * Copyright 2007,2009,2010,2012,2013,2014,2018 Viveris Technologies
  * Copyright 2012 WBX
  *
  * This library is free software; you can redistribute it and/or
@@ -56,6 +56,7 @@
 #include <assert.h>
 
 
+/* ROHCv1 profiles */
 extern const struct rohc_decomp_profile d_uncomp_profile;
 extern const struct rohc_decomp_profile d_udp_profile;
 extern const struct rohc_decomp_profile d_ip_profile;
@@ -63,6 +64,11 @@ extern const struct rohc_decomp_profile d_udplite_profile;
 extern const struct rohc_decomp_profile d_esp_profile;
 extern const struct rohc_decomp_profile d_rtp_profile;
 extern const struct rohc_decomp_profile d_tcp_profile;
+
+/* ROHCv2 profiles */
+extern const struct rohc_decomp_profile rohc_decomp_rfc5225_ip_profile;
+extern const struct rohc_decomp_profile rohc_decomp_rfc5225_ip_udp_profile;
+extern const struct rohc_decomp_profile rohc_decomp_rfc5225_ip_esp_profile;
 
 
 /**
@@ -77,6 +83,16 @@ static const struct rohc_decomp_profile *const rohc_decomp_profiles[D_NUM_PROFIL
 	&d_ip_profile,
 	&d_tcp_profile,
 	&d_udplite_profile,
+#if 0
+	&rohc_decomp_rfc5225_ip_udp_rtp_profile,
+#endif
+	&rohc_decomp_rfc5225_ip_udp_profile,
+	&rohc_decomp_rfc5225_ip_esp_profile,
+	&rohc_decomp_rfc5225_ip_profile,
+#if 0
+	&rohc_decomp_rfc5225_ip_udplite_rtp_profile,
+	&rohc_decomp_rfc5225_ip_udplite_profile,
+#endif
 };
 
 
@@ -141,6 +157,9 @@ static struct rohc_decomp_ctxt * find_context(const struct rohc_decomp *const de
 	__attribute__((nonnull(1), warn_unused_result));
 static void context_free(struct rohc_decomp_ctxt *const context)
 	__attribute__((nonnull(1)));
+
+static int rohc_decomp_get_profile_index(const rohc_profile_t profile)
+	__attribute__((warn_unused_result));
 
 static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
                                      const struct rohc_buf rohc_packet,
@@ -1664,7 +1683,6 @@ static rohc_status_t rohc_decomp_try_decode_pkt(const struct rohc_decomp *const 
 	const struct rohc_decomp_profile *const profile = context->profile;
 	size_t uncomp_hdr_len; /* length of the uncompressed headers */
 	rohc_status_t status;
-	bool decode_ok;
 
 	assert(packet_type != ROHC_PACKET_UNKNOWN);
 
@@ -1673,12 +1691,11 @@ static rohc_status_t rohc_decomp_try_decode_pkt(const struct rohc_decomp *const 
 	 * All bits are now extracted from the packet, let's decode them.
 	 */
 
-	decode_ok = profile->decode_bits(context, extr_bits, payload_len, decoded_values);
-	if(!decode_ok)
+	status = profile->decode_bits(context, extr_bits, payload_len, decoded_values);
+	if(status != ROHC_STATUS_OK)
 	{
 		rohc_decomp_warn(context, "failed to decode values from bits extracted "
 		                 "from ROHC header");
-		status = ROHC_STATUS_ERROR;
 		goto error;
 	}
 
@@ -1698,6 +1715,7 @@ static rohc_status_t rohc_decomp_try_decode_pkt(const struct rohc_decomp *const 
 	{
 		rohc_decomp_warn(context, "CID %zu: failed to build uncompressed headers: %s",
 		                 context->cid, rohc_strerror(status));
+		goto error;
 	}
 
 error:
@@ -1967,8 +1985,10 @@ static bool rohc_decomp_feedback_ack(struct rohc_decomp *const decomp,
 			}
 
 			/* use CRC option if mode change requested */
-			if(infos->profile_id == ROHC_PROFILE_TCP)
+			if(infos->profile_id == ROHC_PROFILE_TCP ||
+			   rohc_profile_is_rohcv2(infos->profile_id))
 			{
+				/* CRC is present in base header for TCP and ROHCv2 profiles */
 				crc_present = ROHC_FEEDBACK_WITH_CRC_BASE;
 			}
 			else if(infos->do_change_mode)
@@ -2012,8 +2032,9 @@ static bool rohc_decomp_feedback_ack(struct rohc_decomp *const decomp,
 		if(feedback->len > 0)
 		{
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
-			           "decompressor built a %zu-byte positive feedback",
-			           feedback->len);
+			           "decompressor built a %zu-byte positive feedback "
+			           "(header = %zu bytes, data = %zu bytes)", feedback->len,
+			           feedback_hdr_len, feedbacksize);
 		}
 
 		/* destroy the temporary feedback buffer */
@@ -2300,7 +2321,8 @@ static bool rohc_decomp_feedback_nack(struct rohc_decomp *const decomp,
 		           "FEEDBACK-2 is %d-byte long", sfeedback.size);
 
 		/* use CRC option if mode change requested */
-		if(infos->profile_id == ROHC_PROFILE_TCP)
+		if(infos->profile_id == ROHC_PROFILE_TCP ||
+		   rohc_profile_is_rohcv2(infos->profile_id))
 		{
 			crc_present = ROHC_FEEDBACK_WITH_CRC_BASE;
 		}
@@ -2825,6 +2847,9 @@ error:
  * If set to 0, segmentation is disabled as no segment headers are allowed
  * on the channel. Every received segment will be dropped.
  *
+ * According to RF5225 §6.1, ROHC segmentation cannot be enabled if any
+ * ROHCv2 profile is also enabled.
+ *
  * If segmentation is enabled and used by the compressor, the function
  * \ref rohc_decompress3 will return ROHC_OK and one empty uncompressed packet
  * upon decompression until the last segment is received (or a non-segment is
@@ -2862,6 +2887,8 @@ error:
 bool rohc_decomp_set_mrru(struct rohc_decomp *const decomp,
                           const size_t mrru)
 {
+	size_t idx;
+
 	/* decompressor must be valid */
 	if(decomp == NULL)
 	{
@@ -2876,6 +2903,30 @@ bool rohc_decomp_set_mrru(struct rohc_decomp *const decomp,
 		             "unexpected MRRU value: must be in range [0, %d]",
 		             ROHC_MAX_MRRU);
 		goto error;
+	}
+
+	/* RFC5225, §6.1:
+	 * The compressor MUST NOT use ROHC segmentation (see Section 5.2.5 of
+	 * [RFC4995]), i.e., the Maximum Reconstructed Reception Unit (MRRU)
+	 * MUST be set to 0, if the configuration of the ROHC channel contains
+	 * at least one ROHCv2 profile in the list of supported profiles (i.e.,
+	 * the PROFILES parameter) and if the channel cannot guarantee in-order
+	 * delivery of packets between compression endpoints.
+	 */
+	if(mrru > 0)
+	{
+		for(idx = 0; idx < D_NUM_PROFILES; idx++)
+		{
+			if(decomp->enabled_profiles[idx] &&
+			   rohc_profile_is_rohcv2(rohc_decomp_profiles[idx]->id))
+			{
+				rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+				             "failed to set MRRU to %zu bytes: segmentation is not "
+				             "compatible with ROHCv2 profile 0x%04x that is enabled",
+				             mrru, rohc_decomp_profiles[idx]->id);
+				goto error;
+			}
+		}
 	}
 
 	/* set new MRRU */
@@ -3308,6 +3359,39 @@ error:
 
 
 /**
+ * @brief Get profile index if profile exists
+ *
+ * @param profile  The profile to enable
+ * @return         The profile index if the profile exists,
+ *                 -1 if the profile does not exist
+ */
+static int rohc_decomp_get_profile_index(const rohc_profile_t profile)
+{
+	size_t idx;
+
+	/* search for the profile location */
+	for(idx = 0; idx < D_NUM_PROFILES; idx++)
+	{
+		if(rohc_decomp_profiles[idx]->id == profile)
+		{
+			/* found */
+			break;
+		}
+	}
+
+	if(idx == D_NUM_PROFILES)
+	{
+		goto error;
+	}
+
+	return idx;
+
+error :
+	return -1;
+}
+
+
+/**
  * @brief Is the given decompression profile enabled for a decompressor?
  *
  * Is the given decompression profile enabled or disabled for a decompressor?
@@ -3329,7 +3413,8 @@ error:
 bool rohc_decomp_profile_enabled(const struct rohc_decomp *const decomp,
                                  const rohc_profile_t profile)
 {
-	size_t i;
+	size_t profile_idx;
+	int ret;
 
 	if(decomp == NULL)
 	{
@@ -3337,24 +3422,15 @@ bool rohc_decomp_profile_enabled(const struct rohc_decomp *const decomp,
 	}
 
 	/* search the profile location */
-	for(i = 0; i < D_NUM_PROFILES; i++)
+	ret = rohc_decomp_get_profile_index(profile);
+	if(ret < 0)
 	{
-		if(rohc_decomp_profiles[i]->id == profile)
-		{
-			/* found */
-			break;
-		}
-	}
-
-	if(i == D_NUM_PROFILES)
-	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		             "unknown ROHC decompression profile (ID = %d)", profile);
 		goto error;
 	}
+	profile_idx = ret;
 
 	/* return profile status */
-	return decomp->enabled_profiles[i];
+	return decomp->enabled_profiles[profile_idx];
 
 error:
 	return false;
@@ -3372,6 +3448,9 @@ error:
  *
  * If the profile is already enabled, nothing is performed and success is
  * reported.
+ *
+ * The ROHCv1 and ROHCv2 profiles are incompatible. The same profile cannot
+ * be enabled in both versions 1 and 2.
  *
  * @param decomp   The ROHC decompressor
  * @param profile  The profile to enable
@@ -3397,7 +3476,8 @@ error:
 bool rohc_decomp_enable_profile(struct rohc_decomp *const decomp,
                                 const rohc_profile_t profile)
 {
-	size_t i;
+	size_t profile_idx;
+	int ret;
 
 	if(decomp == NULL)
 	{
@@ -3405,26 +3485,38 @@ bool rohc_decomp_enable_profile(struct rohc_decomp *const decomp,
 	}
 
 	/* search the profile location */
-	for(i = 0; i < D_NUM_PROFILES; i++)
+	ret = rohc_decomp_get_profile_index(profile);
+	if(ret < 0)
 	{
-		if(rohc_decomp_profiles[i]->id == profile)
-		{
-			/* found */
-			break;
-		}
+		goto error;
+	}
+	profile_idx = ret;
+
+	/* the same profile cannot be enabled in both ROHCv1 and ROHCv2 versions:
+	 * check if the corresponding profile in the other ROHC version is already
+	 * enabled or not */
+	if(rohc_decomp_profile_enabled(decomp, rohc_profile_get_other_version(profile)))
+	{
+		goto error;
 	}
 
-	if(i == D_NUM_PROFILES)
+	/* RFC5225, §6.1:
+	 * The compressor MUST NOT use ROHC segmentation (see Section 5.2.5 of
+	 * [RFC4995]), i.e., the Maximum Reconstructed Reception Unit (MRRU)
+	 * MUST be set to 0, if the configuration of the ROHC channel contains
+	 * at least one ROHCv2 profile in the list of supported profiles (i.e.,
+	 * the PROFILES parameter) and if the channel cannot guarantee in-order
+	 * delivery of packets between compression endpoints.
+	 */
+	if(rohc_profile_is_rohcv2(profile) && decomp->mrru > 0)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		             "unknown ROHC decompression profile (ID = %d)", profile);
 		goto error;
 	}
 
 	/* mark the profile as enabled */
-	decomp->enabled_profiles[i] = true;
+	decomp->enabled_profiles[profile_idx] = true;
 	rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-	          "ROHC decompression profile (ID = %d) enabled", profile);
+	          "ROHC decompression profile (ID = 0x%04x) enabled", profile);
 
 	return true;
 
@@ -3459,7 +3551,8 @@ error:
 bool rohc_decomp_disable_profile(struct rohc_decomp *const decomp,
                                  const rohc_profile_t profile)
 {
-	size_t i;
+	size_t profile_idx;
+	int ret;
 
 	if(decomp == NULL)
 	{
@@ -3467,26 +3560,17 @@ bool rohc_decomp_disable_profile(struct rohc_decomp *const decomp,
 	}
 
 	/* search the profile location */
-	for(i = 0; i < D_NUM_PROFILES; i++)
+	ret = rohc_decomp_get_profile_index(profile);
+	if(ret < 0)
 	{
-		if(rohc_decomp_profiles[i]->id == profile)
-		{
-			/* found */
-			break;
-		}
-	}
-
-	if(i == D_NUM_PROFILES)
-	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		             "unknown ROHC decompression profile (ID = %d)", profile);
 		goto error;
 	}
+	profile_idx = ret;
 
 	/* mark the profile as disabled */
-	decomp->enabled_profiles[i] = false;
+	decomp->enabled_profiles[profile_idx] = false;
 	rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-	          "ROHC decompression profile (ID = %d) disabled", profile);
+	          "ROHC decompression profile (ID = 0x%04x) disabled", profile);
 
 	return true;
 
@@ -3917,13 +4001,25 @@ static rohc_status_t rohc_decomp_find_context(struct rohc_decomp *const decomp,
 			goto error_malformed;
 		}
 		pkt_profile_id = remain_data[0];
-		*profile_id = pkt_profile_id; /* TODO: ROHCv2 profiles not handled yet */
 		remain_data++;
 		remain_len--;
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		           "profile octet 0x%02x found in IR(-CR|-DYN) packet",
+		           pkt_profile_id);
+
+		/* ROHCv1 or ROHCv2? use ROHCv2 if profile exists and is enabled */
+		if(rohc_decomp_profile_enabled(decomp, 0x0100 + pkt_profile_id))
+		{
+			*profile_id = 0x0100 + pkt_profile_id; /* ROHCv2 profile */
+		}
+		else
+		{
+			*profile_id = pkt_profile_id; /* ROHCv1 profile */
+		}
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		           "profile ID 0x%04x found in IR(-CR|-DYN) packet", *profile_id);
 
-		is_packet_ir_cr = !!(pkt_profile_id == ROHC_PROFILE_TCP && (pkt_type & 0x01) == 0);
+		is_packet_ir_cr = !!((*profile_id) == ROHC_PROFILE_TCP && (pkt_type & 0x01) == 0);
 		is_packet_ir = (is_packet_ir && !is_packet_ir_cr);
 	}
 	else

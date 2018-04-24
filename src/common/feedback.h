@@ -64,6 +64,8 @@ enum rohc_feedback_opt
 	ROHC_FEEDBACK_OPT_SN_NOT_VALID   =  3, /**< The Feedback SN-NOT-VALID option */
 /** The Feedback MSN-NOT-VALID option (TCP profile) */
 #define ROHC_FEEDBACK_OPT_MSN_NOT_VALID ROHC_FEEDBACK_OPT_SN_NOT_VALID
+/** The Feedback ACKNUMBER-NOT-VALID option (ROHCv2 profiles) */
+#define ROHC_FEEDBACK_OPT_ACKNUMBER_NOT_VALID ROHC_FEEDBACK_OPT_SN_NOT_VALID
 	ROHC_FEEDBACK_OPT_SN             =  4, /**< The Feedback SN option */
 /** The Feedback MSN option (TCP profile) */
 #define ROHC_FEEDBACK_OPT_MSN ROHC_FEEDBACK_OPT_SN
@@ -72,7 +74,7 @@ enum rohc_feedback_opt
 	ROHC_FEEDBACK_OPT_LOSS           =  7, /**< The Feedback LOSS option */
 	ROHC_FEEDBACK_OPT_CV_REQUEST     =  8, /**< The Feedback CV-REQUEST option */
 	ROHC_FEEDBACK_OPT_CONTEXT_MEMORY =  9, /**< The Feedback CONTEXT_MEMORY option */
-	ROHC_FEEDBACK_OPT_UNKNOWN_10     = 10, /**< Unknown option with value 10 */
+	ROHC_FEEDBACK_OPT_CLOCK_RESOLUTION = 10, /**< The Feedback CLOCK_RESOLUTION option */
 	ROHC_FEEDBACK_OPT_UNKNOWN_11     = 11, /**< Unknown option with value 11 */
 	ROHC_FEEDBACK_OPT_UNKNOWN_12     = 12, /**< Unknown option with value 12 */
 	ROHC_FEEDBACK_OPT_UNKNOWN_13     = 13, /**< Unknown option with value 13 */
@@ -163,6 +165,9 @@ static const struct rohc_feedback_opt_charac
 			[ROHC_PROFILE_TCP]          = 0, /* RFC6846 §8.3.2 */
 			[ROHC_PROFILE_UDPLITE_RTP]  = ROHC_FEEDBACK_OPT_MAX_OCCURS, /* same as RTP */
 			[ROHC_PROFILE_UDPLITE]      = ROHC_FEEDBACK_OPT_MAX_OCCURS, /* same as UDP */
+			[ROHCv2_PROFILE_IP_UDP]     = 0, /* RFC5225 §6.9.2 */
+			[ROHCv2_PROFILE_IP_ESP]     = 0, /* RFC5225 §6.9.2 */
+			[ROHCv2_PROFILE_IP]         = 0, /* RFC5225 §6.9.2 */
 		}
 	},
 	[ROHC_FEEDBACK_OPT_REJECT] = {
@@ -181,10 +186,13 @@ static const struct rohc_feedback_opt_charac
 			[ROHC_PROFILE_TCP]          = 1, /* RFC6846 §8.3.2.1 */
 			[ROHC_PROFILE_UDPLITE_RTP]  = ROHC_FEEDBACK_OPT_MAX_OCCURS, /* same as RTP */
 			[ROHC_PROFILE_UDPLITE]      = ROHC_FEEDBACK_OPT_MAX_OCCURS, /* same as UDP */
+			[ROHCv2_PROFILE_IP_UDP]     = 1, /* RFC5225 §6.9.2.1 */
+			[ROHCv2_PROFILE_IP_ESP]     = 1, /* RFC5225 §6.9.2.1 */
+			[ROHCv2_PROFILE_IP]         = 1, /* RFC5225 §6.9.2.1 */
 		}
 	},
 	[ROHC_FEEDBACK_OPT_SN_NOT_VALID] = {
-		.name = "(M)SN-NOT-VALID",
+		.name = "(M)SN-NOT-VALID/ACKNUMBER-NOT-VALID",
 		.unknown = false,
 		.supported = true,
 		.expected_len = 1U,
@@ -199,6 +207,9 @@ static const struct rohc_feedback_opt_charac
 			[ROHC_PROFILE_TCP]          = 1, /* RFC6846 §8.3.2.2 */
 			[ROHC_PROFILE_UDPLITE_RTP]  = ROHC_FEEDBACK_OPT_MAX_OCCURS, /* same as RTP */
 			[ROHC_PROFILE_UDPLITE]      = ROHC_FEEDBACK_OPT_MAX_OCCURS, /* same as UDP */
+			[ROHCv2_PROFILE_IP_UDP]     = 1, /* RFC5225 §6.9.2.2 */
+			[ROHCv2_PROFILE_IP_ESP]     = 1, /* RFC5225 §6.9.2.2 */
+			[ROHCv2_PROFILE_IP]         = 1, /* RFC5225 §6.9.2.2 */
 		}
 	},
 	[ROHC_FEEDBACK_OPT_SN] = {
@@ -217,6 +228,9 @@ static const struct rohc_feedback_opt_charac
 			[ROHC_PROFILE_TCP]          = 1, /* RFC6846 §8.3.2.3 */
 			[ROHC_PROFILE_UDPLITE_RTP]  = 1, /* same as RTP */
 			[ROHC_PROFILE_UDPLITE]      = 1, /* same as UDP */
+			[ROHCv2_PROFILE_IP_UDP]     = 0, /* RFC5225 §6.9.2 */
+			[ROHCv2_PROFILE_IP_ESP]     = 0, /* RFC5225 §6.9.2 */
+			[ROHCv2_PROFILE_IP]         = 0, /* RFC5225 §6.9.2 */
 		}
 	},
 	[ROHC_FEEDBACK_OPT_CLOCK] = {
@@ -235,6 +249,9 @@ static const struct rohc_feedback_opt_charac
 			[ROHC_PROFILE_TCP]          = 0, /* RFC6846 §8.3.2 */
 			[ROHC_PROFILE_UDPLITE_RTP]  = ROHC_FEEDBACK_OPT_MAX_OCCURS, /* same as RTP */
 			[ROHC_PROFILE_UDPLITE]      = 0, /* same as UDP */
+			[ROHCv2_PROFILE_IP_UDP]     = 0, /* RFC5225 §6.9.2 */
+			[ROHCv2_PROFILE_IP_ESP]     = 0, /* RFC5225 §6.9.2 */
+			[ROHCv2_PROFILE_IP]         = 0, /* RFC5225 §6.9.2 */
 		}
 	},
 	[ROHC_FEEDBACK_OPT_JITTER] = {
@@ -253,6 +270,9 @@ static const struct rohc_feedback_opt_charac
 			[ROHC_PROFILE_TCP]          = 0, /* RFC6846 §8.3.2 */
 			[ROHC_PROFILE_UDPLITE_RTP]  = ROHC_FEEDBACK_OPT_MAX_OCCURS, /* same as RTP */
 			[ROHC_PROFILE_UDPLITE]      = 0, /* same as UDP */
+			[ROHCv2_PROFILE_IP_UDP]     = 0, /* RFC5225 §6.9.2 */
+			[ROHCv2_PROFILE_IP_ESP]     = 0, /* RFC5225 §6.9.2 */
+			[ROHCv2_PROFILE_IP]         = 0, /* RFC5225 §6.9.2 */
 		}
 	},
 	[ROHC_FEEDBACK_OPT_LOSS] = {
@@ -271,6 +291,9 @@ static const struct rohc_feedback_opt_charac
 			[ROHC_PROFILE_TCP]          = 0, /* RFC6846 §8.3.2 */
 			[ROHC_PROFILE_UDPLITE_RTP]  = ROHC_FEEDBACK_OPT_MAX_OCCURS, /* same as RTP */
 			[ROHC_PROFILE_UDPLITE]      = ROHC_FEEDBACK_OPT_MAX_OCCURS, /* same as UDP */
+			[ROHCv2_PROFILE_IP_UDP]     = 0, /* RFC5225 §6.9.2 */
+			[ROHCv2_PROFILE_IP_ESP]     = 0, /* RFC5225 §6.9.2 */
+			[ROHCv2_PROFILE_IP]         = 0, /* RFC5225 §6.9.2 */
 		}
 	},
 	[ROHC_FEEDBACK_OPT_CV_REQUEST] = {
@@ -289,6 +312,9 @@ static const struct rohc_feedback_opt_charac
 			[ROHC_PROFILE_TCP]          = 0, /* RFC6846 §8.3.2 */
 			[ROHC_PROFILE_UDPLITE_RTP]  = 0, /* same as RTP */
 			[ROHC_PROFILE_UDPLITE]      = 0, /* same as UDP */
+			[ROHCv2_PROFILE_IP_UDP]     = 0, /* RFC5225 §6.9.2 */
+			[ROHCv2_PROFILE_IP_ESP]     = 0, /* RFC5225 §6.9.2 */
+			[ROHCv2_PROFILE_IP]         = 0, /* RFC5225 §6.9.2 */
 		}
 	},
 	[ROHC_FEEDBACK_OPT_CONTEXT_MEMORY] = {
@@ -307,11 +333,31 @@ static const struct rohc_feedback_opt_charac
 			[ROHC_PROFILE_TCP]          = 1, /* RFC6846 §8.3.2.4 */
 			[ROHC_PROFILE_UDPLITE_RTP]  = ROHC_FEEDBACK_OPT_MAX_OCCURS, /* RFC4019 §5.7 */
 			[ROHC_PROFILE_UDPLITE]      = ROHC_FEEDBACK_OPT_MAX_OCCURS, /* RFC4019 §5.7 */
+			[ROHCv2_PROFILE_IP_UDP]     = 1, /* RFC5225 §6.9.2.3 */
+			[ROHCv2_PROFILE_IP_ESP]     = 1, /* RFC5225 §6.9.2.3 */
+			[ROHCv2_PROFILE_IP]         = 1, /* RFC5225 §6.9.2.3 */
 		}
 	},
-	[ROHC_FEEDBACK_OPT_UNKNOWN_10] = {
-		.name = "unknown option with value 10",
-		.unknown = true,
+	[ROHC_FEEDBACK_OPT_CLOCK_RESOLUTION] = {
+		.name = "CLOCK_RESOLUTION",
+		.unknown = false,
+		.supported = false,
+		.expected_len = 2U,
+		.crc_req = ROHC_FEEDBACK_OPT_CRC_NOT_REQUIRED,
+		.max_occurs = {
+			[ROHC_PROFILE_UNCOMPRESSED] = 0, /* RFC3095 §5.10.4 */
+			[ROHC_PROFILE_RTP]          = 0, /* RFC3095 §5.7.6.2 */
+			[ROHC_PROFILE_UDP]          = 0, /* same as RTP */
+			[ROHC_PROFILE_ESP]          = 0, /* same as UDP */
+			[ROHC_PROFILE_IP]           = 0, /* RFC3843 §3.7 */
+			[ROHC_PROFILE_RTP_LLA]      = 0, /* same as RTP */
+			[ROHC_PROFILE_TCP]          = 0, /* RFC6846 §8.3.2 */
+			[ROHC_PROFILE_UDPLITE_RTP]  = 0, /* RFC4019 §5.7 */
+			[ROHC_PROFILE_UDPLITE]      = 0, /* RFC4019 §5.7 */
+			[ROHCv2_PROFILE_IP_UDP]     = 1, /* RFC5225 §6.9.2.4 */
+			[ROHCv2_PROFILE_IP_ESP]     = 1, /* RFC5225 §6.9.2.4 */
+			[ROHCv2_PROFILE_IP]         = 1, /* RFC5225 §6.9.2.4 */
+		}
 	},
 	[ROHC_FEEDBACK_OPT_UNKNOWN_11] = {
 		.name = "unknown option with value 11",

@@ -30,7 +30,10 @@ librohc_comp_la_SOURCES = \
 	c_tcp_dynamic.c \
 	c_tcp_replicate.c \
 	c_tcp_irregular.c \
-	c_tcp.c
+	c_tcp.c \
+	comp_rfc5225_ip.c \
+	comp_rfc5225_ip_esp.c \
+	comp_rfc5225_ip_udp.c
 
 librohc_comp_la_LIBADD = \
 	$(builddir)/schemes/librohc_comp_schemes.la \

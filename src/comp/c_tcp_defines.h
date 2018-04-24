@@ -26,17 +26,20 @@
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  */
 
-#ifndef ROHC_DECOMP_TCP_DEFINES_H
-#define ROHC_DECOMP_TCP_DEFINES_H
+#ifndef ROHC_COMP_TCP_DEFINES_H
+#define ROHC_COMP_TCP_DEFINES_H
 
+#include "protocols/ip.h"
 #include "protocols/tcp.h"
+#include "schemes/ip_ctxt.h"
 #include "c_tcp_opts_list.h"
+
 
 /**
  * @brief Define the TCP-specific temporary variables in the profile
  *        compression context.
  *
- * This object must be used by the TCP-specific decompression context
+ * This object must be used by the TCP-specific compression context
  * sc_tcp_context.
  *
  * @see sc_tcp_context
@@ -50,7 +53,7 @@ struct tcp_tmp_variables
 	 * in the current packet */
 	bool is_ipv6_exts_list_dyn_changed;
 	/** The new number of IP extensions headers (for every IP header) */
-	size_t ip_exts_nr[ROHC_TCP_MAX_IP_HDRS];
+	size_t ip_exts_nr[ROHC_MAX_IP_HDRS];
 
 	/* the length of the TCP payload (headers and options excluded) */
 	size_t payload_len;
@@ -109,124 +112,7 @@ struct tcp_tmp_variables
 };
 
 
-/**
- * @brief Define the IPv6 generic option context.
- */
-typedef struct __attribute__((packed)) ipv6_generic_option_context
-{
-	size_t option_length;
-	uint8_t next_header;
-	uint8_t data[IPV6_OPT_CTXT_LEN_MAX];
-
-} ipv6_generic_option_context_t;
-
-
-/**
- * @brief Define the common IP header context to IPv4 and IPv6.
- */
-typedef struct __attribute__((packed)) ipvx_context
-{
-	uint8_t version:4;
-	uint8_t unused:4;
-
-	uint8_t dscp:6;
-	uint8_t ip_ecn_flags:2;
-
-	uint8_t next_header;
-
-	uint8_t ttl_hopl;
-
-	uint8_t ip_id_behavior;
-	uint8_t last_ip_id_behavior;
-
-} ipvx_context_t;
-
-
-/**
- * @brief Define the IPv4 header context.
- */
-typedef struct __attribute__((packed)) ipv4_context
-{
-	uint8_t version:4;
-	uint8_t df:1;
-	uint8_t unused:3;
-
-	uint8_t dscp:6;
-	uint8_t ip_ecn_flags:2;
-
-	uint8_t protocol;
-
-	uint8_t ttl_hopl;
-
-	uint8_t ip_id_behavior;
-	uint8_t last_ip_id_behavior;
-	uint16_t last_ip_id;
-
-	uint32_t src_addr;
-	uint32_t dst_addr;
-
-} ipv4_context_t;
-
-
-/** The compression context for one IPv6 extension header */
-typedef union
-{
-	ipv6_generic_option_context_t generic; /**< IPv6 generic extension header */
-	/* TODO: GRE not yet supported */
-	/* TODO: MINE not yet supported */
-	/* TODO: AH not yet supported */
-} ip_option_context_t;
-
-
-/**
- * @brief Define the IPv6 header context.
- */
-typedef struct __attribute__((packed)) ipv6_context
-{
-	uint8_t version:4;
-	uint8_t unused:4;
-
-	uint8_t dscp:6;
-	uint8_t ip_ecn_flags:2;
-
-	uint8_t next_header;
-
-	uint8_t ttl_hopl;
-
-	uint8_t ip_id_behavior;
-	uint8_t last_ip_id_behavior;
-
-	uint32_t flow_label:20;
-
-	uint32_t src_addr[4];
-	uint32_t dest_addr[4];
-
-} ipv6_context_t;
-
-
-/**
- * @brief Define union of IP contexts
- */
-typedef struct
-{
-	ip_version version;
-	union
-	{
-		ipvx_context_t vx;
-		ipv4_context_t v4;
-		ipv6_context_t v6;
-	} ctxt;
-
-	/* Context Replication */
-	bool cr_ttl_hopl_present;
-
-	size_t opts_nr;
-	ip_option_context_t opts[ROHC_TCP_MAX_IP_EXT_HDRS];
-
-} ip_context_t;
-
-
-/** Define the TCP part of the profile decompression context */
+/** Define the TCP part of the profile compression context */
 struct sc_tcp_context
 {
 	/// The number of times the sequence number field was added to the compressed header
@@ -241,7 +127,7 @@ struct sc_tcp_context
 	/** The number of times the ECN fields were not needed */
 	size_t ecn_used_zero_count;
 
-	uint16_t msn;               /**< The Master Sequence Number (MSN) */
+	uint16_t msn;              /**< The Master Sequence Number (MSN) */
 	struct c_wlsb msn_wlsb;    /**< The W-LSB decoding context for MSN */
 
 	/** The MSN of the last packet that updated the context (used to determine
@@ -292,8 +178,8 @@ struct sc_tcp_context
 	struct tcp_tmp_variables tmp;
 
 	size_t ip_contexts_nr;
-	ip_context_t ip_contexts[ROHC_TCP_MAX_IP_HDRS];
+	ip_context_t ip_contexts[ROHC_MAX_IP_HDRS];
 };
 
-#endif /* ROHC_DECOMP_TCP_DEFINES_H */
+#endif /* ROHC_COMP_TCP_DEFINES_H */
 

@@ -260,7 +260,7 @@ static int tcp_code_irregular_ipv4_part(const struct rohc_comp_ctxt *const conte
 	                ip_context->ctxt.v4.ip_id_behavior);
 
 	/* ip_id =:= ip_id_enc_irreg( ip_id_behavior.UVALUE ) */
-	if(ip_context->ctxt.v4.ip_id_behavior == IP_ID_BEHAVIOR_RAND)
+	if(ip_context->ctxt.v4.ip_id_behavior == ROHC_IP_ID_BEHAVIOR_RAND)
 	{
 		if(rohc_remain_len < sizeof(uint16_t))
 		{

@@ -175,7 +175,7 @@ static int tcp_parse_dynamic_ip(const struct rohc_decomp_ctxt *const context,
 		                  "ttl_hopl = 0x%x", ip_bits->dscp_bits,
 		                  ip_bits->ecn_flags_bits, ip_bits->ttl_hl.bits);
 		// cf RFC4996 page 60/61 ip_id_enc_dyn()
-		if(ipv4_dynamic1->ip_id_behavior != IP_ID_BEHAVIOR_ZERO)
+		if(ipv4_dynamic1->ip_id_behavior != ROHC_IP_ID_BEHAVIOR_ZERO)
 		{
 			const ipv4_dynamic2_t *const ipv4_dynamic2 =
 				(ipv4_dynamic2_t *) remain_data;
@@ -225,7 +225,7 @@ static int tcp_parse_dynamic_ip(const struct rohc_decomp_ctxt *const context,
 		ip_bits->ecn_flags_bits_nr = 2;
 		ip_bits->ttl_hl.bits = ipv6_dynamic->ttl_hopl;
 		ip_bits->ttl_hl.bits_nr = 8;
-		ip_bits->id_behavior = IP_ID_BEHAVIOR_RAND;
+		ip_bits->id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
 		ip_bits->id_behavior_nr = 2;
 
 		size += sizeof(ipv6_dynamic_t);

@@ -2,7 +2,7 @@
  * Copyright 2010,2011,2012,2013,2014 Didier Barvaux
  * Copyright 2013 Friedrich
  * Copyright 2009,2010 Thales Communications
- * Copyright 2007,2009,2010,2012,2013,2014,2017 Viveris Technologies
+ * Copyright 2007,2009,2010,2012,2013,2014,2017,2018 Viveris Technologies
  * Copyright 2012 WBX
  *
  * This library is free software; you can redistribute it and/or
@@ -66,6 +66,7 @@
 #include <stdarg.h>
 
 
+/* ROHCv1 profiles */
 extern const struct rohc_comp_profile c_rtp_profile;
 extern const struct rohc_comp_profile c_udp_profile;
 extern const struct rohc_comp_profile c_udp_lite_profile;
@@ -73,6 +74,11 @@ extern const struct rohc_comp_profile c_esp_profile;
 extern const struct rohc_comp_profile c_tcp_profile;
 extern const struct rohc_comp_profile c_ip_profile;
 extern const struct rohc_comp_profile c_uncompressed_profile;
+
+/* ROHCv2 profiles */
+extern const struct rohc_comp_profile rohc_comp_rfc5225_ip_profile;
+extern const struct rohc_comp_profile rohc_comp_rfc5225_ip_udp_profile;
+extern const struct rohc_comp_profile rohc_comp_rfc5225_ip_esp_profile;
 
 
 /**
@@ -84,11 +90,21 @@ extern const struct rohc_comp_profile c_uncompressed_profile;
 static const struct rohc_comp_profile *const rohc_comp_profiles[C_NUM_PROFILES] =
 {
 	&c_rtp_profile,
-	&c_udp_profile,  /* must be declared after RTP profile */
+#if 0
+	&rohc_comp_rfc5225_ip_udp_rtp_profile,
+	&rohc_comp_rfc5225_ip_udplite_rtp_profile,
+#endif
+	&c_udp_profile,  /* must be declared after RTP profiles */
+	&rohc_comp_rfc5225_ip_udp_profile,
 	&c_udp_lite_profile,
+#if 0
+	&rohc_comp_rfc5225_ip__udplite_profile,
+#endif
 	&c_esp_profile,
+	&rohc_comp_rfc5225_ip_esp_profile,
 	&c_tcp_profile,
 	&c_ip_profile,  /* must be declared after all IP-based profiles */
+	&rohc_comp_rfc5225_ip_profile,
 	&c_uncompressed_profile, /* must be declared last */
 };
 
@@ -106,6 +122,9 @@ static const struct rohc_comp_profile *
 	c_get_profile_from_packet(const struct rohc_comp *const comp,
 	                          const struct net_pkt *const packet)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
+
+static int rohc_comp_get_profile_index(const rohc_profile_t profile)
+	__attribute__((warn_unused_result));
 
 
 /*
@@ -232,6 +251,7 @@ struct rohc_comp * rohc_comp_new2(const rohc_cid_type_t cid_type,
                                   void *const rand_priv)
 {
 	const size_t wlsb_width = 4; /* default window width for W-LSB encoding */
+	const size_t reorder_ratio = ROHC_REORDERING_NONE; /* default reordering ratio */
 	struct rohc_comp *comp;
 	bool is_fine;
 	size_t i;
@@ -290,6 +310,13 @@ struct rohc_comp * rohc_comp_new2(const rohc_cid_type_t cid_type,
 
 	/* set the default W-LSB window width */
 	is_fine = rohc_comp_set_wlsb_window_width(comp, wlsb_width);
+	if(is_fine != true)
+	{
+		goto destroy_comp;
+	}
+
+	/* set the default reordering ratio for W-LSB MSN in ROHCv2 profiles */
+	is_fine = rohc_comp_set_reorder_ratio(comp, reorder_ratio);
 	if(is_fine != true)
 	{
 		goto destroy_comp;
@@ -1135,6 +1162,60 @@ bool rohc_comp_set_wlsb_window_width(struct rohc_comp *const comp,
 
 
 /**
+ * @brief Set the reordering ratio for the W-LSB encoding scheme
+ *
+ * The control field reorder_ratio specifies how much reordering is
+ * handled by the W-LSB encoding of the MSN in ROHCv2 profiles.
+ *
+ * The reordering ration is set to ROHC_REORDERING_NONE by default.
+ *
+ * @param comp           The ROHC compressor
+ * @param reorder_ratio  The reordering ratio
+ * @return               true in case of success,
+ *                       false in case of failure
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_comp_set_reorder_ratio(struct rohc_comp *const comp,
+                                 const rohc_reordering_offset_t reorder_ratio)
+{
+	/* we need a valid compressor */
+	if(comp == NULL)
+	{
+		return false;
+	}
+
+	/* Check value of reorder ratio */
+	if(reorder_ratio != ROHC_REORDERING_NONE &&
+	   reorder_ratio != ROHC_REORDERING_QUARTER &&
+	   reorder_ratio != ROHC_REORDERING_HALF &&
+	   reorder_ratio != ROHC_REORDERING_THREEQUARTERS)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "failed to "
+		             "set reorder ratio to %u: reorder ratio must be in range "
+		             "[%u;%u]", reorder_ratio, ROHC_REORDERING_NONE,
+		             ROHC_REORDERING_THREEQUARTERS);
+		return false;
+	}
+
+	/* refuse to set a value if compressor is in use */
+	if(comp->num_packets > 0)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "unable to "
+		             "modify reorder ratio after initialization");
+		return false;
+	}
+
+	comp->reorder_ratio = reorder_ratio;
+
+	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	          "Reorder ratio set to %u", reorder_ratio);
+
+	return true;
+}
+
+
+/**
  * @brief Set the timeouts in packets for IR and FO periodic refreshes
  *
  * Set the timeout values for IR and FO periodic refreshes. The IR timeout
@@ -1376,6 +1457,39 @@ bool rohc_comp_set_rtp_detection_cb(struct rohc_comp *const comp,
 
 
 /**
+ * @brief Get profile index if profile exists
+ *
+ * @param profile  The profile to enable
+ * @return         The profile index if the profile exists,
+ *                 -1 if the profile does not exist
+ */
+static int rohc_comp_get_profile_index(const rohc_profile_t profile)
+{
+	size_t idx;
+
+	/* search for the profile location */
+	for(idx = 0; idx < C_NUM_PROFILES; idx++)
+	{
+		if(rohc_comp_profiles[idx]->id == profile)
+		{
+			/* found */
+			break;
+		}
+	}
+
+	if(idx == C_NUM_PROFILES)
+	{
+		goto error;
+	}
+
+	return idx;
+
+error :
+	return -1;
+}
+
+
+/**
  * @brief Is the given compression profile enabled for a compressor?
  *
  * Is the given compression profile enabled or disabled for a compressor?
@@ -1397,7 +1511,8 @@ bool rohc_comp_set_rtp_detection_cb(struct rohc_comp *const comp,
 bool rohc_comp_profile_enabled(const struct rohc_comp *const comp,
                                const rohc_profile_t profile)
 {
-	size_t i;
+	size_t profile_idx;
+	int ret;
 
 	if(comp == NULL)
 	{
@@ -1405,24 +1520,15 @@ bool rohc_comp_profile_enabled(const struct rohc_comp *const comp,
 	}
 
 	/* search the profile location */
-	for(i = 0; i < C_NUM_PROFILES; i++)
+	ret = rohc_comp_get_profile_index(profile);
+	if(ret < 0)
 	{
-		if(rohc_comp_profiles[i]->id == profile)
-		{
-			/* found */
-			break;
-		}
-	}
-
-	if(i == C_NUM_PROFILES)
-	{
-		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		             "unknown ROHC compression profile (ID = %d)", profile);
 		goto error;
 	}
+	profile_idx = ret;
 
 	/* return profile status */
-	return comp->enabled_profiles[i];
+	return comp->enabled_profiles[profile_idx];
 
 error:
 	return false;
@@ -1441,10 +1547,13 @@ error:
  * If the profile is already enabled, nothing is performed and success is
  * reported.
  *
+ * The ROHCv1 and ROHCv2 profiles are incompatible. The same profile cannot
+ * be enabled in both versions 1 and 2.
+ *
  * @param comp     The ROHC compressor
  * @param profile  The profile to enable
  * @return         true if the profile exists,
- *                 false if the profile does not exist
+ *                 false if the profile does not exist or a similar profile is already enabled
  *
  * @ingroup rohc_comp
  *
@@ -1465,7 +1574,8 @@ error:
 bool rohc_comp_enable_profile(struct rohc_comp *const comp,
                               const rohc_profile_t profile)
 {
-	size_t i;
+	size_t profile_idx;
+	int ret;
 
 	if(comp == NULL)
 	{
@@ -1473,26 +1583,38 @@ bool rohc_comp_enable_profile(struct rohc_comp *const comp,
 	}
 
 	/* search the profile location */
-	for(i = 0; i < C_NUM_PROFILES; i++)
+	ret = rohc_comp_get_profile_index(profile);
+	if(ret < 0)
 	{
-		if(rohc_comp_profiles[i]->id == profile)
-		{
-			/* found */
-			break;
-		}
+		goto error;
+	}
+	profile_idx = ret;
+
+	/* the same profile cannot be enabled in both ROHCv1 and ROHCv2 versions:
+	 * check if the corresponding profile in the other ROHC version is already
+	 * enabled or not */
+	if(rohc_comp_profile_enabled(comp, rohc_profile_get_other_version(profile)))
+	{
+		goto error;
 	}
 
-	if(i == C_NUM_PROFILES)
+	/* RFC5225, §6.1:
+	 * The compressor MUST NOT use ROHC segmentation (see Section 5.2.5 of
+	 * [RFC4995]), i.e., the Maximum Reconstructed Reception Unit (MRRU)
+	 * MUST be set to 0, if the configuration of the ROHC channel contains
+	 * at least one ROHCv2 profile in the list of supported profiles (i.e.,
+	 * the PROFILES parameter) and if the channel cannot guarantee in-order
+	 * delivery of packets between compression endpoints.
+	 */
+	if(rohc_profile_is_rohcv2(profile) && comp->mrru > 0)
 	{
-		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		             "unknown ROHC compression profile (ID = %d)", profile);
 		goto error;
 	}
 
 	/* mark the profile as enabled */
-	comp->enabled_profiles[i] = true;
+	comp->enabled_profiles[profile_idx] = true;
 	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	          "ROHC compression profile (ID = %d) enabled", profile);
+	          "ROHC compression profile (ID = 0x%04x) enabled", profile);
 
 	return true;
 
@@ -1527,7 +1649,8 @@ error:
 bool rohc_comp_disable_profile(struct rohc_comp *const comp,
                                const rohc_profile_t profile)
 {
-	size_t i;
+	size_t profile_idx;
+	int ret;
 
 	if(comp == NULL)
 	{
@@ -1535,26 +1658,17 @@ bool rohc_comp_disable_profile(struct rohc_comp *const comp,
 	}
 
 	/* search the profile location */
-	for(i = 0; i < C_NUM_PROFILES; i++)
+	ret = rohc_comp_get_profile_index(profile);
+	if(ret < 0)
 	{
-		if(rohc_comp_profiles[i]->id == profile)
-		{
-			/* found */
-			break;
-		}
-	}
-
-	if(i == C_NUM_PROFILES)
-	{
-		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		             "unknown ROHC compression profile (ID = %d)", profile);
 		goto error;
 	}
+	profile_idx = ret;
 
 	/* mark the profile as disabled */
-	comp->enabled_profiles[i] = false;
+	comp->enabled_profiles[profile_idx] = false;
 	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	          "ROHC compression profile (ID = %d) disabled", profile);
+	          "ROHC compression profile (ID = 0x%04x) disabled", profile);
 
 	return true;
 
@@ -1705,6 +1819,9 @@ error:
  * If set to 0, segmentation is disabled as no segment headers are allowed
  * on the channel. No segment will be generated.
  *
+ * According to RF5225 §6.1, ROHC segmentation cannot be enabled if any
+ * ROHCv2 profile is also enabled.
+ *
  * If segmentation is enabled and used by the compressor, the function
  * \ref rohc_comp_get_segment2 can be used to retrieve ROHC segments.
  *
@@ -1732,6 +1849,8 @@ error:
 bool rohc_comp_set_mrru(struct rohc_comp *const comp,
                         const size_t mrru)
 {
+	size_t idx;
+
 	/* compressor must be valid */
 	if(comp == NULL)
 	{
@@ -1746,6 +1865,30 @@ bool rohc_comp_set_mrru(struct rohc_comp *const comp,
 		             "unexpected MRRU value: must be in range [0, %d]",
 		             ROHC_MAX_MRRU);
 		goto error;
+	}
+
+	/* RFC5225, §6.1:
+	 * The compressor MUST NOT use ROHC segmentation (see Section 5.2.5 of
+	 * [RFC4995]), i.e., the Maximum Reconstructed Reception Unit (MRRU)
+	 * MUST be set to 0, if the configuration of the ROHC channel contains
+	 * at least one ROHCv2 profile in the list of supported profiles (i.e.,
+	 * the PROFILES parameter) and if the channel cannot guarantee in-order
+	 * delivery of packets between compression endpoints.
+	 */
+	if(mrru > 0)
+	{
+		for(idx = 0; idx < C_NUM_PROFILES; idx++)
+		{
+			if(comp->enabled_profiles[idx] &&
+			   rohc_profile_is_rohcv2(rohc_comp_profiles[idx]->id))
+			{
+				rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				             "failed to set MRRU to %zu bytes: segmentation is not "
+				             "compatible with ROHCv2 profile 0x%04x that is enabled",
+				             mrru, rohc_comp_profiles[idx]->id);
+				goto error;
+			}
+		}
 	}
 
 	/* set new MRRU */
@@ -3025,6 +3168,12 @@ static bool rohc_comp_feedback_parse_cid(const struct rohc_comp *const comp,
 		}
 		*cid = large_cid;
 		*cid_len = large_cid_size;
+	}
+	else if(feedback_len == 1)
+	{
+		/* no Add-CID if feedback is only 1 byte long */
+		*cid_len = 0;
+		*cid = 0;
 	}
 	else
 	{

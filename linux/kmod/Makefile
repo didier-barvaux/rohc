@@ -14,6 +14,7 @@ rohc_test_modname = rohc_test
 rohc_common_sources = \
 	../../src/common/protocols/ip_numbers.c \
 	../../src/common/rohc_common.c \
+	../../src/common/rohc_profiles.c \
 	../../src/common/rohc_packets.c \
 	../../src/common/rohc_traces_internal.c \
 	../../src/common/rohc_utils.c \
@@ -36,6 +37,7 @@ rohc_comp_sources = \
 	../../src/comp/schemes/rfc4996.c \
 	../../src/comp/schemes/tcp_sack.c \
 	../../src/comp/schemes/tcp_ts.c \
+	../../src/comp/schemes/ipv6_exts.c \
 	../../src/comp/rohc_comp.c \
 	../../src/comp/c_uncompressed.c \
 	../../src/comp/rohc_comp_rfc3095.c \
@@ -49,9 +51,13 @@ rohc_comp_sources = \
 	../../src/comp/c_tcp_dynamic.c \
 	../../src/comp/c_tcp_replicate.c \
 	../../src/comp/c_tcp_irregular.c \
-	../../src/comp/c_tcp.c
+	../../src/comp/c_tcp.c \
+	../../src/comp/comp_rfc5225_ip.c \
+	../../src/comp/comp_rfc5225_ip_esp.c \
+	../../src/comp/comp_rfc5225_ip_udp.c
 
 rohc_decomp_sources = \
+	../../src/decomp/schemes/decomp_crc.c \
 	../../src/decomp/schemes/decomp_wlsb.c \
 	../../src/decomp/schemes/ip_id_offset.c \
 	../../src/decomp/schemes/decomp_scaled_rtp_ts.c \
@@ -75,7 +81,10 @@ rohc_decomp_sources = \
 	../../src/decomp/d_tcp_replicate.c \
 	../../src/decomp/d_tcp_irregular.c \
 	../../src/decomp/d_tcp_opts_list.c \
-	../../src/decomp/d_tcp.c
+	../../src/decomp/d_tcp.c \
+	../../src/decomp/decomp_rfc5225_ip.c \
+	../../src/decomp/decomp_rfc5225_ip_esp.c \
+	../../src/decomp/decomp_rfc5225_ip_udp.c
 
 rohc_sources = \
 	../kmod.c \

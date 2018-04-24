@@ -35,6 +35,7 @@ extern "C"
 #endif
 
 #include <rohc/rohc.h>
+#include <rohc/rohc_profiles.h>
 #include <rohc/rohc_packets.h>
 #include <rohc/rohc_traces.h>
 #include <rohc/rohc_time.h>
@@ -383,6 +384,10 @@ bool ROHC_EXPORT rohc_comp_deliver_feedback2(struct rohc_comp *const comp,
 
 bool ROHC_EXPORT rohc_comp_set_wlsb_window_width(struct rohc_comp *const comp,
                                                  const size_t width)
+	__attribute__((warn_unused_result));
+
+bool ROHC_EXPORT rohc_comp_set_reorder_ratio(struct rohc_comp *const comp,
+                                             const rohc_reordering_offset_t reorder_ratio)
 	__attribute__((warn_unused_result));
 
 bool ROHC_EXPORT rohc_comp_set_periodic_refreshes(struct rohc_comp *const comp,

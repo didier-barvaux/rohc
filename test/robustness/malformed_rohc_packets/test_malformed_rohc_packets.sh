@@ -60,6 +60,8 @@ fi
 # extract the source capture from the name of the script
 CAPTURE_NAME=$( echo "${SCRIPT}" | \
                 ${SED} -e 's#.*test_malformed_rohc_packets_##' -e 's#_[^_]*\.sh$##' )
+ROHC_VERSION=$( echo "${CAPTURE_NAME}" | \
+                ${AWK} -F'_' '{ print $1 }' )
 FAILURE_START=$( echo "${SCRIPT}" | \
                 ${AWK} -F'_' '{ print $NF }' | \
                 ${SED} -e 's#\.sh$##' )
@@ -77,6 +79,11 @@ if [ $? -eq 0 ] ; then
 	CMD="${CMD} --cid-type large"
 else
 	CMD="${CMD} --cid-type small"
+fi
+if [ "${ROHC_VERSION}" = "rohcv2" ] ; then
+	CMD="${CMD} --rohc-version 2"
+else
+	CMD="${CMD} --rohc-version 1"
 fi
 
 # source valgrind-related functions

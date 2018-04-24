@@ -32,6 +32,8 @@ extern "C"
 {
 #endif
 
+#include <rohc/rohc_profiles.h>
+
 #include <stdlib.h>
 #include <stddef.h>
 
@@ -193,46 +195,18 @@ typedef enum
 typedef size_t rohc_cid_t;
 
 
-/*
- * ROHC profiles numbers allocated by the IANA (see 8 in the RFC 3095):
- */
-
 /**
- * @brief The different ROHC compression/decompression profiles
+ * @brief The different values of reordering offset
  *
- * If you add a new compression/decompression profile, please also add the
- * corresponding textual description in \ref rohc_get_profile_descr.
- *
- * @ingroup rohc
- *
- * @see rohc_get_profile_descr
+ * @ingroup rohc_comp
  */
 typedef enum
 {
-	/** The ROHC Uncompressed profile (RFC 3095, section 5.10) */
-	ROHC_PROFILE_UNCOMPRESSED = 0x0000,
-	/** The ROHC RTP profile (RFC 3095, section 8) */
-	ROHC_PROFILE_RTP          = 0x0001,
-	/** The ROHC UDP profile (RFC 3095, section 5.11) */
-	ROHC_PROFILE_UDP          = 0x0002,
-	/** The ROHC ESP profile (RFC 3095, section 5.12) */
-	ROHC_PROFILE_ESP          = 0x0003,
-	/** The ROHC IP-only profile (RFC 3843, section 5) */
-	ROHC_PROFILE_IP           = 0x0004,
-	/** The ROHC IP/UDP/RTP Link-Layer Assisted Profile (LLA) profile
-	 *  (RFC 4362, section 6) */
-	ROHC_PROFILE_RTP_LLA      = 0x0005,
-	/** The ROHC TCP profile (RFC 4996) */
-	ROHC_PROFILE_TCP          = 0x0006,
-	/** The ROHC UDP-Lite/RTP profile (RFC 4019, section 7) */
-	ROHC_PROFILE_UDPLITE_RTP  = 0x0007,
-	/** The ROHC UDP-Lite profile (RFC 4019, section 7) */
-	ROHC_PROFILE_UDPLITE      = 0x0008,
-
-	ROHC_PROFILE_MAX          = 0x0009,
-
-} rohc_profile_t;
-
+	ROHC_REORDERING_NONE          = 0, /**< No reordering accepted */
+	ROHC_REORDERING_QUARTER       = 1, /**< Reordering accepted on 1/4 of the WLSB */
+	ROHC_REORDERING_HALF          = 2, /**< Reordering accepted on 1/2 of the WLSB */
+	ROHC_REORDERING_THREEQUARTERS = 3, /**< Reordering accepted on 3/4 of the WLSB */
+} rohc_reordering_offset_t;
 
 
 /*
@@ -247,10 +221,6 @@ const char * ROHC_EXPORT rohc_strerror(const rohc_status_t status)
 
 const char * ROHC_EXPORT rohc_get_mode_descr(const rohc_mode_t mode)
 	__attribute__((warn_unused_result, const));
-
-const char * ROHC_EXPORT rohc_get_profile_descr(const rohc_profile_t profile)
-	__attribute__((warn_unused_result, const));
-
 
 
 #undef ROHC_EXPORT /* do not pollute outside this header */

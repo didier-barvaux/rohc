@@ -214,6 +214,91 @@ size_t wlsb_get_kp_8bits(const struct c_wlsb *const wlsb,
 
 
 /**
+ * @brief Find out whether the given number of bits is enough to encode value
+ *
+ * The function is dedicated to 8-bit fields.
+ *
+ * @param wlsb   The W-LSB object
+ * @param value  The value to encode using the LSB algorithm
+ * @param k      The number of bits for encoding
+ * @param p      The shift parameter p
+ * @return       true if the number of bits is enough for encoding or not
+ */
+bool wlsb_is_kp_possible_8bits(const struct c_wlsb *const wlsb,
+                               const uint8_t value,
+                               const size_t k,
+                               const rohc_lsb_shift_t p)
+{
+	bool enc_possible = false;
+
+	assert(k <= wlsb->bits);
+
+	if(k == wlsb->bits)
+	{
+		enc_possible = true;
+	}
+	/* use all bits if the window contains no value */
+	else if(wlsb->count == 0)
+	{
+		enc_possible = !!(k >= wlsb->bits);
+	}
+	else
+	{
+		const uint8_t interval_width = (1U << k) - 1; /* interval width = 2^k - 1 */
+		int8_t computed_p;
+		size_t i;
+
+		/* determine the real p value to use */
+		computed_p = rohc_interval_compute_p(k, p);
+
+		/* find the minimal number of bits of the value required to be able
+		 * to recreate it thanks to ANY value in the window */
+		for(i = 0; i < wlsb->window_width; i++)
+		{
+			const struct c_window *const entry = wlsb->window + i;
+
+			if(entry->used)
+			{
+				const uint8_t v_ref = entry->value;
+
+				/* compute the minimal and maximal values of the interval:
+				 *   min = v_ref - p
+				 *   max = v_ref + interval_with - p
+				 *
+				 * Straddling the lower and upper wraparound boundaries
+				 * is handled without additional operation */
+				const uint8_t min = v_ref - computed_p;
+				const uint8_t max = min + interval_width;
+
+				if(min <= max)
+				{
+					/* interpretation interval does not straddle field boundaries,
+					 * check if value is in [min, max] */
+					if(value < min || value > max)
+					{
+						break;
+					}
+				}
+				else
+				{
+					if(value < min && value > max)
+					{
+						break;
+					}
+				}
+			}
+		}
+		if(i == wlsb->window_width)
+		{
+			enc_possible = true;
+		}
+	}
+
+	return enc_possible;
+}
+
+
+/**
  * @brief Find out the minimal number of bits of the to-be-encoded value
  *        required to be able to uniquely recreate it given the window
  *
@@ -355,6 +440,87 @@ size_t wlsb_get_minkp_16bits(const struct c_wlsb *const wlsb,
 	}
 
 	return bits_nr;
+}
+
+
+/**
+ * @brief Find out whether the given number of bits is enough to encode value
+ *
+ * The function is dedicated to 16-bit fields.
+ *
+ * @param wlsb   The W-LSB object
+ * @param value  The value to encode using the LSB algorithm
+ * @param k      The number of bits for encoding
+ * @param p      The shift parameter p
+ * @return       true if the number of bits is enough for encoding or not
+ */
+bool wlsb_is_kp_possible_16bits(const struct c_wlsb *const wlsb,
+                                const uint16_t value,
+                                const size_t k,
+                                const rohc_lsb_shift_t p)
+{
+	bool enc_possible = false;
+
+	/* use all bits if the window contains no value */
+	if(wlsb->count == 0)
+	{
+		enc_possible = !!(k >= wlsb->bits);
+	}
+	else
+	{
+		const uint16_t interval_width = (1U << k) - 1; /* interval width = 2^k - 1 */
+		int16_t computed_p;
+		size_t i;
+
+		/* determine the real p value to use */
+		computed_p = rohc_interval_compute_p(k, p);
+
+		/* find the minimal number of bits of the value required to be able
+		 * to recreate it thanks to ANY value in the window */
+		for(i = 0; i < wlsb->window_width; i++)
+		{
+			const struct c_window *const entry = wlsb->window + i;
+
+			if(entry->used)
+			{
+				const uint16_t v_ref = entry->value;
+
+				/* compute the minimal and maximal values of the interval:
+				 *   min = v_ref - p
+				 *   max = v_ref + interval_with - p
+				 *
+				 * Straddling the lower and upper wraparound boundaries
+				 * is handled without additional operation */
+				const uint16_t min = v_ref - computed_p;
+				const uint16_t max = min + interval_width;
+
+				if(min <= max)
+				{
+					/* interpretation interval does not straddle field boundaries,
+					 * check if value is in [min, max] */
+					if(value < min || value > max)
+					{
+						break;
+					}
+				}
+				else
+				{
+					/* the interpretation interval does straddle the field boundaries,
+					 * check if value is in [min, 0xffff] or [0, max] */
+					if(value < min && value > max)
+					{
+						break;
+					}
+				}
+			}
+		}
+		if(i == wlsb->window_width)
+		{
+			enc_possible = true;
+		}
+	}
+
+	return enc_possible;
 }
 
 
@@ -501,6 +667,91 @@ static size_t wlsb_get_minkp_32bits(const struct c_wlsb *const wlsb,
 	}
 
 	return bits_nr;
+}
+
+
+/**
+ * @brief Find out whether the given number of bits is enough to encode value
+ *
+ * The function is dedicated to 32-bit fields.
+ *
+ * @param wlsb   The W-LSB object
+ * @param value  The value to encode using the LSB algorithm
+ * @param k      The number of bits for encoding
+ * @param p      The shift parameter p
+ * @return       true if the number of bits is enough for encoding or not
+ */
+bool wlsb_is_kp_possible_32bits(const struct c_wlsb *const wlsb,
+                                const uint32_t value,
+                                const size_t k,
+                                const rohc_lsb_shift_t p)
+{
+	bool enc_possible = false;
+
+	assert(k <= wlsb->bits);
+
+	if(k == wlsb->bits)
+	{
+		enc_possible = true;
+	}
+	/* use all bits if the window contains no value */
+	else if(wlsb->count == 0)
+	{
+		enc_possible = !!(k >= wlsb->bits);
+	}
+	else
+	{
+		const uint32_t interval_width = (1U << k) - 1; /* interval width = 2^k - 1 */
+		int32_t computed_p;
+		size_t i;
+
+		/* determine the real p value to use */
+		computed_p = rohc_interval_compute_p(k, p);
+
+		/* find the minimal number of bits of the value required to be able
+		 * to recreate it thanks to ANY value in the window */
+		for(i = 0; i < wlsb->window_width; i++)
+		{
+			const struct c_window *const entry = wlsb->window + i;
+
+			if(entry->used)
+			{
+				const uint32_t v_ref = entry->value;
+
+				/* compute the minimal and maximal values of the interval:
+				 *   min = v_ref - p
+				 *   max = v_ref + interval_with - p
+				 *
+				 * Straddling the lower and upper wraparound boundaries
+				 * is handled without additional operation */
+				const uint32_t min = v_ref - computed_p;
+				const uint32_t max = min + interval_width;
+
+				if(min <= max)
+				{
+					/* interpretation interval does not straddle field boundaries,
+					 * check if value is in [min, max] */
+					if(value < min || value > max)
+					{
+						break;
+					}
+				}
+				else
+				{
+					if(value < min && value > max)
+					{
+						break;
+					}
+				}
+			}
+		}
+		if(i == wlsb->window_width)
+		{
+			enc_possible = true;
+		}
+	}
+
+	return enc_possible;
 }
 
 
