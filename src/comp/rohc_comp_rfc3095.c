@@ -970,7 +970,8 @@ static bool rohc_comp_rfc3095_feedback_2(struct rohc_comp_ctxt *const context,
 	/* parse FEEDBACK-2 options */
 	if(!rohc_comp_feedback_parse_opts(context, packet, packet_len,
 	                                  remain_data, remain_len, opts_present,
-	                                  &sn_bits, &sn_bits_nr, 0, 0))
+	                                  &sn_bits, &sn_bits_nr,
+	                                  ROHC_FEEDBACK_WITH_CRC_OPT, 0, 0))
 	{
 		rohc_comp_warn(context, "malformed FEEDBACK-2: failed to parse options");
 		goto error;

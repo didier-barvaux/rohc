@@ -439,6 +439,7 @@ bool rohc_comp_feedback_parse_opts(const struct rohc_comp_ctxt *const context,
                                    size_t opts_present[ROHC_FEEDBACK_OPT_MAX],
                                    uint32_t *const sn_bits,
                                    size_t *const sn_bits_nr,
+                                   const rohc_feedback_crc_t crc_type,
                                    uint8_t crc_in_packet,
                                    size_t crc_pos_from_end)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 6, 7, 8)));

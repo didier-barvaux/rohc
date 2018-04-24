@@ -3214,6 +3214,7 @@ error:
  * @param[out] sn_bits_nr    in: the number of SN bits collected in base header
  *                           out: the number of SN bits collected in base header
  *                                and options
+ * @param crc_type           Whether the CRC is present in base header or in option
  * @param crc_in_packet      The CRC of the feedback packet
  * @param crc_pos_from_end   The position of the CRC byte from the end of the
  *                           feedback packet
@@ -3228,6 +3229,7 @@ bool rohc_comp_feedback_parse_opts(const struct rohc_comp_ctxt *const context,
                                    size_t opts_present[ROHC_FEEDBACK_OPT_MAX],
                                    uint32_t *const sn_bits,
                                    size_t *const sn_bits_nr,
+                                   const rohc_feedback_crc_t crc_type,
                                    uint8_t crc_in_packet,
                                    size_t crc_pos_from_end)
 {
@@ -3323,7 +3325,8 @@ bool rohc_comp_feedback_parse_opts(const struct rohc_comp_ctxt *const context,
 	}
 
 	/* check CRC if present in feedback */
-	if(opts_present[ROHC_FEEDBACK_OPT_CRC] > 0)
+	if(opts_present[ROHC_FEEDBACK_OPT_CRC] > 0 ||
+	   crc_type == ROHC_FEEDBACK_WITH_CRC_BASE)
 	{
 		const size_t zeroed_crc_len = 1;
 		const uint8_t zeroed_crc = 0x00;
