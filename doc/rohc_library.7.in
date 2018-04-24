@@ -6,6 +6,7 @@ rohc_library \(hy The ROHC library
 .nf
 .B #include <rohc/rohc.h>
 .B #include <rohc/rohc_traces.h>
+.B #include <rohc/rohc_profiles.h>
 .B #include <rohc/rohc_packets.h>
 .B #include <rohc/rohc_time.h>
 .B #include <rohc/rohc_buf.h>
@@ -26,6 +27,9 @@ algorithms\fP.
 The \fBROHC library\fP is intended for developers who want to reduce the
 bandwidth requirements of their applications. The library is published under
 the \fBLGPL license\fP (version 2.1 or later).
+.PP
+The \fBROHC library\fP supports both the ROHCv1 and ROHCv2 versions of the
+\fBROHC protocol\fP.
 .PP
 The API of the \fBROHC library\fP is divided into three parts: the common API,
 the compression API, and the decompression API.

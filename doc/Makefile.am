@@ -23,7 +23,11 @@ rohc_common_mans = \
 	man/man3/rohc_strerror.3 \
 	man/man3/rohc_get_mode_descr.3 \
 	man/man3/rohc_get_profile_descr.3 \
+	man/man3/rohc_profile_is_rohcv1.3 \
+	man/man3/rohc_profile_is_rohcv2.3 \
+	man/man3/rohc_profile_get_other_version.3 \
 	man/man3/rohc_get_packet_descr.3 \
+	man/man3/rohc_get_packet_type.3 \
 	man/man3/rohc_get_ext_descr.3 \
 	man/man3/rohc_buf_append.3 \
 	man/man3/rohc_buf_append_buf.3 \
@@ -61,6 +65,7 @@ rohc_comp_mans = \
 	man/man3/rohc_comp_set_periodic_refreshes_time.3 \
 	man/man3/rohc_comp_set_wlsb_window_width.3 \
 	man/man3/rohc_comp_set_list_trans_nr.3 \
+	man/man3/rohc_comp_set_reorder_ratio.3 \
 	man/man3/rohc_comp_get_mrru.3 \
 	man/man3/rohc_comp_set_mrru.3 \
 	man/man3/rohc_comp_get_state_descr.3 \
@@ -85,6 +90,10 @@ rohc_decomp_mans = \
 	man/man3/rohc_decomp_get_max_cid.3 \
 	man/man3/rohc_decomp_set_mrru.3 \
 	man/man3/rohc_decomp_get_mrru.3 \
+	man/man3/rohc_decomp_set_prtt.3 \
+	man/man3/rohc_decomp_get_prtt.3 \
+	man/man3/rohc_decomp_set_rate_limits.3 \
+	man/man3/rohc_decomp_get_rate_limits.3 \
 	man/man3/rohc_decomp_get_state_descr.3 \
 	man/man3/rohc_decomp_get_general_info.3 \
 	man/man3/rohc_decomp_get_last_packet_info.3
