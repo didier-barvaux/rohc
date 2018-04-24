@@ -4275,15 +4275,26 @@ bool rohc_comp_feedback_parse_opts(const struct rohc_comp_ctxt *const context,
 
 	/* check CRC if present in feedback */
 	if(opts_present[ROHC_FEEDBACK_OPT_CRC] > 0 ||
-	   crc_type == ROHC_FEEDBACK_WITH_CRC_BASE)
+	   crc_type == ROHC_FEEDBACK_WITH_CRC_BASE ||
+	   crc_type == ROHC_FEEDBACK_WITH_CRC_BASE_TCP)
 	{
 		const size_t zeroed_crc_len = 1;
 		const uint8_t zeroed_crc = 0x00;
-		uint8_t crc_computed;
+		uint8_t crc_computed = CRC_INIT_8;
 
-		/* compute the CRC of the feedback packet (skip CRC byte) */
+		/* compute the CRC of the feedback packet:
+		 *  - include extra header for TCP profile
+		 *  - skip CRC byte */
+		if(crc_type == ROHC_FEEDBACK_WITH_CRC_BASE_TCP)
+		{
+			const size_t extra_hdr_len = ((packet_len < 8) ? 1 : 2);
+			crc_computed = crc_calculate(ROHC_CRC_TYPE_8, packet - extra_hdr_len,
+			                             extra_hdr_len, crc_computed);
+			rohc_comp_debug(context, "TCP workaround: add %zu-byte extra header "
+			                "to CRC feedback", extra_hdr_len);
+		}
 		crc_computed = crc_calculate(ROHC_CRC_TYPE_8, packet,
-		                             packet_len - crc_pos_from_end, CRC_INIT_8);
+		                             packet_len - crc_pos_from_end, crc_computed);
 		crc_computed = crc_calculate(ROHC_CRC_TYPE_8, &zeroed_crc, zeroed_crc_len,
 		                             crc_computed);
 		crc_computed = crc_calculate(ROHC_CRC_TYPE_8, packet + packet_len -

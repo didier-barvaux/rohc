@@ -4676,7 +4676,7 @@ static bool c_tcp_feedback_2(struct rohc_comp_ctxt *const context,
 	if(!rohc_comp_feedback_parse_opts(context, packet, packet_len,
 	                                  remain_data, remain_len,
 	                                  opts_present, &sn_bits, &sn_bits_nr,
-	                                  ROHC_FEEDBACK_WITH_CRC_BASE,
+	                                  ROHC_FEEDBACK_WITH_CRC_BASE_TCP,
 	                                  crc_in_packet, crc_pos_from_end))
 	{
 		rohc_comp_warn(context, "malformed FEEDBACK-2: failed to parse options");
