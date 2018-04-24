@@ -13,8 +13,11 @@ rohc_version
 rohc_strerror
 rohc_get_ext_descr
 rohc_get_mode_descr
-rohc_get_packet_descr
 rohc_get_profile_descr
+rohc_profile_is_rohcv1
+rohc_profile_is_rohcv2
+rohc_profile_get_other_version
+rohc_get_packet_descr
 rohc_get_packet_type
 rohc_packet_is_ir
 rohc_packet_carry_static_info

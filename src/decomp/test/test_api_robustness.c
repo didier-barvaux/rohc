@@ -122,15 +122,43 @@ int main(int argc, char *argv[])
 	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_TCP) == false);
 	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_UDPLITE) == false);
 
+	/* ROHCv2 rohc_decomp_profile_enabled() */
+	CHECK(rohc_decomp_profile_enabled(decomp, ROHCv2_PROFILE_IP_UDP_RTP) == false);
+	CHECK(rohc_decomp_profile_enabled(decomp, ROHCv2_PROFILE_IP_UDP) == false);
+	CHECK(rohc_decomp_profile_enabled(decomp, ROHCv2_PROFILE_IP_ESP) == false);
+	CHECK(rohc_decomp_profile_enabled(decomp, ROHCv2_PROFILE_IP) == false);
+	CHECK(rohc_decomp_profile_enabled(decomp, ROHCv2_PROFILE_IP_UDPLITE_RTP) == false);
+	CHECK(rohc_decomp_profile_enabled(decomp, ROHCv2_PROFILE_IP_UDPLITE) == false);
+
 	/* rohc_decomp_enable_profile() */
 	CHECK(rohc_decomp_enable_profile(NULL, ROHC_PROFILE_IP) == false);
 	CHECK(rohc_decomp_enable_profile(decomp, ROHC_PROFILE_GENERAL) == false);
 	CHECK(rohc_decomp_enable_profile(decomp, ROHC_PROFILE_IP) == true);
 
+	/* ROHCv2 rohc_decomp_enable_profile() */
+	/* ROHCv1_PROFILE_IP already enabled so ROHCv2_PROFILE_IP can't be activated */
+	CHECK(rohc_decomp_enable_profile(decomp, ROHCv2_PROFILE_IP) == false);
+	CHECK(rohc_decomp_enable_profile(decomp, ROHCv2_PROFILE_IP_UDP) == true);
+	CHECK(rohc_decomp_enable_profile(decomp, ROHCv2_PROFILE_IP_ESP) == true);
+	CHECK(rohc_decomp_enable_profile(decomp, ROHCv2_PROFILE_IP_UDPLITE_RTP) == true);
+	CHECK(rohc_decomp_enable_profile(decomp, ROHCv2_PROFILE_IP_UDPLITE) == true);
+	CHECK(rohc_decomp_enable_profile(decomp, ROHCv2_PROFILE_IP_UDP_RTP) == true);
+	/* ROHCv2_PROFILE_IP_UDP_RTP already enabled so ROHCv1_PROFILE_IP_UDP_RTP can't be activated */
+	CHECK(rohc_decomp_enable_profile(decomp, ROHC_PROFILE_RTP) == false);
+
 	/* rohc_decomp_disable_profile() */
 	CHECK(rohc_decomp_disable_profile(NULL, ROHC_PROFILE_IP) == false);
 	CHECK(rohc_decomp_disable_profile(decomp, ROHC_PROFILE_GENERAL) == false);
 	CHECK(rohc_decomp_disable_profile(decomp, ROHC_PROFILE_IP) == true);
+
+	/* ROHCv2 rohc_decomp_disable_profile() */
+	CHECK(rohc_decomp_disable_profile(decomp, ROHCv2_PROFILE_IP) == true);
+	CHECK(rohc_decomp_disable_profile(decomp, ROHCv2_PROFILE_IP_UDP) == true);
+	CHECK(rohc_decomp_disable_profile(decomp, ROHCv2_PROFILE_IP_ESP) == true);
+	CHECK(rohc_decomp_disable_profile(decomp, ROHCv2_PROFILE_IP_UDPLITE_RTP) == true);
+	CHECK(rohc_decomp_disable_profile(decomp, ROHCv2_PROFILE_IP_UDPLITE) == true);
+	CHECK(rohc_decomp_disable_profile(decomp, ROHCv2_PROFILE_IP_UDP_RTP) == true);
+
 
 	/* rohc_decomp_enable_profiles() */
 	CHECK(rohc_decomp_enable_profiles(NULL, ROHC_PROFILE_IP, -1) == false);
@@ -139,12 +167,22 @@ int main(int argc, char *argv[])
 	CHECK(rohc_decomp_enable_profiles(decomp, ROHC_PROFILE_IP, ROHC_PROFILE_UDP,
 	                                  ROHC_PROFILE_RTP, -1) == true);
 
+	/* ROHCv2 rohc_decomp_enable_profiles() */
+	CHECK(rohc_decomp_enable_profiles(decomp, ROHCv2_PROFILE_IP_ESP,
+				ROHCv2_PROFILE_IP_UDPLITE_RTP,
+				ROHCv2_PROFILE_IP_UDPLITE, -1) == true);
+
+	
 	/* rohc_decomp_disable_profiles() */
 	CHECK(rohc_decomp_disable_profiles(NULL, ROHC_PROFILE_IP, -1) == false);
 	CHECK(rohc_decomp_disable_profiles(decomp, ROHC_PROFILE_GENERAL, -1) == false);
 	CHECK(rohc_decomp_disable_profiles(decomp, ROHC_PROFILE_UDP, -1) == true);
 	CHECK(rohc_decomp_disable_profiles(decomp, ROHC_PROFILE_UDP,
 	                                   ROHC_PROFILE_RTP, -1) == true);
+
+	/* ROHCv2 rohc_decomp_disable_profiles() */
+	CHECK(rohc_decomp_disable_profiles(decomp, ROHCv2_PROFILE_IP_ESP,
+				         ROHCv2_PROFILE_IP_UDPLITE, -1) == true);
 
 	/* rohc_decomp_profile_enabled() */
 	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_UNCOMPRESSED) == false);
@@ -154,6 +192,12 @@ int main(int argc, char *argv[])
 	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_IP) == true);
 	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_TCP) == false);
 	CHECK(rohc_decomp_profile_enabled(decomp, ROHC_PROFILE_UDPLITE) == false);
+
+	/* ROHCv2 rohc_decomp_profile_enabled() */
+	CHECK(rohc_decomp_profile_enabled(decomp, ROHCv2_PROFILE_IP_ESP) == false);
+	CHECK(rohc_decomp_profile_enabled(decomp, ROHCv2_PROFILE_IP_UDPLITE) == false);
+	CHECK(rohc_decomp_profile_enabled(decomp, ROHCv2_PROFILE_IP_UDPLITE_RTP) == true);
+	CHECK(rohc_decomp_disable_profile(decomp, ROHCv2_PROFILE_IP_UDPLITE_RTP) == true);
 
 	/* rohc_decomp_set_mrru() */
 	CHECK(rohc_decomp_set_mrru(NULL, 10) == false);

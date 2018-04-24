@@ -14,6 +14,7 @@ rohc_test_modname = rohc_test
 rohc_common_sources = \
 	../../src/common/protocols/ip_numbers.c \
 	../../src/common/rohc_common.c \
+	../../src/common/rohc_profiles.c \
 	../../src/common/rohc_packets.c \
 	../../src/common/rohc_traces_internal.c \
 	../../src/common/rohc_utils.c \

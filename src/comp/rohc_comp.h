@@ -35,6 +35,7 @@ extern "C"
 #endif
 
 #include <rohc/rohc.h>
+#include <rohc/rohc_profiles.h>
 #include <rohc/rohc_packets.h>
 #include <rohc/rohc_traces.h>
 #include <rohc/rohc_time.h>

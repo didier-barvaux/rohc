@@ -53,68 +53,100 @@ const char * rohc_get_packet_descr(const rohc_packet_t packet_type)
 			return "IR-DYN";
 
 		case ROHC_PACKET_UO_0:
-			return "UO-0";
+			return "ROHCv1/UO-0";
 
 		case ROHC_PACKET_UO_1:
-			return "UO-1";
+			return "ROHCv1/non-RTP/UO-1";
 		case ROHC_PACKET_UO_1_ID:
-			return "RTP/UO-1-ID";
+			return "ROHCv1/RTP/UO-1-ID";
 		case ROHC_PACKET_UO_1_TS:
-			return "RTP/UO-1-TS";
+			return "ROHCv1/RTP/UO-1-TS";
 		case ROHC_PACKET_UO_1_RTP:
-			return "RTP/UO-1";
+			return "ROHCv1/RTP/UO-1";
 
 		case ROHC_PACKET_UOR_2:
-			return "UOR-2";
+			return "ROHCv1/non-RTP/UOR-2";
 		case ROHC_PACKET_UOR_2_RTP:
-			return "RTP/UOR-2";
+			return "ROHCv1/RTP/UOR-2";
 		case ROHC_PACKET_UOR_2_ID:
-			return "UOR-2-ID";
+			return "ROHCv1/RTP/UOR-2-ID";
 		case ROHC_PACKET_UOR_2_TS:
-			return "UOR-2-TS";
+			return "ROHCv1/RTP/UOR-2-TS";
 
 		case ROHC_PACKET_NORMAL:
-			return "Uncomp/Normal";
+			return "ROHCv1/Uncomp/Normal";
 
 		case ROHC_PACKET_TCP_CO_COMMON:
-			return "TCP/co_common";
+			return "ROHCv1/TCP/co_common";
 
 		case ROHC_PACKET_TCP_RND_1:
-			return "TCP/rnd_1";
+			return "ROHCv1/TCP/rnd_1";
 		case ROHC_PACKET_TCP_RND_2:
-			return "TCP/rnd_2";
+			return "ROHCv1/TCP/rnd_2";
 		case ROHC_PACKET_TCP_RND_3:
-			return "TCP/rnd_3";
+			return "ROHCv1/TCP/rnd_3";
 		case ROHC_PACKET_TCP_RND_4:
-			return "TCP/rnd_4";
+			return "ROHCv1/TCP/rnd_4";
 		case ROHC_PACKET_TCP_RND_5:
-			return "TCP/rnd_5";
+			return "ROHCv1/TCP/rnd_5";
 		case ROHC_PACKET_TCP_RND_6:
-			return "TCP/rnd_6";
+			return "ROHCv1/TCP/rnd_6";
 		case ROHC_PACKET_TCP_RND_7:
-			return "TCP/rnd_7";
+			return "ROHCv1/TCP/rnd_7";
 		case ROHC_PACKET_TCP_RND_8:
-			return "TCP/rnd_8";
+			return "ROHCv1/TCP/rnd_8";
 
 		case ROHC_PACKET_TCP_SEQ_1:
-			return "TCP/seq_1";
+			return "ROHCv1/TCP/seq_1";
 		case ROHC_PACKET_TCP_SEQ_2:
-			return "TCP/seq_2";
+			return "ROHCv1/TCP/seq_2";
 		case ROHC_PACKET_TCP_SEQ_3:
-			return "TCP/seq_3";
+			return "ROHCv1/TCP/seq_3";
 		case ROHC_PACKET_TCP_SEQ_4:
-			return "TCP/seq_4";
+			return "ROHCv1/TCP/seq_4";
 		case ROHC_PACKET_TCP_SEQ_5:
-			return "TCP/seq_5";
+			return "ROHCv1/TCP/seq_5";
 		case ROHC_PACKET_TCP_SEQ_6:
-			return "TCP/seq_6";
+			return "ROHCv1/TCP/seq_6";
 		case ROHC_PACKET_TCP_SEQ_7:
-			return "TCP/seq_7";
+			return "ROHCv1/TCP/seq_7";
 		case ROHC_PACKET_TCP_SEQ_8:
-			return "TCP/seq_8";
+			return "ROHCv1/TCP/seq_8";
 
 		case ROHC_PACKET_IR_CR:
-			return "IR-CR";
+			return "ROHCv1/IR-CR";
+
+		/* packet types for all ROHCv2 profiles (RFC 5225) */
+		case ROHC_PACKET_CO_REPAIR:
+			return "ROHCv2/co_repair";
+		case ROHC_PACKET_PT_0_CRC3:
+			return "ROHCv2/pt_0_crc3";
+
+		/* packet types for all non-RTP ROHCv2 profiles (RFC 5225) */
+		case ROHC_PACKET_NORTP_PT_0_CRC7:
+			return "ROHCv2/non-RTP/pt_0_crc7";
+		case ROHC_PACKET_NORTP_PT_1_SEQ_ID:
+			return "ROHCv2/non-RTP/pt_1_seq_id";
+		case ROHC_PACKET_NORTP_PT_2_SEQ_ID:
+			return "ROHCv2/non-RTP/pt_2_seq_id";
+
+		/* packet types for all RTP ROHCv2 profiles (RFC 5225) */
+		case ROHC_PACKET_RTP_PT_0_CRC7:
+			return "ROHCv2/RTP/pt_0_crc7";
+		case ROHC_PACKET_RTP_PT_1_RND:
+			return "ROHCv2/RTP/pt_1_rnd";
+		case ROHC_PACKET_RTP_PT_1_SEQ_ID:
+			return "ROHCv2/RTP/pt_1_seq_id";
+		case ROHC_PACKET_RTP_PT_1_SEQ_TS:
+			return "ROHCv2/RTP/pt_1_seq_ts";
+		case ROHC_PACKET_RTP_PT_2_RND:
+			return "ROHCv2/RTP/pt_2_rnd";
+		case ROHC_PACKET_RTP_PT_2_SEQ_ID:
+			return "ROHCv2/RTP/pt_2_seq_id";
+		case ROHC_PACKET_RTP_PT_2_SEQ_TS:
+			return "ROHCv2/RTP/pt_2_seq_ts";
+		case ROHC_PACKET_RTP_PT_2_SEQ_BOTH:
+			return "ROHCv2/RTP/pt_2_seq_both";
 
 		case ROHC_PACKET_UNKNOWN:
 		case ROHC_PACKET_MAX:
@@ -290,6 +322,58 @@ rohc_packet_t rohc_get_packet_type(const char *const packet_id)
 	{
 		return ROHC_PACKET_IR_CR;
 	}
+	else if(strcmp(packet_id, "co-repair") == 0)
+	{
+		return ROHC_PACKET_CO_REPAIR;
+	}
+	else if(strcmp(packet_id, "pt-0-crc3") == 0)
+	{
+		return ROHC_PACKET_PT_0_CRC3;
+	}
+	else if(strcmp(packet_id, "nortp-pt-0-crc7") == 0)
+	{
+		return ROHC_PACKET_NORTP_PT_0_CRC7;
+	}
+	else if(strcmp(packet_id, "nortp-pt-1-seq-id") == 0)
+	{
+		return ROHC_PACKET_NORTP_PT_1_SEQ_ID;
+	}
+	else if(strcmp(packet_id, "nortp-pt-2-seq-id") == 0)
+	{
+		return ROHC_PACKET_NORTP_PT_2_SEQ_ID;
+	}
+	else if(strcmp(packet_id, "rtp-pt-0-crc7") == 0)
+	{
+		return ROHC_PACKET_RTP_PT_0_CRC7;
+	}
+	else if(strcmp(packet_id, "rtp-pt-1-rnd") == 0)
+	{
+		return ROHC_PACKET_RTP_PT_1_RND;
+	}
+	else if(strcmp(packet_id, "rtp-pt-1-seq-id") == 0)
+	{
+		return ROHC_PACKET_RTP_PT_1_SEQ_ID;
+	}
+	else if(strcmp(packet_id, "rtp-pt-1-seq-ts") == 0)
+	{
+		return ROHC_PACKET_RTP_PT_1_SEQ_TS;
+	}
+	else if(strcmp(packet_id, "rtp-pt-2-rnd") == 0)
+	{
+		return ROHC_PACKET_RTP_PT_2_RND;
+	}
+	else if(strcmp(packet_id, "rtp-pt-2-seq-id") == 0)
+	{
+		return ROHC_PACKET_RTP_PT_2_SEQ_ID;
+	}
+	else if(strcmp(packet_id, "rtp-pt-2-seq-ts") == 0)
+	{
+		return ROHC_PACKET_RTP_PT_2_SEQ_TS;
+	}
+	else if(strcmp(packet_id, "rtp-pt-2-seq-both") == 0)
+	{
+		return ROHC_PACKET_RTP_PT_2_SEQ_BOTH;
+	}
 	else
 	{
 		return ROHC_PACKET_UNKNOWN;
@@ -348,6 +432,14 @@ bool rohc_packet_carry_crc_7_or_8(const rohc_packet_t packet_type)
 		case ROHC_PACKET_TCP_CO_COMMON:
 		case ROHC_PACKET_TCP_SEQ_8:
 		case ROHC_PACKET_TCP_RND_8:
+		case ROHC_PACKET_CO_REPAIR:
+		case ROHC_PACKET_NORTP_PT_0_CRC7:
+		case ROHC_PACKET_NORTP_PT_2_SEQ_ID:
+		case ROHC_PACKET_RTP_PT_0_CRC7:
+		case ROHC_PACKET_RTP_PT_2_RND:
+		case ROHC_PACKET_RTP_PT_2_SEQ_ID:
+		case ROHC_PACKET_RTP_PT_2_SEQ_TS:
+		case ROHC_PACKET_RTP_PT_2_SEQ_BOTH:
 			carry_crc_7_or_8 = true;
 			break;
 		case ROHC_PACKET_UO_0:
@@ -370,6 +462,11 @@ bool rohc_packet_carry_crc_7_or_8(const rohc_packet_t packet_type)
 		case ROHC_PACKET_TCP_RND_5:
 		case ROHC_PACKET_TCP_RND_6:
 		case ROHC_PACKET_TCP_RND_7:
+		case ROHC_PACKET_PT_0_CRC3:
+		case ROHC_PACKET_RTP_PT_1_RND:
+		case ROHC_PACKET_RTP_PT_1_SEQ_ID:
+		case ROHC_PACKET_RTP_PT_1_SEQ_TS:
+		case ROHC_PACKET_NORTP_PT_1_SEQ_ID:
 			carry_crc_7_or_8 = false;
 			break;
 		case ROHC_PACKET_UNKNOWN:

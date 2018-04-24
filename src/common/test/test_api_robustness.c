@@ -148,8 +148,150 @@ int main(int argc, char *argv[])
 		CHECK(strcmp(rohc_get_profile_descr(ROHC_PROFILE_UDPLITE_RTP), unknown) != 0);
 		CHECK(strcmp(rohc_get_profile_descr(ROHC_PROFILE_UDPLITE), "") != 0);
 		CHECK(strcmp(rohc_get_profile_descr(ROHC_PROFILE_UDPLITE), unknown) != 0);
-		CHECK(strcmp(rohc_get_profile_descr(ROHC_PROFILE_UDPLITE + 1), unknown) == 0);
+
+		/* test ROHCv1 profiles */
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_UNCOMPRESSED), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_UNCOMPRESSED), unknown) != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP_UDP_RTP), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP_UDP_RTP), unknown) != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP_UDP), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP_UDP), unknown) != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP_ESP), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP_ESP), unknown) != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP), unknown) != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP_UDP_RTP_LLA), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP_UDP_RTP_LLA), unknown) != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP_TCP), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP_TCP), unknown) != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP_UDPLITE_RTP), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP_UDPLITE_RTP), unknown) != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP_UDPLITE), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv1_PROFILE_IP_UDPLITE), unknown) != 0);
+
+		/* test ROHCv2 profiles */
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv2_PROFILE_IP_UDP_RTP), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv2_PROFILE_IP_UDP_RTP), unknown) != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv2_PROFILE_IP_UDP), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv2_PROFILE_IP_UDP), unknown) != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv2_PROFILE_IP_ESP), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv2_PROFILE_IP_ESP), unknown) != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv2_PROFILE_IP), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv2_PROFILE_IP), unknown) != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv2_PROFILE_IP_UDPLITE_RTP), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv2_PROFILE_IP_UDPLITE_RTP), unknown) != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv2_PROFILE_IP_UDPLITE), "") != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv2_PROFILE_IP_UDPLITE), unknown) != 0);
+		CHECK(strcmp(rohc_get_profile_descr(ROHCv2_PROFILE_IP_UDPLITE + 1), unknown) == 0);
 	}
+
+	/* rohc_profile_is_rohcv1() */
+	{
+		CHECK(rohc_profile_is_rohcv1(ROHC_PROFILE_UNCOMPRESSED) == true);
+		CHECK(rohc_profile_is_rohcv1(ROHC_PROFILE_RTP) == true);
+		CHECK(rohc_profile_is_rohcv1(ROHC_PROFILE_UDP) == true);
+		CHECK(rohc_profile_is_rohcv1(ROHC_PROFILE_ESP) == true);
+		CHECK(rohc_profile_is_rohcv1(ROHC_PROFILE_IP) == true);
+		CHECK(rohc_profile_is_rohcv1(ROHC_PROFILE_RTP_LLA) == true);
+		CHECK(rohc_profile_is_rohcv1(ROHC_PROFILE_TCP) == true);
+		CHECK(rohc_profile_is_rohcv1(ROHC_PROFILE_UDPLITE_RTP) == true);
+		CHECK(rohc_profile_is_rohcv1(ROHC_PROFILE_UDPLITE) == true);
+
+		/* test ROHCv1 profiles */
+		CHECK(rohc_profile_is_rohcv1(ROHCv1_PROFILE_UNCOMPRESSED) == true);
+		CHECK(rohc_profile_is_rohcv1(ROHCv1_PROFILE_IP_UDP_RTP) == true);
+		CHECK(rohc_profile_is_rohcv1(ROHCv1_PROFILE_IP_UDP) == true);
+		CHECK(rohc_profile_is_rohcv1(ROHCv1_PROFILE_IP_ESP) == true);
+		CHECK(rohc_profile_is_rohcv1(ROHCv1_PROFILE_IP) == true);
+		CHECK(rohc_profile_is_rohcv1(ROHCv1_PROFILE_IP_UDP_RTP_LLA) == true);
+		CHECK(rohc_profile_is_rohcv1(ROHCv1_PROFILE_IP_TCP) == true);
+		CHECK(rohc_profile_is_rohcv1(ROHCv1_PROFILE_IP_UDPLITE_RTP) == true);
+		CHECK(rohc_profile_is_rohcv1(ROHCv1_PROFILE_IP_UDPLITE) == true);
+
+		/* test ROHCv2 profiles */
+		CHECK(rohc_profile_is_rohcv1(ROHCv2_PROFILE_IP_UDP_RTP) == false);
+		CHECK(rohc_profile_is_rohcv1(ROHCv2_PROFILE_IP_UDP) == false);
+		CHECK(rohc_profile_is_rohcv1(ROHCv2_PROFILE_IP_ESP) == false);
+		CHECK(rohc_profile_is_rohcv1(ROHCv2_PROFILE_IP) == false);
+		CHECK(rohc_profile_is_rohcv1(ROHCv2_PROFILE_IP_UDPLITE_RTP) == false);
+		CHECK(rohc_profile_is_rohcv1(ROHCv2_PROFILE_IP_UDPLITE) == false);
+
+		CHECK(rohc_profile_is_rohcv1(ROHC_PROFILE_MAX) == false);
+	}
+
+	/* rohc_profile_is_rohcv2() */
+	{
+		CHECK(rohc_profile_is_rohcv2(ROHC_PROFILE_UNCOMPRESSED) == false);
+		CHECK(rohc_profile_is_rohcv2(ROHC_PROFILE_RTP) == false);
+		CHECK(rohc_profile_is_rohcv2(ROHC_PROFILE_UDP) == false);
+		CHECK(rohc_profile_is_rohcv2(ROHC_PROFILE_ESP) == false);
+		CHECK(rohc_profile_is_rohcv2(ROHC_PROFILE_IP) == false);
+		CHECK(rohc_profile_is_rohcv2(ROHC_PROFILE_RTP_LLA) == false);
+		CHECK(rohc_profile_is_rohcv2(ROHC_PROFILE_TCP) == false);
+		CHECK(rohc_profile_is_rohcv2(ROHC_PROFILE_UDPLITE_RTP) == false);
+		CHECK(rohc_profile_is_rohcv2(ROHC_PROFILE_UDPLITE) == false);
+
+		/* test ROHCv1 profiles */
+		CHECK(rohc_profile_is_rohcv2(ROHCv1_PROFILE_UNCOMPRESSED) == false);
+		CHECK(rohc_profile_is_rohcv2(ROHCv1_PROFILE_IP_UDP_RTP) == false);
+		CHECK(rohc_profile_is_rohcv2(ROHCv1_PROFILE_IP_UDP) == false);
+		CHECK(rohc_profile_is_rohcv2(ROHCv1_PROFILE_IP_ESP) == false);
+		CHECK(rohc_profile_is_rohcv2(ROHCv1_PROFILE_IP) == false);
+		CHECK(rohc_profile_is_rohcv2(ROHCv1_PROFILE_IP_UDP_RTP_LLA) == false);
+		CHECK(rohc_profile_is_rohcv2(ROHCv1_PROFILE_IP_TCP) == false);
+		CHECK(rohc_profile_is_rohcv2(ROHCv1_PROFILE_IP_UDPLITE_RTP) == false);
+		CHECK(rohc_profile_is_rohcv2(ROHCv1_PROFILE_IP_UDPLITE) == false);
+
+		/* test ROHCv2 profiles */
+		CHECK(rohc_profile_is_rohcv2(ROHCv2_PROFILE_IP_UDP_RTP) == true);
+		CHECK(rohc_profile_is_rohcv2(ROHCv2_PROFILE_IP_UDP) == true);
+		CHECK(rohc_profile_is_rohcv2(ROHCv2_PROFILE_IP_ESP) == true);
+		CHECK(rohc_profile_is_rohcv2(ROHCv2_PROFILE_IP) == true);
+		CHECK(rohc_profile_is_rohcv2(ROHCv2_PROFILE_IP_UDPLITE_RTP) == true);
+		CHECK(rohc_profile_is_rohcv2(ROHCv2_PROFILE_IP_UDPLITE) == true);
+
+		CHECK(rohc_profile_is_rohcv2(ROHC_PROFILE_MAX) == true);
+	}
+
+	/* rohc_profile_get_other_version() */
+	{
+		const rohc_profile_t fake_rohcv2_uncomp = 0x0100;
+		const rohc_profile_t fake_rohcv2_rtp_lla = 0x0105;
+		const rohc_profile_t fake_rohcv2_tcp = 0x0106;
+
+		CHECK(rohc_profile_get_other_version(ROHC_PROFILE_UNCOMPRESSED) == fake_rohcv2_uncomp);
+		CHECK(rohc_profile_get_other_version(ROHC_PROFILE_RTP) == ROHCv2_PROFILE_IP_UDP_RTP);
+		CHECK(rohc_profile_get_other_version(ROHC_PROFILE_UDP) == ROHCv2_PROFILE_IP_UDP);
+		CHECK(rohc_profile_get_other_version(ROHC_PROFILE_ESP) == ROHCv2_PROFILE_IP_ESP);
+		CHECK(rohc_profile_get_other_version(ROHC_PROFILE_IP) == ROHCv2_PROFILE_IP);
+		CHECK(rohc_profile_get_other_version(ROHC_PROFILE_RTP_LLA) == fake_rohcv2_rtp_lla);
+		CHECK(rohc_profile_get_other_version(ROHC_PROFILE_TCP) == fake_rohcv2_tcp);
+		CHECK(rohc_profile_get_other_version(ROHC_PROFILE_UDPLITE_RTP) == ROHCv2_PROFILE_IP_UDPLITE_RTP);
+		CHECK(rohc_profile_get_other_version(ROHC_PROFILE_UDPLITE) == ROHCv2_PROFILE_IP_UDPLITE);
+
+		/* test ROHCv1 profiles */
+		CHECK(rohc_profile_get_other_version(ROHCv1_PROFILE_UNCOMPRESSED) == fake_rohcv2_uncomp);
+		CHECK(rohc_profile_get_other_version(ROHCv1_PROFILE_IP_UDP_RTP) == ROHCv2_PROFILE_IP_UDP_RTP);
+		CHECK(rohc_profile_get_other_version(ROHCv1_PROFILE_IP_UDP) == ROHCv2_PROFILE_IP_UDP);
+		CHECK(rohc_profile_get_other_version(ROHCv1_PROFILE_IP_ESP) == ROHCv2_PROFILE_IP_ESP);
+		CHECK(rohc_profile_get_other_version(ROHCv1_PROFILE_IP) == ROHCv2_PROFILE_IP);
+		CHECK(rohc_profile_get_other_version(ROHCv1_PROFILE_IP_UDP_RTP_LLA) == fake_rohcv2_rtp_lla);
+		CHECK(rohc_profile_get_other_version(ROHCv1_PROFILE_IP_TCP) == fake_rohcv2_tcp);
+		CHECK(rohc_profile_get_other_version(ROHCv1_PROFILE_IP_UDPLITE_RTP) == ROHCv2_PROFILE_IP_UDPLITE_RTP);
+		CHECK(rohc_profile_get_other_version(ROHCv1_PROFILE_IP_UDPLITE) == ROHCv2_PROFILE_IP_UDPLITE);
+
+		/* test ROHCv2 profiles */
+		CHECK(rohc_profile_get_other_version(ROHCv2_PROFILE_IP_UDP_RTP) == ROHCv1_PROFILE_IP_UDP_RTP);
+		CHECK(rohc_profile_get_other_version(ROHCv2_PROFILE_IP_UDP) == ROHCv1_PROFILE_IP_UDP);
+		CHECK(rohc_profile_get_other_version(ROHCv2_PROFILE_IP_ESP) == ROHCv1_PROFILE_IP_ESP);
+		CHECK(rohc_profile_get_other_version(ROHCv2_PROFILE_IP) == ROHCv1_PROFILE_IP);
+		CHECK(rohc_profile_get_other_version(ROHCv2_PROFILE_IP_UDPLITE_RTP) == ROHCv1_PROFILE_IP_UDPLITE_RTP);
+		CHECK(rohc_profile_get_other_version(ROHCv2_PROFILE_IP_UDPLITE) == ROHCv1_PROFILE_IP_UDPLITE);
+
+		CHECK(rohc_profile_get_other_version(0x0200) == ROHC_PROFILE_MAX);
+		CHECK(rohc_profile_get_other_version(0xffff) == ROHC_PROFILE_MAX);
+	}
+
 
 	/* rohc_get_packet_descr() */
 	{
@@ -224,6 +366,37 @@ int main(int argc, char *argv[])
 		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_IR_CR), "") != 0);
 		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_IR_CR), unknown) != 0);
 
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_CO_COMMON), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_CO_COMMON), unknown) != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_CO_REPAIR), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_CO_REPAIR), unknown) != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_PT_0_CRC3), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_PT_0_CRC3), unknown) != 0);
+
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_NORTP_PT_0_CRC7), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_NORTP_PT_0_CRC7), unknown) != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_NORTP_PT_1_SEQ_ID), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_NORTP_PT_1_SEQ_ID), unknown) != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_NORTP_PT_2_SEQ_ID), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_NORTP_PT_2_SEQ_ID), unknown) != 0);
+
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_RTP_PT_0_CRC7), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_RTP_PT_0_CRC7), unknown) != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_RTP_PT_1_RND), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_RTP_PT_1_RND), unknown) != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_RTP_PT_1_SEQ_ID), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_RTP_PT_1_SEQ_ID), unknown) != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_RTP_PT_1_SEQ_TS), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_RTP_PT_1_SEQ_TS), unknown) != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_RTP_PT_2_RND), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_RTP_PT_2_RND), unknown) != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_RTP_PT_2_SEQ_ID), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_RTP_PT_2_SEQ_ID), unknown) != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_RTP_PT_2_SEQ_TS), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_RTP_PT_2_SEQ_TS), unknown) != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_RTP_PT_2_SEQ_BOTH), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_RTP_PT_2_SEQ_BOTH), unknown) != 0);
+
 		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_MAX), unknown) == 0);
 		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UNKNOWN), unknown) == 0);
 	}
@@ -262,6 +435,11 @@ int main(int argc, char *argv[])
 			"tcp-seq-1", "tcp-seq-2", "tcp-seq-3", "tcp-seq-4",
 			"tcp-seq-5", "tcp-seq-6", "tcp-seq-7", "tcp-seq-8",
 			"ir-cr",
+			"co-repair", "pt-0-crc3",
+			"nortp-pt-0-crc7", "nortp-pt-1-seq-id", "nortp-pt-2-seq-id",
+			"rtp-pt-0-crc7",
+			"rtp-pt-1-rnd", "rtp-pt-1-seq-id", "rtp-pt-1-seq-ts",
+			"rtp-pt-2-rnd", "rtp-pt-2-seq-id", "rtp-pt-2-seq-ts", "rtp-pt-2-seq-both",
 		};
 		rohc_packet_t packet_type;
 
