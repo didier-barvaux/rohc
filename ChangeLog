@@ -1,3 +1,67 @@
+24 April 2018 - release 2.2.0
+  Compatibility:
+    - Version 2.2.0 is not guaranteed to be 100% compatible with previous versions
+      with respect to IR packet format of the ROHCv1 IP-only, ESP, UDP,
+      UDP-Lite profiles because the behavior of the D flag was made conforme
+      to RFC 3095.
+    - The library API is compatible with versions 2.0.x and 2.1.x. The
+      following headers/types/functions were added/modified for ROHCv2:
+       - header <rohc/rohc_profiles.h> was added, it is included by
+         <rohc/rohc.h>, so no change is required by applications.
+       - rohc_profile_t to add the ROHCv2 profile identifiers
+       - rohc_comp_enable_profile() to accept ROHCv2 profiles
+       - rohc_comp_enable_profiles() to accept ROHCv2 profiles
+       - rohc_comp_disable_profile() to accept ROHCv2 profiles
+       - rohc_comp_disable_profiles() to accept ROHCv2 profiles
+       - rohc_decomp_enable_profile() to accept ROHCv2 profiles
+       - rohc_decomp_enable_profiles() to accept ROHCv2 profiles
+       - rohc_decomp_disable_profile() to accept ROHCv2 profiles
+       - rohc_decomp_disable_profiles() to accept ROHCv2 profiles
+       - rohc_comp_set_reorder_ratio() to set the ROHCv2 reordering ratio
+       - rohc_profile_is_rohcv1() to determine if profile is ROHCv1
+       - rohc_profile_is_rohcv2() to determine if profile is ROHCv2
+       - rohc_profile_get_other_version() to determine the related profile in
+         the other ROHC version
+    - The applications gained a --rohc-version parameter to use ROHCv1 or
+      ROHCv2 profiles. They defaults to ROHCv1 for compatibility reasons.
+
+  License/Authors:
+    - Developing Solutions helped Viveris Technologies to implement the ROHCv2
+      IP-only, ESP and UDP profiles.
+    - Developing Solutions helped Viveris Technologies about the Static Chain
+      Termination support.
+    - Mikhail Gruzdev contributed Linux kernel fixes.
+    - Selvaganesan Murugesan reported the conformance problem with the D flag.
+    - Bi-Ruei Chiu contribued GCC-7 fixes.
+
+  Main changes:
+    - ROHCv2 IP-only, IP/ESP and IP/UDP profiles,
+    - interoperability: improve conformance to ROHC standards:
+       - RFC3095: handle the IR D flag of IP-only, UDP, ESP, and UDP-Lite profiles
+       - RFC3843: add support for Static Chain Termination
+    - preliminary Wireshark dissector in Lua
+
+  Bug fixes:
+    - TCP profile: do not skip MSN 65535 at compressor
+    - Robustness of decompressor for TCP profile:
+       - Context Replication: check whether base context does exist before using it
+       - avoid assertion at decompressor with malformed TCP options:
+          - length of TCP options is not a multiple of 32-bit words
+          - large TCP options > 40 bytes
+       - handle length-changing generic TCP options
+    - kernel:
+       - fix 64-bit division
+       - fix nonnull warnings
+       - fix test application/script for Linux kernel module
+    - sniffer:
+       - handle packet timing so that context re-use works correctly
+       - detect layer-3 protocol from Ethernet protocol type
+
+  Q&A:
+    - fix compilation error when using gcc-7
+    - decrease code complexity
+    - fix some spelling mistakes detected by codespell
+
 6 December 2017 - release 2.1.0
   Compatibility:
     - Version 2.1.0 is not guaranteed to be 100% compatible with previous versions
