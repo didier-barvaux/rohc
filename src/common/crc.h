@@ -38,6 +38,8 @@
 #include "protocols/esp.h"
 #include "protocols/tcp.h"
 
+#include <rohc/rohc.h> /* for rohc_profile_t */
+
 #include <stdbool.h>
 
 /// The CRC-3 initial value
@@ -148,12 +150,13 @@ uint8_t rtp_compute_crc_dynamic(const uint8_t *const outer_ip,
                                 const uint8_t *const crc_table)
 	__attribute__((nonnull(1, 3, 6), warn_unused_result));
 
-uint8_t compute_crc_ctrl_fields(const uint8_t *const crc_table,
-										  const uint8_t reorder_ratio,
+uint8_t compute_crc_ctrl_fields(const rohc_profile_t profile_id,
+                                const uint8_t *const crc_table,
+                                const uint8_t reorder_ratio,
                                 const uint16_t msn,
                                 const uint8_t ip_id_behaviors[],
                                 const size_t ip_id_behaviors_nr)
-	__attribute__((nonnull(1), warn_unused_result));
+	__attribute__((nonnull(2), warn_unused_result));
 
 
 /**

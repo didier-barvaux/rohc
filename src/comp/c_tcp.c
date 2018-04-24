@@ -587,14 +587,9 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 	}
 	while(rohc_is_tunneling(proto) && tcp_context->ip_contexts_nr < ROHC_MAX_IP_HDRS);
 
-	/* profile cannot handle the packet if it bypasses internal limit of IP headers */
-	if(rohc_is_tunneling(proto))
-	{
-		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "too many IP headers for TCP profile (%u headers max)",
-		           ROHC_MAX_IP_HDRS);
-		goto free_context;
-	}
+	/* profile cannot handle the packet if it bypasses internal limit of IP headers
+	 * (already checked by check_profile) */
+	assert(rohc_is_tunneling(proto) == false);
 
 	/* create context for TCP header */
 	tcp_context->tcp_seq_num_change_count = 0;
@@ -3465,7 +3460,7 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 		else
 		{
 			(*ip_inner_ctxt)->ctxt.v4.ip_id_behavior =
-				rohc_comp_detect_ip_id_behavior((*ip_inner_ctxt)->ctxt.v4.last_ip_id, ip_id, 19);
+				rohc_comp_detect_ip_id_behavior((*ip_inner_ctxt)->ctxt.v4.last_ip_id, ip_id, 1, 19);
 		}
 		rohc_comp_debug(context, "IP-ID now behaves as %s",
 		                rohc_ip_id_behavior_get_descr((*ip_inner_ctxt)->ctxt.v4.ip_id_behavior));

@@ -74,6 +74,7 @@ bool is_ip_id_increasing(const uint16_t old_id,
  *
  * @param last_ip_id  The IP-ID value of the previous packet (in HBO)
  * @param new_ip_id   The IP-ID value of the current packet (in HBO)
+ * @param msn_offset  The offset between the previous and current MSN
  * @param max_delta   The maximum allowed delta
  * @return            The IP-ID behavior among: ROHC_IP_ID_BEHAVIOR_SEQ,
  *                    ROHC_IP_ID_BEHAVIOR_SEQ_SWAP, ROHC_IP_ID_BEHAVIOR_ZERO, or
@@ -81,20 +82,22 @@ bool is_ip_id_increasing(const uint16_t old_id,
  */
 rohc_ip_id_behavior_t rohc_comp_detect_ip_id_behavior(const uint16_t last_ip_id,
                                                       const uint16_t new_ip_id,
+                                                      const int32_t msn_offset,
                                                       const uint16_t max_delta)
 {
+	const uint16_t old_id_msn_offset = last_ip_id + (msn_offset - 1);
 	rohc_ip_id_behavior_t behavior;
 
-	if(is_ip_id_increasing(last_ip_id, new_ip_id, max_delta))
+	if(is_ip_id_increasing(old_id_msn_offset, new_ip_id, max_delta))
 	{
 		behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
 	}
 	else
 	{
-		const uint16_t swapped_last_ip_id = swab16(last_ip_id);
+		const uint16_t swapped_old_id_msn_offset = swab16(last_ip_id) + (msn_offset - 1);
 		const uint16_t swapped_new_ip_id = swab16(new_ip_id);
 
-		if(is_ip_id_increasing(swapped_last_ip_id, swapped_new_ip_id, max_delta))
+		if(is_ip_id_increasing(swapped_old_id_msn_offset, swapped_new_ip_id, max_delta))
 		{
 			behavior = ROHC_IP_ID_BEHAVIOR_SEQ_SWAP;
 		}

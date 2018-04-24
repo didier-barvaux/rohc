@@ -38,6 +38,7 @@ bool is_ip_id_increasing(const uint16_t old_id,
 
 rohc_ip_id_behavior_t rohc_comp_detect_ip_id_behavior(const uint16_t last_ip_id,
                                                       const uint16_t new_ip_id,
+                                                      const int32_t msn_offset,
                                                       const uint16_t max_delta)
 	__attribute__((warn_unused_result, const));
 

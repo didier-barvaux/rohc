@@ -411,14 +411,9 @@ static bool rohc_comp_rfc5225_ip_create(struct rohc_comp_ctxt *const context,
 	}
 	while(rohc_is_tunneling(proto) && rfc5225_ctxt->ip_contexts_nr < ROHC_MAX_IP_HDRS);
 
-	/* profile cannot handle the packet if it bypasses internal limit of IP headers */
-	if(rohc_is_tunneling(proto))
-	{
-		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "too many IP headers for RFC5225 IP-only profile (%u headers max)",
-		           ROHC_MAX_IP_HDRS);
-		goto free_context;
-	}
+	/* profile cannot handle the packet if it bypasses internal limit of IP headers
+	 * (already checked by check_profile) */
+	assert(rohc_is_tunneling(proto) == false);
 
 	/* MSN */
 	wlsb_init(&rfc5225_ctxt->msn_wlsb, 16, comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
@@ -1093,7 +1088,7 @@ static int rohc_comp_rfc5225_ip_detect_changes_ipv4(struct rohc_comp_ctxt *const
 		/* innermost TOS changed? */
 		if(ip_ctxt->ctxt.vx.tos_tc != ipv4->tos)
 		{
-			rohc_comp_debug(ctxt, "    TOS (%02x -> %02x) changed",
+			rohc_comp_debug(ctxt, "    TOS (0x%02x -> 0x%02x) changed",
 			                ip_ctxt->ctxt.vx.tos_tc, ipv4->tos);
 			rfc5225_ctxt->tmp.innermost_tos_tc_changed = true;
 			rfc5225_ctxt->tmp.innermost_ip_flag = true;
@@ -1157,7 +1152,7 @@ static int rohc_comp_rfc5225_ip_detect_changes_ipv4(struct rohc_comp_ctxt *const
 		}
 		else
 		{
-			ip_id_behavior = rohc_comp_detect_ip_id_behavior(last_ip_id, ip_id, 19);
+			ip_id_behavior = rohc_comp_detect_ip_id_behavior(last_ip_id, ip_id, 1, 19);
 
 			/* no sequential behavior for outer IP headers */
 			if(!is_innermost && ip_id_behavior <= ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
@@ -1232,7 +1227,7 @@ static int rohc_comp_rfc5225_ip_detect_changes_ipv6(struct rohc_comp_ctxt *const
 		/* innermost TC changed? */
 		if(ip_ctxt->ctxt.vx.tos_tc != ipv6_get_tc(ipv6))
 		{
-			rohc_comp_debug(ctxt, "    TC (%02x -> %02x) changed",
+			rohc_comp_debug(ctxt, "    TC (0x%02x -> 0x%02x) changed",
 			                ip_ctxt->ctxt.vx.tos_tc, ipv6_get_tc(ipv6));
 			rfc5225_ctxt->tmp.innermost_tos_tc_changed = true;
 			rfc5225_ctxt->tmp.innermost_ip_flag = true;
@@ -1256,7 +1251,7 @@ static int rohc_comp_rfc5225_ip_detect_changes_ipv6(struct rohc_comp_ctxt *const
 		if(ip_ctxt->ctxt.vx.tos_tc != ipv6_get_tc(ipv6) ||
 		   ip_ctxt->ctxt.vx.ttl_hopl != ipv6->hl)
 		{
-			rohc_comp_debug(ctxt, "    TC (%02x -> %02x) or HL (%u -> %u) changed",
+			rohc_comp_debug(ctxt, "    TC (0x%02x -> 0x%02x) or HL (%u -> %u) changed",
 			                ip_ctxt->ctxt.vx.tos_tc, ipv6_get_tc(ipv6),
 			                ip_ctxt->ctxt.vx.ttl_hopl, ipv6->hl);
 			rfc5225_ctxt->tmp.outer_ip_flag = true;
@@ -1339,18 +1334,13 @@ static void rohc_comp_rfc5225_ip_decide_state(struct rohc_comp_ctxt *const conte
 			next_state = ROHC_COMP_STATE_SO;
 		}
 	}
-	else if(curr_state == ROHC_COMP_STATE_SO)
+	else /* SO state */
 	{
+		assert(curr_state == ROHC_COMP_STATE_SO);
 		/* do not change state */
 		rohc_comp_debug(context, "stay in SO state");
 		next_state = ROHC_COMP_STATE_SO;
 		/* TODO: handle NACK and STATIC-NACK */
-	}
-	else
-	{
-		rohc_comp_warn(context, "unexpected compressor state %d", curr_state);
-		assert(0);
-		return;
 	}
 
 	rohc_comp_change_state(context, next_state);
@@ -1906,7 +1896,8 @@ static int rohc_comp_rfc5225_ip_code_co_repair_pkt(const struct rohc_comp_ctxt *
 			                ip_id_behaviors[ip_hdr_pos]);
 		}
 		co_repair_crc->ctrl_crc =
-			compute_crc_ctrl_fields(context->compressor->crc_table_3,
+			compute_crc_ctrl_fields(context->profile->id,
+			                        context->compressor->crc_table_3,
 			                        context->compressor->reorder_ratio,
 			                        rfc5225_ctxt->msn,
 			                        ip_id_behaviors, rfc5225_ctxt->ip_contexts_nr);
@@ -2543,15 +2534,15 @@ static int rohc_comp_rfc5225_ip_dyn_ipv4_part(const struct rohc_comp_ctxt *const
 
 		ipv4_dynamic->reserved = 0;
 		ipv4_dynamic->df = ipv4->df;
-		ipv4_dynamic->ip_id_behavior_outer = ip_ctxt->ctxt.v4.ip_id_behavior;
+		ipv4_dynamic->ip_id_behavior = ip_ctxt->ctxt.v4.ip_id_behavior;
 		ipv4_dynamic->tos_tc = ipv4->tos;
 		ipv4_dynamic->ttl_hopl = ipv4->ttl;
 
 		/* IP-ID */
-		if(ipv4_dynamic->ip_id_behavior_outer == ROHC_IP_ID_BEHAVIOR_ZERO)
+		if(ipv4_dynamic->ip_id_behavior == ROHC_IP_ID_BEHAVIOR_ZERO)
 		{
 			rohc_comp_debug(ctxt, "ip_id_behavior_outer = %d",
-			                ipv4_dynamic->ip_id_behavior_outer);
+			                ipv4_dynamic->ip_id_behavior);
 		}
 		else
 		{
@@ -2567,9 +2558,9 @@ static int rohc_comp_rfc5225_ip_dyn_ipv4_part(const struct rohc_comp_ctxt *const
 				goto error;
 			}
 
-			ipv4_dynamic_ipid->ip_id_outer = ipv4->id;
+			ipv4_dynamic_ipid->ip_id = ipv4->id;
 			rohc_comp_debug(ctxt, "ip_id_behavior = %d, IP-ID = 0x%04x",
-			                ipv4_dynamic->ip_id_behavior_outer, rohc_ntoh16(ipv4->id));
+			                ipv4_dynamic->ip_id_behavior, rohc_ntoh16(ipv4->id));
 		}
 	}
 
@@ -3098,7 +3089,8 @@ static int rohc_comp_rfc5225_ip_build_co_common_pkt(const struct rohc_comp_ctxt 
 			                ip_id_behaviors[ip_hdr_pos]);
 		}
 		co_common->control_crc3 =
-			compute_crc_ctrl_fields(context->compressor->crc_table_3,
+			compute_crc_ctrl_fields(context->profile->id,
+		                           context->compressor->crc_table_3,
 			                        context->compressor->reorder_ratio,
 			                        rfc5225_ctxt->msn,
 			                        ip_id_behaviors, rfc5225_ctxt->ip_contexts_nr);

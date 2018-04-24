@@ -117,7 +117,11 @@ typedef struct
 
 
 /**
- * @brief The IPv4 dynamic part for any outer IP header, IP-ID not present
+ * @brief The regular IPv4 dynamic part, IP-ID not present
+ *
+ * The IPv4 dynamic part for:
+ * - the innermost IP header of all the ROHCv2 profiles except IP-only
+ * - any outer IP header
  *
  * See RFC5225 page 62
  */
@@ -126,15 +130,49 @@ typedef struct
 #if WORDS_BIGENDIAN == 1
 	uint8_t reserved:5;
 	uint8_t df:1;
-	uint8_t ip_id_behavior_outer:2;
+	uint8_t ip_id_behavior:2;
 #else
-	uint8_t ip_id_behavior_outer:2;
+	uint8_t ip_id_behavior:2;
 	uint8_t df:1;
 	uint8_t reserved:5;
 #endif
 	uint8_t tos_tc;
 	uint8_t ttl_hopl;
-} __attribute__((packed)) ipv4_outer_dynamic_noipid_t;
+} __attribute__((packed)) ipv4_regular_dynamic_noipid_t;
+
+
+/**
+ * @brief The regular IPv4 dynamic part, IP-ID present
+ *
+ * The IPv4 dynamic part for:
+ * - the innermost IP header of all the ROHCv2 profiles except IP-only
+ * - any outer IP header
+ *
+ * See RFC5225 page 62
+ */
+typedef struct
+{
+#if WORDS_BIGENDIAN == 1
+	uint8_t reserved:5;
+	uint8_t df:1;
+	uint8_t ip_id_behavior:2;
+#else
+	uint8_t ip_id_behavior:2;
+	uint8_t df:1;
+	uint8_t reserved:5;
+#endif
+	uint8_t tos_tc;
+	uint8_t ttl_hopl;
+	uint16_t ip_id;
+} __attribute__((packed)) ipv4_regular_dynamic_ipid_t;
+
+
+/**
+ * @brief The IPv4 dynamic part for any outer IP header, IP-ID not present
+ *
+ * See RFC5225 page 62
+ */
+typedef ipv4_regular_dynamic_noipid_t ipv4_outer_dynamic_noipid_t;
 
 
 /**
@@ -142,21 +180,7 @@ typedef struct
  *
  * See RFC5225 page 62
  */
-typedef struct
-{
-#if WORDS_BIGENDIAN == 1
-	uint8_t reserved:5;
-	uint8_t df:1;
-	uint8_t ip_id_behavior_outer:2;
-#else
-	uint8_t ip_id_behavior_outer:2;
-	uint8_t df:1;
-	uint8_t reserved:5;
-#endif
-	uint8_t tos_tc;
-	uint8_t ttl_hopl;
-	uint16_t ip_id_outer;
-} __attribute__((packed)) ipv4_outer_dynamic_ipid_t;
+typedef ipv4_regular_dynamic_ipid_t ipv4_outer_dynamic_ipid_t;
 
 
 /************************************************************************
@@ -248,6 +272,43 @@ typedef struct
 	uint8_t ttl_hopl;
 } __attribute__((packed)) ipv6_regular_dynamic_t;
 
+
+/************************************************************************
+ * Compressed ESP header                                                *
+ ************************************************************************/
+
+/**
+ * @brief The ESP static part
+ *
+ * See RFC5225 page 68
+ */
+typedef struct
+{
+	uint32_t spi; /**< The ESP Security Parameters Index (SPI) */
+} __attribute__((packed)) esp_static_t;
+
+
+/**
+ * @brief The ESP dynamic part
+ *
+ * See RFC5225 page 68
+ */
+typedef struct
+{
+	uint32_t sequence_number;  /**< The ESP Sequence Number (SN) */
+#if WORDS_BIGENDIAN == 1
+	uint8_t reserved:6;        /**< reserved field, shall be zero */
+	uint8_t reorder_ratio:2;   /**< The reorder_ratio use for the transmission */
+#else
+	uint8_t reorder_ratio:2;
+	uint8_t reserved:6;
+#endif
+} __attribute__((packed)) esp_dynamic_t;
+
+
+/************************************************************************
+ * Compressed packet formats                                            *
+ ************************************************************************/
 
 /**
  * @brief The CRC part of the co_repair packet format

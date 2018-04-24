@@ -53,6 +53,7 @@ static int test_decomp(const char *const filename,
                        const size_t failure_start,
                        const rohc_cid_type_t cid_type,
                        const rohc_cid_t cid_max,
+                       const int proto_version,
                        const bool ignore_malformed)
 	__attribute__((warn_unused_result, nonnull(1)));
 
@@ -88,6 +89,8 @@ int main(int argc, char *argv[])
 	const char *cid_type_str = NULL;
 	rohc_cid_type_t cid_type;
 	const char *cid_max_str = NULL;
+	const char *proto_version_str = NULL;
+	int proto_version;
 	rohc_cid_t cid_very_max;
 	rohc_cid_t cid_max;
 	int failure_start = -1;
@@ -142,6 +145,19 @@ int main(int argc, char *argv[])
 				goto error;
 			}
 			cid_max_str = argv[1];
+			args_used++;
+		}
+		else if(!strcmp(*argv, "--rohc-version"))
+		{
+			/* the CID type */
+			if(argc <= 1)
+			{
+				fprintf(stderr, "the --rohc-version option requires a value among "
+				        "'1' and '2'\n");
+				usage();
+				goto error;
+			}
+			proto_version_str = argv[1];
 			args_used++;
 		}
 		else if(filename == NULL)
@@ -211,6 +227,24 @@ int main(int argc, char *argv[])
 		cid_max = cid_max_int;
 	}
 
+	/* ROHC protocol version */
+	if(proto_version_str == NULL)
+	{
+		proto_version = 1;
+	}
+	else
+	{
+		const int proto_version_int = atoi(proto_version_str);
+		if(proto_version_int != 1 && proto_version_int != 2)
+		{
+			fprintf(stderr, "the --rohc-version option requires a value in range "
+			        "[1;2]\n");
+			usage();
+			goto error;
+		}
+		proto_version = proto_version_int;
+	}
+
 	/* the failure start is mandatory */
 	if(failure_start < 0)
 	{
@@ -220,7 +254,7 @@ int main(int argc, char *argv[])
 
 	/* test ROHC decompression with the packets from the file */
 	status = test_decomp(filename, failure_start, cid_type, cid_max,
-	                     ignore_malformed);
+	                     proto_version, ignore_malformed);
 
 error:
 	return status;
@@ -254,7 +288,9 @@ static void usage(void)
 	        "  --cid-type TYPE     The type of CID among 'small' and 'large'\n"
 	        "                      (default: small)\n"
 	        "  --cid-max MAX_CID   The MAX_CID value\n"
-	        "                      (default: 15)\n");
+	        "                      (default: 15)\n"
+	        "  --rohc-version NUM  The ROHC version to use: 1 for ROHCv1\n"
+	        "                      and 2 for ROHCv2\n");
 }
 
 
@@ -266,6 +302,7 @@ static void usage(void)
  *                          or 0 if no success/failure check shall be performed
  * @param cid_type          The CID type among ROHC_SMALL_CID and ROHC_LARGE_CID
  * @param cid_max           The CID_MAX value
+ * @param proto_version     The version of the ROHC protocol to use
  * @param ignore_malformed  do not exit with error code if malformed packets
  *                          are found
  * @return                  0 in case of success,
@@ -276,6 +313,7 @@ static int test_decomp(const char *const filename,
                        const size_t failure_start,
                        const rohc_cid_type_t cid_type,
                        const rohc_cid_t cid_max,
+                       const int proto_version,
                        const bool ignore_malformed)
 {
 	char errbuf[PCAP_ERRBUF_SIZE];
@@ -339,13 +377,44 @@ static int test_decomp(const char *const filename,
 	}
 
 	/* enable decompression profiles */
-	if(!rohc_decomp_enable_profiles(decomp, ROHC_PROFILE_UNCOMPRESSED,
-	                                ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
-	                                ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
-	                                ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
+	if(proto_version == 1)
 	{
-		fprintf(stderr, "failed to enable the decompression profiles\n");
-		goto destroy_decomp;
+		/* enable ROHCv1 profiles */
+		if(!rohc_decomp_enable_profiles(decomp,
+		                                ROHCv1_PROFILE_UNCOMPRESSED,
+		                                ROHCv1_PROFILE_IP_UDP_RTP,
+		                                ROHCv1_PROFILE_IP_UDP,
+		                                ROHCv1_PROFILE_IP_ESP,
+		                                ROHCv1_PROFILE_IP,
+		                                ROHCv1_PROFILE_IP_TCP,
+		                                ROHCv1_PROFILE_IP_UDPLITE,
+		                                -1))
+		{
+			fprintf(stderr, "failed to enable the decompression profiles\n");
+			goto destroy_decomp;
+		}
+	}
+	else
+	{
+		/* enable ROHCv2 profiles */
+		if(!rohc_decomp_enable_profiles(decomp,
+		                                ROHCv1_PROFILE_UNCOMPRESSED,
+		                                ROHCv1_PROFILE_IP_TCP,
+#if 0
+		                                ROHCv2_PROFILE_IP_UDP_RTP,
+		                                ROHCv2_PROFILE_IP_UDP,
+#endif
+		                                ROHCv2_PROFILE_IP_ESP,
+		                                ROHCv2_PROFILE_IP,
+#if 0
+		                                ROHCv2_PROFILE_IP_UDPLITE_RTP,
+		                                ROHCv2_PROFILE_IP_UDPLITE,
+#endif
+		                                -1))
+		{
+			fprintf(stderr, "failed to enable the decompression profiles\n");
+			goto destroy_decomp;
+		}
 	}
 
 	/* for each packet in the dump */

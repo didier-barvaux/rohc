@@ -67,6 +67,7 @@ extern const struct rohc_decomp_profile d_tcp_profile;
 
 /* ROHCv2 profiles */
 extern const struct rohc_decomp_profile rohc_decomp_rfc5225_ip_profile;
+extern const struct rohc_decomp_profile rohc_decomp_rfc5225_ip_esp_profile;
 
 
 /**
@@ -102,14 +103,6 @@ const struct rohc_decomp_profile fake_rohcv2_d_udplite_profile =
 };
 
 /**
- *  * @brief Define the compression part of the ESP profile
- *   */
-const struct rohc_decomp_profile fake_rohcv2_d_esp_profile =
-{
-	.id             = ROHCv2_PROFILE_IP_ESP, /* profile ID */
-};
-
-/**
  * @brief The decompression parts of the ROHC profiles.
  */
 static const struct rohc_decomp_profile *const rohc_decomp_profiles[D_NUM_PROFILES] =
@@ -123,7 +116,7 @@ static const struct rohc_decomp_profile *const rohc_decomp_profiles[D_NUM_PROFIL
 	&d_udplite_profile,
 	&fake_rohcv2_d_rtp_profile,
 	&fake_rohcv2_d_udp_profile,
-	&fake_rohcv2_d_esp_profile,
+	&rohc_decomp_rfc5225_ip_esp_profile,
 	&rohc_decomp_rfc5225_ip_profile,
 	&fake_rohcv2_d_udplite_rtp_profile,
 	&fake_rohcv2_d_udplite_profile,

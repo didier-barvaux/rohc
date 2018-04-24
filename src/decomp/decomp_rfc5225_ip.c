@@ -479,12 +479,12 @@ static rohc_packet_t decomp_rfc5225_ip_detect_pkt_type(const struct rohc_decomp_
 {
 	rohc_packet_t type;
 
-	if(rohc_length < 1)
-	{
-		rohc_decomp_warn(context, "ROHC packet too small to read the packet "
-		                 "type (len = %zu)", rohc_length);
-		goto error;
-	}
+	/* at least one byte required to check discriminator byte in packet
+	 * (already checked by rohc_decomp_find_context) */
+	assert(rohc_length >= 1);
+
+	rohc_decomp_debug(context, "try to determine the header from first byte "
+	                  "0x%02x", rohc_packet[0]);
 
 	if(GET_BIT_7(rohc_packet) == 0) /* 1-bit discriminator '0' */
 	{
@@ -520,9 +520,6 @@ static rohc_packet_t decomp_rfc5225_ip_detect_pkt_type(const struct rohc_decomp_
 	}
 
 	return type;
-
-error:
-	return ROHC_PACKET_UNKNOWN;
 }
 
 
@@ -560,32 +557,23 @@ static bool decomp_rfc5225_ip_parse_pkt(const struct rohc_decomp_ctxt *const con
 	{
 		status = decomp_rfc5225_ip_parse_ir(context, rohc_packet, large_cid_len,
 		                                    extr_crc, bits, rohc_hdr_len);
-		if(status == false)
-		{
-			rohc_decomp_warn(context, "failed to parse IR packet");
-			goto error;
-		}
 	}
 	else if((*packet_type) == ROHC_PACKET_CO_REPAIR)
 	{
 		status = decomp_rfc5225_ip_parse_co_repair(context, rohc_packet, large_cid_len,
 		                                           extr_crc, bits, rohc_hdr_len);
-		if(status == false)
-		{
-			rohc_decomp_warn(context, "failed to parse co_repair packet");
-			goto error;
-		}
 	}
 	else /* parse the other CO headers */
 	{
 		status = decomp_rfc5225_ip_parse_co(context, rohc_packet,
 		                                    large_cid_len, *packet_type,
-						    extr_crc, bits, rohc_hdr_len);
-		if(status == false)
-		{
-			rohc_decomp_warn(context, "failed to parse CO packet");
-			goto error;
-		}
+		                                    extr_crc, bits, rohc_hdr_len);
+	}
+	if(status == false)
+	{
+		rohc_decomp_warn(context, "failed to parse %s packet",
+		                 rohc_get_packet_descr(*packet_type));
+		goto error;
 	}
 
 	return true;
@@ -672,16 +660,11 @@ static bool decomp_rfc5225_ip_parse_ir(const struct rohc_decomp_ctxt *const ctxt
 	size_t static_chain_len;
 	size_t dyn_chain_len;
 
-	/* skip:
+	/* skip (length checked in rohc_decomp_find_context):
 	 * - the first byte of the ROHC packet
 	 * - the large CID if any
 	 * - the Profile byte */
-	if(remain_len < (1 + large_cid_len + 1))
-	{
-		rohc_decomp_warn(ctxt, "malformed ROHC packet: too short for first "
-		                 "byte, large CID bytes, and profile byte");
-		goto error;
-	}
+	assert(remain_len >= (1 + large_cid_len + 1));
 	remain_data += 1 + large_cid_len + 1;
 	remain_len -= 1 + large_cid_len + 1;
 
@@ -872,12 +855,11 @@ static bool decomp_rfc5225_ip_parse_co(const struct rohc_decomp_ctxt *const ctxt
 	assert(bits->ip_nr > 0);
 	inner_ip_bits = &(bits->ip[bits->ip_nr - 1]);
 
-	/* check if the ROHC packet is large enough to parse first bytes */
-	if(remain_len <= (1 + large_cid_len))
-	{
-		rohc_decomp_warn(ctxt, "rohc packet too small (len = %zu)", remain_len);
-		goto error;
-	}
+	/* check if the ROHC packet is large enough to parse first bytes
+	 * (length checked in rohc_decomp_decode_cid):
+	 * - the first byte of the ROHC packet
+	 * - the large CID if any */
+	assert(remain_len >= (1 + large_cid_len));
 
 	/* copy the first bytes of header in a contiguous buffer
 	 * to be able to map packet structures to the ROHC bytes */
@@ -1832,7 +1814,7 @@ static int decomp_rfc5225_ip_parse_dyn_ipv4(const struct rohc_decomp_ctxt *const
 		}
 		ip_bits->df = ipv4_dynamic->df;
 		ip_bits->df_nr = 1;
-		ip_bits->id_behavior = ipv4_dynamic->ip_id_behavior_outer;
+		ip_bits->id_behavior = ipv4_dynamic->ip_id_behavior;
 		ip_bits->id_behavior_nr = 2;
 		rohc_decomp_debug(ctxt, "ip_id_behavior_outer = %d", ip_bits->id_behavior);
 		ip_bits->tos_tc_bits = ipv4_dynamic->tos_tc;
@@ -1842,7 +1824,7 @@ static int decomp_rfc5225_ip_parse_dyn_ipv4(const struct rohc_decomp_ctxt *const
 		rohc_decomp_debug(ctxt, "TOS/TC = 0x%x, ttl_hopl = 0x%x",
 		                  ip_bits->tos_tc_bits, ip_bits->ttl_hl);
 
-		if(ipv4_dynamic->ip_id_behavior_outer != ROHC_IP_ID_BEHAVIOR_ZERO)
+		if(ipv4_dynamic->ip_id_behavior != ROHC_IP_ID_BEHAVIOR_ZERO)
 		{
 			const ipv4_outer_dynamic_ipid_t *const ipv4_dynamic_ipid =
 				(ipv4_outer_dynamic_ipid_t *) remain_data;
@@ -1854,7 +1836,7 @@ static int decomp_rfc5225_ip_parse_dyn_ipv4(const struct rohc_decomp_ctxt *const
 				goto error;
 			}
 
-			ip_bits->id.bits = rohc_ntoh16(ipv4_dynamic_ipid->ip_id_outer);
+			ip_bits->id.bits = rohc_ntoh16(ipv4_dynamic_ipid->ip_id);
 			ip_bits->id.bits_nr = 16;
 			rohc_decomp_debug(ctxt, "IP-ID = 0x%04x", ip_bits->id.bits);
 
@@ -2223,7 +2205,8 @@ static bool decomp_rfc5225_ip_decode_bits(const struct rohc_decomp_ctxt *const c
 			                  ip_id_behaviors[ip_hdr_pos]);
 		}
 		ctrl_crc_computed =
-			compute_crc_ctrl_fields(ctxt->decompressor->crc_table_3,
+			compute_crc_ctrl_fields(ctxt->profile->id,
+			                        ctxt->decompressor->crc_table_3,
 			                        decoded->reorder_ratio, decoded->msn,
 			                        ip_id_behaviors, bits->ip_nr);
 		rohc_decomp_debug(ctxt, "CRC-3 on control fields = 0x%x (reorder_ratio = "

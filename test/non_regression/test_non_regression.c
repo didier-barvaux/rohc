@@ -938,7 +938,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	trace("=== arrival time %ld seconds %ld us\n", header.ts.tv_sec, header.ts.tv_usec);
 
 	/* check Ethernet frame length */
-	if(header.len <= link_len_src || header.len != header.caplen)
+	if(header.len < link_len_src || header.len != header.caplen)
 	{
 		trace("bad PCAP packet (len = %u, caplen = %u)\n", header.len,
 		      header.caplen);
@@ -1603,8 +1603,8 @@ static struct rohc_comp * create_compressor(const rohc_cid_type_t cid_type,
 #if 0
 		                              ROHCv2_PROFILE_IP_UDP_RTP,
 		                              ROHCv2_PROFILE_IP_UDP,
-		                              ROHCv2_PROFILE_IP_ESP,
 #endif
+		                              ROHCv2_PROFILE_IP_ESP,
 		                              ROHCv2_PROFILE_IP,
 #if 0
 		                              ROHCv2_PROFILE_IP_UDPLITE_RTP,
@@ -1707,8 +1707,8 @@ static struct rohc_decomp * create_decompressor(const rohc_cid_type_t cid_type,
 #if 0
 		                                ROHCv2_PROFILE_IP_UDP_RTP,
 		                                ROHCv2_PROFILE_IP_UDP,
-		                                ROHCv2_PROFILE_IP_ESP,
 #endif
+		                                ROHCv2_PROFILE_IP_ESP,
 		                                ROHCv2_PROFILE_IP,
 #if 0
 		                                ROHCv2_PROFILE_IP_UDPLITE_RTP,

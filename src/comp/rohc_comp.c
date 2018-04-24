@@ -77,6 +77,7 @@ extern const struct rohc_comp_profile c_uncompressed_profile;
 
 /* ROHCv2 profiles */
 extern const struct rohc_comp_profile rohc_comp_rfc5225_ip_profile;
+extern const struct rohc_comp_profile rohc_comp_rfc5225_ip_esp_profile;
 
 
 /**
@@ -116,15 +117,6 @@ const struct rohc_comp_profile fake_rohcv2_c_udplite_profile =
 };
 
 /**
- * @brief Define the compression part of the ESP profile
- */
-const struct rohc_comp_profile fake_rohcv2_c_esp_profile =
-{
-	.id             = ROHCv2_PROFILE_IP_ESP, /* profile ID */
-	.protocol       = ROHC_IPPROTO_ESP, /* IP protocol */
-};
-
-/**
  * @brief The compression parts of the ROHC profiles.
  *
  * The order of profiles declaration is important: they are evaluated in that
@@ -140,7 +132,7 @@ static const struct rohc_comp_profile *const rohc_comp_profiles[C_NUM_PROFILES] 
 	&c_udp_lite_profile,
 	&fake_rohcv2_c_udplite_profile,
 	&c_esp_profile,
-	&fake_rohcv2_c_esp_profile,
+	&rohc_comp_rfc5225_ip_esp_profile,
 	&c_tcp_profile,
 	&c_ip_profile,  /* must be declared after all IP-based profiles */
 	&rohc_comp_rfc5225_ip_profile,
@@ -3165,6 +3157,12 @@ static bool rohc_comp_feedback_parse_cid(const struct rohc_comp *const comp,
 		}
 		*cid = large_cid;
 		*cid_len = large_cid_size;
+	}
+	else if(feedback_len == 1)
+	{
+		/* no Add-CID if feedback is only 1 byte long */
+		*cid_len = 0;
+		*cid = 0;
 	}
 	else
 	{

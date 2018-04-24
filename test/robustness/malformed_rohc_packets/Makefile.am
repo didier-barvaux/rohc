@@ -12,6 +12,31 @@ TESTS = \
 	test_malformed_rohc_packets_truncated_uor2id_14.sh \
 	test_malformed_rohc_packets_large_feedback_3.sh \
 	test_malformed_rohc_packets_tcp_ir_01_1.sh \
+	test_malformed_rohc_packets_tcp_ir_02_1.sh \
+	test_malformed_rohc_packets_tcp_ir_03_1.sh \
+	test_malformed_rohc_packets_tcp_ir_04_1.sh \
+	test_malformed_rohc_packets_tcp_ir_05_1.sh \
+	test_malformed_rohc_packets_tcp_ir_06_1.sh \
+	test_malformed_rohc_packets_tcp_ir_07_1.sh \
+	test_malformed_rohc_packets_tcp_ir_08_1.sh \
+	test_malformed_rohc_packets_tcp_ir_09_1.sh \
+	test_malformed_rohc_packets_tcp_ir_10_1.sh \
+	test_malformed_rohc_packets_tcp_ir_11_1.sh \
+	test_malformed_rohc_packets_tcp_ir_12_1.sh \
+	test_malformed_rohc_packets_tcp_ir_13_1.sh \
+	test_malformed_rohc_packets_tcp_ir_14_1.sh \
+	test_malformed_rohc_packets_tcp_ir_15_1.sh \
+	test_malformed_rohc_packets_tcp_ir_16_1.sh \
+	test_malformed_rohc_packets_tcp_ir_17_1.sh \
+	test_malformed_rohc_packets_tcp_ir_18_1.sh \
+	test_malformed_rohc_packets_tcp_ir_19_1.sh \
+	test_malformed_rohc_packets_tcp_ir_20_1.sh \
+	test_malformed_rohc_packets_tcp_ir_21_1.sh \
+	test_malformed_rohc_packets_tcp_ir_22_1.sh \
+	test_malformed_rohc_packets_tcp_ir_23_1.sh \
+	test_malformed_rohc_packets_tcp_ir_24_1.sh \
+	test_malformed_rohc_packets_tcp_ir_25_1.sh \
+	test_malformed_rohc_packets_tcp_ir_26_1.sh \
 	test_malformed_rohc_packets_uo0_no_context_1.sh \
 	test_malformed_rohc_packets_fuzzer_crash_331_1.sh \
 	test_malformed_rohc_packets_fuzzer_crash_410_1.sh \
@@ -67,7 +92,13 @@ TESTS = \
 	test_malformed_rohc_packets_afl12_largecid_ipv6_ext_list_malformed_ins_mask_0.sh \
 	test_malformed_rohc_packets_afl13_largecid_tcp_options_not_multiple_32bit_words_0.sh \
 	test_malformed_rohc_packets_afl14_largecid_tcp_options_too_long_0.sh \
-	test_malformed_rohc_packets_tcp_context_replication_bad_base_cid_0.sh
+	test_malformed_rohc_packets_tcp_context_replication_bad_base_cid_0.sh \
+	test_malformed_rohc_packets_rohcv2_ip_ir_01_1.sh \
+	test_malformed_rohc_packets_rohcv2_ip_ir_02_1.sh \
+	test_malformed_rohc_packets_rohcv2_ip_ir_03_1.sh \
+	test_malformed_rohc_packets_rohcv2_ip_ir_04_1.sh \
+	test_malformed_rohc_packets_rohcv2_ip_ir_05_178.sh \
+	test_malformed_rohc_packets_rohcv2_ip_ir_06_178.sh
 
 
 check_PROGRAMS = \
