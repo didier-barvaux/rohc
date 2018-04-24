@@ -19,6 +19,7 @@ The following companies are/were involved in the project:
    ([email contact](mailto:cedric.baudoin@thalesaleniaspace.com))
  * [Thales Communications](http://www.thalescomminc.com/)
  * [CNES, the French space agency](http://www.cnes.fr/)
+ * [Developing Solutions](https://www.developingsolutions.com/)
 
 
 ## Individuals
@@ -44,6 +45,8 @@ The following people are/were involved in the project:
 * [Klaus Warnke](mailto:klaus.warnke@acticom.de): bugfixes on TCP profile
 * [Steven Brown](mailto:swbrown@variadic.org): reduce librohc.so size
 * [Simon Paillard](mailto:spaillard@debian.org): fix doc and copyright info
+* [Selvaganesan Murugesan]: D flag conformance problem
+* [Bi-Ruei Chiu](mailto:biruei.chiu@gmail.com): GCC-7 fixes
 
 
 ## History
