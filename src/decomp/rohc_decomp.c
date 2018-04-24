@@ -3424,7 +3424,7 @@ bool rohc_decomp_enable_profile(struct rohc_decomp *const decomp,
 	/* mark the profile as enabled */
 	decomp->enabled_profiles[i] = true;
 	rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-	          "ROHC decompression profile (ID = %d) enabled", profile);
+	          "ROHC decompression profile (ID = 0x%04x) enabled", profile);
 
 	return true;
 
@@ -3486,7 +3486,7 @@ bool rohc_decomp_disable_profile(struct rohc_decomp *const decomp,
 	/* mark the profile as disabled */
 	decomp->enabled_profiles[i] = false;
 	rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-	          "ROHC decompression profile (ID = %d) disabled", profile);
+	          "ROHC decompression profile (ID = 0x%04x) disabled", profile);
 
 	return true;
 

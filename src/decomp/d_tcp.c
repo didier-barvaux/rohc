@@ -406,7 +406,7 @@ static void d_tcp_create_from_ctxt(struct rohc_decomp_ctxt *const ctxt,
 	       sizeof(struct d_tcp_opt_sack));
 	tcp_ctxt->ip_contexts_nr = base_tcp_ctxt->ip_contexts_nr;
 	memcpy(&tcp_ctxt->ip_contexts, &base_tcp_ctxt->ip_contexts,
-	       ROHC_TCP_MAX_IP_HDRS * sizeof(ip_context_t));
+	       ROHC_MAX_IP_HDRS * sizeof(ip_context_t));
 
 	/* copy the LSB decoding contexts */
 	memcpy(&tcp_ctxt->msn_lsb_ctxt, &base_tcp_ctxt->msn_lsb_ctxt, wlsb_size);
@@ -624,14 +624,14 @@ static rohc_packet_t tcp_detect_packet_type(const struct rohc_decomp_ctxt *const
 			innermost_hdr_ctxt =
 				&(tcp_context->ip_contexts[tcp_context->ip_contexts_nr - 1]);
 			innermost_ip_id_behavior = innermost_hdr_ctxt->ctxt.vx.ip_id_behavior;
-			is_ip_id_seq = (innermost_ip_id_behavior <= IP_ID_BEHAVIOR_SEQ_SWAP);
+			is_ip_id_seq = (innermost_ip_id_behavior <= ROHC_IP_ID_BEHAVIOR_SEQ_SWAP);
 			rohc_decomp_debug(context, "IPv%u header #%zu is the innermost IP header",
 			                  innermost_hdr_ctxt->version, tcp_context->ip_contexts_nr);
 		}
 
 		rohc_decomp_debug(context, "try to determine the header from first byte "
 		                  "0x%02x and innermost IP-ID behavior %s", rohc_packet[0],
-		                  tcp_ip_id_behavior_get_descr(innermost_ip_id_behavior));
+		                  rohc_ip_id_behavior_get_descr(innermost_ip_id_behavior));
 
 		if(rohc_packet[0] & 0x80)
 		{
@@ -1196,7 +1196,7 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 
 	const ip_context_t *ip_inner_context;
 	struct rohc_tcp_extr_ip_bits *inner_ip_bits;
-	tcp_ip_id_behavior_t innermost_ip_id_behavior;
+	rohc_ip_id_behavior_t innermost_ip_id_behavior;
 
 	bool has_opts_list;
 	size_t rohc_opts_len;
@@ -1331,14 +1331,14 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
 		innermost_ip_id_behavior = inner_ip_bits->id_behavior;
 		rohc_decomp_debug(context, "use behavior '%s' defined in current packet "
 		                  "for innermost IP-ID",
-		                  tcp_ip_id_behavior_get_descr(innermost_ip_id_behavior));
+		                  rohc_ip_id_behavior_get_descr(innermost_ip_id_behavior));
 	}
 	else
 	{
 		innermost_ip_id_behavior = ip_inner_context->ctxt.vx.ip_id_behavior;
 		rohc_decomp_debug(context, "use already-defined behavior '%s' for "
 		                  "innermost IP-ID",
-		                  tcp_ip_id_behavior_get_descr(innermost_ip_id_behavior));
+		                  rohc_ip_id_behavior_get_descr(innermost_ip_id_behavior));
 	}
 
 	/* parse the compressed list of TCP options if present */
@@ -2549,14 +2549,14 @@ static bool d_tcp_parse_co_common(const struct rohc_decomp_ctxt *const context,
 	*rohc_hdr_len += ret;
 
 	/* IP-ID behavior */
-	if((co_common->ip_id_behavior == IP_ID_BEHAVIOR_SEQ ||
-	    co_common->ip_id_behavior == IP_ID_BEHAVIOR_SEQ_SWAP) &&
+	if((co_common->ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ ||
+	    co_common->ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ_SWAP) &&
 	   innermost_ip_ctxt->ctxt.vx.version != IPV4)
 	{
 		rohc_decomp_warn(context, "packet and context mismatch: co_common packet "
 		                 "advertizes that innermost IP-ID behaves as %s but "
 		                 "innermost IP is IPv6 according to context",
-		                 tcp_ip_id_behavior_get_descr(co_common->ip_id_behavior));
+		                 rohc_ip_id_behavior_get_descr(co_common->ip_id_behavior));
 		goto error;
 	}
 	ret = d_optional_ip_id_lsb(context, rohc_remain_data, rohc_remain_len,
@@ -2684,7 +2684,7 @@ static void d_tcp_reset_extr_bits(const struct rohc_decomp_ctxt *const context,
 	bits->do_ctxt_replication = false;
 
 	/* set every bits and sizes to 0 */
-	for(i = 0; i < ROHC_TCP_MAX_IP_HDRS; i++)
+	for(i = 0; i < ROHC_MAX_IP_HDRS; i++)
 	{
 		size_t j;
 
@@ -2699,7 +2699,7 @@ static void d_tcp_reset_extr_bits(const struct rohc_decomp_ctxt *const context,
 		bits->ip[i].flowid_nr = 0;
 		bits->ip[i].saddr_nr = 0;
 		bits->ip[i].daddr_nr = 0;
-		for(j = 0; j < ROHC_TCP_MAX_IP_EXT_HDRS; j++)
+		for(j = 0; j < ROHC_MAX_IP_EXT_HDRS; j++)
 		{
 			bits->ip[i].opts[j].len = 0;
 		}
@@ -2771,7 +2771,7 @@ static void d_tcp_reset_extr_bits(const struct rohc_decomp_ctxt *const context,
 	bits->msn.p = ROHC_LSB_SHIFT_TCP_SN;
 	bits->seq_scaled.p = ROHC_LSB_SHIFT_TCP_SEQ_SCALED;
 	bits->ack_scaled.p = ROHC_LSB_SHIFT_TCP_ACK_SCALED;
-	for(i = 0; i < ROHC_TCP_MAX_IP_HDRS; i++)
+	for(i = 0; i < ROHC_MAX_IP_HDRS; i++)
 	{
 		bits->ip[i].ttl_hl.p = ROHC_LSB_SHIFT_TCP_TTL;
 	}
@@ -2920,7 +2920,7 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
                                      struct rohc_tcp_decoded_ip_values *const ip_decoded)
 {
 	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
-	tcp_ip_id_behavior_t ip_id_behavior;
+	rohc_ip_id_behavior_t ip_id_behavior;
 
 	/* version */
 	ip_decoded->version = ip_bits->version;
@@ -2953,13 +2953,13 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 		assert(ip_bits->id_behavior_nr == 2);
 		ip_id_behavior = ip_bits->id_behavior;
 		rohc_decomp_debug(context, "  use behavior '%s' defined in current packet "
-		                  "for IP-ID", tcp_ip_id_behavior_get_descr(ip_id_behavior));
+		                  "for IP-ID", rohc_ip_id_behavior_get_descr(ip_id_behavior));
 	}
 	else
 	{
 		ip_id_behavior = ip_context->ctxt.vx.ip_id_behavior;
 		rohc_decomp_debug(context, "  use already-defined behavior '%s' for IP-ID",
-		                  tcp_ip_id_behavior_get_descr(ip_id_behavior));
+		                  rohc_ip_id_behavior_get_descr(ip_id_behavior));
 	}
 	ip_decoded->id_behavior = ip_id_behavior;
 
@@ -2975,12 +2975,12 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 		else if(ip_bits->id.bits_nr > 0)
 		{
 			/* ROHC packet cannot contain partial IP-ID if it is not sequential */
-			if(ip_id_behavior > IP_ID_BEHAVIOR_SEQ_SWAP)
+			if(ip_id_behavior > ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
 			{
 				rohc_decomp_warn(context, "packet and context mismatch: received "
 				                 "%zu bits of IP-ID in ROHC packet but IP-ID behavior "
 				                 "is %s according to context", ip_bits->id.bits_nr,
-				                 tcp_ip_id_behavior_get_descr(ip_id_behavior));
+				                 rohc_ip_id_behavior_get_descr(ip_id_behavior));
 				goto error;
 			}
 
@@ -2998,12 +2998,12 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 			                  "%zu-bit 0x%x with p = %d)", ip_decoded->id,
 			                  ip_bits->id.bits_nr, ip_bits->id.bits, ip_bits->id.p);
 
-			if(ip_id_behavior == IP_ID_BEHAVIOR_SEQ_SWAP)
+			if(ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
 			{
 				ip_decoded->id = swab16(ip_decoded->id);
 			}
 		}
-		else if(ip_id_behavior == IP_ID_BEHAVIOR_ZERO)
+		else if(ip_id_behavior == ROHC_IP_ID_BEHAVIOR_ZERO)
 		{
 			rohc_decomp_debug(context, "  IP-ID follows a zero behavior");
 			ip_decoded->id = 0;
@@ -3148,7 +3148,7 @@ static bool d_tcp_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const contex
 	}
 
 	/* extension headers */
-	assert(ip_bits->opts_nr <= ROHC_TCP_MAX_IP_EXT_HDRS);
+	assert(ip_bits->opts_nr <= ROHC_MAX_IP_EXT_HDRS);
 	ip_decoded->opts_nr = ip_bits->opts_nr;
 	ip_decoded->opts_len = ip_bits->opts_len;
 	if(ip_bits->version == IPV6)
@@ -3965,7 +3965,7 @@ static bool d_tcp_build_ipv4_hdr(const struct rohc_decomp_ctxt *const context,
 	/* IP-ID */
 	ipv4->id = rohc_hton16(decoded->id);
 	rohc_decomp_debug(context, "    %s IP-ID = 0x%04x",
-	                  tcp_ip_id_behavior_get_descr(decoded->id_behavior),
+	                  rohc_ip_id_behavior_get_descr(decoded->id_behavior),
 	                  rohc_ntoh16(ipv4->id));
 
 	/* length and checksums will be computed once all headers are built */
@@ -4457,7 +4457,7 @@ static void d_tcp_update_ctxt(struct rohc_decomp_ctxt *const context,
 			if(is_inner)
 			{
 				uint16_t ip_id_offset;
-				if(ip_decoded->id_behavior == IP_ID_BEHAVIOR_SEQ_SWAP)
+				if(ip_decoded->id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
 				{
 					ip_id_offset = swab16(ip_context->ctxt.v4.ip_id) - msn;
 				}

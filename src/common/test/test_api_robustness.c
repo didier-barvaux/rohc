@@ -23,10 +23,12 @@
  */
 
 #include "rohc.h"
+#include "rohc_internal.h"
 #include <rohc/rohc_buf.h>
 #include "rohc_packets.h"
 #include "protocols/ip_numbers.h"
 #include "protocols/tcp.h"
+#include "protocols/rfc6846.h"
 
 #include "config.h" /* for VERSION and PACKAGE_REVNO */
 
@@ -318,20 +320,20 @@ int main(int argc, char *argv[])
 		CHECK(strcmp(rohc_get_ip_proto_descr(ROHC_IPPROTO_MAX), unknown) == 0);
 	}
 
-	/* not a public API, but best place to test: tcp_ip_id_behavior_get_descr() */
+	/* not a public API, but best place to test: rohc_ip_id_behavior_get_descr() */
 	{
 		const char unknown[] = "unknown IP-ID behavior";
 
-		CHECK(strcmp(tcp_ip_id_behavior_get_descr(IP_ID_BEHAVIOR_SEQ), "") != 0);
-		CHECK(strcmp(tcp_ip_id_behavior_get_descr(IP_ID_BEHAVIOR_SEQ), unknown) != 0);
-		CHECK(strcmp(tcp_ip_id_behavior_get_descr(IP_ID_BEHAVIOR_SEQ_SWAP), "") != 0);
-		CHECK(strcmp(tcp_ip_id_behavior_get_descr(IP_ID_BEHAVIOR_SEQ_SWAP), unknown) != 0);
-		CHECK(strcmp(tcp_ip_id_behavior_get_descr(IP_ID_BEHAVIOR_RAND), "") != 0);
-		CHECK(strcmp(tcp_ip_id_behavior_get_descr(IP_ID_BEHAVIOR_RAND), unknown) != 0);
-		CHECK(strcmp(tcp_ip_id_behavior_get_descr(IP_ID_BEHAVIOR_ZERO), "") != 0);
-		CHECK(strcmp(tcp_ip_id_behavior_get_descr(IP_ID_BEHAVIOR_ZERO), unknown) != 0);
+		CHECK(strcmp(rohc_ip_id_behavior_get_descr(ROHC_IP_ID_BEHAVIOR_SEQ), "") != 0);
+		CHECK(strcmp(rohc_ip_id_behavior_get_descr(ROHC_IP_ID_BEHAVIOR_SEQ), unknown) != 0);
+		CHECK(strcmp(rohc_ip_id_behavior_get_descr(ROHC_IP_ID_BEHAVIOR_SEQ_SWAP), "") != 0);
+		CHECK(strcmp(rohc_ip_id_behavior_get_descr(ROHC_IP_ID_BEHAVIOR_SEQ_SWAP), unknown) != 0);
+		CHECK(strcmp(rohc_ip_id_behavior_get_descr(ROHC_IP_ID_BEHAVIOR_RAND), "") != 0);
+		CHECK(strcmp(rohc_ip_id_behavior_get_descr(ROHC_IP_ID_BEHAVIOR_RAND), unknown) != 0);
+		CHECK(strcmp(rohc_ip_id_behavior_get_descr(ROHC_IP_ID_BEHAVIOR_ZERO), "") != 0);
+		CHECK(strcmp(rohc_ip_id_behavior_get_descr(ROHC_IP_ID_BEHAVIOR_ZERO), unknown) != 0);
 
-		CHECK(strcmp(tcp_ip_id_behavior_get_descr(IP_ID_BEHAVIOR_ZERO + 1), unknown) == 0);
+		CHECK(strcmp(rohc_ip_id_behavior_get_descr(ROHC_IP_ID_BEHAVIOR_ZERO + 1), unknown) == 0);
 	}
 
 	/* not a public API, but best place to test: tcp_opt_get_descr() */

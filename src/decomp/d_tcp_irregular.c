@@ -39,7 +39,7 @@ static int tcp_parse_irregular_ip(const struct rohc_decomp_ctxt *const context,
                                   const uint8_t *rohc_data,
                                   const size_t rohc_data_len,
                                   const bool is_innermost,
-                                  const tcp_ip_id_behavior_t ip_id_behavior,
+                                  const rohc_ip_id_behavior_t ip_id_behavior,
                                   struct rohc_tcp_extr_bits *const bits,
                                   struct rohc_tcp_extr_ip_bits *const ip_bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 7, 8)));
@@ -48,7 +48,7 @@ static int tcp_parse_irregular_ipv4(const struct rohc_decomp_ctxt *const context
                                     const uint8_t *rohc_data,
                                     const size_t rohc_data_len,
                                     const bool is_innermost,
-                                    const tcp_ip_id_behavior_t ip_id_behavior,
+                                    const rohc_ip_id_behavior_t ip_id_behavior,
                                     struct rohc_tcp_extr_bits *const bits,
                                     struct rohc_tcp_extr_ip_bits *const ip_bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 6, 7)));
@@ -90,7 +90,7 @@ static inline bool d_tcp_is_ecn_used(const struct d_tcp_context *const tcp_ctxt,
 bool tcp_parse_irreg_chain(const struct rohc_decomp_ctxt *const context,
                            const uint8_t *const rohc_packet,
                            const size_t rohc_length,
-                           const tcp_ip_id_behavior_t innermost_ip_id_behavior,
+                           const rohc_ip_id_behavior_t innermost_ip_id_behavior,
                            struct rohc_tcp_extr_bits *const bits,
                            size_t *const parsed_len)
 {
@@ -116,7 +116,7 @@ bool tcp_parse_irreg_chain(const struct rohc_decomp_ctxt *const context,
 		struct rohc_tcp_extr_ip_bits *const ip_bits = &(bits->ip[ip_contexts_nr]);
 		const bool is_inner_ip =
 			(ip_contexts_nr == (tcp_context->ip_contexts_nr - 1));
-		tcp_ip_id_behavior_t ip_id_behavior;
+		rohc_ip_id_behavior_t ip_id_behavior;
 
 		if(is_inner_ip)
 		{
@@ -188,7 +188,7 @@ static int tcp_parse_irregular_ip(const struct rohc_decomp_ctxt *const context,
                                   const uint8_t *rohc_data,
                                   const size_t rohc_data_len,
                                   const bool is_innermost,
-                                  const tcp_ip_id_behavior_t ip_id_behavior,
+                                  const rohc_ip_id_behavior_t ip_id_behavior,
                                   struct rohc_tcp_extr_bits *const bits,
                                   struct rohc_tcp_extr_ip_bits *const ip_bits)
 {
@@ -243,7 +243,7 @@ static int tcp_parse_irregular_ipv4(const struct rohc_decomp_ctxt *const context
                                     const uint8_t *rohc_data,
                                     const size_t rohc_data_len,
                                     const bool is_innermost,
-                                    const tcp_ip_id_behavior_t ip_id_behavior,
+                                    const rohc_ip_id_behavior_t ip_id_behavior,
                                     struct rohc_tcp_extr_bits *const bits,
                                     struct rohc_tcp_extr_ip_bits *const ip_bits)
 {
@@ -255,7 +255,7 @@ static int tcp_parse_irregular_ipv4(const struct rohc_decomp_ctxt *const context
 	remain_len = rohc_data_len;
 
 	/* ip_id =:= ip_id_enc_irreg( ip_id_behavior.UVALUE ) */
-	if(ip_id_behavior == IP_ID_BEHAVIOR_RAND)
+	if(ip_id_behavior == ROHC_IP_ID_BEHAVIOR_RAND)
 	{
 		uint16_t ip_id;
 
