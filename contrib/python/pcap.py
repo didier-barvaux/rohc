@@ -114,6 +114,7 @@ class PcapFile(object):
             self.pcap.parse_info()
             self.linktype = self.pcap.section_info.link_type
         else:
+            print("unknown format")
             return None
 
     def get_file_format(self):
@@ -136,6 +137,7 @@ class PcapFile(object):
         elif magic_num == 0x0A0D0D0A:
             return FileFormat.PCAP_NG, buf
         else:
+            print("unknown magic number %x" % magic_num, file=sys.stderr)
             return FileFormat.UNKNOWN, buf
 
     def read_packet(self):
