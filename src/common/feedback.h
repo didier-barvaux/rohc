@@ -64,6 +64,7 @@ typedef enum
 	ROHC_FEEDBACK_WITH_NO_CRC   = 0,  /**< No CRC protects the feedback */
 	ROHC_FEEDBACK_WITH_CRC_OPT  = 1,  /**< A CRC option protects the feedback */
 	ROHC_FEEDBACK_WITH_CRC_BASE = 2,  /**< A base header CRC protects the feedback */
+	ROHC_FEEDBACK_WITH_CRC_BASE_TCP = 3,  /**< A base header CRC protects the feedback */
 
 } rohc_feedback_crc_t;
 

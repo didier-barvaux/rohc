@@ -1985,10 +1985,14 @@ static bool rohc_decomp_feedback_ack(struct rohc_decomp *const decomp,
 			}
 
 			/* use CRC option if mode change requested */
-			if(infos->profile_id == ROHC_PROFILE_TCP ||
-			   rohc_profile_is_rohcv2(infos->profile_id))
+			if(infos->profile_id == ROHC_PROFILE_TCP)
 			{
-				/* CRC is present in base header for TCP and ROHCv2 profiles */
+				/* CRC is present in base header for TCP profile */
+				crc_present = ROHC_FEEDBACK_WITH_CRC_BASE_TCP;
+			}
+			else if(rohc_profile_is_rohcv2(infos->profile_id))
+			{
+				/* CRC is present in base header for ROHCv2 profiles */
 				crc_present = ROHC_FEEDBACK_WITH_CRC_BASE;
 			}
 			else if(infos->do_change_mode)
@@ -2321,8 +2325,11 @@ static bool rohc_decomp_feedback_nack(struct rohc_decomp *const decomp,
 		           "FEEDBACK-2 is %d-byte long", sfeedback.size);
 
 		/* use CRC option if mode change requested */
-		if(infos->profile_id == ROHC_PROFILE_TCP ||
-		   rohc_profile_is_rohcv2(infos->profile_id))
+		if(infos->profile_id == ROHC_PROFILE_TCP)
+		{
+			crc_present = ROHC_FEEDBACK_WITH_CRC_BASE_TCP;
+		}
+		else if(rohc_profile_is_rohcv2(infos->profile_id))
 		{
 			crc_present = ROHC_FEEDBACK_WITH_CRC_BASE;
 		}

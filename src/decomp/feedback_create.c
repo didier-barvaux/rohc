@@ -415,7 +415,6 @@ uint8_t * f_wrap_feedback(struct d_feedback *const feedback,
 	uint8_t *feedback_packet;
 	size_t feedback_cid_len = 0;
 	size_t crc_pos = 0;
-	uint8_t crc;
 
 	/* append the CID to the feedback packet */
 	if(!f_append_cid(feedback, cid, cid_type, &feedback_cid_len))
@@ -440,7 +439,8 @@ uint8_t * f_wrap_feedback(struct d_feedback *const feedback,
 		/* CRC goes in the last byte of the feedback (CRC option is the last one) */
 		crc_pos = feedback->size - 1;
 	}
-	else if(protect_with_crc == ROHC_FEEDBACK_WITH_CRC_BASE)
+	else if(protect_with_crc == ROHC_FEEDBACK_WITH_CRC_BASE ||
+	        protect_with_crc == ROHC_FEEDBACK_WITH_CRC_BASE_TCP)
 	{
 		/* CRC goes in the last byte of the base header */
 		const size_t feedback_type_len = 1;
@@ -466,9 +466,36 @@ uint8_t * f_wrap_feedback(struct d_feedback *const feedback,
 	/* compute the CRC and store it in the feedback packet if specified */
 	if(protect_with_crc != ROHC_FEEDBACK_WITH_NO_CRC)
 	{
+		uint8_t crc = CRC_INIT_8;
+
+		if(protect_with_crc == ROHC_FEEDBACK_WITH_CRC_BASE_TCP)
+		{
+			uint8_t extra_hdr[2];
+			size_t extra_hdr_len;
+			if(feedback->size < 8)
+			{
+				extra_hdr[0] = 0xf0 | (feedback->size & 0x07);
+				extra_hdr_len = 1;
+			}
+			else
+			{
+				extra_hdr[0] = 0xf0;
+				extra_hdr[1] = feedback->size;
+				extra_hdr_len = 2;
+			}
+			crc = crc_calculate(ROHC_CRC_TYPE_8, extra_hdr, extra_hdr_len, crc, crc_table);
+#ifdef ROHC_FEEDBACK_DEBUG
+			printf("TCP workaround: add %zu-byte extra header to CRC feedback\n",
+			       extra_hdr_len);
+#endif
+		}
+
 		crc = crc_calculate(ROHC_CRC_TYPE_8, feedback_packet, feedback->size,
-		                    CRC_INIT_8, crc_table);
-		feedback_packet[crc_pos] = crc & 0xff;
+		                    crc, crc_table);
+		feedback_packet[crc_pos] = crc;
+#ifdef ROHC_FEEDBACK_DEBUG
+		printf("CRC-8 on %d-byte feedback = 0x%02x\n", feedback->size, crc);
+#endif
 	}
 
 	*final_size = feedback->size;
