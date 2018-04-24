@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #
 # Copyright 2015,2016,2018 Didier Barvaux
+# Copyright 2018 Viveris Technologies
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -93,14 +94,19 @@ from RohcDecompressor import *
 ETHER_HDR_LEN       = 14 # bytes
 ETHER_FRAME_MIN_LEN = 60 # bytes
 
-ALL_PROFILES = [ROHC_PROFILE_UNCOMPRESSED, \
-                ROHC_PROFILE_RTP, \
-                ROHC_PROFILE_UDP, \
-                ROHC_PROFILE_ESP, \
-                ROHC_PROFILE_IP, \
-                ROHC_PROFILE_TCP, \
-                ROHC_PROFILE_UDPLITE, \
-                ]
+ALL_PROFILES_V1 = [ROHC_PROFILE_UNCOMPRESSED, \
+                   ROHC_PROFILE_RTP, \
+                   ROHC_PROFILE_UDP, \
+                   ROHC_PROFILE_ESP, \
+                   ROHC_PROFILE_IP, \
+                   ROHC_PROFILE_TCP, \
+                   ROHC_PROFILE_UDPLITE, \
+                  ]
+
+ALL_PROFILES_V2 = [ROHC_PROFILE_UNCOMPRESSED, \
+                   ROHCv2_PROFILE_IP, \
+                   ROHC_PROFILE_TCP, \
+                  ]
 
 
 def usage():
@@ -123,7 +129,10 @@ def usage():
     print("  --max-contexts NUM    The maximum number of ROHC contexts to")
     print("                        simultaneously use during the test")
     print("  --wlsb-width NUM      The width of the WLSB window to use")
+    print("  --rohc-version NUM    The ROHC version to use: 1 for ROHCv1")
+    print("                        and 2 for ROHCv2")
     print("  --verbose             Run the test in verbose mode")
+    print("  --quiet               Run the test in silent mode")
 
 
 def parse_opts(opts):
@@ -131,8 +140,9 @@ def parse_opts(opts):
     cid_type = None
     cid_max = None
     wlsb_width = None
+    proto_version = 1
     verbose = False
-    profiles = ALL_PROFILES
+    profiles = None
     pcap_in = None
     pcap_cmp = None
 
@@ -161,8 +171,16 @@ def parse_opts(opts):
                 print("option --wlsb-width expects one value")
                 return (False, False, None, None, None, None, None, None, None)
             wlsb_width = int(opts[opt_idx])
+        elif opts[opt_idx] ==  "--rohc-version":
+            opt_idx += 1
+            if opt_idx >= max_opts:
+                print("option --rohc-version expects one value")
+                return (False, False, None, None, None, None, None, None, None)
+            proto_version = int(opts[opt_idx])
         elif opts[opt_idx] ==  "--verbose":
             verbose = True
+        elif opts[opt_idx] ==  "--quiet":
+            verbose = False
         elif cid_type is None:
             if opts[opt_idx] == 'smallcid':
                 cid_type = ROHC_SMALL_CID
@@ -177,6 +195,15 @@ def parse_opts(opts):
             print("unexpected option '%s'" % opts[opt_idx])
             return (False, False, None, None, None, None, None, None, None)
         opt_idx += 1
+
+    if proto_version == 1:
+        profiles = ALL_PROFILES_V1
+    elif proto_version == 2:
+        profiles = ALL_PROFILES_V2
+    else:
+        print("unexpected ROHC version", proto_version, \
+              ": only versions 1 or 2 are supported")
+        return (False, False, None, None, None, None, None, None, None)
 
     if cid_type == ROHC_SMALL_CID:
         if cid_max is None:

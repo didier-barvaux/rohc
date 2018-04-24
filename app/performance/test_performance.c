@@ -125,6 +125,7 @@ static int test_compression_perfs(char *filename,
                                   const rohc_cid_type_t cid_type,
                                   const size_t wlsb_width,
                                   const size_t max_contexts,
+                                  const size_t proto_version,
                                   unsigned long *packet_count);
 static int time_compress_packet(struct rohc_comp *comp,
                                 unsigned long num_packet,
@@ -135,6 +136,7 @@ static int time_compress_packet(struct rohc_comp *comp,
 static int test_decompression_perfs(char *filename,
                                     const rohc_cid_type_t cid_type,
                                     const size_t max_contexts,
+                                    const size_t proto_version,
                                     unsigned long *packet_count);
 static int time_decompress_packet(struct rohc_decomp *decomp,
                                   unsigned long num_packet,
@@ -177,6 +179,7 @@ int main(int argc, char *argv[])
 	int max_contexts = ROHC_SMALL_CID_MAX + 1;
 	char *cid_type_name = NULL;
 	int wlsb_width = 4;
+	int proto_version = 1; /* ROHC protocol version, v1 by default */
 	char *test_type = NULL; /* the name of the test to perform */
 	char *filename = NULL; /* the name of the PCAP capture used as input */
 	rohc_cid_type_t cid_type;
@@ -241,6 +244,19 @@ int main(int argc, char *argv[])
 				goto error;
 			}
 			wlsb_width = atoi(argv[1]);
+			argv++;
+			argc--;
+		}
+		else if(!strcmp(*argv, "--rohc-version"))
+		{
+			/* get the ROHC version to use */
+			if(argc <= 1)
+			{
+				fprintf(stderr, "option --rohc-version takes one argument\n\n");
+				usage();
+				goto error;
+			}
+			proto_version = atoi(argv[1]);
 			argv++;
 			argc--;
 		}
@@ -318,17 +334,25 @@ int main(int argc, char *argv[])
 		goto error;
 	}
 
+	if(proto_version != 1 && proto_version != 2)
+	{
+		fprintf(stderr, "invalid ROHC version '%d': specify 1 for ROHCv1 and "
+		        "2 for ROHCv2\n", proto_version);
+		usage();
+		goto error;
+	}
+
 	if(strcmp(test_type, "comp") == 0)
 	{
 		/* test ROHC compression with the packets from the capture */
 		ret = test_compression_perfs(filename, cid_type, wlsb_width, max_contexts,
-		                             &packet_count);
+		                             proto_version, &packet_count);
 	}
 	else if(strcmp(test_type, "decomp") == 0)
 	{
 		/* test ROHC decompression with the packets from the capture */
 		ret = test_decompression_perfs(filename, cid_type, max_contexts,
-		                               &packet_count);
+		                               proto_version, &packet_count);
 	}
 	else
 	{
@@ -386,6 +410,8 @@ static void usage(void)
 		"      --wlsb-width NUM    The width of the WLSB window to use\n"
 		"      --max-contexts NUM  The maximum number of ROHC contexts to\n"
 		"                          simultaneously use during the test\n"
+		"      --rohc-version NUM  The ROHC version to use: 1 for ROHCv1\n"
+		"                          and 2 for ROHCv2\n"
 		"\n"
 		"Examples:\n"
 		"  rohc_test_performance comp smallcid voip.pcap     test compression performances with small CIDs on the given VoIP stream\n"
@@ -403,6 +429,7 @@ static void usage(void)
  * @param cid_type      The type of CIDs the compressor shall use
  * @param wlsb_width    The width of the WLSB window to use
  * @param max_contexts  The maximum number of ROHC contexts to use
+ * @param proto_version The version of the ROHC protocol to use: v1 or v2
  * @param packet_count  OUT: the number of compressed packets, undefined if
  *                      compression failed
  * @return              0 in case of success, 1 otherwise
@@ -411,6 +438,7 @@ static int test_compression_perfs(char *filename,
                                   const rohc_cid_type_t cid_type,
                                   const size_t wlsb_width,
                                   const size_t max_contexts,
+                                  const size_t proto_version,
                                   unsigned long *packet_count)
 {
 	pcap_t *handle;
@@ -486,13 +514,44 @@ static int test_compression_perfs(char *filename,
 	}
 
 	/* activate all the compression profiles */
-	if(!rohc_comp_enable_profiles(comp, ROHC_PROFILE_UNCOMPRESSED,
-	                              ROHC_PROFILE_RTP, ROHC_PROFILE_UDP,
-	                              ROHC_PROFILE_IP, ROHC_PROFILE_UDPLITE,
-	                              ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
+	if(proto_version == 1)
 	{
-		fprintf(stderr, "failed to enable the compression profiles\n");
-		goto free_compresssor;
+		/* enable ROHCv1 profiles */
+		if(!rohc_comp_enable_profiles(comp,
+		                              ROHCv1_PROFILE_UNCOMPRESSED,
+		                              ROHCv1_PROFILE_IP_UDP_RTP,
+		                              ROHCv1_PROFILE_IP_UDP,
+		                              ROHCv1_PROFILE_IP_ESP,
+		                              ROHCv1_PROFILE_IP,
+		                              ROHCv1_PROFILE_IP_TCP,
+		                              ROHCv1_PROFILE_IP_UDPLITE,
+		                              -1))
+		{
+			fprintf(stderr, "failed to enable the compression profiles\n");
+			goto free_compresssor;
+		}
+	}
+	else
+	{
+		/* enable ROHCv2 profiles */
+		if(!rohc_comp_enable_profiles(comp,
+		                              ROHCv1_PROFILE_UNCOMPRESSED,
+		                              ROHCv1_PROFILE_IP_TCP,
+#if 0
+		                              ROHCv2_PROFILE_IP_UDP_RTP,
+		                              ROHCv2_PROFILE_IP_UDP,
+		                              ROHCv2_PROFILE_IP_ESP,
+#endif
+		                              ROHCv2_PROFILE_IP,
+#if 0
+		                              ROHCv2_PROFILE_IP_UDPLITE_RTP,
+		                              ROHCv2_PROFILE_IP_UDPLITE,
+#endif
+		                              -1))
+		{
+			fprintf(stderr, "failed to enable the compression profiles\n");
+			goto free_compresssor;
+		}
 	}
 
 	/* set the WLSB window width on compressor */
@@ -658,6 +717,7 @@ error:
  * @param filename      The name of the PCAP file that contains the ROHC packets
  * @param cid_type      The type of CIDs the decompressor shall use
  * @param max_contexts  The maximum number of ROHC contexts to use
+ * @param proto_version The version of the ROHC protocol to use: v1 or v2
  * @param packet_count  OUT: the number of decompressed packets, undefined if
  *                      decompression failed
  * @return              0 in case of success, 1 otherwise
@@ -665,6 +725,7 @@ error:
 static int test_decompression_perfs(char *filename,
                                     const rohc_cid_type_t cid_type,
                                     const size_t max_contexts,
+                                    const size_t proto_version,
                                     unsigned long *packet_count)
 {
 	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
@@ -733,13 +794,44 @@ static int test_decompression_perfs(char *filename,
 	}
 
 	/* activate all the decompression profiles */
-	if(!rohc_decomp_enable_profiles(decomp, ROHC_PROFILE_UNCOMPRESSED,
-	                                ROHC_PROFILE_RTP, ROHC_PROFILE_UDP,
-	                                ROHC_PROFILE_IP, ROHC_PROFILE_UDPLITE,
-	                                ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
+	if(proto_version == 1)
 	{
-		fprintf(stderr, "failed to enable the decompression profiles\n");
-		goto free_decompressor;
+		/* enable ROHCv1 profiles */
+		if(!rohc_decomp_enable_profiles(decomp,
+		                                ROHCv1_PROFILE_UNCOMPRESSED,
+		                                ROHCv1_PROFILE_IP_UDP_RTP,
+		                                ROHCv1_PROFILE_IP_UDP,
+		                                ROHCv1_PROFILE_IP_ESP,
+		                                ROHCv1_PROFILE_IP,
+		                                ROHCv1_PROFILE_IP_TCP,
+		                                ROHCv1_PROFILE_IP_UDPLITE,
+		                                -1))
+		{
+			fprintf(stderr, "failed to enable the decompression profiles\n");
+			goto free_decompressor;
+		}
+	}
+	else
+	{
+		/* enable ROHCv2 profiles */
+		if(!rohc_decomp_enable_profiles(decomp,
+		                                ROHCv1_PROFILE_UNCOMPRESSED,
+		                                ROHCv1_PROFILE_IP_TCP,
+#if 0
+		                                ROHCv2_PROFILE_IP_UDP_RTP,
+		                                ROHCv2_PROFILE_IP_UDP,
+		                                ROHCv2_PROFILE_IP_ESP,
+#endif
+		                                ROHCv2_PROFILE_IP,
+#if 0
+		                                ROHCv2_PROFILE_IP_UDPLITE_RTP,
+		                                ROHCv2_PROFILE_IP_UDPLITE,
+#endif
+		                                -1))
+		{
+			fprintf(stderr, "failed to enable the decompression profiles\n");
+			goto free_decompressor;
+		}
 	}
 
 	/* print some progress info if not in quiet mode */

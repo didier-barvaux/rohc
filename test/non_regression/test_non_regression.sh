@@ -55,19 +55,19 @@ test -z "${AWK}" && AWK="`which gawk`"
 test -z "${AWK}" && AWK="`which awk`"
 
 # parse arguments
-SCRIPT="$0"
+SCRIPT="${PWD}/$0"
 VERBOSE="$1"
 if [ "x$MAKELEVEL" != "x" ] ; then
 	BASEDIR="${srcdir}"
 	APP="../test_non_regression${KERNEL_SUFFIX}${CROSS_COMPILATION_EXEEXT}"
 	APP_PYTHON="python${USE_PYTHON} ../../../contrib/python/test_non_regression.py"
 else
-	BASEDIR=$( dirname "${SCRIPT}" )
+	BASEDIR="$( dirname "${SCRIPT}" )/../"
 	APP="${BASEDIR}/../test_non_regression${KERNEL_SUFFIX}${CROSS_COMPILATION_EXEEXT}"
 	APP_PYTHON="python${USE_PYTHON} ${BASEDIR}/../../../contrib/python/test_non_regression.py"
 fi
 
-# extract the CID type and capture name from the name of the script
+# extract test parameters from the name of the script
 PARAMS=$( echo "${SCRIPT}" | \
           ${SED} -e 's#^.*/test_non_reg_##' -e 's#\.sh$##' )
 MAX_CONTEXTS=$( echo "${PARAMS}" | ${AWK} -F'_' '{ print $(NF-2) }' | sed -e 's/mc//' )
@@ -75,8 +75,18 @@ WLSB_WIDTH=$( echo "${PARAMS}" | ${AWK} -F'_' '{ print $(NF-1) }' | sed -e 's/wl
 CID_TYPE=$( echo "${PARAMS}" | ${AWK} -F'_' '{ print $(NF) }' )
 STREAM=$( echo "${PARAMS}" | ${AWK} -F'_' '{ OFS="/" ; $(NF-2)="" ; $(NF-1)="" ; $(NF)="" ; print $0 }' )
 CAPTURE_SOURCE="${BASEDIR}/inputs/${STREAM}/source.pcap"
-CAPTURE_COMPARE="${BASEDIR}/inputs/${STREAM}/rohc_maxcontexts${MAX_CONTEXTS}_wlsb${WLSB_WIDTH}_${CID_TYPE}.pcap"
-SIZE_COMPARE="${BASEDIR}/inputs/${STREAM}/rohc_maxcontexts${MAX_CONTEXTS}_wlsb${WLSB_WIDTH}_${CID_TYPE}.sizes"
+RFC_NUM=$( dirname "${SCRIPT}" | \
+           ${SED} -e 's#^.*/\(rfc[0-9][0-9][0-9][0-9]\)/.*$#\1#' ) # extract RFC number
+# enable ROHCv2 profiles for RFC5225, ROHCv1 otherwise
+if [ "${RFC_NUM}" = "rfc5225" ] ; then
+	ROHC_VERSION=2
+	ROHC_VERSION_SUFFIX="v2"
+else
+	ROHC_VERSION=1
+	ROHC_VERSION_SUFFIX=""
+fi
+CAPTURE_COMPARE="${BASEDIR}/inputs/${STREAM}/rohc${ROHC_VERSION_SUFFIX}_maxcontexts${MAX_CONTEXTS}_wlsb${WLSB_WIDTH}_${CID_TYPE}.pcap"
+SIZE_COMPARE="${BASEDIR}/inputs/${STREAM}/rohc${ROHC_VERSION_SUFFIX}_maxcontexts${MAX_CONTEXTS}_wlsb${WLSB_WIDTH}_${CID_TYPE}.sizes"
 
 # check that capture names are not empty
 if [ -z "${CAPTURE_SOURCE}" ] ; then
@@ -119,11 +129,13 @@ elif [ "${VERBOSE}" = "generate" ] ; then
 	CMD="${APP} -o ${CAPTURE_COMPARE} --rohc-size-output ${SIZE_COMPARE}"
 	CMD="${CMD} --wlsb-width ${WLSB_WIDTH}"
 	CMD="${CMD} --max-contexts ${MAX_CONTEXTS}"
+	CMD="${CMD} --rohc-version ${ROHC_VERSION}"
 	CMD="${CMD} ${CID_TYPE} ${CAPTURE_SOURCE}"
 else
 	# normal mode: compare with existing ROHC output captures
 	CMD_PARAMS="${CMD_PARAMS} --wlsb-width ${WLSB_WIDTH}"
 	CMD_PARAMS="${CMD_PARAMS} --max-contexts ${MAX_CONTEXTS}"
+	CMD_PARAMS="${CMD_PARAMS} --rohc-version ${ROHC_VERSION}"
 	CMD_PARAMS="${CMD_PARAMS} ${CID_TYPE} ${CAPTURE_SOURCE}"
 	if [ "${VERBOSE}" = "verbose" ] ; then
 		CMD_PARAMS="${CMD_PARAMS} --verbose"
