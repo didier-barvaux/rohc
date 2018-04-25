@@ -37,7 +37,7 @@ print "generate one TCP stream with %i packets in file '%s'" % (pkts_nr, pcap_fi
 pcap_writer = PcapWriter(pcap_file_name)
 
 payload = ""
-payload_len = 418 - 14 - 4 - 20 - 20 - 12
+payload_len = 418 - 14 - 4 - 20 - 20
 for num in range(0, payload_len):
     payload = payload + "A"
 
@@ -57,9 +57,9 @@ for num in range(0, pkts_nr):
     options = []
     if syn_sent is True:
         tcp_flags = "A"
-        options.append(('NOP', None))
-        options.append(('NOP', None))
-        options.append(('Timestamp', (ts, ts)))
+#        options.append(('NOP', None))
+#        options.append(('NOP', None))
+#        options.append(('Timestamp', (ts, ts)))
         cur_payload_len = payload_len
     else:
         tcp_flags = "S"
@@ -80,5 +80,5 @@ for num in range(0, pkts_nr):
         seq_num = (seq_num + 1) % 0xffffffff
         syn_sent = True
     ts = (ts + 1) % 0xffffffff
-    ip_id = (ip_id + 1) % 0xffff
+    #ip_id = (ip_id + 1) % 0xffff
 
