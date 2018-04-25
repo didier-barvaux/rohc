@@ -101,14 +101,50 @@
  *  <dd>ROHC: Framework and four profiles: RTP, UDP, ESP, and uncompressed.</dd>
  *  <dt><a href="https://tools.ietf.org/html/rfc3096">RFC&nbsp;3096</a></dt>
  *  <dd>Requirements for robust IP/UDP/RTP header compression.</dd>
+ *  <dt><a href="https://tools.ietf.org/html/rfc3241">RFC&nbsp;3241</a></dt>
+ *  <dd>ROHC over PPP</dd>
+ *  <dt><a href="https://tools.ietf.org/html/rfc3242">RFC&nbsp;3242</a></dt>
+ *  <dd>ROHC: A Link-Layer Assisted Profile for IP/UDP/RTP</dd>
+ *  <dt><a href="https://tools.ietf.org/html/rfc3243">RFC&nbsp;3243</a></dt>
+ *  <dd>ROHC: Requirements and Assumptions for 0-byte IP/UDP/RTP Compression</dd>
+ *  <dt><a href="https://tools.ietf.org/html/rfc3408">RFC&nbsp;3408</a></dt>
+ *  <dd>ROHC: Zero-byte Support for R-mode in Extended Link-Layer Assisted ROHC Profile</dd>
+ *  <dt><a href="https://tools.ietf.org/html/rfc3409">RFC&nbsp;3409</a></dt>
+ *  <dd>ROHC: Lower Layer Guidelines for Robust RTP/UDP/IP Header Compression</dd>
+ *  <dt><a href="https://tools.ietf.org/html/rfc3759">RFC&nbsp;3759</a></dt>
+ *  <dd>ROHC: Terminology and Channel Mapping Examples</dd>
+ *  <dt><a href="https://tools.ietf.org/html/rfc3816">RFC&nbsp;3816</a></dt>
+ *  <dd>ROHC: Definitions of Managed Objects (SNMP MIB) for ROHC</dd>
+ *  <dt><a href="https://tools.ietf.org/html/rfc3828">RFC&nbsp;3828</a></dt>
+ *  <dd>The Lightweight User Datagram Protocol (UDP-Lite)</dd>
  *  <dt><a href="https://tools.ietf.org/html/rfc3843">RFC&nbsp;3843</a></dt>
  *  <dd>ROHC: A Compression Profile for IP.</dd>
  *  <dt><a href="https://tools.ietf.org/html/rfc4019">RFC&nbsp;4019</a></dt>
  *  <dd>ROHC: Profiles for User Datagram Protocol (UDP) Lite.</dd>
- *  <dt><a href="https://tools.ietf.org/html/rfc6846">RFC&nbsp;6846</a></dt>
+ *  <dt><a href="https://tools.ietf.org/html/rfc4163">RFC&nbsp;4163</a></dt>
+ *  <dd>ROHC: Requirements on TCP/IP Header Compression</dd>
+ *  <dt><a href="https://tools.ietf.org/html/rfc4224">RFC&nbsp;4224</a></dt>
+ *  <dd>ROHC over Channels That Can Reorder Packets</dd>
+ *  <dt><a href="https://tools.ietf.org/html/rfc4362">RFC&nbsp;4362</a></dt>
+ *  <dd>ROHC: A Link-Layer Assisted Profile for IP/UDP/RTP</dd>
+ *  <dt><a href="https://tools.ietf.org/html/rfc4995">RFC&nbsp;4995</a></dt>
+ *  <dd>The RObust Header Compression (ROHC) Framework</dd>
+ *  <dt><a href="https://tools.ietf.org/html/rfc4996">RFC&nbsp;4996</a></dt>
  *  <dd>ROHC: A Profile for TCP/IP (ROHC-TCP)</dd>
+ *  <dt><a href="https://tools.ietf.org/html/rfc4997">RFC&nbsp;4997</a></dt>
+ *  <dd>Formal Notation for RObust Header Compression (ROHC-FN)</dd>
  *  <dt><a href="https://tools.ietf.org/html/rfc5225">RFC&nbsp;5225</a></dt>
  *  <dd>ROHCv2: Profiles for RTP, UDP, IP, ESP and UDP-Lite</dt>
+ *  <dt><a href="https://tools.ietf.org/html/rfc5795">RFC&nbsp;5795</a></dt>
+ *  <dd>The RObust Header Compression (ROHC) Framework</dd>
+ *  <dt><a href="https://tools.ietf.org/html/rfc5856">RFC&nbsp;5856</a></dt>
+ *  <dd>ROHC: Integration of ROHC over IPsec Security Associations</dd>
+ *  <dt><a href="https://tools.ietf.org/html/rfc5857">RFC&nbsp;5857</a></dt>
+ *  <dd>ROHC: IKEv2 Extensions to Support ROHC over IPsec</dd>
+ *  <dt><a href="https://tools.ietf.org/html/rfc5858">RFC&nbsp;5858</a></dt>
+ *  <dd>ROHC: IPsec Extensions to Support ROHC over IPsec</dd>
+ *  <dt><a href="https://tools.ietf.org/html/rfc6846">RFC&nbsp;6846</a></dt>
+ *  <dd>ROHC: A Profile for TCP/IP (ROHC-TCP)</dd>
  *  <dt><a href="https://rohc-lib.org/">ROHC library</a></dt>
  *  <dd>The Open Source ROHC library described by the documentation you are
  *      currently reading.</dd>
