@@ -133,7 +133,8 @@ void c_add_wlsb(struct c_wlsb *const wlsb,
 	if(wlsb->count == 0)
 	{
 		uint8_t i;
-		for(i = 0; i < wlsb->window_width; i++)
+#pragma clang loop vectorize(enable)
+		for(i = 0; i < 4; i++)
 		{
 			wlsb->window[i].sn = sn;
 			wlsb->window[i].value = value;
@@ -189,7 +190,8 @@ bool wlsb_is_kp_possible_8bits(const struct c_wlsb *const wlsb,
 
 		/* find the minimal number of bits of the value required to be able
 		 * to recreate it thanks to ANY value in the window */
-		for(i = 0; i < wlsb->window_width; i++)
+#pragma clang loop vectorize(enable)
+		for(i = 0; i < 4; i++)
 		{
 			const struct c_window *const entry = wlsb->window + i;
 			const uint8_t v_ref = entry->value;
@@ -265,7 +267,8 @@ bool wlsb_is_kp_possible_16bits(const struct c_wlsb *const wlsb,
 
 		/* find the minimal number of bits of the value required to be able
 		 * to recreate it thanks to ANY value in the window */
-		for(i = 0; i < wlsb->window_width; i++)
+#pragma clang loop vectorize(enable)
+		for(i = 0; i < 4; i++)
 		{
 			const struct c_window *const entry = wlsb->window + i;
 			const uint16_t v_ref = entry->value;
@@ -343,7 +346,8 @@ bool wlsb_is_kp_possible_32bits(const struct c_wlsb *const wlsb,
 
 		/* find the minimal number of bits of the value required to be able
 		 * to recreate it thanks to ANY value in the window */
-		for(i = 0; i < wlsb->window_width; i++)
+#pragma clang loop vectorize(enable)
+		for(i = 0; i < 4; i++)
 		{
 			const struct c_window *const entry = wlsb->window + i;
 			const uint32_t v_ref = entry->value;
@@ -414,7 +418,8 @@ size_t wlsb_ack(struct c_wlsb *const wlsb,
 
 	/* search for the window entry that matches the given SN LSB
 	 * starting from the one */
-	for(i = 0; i < wlsb->count; i++)
+#pragma clang loop vectorize(enable)
+	for(i = 0; i < 4; i++)
 	{
 		entry = wlsb_get_next_older(entry, wlsb->window_width - 1);
 		if(do_remove)
@@ -446,24 +451,22 @@ size_t wlsb_ack(struct c_wlsb *const wlsb,
 bool wlsb_is_sn_present(struct c_wlsb *const wlsb, const uint32_t sn)
 {
 	size_t entry = wlsb->next;
+	bool found = false;
 	size_t i;
 
 	/* search for the window entry that matches the given SN LSB
 	 * starting from the one */
-	for(i = 0; i < wlsb->count; i++)
+#pragma clang loop vectorize(enable)
+	for(i = 0; i < 4; i++)
 	{
 		entry = wlsb_get_next_older(entry, wlsb->window_width - 1);
 		if(sn == wlsb->window[entry].sn)
 		{
-			return true;
-		}
-		else if(sn > wlsb->window[entry].sn)
-		{
-			return false;
+			found = true;
 		}
 	}
 
-	return false;
+	return found;
 }
 
 
