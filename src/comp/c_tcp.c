@@ -3364,7 +3364,6 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 		else if(ip->version == IPV6)
 		{
 			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
-			uint8_t dscp;
 			size_t exts_nr;
 			size_t exts_len;
 
@@ -3376,9 +3375,8 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 			}
 
 			protocol = ipv6->nh;
-			dscp = (remain_data[1] >> 2) & 0x3f;
-			last_pkt_outer_dscp_changed = !!(dscp != ip_context->ctxt.vx.dscp);
-			pkt_ecn_vals |= remain_data[1] & 0x3;
+			last_pkt_outer_dscp_changed = !!(ipv6_get_dscp(ipv6) != ip_context->ctxt.vx.dscp);
+			pkt_ecn_vals |= ipv6->ecn;
 
 			remain_data += sizeof(struct ipv6_hdr);
 			remain_len -= sizeof(struct ipv6_hdr);
