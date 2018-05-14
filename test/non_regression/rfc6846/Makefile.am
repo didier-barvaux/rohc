@@ -25,6 +25,9 @@ TESTS_MAXCONTEXTS0_WLSB4_SMALLCID = \
 	scripts/test_non_reg_ipv4_tcp_40-nop-options_mc0_wlsb4_smallcid.sh \
 	scripts/test_non_reg_ipv6_tcp_mc0_wlsb4_smallcid.sh \
 	scripts/test_non_reg_ipv6_tcp_non-zero-dscp_mc0_wlsb4_smallcid.sh \
+	scripts/test_non_reg_ipv6_tcp_changing-ip-ecn_mc0_wlsb4_smallcid.sh \
+	scripts/test_non_reg_ipv6_tcp_changing-ip-dscp-1_mc0_wlsb4_smallcid.sh \
+	scripts/test_non_reg_ipv6_tcp_changing-ip-dscp-2_mc0_wlsb4_smallcid.sh \
 	scripts/test_non_reg_ipv4_tcp_wlsb-ack-only-for-r-mode_mc0_wlsb4_smallcid.sh \
 	scripts/test_non_reg_ipv4_tcp_afl0_mc0_wlsb4_smallcid.sh \
 	scripts/test_non_reg_ipv4_tcp_afl1_mc0_wlsb4_smallcid.sh \
@@ -128,6 +131,9 @@ TESTS_MAXCONTEXTS0_WLSB64_SMALLCID = \
 	scripts/test_non_reg_ipv4_tcp_40-nop-options_mc0_wlsb64_smallcid.sh \
 	scripts/test_non_reg_ipv6_tcp_mc0_wlsb64_smallcid.sh \
 	scripts/test_non_reg_ipv6_tcp_non-zero-dscp_mc0_wlsb64_smallcid.sh \
+	scripts/test_non_reg_ipv6_tcp_changing-ip-ecn_mc0_wlsb64_smallcid.sh \
+	scripts/test_non_reg_ipv6_tcp_changing-ip-dscp-1_mc0_wlsb64_smallcid.sh \
+	scripts/test_non_reg_ipv6_tcp_changing-ip-dscp-2_mc0_wlsb64_smallcid.sh \
 	scripts/test_non_reg_ipv4_tcp_wlsb-ack-only-for-r-mode_mc0_wlsb64_smallcid.sh \
 	scripts/test_non_reg_ipv4_tcp_afl0_mc0_wlsb64_smallcid.sh \
 	scripts/test_non_reg_ipv4_tcp_afl1_mc0_wlsb64_smallcid.sh \
@@ -236,6 +242,9 @@ TESTS_MAXCONTEXTS1_WLSB4_SMALLCID = \
 	scripts/test_non_reg_ipv4_tcp_40-nop-options_mc1_wlsb4_smallcid.sh \
 	scripts/test_non_reg_ipv6_tcp_mc1_wlsb4_smallcid.sh \
 	scripts/test_non_reg_ipv6_tcp_non-zero-dscp_mc1_wlsb4_smallcid.sh \
+	scripts/test_non_reg_ipv6_tcp_changing-ip-ecn_mc1_wlsb4_smallcid.sh \
+	scripts/test_non_reg_ipv6_tcp_changing-ip-dscp-1_mc1_wlsb4_smallcid.sh \
+	scripts/test_non_reg_ipv6_tcp_changing-ip-dscp-2_mc1_wlsb4_smallcid.sh \
 	scripts/test_non_reg_ipv4_tcp_wlsb-ack-only-for-r-mode_mc1_wlsb4_smallcid.sh \
 	scripts/test_non_reg_ipv4_tcp_afl0_mc1_wlsb4_smallcid.sh \
 	scripts/test_non_reg_ipv4_tcp_afl1_mc1_wlsb4_smallcid.sh \
@@ -339,6 +348,9 @@ TESTS_MAXCONTEXTS1_WLSB64_SMALLCID = \
 	scripts/test_non_reg_ipv4_tcp_40-nop-options_mc1_wlsb64_smallcid.sh \
 	scripts/test_non_reg_ipv6_tcp_mc1_wlsb64_smallcid.sh \
 	scripts/test_non_reg_ipv6_tcp_non-zero-dscp_mc1_wlsb64_smallcid.sh \
+	scripts/test_non_reg_ipv6_tcp_changing-ip-ecn_mc1_wlsb64_smallcid.sh \
+	scripts/test_non_reg_ipv6_tcp_changing-ip-dscp-1_mc1_wlsb64_smallcid.sh \
+	scripts/test_non_reg_ipv6_tcp_changing-ip-dscp-2_mc1_wlsb64_smallcid.sh \
 	scripts/test_non_reg_ipv4_tcp_wlsb-ack-only-for-r-mode_mc1_wlsb64_smallcid.sh \
 	scripts/test_non_reg_ipv4_tcp_afl0_mc1_wlsb64_smallcid.sh \
 	scripts/test_non_reg_ipv4_tcp_afl1_mc1_wlsb64_smallcid.sh \
@@ -452,6 +464,9 @@ TESTS_MAXCONTEXTS0_WLSB4_LARGECID = \
 	scripts/test_non_reg_ipv4_tcp_40-nop-options_mc0_wlsb4_largecid.sh \
 	scripts/test_non_reg_ipv6_tcp_mc0_wlsb4_largecid.sh \
 	scripts/test_non_reg_ipv6_tcp_non-zero-dscp_mc0_wlsb4_largecid.sh \
+	scripts/test_non_reg_ipv6_tcp_changing-ip-ecn_mc0_wlsb4_largecid.sh \
+	scripts/test_non_reg_ipv6_tcp_changing-ip-dscp-1_mc0_wlsb4_largecid.sh \
+	scripts/test_non_reg_ipv6_tcp_changing-ip-dscp-2_mc0_wlsb4_largecid.sh \
 	scripts/test_non_reg_ipv4_tcp_wlsb-ack-only-for-r-mode_mc0_wlsb4_largecid.sh \
 	scripts/test_non_reg_ipv4_tcp_afl0_mc0_wlsb4_largecid.sh \
 	scripts/test_non_reg_ipv4_tcp_afl1_mc0_wlsb4_largecid.sh \
@@ -555,6 +570,9 @@ TESTS_MAXCONTEXTS0_WLSB64_LARGECID = \
 	scripts/test_non_reg_ipv4_tcp_40-nop-options_mc0_wlsb64_largecid.sh \
 	scripts/test_non_reg_ipv6_tcp_mc0_wlsb64_largecid.sh \
 	scripts/test_non_reg_ipv6_tcp_non-zero-dscp_mc0_wlsb64_largecid.sh \
+	scripts/test_non_reg_ipv6_tcp_changing-ip-ecn_mc0_wlsb64_largecid.sh \
+	scripts/test_non_reg_ipv6_tcp_changing-ip-dscp-1_mc0_wlsb64_largecid.sh \
+	scripts/test_non_reg_ipv6_tcp_changing-ip-dscp-2_mc0_wlsb64_largecid.sh \
 	scripts/test_non_reg_ipv4_tcp_wlsb-ack-only-for-r-mode_mc0_wlsb64_largecid.sh \
 	scripts/test_non_reg_ipv4_tcp_afl0_mc0_wlsb64_largecid.sh \
 	scripts/test_non_reg_ipv4_tcp_afl1_mc0_wlsb64_largecid.sh \
@@ -663,6 +681,9 @@ TESTS_MAXCONTEXTS1_WLSB4_LARGECID = \
 	scripts/test_non_reg_ipv4_tcp_40-nop-options_mc1_wlsb4_largecid.sh \
 	scripts/test_non_reg_ipv6_tcp_mc1_wlsb4_largecid.sh \
 	scripts/test_non_reg_ipv6_tcp_non-zero-dscp_mc1_wlsb4_largecid.sh \
+	scripts/test_non_reg_ipv6_tcp_changing-ip-ecn_mc1_wlsb4_largecid.sh \
+	scripts/test_non_reg_ipv6_tcp_changing-ip-dscp-1_mc1_wlsb4_largecid.sh \
+	scripts/test_non_reg_ipv6_tcp_changing-ip-dscp-2_mc1_wlsb4_largecid.sh \
 	scripts/test_non_reg_ipv4_tcp_wlsb-ack-only-for-r-mode_mc1_wlsb4_largecid.sh \
 	scripts/test_non_reg_ipv4_tcp_afl0_mc1_wlsb4_largecid.sh \
 	scripts/test_non_reg_ipv4_tcp_afl1_mc1_wlsb4_largecid.sh \
@@ -766,6 +787,9 @@ TESTS_MAXCONTEXTS1_WLSB64_LARGECID = \
 	scripts/test_non_reg_ipv4_tcp_40-nop-options_mc1_wlsb64_largecid.sh \
 	scripts/test_non_reg_ipv6_tcp_mc1_wlsb64_largecid.sh \
 	scripts/test_non_reg_ipv6_tcp_non-zero-dscp_mc1_wlsb64_largecid.sh \
+	scripts/test_non_reg_ipv6_tcp_changing-ip-ecn_mc1_wlsb64_largecid.sh \
+	scripts/test_non_reg_ipv6_tcp_changing-ip-dscp-1_mc1_wlsb64_largecid.sh \
+	scripts/test_non_reg_ipv6_tcp_changing-ip-dscp-2_mc1_wlsb64_largecid.sh \
 	scripts/test_non_reg_ipv4_tcp_wlsb-ack-only-for-r-mode_mc1_wlsb64_largecid.sh \
 	scripts/test_non_reg_ipv4_tcp_afl0_mc1_wlsb64_largecid.sh \
 	scripts/test_non_reg_ipv4_tcp_afl1_mc1_wlsb64_largecid.sh \
