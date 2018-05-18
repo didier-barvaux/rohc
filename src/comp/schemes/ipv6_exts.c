@@ -74,6 +74,16 @@ bool rohc_comp_ipv6_exts_are_acceptable(const struct rohc_comp *const comp,
 		           "  found extension header #%zu of type %u",
 		           ipv6_ext_nr + 1, *next_proto);
 
+		/* remember the number of IPv6 extension headers of each type */
+		if(ipv6_ext_types_count[*next_proto] >= 255)
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "too many IPv6 extension header of type 0x%02x", *next_proto);
+			goto bad_exts;
+		}
+		ipv6_ext_types_count[*next_proto]++;
+
+		/* parse the IPv6 extension header */
 		switch(*next_proto)
 		{
 			case ROHC_IPPROTO_HOPOPTS: /* IPv6 Hop-by-Hop options */
@@ -97,7 +107,6 @@ bool rohc_comp_ipv6_exts_are_acceptable(const struct rohc_comp *const comp,
 					           "packet too short for IPv6 extension header");
 					goto bad_exts;
 				}
-				(*next_proto) = ipv6_opt->next_header;
 
 				/* RFC 2460 §4 reads:
 				 *   The Hop-by-Hop Options header, when present, must
@@ -114,6 +123,8 @@ bool rohc_comp_ipv6_exts_are_acceptable(const struct rohc_comp *const comp,
 					           "not the #%zu one", ipv6_ext_nr + 1);
 					goto bad_exts;
 				}
+
+				(*next_proto) = ipv6_opt->next_header;
 				break;
 			}
 			// case ROHC_IPPROTO_ESP : ???
@@ -133,15 +144,8 @@ bool rohc_comp_ipv6_exts_are_acceptable(const struct rohc_comp *const comp,
 		remain_data += ext_len;
 		remain_len -= ext_len;
 
-		ipv6_ext_nr++;
 		(*exts_len) += ext_len;
-		if(ipv6_ext_types_count[*next_proto] >= 255)
-		{
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "too many IPv6 extension header of type 0x%02x", *next_proto);
-			goto bad_exts;
-		}
-		ipv6_ext_types_count[*next_proto]++;
+		ipv6_ext_nr++;
 	}
 
 	/* profile cannot handle the packet if it bypasses internal limit of

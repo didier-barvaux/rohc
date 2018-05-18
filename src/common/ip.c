@@ -1036,7 +1036,7 @@ static bool ext_get_next_layer(const struct net_hdr *const nh,
 	nl->len = nh->len;
 
 	/* parse packet until all extension headers are parsed */
-	while(rohc_is_ipv6_opt(nl->proto))
+	while(rohc_is_ipv6_opt(nl->proto) && ext_nr < ROHC_MAX_IP_EXT_HDRS)
 	{
 		if(ext_types_count[nl->proto] >= 255)
 		{
@@ -1061,6 +1061,13 @@ static bool ext_get_next_layer(const struct net_hdr *const nh,
 		remain_len -= nl->len;
 	}
 	nl->len = remain_len;
+
+	/* profile cannot handle the packet if it bypasses internal limit of
+	 * IPv6 extension headers */
+	if(ext_nr > ROHC_MAX_IP_EXT_HDRS)
+	{
+		return false;
+	}
 
 	/* RFC 2460 §4.1 reads:
 	 *   Each extension header should occur at most once, except for the Destination
