@@ -211,11 +211,14 @@ static int c_uncompressed_encode(struct rohc_comp_ctxt *const context,
                                  rohc_packet_t *const packet_type,
                                  size_t *const payload_offset)
 {
+	ip_version ip_vers;
 	int size;
 
+	assert(uncomp_pkt->outer_ip.size > 0);
+	ip_vers = (uncomp_pkt->outer_ip.data[0] >> 4) & 0x0f;
+
 	/* STEP 1: decide state */
-	uncompressed_decide_state(context, uncomp_pkt->time,
-	                          ip_get_version(&uncomp_pkt->outer_ip));
+	uncompressed_decide_state(context, uncomp_pkt->time, ip_vers);
 
 	/* STEP 2: Code packet */
 	size = uncompressed_code_packet(context, uncomp_pkt,
