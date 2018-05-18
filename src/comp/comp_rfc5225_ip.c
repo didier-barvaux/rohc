@@ -810,7 +810,7 @@ static bool rohc_comp_rfc5225_ip_check_context(const struct rohc_comp_ctxt *cons
 		goto bad_context;
 	}
 
-	if(rohc_is_tunneling(next_proto))
+	if(ip_hdr_pos < ROHC_MAX_IP_HDRS && rohc_is_tunneling(next_proto))
 	{
 		rohc_comp_debug(context, "  more IP headers than context");
 		goto bad_context;
