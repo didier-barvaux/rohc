@@ -3405,7 +3405,14 @@ static void tcp_decide_state(struct rohc_comp_ctxt *const context,
 	const rohc_comp_state_t curr_state = context->state;
 	rohc_comp_state_t next_state;
 
-	if(curr_state == ROHC_COMP_STATE_IR)
+	if(curr_state == ROHC_COMP_STATE_SO)
+	{
+		/* do not change state */
+		rohc_comp_debug(context, "stay in SO state");
+		next_state = ROHC_COMP_STATE_SO;
+		/* TODO: handle NACK and STATIC-NACK */
+	}
+	else if(curr_state == ROHC_COMP_STATE_IR)
 	{
 		if(context->ir_count < MAX_IR_COUNT)
 		{
@@ -3452,13 +3459,6 @@ static void tcp_decide_state(struct rohc_comp_ctxt *const context,
 			                "go to SO state", context->fo_count, MAX_FO_COUNT);
 			next_state = ROHC_COMP_STATE_SO;
 		}
-	}
-	else if(curr_state == ROHC_COMP_STATE_SO)
-	{
-		/* do not change state */
-		rohc_comp_debug(context, "stay in SO state");
-		next_state = ROHC_COMP_STATE_SO;
-		/* TODO: handle NACK and STATIC-NACK */
 	}
 	else
 	{
