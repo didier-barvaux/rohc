@@ -134,6 +134,39 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
                                             struct rohc_pkt_hdrs *const pkt_hdrs)
 	__attribute__((nonnull(1, 2, 3, 4), warn_unused_result));
 
+static bool rohc_comp_are_ip_hdrs_supported(const struct rohc_comp *const comp,
+                                            const uint8_t *const packet,
+                                            const size_t packet_len,
+                                            struct rohc_fingerprint *const fingerprint,
+                                            struct rohc_pkt_hdrs *const pkt_hdrs,
+                                            size_t *const all_ip_hdrs_len,
+                                            size_t *const all_ipv6_exts_len)
+	__attribute__((nonnull(1, 2, 4, 5, 6, 7), warn_unused_result));
+
+static rohc_profile_t rohc_comp_get_profile_l4(const struct rohc_comp *const comp,
+                                               const struct rohc_buf *const packet,
+                                               const rohc_profile_t l3_profile,
+                                               const size_t all_ipv6_exts_len,
+                                               const uint8_t l4_proto,
+                                               const uint8_t *const l4_data,
+                                               const size_t l4_len,
+                                               struct rohc_fingerprint *const fingerprint,
+                                               struct rohc_pkt_hdrs *const pkt_hdrs)
+	__attribute__((nonnull(1, 2, 6, 8, 9), warn_unused_result));
+
+static bool rohc_comp_is_tcp_hdr_supported(const struct rohc_comp *const comp,
+                                           const uint8_t *const packet,
+                                           const size_t packet_len,
+                                           struct rohc_pkt_hdrs *const pkt_hdrs,
+                                           size_t *const tcp_hdr_full_len)
+	__attribute__((nonnull(1, 2, 4, 5), warn_unused_result));
+
+static bool rohc_comp_is_rtp_hdr_supported(const struct rohc_comp *const comp,
+                                           const uint8_t *const packet,
+                                           const size_t packet_len,
+                                           struct rohc_pkt_hdrs *const pkt_hdrs)
+	__attribute__((nonnull(1, 2, 4), warn_unused_result));
+
 static bool rohc_comp_profile_enabled_nocheck(const struct rohc_comp *const comp,
                                               const rohc_profile_t profile)
 	__attribute__((warn_unused_result, nonnull(1)));
@@ -525,8 +558,7 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 {
 	const uint8_t *remain_data = rohc_buf_data(*packet);
 	size_t remain_len = packet->len;
-	const struct ip_hdr *innermost_ip_hdr = NULL;
-	size_t ip_hdrs_nr;
+	size_t all_ip_hdrs_len = 0;
 	size_t all_ipv6_exts_len = 0;
 	uint8_t next_proto;
 	rohc_profile_t profile = ROHC_PROFILE_MAX;
@@ -537,11 +569,416 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 	/* ROHCv1 Uncompressed profile is possible if it is enabled */
 	if(rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_UNCOMPRESSED))
 	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "ROHCv1 Uncompressed profile is possible");
 		profile = ROHCv1_PROFILE_UNCOMPRESSED;
 		pkt_hdrs->all_hdrs_len = packet->len - remain_len;
 		pkt_hdrs->payload_len = remain_len;
 		pkt_hdrs->payload = remain_data;
 	}
+
+	/* check that the IP headers are supported by the ROHC profiles */
+	if(!rohc_comp_are_ip_hdrs_supported(comp, remain_data, remain_len,
+	                                    fingerprint, pkt_hdrs,
+	                                    &all_ip_hdrs_len, &all_ipv6_exts_len))
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "unsupported IP headers");
+		goto unsupported_ip_hdr;
+	}
+	next_proto = pkt_hdrs->innermost_ip_hdr->next_proto;
+	remain_data += all_ip_hdrs_len;
+	remain_len -= all_ip_hdrs_len;
+
+	/* ROHCv1/v2 IP-only profiles are possible if they are enabled */
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "IP packet detected");
+	if(rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_IP))
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "ROHCv1 IP-Only profile is possible");
+		profile = ROHCv1_PROFILE_IP;
+		pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+		pkt_hdrs->payload_len = remain_len;
+		pkt_hdrs->payload = remain_data;
+	}
+	else if(all_ipv6_exts_len == 0 && /* TODO: ROHCv2: add IPv6 ext hdrs support */
+	        rohc_comp_profile_enabled_nocheck(comp, ROHCv2_PROFILE_IP))
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "ROHCv2 IP-Only profile is possible");
+		profile = ROHCv2_PROFILE_IP;
+		pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+		pkt_hdrs->payload_len = remain_len;
+		pkt_hdrs->payload = remain_data;
+	}
+
+	/* profiles cannot handle the packet if it bypasses internal limit
+	 * of IP headers, except the IP-only profiles that got support for
+	 * Static Chain Termination (see RFC 3843, §3.1) */
+	if(rohc_is_tunneling(next_proto))
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "too many IP headers (%u headers max) for non-IP profiles",
+		           ROHC_MAX_IP_HDRS);
+		goto too_many_ip_hdrs;
+	}
+
+	/* determine the best profile for the layer-4 header */
+	profile = rohc_comp_get_profile_l4(comp, packet,
+	                                   profile, all_ipv6_exts_len, next_proto,
+	                                   remain_data, remain_len,
+	                                   fingerprint, pkt_hdrs);
+
+too_many_ip_hdrs:
+unsupported_ip_hdr:
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "profile '%s' (0x%04x) will be used to compress the packet",
+	           rohc_get_profile_descr(profile), profile);
+	return profile;
+}
+
+
+/**
+ * @brief Get the best compression profile for the given network packet
+ *
+ * @param comp              The ROHC compressor to compress the packet with
+ * @param packet            The packet to search the best compression profile for
+ * @param l3_profile        The best ROHC profile identified for layer-3 headers
+ * @param all_ipv6_exts_len The length of the IPv6 extension headers
+ * @param l4_proto          The IP protocol type of the layer-4 header
+ * @param l4_data           The layer-4 header to search the best profile for
+ * @param l4_len            The length of the layer-4 header
+ * @param[out] fingerprint  The computed fingerprint of the packet to later help
+ *                          finding the best compression context
+ * @param[out] pkt_hdrs     The information collected about the packet headers,
+ *                          may be used later during the detection of changes
+ *                          with the compression context, thus avoiding another
+ *                          packet parsing
+ * @return                  The ID of the best compression profile to compress
+ *                          the packet
+ */
+static rohc_profile_t rohc_comp_get_profile_l4(const struct rohc_comp *const comp,
+                                               const struct rohc_buf *const packet,
+                                               const rohc_profile_t l3_profile,
+                                               const size_t all_ipv6_exts_len,
+                                               const uint8_t l4_proto,
+                                               const uint8_t *const l4_data,
+                                               const size_t l4_len,
+                                               struct rohc_fingerprint *const fingerprint,
+                                               struct rohc_pkt_hdrs *const pkt_hdrs)
+{
+	rohc_profile_t profile = l3_profile;
+	const uint8_t *remain_data = l4_data;
+	size_t remain_len = l4_len;
+
+	/* check that the transport protocol is supported */
+	if(l4_proto == ROHC_IPPROTO_TCP)
+	{
+		const struct tcphdr *tcp_header;
+		size_t tcp_hdr_full_len;
+
+		/* check that the TCP header is supported by the ROHC profiles */
+		if(!rohc_comp_is_tcp_hdr_supported(comp, remain_data, remain_len,
+		                                   pkt_hdrs, &tcp_hdr_full_len))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "unsupported TCP header");
+			goto unsupported_tcp_hdr;
+		}
+		tcp_header = (const struct tcphdr *) remain_data;
+		remain_data += tcp_hdr_full_len;
+		remain_len -= tcp_hdr_full_len;
+
+		/* ROHCv1 IP/TCP profiles is possible if it is enabled */
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "IP/TCP packet detected");
+		if(rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_IP_TCP))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "ROHCv1 IP/TCP profile is possible");
+			profile = ROHCv1_PROFILE_IP_TCP;
+			pkt_hdrs->tcp = tcp_header;
+			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+			pkt_hdrs->payload_len = remain_len;
+			pkt_hdrs->payload = remain_data;
+			fingerprint->base.profile_id = profile;
+			fingerprint->src_port = rohc_ntoh16(tcp_header->src_port);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tsource port = %u", fingerprint->src_port);
+			fingerprint->dst_port = rohc_ntoh16(tcp_header->dst_port);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tdestination port = %u", fingerprint->dst_port);
+		}
+	}
+	else if(l4_proto == ROHC_IPPROTO_UDP)
+	{
+		const struct udphdr *udp_header;
+		const struct rtphdr *rtp;
+		size_t udp_len;
+
+		/* innermost IP payload shall be large enough for UDP header */
+		if(remain_len < sizeof(struct udphdr))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "innermost IP payload too small for UDP header");
+			goto unsupported_udp_hdr;
+		}
+
+		/* retrieve the UDP header and the UDP payload */
+		udp_header = (const struct udphdr *) remain_data;
+		udp_len = remain_len;
+		remain_data += sizeof(struct udphdr);
+		remain_len -= sizeof(struct udphdr);
+
+		/* the UDP length field shall be correct in order to be inferred */
+		if(udp_len != rohc_ntoh16(udp_header->len))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "UDP header is not supported: UDP length is %u while it "
+			           "shall be %zu", rohc_ntoh16(udp_header->len), udp_len);
+			goto unsupported_udp_hdr;
+		}
+		pkt_hdrs->udp = udp_header;
+
+		/* ROHCv1/v2 IP/UDP profiles are possible if they are enabled */
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "IP/UDP packet detected");
+		if(pkt_hdrs->ip_hdrs_nr <= ROHC_MAX_IP_HDRS_RFC3095 &&
+		   rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_IP_UDP))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "ROHCv1 IP/UDP profile is possible");
+			profile = ROHCv1_PROFILE_IP_UDP;
+			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+			pkt_hdrs->payload_len = remain_len;
+			pkt_hdrs->payload = remain_data;
+			fingerprint->base.profile_id = profile;
+			fingerprint->src_port = rohc_ntoh16(udp_header->source);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tsource port = %u", fingerprint->src_port);
+			fingerprint->dst_port = rohc_ntoh16(udp_header->dest);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tdestination port = %u", fingerprint->dst_port);
+		}
+		else if(all_ipv6_exts_len == 0 && /* TODO: ROHCv2: add IPv6 ext hdrs support */
+		        rohc_comp_profile_enabled_nocheck(comp, ROHCv2_PROFILE_IP_UDP))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "ROHCv2 IP/UDP profile is possible");
+			profile = ROHCv2_PROFILE_IP_UDP;
+			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+			pkt_hdrs->payload_len = remain_len;
+			pkt_hdrs->payload = remain_data;
+			fingerprint->base.profile_id = profile;
+			fingerprint->src_port = rohc_ntoh16(udp_header->source);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tsource port = %u", fingerprint->src_port);
+			fingerprint->dst_port = rohc_ntoh16(udp_header->dest);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tdestination port = %u", fingerprint->dst_port);
+		}
+
+		/* check if the IP/UDP packet is a RTP packet */
+		if(!rohc_comp_is_rtp_hdr_supported(comp, remain_data, remain_len, pkt_hdrs))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "unsupported RTP header");
+			goto unsupported_rtp_hdr;
+		}
+		rtp = (const struct rtphdr *) remain_data;
+		pkt_hdrs->rtp = rtp;
+		remain_data += sizeof(struct rtphdr);
+		remain_len -= sizeof(struct rtphdr);
+
+		/* ROHCv1/v2 IP/UDP/RTP profiles are possible if they are enabled */
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "IP/UDP/RTP packet detected by the RTP callback");
+		if(pkt_hdrs->ip_hdrs_nr <= ROHC_MAX_IP_HDRS_RFC3095 &&
+		   rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_IP_UDP_RTP))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "ROHCv1 IP/UDP/RTP profile is possible");
+			profile = ROHCv1_PROFILE_IP_UDP_RTP;
+			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+			pkt_hdrs->payload_len = remain_len;
+			pkt_hdrs->payload = remain_data;
+			fingerprint->base.profile_id = profile;
+			fingerprint->src_port = rohc_ntoh16(udp_header->source);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tsource port = %u", fingerprint->src_port);
+			fingerprint->dst_port = rohc_ntoh16(udp_header->dest);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tdestination port = %u", fingerprint->dst_port);
+			fingerprint->rtp_ssrc = rohc_ntoh32(rtp->ssrc);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tSSRC = 0x%08x", fingerprint->rtp_ssrc);
+		}
+		else if(all_ipv6_exts_len == 0 && /* TODO: ROHCv2: add IPv6 ext hdrs support */
+		        rohc_comp_profile_enabled_nocheck(comp, ROHCv2_PROFILE_IP_UDP_RTP))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "ROHCv2 IP/UDP/RTP profile is possible");
+			profile = ROHCv2_PROFILE_IP_UDP_RTP;
+			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+			pkt_hdrs->payload_len = remain_len;
+			pkt_hdrs->payload = remain_data;
+			fingerprint->base.profile_id = profile;
+			fingerprint->src_port = rohc_ntoh16(udp_header->source);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tsource port = %u", fingerprint->src_port);
+			fingerprint->dst_port = rohc_ntoh16(udp_header->dest);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tdestination port = %u", fingerprint->dst_port);
+			fingerprint->rtp_ssrc = rohc_ntoh32(rtp->ssrc);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tSSRC = 0x%08x", fingerprint->rtp_ssrc);
+		}
+	}
+	else if(l4_proto == ROHC_IPPROTO_ESP)
+	{
+		const struct esphdr *esp;
+
+		/* innermost IP payload shall be large enough for ESP header */
+		if(remain_len < sizeof(struct esphdr))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "innermost IP payload too small for ESP header");
+			goto unsupported_esp_hdr;
+		}
+		esp = (const struct esphdr *) remain_data;
+		pkt_hdrs->esp = esp;
+		remain_data += sizeof(struct esphdr);
+		remain_len -= sizeof(struct esphdr);
+
+		/* ROHCv1/v2 IP/ESP profiles are possible if they are enabled */
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "IP/ESP packet detected");
+		if(pkt_hdrs->ip_hdrs_nr <= ROHC_MAX_IP_HDRS_RFC3095 &&
+		   rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_IP_ESP))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "ROHCv1 IP/ESP profile is possible");
+			profile = ROHCv1_PROFILE_IP_ESP;
+			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+			pkt_hdrs->payload_len = remain_len;
+			pkt_hdrs->payload = remain_data;
+			fingerprint->base.profile_id = profile;
+			fingerprint->esp_spi = rohc_ntoh32(esp->spi);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tSPI = 0x%08x", fingerprint->esp_spi);
+		}
+		else if(all_ipv6_exts_len == 0 && /* TODO: ROHCv2: add IPv6 ext hdrs support */
+		        rohc_comp_profile_enabled_nocheck(comp, ROHCv2_PROFILE_IP_ESP))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "ROHCv2 IP/ESP profile is possible");
+			profile = ROHCv2_PROFILE_IP_ESP;
+			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+			pkt_hdrs->payload_len = remain_len;
+			pkt_hdrs->payload = remain_data;
+			fingerprint->base.profile_id = profile;
+			fingerprint->esp_spi = rohc_ntoh32(esp->spi);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tSPI = 0x%08x", fingerprint->esp_spi);
+		}
+	}
+	else if(l4_proto == ROHC_IPPROTO_UDPLITE)
+	{
+		const struct udphdr *udp_lite;
+
+		/* innermost IP payload shall be large enough for UDP-Lite header */
+		if(remain_len < sizeof(struct udphdr))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "innermost IP payload too small for UDP-Lite header");
+			goto unsupported_udplite_hdr;
+		}
+		udp_lite = (const struct udphdr *) remain_data;
+		pkt_hdrs->udp_lite = udp_lite;
+		remain_data += sizeof(struct udphdr);
+		remain_len -= sizeof(struct udphdr);
+
+		/* ROHCv1/v2 IP/UDP-Lite profiles are possible if they are enabled */
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "IP/UDP-Lite packet detected");
+		if(pkt_hdrs->ip_hdrs_nr <= ROHC_MAX_IP_HDRS_RFC3095 &&
+		   rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_IP_UDPLITE))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "ROHCv1 IP/UDP-Lite profile is possible");
+			profile = ROHCv1_PROFILE_IP_UDPLITE;
+			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+			pkt_hdrs->payload_len = remain_len;
+			pkt_hdrs->payload = remain_data;
+			fingerprint->base.profile_id = profile;
+			fingerprint->src_port = rohc_ntoh16(udp_lite->source);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tsource port = %u", fingerprint->src_port);
+			fingerprint->dst_port = rohc_ntoh16(udp_lite->dest);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tdestination port = %u", fingerprint->dst_port);
+		}
+		else if(all_ipv6_exts_len == 0 && /* TODO: ROHCv2: add IPv6 ext hdrs support */
+		        rohc_comp_profile_enabled_nocheck(comp, ROHCv2_PROFILE_IP_UDPLITE))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "ROHCv2 IP/ESP profile is possible");
+			profile = ROHCv2_PROFILE_IP_UDPLITE;
+			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+			pkt_hdrs->payload_len = remain_len;
+			pkt_hdrs->payload = remain_data;
+			fingerprint->base.profile_id = profile;
+			fingerprint->src_port = rohc_ntoh16(udp_lite->source);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tsource port = %u", fingerprint->src_port);
+			fingerprint->dst_port = rohc_ntoh16(udp_lite->dest);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tdestination port = %u", fingerprint->dst_port);
+		}
+	}
+
+unsupported_rtp_hdr:
+unsupported_udplite_hdr:
+unsupported_esp_hdr:
+unsupported_udp_hdr:
+unsupported_tcp_hdr:
+	return profile;
+}
+
+
+/**
+ * @brief Are the given IP headers supported?
+ *
+ * @param comp                    The ROHC compressor to compress the packet with
+ * @param packet                  The packet to search the best compression profile
+ *                                for
+ * @param packet_len              The length (in bytes) of the uncompressed packet
+ * @param[out] fingerprint        The fingerprint computed on the packet to later
+ *                                help finding the best compression context
+ * @param[out] pkt_hdrs           The information collected about the packet
+ *                                headers, may be used later during the detection
+ *                                of changes with the compression context, thus
+ *                                avoiding another packet parsing
+ * @param[out] all_ip_hdrs_len    The length (in bytes) of the parsed IP headers
+ * @param[out] all_ipv6_exts_len  The length (in bytes) of the parsed IP extension
+ *                                headers
+ * @return                        The ID of the best compression profile to compress
+ *                                the packet
+ */
+static bool rohc_comp_are_ip_hdrs_supported(const struct rohc_comp *const comp,
+                                            const uint8_t *const packet,
+                                            const size_t packet_len,
+                                            struct rohc_fingerprint *const fingerprint,
+                                            struct rohc_pkt_hdrs *const pkt_hdrs,
+                                            size_t *const all_ip_hdrs_len,
+                                            size_t *const all_ipv6_exts_len)
+{
+	const uint8_t *remain_data = packet;
+	size_t remain_len = packet_len;
+	bool are_ip_hdrs_supported = false;
+	size_t ip_hdrs_nr;
+	uint8_t next_proto;
 
 	/* check that the the versions of IP headers are 4 or 6 and that IP headers
 	 * are not IP fragments */
@@ -549,8 +986,6 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 	do
 	{
 		const struct ip_hdr *const ip = (struct ip_hdr *) remain_data;
-
-		innermost_ip_hdr = ip;
 
 		/* check minimal length for IP version */
 		if(remain_len < sizeof(struct ip_hdr))
@@ -672,7 +1107,7 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 				           "IPv6 extension headers detected", ip_hdrs_nr + 1);
 				goto unsupported_ip_hdr;
 			}
-			all_ipv6_exts_len += ipv6_exts_len;
+			(*all_ipv6_exts_len) += ipv6_exts_len;
 			remain_data += ipv6_exts_len;
 			remain_len -= ipv6_exts_len;
 
@@ -705,6 +1140,7 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 
 		fingerprint->base.ip_hdrs[ip_hdrs_nr].version = ip->version;
 		fingerprint->base.ip_hdrs[ip_hdrs_nr].next_proto = next_proto;
+		pkt_hdrs->ip_hdrs[ip_hdrs_nr].next_proto = next_proto;
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "\tnext protocol = %u", next_proto);
 		fingerprint->base.ip_hdrs_nr++;
@@ -717,357 +1153,152 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 	pkt_hdrs->ip_hdrs_nr = ip_hdrs_nr;
 	pkt_hdrs->innermost_ip_hdr = &(pkt_hdrs->ip_hdrs[ip_hdrs_nr - 1]);
 
-	/* ROHCv1/v2 IP-only profiles are possible if they are enabled */
-	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "IP packet detected");
-	if(rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_IP))
-	{
-		profile = ROHCv1_PROFILE_IP;
-		pkt_hdrs->all_hdrs_len = packet->len - remain_len;
-		pkt_hdrs->payload_len = remain_len;
-		pkt_hdrs->payload = remain_data;
-	}
-	else if(all_ipv6_exts_len == 0 && /* TODO: ROHCv2: add IPv6 ext hdrs support */
-	        rohc_comp_profile_enabled_nocheck(comp, ROHCv2_PROFILE_IP))
-	{
-		profile = ROHCv2_PROFILE_IP;
-		pkt_hdrs->all_hdrs_len = packet->len - remain_len;
-		pkt_hdrs->payload_len = remain_len;
-		pkt_hdrs->payload = remain_data;
-	}
+	/* IP headers are supported */
+	(*all_ip_hdrs_len) = packet_len - remain_len;
+	are_ip_hdrs_supported = true;
 
-	/* profiles cannot handle the packet if it bypasses internal limit
-	 * of IP headers, except the IP-only profiles that got support for
-	 * Static Chain Termination (see RFC 3843, §3.1) */
-	if(rohc_is_tunneling(next_proto))
+unsupported_ip_hdr:
+	return are_ip_hdrs_supported;
+}
+
+
+/**
+ * @brief Is the given TCP header supported?
+ *
+ * @param comp                   The ROHC compressor to compress the packet with
+ * @param packet                 The TCP packet to search the best compression
+ *                               profile for
+ * @param packet_len             The length (in bytes) of the uncompressed packet
+ * @param[out] pkt_hdrs          The information collected about the packet
+ *                               headers, may be used later during the detection
+ *                               of changes with the compression context, thus
+ *                               avoiding another packet parsing
+ * @param[out] tcp_hdr_full_len  The length of the TCP header including options
+ * @return                       The ID of the best compression profile to
+ *                               compress the packet
+ */
+static bool rohc_comp_is_tcp_hdr_supported(const struct rohc_comp *const comp,
+                                           const uint8_t *const packet,
+                                           const size_t packet_len,
+                                           struct rohc_pkt_hdrs *const pkt_hdrs,
+                                           size_t *const tcp_hdr_full_len)
+{
+	const uint8_t *remain_data = packet;
+	size_t remain_len = packet_len;
+	const struct tcphdr *tcp_header;
+	bool is_tcp_hdr_supported = false;
+
+	/* innermost IP payload shall be large enough for TCP header */
+	if(remain_len < sizeof(struct tcphdr))
 	{
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "too many IP headers (%u headers max) for non-IP profiles",
-		           ROHC_MAX_IP_HDRS);
-		goto too_many_ip_hdrs;
+		           "innermost IP payload too small for minimal TCP header");
+		goto unsupported_tcp_hdr;
 	}
 
-	/* check that the transport protocol is supported */
-	if(next_proto == ROHC_IPPROTO_TCP)
+	/* retrieve the TCP header */
+	tcp_header = (const struct tcphdr *) remain_data;
+	if(tcp_header->data_offset < 5)
 	{
-		const struct tcphdr *tcp_header;
-		size_t tcp_hdr_full_len;
-
-		/* innermost IP payload shall be large enough for TCP header */
-		if(remain_len < sizeof(struct tcphdr))
-		{
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "innermost IP payload too small for minimal TCP header");
-			goto unsupported_tcp_hdr;
-		}
-
-		/* retrieve the TCP header */
-		tcp_header = (const struct tcphdr *) remain_data;
-		if(tcp_header->data_offset < 5)
-		{
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "TCP data offset too small for minimal TCP header");
-			goto unsupported_tcp_hdr;
-		}
-		tcp_hdr_full_len = tcp_header->data_offset * sizeof(uint32_t);
-		if(remain_len < tcp_hdr_full_len)
-		{
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "TCP data too small for full TCP header with options");
-			goto unsupported_tcp_hdr;
-		}
-		remain_data += tcp_hdr_full_len;
-		remain_len -= tcp_hdr_full_len;
-
-		/* reject packets with malformed TCP options or TCP options that are not
-		 * compatible with the TCP profile */
-		if(!rohc_comp_tcp_are_options_acceptable(comp, tcp_header->options,
-		                                         tcp_header->data_offset, pkt_hdrs))
-		{
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "malformed or incompatible TCP options detected");
-			goto unsupported_tcp_hdr;
-		}
-
-		/* ROHCv1 IP/TCP profiles is possible if it is enabled */
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "IP/TCP packet detected");
-		if(rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_IP_TCP))
-		{
-			profile = ROHCv1_PROFILE_IP_TCP;
-			pkt_hdrs->tcp = tcp_header;
-			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
-			pkt_hdrs->payload_len = remain_len;
-			pkt_hdrs->payload = remain_data;
-			fingerprint->base.profile_id = profile;
-			fingerprint->src_port = rohc_ntoh16(tcp_header->src_port);
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "\tsource port = %u", fingerprint->src_port);
-			fingerprint->dst_port = rohc_ntoh16(tcp_header->dst_port);
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "\tdestination port = %u", fingerprint->dst_port);
-		}
+		           "TCP data offset too small for minimal TCP header");
+		goto unsupported_tcp_hdr;
 	}
-	else if(next_proto == ROHC_IPPROTO_UDP)
+
+	/* is packet large enough for the full TCP header with options? */
+	*tcp_hdr_full_len = tcp_header->data_offset * sizeof(uint32_t);
+	if(remain_len < (*tcp_hdr_full_len))
 	{
-		const struct udphdr *udp_header;
-		size_t udp_len;
-
-		/* innermost IP payload shall be large enough for UDP header */
-		if(remain_len < sizeof(struct udphdr))
-		{
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "innermost IP payload too small for UDP header");
-			goto unsupported_udp_hdr;
-		}
-
-		/* retrieve the UDP header and the UDP payload */
-		udp_header = (const struct udphdr *) remain_data;
-		udp_len = remain_len;
-		remain_data += sizeof(struct udphdr);
-		remain_len -= sizeof(struct udphdr);
-
-		/* the UDP length field shall be correct in order to be inferred */
-		if(udp_len != rohc_ntoh16(udp_header->len))
-		{
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "UDP header is not supported: UDP length is %u while it "
-			           "shall be %zu", rohc_ntoh16(udp_header->len), udp_len);
-			goto unsupported_udp_hdr;
-		}
-
-		/* ROHCv1/v2 IP/UDP profiles are possible if they are enabled */
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "IP/UDP packet detected");
-		if(ip_hdrs_nr <= ROHC_MAX_IP_HDRS_RFC3095 &&
-		   rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_IP_UDP))
-		{
-			profile = ROHCv1_PROFILE_IP_UDP;
-			pkt_hdrs->udp = udp_header;
-			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
-			pkt_hdrs->payload_len = remain_len;
-			pkt_hdrs->payload = remain_data;
-			fingerprint->base.profile_id = profile;
-			fingerprint->src_port = rohc_ntoh16(udp_header->source);
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "\tsource port = %u", fingerprint->src_port);
-			fingerprint->dst_port = rohc_ntoh16(udp_header->dest);
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "\tdestination port = %u", fingerprint->dst_port);
-		}
-		else if(all_ipv6_exts_len == 0 && /* TODO: ROHCv2: add IPv6 ext hdrs support */
-		        rohc_comp_profile_enabled_nocheck(comp, ROHCv2_PROFILE_IP_UDP))
-		{
-			profile = ROHCv2_PROFILE_IP_UDP;
-			pkt_hdrs->udp = udp_header;
-			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
-			pkt_hdrs->payload_len = remain_len;
-			pkt_hdrs->payload = remain_data;
-			fingerprint->base.profile_id = profile;
-			fingerprint->src_port = rohc_ntoh16(udp_header->source);
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "\tsource port = %u", fingerprint->src_port);
-			fingerprint->dst_port = rohc_ntoh16(udp_header->dest);
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "\tdestination port = %u", fingerprint->dst_port);
-		}
-
-		/* check if the IP/UDP packet is a RTP packet */
-		if(comp->rtp_callback != NULL)
-		{
-			const uint8_t *udp_payload;
-			unsigned int udp_payload_size;
-			const struct rtphdr *rtp;
-			bool is_rtp;
-
-			/* UDP payload shall be large enough for RTP header  */
-			if(remain_len < sizeof(struct rtphdr))
-			{
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "UDP header is not large enough for RTP header");
-				goto unsupported_rtp_hdr;
-			}
-			udp_payload = (uint8_t *) remain_data;
-			udp_payload_size = remain_len;
-			rtp = (const struct rtphdr *) udp_payload;
-			remain_data += sizeof(struct rtphdr);
-			remain_len -= sizeof(struct rtphdr);
-
-			/* check if the IP/UDP packet is a RTP packet with the user callback
-			   dedicated to RTP stream detection: if the RTP callback returns true,
-			   consider that the packet matches the RTP profile */
-			is_rtp = comp->rtp_callback((const uint8_t *) innermost_ip_hdr,
-			                            (const uint8_t *) udp_header,
-			                            udp_payload, udp_payload_size,
-			                            comp->rtp_private);
-			if(!is_rtp)
-			{
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "user said the IP/UDP packet is not one IP/UDP/RTP packet");
-				goto unsupported_rtp_hdr;
-			}
-
-			/* RTP packets with one or more CSRC items cannot be compressed by the
-			 * RTP profile for the moment */
-			if(rtp->cc != 0)
-			{
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "RTP header is not supported: compression of CSRC items is "
-				           "not supported yet by RTP profile");
-				goto unsupported_rtp_hdr;
-			}
-
-			/* ROHCv1/v2 IP/UDP/RTP profiles are possible if they are enabled */
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "IP/UDP/RTP packet detected by the RTP callback");
-			if(ip_hdrs_nr <= ROHC_MAX_IP_HDRS_RFC3095 &&
-			   rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_IP_UDP_RTP))
-			{
-				profile = ROHCv1_PROFILE_IP_UDP_RTP;
-				pkt_hdrs->rtp = rtp;
-				pkt_hdrs->all_hdrs_len = packet->len - remain_len;
-				pkt_hdrs->payload_len = remain_len;
-				pkt_hdrs->payload = remain_data;
-				fingerprint->base.profile_id = profile;
-				fingerprint->src_port = rohc_ntoh16(udp_header->source);
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "\tsource port = %u", fingerprint->src_port);
-				fingerprint->dst_port = rohc_ntoh16(udp_header->dest);
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "\tdestination port = %u", fingerprint->dst_port);
-				fingerprint->rtp_ssrc = rohc_ntoh32(rtp->ssrc);
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "\tSSRC = 0x%08x", fingerprint->rtp_ssrc);
-			}
-			else if(all_ipv6_exts_len == 0 && /* TODO: ROHCv2: add IPv6 ext hdrs support */
-			        rohc_comp_profile_enabled_nocheck(comp, ROHCv2_PROFILE_IP_UDP_RTP))
-			{
-				profile = ROHCv2_PROFILE_IP_UDP_RTP;
-				pkt_hdrs->rtp = rtp;
-				pkt_hdrs->all_hdrs_len = packet->len - remain_len;
-				pkt_hdrs->payload_len = remain_len;
-				pkt_hdrs->payload = remain_data;
-				fingerprint->base.profile_id = profile;
-				fingerprint->src_port = rohc_ntoh16(udp_header->source);
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "\tsource port = %u", fingerprint->src_port);
-				fingerprint->dst_port = rohc_ntoh16(udp_header->dest);
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "\tdestination port = %u", fingerprint->dst_port);
-				fingerprint->rtp_ssrc = rohc_ntoh32(rtp->ssrc);
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "\tSSRC = 0x%08x", fingerprint->rtp_ssrc);
-			}
-		}
+		           "TCP data too small for full TCP header with options");
+		goto unsupported_tcp_hdr;
 	}
-	else if(next_proto == ROHC_IPPROTO_ESP)
+
+	/* reject packets with malformed TCP options or TCP options that are not
+	 * compatible with the TCP profile */
+	if(!rohc_comp_tcp_are_options_acceptable(comp, tcp_header->options,
+	                                         tcp_header->data_offset, pkt_hdrs))
 	{
-		const struct esphdr *esp;
-
-		/* innermost IP payload shall be large enough for ESP header */
-		if(remain_len < sizeof(struct esphdr))
-		{
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "innermost IP payload too small for ESP header");
-			goto unsupported_esp_hdr;
-		}
-		esp = (const struct esphdr *) remain_data;
-		remain_data += sizeof(struct esphdr);
-		remain_len -= sizeof(struct esphdr);
-
-		/* ROHCv1/v2 IP/ESP profiles are possible if they are enabled */
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "IP/ESP packet detected");
-		if(ip_hdrs_nr <= ROHC_MAX_IP_HDRS_RFC3095 &&
-		   rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_IP_ESP))
-		{
-			profile = ROHCv1_PROFILE_IP_ESP;
-			pkt_hdrs->esp = esp;
-			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
-			pkt_hdrs->payload_len = remain_len;
-			pkt_hdrs->payload = remain_data;
-			fingerprint->base.profile_id = profile;
-			fingerprint->esp_spi = rohc_ntoh32(esp->spi);
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "\tSPI = 0x%08x", fingerprint->esp_spi);
-		}
-		else if(all_ipv6_exts_len == 0 && /* TODO: ROHCv2: add IPv6 ext hdrs support */
-		        rohc_comp_profile_enabled_nocheck(comp, ROHCv2_PROFILE_IP_ESP))
-		{
-			profile = ROHCv2_PROFILE_IP_ESP;
-			pkt_hdrs->esp = esp;
-			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
-			pkt_hdrs->payload_len = remain_len;
-			pkt_hdrs->payload = remain_data;
-			fingerprint->base.profile_id = profile;
-			fingerprint->esp_spi = rohc_ntoh32(esp->spi);
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "\tSPI = 0x%08x", fingerprint->esp_spi);
-		}
+		           "malformed or incompatible TCP options detected");
+		goto unsupported_tcp_hdr;
 	}
-	else if(next_proto == ROHC_IPPROTO_UDPLITE)
+
+	/* TCP header is supported */
+	is_tcp_hdr_supported = true;
+
+unsupported_tcp_hdr:
+	return is_tcp_hdr_supported;
+}
+
+
+/**
+ * @brief Is the given RTP header supported?
+ *
+ * @param comp              The ROHC compressor to compress the packet with
+ * @param packet            The uncompressed packet to search the best compression
+ *                          profile for
+ * @param packet_len        The length (in bytes) of the uncompressed packet
+ * @param[out] pkt_hdrs     The information collected about the packet headers,
+ *                          may be used later during the detection of changes
+ *                          with the compression context, thus avoiding another
+ *                          packet parsing
+ * @return                  The ID of the best compression profile to compress
+ *                          the packet
+ */
+static bool rohc_comp_is_rtp_hdr_supported(const struct rohc_comp *const comp,
+                                           const uint8_t *const packet,
+                                           const size_t packet_len,
+                                           struct rohc_pkt_hdrs *const pkt_hdrs)
+{
+	const uint8_t *remain_data = packet;
+	size_t remain_len = packet_len;
+	const uint8_t *udp_payload;
+	unsigned int udp_payload_size;
+	const struct rtphdr *rtp;
+	bool is_rtp = false;
+
+	if(comp->rtp_callback == NULL)
 	{
-		const struct udphdr *udp_lite;
+		goto unsupported_rtp_hdr;
+	}
 
-		/* innermost IP payload shall be large enough for UDP-Lite header */
-		if(remain_len < sizeof(struct udphdr))
-		{
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "innermost IP payload too small for UDP-Lite header");
-			goto unsupported_udplite_hdr;
-		}
-		udp_lite = (const struct udphdr *) remain_data;
-		remain_data += sizeof(struct udphdr);
-		remain_len -= sizeof(struct udphdr);
-
-		/* ROHCv1/v2 IP/UDP-Lite profiles are possible if they are enabled */
+	/* UDP payload shall be large enough for RTP header  */
+	if(remain_len < sizeof(struct rtphdr))
+	{
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "IP/UDP-Lite packet detected");
-		if(ip_hdrs_nr <= ROHC_MAX_IP_HDRS_RFC3095 &&
-		   rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_IP_UDPLITE))
-		{
-			profile = ROHCv1_PROFILE_IP_UDPLITE;
-			pkt_hdrs->udp_lite = udp_lite;
-			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
-			pkt_hdrs->payload_len = remain_len;
-			pkt_hdrs->payload = remain_data;
-			fingerprint->base.profile_id = profile;
-			fingerprint->src_port = rohc_ntoh16(udp_lite->source);
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "\tsource port = %u", fingerprint->src_port);
-			fingerprint->dst_port = rohc_ntoh16(udp_lite->dest);
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "\tdestination port = %u", fingerprint->dst_port);
-		}
-		else if(all_ipv6_exts_len == 0 && /* TODO: ROHCv2: add IPv6 ext hdrs support */
-		        rohc_comp_profile_enabled_nocheck(comp, ROHCv2_PROFILE_IP_UDPLITE))
-		{
-			profile = ROHCv2_PROFILE_IP_UDPLITE;
-			pkt_hdrs->udp_lite = udp_lite;
-			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
-			pkt_hdrs->payload_len = remain_len;
-			pkt_hdrs->payload = remain_data;
-			fingerprint->base.profile_id = profile;
-			fingerprint->src_port = rohc_ntoh16(udp_lite->source);
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "\tsource port = %u", fingerprint->src_port);
-			fingerprint->dst_port = rohc_ntoh16(udp_lite->dest);
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "\tdestination port = %u", fingerprint->dst_port);
-		}
+		           "UDP header is not large enough for RTP header");
+		goto unsupported_rtp_hdr;
+	}
+	udp_payload = (uint8_t *) remain_data;
+	udp_payload_size = remain_len;
+	rtp = (const struct rtphdr *) udp_payload;
+
+	/* RTP packets with one or more CSRC items cannot be compressed by the
+	 * RTP profile for the moment */
+	if(rtp->cc != 0)
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "RTP header is not supported: compression of CSRC items is "
+		           "not supported yet by RTP profile");
+		goto unsupported_rtp_hdr;
+	}
+
+	/* check if the IP/UDP packet is a RTP packet with the user callback
+	   dedicated to RTP stream detection: if the RTP callback returns true,
+	   consider that the packet matches the RTP profile */
+	is_rtp = comp->rtp_callback((const uint8_t *) pkt_hdrs->innermost_ip_hdr->ip,
+	                            (const uint8_t *) pkt_hdrs->udp,
+	                            udp_payload, udp_payload_size,
+	                            comp->rtp_private);
+	if(is_rtp)
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "user said the IP/UDP packet is one IP/UDP/RTP packet");
 	}
 
 unsupported_rtp_hdr:
-unsupported_udplite_hdr:
-unsupported_esp_hdr:
-unsupported_udp_hdr:
-unsupported_tcp_hdr:
-too_many_ip_hdrs:
-unsupported_ip_hdr:
-	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "profile '%s' (0x%04x) will be used to compress the packet",
-	           rohc_get_profile_descr(profile), profile);
-	return profile;
+	return is_rtp;
 }
 
 

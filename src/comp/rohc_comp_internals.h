@@ -230,6 +230,7 @@ struct rohc_pkt_ip_hdr
 		const struct ipv6_hdr *ipv6;
 	};
 	uint8_t version;
+	uint8_t next_proto;
 	uint16_t tot_len;
 	union
 	{
