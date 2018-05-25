@@ -815,7 +815,6 @@ static bool udp_lite_send_cce_packet(const struct rohc_comp_ctxt *const context,
 const struct rohc_comp_profile c_udp_lite_profile =
 {
 	.id             = ROHC_PROFILE_UDPLITE, /* profile ID (see 7 in RFC4019) */
-	.protocol       = ROHC_IPPROTO_UDPLITE, /* IP protocol */
 	.create         = c_udp_lite_create,    /* profile handlers */
 	.destroy        = rohc_comp_rfc3095_destroy,
 	.check_profile  = c_udp_lite_check_profile,

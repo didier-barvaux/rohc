@@ -3728,7 +3728,6 @@ error:
 const struct rohc_comp_profile rohc_comp_rfc5225_ip_profile =
 {
 	.id             = ROHCv2_PROFILE_IP, /* profile ID (RFC5225, ROHCv2 IP) */
-	.protocol       = 0,                               /* IP protocol */
 	.create         = rohc_comp_rfc5225_ip_create,     /* profile handlers */
 	.clone          = NULL,
 	.destroy        = rohc_comp_rfc5225_ip_destroy,

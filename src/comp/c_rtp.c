@@ -1447,7 +1447,6 @@ static int rtp_changed_rtp_dynamic(const struct rohc_comp_ctxt *const context,
 const struct rohc_comp_profile c_rtp_profile =
 {
 	.id             = ROHC_PROFILE_RTP, /* profile ID */
-	.protocol       = ROHC_IPPROTO_UDP, /* IP protocol */
 	.create         = c_rtp_create,     /* profile handlers */
 	.destroy        = c_rtp_destroy,
 	.check_profile  = c_rtp_check_profile,

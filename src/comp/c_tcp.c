@@ -5440,7 +5440,6 @@ static void c_tcp_feedback_ack(struct rohc_comp_ctxt *const context,
 const struct rohc_comp_profile c_tcp_profile =
 {
 	.id             = ROHC_PROFILE_TCP, /* profile ID (see 8 in RFC 3095) */
-	.protocol       = ROHC_IPPROTO_TCP, /* IP protocol */
 	.create         = c_tcp_create_from_pkt,     /* profile handlers */
 	.clone          = c_tcp_create_from_ctxt,
 	.destroy        = c_tcp_destroy,

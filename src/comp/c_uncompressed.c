@@ -589,7 +589,6 @@ error:
 const struct rohc_comp_profile c_uncompressed_profile =
 {
 	.id             = ROHC_PROFILE_UNCOMPRESSED, /* profile ID (RFC3095, §8) */
-	.protocol       = 0,                         /* IP protocol */
 	.create         = c_uncompressed_create,     /* profile handlers */
 	.destroy        = c_uncompressed_destroy,
 	.check_profile  = c_uncompressed_check_profile,

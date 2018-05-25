@@ -437,7 +437,6 @@ static size_t esp_code_dynamic_esp_part(const struct rohc_comp_ctxt *const conte
 const struct rohc_comp_profile c_esp_profile =
 {
 	.id             = ROHC_PROFILE_ESP, /* profile ID (see 8 in RFC 3095) */
-	.protocol       = ROHC_IPPROTO_ESP, /* IP protocol */
 	.create         = c_esp_create,     /* profile handlers */
 	.destroy        = rohc_comp_rfc3095_destroy,
 	.check_profile  = c_esp_check_profile,

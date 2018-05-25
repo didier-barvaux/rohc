@@ -486,10 +486,6 @@ static bool rohc_comp_rfc5225_ip_udp_create(struct rohc_comp_ctxt *const context
 	 * (already checked by check_profile) */
 	assert(rohc_is_tunneling(proto) == false);
 
-	/* transport header shall be UDP (checked in check_profile) */
-	assert(proto == context->profile->protocol);
-	assert(remain_len >= sizeof(struct udphdr));
-
 	/* MSN */
 	wlsb_init(&rfc5225_ctxt->msn_wlsb, 16, comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
 	/* innermost IP-ID offset */
@@ -901,12 +897,6 @@ static bool rohc_comp_rfc5225_ip_udp_check_context(const struct rohc_comp_ctxt *
 		rohc_comp_debug(context, "  more IP headers than context");
 		goto bad_context;
 	}
-
-	/* transport protocol shall be UDP (checked by check_profile) */
-	assert(next_proto == context->profile->protocol);
-	/* innermost IP payload shall be large enough for UDP header
-	 * (checked by check_profile) */
-	assert(remain_len >= sizeof(struct udphdr));
 
 	/* check UDP source and destination ports */
 	{
@@ -4038,7 +4028,6 @@ error:
 const struct rohc_comp_profile rohc_comp_rfc5225_ip_udp_profile =
 {
 	.id             = ROHCv2_PROFILE_IP_UDP, /* profile ID (RFC5225, ROHCv2 IP/UDP) */
-	.protocol       = ROHC_IPPROTO_UDP,
 	.create         = rohc_comp_rfc5225_ip_udp_create,     /* profile handlers */
 	.clone          = NULL,
 	.destroy        = rohc_comp_rfc5225_ip_udp_destroy,

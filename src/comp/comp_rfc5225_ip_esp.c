@@ -479,10 +479,6 @@ static bool rohc_comp_rfc5225_ip_esp_create(struct rohc_comp_ctxt *const context
 	 * (already checked by check_profile) */
 	assert(rohc_is_tunneling(proto) == false);
 
-	/* transport header shall be ESP (checked in check_profile) */
-	assert(proto == context->profile->protocol);
-	assert(remain_len >= sizeof(struct esphdr));
-
 	/* MSN */
 	wlsb_init(&rfc5225_ctxt->msn_wlsb, 32, comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
 	/* innermost IP-ID offset */
@@ -883,12 +879,6 @@ static bool rohc_comp_rfc5225_ip_esp_check_context(const struct rohc_comp_ctxt *
 		rohc_comp_debug(context, "  more IP headers than context");
 		goto bad_context;
 	}
-
-	/* transport protocol shall be ESP (checked by check_profile) */
-	assert(next_proto == context->profile->protocol);
-	/* innermost IP payload shall be large enough for ESP header
-	 * (checked by check_profile) */
-	assert(remain_len >= sizeof(struct esphdr));
 
 	/* check Security parameters index (SPI) */
 	{
@@ -4003,7 +3993,6 @@ error:
 const struct rohc_comp_profile rohc_comp_rfc5225_ip_esp_profile =
 {
 	.id             = ROHCv2_PROFILE_IP_ESP, /* profile ID (RFC5225, ROHCv2 IP/ESP) */
-	.protocol       = ROHC_IPPROTO_ESP,
 	.create         = rohc_comp_rfc5225_ip_esp_create,     /* profile handlers */
 	.clone          = NULL,
 	.destroy        = rohc_comp_rfc5225_ip_esp_destroy,

@@ -574,7 +574,6 @@ static int udp_changed_udp_dynamic(const struct rohc_comp_ctxt *context,
 const struct rohc_comp_profile c_udp_profile =
 {
 	.id             = ROHC_PROFILE_UDP, /* profile ID (see 8 in RFC 3095) */
-	.protocol       = ROHC_IPPROTO_UDP, /* IP protocol */
 	.create         = c_udp_create,     /* profile handlers */
 	.destroy        = rohc_comp_rfc3095_destroy,
 	.check_profile  = c_udp_check_profile,
