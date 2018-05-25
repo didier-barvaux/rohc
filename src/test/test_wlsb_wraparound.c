@@ -698,14 +698,18 @@ static bool test_wlsb_32(struct c_wlsb *const wlsb,
 	    required_bits++)
 	{
 	}
-	assert(required_bits <= 32);
-	if(required_bits == 32)
+	if(required_bits > 32)
+	{
+		fprintf(stderr, "required_bits shall be <= 32\n");
+		goto error;
+	}
+	else if(required_bits == 32)
 	{
 		required_bits_mask = 0xffffffff;
 	}
 	else
 	{
-		required_bits_mask = (1 << required_bits) - 1;
+		required_bits_mask = (1U << required_bits) - 1;
 	}
 	value32_encoded = value32 & required_bits_mask;
 	trace(be_verbose, "\t\tencoded on %zu bits: 0x%08x\n", required_bits,
