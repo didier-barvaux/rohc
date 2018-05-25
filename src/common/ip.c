@@ -342,70 +342,6 @@ unsigned short ip_get_extension_size(const uint8_t *const ext)
 
 
 /**
- * @brief Get the size of the extension list
- *
- * The function does not handle \ref ip_packet whose \ref ip_packet::version
- * is \ref IP_UNKNOWN.
- *
- * @param ip The packet to analyse
- * @return   The size of extension list
- */
-unsigned short ip_get_total_extension_size(const struct ip_packet *const ip)
-{
-	uint8_t *ext;
-	uint8_t next_hdr_type;
-	unsigned short total_ext_size = 0;
-
-	/* TODO: not very performant */
-	ext = ip_get_next_ext_from_ip(ip, &next_hdr_type);
-	while(ext != NULL)
-	{
-		total_ext_size += ip_get_extension_size(ext);
-		ext = ip_get_next_ext_from_ext(ext, &next_hdr_type);
-	}
-
-	return total_ext_size;
-}
-
-
-/**
- * @brief Whether the IP packet is an IP fragment or not
- *
- * The IP packet is a fragment if the  MF (More Fragments) bit is set
- * or the Fragment Offset field is non-zero.
- *
- * The function does not handle \ref ip_packet whose \ref ip_packet::version
- * is \ref IP_UNKNOWN.
- *
- * @param ip The IP packet to analyze
- * @return   Whether the IP packet is an IP fragment or not
- */
-bool ip_is_fragment(const struct ip_packet *const ip)
-{
-	bool is_fragment;
-
-	if(ip->version == IPV4)
-	{
-		is_fragment = ipv4_is_fragment(&ip->header.v4);
-	}
-	else if(ip->version == IPV6)
-	{
-		is_fragment = false;
-	}
-	else
-	{
-		/* function does not handle non-IPv4/IPv6 packets */
-#if defined(NDEBUG) || defined(__KERNEL__) || defined(ENABLE_DEAD_CODE)
-		is_fragment = false;
-#endif
-		assert(0);
-	}
-
-	return is_fragment;
-}
-
-
-/**
  * @brief Get the total length of an IP packet
  *
  * The function handles \ref ip_packet whose \ref ip_packet::version is
@@ -429,40 +365,6 @@ unsigned int ip_get_totlen(const struct ip_packet *const ip)
 	else /* IP_UNKNOWN */
 	{
 		len = ip->size;
-	}
-
-	return len;
-}
-
-
-/**
- * @brief Get the length of an IP header
- *
- * The function does not handle \ref ip_packet whose \ref ip_packet::version
- * is \ref IP_UNKNOWN.
- *
- * @param ip The IP packet to analyze
- * @return   The length of the IP header if successful, 0 otherwise
- */
-unsigned int ip_get_hdrlen(const struct ip_packet *const ip)
-{
-	unsigned int len;
-
-	if(ip->version == IPV4)
-	{
-		len = ipv4_get_hdrlen(ip);
-	}
-	else if(ip->version == IPV6)
-	{
-		len = ipv6_get_hdrlen(ip);
-	}
-	else
-	{
-		/* function does not handle non-IPv4/IPv6 packets */
-#if defined(NDEBUG) || defined(__KERNEL__) || defined(ENABLE_DEAD_CODE)
-		len = 0;
-#endif
-		assert(0);
 	}
 
 	return len;

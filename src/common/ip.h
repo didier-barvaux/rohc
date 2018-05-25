@@ -309,11 +309,7 @@ uint8_t * ip_get_next_ext_from_ext(const uint8_t *const ext,
 
 unsigned int ip_get_totlen(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));
-unsigned int ip_get_hdrlen(const struct ip_packet *const ip)
-	__attribute__((warn_unused_result, nonnull(1)));
 
-bool ip_is_fragment(const struct ip_packet *const ip)
-	__attribute__((warn_unused_result, nonnull(1), pure));
 static inline
 ip_version ip_get_version(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));
@@ -377,8 +373,6 @@ void ip_set_flow_label(struct ip_packet *const ip, const uint32_t value)
 	__attribute__((nonnull(1)));
 unsigned short ip_get_extension_size(const uint8_t *const ext)
 	__attribute__((warn_unused_result, nonnull(1), pure));
-unsigned short ip_get_total_extension_size(const struct ip_packet *const ip)
-	__attribute__((warn_unused_result, nonnull(1)));
 
 
 /**
