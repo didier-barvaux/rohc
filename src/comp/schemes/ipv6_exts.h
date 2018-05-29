@@ -39,9 +39,8 @@ bool rohc_comp_ipv6_exts_are_acceptable(const struct rohc_comp *const comp,
                                         uint8_t *const next_proto,
                                         const uint8_t *const exts,
                                         const size_t max_exts_len,
-                                        size_t *const exts_nr,
-                                        size_t *const exts_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
+                                        struct rohc_pkt_ip_hdr *const pkt_ip_hdr)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
 
 #endif

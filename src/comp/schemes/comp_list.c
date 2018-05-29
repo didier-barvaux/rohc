@@ -37,7 +37,7 @@
 
 
 static bool build_ipv6_ext_pkt_list(struct list_comp *const comp,
-                                    const struct ip_packet *const ip,
+                                    const struct rohc_pkt_ip_hdr *const ip,
                                     struct rohc_list *const pkt_list)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
@@ -129,7 +129,7 @@ static int rohc_list_build_XIs_4(const struct list_comp *const comp,
  *                                   false if one error occurred
  */
 bool detect_ipv6_ext_changes(struct list_comp *const comp,
-                             const struct ip_packet *const ip,
+                             const struct rohc_pkt_ip_hdr *const ip,
                              bool *const list_struct_changed,
                              bool *const list_content_changed)
 {
@@ -223,24 +223,14 @@ error:
  *                       false if one error occurred
  */
 static bool build_ipv6_ext_pkt_list(struct list_comp *const comp,
-                                    const struct ip_packet *const ip,
+                                    const struct rohc_pkt_ip_hdr *const ip,
                                     struct rohc_list *const pkt_list)
 {
 	uint8_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
-	const uint8_t *ext;
-	uint8_t ext_type;
+	uint8_t ext_num;
 
 	/* reset the list of the current packet */
 	rohc_list_reset(pkt_list);
-
-	/* get the next known IP extension in packet */
-	ext = ip_get_next_ext_from_ip(ip, &ext_type);
-	if(ext == NULL)
-	{
-		/* there is no list of IPv6 extension headers in the current packet */
-		rc_list_debug(comp, "there is no IPv6 extension in packet");
-		goto skip;
-	}
 
 	/* there is one extension or more */
 	rc_list_debug(comp, "there is at least one IPv6 extension in packet");
@@ -248,27 +238,28 @@ static bool build_ipv6_ext_pkt_list(struct list_comp *const comp,
 	/* parse all extension headers:
 	 *  - update the related entries in the translation table,
 	 *  - create the list for the packet */
-	do
+	for(ext_num = 0; ext_num < ip->exts_nr; ext_num++)
 	{
+		const struct rohc_pkt_ip_ext_hdr *const ext = ip->exts + ext_num;
 		bool entry_changed = false;
 		int index_table;
 		int ret;
 
 		/* one more occurrence of this item */
-		if(ext_types_count[ext_type] >= 255)
+		if(ext_types_count[ext->type] >= 255)
 		{
 			rohc_comp_list_warn(comp, "too many IPv6 extension header of type 0x%02x",
-			                    ext_type);
+			                    ext->type);
 			goto error;
 		}
-		ext_types_count[ext_type]++;
+		ext_types_count[ext->type]++;
 
 		/* find the best item to encode the extension in translation table */
-		index_table = comp->get_index_table(ext_type, ext_types_count[ext_type]);
+		index_table = comp->get_index_table(ext->type, ext_types_count[ext->type]);
 		if(index_table < 0 || ((size_t) index_table) >= ROHC_LIST_MAX_ITEM)
 		{
 			rohc_comp_list_warn(comp, "failed to handle unknown IPv6 "
-			                    "extension header of type 0x%02x", ext_type);
+			                    "extension header of type 0x%02x", ext->type);
 			goto error;
 		}
 
@@ -277,12 +268,11 @@ static bool build_ipv6_ext_pkt_list(struct list_comp *const comp,
 		/* TODO: put comp const in params once context is not overwritten any more */
 		ret = rohc_list_item_update_if_changed(comp->cmp_item,
 		                                       &(comp->trans_table[index_table]),
-		                                       ext_type, ext, comp->get_size(ext));
+		                                       ext->type, ext->data, ext->len);
 		if(ret < 0)
 		{
 			rohc_comp_list_warn(comp, "failed to update entry #%d in translation "
-			                    "table with %u-byte extension", index_table,
-			                    comp->get_size(ext));
+			                    "table with %u-byte extension", index_table, ext->len);
 			goto error;
 		}
 		else if(ret == 1)
@@ -295,27 +285,18 @@ static bool build_ipv6_ext_pkt_list(struct list_comp *const comp,
 		/* update current list in context */
 		pkt_list->items[pkt_list->items_nr] = &(comp->trans_table[index_table]);
 		pkt_list->items_nr++;
+		assert(pkt_list->items_nr <= ROHC_LIST_ITEMS_MAX);
 
 		rc_list_debug(comp, "  extension #%u: extension type %u uses %s entry #%d "
 		              "in translation table (%s entry sent %u/%u times)",
-		              pkt_list->items_nr, ext_type,
+		              pkt_list->items_nr, ext->type,
 		              (entry_changed ? "updated" : "existing"), index_table,
 		              comp->trans_table[index_table].known ? "known" : "not-yet-known",
 		              comp->trans_table[index_table].counter, comp->list_trans_nr);
 	}
-	while((ext = ip_get_next_ext_from_ext(ext, &ext_type)) != NULL &&
-	      pkt_list->items_nr < ROHC_LIST_ITEMS_MAX);
 
-	/* too many extensions in packet? */
-	if(ext != NULL)
-	{
-		rc_list_debug(comp, "list of IPv6 extension headers too large for "
-		              "compressor internal limits");
-		goto error;
-	}
-
-skip:
 	return true;
+
 error:
 	return false;
 }

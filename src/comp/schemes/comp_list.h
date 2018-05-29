@@ -29,6 +29,7 @@
 #include "ip.h"
 #include "rohc_list.h"
 #include "rohc_traces_internal.h"
+#include "rohc_comp_internals.h"
 
 /** Print a debug trace for the given compression list */
 #define rc_list_debug(comp_list, format, ...) \
@@ -62,9 +63,6 @@ struct list_comp
 	int (*get_index_table)(const uint8_t type, const size_t occur_nr)
 		__attribute__((warn_unused_result, const));
 
-	/// @brief the handler used to get the size of an item
-	unsigned short (*get_size)(const uint8_t *ext);
-
 	/** The handler used to compare two items */
 	rohc_list_item_cmp cmp_item;
 
@@ -80,7 +78,7 @@ struct list_comp
 
 
 bool detect_ipv6_ext_changes(struct list_comp *const comp,
-                             const struct ip_packet *const ip,
+                             const struct rohc_pkt_ip_hdr *const ip,
                              bool *const list_struct_changed,
                              bool *const list_content_changed)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));

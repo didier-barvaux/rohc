@@ -344,8 +344,9 @@ static void update_context_ip_hdr(const struct rohc_comp_ctxt *const context,
 	__attribute__((nonnull(1, 2, 3)));
 
 static bool rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const context,
+                                             const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                              const struct net_pkt *const uncomp_pkt)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 static int changed_static_both_hdr(struct rohc_comp_ctxt *const context,
                                    const struct net_pkt *const uncomp_pkt)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
@@ -363,7 +364,7 @@ static int changed_dynamic_one_hdr(struct rohc_comp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 3, 4)));
 static unsigned short detect_changed_fields(const struct rohc_comp_ctxt *const context,
                                             struct ip_header_info *const header_info, /* TODO: add const */
-                                            const struct ip_packet *const ip)
+                                            const struct rohc_pkt_ip_hdr *const ip)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 static bool is_field_changed(const unsigned short changed_fields,
                              const unsigned short check_field)
@@ -743,7 +744,7 @@ void rohc_comp_rfc3095_destroy(struct rohc_comp_ctxt *const context)
  *                          -1 otherwise
  */
 int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
-                             const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs __attribute__((unused)),
+                             const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                              const struct rohc_buf *const uncomp_pkt,
                              uint8_t *const rohc_pkt,
                              const size_t rohc_pkt_max_len,
@@ -760,7 +761,7 @@ int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
 	              context->compressor->trace_callback_priv, ROHC_TRACE_COMP);
 
 	/* detect changes between new uncompressed packet and context */
-	if(!rohc_comp_rfc3095_detect_changes(context, &ip_pkt))
+	if(!rohc_comp_rfc3095_detect_changes(context, uncomp_pkt_hdrs, &ip_pkt))
 	{
 		rohc_comp_warn(context, "failed to detect changes in uncompressed packet");
 		goto error;
@@ -1219,12 +1220,14 @@ static void rohc_comp_rfc3095_feedback_ack(struct rohc_comp_ctxt *const context,
 /**
  * @brief Detect changes between packet and context
  *
- * @param context     The compression context to compare
- * @param uncomp_pkt  The uncompressed packet to compare
- * @return            true if changes were successfully detected,
- *                    false if a problem occurred
+ * @param context           The compression context to compare
+ * @param uncomp_pkt_hdrs   The uncompressed headers to encode
+ * @param uncomp_pkt        The uncompressed packet to compare
+ * @return                  true if changes were successfully detected,
+ *                          false if a problem occurred
  */
 static bool rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const context,
+                                             const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                              const struct net_pkt *const uncomp_pkt)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt =
@@ -1236,9 +1239,9 @@ static bool rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const contex
 
 	/* init or free the context of the inner IP header if the number of IP
 	 * headers changed */
-	if(uncomp_pkt->ip_hdr_nr != rfc3095_ctxt->ip_hdr_nr)
+	if(uncomp_pkt_hdrs->ip_hdrs_nr != rfc3095_ctxt->ip_hdr_nr)
 	{
-		if(uncomp_pkt->ip_hdr_nr > 1)
+		if(uncomp_pkt_hdrs->ip_hdrs_nr > 1)
 		{
 			rohc_comp_debug(context, "packet got one more IP header than context");
 			if(!ip_header_info_new(&rfc3095_ctxt->inner_ip_flags,
@@ -1261,7 +1264,7 @@ static bool rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const contex
 			 *   this indication in the context for correct decompression of subsequent
 			 *   headers.
 			 */
-			if(rohc_is_tunneling(uncomp_pkt->inner_ip.nl.proto))
+			if(rohc_is_tunneling(uncomp_pkt_hdrs->innermost_ip_hdr->next_proto))
 			{
 				rfc3095_ctxt->inner_ip_flags.static_chain_end = true;
 			}
@@ -1271,7 +1274,7 @@ static bool rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const contex
 			rohc_comp_debug(context, "packet got one less IP header than context");
 			ip_header_info_free(&rfc3095_ctxt->inner_ip_flags);
 		}
-		rfc3095_ctxt->ip_hdr_nr = uncomp_pkt->ip_hdr_nr;
+		rfc3095_ctxt->ip_hdr_nr = uncomp_pkt_hdrs->ip_hdrs_nr;
 	}
 
 	/* check NBO and RND of the IP-ID of the IP headers (IPv4 only) */
@@ -1280,7 +1283,7 @@ static bool rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const contex
 	/* find outer IP fields that changed */
 	rfc3095_ctxt->tmp.changed_fields =
 		detect_changed_fields(context, &rfc3095_ctxt->outer_ip_flags,
-		                      &uncomp_pkt->outer_ip);
+		                      uncomp_pkt_hdrs->ip_hdrs);
 	if(rfc3095_ctxt->tmp.changed_fields & MOD_ERROR)
 	{
 		rohc_comp_warn(context, "failed to detect changed field in outer IP "
@@ -1289,11 +1292,11 @@ static bool rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const contex
 	}
 
 	/* find inner IP fields that changed */
-	if(uncomp_pkt->ip_hdr_nr > 1)
+	if(uncomp_pkt_hdrs->ip_hdrs_nr > 1)
 	{
 		rfc3095_ctxt->tmp.changed_fields2 =
 			detect_changed_fields(context, &rfc3095_ctxt->inner_ip_flags,
-			                      &uncomp_pkt->inner_ip);
+			                      uncomp_pkt_hdrs->ip_hdrs + 1);
 		if(rfc3095_ctxt->tmp.changed_fields2  & MOD_ERROR)
 		{
 			rohc_comp_warn(context, "failed to detect changed field in inner IP "
@@ -6491,17 +6494,14 @@ static int changed_dynamic_one_hdr(struct rohc_comp_ctxt *const context,
  */
 static unsigned short detect_changed_fields(const struct rohc_comp_ctxt *const context,
                                             struct ip_header_info *const header_info, /* TODO: add const */
-                                            const struct ip_packet *const ip)
+                                            const struct rohc_pkt_ip_hdr *const ip)
 {
 	unsigned short ret_value = 0;
 	uint8_t old_tos;
-	uint8_t new_tos;
 	uint8_t old_ttl;
-	uint8_t new_ttl;
 	uint8_t old_protocol;
-	uint8_t new_protocol;
 
-	if(ip_get_version(ip) == IPV4)
+	if(ip->version == IPV4)
 	{
 		const struct ipv4_hdr *old_ip;
 
@@ -6520,32 +6520,29 @@ static unsigned short detect_changed_fields(const struct rohc_comp_ctxt *const c
 		old_protocol = old_ip->nh;
 	}
 
-	new_tos = ip_get_tos(ip);
-	if(old_tos != new_tos)
+	if(old_tos != ip->tos_tc)
 	{
 		rohc_comp_debug(context, "TOS/TC changed from 0x%02x to 0x%02x",
-		                old_tos, new_tos);
+		                old_tos, ip->tos_tc);
 		ret_value |= MOD_TOS;
 	}
 
-	new_ttl = ip_get_ttl(ip);
-	if(old_ttl != new_ttl)
+	if(old_ttl != ip->ttl_hl)
 	{
 		rohc_comp_debug(context, "TTL/HL changed from 0x%02x to 0x%02x",
-		                old_ttl, new_ttl);
+		                old_ttl, ip->ttl_hl);
 		ret_value |= MOD_TTL;
 	}
 
-	new_protocol = ip_get_protocol(ip);
-	if(old_protocol != new_protocol)
+	if(old_protocol != ip->next_proto)
 	{
 		rohc_comp_debug(context, "Protocol/NH changed from 0x%02x to 0x%02x",
-		                old_protocol, new_protocol);
+		                old_protocol, ip->next_proto);
 		ret_value |= MOD_PROTOCOL;
 	}
 
 	/* IPv6 extension headers */
-	if(ip_get_version(ip) == IPV6)
+	if(ip->version == IPV6)
 	{
 		bool list_struct_changed;
 		bool list_content_changed;

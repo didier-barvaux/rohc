@@ -219,6 +219,17 @@ struct rohc_comp
 
 
 /**
+ * @brief The information collected about one of the packet IP extension headers
+ */
+struct rohc_pkt_ip_ext_hdr
+{
+	const uint8_t *data;
+	uint8_t type;
+	uint8_t len;
+};
+
+
+/**
  * @brief The information collected about one of the packet IP headers
  */
 struct rohc_pkt_ip_hdr
@@ -247,7 +258,10 @@ struct rohc_pkt_ip_hdr
 		} __attribute__((packed));
 	};
 	uint8_t ttl_hl;    /**< The IPv4 TTL or IPv6 Hop Limit */
-	uint8_t exts_nr;   /**< The new number of IP extensions headers */
+
+	uint8_t exts_len;  /**< The length of IP extensions headers */
+	uint8_t exts_nr;   /**< The number of IP extensions headers */
+	struct rohc_pkt_ip_ext_hdr exts[ROHC_MAX_IP_EXT_HDRS]; /**< The IP ext. headers */
 };
 
 

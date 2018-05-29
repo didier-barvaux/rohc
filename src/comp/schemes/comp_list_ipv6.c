@@ -75,7 +75,6 @@ void rohc_comp_list_ipv6_new(struct list_comp *const comp,
 	comp->list_trans_nr = list_trans_nr;
 
 	/* specific callbacks for IPv6 extension headers */
-	comp->get_size = ip_get_extension_size;
 	comp->get_index_table = get_index_ipv6_table;
 	comp->cmp_item = cmp_ipv6_ext;
 
