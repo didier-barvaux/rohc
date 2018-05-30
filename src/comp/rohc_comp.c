@@ -69,6 +69,9 @@
 #include <stdbool.h>
 #include <assert.h>
 #include <stdarg.h>
+#ifndef __KERNEL__
+#	include <sys/sdt.h>
+#endif
 
 
 /** The affinity between packet and context */
@@ -1621,6 +1624,18 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 		/* report to user that compression was successful */
 		status = ROHC_STATUS_OK;
 	}
+
+#ifndef __KERNEL__
+	{
+		const uint16_t profile_id = c->profile->id;
+		const uint16_t pkt_type = packet_type;
+		const uint64_t rohc_hdr_size_u64 = rohc_hdr_size;
+		DTRACE_PROBE6(librohc, rohc-compression,
+		              profile_id, pkt_type,
+		              payload_offset, uncomp_packet.len,
+		              rohc_hdr_size_u64, rohc_packet->len);
+	}
+#endif
 
 	/* update some statistics:
 	 *  - compressor statistics
