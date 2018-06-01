@@ -31,7 +31,8 @@ sources = \
 	net_pkt.c \
 	rohc_list.c \
 	feedback_parse.c \
-	csiphash.c
+	csiphash.c \
+	hashtable.c
 
 public_headers = \
 	rohc.h \
@@ -58,7 +59,8 @@ private_headers = \
 	rohc_list.h \
 	feedback.h \
 	feedback_parse.h \
-	csiphash.h
+	csiphash.h \
+	hashtable.h
 
 librohc_common_la_SOURCES = $(sources)
 librohc_common_la_LIBADD = \
