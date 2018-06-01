@@ -17,12 +17,12 @@
  */
 
 /**
- * @file   hashtable.c
+ * @file   hashtable_cr.c
  * @brief  Efficient, secure hash table
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  */
 
-#include "hashtable.h"
+#include "hashtable_cr.h"
 
 #include "csiphash.h"
 
@@ -31,12 +31,13 @@
 #include <assert.h>
 
 
-bool hashtable_new(struct hashtable *const hashtable,
-                   const size_t key_len,
-                   const size_t size)
+bool hashtable_cr_new(struct hashtable *const hashtable,
+                      const size_t key_len,
+                      const size_t full_key_len,
+                      const size_t size)
 {
 	hashtable->key_len = key_len;
-	hashtable->full_key_len = key_len;
+	hashtable->full_key_len = full_key_len;
 	hashtable->mask = size - 1;
 
 	hashtable->table = calloc(size, sizeof(struct hashlist *));
@@ -49,15 +50,15 @@ bool hashtable_new(struct hashtable *const hashtable,
 }
 
 
-void hashtable_free(struct hashtable *const hashtable)
+void hashtable_cr_free(struct hashtable *const hashtable)
 {
 	free(hashtable->table);
 }
 
 
-void hashtable_add(struct hashtable *const hashtable,
-                   const void *const key,
-                   void *const elem)
+void hashtable_cr_add(struct hashtable *const hashtable,
+                      const void *const key,
+                      void *const elem)
 {
 	const uint64_t hash = siphash24(key, hashtable->key_len, hashtable->key);
 	struct hashlist *entry;
@@ -66,30 +67,30 @@ void hashtable_add(struct hashtable *const hashtable,
 	if(entry == NULL)
 	{
 		hashtable->table[hash & hashtable->mask] = elem;
-		((struct hashlist *) elem)->prev = NULL;
+		((struct hashlist *) elem)->prev_cr = NULL;
 	}
 	else
 	{
-		while(entry->next != NULL)
+		while(entry->next_cr != NULL)
 		{
-			entry = entry->next;
+			entry = entry->next_cr;
 		}
-		entry->next = elem;
-		((struct hashlist *) elem)->prev = entry;
+		entry->next_cr = elem;
+		((struct hashlist *) elem)->prev_cr = entry;
 	}
-	((struct hashlist *) elem)->next = NULL;
+	((struct hashlist *) elem)->next_cr = NULL;
 }
 
 
-void * hashtable_get(const struct hashtable *const hashtable,
-                     const void *const key)
+void * hashtable_cr_get_first(const struct hashtable *const hashtable,
+                              const void *const key)
 {
 	const uint64_t hash = siphash24(key, hashtable->key_len, hashtable->key);
 	struct hashlist *entry;
 
 	for(entry = hashtable->table[hash & hashtable->mask];
 	    entry != NULL;
-	    entry = entry->next)
+	    entry = entry->next_cr)
 	{
 		if(memcmp(key, entry->key, hashtable->key_len) == 0)
 		{
@@ -101,30 +102,49 @@ void * hashtable_get(const struct hashtable *const hashtable,
 }
 
 
-void hashtable_del(struct hashtable *const hashtable,
-                   const void *const key)
+void * hashtable_cr_get_next(const struct hashtable *const hashtable,
+                             const void *const key,
+                             void *const pos)
+{
+	struct hashlist *prev = pos;
+	struct hashlist *entry;
+
+	for(entry = prev->next_cr; entry != NULL; entry = entry->next_cr)
+	{
+		if(memcmp(key, entry->key, hashtable->key_len) == 0)
+		{
+			break;
+		}
+	}
+
+	return entry;
+}
+
+
+void hashtable_cr_del(struct hashtable *const hashtable,
+                      const void *const key)
 {
 	const uint64_t hash = siphash24(key, hashtable->key_len, hashtable->key);
 	struct hashlist *entry;
 
 	for(entry = hashtable->table[hash & hashtable->mask];
 	    entry != NULL;
-	    entry = entry->next)
+	    entry = entry->next_cr)
 	{
-		if(memcmp(key, entry->key, hashtable->key_len) == 0)
+		if(memcmp(key, entry->key, hashtable->full_key_len) == 0)
 		{
-			if(entry->prev == NULL)
+			if(entry->prev_cr == NULL)
 			{
-				hashtable->table[hash & hashtable->mask] = entry->next;
+				hashtable->table[hash & hashtable->mask] = entry->next_cr;
 			}
 			else
 			{
-				entry->prev->next = entry->next;
+				entry->prev_cr->next_cr = entry->next_cr;
 			}
 
-			if(entry->next != NULL)
+			if(entry->next_cr != NULL)
 			{
-				entry->next->prev = entry->prev;
+				entry->next_cr->prev_cr = entry->prev_cr;
 			}
 
 			break;

@@ -28,7 +28,8 @@ rohc_common_sources = \
 	../../src/common/rohc_list.c \
 	../../src/common/feedback_parse.c \
 	../../src/common/csiphash.c \
-	../../src/common/hashtable.c
+	../../src/common/hashtable.c \
+	../../src/common/hashtable_cr.c
 
 rohc_comp_sources = \
 	../../src/comp/schemes/cid.c \

@@ -140,6 +140,7 @@ struct rohc_comp
 	/** The number of compression contexts in use in the array */
 	uint16_t num_contexts_used;
 	struct hashtable contexts_by_fingerprint;
+	struct hashtable contexts_cr;
 	struct rohc_comp_ctxt *uncompressed_ctxt;
 
 	/** Which profiles are enabled and with one are not? */
@@ -441,6 +442,9 @@ struct rohc_comp_ctxt
 {
 	struct rohc_comp_ctxt *prev;
 	struct rohc_comp_ctxt *next;
+	struct rohc_comp_ctxt *prev_cr;
+	struct rohc_comp_ctxt *next_cr;
+
 	/** The fingerprint of the context */
 	struct rohc_fingerprint fingerprint;
 

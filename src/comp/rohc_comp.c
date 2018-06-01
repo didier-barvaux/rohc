@@ -58,6 +58,8 @@
 #include "protocols/ip_numbers.h"
 #include "c_tcp_opts_list.h"
 #include "feedback_parse.h"
+#include "hashtable.h"
+#include "hashtable_cr.h"
 
 #include "config.h" /* for PACKAGE_(NAME|URL|VERSION) */
 
@@ -425,10 +427,26 @@ struct rohc_comp * rohc_comp_new2(const rohc_cid_type_t cid_type,
 		{
 			goto destroy_contexts;
 		}
+
+		/* create hash table for finding Context Replication (CR) contexts
+		 * by their base fingerprint */
+		for(i = 0; i < sizeof(comp->contexts_cr.key); i++)
+		{
+			comp->contexts_cr.key[i] =
+				comp->random_cb(comp, comp->random_cb_ctxt) & 0xff;
+		}
+		if(!hashtable_cr_new(&comp->contexts_cr,
+		                     sizeof(struct rohc_fingerprint_base),
+		                     sizeof(struct rohc_fingerprint), hashtable_size))
+		{
+			goto free_hashtable;
+		}
 	}
 
 	return comp;
 
+free_hashtable:
+	hashtable_free(&comp->contexts_by_fingerprint);
 destroy_contexts:
 	c_destroy_contexts(comp);
 destroy_comp:
@@ -469,6 +487,7 @@ void rohc_comp_free(struct rohc_comp *const comp)
 		           "free ROHC compressor");
 
 		/* free memory used by contexts */
+		hashtable_cr_free(&comp->contexts_cr);
 		hashtable_free(&comp->contexts_by_fingerprint);
 		c_destroy_contexts(comp);
 
@@ -1638,6 +1657,11 @@ error_free_new_context:
 		else
 		{
 			hashtable_del(&comp->contexts_by_fingerprint, &c->fingerprint);
+			/* TODO: replace TCP by CR capacity */
+			if(c->profile->id == ROHCv1_PROFILE_IP_TCP)
+			{
+				hashtable_cr_del(&comp->contexts_cr, &c->fingerprint);
+			}
 		}
 		c->profile->destroy(c);
 		c->used = 0;
@@ -3341,22 +3365,27 @@ static struct rohc_comp_ctxt *
 				cid_to_use = i;
 			}
 		}
+		c = &comp->contexts[cid_to_use];
 
 		/* destroy the oldest context before replacing it with a new one */
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "recycle oldest context (CID %u with profile 0x%04x)",
-		           cid_to_use, comp->contexts[cid_to_use].profile->id);
-		if(comp->contexts[cid_to_use].profile->id == ROHCv1_PROFILE_UNCOMPRESSED)
+		           cid_to_use, c->profile->id);
+		if(c->profile->id == ROHCv1_PROFILE_UNCOMPRESSED)
 		{
 			comp->uncompressed_ctxt = NULL;
 		}
 		else
 		{
-			hashtable_del(&comp->contexts_by_fingerprint,
-			              &(comp->contexts[cid_to_use].fingerprint));
+			hashtable_del(&comp->contexts_by_fingerprint, &c->fingerprint);
+			/* TODO: replace TCP by CR capacity */
+			if(c->profile->id == ROHCv1_PROFILE_IP_TCP)
+			{
+				hashtable_cr_del(&comp->contexts_cr, &c->fingerprint);
+			}
 		}
-		comp->contexts[cid_to_use].profile->destroy(&comp->contexts[cid_to_use]);
-		comp->contexts[cid_to_use].used = 0;
+		c->profile->destroy(&comp->contexts[cid_to_use]);
+		c->used = 0;
 		assert(comp->num_contexts_used > 0);
 		comp->num_contexts_used--;
 	}
@@ -3376,88 +3405,85 @@ static struct rohc_comp_ctxt *
 				break;
 			}
 		}
+		c = &comp->contexts[cid_to_use];
 
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "take the first unused context (CID %u)", cid_to_use);
 	}
-
-	/* initialize the previously found context */
-	c = &comp->contexts[cid_to_use];
 
 	/* search for a possible base context if Context Replication is possible */
 	/* TODO: replace TCP by CR capacity */
 	if(profile->id == ROHCv1_PROFILE_IP_TCP)
 	{
 		size_t best_ctxt_affinity = ROHC_AFFINITY_NONE;
-		size_t num_used_ctxt_seen;
-		rohc_cid_t i;
+		struct rohc_comp_ctxt *candidate;
 
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "search a base context for Context Replication");
 
 		/* search for a base context that we may clone the new context from */
-		for(i = 0, num_used_ctxt_seen = 0;
-		    i <= comp->medium.max_cid && num_used_ctxt_seen < comp->num_contexts_used;
-		    i++)
+		for(candidate = hashtable_cr_get_first(&comp->contexts_cr, fingerprint);
+		    candidate != NULL;
+		    candidate = hashtable_cr_get_next(&comp->contexts_cr, fingerprint,
+		                                      candidate))
 		{
-			const struct rohc_comp_ctxt *const candidate = &(comp->contexts[i]);
-			bool is_feedback_channel_available;
-			bool is_static_part_transmitted;
-			bool is_ctxt_established;
-			rohc_ctxt_affinity_t ctxt_affinity;
-
-			/* don't even look at unused contexts */
-			if(!candidate->used)
-			{
-				continue;
-			}
-			num_used_ctxt_seen++;
-
-			/* don't look at contexts with the wrong profile */
-			if(candidate->profile->id != profile->id)
-			{
-				continue;
-			}
-
-			/* does the packet matches the context? */
-			ctxt_affinity =
-				rohc_comp_get_ctxt_affinity(candidate, fingerprint, pkt_hdrs);
-			assert(ctxt_affinity != ROHC_AFFINITY_HIGH);
+			/* context partially matches the fingerprint of the packet */
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "context CID %u scores %u for Context Replication",
-			           candidate->cid, ctxt_affinity);
+			           "CR: context CID %u shares enough with packet for base context",
+			           candidate->cid);
 
-			/* several contexts may be used as basis for context replication:
-			 *  - drop the ones that are not fully established with decompressor (fully
-			 *    established means that the static part of the context was explicitly
-			 *    acknowledged by the decompressor through one ACK protected by a CRC),
-			 *  - keep the one that is the nearest from the new stream (more bytes
-			 *    in common) */
-			is_feedback_channel_available = !!(candidate->mode > ROHC_U_MODE);
-			is_static_part_transmitted = !!(candidate->state == ROHC_COMP_STATE_FO ||
-			                                candidate->state == ROHC_COMP_STATE_SO);
-			is_ctxt_established =
-				(is_feedback_channel_available && is_static_part_transmitted);
-			if(is_ctxt_established && ctxt_affinity > best_ctxt_affinity)
+			/* check if context may be used as a base context */
+			if(!profile->is_cr_possible(candidate, pkt_hdrs))
 			{
-				base_ctxt = candidate;
-				best_ctxt_affinity = ctxt_affinity;
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "context CID %u is the new best for Context Replication",
+				           "CR: context CID %u cannot be used as base context: "
+				           "IR-CR packet cannot transmit some differences",
 				           candidate->cid);
+			}
+			else
+			{
+				/* context can be used base context for Context Replication (CR),
+				 * compute how much it shares with packet */
+				rohc_ctxt_affinity_t ctxt_affinity = ROHC_AFFINITY_LOW;
+				if(candidate->fingerprint.src_port == fingerprint->src_port)
+				{
+					ctxt_affinity++;
+				}
+				if(candidate->fingerprint.dst_port == fingerprint->dst_port)
+				{
+					ctxt_affinity++;
+				}
+				assert(ctxt_affinity != ROHC_AFFINITY_HIGH);
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "CR: context CID %u scores %u as base context",
+				           candidate->cid, ctxt_affinity);
+				if(ctxt_affinity > best_ctxt_affinity)
+				{
+					base_ctxt = candidate;
+					best_ctxt_affinity = ctxt_affinity;
+					rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+					           "CR: context CID %u is the best base context found yet",
+					           candidate->cid);
+					if(ctxt_affinity == ROHC_AFFINITY_MED)
+					{
+						rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+						           "CR: maximum affinity reached, stop search");
+						break;
+					}
+				}
 			}
 		}
 
 		if(base_ctxt != NULL)
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "context CID %u is the final best for Context Replication",
+			           "CR: context CID %u is the best base context found",
 			           base_ctxt->cid);
 		}
 		else
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "no context may be use as base for Context Replication");
+			           "CR: no context may be used as base context");
 		}
 	}
 
@@ -3835,6 +3861,31 @@ void rohc_comp_change_mode(struct rohc_comp_ctxt *const context,
 		          "CID %u: change from mode %d to mode %d",
 		          context->cid, context->mode, new_mode);
 		context->mode = new_mode;
+
+		/* the context can be used as a base context for Context Replication
+		 * if it is fully established with the remote decompressor: fully
+		 * established means that the static part of the context was explicitly
+		 * acknowledged by the decompressor through one ACK protected by a CRC
+		 */
+		if(context->profile->id == ROHCv1_PROFILE_IP_TCP) /* TODO: replace TCP by CR capacity */
+		{
+			if(context->mode > ROHC_U_MODE &&
+			   (context->state == ROHC_COMP_STATE_FO ||
+			    context->state == ROHC_COMP_STATE_SO))
+			{
+				rohc_comp_debug(context, "CR: context CID %u is considered as "
+				                "established", context->cid);
+				hashtable_cr_add(&context->compressor->contexts_cr,
+				                 &context->fingerprint, context);
+			}
+			else
+			{
+				rohc_comp_debug(context, "CR: context CID %u is not considered as "
+				                "established", context->cid);
+				hashtable_cr_del(&context->compressor->contexts_cr,
+				                 &context->fingerprint);
+			}
+		}
 	}
 }
 
@@ -3861,6 +3912,31 @@ void rohc_comp_change_state(struct rohc_comp_ctxt *const context,
 
 		/* change state */
 		context->state = new_state;
+
+		/* the context can be used as a base context for Context Replication
+		 * if it is fully established with the remote decompressor: fully
+		 * established means that the static part of the context was explicitly
+		 * acknowledged by the decompressor through one ACK protected by a CRC
+		 */
+		if(context->profile->id == ROHCv1_PROFILE_IP_TCP) /* TODO: replace TCP by CR capacity */
+		{
+			if(context->mode > ROHC_U_MODE &&
+			   (context->state == ROHC_COMP_STATE_FO ||
+			    context->state == ROHC_COMP_STATE_SO))
+			{
+				rohc_comp_debug(context, "CR: context CID %u is considered as "
+				                "established", context->cid);
+				hashtable_cr_add(&context->compressor->contexts_cr,
+				                 &context->fingerprint, context);
+			}
+			else
+			{
+				rohc_comp_debug(context, "CR: context CID %u is not considered as "
+				                "established", context->cid);
+				hashtable_cr_del(&context->compressor->contexts_cr,
+				                 &context->fingerprint);
+			}
+		}
 	}
 }
 

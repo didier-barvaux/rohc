@@ -17,60 +17,45 @@
  */
 
 /**
- * @file   hashtable.h
+ * @file   hashtable_cr.h
  * @brief  Efficient, secure hash table
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  */
 
-#ifndef ROHC_HASHTABLE_H
-#define ROHC_HASHTABLE_H
+#ifndef ROHC_HASHTABLE_CR_H
+#define ROHC_HASHTABLE_CR_H
+
+#include "hashtable.h"
 
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
 
-
-/** A linked list */
-struct hashlist
-{
-	struct hashlist *prev;
-	struct hashlist *next;
-	struct hashlist *prev_cr;
-	struct hashlist *next_cr;
-	uint8_t key[];
-} __attribute__((packed));
-
-
-/** One hash table */
-struct hashtable
-{
-	size_t key_len;
-	size_t full_key_len;
-	uint64_t mask;
-	struct hashlist **table;
-	char key[16];
-};
-
-
-bool hashtable_new(struct hashtable *const hashtable,
-                   const size_t key_len,
-                   const size_t size)
+bool hashtable_cr_new(struct hashtable *const hashtable,
+                      const size_t key_len,
+                      const size_t full_key_len,
+                      const size_t size)
 	__attribute((warn_unused_result, nonnull(1)));
 
-void hashtable_free(struct hashtable *const hashtable)
+void hashtable_cr_free(struct hashtable *const hashtable)
 	__attribute((nonnull(1)));
 
-void hashtable_add(struct hashtable *const hashtable,
-                   const void *const key,
-                   void *const elem)
+void hashtable_cr_add(struct hashtable *const hashtable,
+                      const void *const key,
+                      void *const elem)
 	__attribute((nonnull(1, 2, 3)));
 
-void * hashtable_get(const struct hashtable *const hashtable,
-                     const void *const key)
+void * hashtable_cr_get_first(const struct hashtable *const hashtable,
+                              const void *const key)
 	__attribute((warn_unused_result, nonnull(1, 2)));
 
-void hashtable_del(struct hashtable *const hashtable,
-                   const void *const key)
+void * hashtable_cr_get_next(const struct hashtable *const hashtable,
+                             const void *const key,
+                             void *const pos)
+	__attribute((warn_unused_result, nonnull(1, 2, 3)));
+
+void hashtable_cr_del(struct hashtable *const hashtable,
+                      const void *const key)
 	__attribute((nonnull(1, 2)));
 
 #endif
