@@ -1408,7 +1408,91 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	}
 	else
 	{
+		struct sc_tcp_context *const tcp_context = context->specific;
+		const uint8_t *remain_data = ip->data;
+		size_t remain_len = ip->size;
+		const struct tcphdr *tcp;
+		size_t ip_hdr_pos;
+		uint8_t ir_cr_crc7;
 		bool B;
+
+		/* parse the IP headers and their extension headers */
+		rohc_comp_debug(context, "parse the %zu-byte IP packet", remain_len);
+		assert(tcp_context->ip_contexts_nr > 0);
+		for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)
+		{
+			const struct ip_hdr *const ip_hdr = (struct ip_hdr *) remain_data;
+			ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
+			uint8_t protocol;
+
+			/* retrieve IP version */
+			assert(remain_len >= sizeof(struct ip_hdr));
+			rohc_comp_debug(context, "found IPv%d", ip_hdr->version);
+
+			if(ip_hdr->version == IPV4)
+			{
+				const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) remain_data;
+				size_t ipv4_hdr_len;
+
+				assert(remain_len >= sizeof(struct ipv4_hdr));
+
+				protocol = ipv4->protocol;
+				ipv4_hdr_len = ipv4->ihl * sizeof(uint32_t);
+
+				/* skip IPv4 header */
+				rohc_comp_debug(context, "skip %zu-byte IPv4 header with "
+				                "Protocol 0x%02x", ipv4_hdr_len, protocol);
+				remain_data += ipv4_hdr_len;
+				remain_len -= ipv4_hdr_len;
+			}
+			else if(ip_hdr->version == IPV6)
+			{
+				const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
+				size_t ip_ext_pos;
+
+				assert(remain_len >= sizeof(struct ipv6_hdr));
+
+				protocol = ipv6->nh;
+
+				/* skip IPv6 header */
+				rohc_comp_debug(context, "skip %zu-byte IPv6 header with Next Header "
+				                "0x%02x", sizeof(struct ipv6_hdr), protocol);
+				remain_data += sizeof(struct ipv6_hdr);
+				remain_len -= sizeof(struct ipv6_hdr);
+
+				/* skip IPv6 extension headers */
+				for(ip_ext_pos = 0; ip_ext_pos < ip_context->opts_nr; ip_ext_pos++)
+				{
+					const struct ipv6_opt *const ipv6_opt = (struct ipv6_opt *) remain_data;
+					const ip_option_context_t *const opt_ctxt =
+						&(ip_context->opts[ip_ext_pos]);
+
+					protocol = ipv6_opt->next_header;
+					rohc_comp_debug(context, "skip %zu-byte IPv6 extension header "
+					                "with Next Header 0x%02x",
+					                opt_ctxt->generic.option_length, protocol);
+					remain_data += opt_ctxt->generic.option_length;
+					remain_len -= opt_ctxt->generic.option_length;
+				}
+			}
+			else
+			{
+				rohc_comp_warn(context, "unexpected IP version %u", ip_hdr->version);
+				assert(0);
+				goto error;
+			}
+		}
+
+		/* parse the TCP header */
+		assert(remain_len >= sizeof(struct tcphdr));
+		tcp = (struct tcphdr *) remain_data;
+		{
+			const size_t tcp_data_offset = tcp->data_offset << 2;
+			assert(remain_len >= tcp_data_offset);
+			assert(((uint8_t *) tcp) >= ip->data);
+			*payload_offset = ((uint8_t *) tcp) + tcp_data_offset - ip->data;
+			rohc_comp_debug(context, "payload offset = %zu", *payload_offset);
+		}
 
 		/* add replication base information for IR-CR packet only */
 		if(rohc_remain_len < 1)
@@ -1421,24 +1505,16 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 		B = !!(context->cid != context->cr_base_cid);
 
 		/* encode base CID if different from IR-CR CID */
-		if(!B)
+		ir_cr_crc7 = crc_calculate(ROHC_CRC_TYPE_7, ip->data, *payload_offset,
+		                           CRC_INIT_7, context->compressor->crc_table_7);
+		rohc_remain_data[0] = (B ? 0x80 : 0x00) | (ir_cr_crc7 & 0x7f);
+		rohc_comp_debug(context, "B (%d) + CRC7 (0x%x on %zu bytes) = 0x%02x",
+		                GET_REAL(B), ir_cr_crc7, *payload_offset, rohc_remain_data[0]);
+		rohc_remain_data++;
+		rohc_remain_len--;
+		rohc_hdr_len++;
+		if(B)
 		{
-			rohc_remain_data[0] = 0x00;
-			rohc_comp_debug(context, "B = %d (and CRC7 = 0x00 for computation) = 0x%02x",
-			                GET_REAL(B), rohc_remain_data[0]);
-			rohc_remain_data++;
-			rohc_remain_len--;
-			rohc_hdr_len++;
-		}
-		else
-		{
-			rohc_remain_data[0] = 0x80;
-			rohc_comp_debug(context, "B = %d (and CRC7 = 0x00 for computation) = 0x%02x",
-			                GET_REAL(B), rohc_remain_data[0]);
-			rohc_remain_data++;
-			rohc_remain_len--;
-			rohc_hdr_len++;
-
 			/* code small CID */
 			if(context->compressor->medium.cid_type == ROHC_SMALL_CID)
 			{
@@ -1502,8 +1578,6 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	                                       context->compressor->crc_table_8);
 	rohc_comp_debug(context, "CRC (header length = %zu, crc = 0x%x)",
 	                rohc_hdr_len, rohc_pkt[crc_position]);
-
-	/* TODO: compute CRC7 */
 
 	rohc_comp_debug(context, "IR(-CR|-DYN) packet, length %zu", rohc_hdr_len);
 	rohc_comp_dump_buf(context, "current ROHC packet", rohc_pkt, rohc_hdr_len);

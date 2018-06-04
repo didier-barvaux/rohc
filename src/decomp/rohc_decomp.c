@@ -217,8 +217,8 @@ static bool rohc_decomp_check_ir_crc(const struct rohc_decomp *const decomp,
                                      const size_t rohc_hdr_len,
                                      const size_t add_cid_len,
                                      const size_t large_cid_len,
-                                     const uint8_t crc_packet)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+                                     const struct rohc_decomp_crc_one *const crc_packet)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 7)));
 
 static void rohc_decomp_stats_add_success(struct rohc_decomp_ctxt *const context,
                                           const size_t comp_hdr_len,
@@ -1413,17 +1413,14 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 	 * correctly received. The optional Add-CID is part of the CRC.
 	 */
 
-	if(rohc_packet_is_ir(*packet_type))
+	if(extr_crc_bits->comp.type != ROHC_CRC_TYPE_NONE)
 	{
 		bool crc_ok;
-
-		assert(extr_crc_bits->type == ROHC_CRC_TYPE_NONE);
-		assert(extr_crc_bits->bits_nr == 8);
 
 		crc_ok = rohc_decomp_check_ir_crc(decomp, context,
 		                                  rohc_buf_data(rohc_packet) - add_cid_len,
 		                                  add_cid_len + rohc_hdr_len, add_cid_len,
-		                                  large_cid_len, extr_crc_bits->bits);
+		                                  large_cid_len, &extr_crc_bits->comp);
 		if(!crc_ok)
 		{
 			rohc_decomp_warn(context, "CRC detected a transmission failure for "
@@ -1496,9 +1493,6 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 		{
 			/* uncompressed headers successfully built but CRC is incorrect,
 			 * try decoding with different values (repair) */
-
-			/* CRC for IR and IR-DYN packets checked before, so cannot fail here */
-			assert(rohc_packet_is_ir(*packet_type) == false);
 
 			/* attempt a context/packet repair */
 			try_decoding_again =
@@ -1744,7 +1738,7 @@ static bool rohc_decomp_check_ir_crc(const struct rohc_decomp *const decomp,
                                      const size_t rohc_hdr_len,
                                      const size_t add_cid_len,
                                      const size_t large_cid_len,
-                                     const uint8_t crc_packet)
+                                     const struct rohc_decomp_crc_one *const crc_packet)
 {
 	const uint8_t *crc_table;
 	const rohc_crc_type_t crc_type = ROHC_CRC_TYPE_8;
@@ -1752,6 +1746,7 @@ static bool rohc_decomp_check_ir_crc(const struct rohc_decomp *const decomp,
 	unsigned int crc_comp; /* computed CRC */
 
 	assert(rohc_hdr_len >= (add_cid_len + 2 + large_cid_len + 1));
+	assert(crc_packet->type == ROHC_CRC_TYPE_8);
 
 	crc_table = decomp->crc_table_8;
 
@@ -1779,10 +1774,10 @@ static bool rohc_decomp_check_ir_crc(const struct rohc_decomp *const decomp,
 	                  "0x%x", crc_type, rohc_hdr_len, crc_comp);
 
 	/* does the computed CRC match the one in packet? */
-	if(crc_comp != crc_packet)
+	if(crc_comp != crc_packet->bits)
 	{
 		rohc_decomp_warn(context, "CRC failure (computed = 0x%02x, packet = "
-		                 "0x%02x)", crc_comp, crc_packet);
+		                 "0x%02x)", crc_comp, crc_packet->bits);
 		goto error;
 	}
 

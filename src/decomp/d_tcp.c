@@ -512,8 +512,8 @@ static bool d_tcp_create_from_pkt(const struct rohc_decomp_ctxt *const context,
 	rohc_lsb_init(&tcp_context->opt_ts_rep_lsb_ctxt, 32);
 
 	/* volatile part of the decompression context */
-	volat_ctxt->crc.type = ROHC_CRC_TYPE_NONE;
-	volat_ctxt->crc.bits_nr = 0;
+	volat_ctxt->crc.comp.type = ROHC_CRC_TYPE_NONE;
+	volat_ctxt->crc.uncomp.type = ROHC_CRC_TYPE_NONE;
 	volat_ctxt->extr_bits = malloc(sizeof(struct rohc_tcp_extr_bits));
 	if(volat_ctxt->extr_bits == NULL)
 	{
@@ -737,6 +737,8 @@ static bool d_tcp_parse_packet(const struct rohc_decomp_ctxt *const context,
 
 	/* reset all extracted bits */
 	d_tcp_reset_extr_bits(context, extr_bits);
+	extr_crc->comp.type = ROHC_CRC_TYPE_NONE;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_NONE;
 
 	if((*packet_type) == ROHC_PACKET_IR)
 	{
@@ -815,9 +817,8 @@ static bool d_tcp_parse_ir(const struct rohc_decomp_ctxt *const context,
 		                 "CRC byte");
 		goto error;
 	}
-	extr_crc->type = ROHC_CRC_TYPE_NONE;
-	extr_crc->bits = remain_data[0];
-	extr_crc->bits_nr = 8;
+	extr_crc->comp.type = ROHC_CRC_TYPE_8;
+	extr_crc->comp.bits = remain_data[0];
 	remain_data++;
 	remain_len--;
 
@@ -875,7 +876,6 @@ static bool d_tcp_parse_ir_cr(const struct rohc_decomp_ctxt *const context,
 	const uint8_t *remain_data;
 	size_t remain_len;
 	bool B;
-	uint8_t crc7;
 	rohc_cid_t base_cid;
 	size_t replicate_chain_len;
 
@@ -897,9 +897,8 @@ static bool d_tcp_parse_ir_cr(const struct rohc_decomp_ctxt *const context,
 		                 "CRC byte");
 		goto error;
 	}
-	extr_crc->type = ROHC_CRC_TYPE_NONE;
-	extr_crc->bits = remain_data[0];
-	extr_crc->bits_nr = 8;
+	extr_crc->comp.type = ROHC_CRC_TYPE_8;
+	extr_crc->comp.bits = remain_data[0];
 	remain_data++;
 	remain_len--;
 
@@ -913,8 +912,9 @@ static bool d_tcp_parse_ir_cr(const struct rohc_decomp_ctxt *const context,
 	B = GET_BOOL(GET_BIT_7(remain_data));
 	rohc_decomp_debug(context, "B = %d => Base CID is %spresent in packet",
 	                  GET_REAL(B), B ? "" : "not ");
-	crc7 = GET_BIT_0_6(remain_data);
-	rohc_decomp_debug(context, "CRC7 = 0x%02x", crc7);
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_7;
+	extr_crc->uncomp.bits = GET_BIT_0_6(remain_data);
+	rohc_decomp_debug(context, "CRC7 = 0x%02x", extr_crc->uncomp.bits);
 	remain_data++;
 	remain_len--;
 
@@ -1081,9 +1081,8 @@ static bool d_tcp_parse_irdyn(const struct rohc_decomp_ctxt *const context,
 		                 "CRC byte");
 		goto error;
 	}
-	extr_crc->type = ROHC_CRC_TYPE_NONE;
-	extr_crc->bits = remain_data[0];
-	extr_crc->bits_nr = 8;
+	extr_crc->comp.type = ROHC_CRC_TYPE_8;
+	extr_crc->comp.bits = remain_data[0];
 	remain_data++;
 	remain_len--;
 
@@ -1428,9 +1427,8 @@ static bool d_tcp_parse_rnd_1(const struct rohc_decomp_ctxt *const context,
 	bits->msn.bits_nr = 4;
 	bits->psh_flag_bits = rnd_1->psh_flag;
 	bits->psh_flag_bits_nr = 1;
-	extr_crc->type = ROHC_CRC_TYPE_3;
-	extr_crc->bits = rnd_1->header_crc;
-	extr_crc->bits_nr = 3;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_3;
+	extr_crc->uncomp.bits = rnd_1->header_crc;
 
 	*rohc_hdr_len = sizeof(rnd_1_t);
 	*has_opts_list = false;
@@ -1484,9 +1482,8 @@ static bool d_tcp_parse_rnd_2(const struct rohc_decomp_ctxt *const context,
 	bits->msn.bits_nr = 4;
 	bits->psh_flag_bits = rnd_2->psh_flag;
 	bits->psh_flag_bits_nr = 1;
-	extr_crc->type = ROHC_CRC_TYPE_3;
-	extr_crc->bits = rnd_2->header_crc;
-	extr_crc->bits_nr = 3;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_3;
+	extr_crc->uncomp.bits = rnd_2->header_crc;
 
 	*rohc_hdr_len = sizeof(rnd_2_t);
 	*has_opts_list = false;
@@ -1541,9 +1538,8 @@ static bool d_tcp_parse_rnd_3(const struct rohc_decomp_ctxt *const context,
 	bits->msn.bits_nr = 4;
 	bits->psh_flag_bits = rnd_3->psh_flag;
 	bits->psh_flag_bits_nr = 1;
-	extr_crc->type = ROHC_CRC_TYPE_3;
-	extr_crc->bits = rnd_3->header_crc;
-	extr_crc->bits_nr = 3;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_3;
+	extr_crc->uncomp.bits = rnd_3->header_crc;
 
 	*rohc_hdr_len = sizeof(rnd_3_t);
 	*has_opts_list = false;
@@ -1607,9 +1603,8 @@ static bool d_tcp_parse_rnd_4(const struct rohc_decomp_ctxt *const context,
 	bits->msn.bits_nr = 4;
 	bits->psh_flag_bits = rnd_4->psh_flag;
 	bits->psh_flag_bits_nr = 1;
-	extr_crc->type = ROHC_CRC_TYPE_3;
-	extr_crc->bits = rnd_4->header_crc;
-	extr_crc->bits_nr = 3;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_3;
+	extr_crc->uncomp.bits = rnd_4->header_crc;
 
 	*rohc_hdr_len = sizeof(rnd_4_t);
 	*has_opts_list = false;
@@ -1661,9 +1656,8 @@ static bool d_tcp_parse_rnd_5(const struct rohc_decomp_ctxt *const context,
 	bits->psh_flag_bits_nr = 1;
 	bits->msn.bits = rnd_5->msn;
 	bits->msn.bits_nr = 4;
-	extr_crc->type = ROHC_CRC_TYPE_3;
-	extr_crc->bits = rnd_5->header_crc;
-	extr_crc->bits_nr = 3;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_3;
+	extr_crc->uncomp.bits = rnd_5->header_crc;
 	bits->seq.bits =
 		(rnd_5->seq_num1 << 9) | (rnd_5->seq_num2 << 1) | rnd_5->seq_num3;
 	bits->seq.bits_nr = 14;
@@ -1718,9 +1712,8 @@ static bool d_tcp_parse_rnd_6(const struct rohc_decomp_ctxt *const context,
 	}
 
 	assert(rnd_6->discriminator == 0x0a); /* '1010' */
-	extr_crc->type = ROHC_CRC_TYPE_3;
-	extr_crc->bits = rnd_6->header_crc;
-	extr_crc->bits_nr = 3;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_3;
+	extr_crc->uncomp.bits = rnd_6->header_crc;
 	bits->psh_flag_bits = rnd_6->psh_flag;
 	bits->psh_flag_bits_nr = 1;
 	bits->ack.bits = rohc_ntoh16(rnd_6->ack_num);
@@ -1786,9 +1779,8 @@ static bool d_tcp_parse_rnd_7(const struct rohc_decomp_ctxt *const context,
 	bits->msn.bits_nr = 4;
 	bits->psh_flag_bits = rnd_7->psh_flag;
 	bits->psh_flag_bits_nr = 1;
-	extr_crc->type = ROHC_CRC_TYPE_3;
-	extr_crc->bits = rnd_7->header_crc;
-	extr_crc->bits_nr = 3;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_3;
+	extr_crc->uncomp.bits = rnd_7->header_crc;
 
 	*rohc_hdr_len = sizeof(rnd_7_t);
 	*has_opts_list = false;
@@ -1841,9 +1833,8 @@ static bool d_tcp_parse_rnd_8(const struct rohc_decomp_ctxt *const context,
 	bits->rsf_flags_bits = rnd_8->rsf_flags;
 	bits->rsf_flags_bits_nr = 2;
 	(*has_opts_list) = !!rnd_8->list_present;
-	extr_crc->type = ROHC_CRC_TYPE_7;
-	extr_crc->bits = rnd_8->header_crc;
-	extr_crc->bits_nr = 7;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_7;
+	extr_crc->uncomp.bits = rnd_8->header_crc;
 	bits->msn.bits = (rnd_8->msn1 << 3) | rnd_8->msn2;
 	bits->msn.bits_nr = 4;
 	bits->psh_flag_bits = rnd_8->psh_flag;
@@ -1917,9 +1908,8 @@ static bool d_tcp_parse_seq_1(const struct rohc_decomp_ctxt *const context,
 	bits->msn.bits_nr = 4;
 	bits->psh_flag_bits = seq_1->psh_flag;
 	bits->psh_flag_bits_nr = 1;
-	extr_crc->type = ROHC_CRC_TYPE_3;
-	extr_crc->bits = seq_1->header_crc;
-	extr_crc->bits_nr = 3;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_3;
+	extr_crc->uncomp.bits = seq_1->header_crc;
 
 	*rohc_hdr_len = sizeof(seq_1_t);
 	*has_opts_list = false;
@@ -1978,9 +1968,8 @@ static bool d_tcp_parse_seq_2(const struct rohc_decomp_ctxt *const context,
 	bits->msn.bits_nr = 4;
 	bits->psh_flag_bits = seq_2->psh_flag;
 	bits->psh_flag_bits_nr = 1;
-	extr_crc->type = ROHC_CRC_TYPE_3;
-	extr_crc->bits = seq_2->header_crc;
-	extr_crc->bits_nr = 3;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_3;
+	extr_crc->uncomp.bits = seq_2->header_crc;
 
 	*rohc_hdr_len = sizeof(seq_2_t);
 	*has_opts_list = false;
@@ -2040,9 +2029,8 @@ static bool d_tcp_parse_seq_3(const struct rohc_decomp_ctxt *const context,
 	bits->msn.bits_nr = 4;
 	bits->psh_flag_bits = seq_3->psh_flag;
 	bits->psh_flag_bits_nr = 1;
-	extr_crc->type = ROHC_CRC_TYPE_3;
-	extr_crc->bits = seq_3->header_crc;
-	extr_crc->bits_nr = 3;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_3;
+	extr_crc->uncomp.bits = seq_3->header_crc;
 
 	*rohc_hdr_len = sizeof(seq_3_t);
 	*has_opts_list = false;
@@ -2111,9 +2099,8 @@ static bool d_tcp_parse_seq_4(const struct rohc_decomp_ctxt *const context,
 	bits->msn.bits_nr = 4;
 	bits->psh_flag_bits = seq_4->psh_flag;
 	bits->psh_flag_bits_nr = 1;
-	extr_crc->type = ROHC_CRC_TYPE_3;
-	extr_crc->bits = seq_4->header_crc;
-	extr_crc->bits_nr = 3;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_3;
+	extr_crc->uncomp.bits = seq_4->header_crc;
 
 	*rohc_hdr_len = sizeof(seq_4_t);
 	*has_opts_list = false;
@@ -2176,9 +2163,8 @@ static bool d_tcp_parse_seq_5(const struct rohc_decomp_ctxt *const context,
 	bits->msn.bits_nr = 4;
 	bits->psh_flag_bits = seq_5->psh_flag;
 	bits->psh_flag_bits_nr = 1;
-	extr_crc->type = ROHC_CRC_TYPE_3;
-	extr_crc->bits = seq_5->header_crc;
-	extr_crc->bits_nr = 3;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_3;
+	extr_crc->uncomp.bits = seq_5->header_crc;
 
 	*rohc_hdr_len = sizeof(seq_5_t);
 	*has_opts_list = false;
@@ -2240,9 +2226,8 @@ static bool d_tcp_parse_seq_6(const struct rohc_decomp_ctxt *const context,
 	bits->msn.bits_nr = 4;
 	bits->psh_flag_bits = seq_6->psh_flag;
 	bits->psh_flag_bits_nr = 1;
-	extr_crc->type = ROHC_CRC_TYPE_3;
-	extr_crc->bits = seq_6->header_crc;
-	extr_crc->bits_nr = 3;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_3;
+	extr_crc->uncomp.bits = seq_6->header_crc;
 
 	*rohc_hdr_len = sizeof(seq_6_t);
 	*has_opts_list = false;
@@ -2306,9 +2291,8 @@ static bool d_tcp_parse_seq_7(const struct rohc_decomp_ctxt *const context,
 	bits->msn.bits_nr = 4;
 	bits->psh_flag_bits = seq_7->psh_flag;
 	bits->psh_flag_bits_nr = 1;
-	extr_crc->type = ROHC_CRC_TYPE_3;
-	extr_crc->bits = seq_7->header_crc;
-	extr_crc->bits_nr = 3;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_3;
+	extr_crc->uncomp.bits = seq_7->header_crc;
 
 	*rohc_hdr_len = sizeof(seq_7_t);
 	*has_opts_list = false;
@@ -2362,9 +2346,8 @@ static bool d_tcp_parse_seq_8(const struct rohc_decomp_ctxt *const context,
 	innermost_ip_bits->id.bits_nr = 4;
 	innermost_ip_bits->id.p = 3;
 	(*has_opts_list) = !!seq_8->list_present;
-	extr_crc->type = ROHC_CRC_TYPE_7;
-	extr_crc->bits = seq_8->header_crc;
-	extr_crc->bits_nr = 7;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_7;
+	extr_crc->uncomp.bits = seq_8->header_crc;
 	bits->msn.bits = seq_8->msn;
 	bits->msn.bits_nr = 4;
 	bits->psh_flag_bits = seq_8->psh_flag;
@@ -2454,9 +2437,8 @@ static bool d_tcp_parse_co_common(const struct rohc_decomp_ctxt *const context,
 	innermost_ip_bits->id_behavior_nr = 2;
 	bits->urg_flag_bits = co_common->urg_flag;
 	bits->urg_flag_bits_nr = 1;
-	extr_crc->type = ROHC_CRC_TYPE_7;
-	extr_crc->bits = co_common->header_crc;
-	extr_crc->bits_nr = 7;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_7;
+	extr_crc->uncomp.bits = co_common->header_crc;
 
 	rohc_remain_data += sizeof(co_common_t);
 	rohc_remain_len -= sizeof(co_common_t);
@@ -4238,11 +4220,11 @@ static rohc_status_t d_tcp_build_hdrs(const struct rohc_decomp *const decomp,
 	rohc_buf_push(uncomp_hdrs, ip_hdrs_len);
 
 	/* compute CRC on uncompressed headers if asked */
-	if(extr_crc->type != ROHC_CRC_TYPE_NONE)
+	if(extr_crc->uncomp.type != ROHC_CRC_TYPE_NONE)
 	{
 		const bool crc_ok =
 			rohc_decomp_check_uncomp_crc(decomp, context, uncomp_hdrs,
-			                             extr_crc->type, extr_crc->bits);
+			                             &extr_crc->uncomp);
 		if(!crc_ok)
 		{
 			rohc_decomp_warn(context, "CRC detected a decompression failure for "
