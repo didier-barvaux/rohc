@@ -118,7 +118,7 @@ struct rohc_rfc5225_bits
 	uint8_t outer_ip_flag;   /**< The outer_ip_flag bits */
 	size_t outer_ip_flag_nr; /**< The number of outer_ip_flag bits */
 
-	struct rohc_decomp_crc ctrl_crc;
+	struct rohc_decomp_crc_one ctrl_crc;
 
 	uint16_t udp_sport;  /**< The UDP source port bits */
 	size_t udp_sport_nr; /**< The number of UDP source port bits */
@@ -435,8 +435,8 @@ static bool decomp_rfc5225_ip_udp_new_context(const struct rohc_decomp_ctxt *con
 	rfc5225_ctxt->reorder_ratio = ROHC_REORDERING_NONE;
 
 	/* volatile part */
-	volat_ctxt->crc.type = ROHC_CRC_TYPE_NONE;
-	volat_ctxt->crc.bits_nr = 0;
+	volat_ctxt->crc.comp.type = ROHC_CRC_TYPE_NONE;
+	volat_ctxt->crc.uncomp.type = ROHC_CRC_TYPE_NONE;
 	volat_ctxt->extr_bits = malloc(sizeof(struct rohc_rfc5225_bits));
 	if(volat_ctxt->extr_bits == NULL)
 	{
@@ -577,6 +577,8 @@ static bool decomp_rfc5225_ip_udp_parse_pkt(const struct rohc_decomp_ctxt *const
 
 	/* reset all extracted bits */
 	decomp_rfc5225_ip_udp_reset_extr_bits(context, bits);
+	extr_crc->comp.type = ROHC_CRC_TYPE_NONE;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_NONE;
 
 	if((*packet_type) == ROHC_PACKET_IR)
 	{
@@ -641,7 +643,6 @@ static void decomp_rfc5225_ip_udp_reset_extr_bits(const struct rohc_decomp_ctxt 
 	bits->reorder_ratio_nr = 0;
 	bits->outer_ip_flag_nr = 0;
 	bits->ctrl_crc.type = ROHC_CRC_TYPE_NONE;
-	bits->ctrl_crc.bits_nr = 0;
 
 	/* if context handled at least one packet, init the list of IP headers */
 	if(ctxt->num_recv_packets >= 1)
@@ -697,9 +698,8 @@ static bool decomp_rfc5225_ip_udp_parse_ir(const struct rohc_decomp_ctxt *const 
 		                 "CRC byte");
 		goto error;
 	}
-	extr_crc->type = ROHC_CRC_TYPE_NONE;
-	extr_crc->bits = remain_data[0];
-	extr_crc->bits_nr = 8;
+	extr_crc->comp.type = ROHC_CRC_TYPE_8;
+	extr_crc->comp.bits = remain_data[0];
 	remain_data++;
 	remain_len--;
 
@@ -794,9 +794,8 @@ static bool decomp_rfc5225_ip_udp_parse_co_repair(const struct rohc_decomp_ctxt 
 			goto error;
 		}
 		/* CRC-7 over uncompressed headers */
-		hdr_crc->type = ROHC_CRC_TYPE_7;
-		hdr_crc->bits = co_repair_crc->header_crc;
-		hdr_crc->bits_nr = 7;
+		hdr_crc->uncomp.type = ROHC_CRC_TYPE_7;
+		hdr_crc->uncomp.bits = co_repair_crc->header_crc;
 
 		/* reserved field r2 shall be zero */
 		if(co_repair_crc->r2 != 0)
@@ -808,7 +807,6 @@ static bool decomp_rfc5225_ip_udp_parse_co_repair(const struct rohc_decomp_ctxt 
 		/* CRC-3 over control fields */
 		bits->ctrl_crc.type = ROHC_CRC_TYPE_3;
 		bits->ctrl_crc.bits = co_repair_crc->ctrl_crc;
-		bits->ctrl_crc.bits_nr = 3;
 
 		/* skip CRCs */
 		remain_data += sizeof(co_repair_crc_t);
@@ -1016,9 +1014,8 @@ static bool decomp_rfc5225_ip_udp_parse_pt_0_crc3(const struct rohc_decomp_ctxt 
 	assert(pt_0_crc3->discriminator == 0x0);
 	bits->msn.bits = pt_0_crc3->msn;
 	bits->msn.bits_nr = 4;
-	extr_crc->type = ROHC_CRC_TYPE_3;
-	extr_crc->bits = pt_0_crc3->header_crc;
-	extr_crc->bits_nr = 3;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_3;
+	extr_crc->uncomp.bits = pt_0_crc3->header_crc;
 
 	*rohc_hdr_len = sizeof(pt_0_crc3_t);
 
@@ -1065,9 +1062,8 @@ static bool decomp_rfc5225_ip_udp_parse_pt_0_crc7(const struct rohc_decomp_ctxt 
 	assert(pt_0_crc7->discriminator == 0x4);
 	bits->msn.bits = ((pt_0_crc7->msn_1 << 1) | pt_0_crc7->msn_2) & 0x3f;
 	bits->msn.bits_nr = 6;
-	extr_crc->type = ROHC_CRC_TYPE_7;
-	extr_crc->bits = pt_0_crc7->header_crc;
-	extr_crc->bits_nr = 7;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_7;
+	extr_crc->uncomp.bits = pt_0_crc7->header_crc;
 
 	*rohc_hdr_len = sizeof(pt_0_crc7_t);
 
@@ -1116,9 +1112,8 @@ static bool decomp_rfc5225_ip_udp_parse_pt_1_seq_id(const struct rohc_decomp_ctx
 	innermost_ip_bits->id.bits = pt_1_seq_id->ip_id;
 	innermost_ip_bits->id.bits_nr = 4;
 	innermost_ip_bits->id.p = rohc_interval_get_rfc5225_id_id_p(4);
-	extr_crc->type = ROHC_CRC_TYPE_3;
-	extr_crc->bits = pt_1_seq_id->header_crc;
-	extr_crc->bits_nr = 3;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_3;
+	extr_crc->uncomp.bits = pt_1_seq_id->header_crc;
 	bits->msn.bits = ((pt_1_seq_id->msn_1 << 4) | pt_1_seq_id->msn_2) & 0x3f;
 	bits->msn.bits_nr = 6;
 
@@ -1171,9 +1166,8 @@ static bool decomp_rfc5225_ip_udp_parse_pt_2_seq_id(const struct rohc_decomp_ctx
 		((pt_2_seq_id->ip_id_1 << 1) | pt_2_seq_id->ip_id_2) & 0x3f;
 	innermost_ip_bits->id.bits_nr = 6;
 	innermost_ip_bits->id.p = rohc_interval_get_rfc5225_id_id_p(6);
-	extr_crc->type = ROHC_CRC_TYPE_7;
-	extr_crc->bits = pt_2_seq_id->header_crc;
-	extr_crc->bits_nr = 7;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_7;
+	extr_crc->uncomp.bits = pt_2_seq_id->header_crc;
 	bits->msn.bits = pt_2_seq_id->msn;
 	bits->msn.bits_nr = 8;
 
@@ -1231,11 +1225,10 @@ static bool decomp_rfc5225_ip_udp_parse_co_common(const struct rohc_decomp_ctxt 
 	assert(co_common->discriminator == 0xfa);
 
 	/* CRC-7 over uncompressed header */
-	extr_crc->type = ROHC_CRC_TYPE_7;
-	extr_crc->bits = co_common->header_crc;
-	extr_crc->bits_nr = 7;
-	rohc_decomp_debug(ctxt, "found %zu bits of header CRC-7 0x%02x",
-	                  extr_crc->bits_nr, extr_crc->bits);
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_7;
+	extr_crc->uncomp.bits = co_common->header_crc;
+	rohc_decomp_debug(ctxt, "found 7 bits of header CRC-7 0x%02x",
+	                  extr_crc->uncomp.bits);
 
 	/* reorder_ratio */
 	bits->reorder_ratio = co_common->reorder_ratio;
@@ -1246,9 +1239,8 @@ static bool decomp_rfc5225_ip_udp_parse_co_common(const struct rohc_decomp_ctxt 
 	/* CRC-3 over control fields */
 	bits->ctrl_crc.type = ROHC_CRC_TYPE_3;
 	bits->ctrl_crc.bits = co_common->control_crc3;
-	bits->ctrl_crc.bits_nr = 3;
-	rohc_decomp_debug(ctxt, "found %zu bits of control CRC-3 %u",
-	                  bits->ctrl_crc.bits_nr, bits->ctrl_crc.bits);
+	rohc_decomp_debug(ctxt, "found 3 bits of control CRC-3 %u",
+	                  bits->ctrl_crc.bits);
 
 	/* skip the fixed part of the co_common header */
 	remain_data += sizeof(co_common_base_t);
@@ -2293,7 +2285,6 @@ static rohc_status_t decomp_rfc5225_ip_udp_decode_bits(const struct rohc_decomp_
 		uint8_t ctrl_crc_computed;
 
 		assert(bits->ctrl_crc.type == ROHC_CRC_TYPE_3);
-		assert(bits->ctrl_crc.bits_nr == 3);
 
 		/* compute the CRC-3 over decoded control fields */
 		assert(bits->ip_nr > 0);
@@ -2740,11 +2731,10 @@ static rohc_status_t decomp_rfc5225_ip_udp_build_hdrs(const struct rohc_decomp *
 	rohc_buf_push(uncomp_hdrs, ip_hdrs_len);
 
 	/* compute CRC on uncompressed headers if asked */
-	if(extr_crc->type != ROHC_CRC_TYPE_NONE)
+	if(extr_crc->uncomp.type != ROHC_CRC_TYPE_NONE)
 	{
 		const bool crc_ok =
-			rohc_decomp_check_uncomp_crc(context, uncomp_hdrs,
-			                             extr_crc->type, extr_crc->bits);
+			rohc_decomp_check_uncomp_crc(context, uncomp_hdrs, &extr_crc->uncomp);
 		if(!crc_ok)
 		{
 			rohc_decomp_warn(context, "CRC detected a decompression failure for "

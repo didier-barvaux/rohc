@@ -34,19 +34,17 @@
  *
  * @param context      The decompression context
  * @param uncomp_hdrs  The uncompressed headers
- * @param crc_type     The type of CRC
- * @param crc_packet   The CRC extracted from the ROHC header
+ * @param crc_pkt      The CRC over uncompressed headers extracted from packet
  * @return             true if the CRC is correct, false otherwise
  */
 bool rohc_decomp_check_uncomp_crc(const struct rohc_decomp_ctxt *const context,
                                   struct rohc_buf *const uncomp_hdrs,
-                                  const rohc_crc_type_t crc_type,
-                                  const uint8_t crc_packet)
+                                  const struct rohc_decomp_crc_one *const crc_pkt)
 {
 	uint8_t crc_computed;
 
 	/* determine the initial value and the pre-computed table for the CRC */
-	switch(crc_type)
+	switch(crc_pkt->type)
 	{
 		case ROHC_CRC_TYPE_3:
 			crc_computed = CRC_INIT_3;
@@ -55,28 +53,28 @@ bool rohc_decomp_check_uncomp_crc(const struct rohc_decomp_ctxt *const context,
 			crc_computed = CRC_INIT_7;
 			break;
 		case ROHC_CRC_TYPE_8:
-			rohc_decomp_warn(context, "unexpected CRC type %d", crc_type);
+			rohc_decomp_warn(context, "unexpected CRC type %d", crc_pkt->type);
 			assert(0);
 			goto error;
 		case ROHC_CRC_TYPE_NONE:
 		default:
-			rohc_decomp_warn(context, "unknown CRC type %d", crc_type);
+			rohc_decomp_warn(context, "unknown CRC type %d", crc_pkt->type);
 			assert(0);
 			goto error;
 	}
 
 	/* compute the CRC from built uncompressed headers */
 	crc_computed =
-		crc_calculate(crc_type, rohc_buf_data(*uncomp_hdrs), uncomp_hdrs->len,
+		crc_calculate(crc_pkt->type, rohc_buf_data(*uncomp_hdrs), uncomp_hdrs->len,
 		              crc_computed);
 	rohc_decomp_debug(context, "CRC-%d on uncompressed header = 0x%x",
-	                  crc_type, crc_computed);
+	                  crc_pkt->type, crc_computed);
 
 	/* does the computed CRC match the one in packet? */
-	if(crc_computed != crc_packet)
+	if(crc_computed != crc_pkt->bits)
 	{
 		rohc_decomp_warn(context, "CRC failure (computed = 0x%02x, packet = "
-		                 "0x%02x)", crc_computed, crc_packet);
+		                 "0x%02x)", crc_computed, crc_pkt->bits);
 		goto error;
 	}
 

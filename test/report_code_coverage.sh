@@ -32,7 +32,7 @@
 #
 
 coverage_lines_min_req=90
-coverage_functions_min_req=99
+coverage_functions_min_req=98
 coverage_branches_min_req=58
 
 LCOV_BIN="lcov --rc lcov_function_coverage=1 --rc lcov_branch_coverage=1"

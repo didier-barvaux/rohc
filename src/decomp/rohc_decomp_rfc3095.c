@@ -321,9 +321,8 @@ static bool check_uncomp_crc(const struct rohc_decomp_ctxt *const context,
                              const uint8_t *const outer_ip_hdr,
                              const uint8_t *const inner_ip_hdr,
                              const uint8_t *const next_header,
-                             const rohc_crc_type_t crc_type,
-                             const uint8_t crc_packet)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+                             const struct rohc_decomp_crc_one *const crc_pkt)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
 
 static bool is_sn_wraparound(const struct rohc_ts cur_arrival_time,
                              const struct rohc_ts arrival_times[ROHC_MAX_ARRIVAL_TIMES],
@@ -415,8 +414,8 @@ bool rohc_decomp_rfc3095_create(const struct rohc_decomp_ctxt *const context,
 	rfc3095_ctxt->is_crc_static_7_cached_valid = false;
 
 	/* volatile part of the decompression context */
-	volat_ctxt->crc.type = ROHC_CRC_TYPE_NONE;
-	volat_ctxt->crc.bits_nr = 0;
+	volat_ctxt->crc.comp.type = ROHC_CRC_TYPE_NONE;
+	volat_ctxt->crc.uncomp.type = ROHC_CRC_TYPE_NONE;
 	volat_ctxt->extr_bits = malloc(sizeof(struct rohc_extr_bits));
 	if(volat_ctxt->extr_bits == NULL)
 	{
@@ -676,7 +675,8 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 
 	/* reset all extracted bits */
 	reset_extr_bits(rfc3095_ctxt, bits);
-	extr_crc->type = ROHC_CRC_TYPE_NONE;
+	extr_crc->comp.type = ROHC_CRC_TYPE_NONE;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_NONE;
 
 	/* packet must large enough for:
 	 * IR type + (large CID + ) Profile ID + CRC */
@@ -699,11 +699,11 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 	rohc_remain_len -= large_cid_len + 2;
 	*rohc_hdr_len += large_cid_len + 2;
 
-	/* parse CRC */
-	extr_crc->bits = GET_BIT_0_7(rohc_remain_data);
-	extr_crc->bits_nr = 8;
-	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x",
-	                  extr_crc->bits_nr, extr_crc->bits);
+	/* parse CRC (CRC is computed over the compressed header) */
+	extr_crc->comp.type = ROHC_CRC_TYPE_8;
+	extr_crc->comp.bits = GET_BIT_0_7(rohc_remain_data);
+	rohc_decomp_debug(context, "CRC-8 found in packet = 0x%02x",
+	                  extr_crc->comp.bits);
 	rohc_remain_data++;
 	rohc_remain_len--;
 	(*rohc_hdr_len)++;
@@ -1420,6 +1420,8 @@ static bool parse_uo0(const struct rohc_decomp_ctxt *const context,
 
 	/* reset all extracted bits */
 	reset_extr_bits(rfc3095_ctxt, bits);
+	extr_crc->comp.type = ROHC_CRC_TYPE_NONE;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_NONE;
 
 	/* check packet usage */
 	assert(context->state == ROHC_DECOMP_STATE_FC);
@@ -1438,11 +1440,10 @@ static bool parse_uo0(const struct rohc_decomp_ctxt *const context,
 	bits->sn_nr = 4;
 	bits->is_sn_enc = true;
 	rohc_decomp_debug(context, "%zd SN bits = 0x%x", bits->sn_nr, bits->sn);
-	extr_crc->type = ROHC_CRC_TYPE_3;
-	extr_crc->bits = GET_BIT_0_2(rohc_remain_data);
-	extr_crc->bits_nr = 3;
-	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x",
-	                  extr_crc->bits_nr, extr_crc->bits);
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_3;
+	extr_crc->uncomp.bits = GET_BIT_0_2(rohc_remain_data);
+	rohc_decomp_debug(context, "CRC-3 found in packet = 0x%02x",
+	                  extr_crc->uncomp.bits);
 	rohc_remain_data++;
 	rohc_remain_len--;
 	(*rohc_hdr_len)++;
@@ -1589,6 +1590,8 @@ static bool parse_uo1(const struct rohc_decomp_ctxt *const context,
 
 	/* reset all extracted bits */
 	reset_extr_bits(rfc3095_ctxt, bits);
+	extr_crc->comp.type = ROHC_CRC_TYPE_NONE;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_NONE;
 
 	/* determine which IP header is the innermost IPv4 header with
 	 * value(RND) = 0 */
@@ -1665,11 +1668,10 @@ static bool parse_uo1(const struct rohc_decomp_ctxt *const context,
 	bits->sn_nr = 5;
 	bits->is_sn_enc = true;
 	rohc_decomp_debug(context, "%zd SN bits = 0x%x", bits->sn_nr, bits->sn);
-	extr_crc->type = ROHC_CRC_TYPE_3;
-	extr_crc->bits = GET_BIT_0_2(rohc_remain_data);
-	extr_crc->bits_nr = 3;
-	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x",
-	                  extr_crc->bits_nr, extr_crc->bits);
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_3;
+	extr_crc->uncomp.bits = GET_BIT_0_2(rohc_remain_data);
+	rohc_decomp_debug(context, "CRC-3 found in packet = 0x%02x",
+	                  extr_crc->uncomp.bits);
 	rohc_remain_data++;
 	rohc_remain_len--;
 	(*rohc_hdr_len)++;
@@ -1813,6 +1815,8 @@ static bool parse_uo1rtp(const struct rohc_decomp_ctxt *const context,
 
 	/* reset all extracted bits */
 	reset_extr_bits(rfc3095_ctxt, bits);
+	extr_crc->comp.type = ROHC_CRC_TYPE_NONE;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_NONE;
 
 	/* check packet usage */
 	assert(context->state == ROHC_DECOMP_STATE_FC);
@@ -1854,11 +1858,10 @@ static bool parse_uo1rtp(const struct rohc_decomp_ctxt *const context,
 	bits->sn_nr = 4;
 	bits->is_sn_enc = true;
 	rohc_decomp_debug(context, "%zd SN bits = 0x%x", bits->sn_nr, bits->sn);
-	extr_crc->type = ROHC_CRC_TYPE_3;
-	extr_crc->bits = GET_BIT_0_2(rohc_remain_data);
-	extr_crc->bits_nr = 3;
-	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x",
-	                  extr_crc->bits_nr, extr_crc->bits);
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_3;
+	extr_crc->uncomp.bits = GET_BIT_0_2(rohc_remain_data);
+	rohc_decomp_debug(context, "CRC-3 found in packet = 0x%02x",
+	                  extr_crc->uncomp.bits);
 	rohc_remain_data++;
 	rohc_remain_len--;
 	(*rohc_hdr_len)++;
@@ -2008,6 +2011,8 @@ static bool parse_uo1id(const struct rohc_decomp_ctxt *const context,
 
 	/* reset all extracted bits */
 	reset_extr_bits(rfc3095_ctxt, bits);
+	extr_crc->comp.type = ROHC_CRC_TYPE_NONE;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_NONE;
 
 	/* determine which IP header is the innermost IPv4 header with
 	 * value(RND) = 0 */
@@ -2090,11 +2095,10 @@ static bool parse_uo1id(const struct rohc_decomp_ctxt *const context,
 	bits->sn_nr = 4;
 	bits->is_sn_enc = true;
 	rohc_decomp_debug(context, "%zd SN bits = 0x%x", bits->sn_nr, bits->sn);
-	extr_crc->type = ROHC_CRC_TYPE_3;
-	extr_crc->bits = GET_BIT_0_2(rohc_remain_data);
-	extr_crc->bits_nr = 3;
-	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x",
-	                  extr_crc->bits_nr, extr_crc->bits);
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_3;
+	extr_crc->uncomp.bits = GET_BIT_0_2(rohc_remain_data);
+	rohc_decomp_debug(context, "CRC-3 found in packet = 0x%02x",
+	                  extr_crc->uncomp.bits);
 	rohc_remain_data++;
 	rohc_remain_len--;
 	(*rohc_hdr_len)++;
@@ -2335,6 +2339,8 @@ static bool parse_uo1ts(const struct rohc_decomp_ctxt *const context,
 
 	/* reset all extracted bits */
 	reset_extr_bits(rfc3095_ctxt, bits);
+	extr_crc->comp.type = ROHC_CRC_TYPE_NONE;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_NONE;
 
 	/* check packet usage */
 	assert(context->state == ROHC_DECOMP_STATE_FC);
@@ -2377,11 +2383,10 @@ static bool parse_uo1ts(const struct rohc_decomp_ctxt *const context,
 	bits->sn_nr = 4;
 	bits->is_sn_enc = true;
 	rohc_decomp_debug(context, "%zd SN bits = 0x%x", bits->sn_nr, bits->sn);
-	extr_crc->type = ROHC_CRC_TYPE_3;
-	extr_crc->bits = GET_BIT_0_2(rohc_remain_data);
-	extr_crc->bits_nr = 3;
-	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x",
-	                  extr_crc->bits_nr, extr_crc->bits);
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_3;
+	extr_crc->uncomp.bits = GET_BIT_0_2(rohc_remain_data);
+	rohc_decomp_debug(context, "CRC-3 found in packet = 0x%02x",
+	                  extr_crc->uncomp.bits);
 	rohc_remain_data++;
 	rohc_remain_len--;
 	(*rohc_hdr_len)++;
@@ -2520,6 +2525,8 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
 
 	/* reset all extracted bits */
 	reset_extr_bits(rfc3095_ctxt, bits);
+	extr_crc->comp.type = ROHC_CRC_TYPE_NONE;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_NONE;
 
 	/* determine which IP header is the innermost IPv4 header with
 	 * value(RND) = 0 */
@@ -2574,11 +2581,10 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
 	/* part 4: 1-bit X (extension) flag + 7-bit CRC */
 	bits->ext_flag = GET_REAL(GET_BIT_7(rohc_remain_data));
 	rohc_decomp_debug(context, "extension is present = %u", bits->ext_flag);
-	extr_crc->type = ROHC_CRC_TYPE_7;
-	extr_crc->bits = GET_BIT_0_6(rohc_remain_data);
-	extr_crc->bits_nr = 7;
-	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x",
-	                  extr_crc->bits_nr, extr_crc->bits);
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_7;
+	extr_crc->uncomp.bits = GET_BIT_0_6(rohc_remain_data);
+	rohc_decomp_debug(context, "CRC-7 found in packet = 0x%02x",
+	                  extr_crc->uncomp.bits);
 	rohc_remain_data++;
 	rohc_remain_len--;
 	(*rohc_hdr_len)++;
@@ -2987,6 +2993,8 @@ static bool parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
 
 	/* reset all extracted bits */
 	reset_extr_bits(rfc3095_ctxt, bits);
+	extr_crc->comp.type = ROHC_CRC_TYPE_NONE;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_NONE;
 
 	/* force extracted RND values (for reparsing) */
 	if(bits->outer_ip.version == IPV4)
@@ -3057,11 +3065,10 @@ static bool parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
 	/* part 4: 1-bit X (extension) flag + 7-bit CRC */
 	bits->ext_flag = GET_REAL(GET_BIT_7(rohc_remain_data));
 	rohc_decomp_debug(context, "extension is present = %u", bits->ext_flag);
-	extr_crc->type = ROHC_CRC_TYPE_7;
-	extr_crc->bits = GET_BIT_0_6(rohc_remain_data);
-	extr_crc->bits_nr = 7;
-	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x",
-	                  extr_crc->bits_nr, extr_crc->bits);
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_7;
+	extr_crc->uncomp.bits = GET_BIT_0_6(rohc_remain_data);
+	rohc_decomp_debug(context, "CRC-7 found in packet = 0x%02x",
+	                  extr_crc->uncomp.bits);
 	rohc_remain_data++;
 	rohc_remain_len--;
 	(*rohc_hdr_len)++;
@@ -3443,6 +3450,8 @@ static bool parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
 
 	/* reset all extracted bits */
 	reset_extr_bits(rfc3095_ctxt, bits);
+	extr_crc->comp.type = ROHC_CRC_TYPE_NONE;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_NONE;
 
 	/* force extracted RND values (for reparsing) */
 	if(bits->outer_ip.version == IPV4)
@@ -3528,11 +3537,10 @@ static bool parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
 	/* part 4: 1-bit X (extension) flag + 7-bit CRC */
 	bits->ext_flag = GET_REAL(GET_BIT_7(rohc_remain_data));
 	rohc_decomp_debug(context, "extension is present = %u", bits->ext_flag);
-	extr_crc->type = ROHC_CRC_TYPE_7;
-	extr_crc->bits = GET_BIT_0_6(rohc_remain_data);
-	extr_crc->bits_nr = 7;
-	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x",
-	                  extr_crc->bits_nr, extr_crc->bits);
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_7;
+	extr_crc->uncomp.bits = GET_BIT_0_6(rohc_remain_data);
+	rohc_decomp_debug(context, "CRC-7 found in packet = 0x%02x",
+	                  extr_crc->uncomp.bits);
 	rohc_remain_data++;
 	rohc_remain_len--;
 	(*rohc_hdr_len)++;
@@ -3910,6 +3918,8 @@ static bool parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
 
 	/* reset all extracted bits */
 	reset_extr_bits(rfc3095_ctxt, bits);
+	extr_crc->comp.type = ROHC_CRC_TYPE_NONE;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_NONE;
 
 	/* force extracted RND values (for reparsing) */
 	if(bits->outer_ip.version == IPV4)
@@ -3978,11 +3988,10 @@ static bool parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
 	/* part 4: 1-bit X (extension) flag + 7-bit CRC */
 	bits->ext_flag = GET_REAL(GET_BIT_7(rohc_remain_data));
 	rohc_decomp_debug(context, "extension is present = %u", bits->ext_flag);
-	extr_crc->type = ROHC_CRC_TYPE_7;
-	extr_crc->bits = GET_BIT_0_6(rohc_remain_data);
-	extr_crc->bits_nr = 7;
-	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x",
-	                  extr_crc->bits_nr, extr_crc->bits);
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_7;
+	extr_crc->uncomp.bits = GET_BIT_0_6(rohc_remain_data);
+	rohc_decomp_debug(context, "CRC-7 found in packet = 0x%02x",
+	                  extr_crc->uncomp.bits);
 	rohc_remain_data++;
 	rohc_remain_len--;
 	(*rohc_hdr_len)++;
@@ -4410,7 +4419,8 @@ static bool parse_irdyn(const struct rohc_decomp_ctxt *const context,
 
 	/* reset all extracted bits */
 	reset_extr_bits(rfc3095_ctxt, bits);
-	extr_crc->type = ROHC_CRC_TYPE_NONE;
+	extr_crc->comp.type = ROHC_CRC_TYPE_NONE;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_NONE;
 
 	/* packet must large enough for:
 	 * IR-DYN type + (large CID + ) Profile ID + CRC */
@@ -4427,10 +4437,10 @@ static bool parse_irdyn(const struct rohc_decomp_ctxt *const context,
 	*rohc_hdr_len += large_cid_len + 2;
 
 	/* parse CRC */
-	extr_crc->bits = GET_BIT_0_7(rohc_remain_data);
-	extr_crc->bits_nr = 8;
-	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x",
-	                  extr_crc->bits_nr, extr_crc->bits);
+	extr_crc->comp.type = ROHC_CRC_TYPE_8;
+	extr_crc->comp.bits = GET_BIT_0_7(rohc_remain_data);
+	rohc_decomp_debug(context, "CRC-8 found in packet = 0x%02x",
+	                  extr_crc->comp.bits);
 	rohc_remain_data++;
 	rohc_remain_len--;
 	(*rohc_hdr_len)++;
@@ -5018,14 +5028,11 @@ rohc_status_t rfc3095_decomp_build_hdrs(const struct rohc_decomp *const decomp,
 	}
 
 	/* compute CRC on uncompressed headers if asked */
-	if(extr_crc->type != ROHC_CRC_TYPE_NONE)
+	if(extr_crc->uncomp.type != ROHC_CRC_TYPE_NONE)
 	{
-		bool crc_ok;
-
-		assert(extr_crc->bits_nr > 0);
-
-		crc_ok = check_uncomp_crc(context, outer_ip_hdr, inner_ip_hdr,
-		                          next_header, extr_crc->type, extr_crc->bits);
+		const bool crc_ok =
+			check_uncomp_crc(context, outer_ip_hdr, inner_ip_hdr,
+			                 next_header, &extr_crc->uncomp);
 		if(!crc_ok)
 		{
 			rohc_decomp_warn(context, "CRC detected a decompression failure for "
@@ -5244,25 +5251,23 @@ error:
  * @param outer_ip_hdr  The outer IP header
  * @param inner_ip_hdr  The inner IP header if it exists, NULL otherwise
  * @param next_header   The transport header, eg. UDP
- * @param crc_type      The type of CRC
- * @param crc_packet    The CRC extracted from the ROHC header
+ * @param crc_pkt       The CRC over the uncompressed headers extracted from packet
  * @return              true if the CRC is correct, false otherwise
  */
 static bool check_uncomp_crc(const struct rohc_decomp_ctxt *const context,
                              const uint8_t *const outer_ip_hdr,
                              const uint8_t *const inner_ip_hdr,
                              const uint8_t *const next_header,
-                             const rohc_crc_type_t crc_type,
-                             const uint8_t crc_packet)
+                             const struct rohc_decomp_crc_one *const crc_pkt)
 {
 	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	uint8_t crc_computed;
 
 	assert(rfc3095_ctxt != NULL);
-	assert(crc_type != ROHC_CRC_TYPE_NONE);
+	assert(crc_pkt->type != ROHC_CRC_TYPE_NONE);
 
 	/* determine the initial value and the pre-computed table for the CRC */
-	switch(crc_type)
+	switch(crc_pkt->type)
 	{
 		case ROHC_CRC_TYPE_3:
 			crc_computed = CRC_INIT_3;
@@ -5275,18 +5280,18 @@ static bool check_uncomp_crc(const struct rohc_decomp_ctxt *const context,
 			break;
 		case ROHC_CRC_TYPE_NONE:
 		default:
-			rohc_decomp_warn(context, "unknown CRC type %d", crc_type);
+			rohc_decomp_warn(context, "unknown CRC type %d", crc_pkt->type);
 			assert(0);
 			goto error;
 	}
 
 	/* compute the CRC on CRC-STATIC fields of built uncompressed headers */
-	if(rfc3095_ctxt->is_crc_static_3_cached_valid && crc_type == ROHC_CRC_TYPE_3)
+	if(rfc3095_ctxt->is_crc_static_3_cached_valid && crc_pkt->type == ROHC_CRC_TYPE_3)
 	{
 		crc_computed = rfc3095_ctxt->crc_static_3_cached;
 		rohc_decomp_debug(context, "use CRC-STATIC-3 = 0x%x from cache", crc_computed);
 	}
-	else if(rfc3095_ctxt->is_crc_static_7_cached_valid && crc_type == ROHC_CRC_TYPE_7)
+	else if(rfc3095_ctxt->is_crc_static_7_cached_valid && crc_pkt->type == ROHC_CRC_TYPE_7)
 	{
 		crc_computed = rfc3095_ctxt->crc_static_7_cached;
 		rohc_decomp_debug(context, "use CRC-STATIC-7 = 0x%x from cache", crc_computed);
@@ -5294,12 +5299,12 @@ static bool check_uncomp_crc(const struct rohc_decomp_ctxt *const context,
 	else
 	{
 		crc_computed = rfc3095_ctxt->compute_crc_static(outer_ip_hdr, inner_ip_hdr,
-		                                                next_header, crc_type,
+		                                                next_header, crc_pkt->type,
 		                                                crc_computed);
 		rohc_decomp_debug(context, "compute CRC-STATIC-%d = 0x%x from packet",
-		                  crc_type, crc_computed);
+		                  crc_pkt->type, crc_computed);
 
-		switch(crc_type)
+		switch(crc_pkt->type)
 		{
 			case ROHC_CRC_TYPE_3:
 				rfc3095_ctxt->crc_static_3_cached = crc_computed;
@@ -5316,16 +5321,16 @@ static bool check_uncomp_crc(const struct rohc_decomp_ctxt *const context,
 
 	/* compute the CRC on CRC-DYNAMIC fields of built uncompressed headers */
 	crc_computed = rfc3095_ctxt->compute_crc_dynamic(outer_ip_hdr, inner_ip_hdr,
-	                                                 next_header, crc_type,
+	                                                 next_header, crc_pkt->type,
 	                                                 crc_computed);
 	rohc_decomp_debug(context, "CRC-%d on uncompressed header = 0x%x",
-	                  crc_type, crc_computed);
+	                  crc_pkt->type, crc_computed);
 
 	/* does the computed CRC match the one in packet? */
-	if(crc_computed != crc_packet)
+	if(crc_computed != crc_pkt->bits)
 	{
 		rohc_decomp_warn(context, "CRC failure (computed = 0x%02x, packet = "
-		                 "0x%02x)", crc_computed, crc_packet);
+		                 "0x%02x)", crc_computed, crc_pkt->bits);
 		goto error;
 	}
 

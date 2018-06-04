@@ -6117,6 +6117,8 @@ static uint8_t compute_uo_crc(struct rohc_comp_ctxt *const context,
 	/* compute CRC on CRC-DYNAMIC fields */
 	crc = rfc3095_ctxt->compute_crc_dynamic(outer_ip_hdr, inner_ip_hdr, next_header,
 	                                        crc_type, crc);
+	rohc_comp_debug(context, "compute CRC-%d = 0x%x from packet",
+	                crc_type, crc);
 
 	return crc;
 }

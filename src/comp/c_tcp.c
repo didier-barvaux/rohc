@@ -1213,6 +1213,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	}
 	else
 	{
+		uint8_t ir_cr_crc7;
 		bool B;
 
 		/* add replication base information for IR-CR packet only */
@@ -1226,24 +1227,19 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 		B = !!(context->cid != context->cr_base_cid);
 
 		/* encode base CID if different from IR-CR CID */
-		if(!B)
+		ir_cr_crc7 =
+			crc_calculate(ROHC_CRC_TYPE_7,
+			              (const uint8_t *const) uncomp_pkt_hdrs->ip_hdrs[0].ip,
+			              uncomp_pkt_hdrs->all_hdrs_len, CRC_INIT_7);
+		rohc_remain_data[0] = (B ? 0x80 : 0x00) | (ir_cr_crc7 & 0x7f);
+		rohc_comp_debug(context, "B (%d) + CRC7 (0x%x on %zu bytes) = 0x%02x",
+		                GET_REAL(B), ir_cr_crc7, uncomp_pkt_hdrs->all_hdrs_len,
+		                rohc_remain_data[0]);
+		rohc_remain_data++;
+		rohc_remain_len--;
+		rohc_hdr_len++;
+		if(B)
 		{
-			rohc_remain_data[0] = 0x00;
-			rohc_comp_debug(context, "B = %d (and CRC7 = 0x00 for computation) = 0x%02x",
-			                GET_REAL(B), rohc_remain_data[0]);
-			rohc_remain_data++;
-			rohc_remain_len--;
-			rohc_hdr_len++;
-		}
-		else
-		{
-			rohc_remain_data[0] = 0x80;
-			rohc_comp_debug(context, "B = %d (and CRC7 = 0x00 for computation) = 0x%02x",
-			                GET_REAL(B), rohc_remain_data[0]);
-			rohc_remain_data++;
-			rohc_remain_len--;
-			rohc_hdr_len++;
-
 			/* code small CID */
 			if(context->compressor->medium.cid_type == ROHC_SMALL_CID)
 			{
@@ -1306,8 +1302,6 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	                                       rohc_hdr_len, CRC_INIT_8);
 	rohc_comp_debug(context, "CRC (header length = %zu, crc = 0x%x)",
 	                rohc_hdr_len, rohc_pkt[crc_position]);
-
-	/* TODO: compute CRC7 */
 
 	rohc_comp_debug(context, "IR(-CR|-DYN) packet, length %zu", rohc_hdr_len);
 	rohc_comp_dump_buf(context, "current ROHC packet", rohc_pkt, rohc_hdr_len);

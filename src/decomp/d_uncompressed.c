@@ -93,10 +93,9 @@ static bool uncomp_parse_ir(const struct rohc_decomp_ctxt *const context,
 static bool uncomp_parse_normal(const struct rohc_decomp_ctxt *const context,
                                 const struct rohc_buf rohc_packet,
                                 const size_t large_cid_len,
-                                struct rohc_decomp_crc *const extr_crc,
                                 struct rohc_uncomp_extr_bits *const extr_bits,
                                 size_t *const rohc_hdr_len)
-	__attribute__((warn_unused_result, nonnull(1, 4, 5, 6)));
+	__attribute__((warn_unused_result, nonnull(1, 4, 5)));
 
 static rohc_status_t uncomp_decode_bits(const struct rohc_decomp_ctxt *const context,
                                         const struct rohc_uncomp_extr_bits *const extr_bits,
@@ -157,8 +156,8 @@ static bool uncomp_new_context(const struct rohc_decomp_ctxt *const context,
 	*persist_ctxt = NULL;
 
 	/* volatile part */
-	volat_ctxt->crc.type = ROHC_CRC_TYPE_NONE;
-	volat_ctxt->crc.bits_nr = 0;
+	volat_ctxt->crc.comp.type = ROHC_CRC_TYPE_NONE;
+	volat_ctxt->crc.uncomp.type = ROHC_CRC_TYPE_NONE;
 	volat_ctxt->extr_bits = malloc(sizeof(struct rohc_uncomp_extr_bits));
 	if(volat_ctxt->extr_bits == NULL)
 	{
@@ -261,6 +260,10 @@ static bool uncomp_parse_pkt(const struct rohc_decomp_ctxt *const context,
 {
 	bool status;
 
+	/* reset all extracted bits */
+	extr_crc->comp.type = ROHC_CRC_TYPE_NONE;
+	extr_crc->uncomp.type = ROHC_CRC_TYPE_NONE;
+
 	if((*packet_type) == ROHC_PACKET_IR)
 	{
 		status = uncomp_parse_ir(context, rohc_packet, large_cid_len,
@@ -269,7 +272,7 @@ static bool uncomp_parse_pkt(const struct rohc_decomp_ctxt *const context,
 	else if((*packet_type) == ROHC_PACKET_NORMAL)
 	{
 		status = uncomp_parse_normal(context, rohc_packet, large_cid_len,
-		                             extr_crc, extr_bits, rohc_hdr_len);
+		                             extr_bits, rohc_hdr_len);
 	}
 	else
 	{
@@ -321,11 +324,10 @@ static bool uncomp_parse_ir(const struct rohc_decomp_ctxt *const context,
 	rohc_buf_pull(&rohc_remain_data, large_cid_len + 2);
 	(*rohc_hdr_len) += large_cid_len + 2;
 
-	/* parse CRC */
-	extr_crc->type = ROHC_CRC_TYPE_NONE;
-	extr_crc->bits = GET_BIT_0_7(rohc_buf_data(rohc_remain_data));
-	extr_crc->bits_nr = 8;
-	rohc_decomp_debug(context, "CRC-8 found in packet = 0x%02x", extr_crc->bits);
+	/* parse CRC (CRC is computed over the compressed header) */
+	extr_crc->comp.type = ROHC_CRC_TYPE_8;
+	extr_crc->comp.bits = GET_BIT_0_7(rohc_buf_data(rohc_remain_data));
+	rohc_decomp_debug(context, "CRC-8 found in packet = 0x%02x", extr_crc->comp.bits);
 	rohc_buf_pull(&rohc_remain_data, 1);
 	(*rohc_hdr_len)++;
 
@@ -342,7 +344,6 @@ error:
  * @param context            The decompression context
  * @param rohc_packet        The ROHC packet to decode
  * @param large_cid_len      The length of the optional large CID field
- * @param[out] extr_crc      The CRC extracted from the ROHC packet
  * @param[out] extr_bits     The bits extracted from the ROHC packet
  * @param[out] rohc_hdr_len  The length of the ROHC header (in bytes)
  * @return                   true if parsing was successful,
@@ -351,17 +352,12 @@ error:
 static bool uncomp_parse_normal(const struct rohc_decomp_ctxt *const context,
                                 const struct rohc_buf rohc_packet,
                                 const size_t large_cid_len,
-                                struct rohc_decomp_crc *const extr_crc,
                                 struct rohc_uncomp_extr_bits *const extr_bits,
                                 size_t *const rohc_hdr_len)
 {
 	struct rohc_buf rohc_remain_data = rohc_packet;
 
 	(*rohc_hdr_len) = 0;
-
-	/* the normal packet does not contain a CRC */
-	extr_crc->type = ROHC_CRC_TYPE_NONE;
-	extr_crc->bits_nr = 0;
 
 	/* state must not be No Context */
 	if(context->state == ROHC_DECOMP_STATE_NC)

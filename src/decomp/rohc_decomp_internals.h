@@ -222,11 +222,20 @@ struct rohc_decomp_crc_corr_ctxt
 
 
 /** The information related to the CRC of a ROHC packet */
-struct rohc_decomp_crc
+struct rohc_decomp_crc_one
 {
 	rohc_crc_type_t type;  /**< The type of CRC that protects the ROHC header */
 	uint8_t bits;          /**< The CRC bits found in ROHC header */
-	size_t bits_nr;        /**< The number of CRC bits found in ROHC header */
+};
+
+
+/** The information related to the CRC(s) of a ROHC packet */
+struct rohc_decomp_crc
+{
+	/** The CRC over the compressed header extracted from the ROHC packet */
+	struct rohc_decomp_crc_one comp;
+	/** The CRC over the uncompressed header extracted from the ROHC packet */
+	struct rohc_decomp_crc_one uncomp;
 };
 
 
@@ -239,7 +248,7 @@ struct rohc_decomp_crc
  */
 struct rohc_decomp_volat_ctxt
 {
-	/** The CRC information extracted from the ROHC packet being parsed */
+	/** The CRC(s) information extracted from the ROHC packet */
 	struct rohc_decomp_crc crc;
 
 	/** The profile-specific data for bits extracted from the ROHC packet,
