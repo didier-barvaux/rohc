@@ -1529,6 +1529,16 @@ static int rohc_comp_rfc5225_ip_esp_detect_changes_ipv4(struct rohc_comp_ctxt *c
 		                rohc_ip_id_behavior_get_descr(last_ip_id_behavior));
 		rohc_comp_debug(ctxt, "IP-ID = 0x%04x -> 0x%04x", last_ip_id, ip_id);
 
+		/* RFC5225 §6.3.3 reads:
+		 *   ROHCv2 profiles MUST NOT assign a sequential behavior (network byte
+		 *   order or byte-swapped) to any IP-ID but the one in the innermost IP
+		 *   header when compressing more than one level of IP headers.  This is
+		 *   because only the IP-ID of the innermost IP header is likely to have a
+		 *   sufficiently close correlation with the MSN to compress it as a
+		 *   sequentially changing field.  Therefore, a compressor MUST assign
+		 *   either the constant zero IP-ID or the random IP-ID behavior to
+		 *   tunneling headers.
+		 */
 		if(ip_id == 0)
 		{
 			ip_id_behavior = ROHC_IP_ID_BEHAVIOR_ZERO;

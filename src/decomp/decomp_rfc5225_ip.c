@@ -317,9 +317,10 @@ static bool decomp_rfc5225_ip_decode_bits_ip_hdrs(const struct rohc_decomp_ctxt 
 static bool decomp_rfc5225_ip_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const context,
                                                  const struct rohc_rfc5225_ip_bits *const ip_bits,
                                                  const ip_context_t *const ip_ctxt,
+                                                 const bool is_innermost,
                                                  const uint16_t decoded_msn,
                                                  struct rohc_rfc5225_decoded_ip *const ip_decoded)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 6)));
 
 /* building decompressed headers */
 static rohc_status_t decomp_rfc5225_ip_build_hdrs(const struct rohc_decomp *const decomp,
@@ -2264,10 +2265,11 @@ static bool decomp_rfc5225_ip_decode_bits_ip_hdrs(const struct rohc_decomp_ctxt 
 		const struct rohc_rfc5225_ip_bits *const ip_bits = &(bits->ip[ip_hdr_nr]);
 		const ip_context_t *const ip_ctxt = &(rfc5225_ctxt->ip_contexts[ip_hdr_nr]);
 		struct rohc_rfc5225_decoded_ip *const ip_decoded = &(decoded->ip[ip_hdr_nr]);
+		const bool is_innermost = !!((ip_hdr_nr + 1) == bits->ip_nr);
 
 		rohc_decomp_debug(ctxt, "decode fields of IP header #%zu", ip_hdr_nr + 1);
 
-		if(!decomp_rfc5225_ip_decode_bits_ip_hdr(ctxt, ip_bits, ip_ctxt,
+		if(!decomp_rfc5225_ip_decode_bits_ip_hdr(ctxt, ip_bits, ip_ctxt, is_innermost,
 		                                         decoded->msn, ip_decoded))
 		{
 			rohc_decomp_warn(ctxt, "failed to decode received bits for IP "
@@ -2290,6 +2292,7 @@ error:
  * @param ctxt             The decompression context
  * @param ip_bits          The IP bits extracted from the ROHC packet
  * @param ip_ctxt          The IP values recorded in context
+ * @param is_innermost     Whether the IP header is the innermost IP header
  * @param decoded_msn      The decoded Master Sequence Number (MSN)
  * @param[out] ip_decoded  The corresponding decoded IP values
  * @return                 true if decoding is successful, false otherwise
@@ -2299,6 +2302,7 @@ error:
 static bool decomp_rfc5225_ip_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *const ctxt,
                                                  const struct rohc_rfc5225_ip_bits *const ip_bits,
                                                  const ip_context_t *const ip_ctxt,
+                                                 const bool is_innermost,
                                                  const uint16_t decoded_msn,
                                                  struct rohc_rfc5225_decoded_ip *const ip_decoded)
 {
@@ -2332,6 +2336,25 @@ static bool decomp_rfc5225_ip_decode_bits_ip_hdr(const struct rohc_decomp_ctxt *
 		ip_id_behavior = ip_bits->id_behavior;
 		rohc_decomp_debug(ctxt, "  use behavior '%s' defined in current packet "
 		                  "for IP-ID", rohc_ip_id_behavior_get_descr(ip_id_behavior));
+
+		/* RFC5225 §6.3.3 reads:
+		 *   ROHCv2 profiles MUST NOT assign a sequential behavior (network byte
+		 *   order or byte-swapped) to any IP-ID but the one in the innermost IP
+		 *   header when compressing more than one level of IP headers.  This is
+		 *   because only the IP-ID of the innermost IP header is likely to have a
+		 *   sufficiently close correlation with the MSN to compress it as a
+		 *   sequentially changing field.  Therefore, a compressor MUST assign
+		 *   either the constant zero IP-ID or the random IP-ID behavior to
+		 *   tunneling headers.
+		 */
+		if(!is_innermost &&
+		   (ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ ||
+		   ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ_SWAP))
+		{
+			rohc_decomp_warn(ctxt, "  IP-ID behavior '%s' is not allowed for outer "
+			                  "IP headers", rohc_ip_id_behavior_get_descr(ip_id_behavior));
+			goto error;
+		}
 	}
 	else
 	{
