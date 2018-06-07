@@ -47,6 +47,9 @@
  */
 struct comp_rfc5225_tmp_variables
 {
+	/** The offset between two consecutive MSN */
+	int16_t msn_offset;
+
 	/** Whether at least one of the DF fields changed */
 	bool at_least_one_df_changed;
 	/** Whether the behavior of at least one of the IP-ID fields changed */
@@ -533,10 +536,6 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 
 	*packet_type = ROHC_PACKET_UNKNOWN;
 
-	/* compute or find the new SN */
-	rfc5225_ctxt->msn++; /* wraparound on overflow is expected */
-	rohc_comp_debug(context, "MSN = 0x%04x / %u", rfc5225_ctxt->msn, rfc5225_ctxt->msn);
-
 	/* STEP 0: detect changes between new uncompressed packet and context */
 	if(!rohc_comp_rfc5225_ip_detect_changes(context, uncomp_pkt))
 	{
@@ -710,6 +709,7 @@ static bool rohc_comp_rfc5225_ip_detect_changes(struct rohc_comp_ctxt *const con
 	struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = context->specific;
 	const uint8_t *remain_data = rohc_buf_data(*uncomp_pkt);
 	size_t remain_len = uncomp_pkt->len;
+	ip_context_t *innermost_ip_ctxt = NULL;
 	size_t ip_hdr_pos;
 	int ret;
 
@@ -790,6 +790,70 @@ static bool rohc_comp_rfc5225_ip_detect_changes(struct rohc_comp_ctxt *const con
 			assert(0);
 			goto error;
 		}
+
+		/* remember the innermost IP header */
+		innermost_ip_ctxt = ip_context;
+	}
+
+	/* compute or find the new SN */
+	rfc5225_ctxt->msn++; /* wraparound on overflow is expected */
+	rohc_comp_debug(context, "MSN = 0x%04x / %u", rfc5225_ctxt->msn, rfc5225_ctxt->msn);
+	/* MSN offset is always 1 */
+	rfc5225_ctxt->tmp.msn_offset = 1;
+	rohc_comp_debug(context, "MSN offset = %d", rfc5225_ctxt->tmp.msn_offset);
+
+	/* now that the MSN was updated with the new received IP packet,
+	 * compute the new IP-ID / MSN offset for the innermost IP header */
+	if(innermost_ip_ctxt->version == IPV4)
+	{
+		const uint16_t ip_id = rfc5225_ctxt->tmp.innermost_ip_id;
+		const uint16_t last_ip_id = innermost_ip_ctxt->last_ip_id;
+		const rohc_ip_id_behavior_t last_ip_id_behavior =
+			innermost_ip_ctxt->ip_id_behavior;
+		rohc_ip_id_behavior_t ip_id_behavior;
+
+		rohc_comp_debug(context, "IP-ID behaved as %s",
+		                rohc_ip_id_behavior_get_descr(last_ip_id_behavior));
+		rohc_comp_debug(context, "IP-ID = 0x%04x -> 0x%04x", last_ip_id, ip_id);
+
+		if(context->num_sent_packets == 0)
+		{
+			/* first packet, be optimistic: choose sequential behavior */
+			ip_id_behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
+		}
+		else
+		{
+			ip_id_behavior =
+				rohc_comp_detect_ip_id_behavior(last_ip_id, ip_id,
+				                                rfc5225_ctxt->tmp.msn_offset, 19);
+		}
+		/* TODO: avoid changing context here */
+		innermost_ip_ctxt->ip_id_behavior = ip_id_behavior;
+		rohc_comp_debug(context, "IP-ID now behaves as %s",
+		                rohc_ip_id_behavior_get_descr(ip_id_behavior));
+		if(last_ip_id_behavior != ip_id_behavior)
+		{
+			rfc5225_ctxt->tmp.at_least_one_ip_id_behavior_changed = true;
+			rfc5225_ctxt->tmp.innermost_ip_id_behavior_changed = true;
+		}
+
+		if(innermost_ip_ctxt->ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
+		{
+			/* specific case of IP-ID delta for sequential swapped behavior */
+			rfc5225_ctxt->tmp.innermost_ip_id_offset =
+				swab16(rfc5225_ctxt->tmp.innermost_ip_id) - rfc5225_ctxt->msn;
+		}
+		else
+		{
+			/* compute delta the same way for sequential, zero or random: it is
+			 * important to always compute the IP-ID delta and record it in W-LSB,
+			 * so that the IP-ID deltas of next packets may be correctly encoded */
+			rfc5225_ctxt->tmp.innermost_ip_id_offset =
+				rfc5225_ctxt->tmp.innermost_ip_id - rfc5225_ctxt->msn;
+		}
+		rohc_comp_debug(context, "new IP-ID offset = 0x%x / %u",
+		                rfc5225_ctxt->tmp.innermost_ip_id_offset,
+		                rfc5225_ctxt->tmp.innermost_ip_id_offset);
 	}
 
 	/* any DF that changes shall be transmitted several times */
@@ -1018,6 +1082,7 @@ static int rohc_comp_rfc5225_ip_detect_changes_ipv4(struct rohc_comp_ctxt *const
 	}
 
 	/* determine the IP-ID behavior of the IPv4 header */
+	if(!is_innermost)
 	{
 		const uint16_t ip_id = rohc_ntoh16(ipv4->id);
 		const uint16_t last_ip_id = ip_ctxt->last_ip_id;
@@ -1028,20 +1093,23 @@ static int rohc_comp_rfc5225_ip_detect_changes_ipv4(struct rohc_comp_ctxt *const
 		                rohc_ip_id_behavior_get_descr(last_ip_id_behavior));
 		rohc_comp_debug(ctxt, "IP-ID = 0x%04x -> 0x%04x", last_ip_id, ip_id);
 
-		if(ctxt->num_sent_packets == 0)
+		/* RFC5225 §6.3.3 reads:
+		 *   ROHCv2 profiles MUST NOT assign a sequential behavior (network byte
+		 *   order or byte-swapped) to any IP-ID but the one in the innermost IP
+		 *   header when compressing more than one level of IP headers.  This is
+		 *   because only the IP-ID of the innermost IP header is likely to have a
+		 *   sufficiently close correlation with the MSN to compress it as a
+		 *   sequentially changing field.  Therefore, a compressor MUST assign
+		 *   either the constant zero IP-ID or the random IP-ID behavior to
+		 *   tunneling headers.
+		 */
+		if(ip_id == 0)
 		{
-			/* first packet, be optimistic: choose sequential behavior */
-			ip_id_behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
+			ip_id_behavior = ROHC_IP_ID_BEHAVIOR_ZERO;
 		}
 		else
 		{
-			ip_id_behavior = rohc_comp_detect_ip_id_behavior(last_ip_id, ip_id, 1, 19);
-
-			/* no sequential behavior for outer IP headers */
-			if(!is_innermost && ip_id_behavior <= ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
-			{
-				ip_id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
-			}
+			ip_id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
 		}
 		/* TODO: avoid changing context here */
 		ip_ctxt->ip_id_behavior = ip_id_behavior;
@@ -1050,36 +1118,12 @@ static int rohc_comp_rfc5225_ip_detect_changes_ipv4(struct rohc_comp_ctxt *const
 		if(last_ip_id_behavior != ip_id_behavior)
 		{
 			rfc5225_ctxt->tmp.at_least_one_ip_id_behavior_changed = true;
-			if(is_innermost)
-			{
-				rfc5225_ctxt->tmp.innermost_ip_id_behavior_changed = true;
-			}
-			else
-			{
-				rfc5225_ctxt->tmp.outer_ip_id_behavior_changed = true;
-			}
+			rfc5225_ctxt->tmp.outer_ip_id_behavior_changed = true;
 		}
-
-		/* compute the new IP-ID / SN offset of the innermost IP header */
-		if(is_innermost)
-		{
-			rfc5225_ctxt->tmp.innermost_ip_id = ip_id;
-			if(ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
-			{
-				/* specific case of IP-ID delta for sequential swapped behavior */
-				rfc5225_ctxt->tmp.innermost_ip_id_offset = swab16(ip_id) - rfc5225_ctxt->msn;
-			}
-			else
-			{
-				/* compute delta the same way for sequential, zero or random: it is
-				 * important to always compute the IP-ID delta and record it in W-LSB,
-				 * so that the IP-ID deltas of next packets may be correctly encoded */
-				rfc5225_ctxt->tmp.innermost_ip_id_offset = ip_id - rfc5225_ctxt->msn;
-			}
-			rohc_comp_debug(ctxt, "new IP-ID offset = 0x%x / %u",
-			                rfc5225_ctxt->tmp.innermost_ip_id_offset,
-			                rfc5225_ctxt->tmp.innermost_ip_id_offset);
-		}
+	}
+	else
+	{
+		rfc5225_ctxt->tmp.innermost_ip_id = rohc_ntoh16(ipv4->id);
 	}
 
 	return ipv4_hdr_len;
