@@ -79,7 +79,7 @@ for num in range(0, pkts_nr):
         options.append(('WScale', 7))
         cur_payload_len = 0
 
-    packet = Ether(src='00:00:00:00:00:01', dst='00:00:00:00:00:02')/Dot1Q(vlan=1)/IP(src='192.168.0.1', dst='192.168.0.2', id=streams[stream_num]['ip_id'])/TCP(sport=4242, dport=4243+stream_num, flags=tcp_flags, seq=streams[stream_num]['seq_num'], ack=streams[stream_num]['ack_num'], options=options)/payload[:cur_payload_len]
+    packet = Ether(src='00:00:00:00:00:01', dst='00:00:00:00:00:02')/Dot1Q(vlan=1)/IP(src='192.168.0.1', dst='192.168.1.%i' % ((stream_num / 100) % 254), id=streams[stream_num]['ip_id'])/TCP(sport=4242, dport=4243+stream_num, flags=tcp_flags, seq=streams[stream_num]['seq_num'], ack=streams[stream_num]['ack_num'], options=options)/payload[:cur_payload_len]
     pcap_writer.write(packet)
     del packet
 
