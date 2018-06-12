@@ -121,8 +121,7 @@ struct sc_tcp_context
 	uint8_t res_flags:4;
 	uint8_t urg_flag:1;
 	uint8_t ack_flag:1;
-	uint16_t urg_ptr_nbo;
-	uint16_t window_nbo;
+	uint8_t unused2:6;
 
 	struct c_wlsb msn_wlsb;    /**< The W-LSB decoding context for MSN */
 	struct c_wlsb ttl_hopl_wlsb;
@@ -136,7 +135,8 @@ struct sc_tcp_context
 	/** The compression context for TCP options */
 	struct c_tcp_opts_ctxt tcp_opts;
 
-	uint8_t unused[4];
+	uint16_t urg_ptr_nbo;
+	uint16_t window_nbo;
 
 	uint8_t ip_contexts_nr;
 	ip_context_t ip_contexts[ROHC_MAX_IP_HDRS];
@@ -146,6 +146,10 @@ struct sc_tcp_context
 #if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
      (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
       (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
+_Static_assert((offsetof(struct sc_tcp_context, seq_num_scaled) % 8) == 0,
+               "seq_num_scaled in sc_tcp_context should be aligned on 8 bytes");
+_Static_assert((offsetof(struct sc_tcp_context, ack_deltas_width) % 8) == 0,
+               "ack_deltas_width in sc_tcp_context should be aligned on 8 bytes");
 _Static_assert((offsetof(struct sc_tcp_context, msn_wlsb) % 8) == 0,
                "msn_wlsb in sc_tcp_context should be aligned on 8 bytes");
 _Static_assert((offsetof(struct sc_tcp_context, ttl_hopl_wlsb) % 8) == 0,

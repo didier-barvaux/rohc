@@ -61,12 +61,12 @@ typedef enum
  */
 struct rohc_list
 {
-	/** The ID of the compressed list */
-	unsigned int id;
 /** The maximum number of items in a list (required by packet formats) */
 #define ROHC_LIST_ITEMS_MAX  15U
 	/** The items in the list */
 	struct rohc_list_item *items[ROHC_LIST_ITEMS_MAX];
+	/** The ID of the compressed list */
+	uint16_t id;
 	/** The number of items in the list */
 	uint8_t items_nr;
 	/** How many times the list was transmitted? */
