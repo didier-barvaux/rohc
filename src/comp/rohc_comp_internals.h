@@ -45,6 +45,9 @@
  * Constants and macros
  */
 
+/** The minimal number of repetitions for the Optimistic Approach */
+#define ROHC_OA_REPEAT_MIN 4U
+
 /** The default maximal number of packets sent in > IR states (= FO and SO
  *  states) before changing back the state to IR (periodic refreshes) */
 #define CHANGE_TO_IR_COUNT  1700
@@ -60,30 +63,6 @@
 /** The default maximal delay (in ms) spent in > FO states (= SO state)
  *  before changing back the state to FO (periodic refreshes) */
 #define CHANGE_TO_FO_TIME  500U
-
-/** The minimal number of packets that must be sent while in IR state before
- *  being able to switch to the FO state */
-#define MAX_IR_COUNT  4U
-
-/** The minimal number of packets that must be sent while in CR state before
- *  being able to switch to the FO state */
-#define MAX_CR_COUNT  MAX_IR_COUNT
-
-/** The minimal number of packets that must be sent while in FO state before
- *  being able to switch to the SO state */
-#define MAX_FO_COUNT  4U
-
-/** The minimal number of packets that must be sent while in INIT_STRIDE
- *  state before being able to switch to the SEND_SCALED state */
-#define ROHC_INIT_TS_STRIDE_MIN  4U
-
-/**
- * @brief Default number of transmission for lists to become a reference list
- *
- * The minimal number of times of compressed list shall be sent to become
- * a reference list. L is the name specified in the RFC.
- */
-#define ROHC_LIST_DEFAULT_L  4U
 
 
 /** Print a warning trace for the given compression context */

@@ -399,7 +399,7 @@ struct rohc_comp * rohc_comp_new2(const rohc_cid_type_t cid_type,
 
 	/* set the default number of uncompressed transmissions for list
 	 * compression */
-	is_fine = rohc_comp_set_list_trans_nr(comp, ROHC_LIST_DEFAULT_L);
+	is_fine = rohc_comp_set_list_trans_nr(comp, ROHC_OA_REPEAT_MIN);
 	if(is_fine != true)
 	{
 		goto destroy_comp;
@@ -2207,7 +2207,7 @@ bool rohc_comp_set_periodic_refreshes_time(struct rohc_comp *const comp,
  * list items uncompressed L times before compressing them. The compressor
  * also sends the list structure L times before compressing it out.
  *
- * The L parameter is set to \ref ROHC_LIST_DEFAULT_L by default.
+ * The L parameter is set to \ref ROHC_OA_REPEAT_MIN by default.
  *
  * @warning The value can not be modified after library initialization
  *
@@ -3667,7 +3667,7 @@ static struct rohc_comp_ctxt *
 		   profile->id == ROHCv1_PROFILE_IP_TCP && /* TODO: replace TCP by CR capacity */
 		   context->do_ctxt_replication &&
 		   context->state == ROHC_COMP_STATE_CR &&
-		   context->cr_count < MAX_CR_COUNT)
+		   context->cr_count < ROHC_OA_REPEAT_MIN)
 		{
 			/* Context Replication is in action, so check whether the base context
 			 * changed too much to be re-used or not */
@@ -3678,7 +3678,7 @@ static struct rohc_comp_ctxt *
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "Context Replication in action (%zu/%u packets sent): check "
 			           "for CID %u whether base context with CID %u changed too much",
-			           context->cr_count, MAX_CR_COUNT, context->cid, base_ctxt->cid);
+			           context->cr_count, ROHC_OA_REPEAT_MIN, context->cid, base_ctxt->cid);
 
 			/* there are two ways the base context may have changed:
 			 *   - the base context now matches exactly the replicated context

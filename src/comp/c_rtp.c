@@ -250,23 +250,23 @@ static rohc_packet_t c_rtp_decide_FO_packet(const struct rohc_comp_ctxt *context
 	rtp_context = (struct sc_rtp_context *) rfc3095_ctxt->specific;
 	nr_of_ip_hdr = rfc3095_ctxt->ip_hdr_nr;
 
-	if(rtp_context->udp_checksum_change_count < MAX_IR_COUNT)
+	if(rtp_context->udp_checksum_change_count < ROHC_OA_REPEAT_MIN)
 	{
 		packet = ROHC_PACKET_IR_DYN;
 		rohc_comp_debug(context, "choose packet IR-DYN because UDP checksum "
 		                "behavior changed");
 	}
-	else if(rtp_context->rtp_version_change_count < MAX_IR_COUNT)
+	else if(rtp_context->rtp_version_change_count < ROHC_OA_REPEAT_MIN)
 	{
 		packet = ROHC_PACKET_IR_DYN;
 		rohc_comp_debug(context, "choose packet IR-DYN because RTP Version "
 		                "changed");
 	}
 	else if((rfc3095_ctxt->outer_ip_flags.version == IPV4 &&
-	         rfc3095_ctxt->outer_ip_flags.info.v4.sid_count < MAX_FO_COUNT) ||
+	         rfc3095_ctxt->outer_ip_flags.info.v4.sid_count < ROHC_OA_REPEAT_MIN) ||
 	        (nr_of_ip_hdr > 1 &&
 	         rfc3095_ctxt->inner_ip_flags.version == IPV4 &&
-	         rfc3095_ctxt->inner_ip_flags.info.v4.sid_count < MAX_FO_COUNT))
+	         rfc3095_ctxt->inner_ip_flags.info.v4.sid_count < ROHC_OA_REPEAT_MIN))
 	{
 		packet = ROHC_PACKET_IR_DYN;
 		rohc_comp_debug(context, "choose packet IR-DYN because at least one "
@@ -405,15 +405,15 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *context
 	/* sanity check */
 	if(rfc3095_ctxt->outer_ip_flags.version == IPV4)
 	{
-		assert(rfc3095_ctxt->outer_ip_flags.info.v4.sid_count >= MAX_FO_COUNT);
-		assert(rfc3095_ctxt->outer_ip_flags.info.v4.rnd_count >= MAX_FO_COUNT);
-		assert(rfc3095_ctxt->outer_ip_flags.info.v4.nbo_count >= MAX_FO_COUNT);
+		assert(rfc3095_ctxt->outer_ip_flags.info.v4.sid_count >= ROHC_OA_REPEAT_MIN);
+		assert(rfc3095_ctxt->outer_ip_flags.info.v4.rnd_count >= ROHC_OA_REPEAT_MIN);
+		assert(rfc3095_ctxt->outer_ip_flags.info.v4.nbo_count >= ROHC_OA_REPEAT_MIN);
 	}
 	if(nr_of_ip_hdr > 1 && rfc3095_ctxt->inner_ip_flags.version == IPV4)
 	{
-		assert(rfc3095_ctxt->inner_ip_flags.info.v4.sid_count >= MAX_FO_COUNT);
-		assert(rfc3095_ctxt->inner_ip_flags.info.v4.rnd_count >= MAX_FO_COUNT);
-		assert(rfc3095_ctxt->inner_ip_flags.info.v4.nbo_count >= MAX_FO_COUNT);
+		assert(rfc3095_ctxt->inner_ip_flags.info.v4.sid_count >= ROHC_OA_REPEAT_MIN);
+		assert(rfc3095_ctxt->inner_ip_flags.info.v4.rnd_count >= ROHC_OA_REPEAT_MIN);
+		assert(rfc3095_ctxt->inner_ip_flags.info.v4.nbo_count >= ROHC_OA_REPEAT_MIN);
 	}
 	assert(rfc3095_ctxt->tmp.send_static == 0);
 	assert(rfc3095_ctxt->tmp.send_dynamic == 0);
@@ -464,13 +464,13 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *context
 	                   &outermost_ip_id_11bits_possible);
 
 	/* what packet type do we choose? */
-	if(rtp_context->udp_checksum_change_count < MAX_IR_COUNT)
+	if(rtp_context->udp_checksum_change_count < ROHC_OA_REPEAT_MIN)
 	{
 		packet = ROHC_PACKET_IR_DYN;
 		rohc_comp_debug(context, "choose packet IR-DYN because UDP checksum "
 		                "behavior changed");
 	}
-	else if(rtp_context->rtp_version_change_count < MAX_IR_COUNT)
+	else if(rtp_context->rtp_version_change_count < ROHC_OA_REPEAT_MIN)
 	{
 		packet = ROHC_PACKET_IR_DYN;
 		rohc_comp_debug(context, "choose packet IR-DYN because RTP Version "
@@ -964,7 +964,7 @@ static size_t rtp_code_dynamic_rtp_part(const struct rohc_comp_ctxt *const conte
 	byte = 0;
 	if(rtp_context->ts_sc.state == INIT_STRIDE ||
 	   rtp_context->tmp.extension_bit_changed ||
-	   rtp_context->rtp_extension_change_count < MAX_IR_COUNT)
+	   rtp_context->rtp_extension_change_count < ROHC_OA_REPEAT_MIN)
 	{
 		/* send TS_STRIDE and/or the eXtension (X) bit */
 		rx_byte = 1;
@@ -1061,11 +1061,11 @@ static size_t rtp_code_dynamic_rtp_part(const struct rohc_comp_ctxt *const conte
 
 			/* do we transmit the scaled RTP Timestamp (TS) in the next packet ? */
 			rtp_context->ts_sc.nr_init_stride_packets++;
-			if(rtp_context->ts_sc.nr_init_stride_packets >= ROHC_INIT_TS_STRIDE_MIN)
+			if(rtp_context->ts_sc.nr_init_stride_packets >= ROHC_OA_REPEAT_MIN)
 			{
 				rohc_comp_debug(context, "TS_STRIDE transmitted at least %u "
 				                "times, so change from state INIT_STRIDE to "
-				                "SEND_SCALED", ROHC_INIT_TS_STRIDE_MIN);
+				                "SEND_SCALED", ROHC_OA_REPEAT_MIN);
 				rtp_context->ts_sc.state = SEND_SCALED;
 			}
 			else
@@ -1074,7 +1074,7 @@ static size_t rtp_code_dynamic_rtp_part(const struct rohc_comp_ctxt *const conte
 				                "so stay in state INIT_STRIDE (at least %u times "
 				                "are required to change to state SEND_SCALED)",
 				                rtp_context->ts_sc.nr_init_stride_packets,
-				                ROHC_INIT_TS_STRIDE_MIN);
+				                ROHC_OA_REPEAT_MIN);
 			}
 		}
 
@@ -1109,7 +1109,7 @@ static int rtp_changed_rtp_dynamic(const struct rohc_comp_ctxt *const context,
 	/* check UDP checksum field */
 	if((udp->check != 0 && rtp_context->old_udp.check == 0) ||
 	   (udp->check == 0 && rtp_context->old_udp.check != 0) ||
-	   (rtp_context->udp_checksum_change_count < MAX_IR_COUNT))
+	   (rtp_context->udp_checksum_change_count < ROHC_OA_REPEAT_MIN))
 	{
 		if((udp->check != 0 && rtp_context->old_udp.check == 0) ||
 		   (udp->check == 0 && rtp_context->old_udp.check != 0))
@@ -1130,7 +1130,7 @@ static int rtp_changed_rtp_dynamic(const struct rohc_comp_ctxt *const context,
 
 	/* check RTP Version field */
 	if(rtp->version != rtp_context->old_rtp.version ||
-	   rtp_context->rtp_version_change_count < MAX_IR_COUNT)
+	   rtp_context->rtp_version_change_count < ROHC_OA_REPEAT_MIN)
 	{
 		if(rtp->version != rtp_context->old_rtp.version)
 		{
@@ -1179,7 +1179,7 @@ static int rtp_changed_rtp_dynamic(const struct rohc_comp_ctxt *const context,
 
 	/* check RTP Padding field */
 	if(rtp->padding != rtp_context->old_rtp.padding ||
-	   rtp_context->rtp_padding_change_count < MAX_IR_COUNT)
+	   rtp_context->rtp_padding_change_count < ROHC_OA_REPEAT_MIN)
 	{
 		if(rtp->padding != rtp_context->old_rtp.padding)
 		{
@@ -1204,7 +1204,7 @@ static int rtp_changed_rtp_dynamic(const struct rohc_comp_ctxt *const context,
 
 	/* check RTP eXtension (X) field */
 	if(rtp->extension != rtp_context->old_rtp.extension ||
-	   rtp_context->rtp_extension_change_count < MAX_IR_COUNT)
+	   rtp_context->rtp_extension_change_count < ROHC_OA_REPEAT_MIN)
 	{
 		if(rtp->extension != rtp_context->old_rtp.extension)
 		{
@@ -1230,7 +1230,7 @@ static int rtp_changed_rtp_dynamic(const struct rohc_comp_ctxt *const context,
 
 	/* check RTP Payload Type field */
 	if(rtp->pt != rtp_context->old_rtp.pt ||
-	   rtp_context->rtp_pt_change_count < MAX_IR_COUNT)
+	   rtp_context->rtp_pt_change_count < ROHC_OA_REPEAT_MIN)
 	{
 		if(rtp->pt != rtp_context->old_rtp.pt)
 		{

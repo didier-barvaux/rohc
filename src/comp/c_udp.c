@@ -435,7 +435,7 @@ static int udp_changed_udp_dynamic(const struct rohc_comp_ctxt *context,
 
 	if((udp->check != 0 && udp_context->old_udp.check == 0) ||
 	   (udp->check == 0 && udp_context->old_udp.check != 0) ||
-	   (udp_context->udp_checksum_change_count < MAX_IR_COUNT))
+	   (udp_context->udp_checksum_change_count < ROHC_OA_REPEAT_MIN))
 	{
 		if((udp->check != 0 && udp_context->old_udp.check == 0) ||
 		   (udp->check == 0 && udp_context->old_udp.check != 0))

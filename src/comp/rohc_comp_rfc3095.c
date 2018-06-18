@@ -477,13 +477,13 @@ static bool ip_header_info_new(struct ip_header_info *const header_info,
 
 		/* init the thresholds the counters must reach before launching
 		 * an action */
-		header_info->tos_count = MAX_FO_COUNT;
-		header_info->ttl_count = MAX_FO_COUNT;
-		header_info->info.v4.df_count = MAX_FO_COUNT;
-		header_info->protocol_count = MAX_FO_COUNT;
-		header_info->info.v4.rnd_count = MAX_FO_COUNT;
-		header_info->info.v4.nbo_count = MAX_FO_COUNT;
-		header_info->info.v4.sid_count = MAX_FO_COUNT;
+		header_info->tos_count = ROHC_OA_REPEAT_MIN;
+		header_info->ttl_count = ROHC_OA_REPEAT_MIN;
+		header_info->info.v4.df_count = ROHC_OA_REPEAT_MIN;
+		header_info->protocol_count = ROHC_OA_REPEAT_MIN;
+		header_info->info.v4.rnd_count = ROHC_OA_REPEAT_MIN;
+		header_info->info.v4.nbo_count = ROHC_OA_REPEAT_MIN;
+		header_info->info.v4.sid_count = ROHC_OA_REPEAT_MIN;
 	}
 	else
 	{
@@ -1087,42 +1087,42 @@ static void rohc_comp_rfc3095_feedback_ack(struct rohc_comp_ctxt *const context,
 			if(rfc3095_ctxt->ip_hdr_nr >= 1)
 			{
 				struct ip_header_info *const hdr_info = &(rfc3095_ctxt->outer_ip_flags);
-				hdr_info->tos_count = MAX_FO_COUNT;
-				hdr_info->ttl_count = MAX_FO_COUNT;
-				hdr_info->tos_count = MAX_FO_COUNT;
-				hdr_info->protocol_count = MAX_FO_COUNT;
+				hdr_info->tos_count = ROHC_OA_REPEAT_MIN;
+				hdr_info->ttl_count = ROHC_OA_REPEAT_MIN;
+				hdr_info->tos_count = ROHC_OA_REPEAT_MIN;
+				hdr_info->protocol_count = ROHC_OA_REPEAT_MIN;
 				if(hdr_info->version == IPV4)
 				{
-					hdr_info->info.v4.df_count = MAX_FO_COUNT;
-					hdr_info->info.v4.rnd_count = MAX_FO_COUNT;
-					hdr_info->info.v4.nbo_count = MAX_FO_COUNT;
+					hdr_info->info.v4.df_count = ROHC_OA_REPEAT_MIN;
+					hdr_info->info.v4.rnd_count = ROHC_OA_REPEAT_MIN;
+					hdr_info->info.v4.nbo_count = ROHC_OA_REPEAT_MIN;
 				}
 			}
 			if(rfc3095_ctxt->ip_hdr_nr >= 2)
 			{
 				struct ip_header_info *const hdr_info = &(rfc3095_ctxt->inner_ip_flags);
-				hdr_info->tos_count = MAX_FO_COUNT;
-				hdr_info->ttl_count = MAX_FO_COUNT;
-				hdr_info->tos_count = MAX_FO_COUNT;
-				hdr_info->protocol_count = MAX_FO_COUNT;
+				hdr_info->tos_count = ROHC_OA_REPEAT_MIN;
+				hdr_info->ttl_count = ROHC_OA_REPEAT_MIN;
+				hdr_info->tos_count = ROHC_OA_REPEAT_MIN;
+				hdr_info->protocol_count = ROHC_OA_REPEAT_MIN;
 				if(hdr_info->version == IPV4)
 				{
-					hdr_info->info.v4.df_count = MAX_FO_COUNT;
-					hdr_info->info.v4.rnd_count = MAX_FO_COUNT;
-					hdr_info->info.v4.nbo_count = MAX_FO_COUNT;
+					hdr_info->info.v4.df_count = ROHC_OA_REPEAT_MIN;
+					hdr_info->info.v4.rnd_count = ROHC_OA_REPEAT_MIN;
+					hdr_info->info.v4.nbo_count = ROHC_OA_REPEAT_MIN;
 				}
 			}
 			if(context->profile->id == ROHC_PROFILE_RTP)
 			{
 				struct sc_rtp_context *const rtp_context = rfc3095_ctxt->specific;
-				rtp_context->udp_checksum_change_count = MAX_IR_COUNT;
-				rtp_context->rtp_version_change_count = MAX_IR_COUNT;
-				rtp_context->rtp_padding_change_count = MAX_IR_COUNT;
-				rtp_context->rtp_extension_change_count = MAX_IR_COUNT;
-				rtp_context->rtp_pt_change_count = MAX_IR_COUNT;
+				rtp_context->udp_checksum_change_count = ROHC_OA_REPEAT_MIN;
+				rtp_context->rtp_version_change_count = ROHC_OA_REPEAT_MIN;
+				rtp_context->rtp_padding_change_count = ROHC_OA_REPEAT_MIN;
+				rtp_context->rtp_extension_change_count = ROHC_OA_REPEAT_MIN;
+				rtp_context->rtp_pt_change_count = ROHC_OA_REPEAT_MIN;
 				if(rtp_context->ts_sc.nr_init_stride_packets > 0)
 				{
-					rtp_context->ts_sc.nr_init_stride_packets = ROHC_INIT_TS_STRIDE_MIN;
+					rtp_context->ts_sc.nr_init_stride_packets = ROHC_OA_REPEAT_MIN;
 				}
 			}
 		}
@@ -1345,11 +1345,11 @@ void rohc_comp_rfc3095_decide_state(struct rohc_comp_ctxt *const context)
 
 	if(curr_state == ROHC_COMP_STATE_IR)
 	{
-		if(context->ir_count < MAX_IR_COUNT)
+		if(context->ir_count < ROHC_OA_REPEAT_MIN)
 		{
 			rohc_comp_debug(context, "no enough packets transmitted in IR state "
 			                "for the moment (%zu/%u), so stay in IR state",
-			                context->ir_count, MAX_IR_COUNT);
+			                context->ir_count, ROHC_OA_REPEAT_MIN);
 			next_state = ROHC_COMP_STATE_IR;
 		}
 		else if(rfc3095_ctxt->tmp.send_static)
@@ -1367,10 +1367,10 @@ void rohc_comp_rfc3095_decide_state(struct rohc_comp_ctxt *const context)
 			next_state = ROHC_COMP_STATE_FO;
 		}
 		else if((rfc3095_ctxt->outer_ip_flags.version == IPV4 &&
-		         rfc3095_ctxt->outer_ip_flags.info.v4.sid_count < MAX_FO_COUNT) ||
+		         rfc3095_ctxt->outer_ip_flags.info.v4.sid_count < ROHC_OA_REPEAT_MIN) ||
 		        (rfc3095_ctxt->ip_hdr_nr > 1 &&
 		         rfc3095_ctxt->inner_ip_flags.version == IPV4 &&
-		         rfc3095_ctxt->inner_ip_flags.info.v4.sid_count < MAX_FO_COUNT))
+		         rfc3095_ctxt->inner_ip_flags.info.v4.sid_count < ROHC_OA_REPEAT_MIN))
 		{
 			rohc_comp_debug(context, "at least one SID flag changed now or in the "
 			                "last few packets, so go to FO state");
@@ -1385,11 +1385,11 @@ void rohc_comp_rfc3095_decide_state(struct rohc_comp_ctxt *const context)
 	}
 	else if(curr_state == ROHC_COMP_STATE_FO)
 	{
-		if(context->fo_count < MAX_FO_COUNT)
+		if(context->fo_count < ROHC_OA_REPEAT_MIN)
 		{
 			rohc_comp_debug(context, "no enough packets transmitted in FO state "
 			                "for the moment (%zu/%u), so stay in FO state",
-			                context->fo_count, MAX_FO_COUNT);
+			                context->fo_count, ROHC_OA_REPEAT_MIN);
 			next_state = ROHC_COMP_STATE_FO;
 		}
 		else if(rfc3095_ctxt->tmp.send_static || rfc3095_ctxt->tmp.send_dynamic)
@@ -1401,10 +1401,10 @@ void rohc_comp_rfc3095_decide_state(struct rohc_comp_ctxt *const context)
 			next_state = ROHC_COMP_STATE_FO;
 		}
 		else if((rfc3095_ctxt->outer_ip_flags.version == IPV4 &&
-		         rfc3095_ctxt->outer_ip_flags.info.v4.sid_count < MAX_FO_COUNT) ||
+		         rfc3095_ctxt->outer_ip_flags.info.v4.sid_count < ROHC_OA_REPEAT_MIN) ||
 		        (rfc3095_ctxt->ip_hdr_nr > 1 &&
 		         rfc3095_ctxt->inner_ip_flags.version == IPV4 &&
-		         rfc3095_ctxt->inner_ip_flags.info.v4.sid_count < MAX_FO_COUNT))
+		         rfc3095_ctxt->inner_ip_flags.info.v4.sid_count < ROHC_OA_REPEAT_MIN))
 		{
 			rohc_comp_debug(context, "at least one SID flag changed now or in "
 			                "the last few packets, so stay in FO state");
@@ -1428,10 +1428,10 @@ void rohc_comp_rfc3095_decide_state(struct rohc_comp_ctxt *const context)
 			next_state = ROHC_COMP_STATE_FO;
 		}
 		else if((rfc3095_ctxt->outer_ip_flags.version == IPV4 &&
-		         rfc3095_ctxt->outer_ip_flags.info.v4.sid_count < MAX_FO_COUNT) ||
+		         rfc3095_ctxt->outer_ip_flags.info.v4.sid_count < ROHC_OA_REPEAT_MIN) ||
 		        (rfc3095_ctxt->ip_hdr_nr > 1 &&
 		         rfc3095_ctxt->inner_ip_flags.version == IPV4 &&
-		         rfc3095_ctxt->inner_ip_flags.info.v4.sid_count < MAX_FO_COUNT))
+		         rfc3095_ctxt->inner_ip_flags.info.v4.sid_count < ROHC_OA_REPEAT_MIN))
 		{
 			rohc_comp_debug(context, "at least one SID flag changed now or in "
 			                "the last few packets, so go back to FO state");
@@ -2836,10 +2836,10 @@ static int rohc_comp_rfc3095_build_uo1_pkt(struct rohc_comp_ctxt *const context,
 	 *   MUST NOT be used.
 	 * (UO-1 for non-RTP profile is similar to UO-1-ID for RTP profiles) */
 	assert(rfc3095_ctxt->outer_ip_flags.version != IPV4 ||
-	       rfc3095_ctxt->outer_ip_flags.info.v4.rnd_count >= MAX_FO_COUNT);
+	       rfc3095_ctxt->outer_ip_flags.info.v4.rnd_count >= ROHC_OA_REPEAT_MIN);
 	assert(uncomp_pkt->ip_hdr_nr <= 1 ||
 	       rfc3095_ctxt->inner_ip_flags.version != IPV4 ||
-	       rfc3095_ctxt->inner_ip_flags.info.v4.rnd_count >= MAX_FO_COUNT);
+	       rfc3095_ctxt->inner_ip_flags.info.v4.rnd_count >= ROHC_OA_REPEAT_MIN);
 
 	/* parts 1 and 3:
 	 *  - part 2 will be placed at 'first_position'
@@ -3122,10 +3122,10 @@ static int rohc_comp_rfc3095_build_uo1ts_pkt(struct rohc_comp_ctxt *const contex
 	 *   established, the packet types R-1-ID, R-1-TS, UO-1-ID, and UO-1-TS
 	 *   MUST NOT be used. */
 	assert(rfc3095_ctxt->outer_ip_flags.version != IPV4 ||
-	       rfc3095_ctxt->outer_ip_flags.info.v4.rnd_count >= MAX_FO_COUNT);
+	       rfc3095_ctxt->outer_ip_flags.info.v4.rnd_count >= ROHC_OA_REPEAT_MIN);
 	assert(uncomp_pkt->ip_hdr_nr <= 1 ||
 	       rfc3095_ctxt->inner_ip_flags.version != IPV4 ||
-	       rfc3095_ctxt->inner_ip_flags.info.v4.rnd_count >= MAX_FO_COUNT);
+	       rfc3095_ctxt->inner_ip_flags.info.v4.rnd_count >= ROHC_OA_REPEAT_MIN);
 
 	/* parts 1 and 3:
 	 *  - part 2 will be placed at 'first_position'
@@ -3285,10 +3285,10 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 	 *   established, the packet types R-1-ID, R-1-TS, UO-1-ID, and UO-1-TS
 	 *   MUST NOT be used. */
 	assert(rfc3095_ctxt->outer_ip_flags.version != IPV4 ||
-	       rfc3095_ctxt->outer_ip_flags.info.v4.rnd_count >= MAX_FO_COUNT);
+	       rfc3095_ctxt->outer_ip_flags.info.v4.rnd_count >= ROHC_OA_REPEAT_MIN);
 	assert(uncomp_pkt->ip_hdr_nr <= 1 ||
 	       rfc3095_ctxt->inner_ip_flags.version != IPV4 ||
-	       rfc3095_ctxt->inner_ip_flags.info.v4.rnd_count >= MAX_FO_COUNT);
+	       rfc3095_ctxt->inner_ip_flags.info.v4.rnd_count >= ROHC_OA_REPEAT_MIN);
 
 	/* UO-1-ID packet without extension or with extension 0, 1 or 2
 	 * cannot change the RTP Marker (M) flag */
@@ -3373,7 +3373,7 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 			}
 
 			/* part 2: 5 bits of innermost IP-ID with non-random IP-ID */
-			if(innermost_ip_id_rnd_count < MAX_FO_COUNT)
+			if(innermost_ip_id_rnd_count < ROHC_OA_REPEAT_MIN)
 			{
 				/* RND changed in the last few packets, so use the 16-bit field in
 				 * the EXT3 header and fill the 5-bit field of UO-1-ID with zeroes */
@@ -4609,7 +4609,7 @@ static int code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
 			}
 
 			/* part 2: 5 bits of innermost IP-ID with non-random IP-ID */
-			if(innermost_ip_id_rnd_count < MAX_FO_COUNT)
+			if(innermost_ip_id_rnd_count < ROHC_OA_REPEAT_MIN)
 			{
 				/* RND changed in the last few packets, so use the 16-bit field
 				 * in the EXT3 header and fill the 5-bit field of UOR-2-ID with
@@ -5323,12 +5323,12 @@ static int code_EXT3_rtp_packet(struct rohc_comp_ctxt *const context,
 	 *  - RTP TS and TS_STRIDE must be initialized.
 	 */
 	rtp = (rtp_context->tmp.rtp_pt_changed ||
-	       rtp_context->rtp_pt_change_count < MAX_IR_COUNT ||
+	       rtp_context->rtp_pt_change_count < ROHC_OA_REPEAT_MIN ||
 	       rtp_context->tmp.padding_bit_changed ||
-	       rtp_context->rtp_padding_change_count < MAX_IR_COUNT ||
+	       rtp_context->rtp_padding_change_count < ROHC_OA_REPEAT_MIN ||
 	       (packet_type == ROHC_PACKET_UO_1_ID_EXT3 && rtp_context->tmp.is_marker_bit_set) ||
 	       rtp_context->tmp.extension_bit_changed ||
-	       rtp_context->rtp_extension_change_count < MAX_IR_COUNT ||
+	       rtp_context->rtp_extension_change_count < ROHC_OA_REPEAT_MIN ||
 	       (rtp_context->ts_sc.state == INIT_STRIDE));
 
 	/* ip2 bit (force ip2=1 if I2=1, otherwise I2 is not sent) */
@@ -5755,9 +5755,9 @@ static int rtp_header_flags_and_fields(const struct rohc_comp_ctxt *const contex
 
 	/* part 1 */
 	rpt = (rtp_context->tmp.rtp_pt_changed ||
-	       rtp_context->rtp_pt_change_count < MAX_IR_COUNT ||
+	       rtp_context->rtp_pt_change_count < ROHC_OA_REPEAT_MIN ||
 	       rtp_context->tmp.padding_bit_changed ||
-	       rtp_context->rtp_padding_change_count < MAX_IR_COUNT);
+	       rtp_context->rtp_padding_change_count < ROHC_OA_REPEAT_MIN);
 	tss = (rtp_context->ts_sc.state == INIT_STRIDE);
 	byte = 0;
 	byte |= (context->mode & 0x03) << 6;
@@ -5811,11 +5811,11 @@ static int rtp_header_flags_and_fields(const struct rohc_comp_ctxt *const contex
 
 		/* do we transmit the scaled RTP Timestamp (TS) in the next packet ? */
 		rtp_context->ts_sc.nr_init_stride_packets++;
-		if(rtp_context->ts_sc.nr_init_stride_packets >= ROHC_INIT_TS_STRIDE_MIN)
+		if(rtp_context->ts_sc.nr_init_stride_packets >= ROHC_OA_REPEAT_MIN)
 		{
 			rohc_comp_debug(context, "TS_STRIDE transmitted at least %u times, so "
 			                "change from state INIT_STRIDE to SEND_SCALED",
-			                ROHC_INIT_TS_STRIDE_MIN);
+			                ROHC_OA_REPEAT_MIN);
 			rtp_context->ts_sc.state = SEND_SCALED;
 		}
 		else
@@ -5824,7 +5824,7 @@ static int rtp_header_flags_and_fields(const struct rohc_comp_ctxt *const contex
 			                "in state INIT_STRIDE (at least %u times are required to "
 			                "change to state SEND_SCALED)",
 			                rtp_context->ts_sc.nr_init_stride_packets,
-			                ROHC_INIT_TS_STRIDE_MIN);
+			                ROHC_OA_REPEAT_MIN);
 		}
 	}
 
@@ -5892,17 +5892,17 @@ static int header_flags(const struct rohc_comp_ctxt *const context,
 
 	/* for inner and outer flags (1 & 2) */
 	if(is_field_changed(changed_f, MOD_TOS) ||
-	   header_info->tos_count < MAX_FO_COUNT)
+	   header_info->tos_count < ROHC_OA_REPEAT_MIN)
 	{
 		flags |= 0x80;
 	}
 	if(is_field_changed(changed_f, MOD_TTL) ||
-	   header_info->ttl_count < MAX_FO_COUNT)
+	   header_info->ttl_count < ROHC_OA_REPEAT_MIN)
 	{
 		flags |= 0x40;
 	}
 	if(is_field_changed(changed_f, MOD_PROTOCOL) ||
-	   header_info->protocol_count < MAX_FO_COUNT)
+	   header_info->protocol_count < ROHC_OA_REPEAT_MIN)
 	{
 		flags |= 0x10;
 	}
@@ -5998,7 +5998,7 @@ static int header_fields(const struct rohc_comp_ctxt *const context,
 {
 	/* part 1 */
 	if(is_field_changed(changed_f, MOD_TOS) ||
-	   header_info->tos_count < MAX_FO_COUNT)
+	   header_info->tos_count < ROHC_OA_REPEAT_MIN)
 	{
 		const unsigned int tos = ip_get_tos(ip);
 		rohc_comp_debug(context, "IP TOS/TC of IP header #%u = 0x%02x",
@@ -6010,7 +6010,7 @@ static int header_fields(const struct rohc_comp_ctxt *const context,
 
 	/* part 2 */
 	if(is_field_changed(changed_f, MOD_TTL) ||
-	   header_info->ttl_count < MAX_FO_COUNT)
+	   header_info->ttl_count < ROHC_OA_REPEAT_MIN)
 	{
 		const unsigned int ttl = ip_get_ttl(ip);
 		rohc_comp_debug(context, "IP TTL/HL of IP header #%u = 0x%02x",
@@ -6022,7 +6022,7 @@ static int header_fields(const struct rohc_comp_ctxt *const context,
 
 	/* part 3 */
 	if(is_field_changed(changed_f, MOD_PROTOCOL) ||
-	   header_info->protocol_count < MAX_FO_COUNT)
+	   header_info->protocol_count < ROHC_OA_REPEAT_MIN)
 	{
 		const uint8_t protocol = ip_get_protocol(ip);
 		rohc_comp_debug(context, "IP Protocol/Next Header of IP header #%u "
@@ -6255,7 +6255,7 @@ static int changed_static_one_hdr(struct rohc_comp_ctxt *const context,
 
 	/* check the IPv4 Protocol / IPv6 Next Header field for change */
 	if(is_field_changed(changed_fields, MOD_PROTOCOL) ||
-	   header_info->protocol_count < MAX_FO_COUNT)
+	   header_info->protocol_count < ROHC_OA_REPEAT_MIN)
 	{
 		rohc_comp_debug(context, "protocol_count %zu", header_info->protocol_count);
 
@@ -6342,7 +6342,7 @@ static int changed_dynamic_one_hdr(struct rohc_comp_ctxt *const context,
 
 	/* check the Type Of Service / Traffic Class field for change */
 	if(is_field_changed(changed_fields, MOD_TOS) ||
-	   header_info->tos_count < MAX_FO_COUNT)
+	   header_info->tos_count < ROHC_OA_REPEAT_MIN)
 	{
 		if(is_field_changed(changed_fields, MOD_TOS))
 		{
@@ -6359,7 +6359,7 @@ static int changed_dynamic_one_hdr(struct rohc_comp_ctxt *const context,
 
 	/* check the Time To Live / Hop Limit field for change */
 	if(is_field_changed(changed_fields, MOD_TTL) ||
-	   header_info->ttl_count < MAX_FO_COUNT)
+	   header_info->ttl_count < ROHC_OA_REPEAT_MIN)
 	{
 		if(is_field_changed(changed_fields, MOD_TTL))
 		{
@@ -6384,7 +6384,7 @@ static int changed_dynamic_one_hdr(struct rohc_comp_ctxt *const context,
 		/* check the Don't Fragment flag for change (IPv4 only) */
 		df = ipv4_get_df(ip);
 		old_df = header_info->info.v4.old_ip.df;
-		if(df != old_df || header_info->info.v4.df_count < MAX_FO_COUNT)
+		if(df != old_df || header_info->info.v4.df_count < ROHC_OA_REPEAT_MIN)
 		{
 			if(df != old_df)
 			{
@@ -6401,7 +6401,7 @@ static int changed_dynamic_one_hdr(struct rohc_comp_ctxt *const context,
 
 		/* check the RND flag for change (IPv4 only) */
 		if(header_info->info.v4.rnd != header_info->info.v4.old_rnd ||
-		   header_info->info.v4.rnd_count < MAX_FO_COUNT)
+		   header_info->info.v4.rnd_count < ROHC_OA_REPEAT_MIN)
 		{
 			if(header_info->info.v4.rnd != header_info->info.v4.old_rnd)
 			{
@@ -6420,7 +6420,7 @@ static int changed_dynamic_one_hdr(struct rohc_comp_ctxt *const context,
 
 		/*  check the NBO flag for change (IPv4 only) */
 		if(header_info->info.v4.nbo != header_info->info.v4.old_nbo ||
-		   header_info->info.v4.nbo_count < MAX_FO_COUNT)
+		   header_info->info.v4.nbo_count < ROHC_OA_REPEAT_MIN)
 		{
 			if(header_info->info.v4.nbo != header_info->info.v4.old_nbo)
 			{
@@ -6444,7 +6444,7 @@ static int changed_dynamic_one_hdr(struct rohc_comp_ctxt *const context,
 
 		/*  check the SID flag for change (IPv4 only) */
 		if(header_info->info.v4.sid != header_info->info.v4.old_sid ||
-		   header_info->info.v4.sid_count < MAX_FO_COUNT)
+		   header_info->info.v4.sid_count < ROHC_OA_REPEAT_MIN)
 		{
 			if(header_info->info.v4.sid != header_info->info.v4.old_sid)
 			{
@@ -7592,7 +7592,7 @@ static void rohc_comp_rfc3095_get_ext3_I_flags(const struct rohc_comp_ctxt *cons
 			{
 				*I = 1;
 			}
-			else if(inner_ip_flags->info.v4.rnd_count < MAX_FO_COUNT)
+			else if(inner_ip_flags->info.v4.rnd_count < ROHC_OA_REPEAT_MIN)
 			{
 				*I = 1;
 			}
@@ -7637,7 +7637,7 @@ static void rohc_comp_rfc3095_get_ext3_I_flags(const struct rohc_comp_ctxt *cons
 			{
 				*I = 1;
 			}
-			else if(inner_ip_flags->info.v4.rnd_count < MAX_FO_COUNT)
+			else if(inner_ip_flags->info.v4.rnd_count < ROHC_OA_REPEAT_MIN)
 			{
 				*I = 1;
 			}
@@ -7656,7 +7656,7 @@ static void rohc_comp_rfc3095_get_ext3_I_flags(const struct rohc_comp_ctxt *cons
 				{
 					*I2 = 1;
 				}
-				else if(outer_ip_flags->info.v4.rnd_count < MAX_FO_COUNT)
+				else if(outer_ip_flags->info.v4.rnd_count < ROHC_OA_REPEAT_MIN)
 				{
 					*I2 = 1;
 				}
@@ -7688,7 +7688,7 @@ static void rohc_comp_rfc3095_get_ext3_I_flags(const struct rohc_comp_ctxt *cons
 			{
 				*I = 1;
 			}
-			else if(outer_ip_flags->info.v4.rnd_count < MAX_FO_COUNT)
+			else if(outer_ip_flags->info.v4.rnd_count < ROHC_OA_REPEAT_MIN)
 			{
 				*I = 1;
 			}

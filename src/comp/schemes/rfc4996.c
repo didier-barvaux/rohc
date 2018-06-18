@@ -532,7 +532,7 @@ error:
 bool tcp_is_ack_scaled_possible(const uint16_t ack_stride,
                                 const size_t nr_trans)
 {
-	return (ack_stride != 0 && nr_trans >= ROHC_INIT_TS_STRIDE_MIN);
+	return (ack_stride != 0 && nr_trans >= ROHC_OA_REPEAT_MIN);
 }
 
 
@@ -547,6 +547,6 @@ bool tcp_is_ack_scaled_possible(const uint16_t ack_stride,
 bool tcp_is_ack_stride_static(const uint16_t ack_stride,
                               const size_t nr_trans)
 {
-	return (ack_stride == 0 || nr_trans >= ROHC_INIT_TS_STRIDE_MIN);
+	return (ack_stride == 0 || nr_trans >= ROHC_OA_REPEAT_MIN);
 }
 

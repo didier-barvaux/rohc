@@ -256,7 +256,7 @@ static void uncompressed_decide_state(struct rohc_comp_ctxt *const context,
 		rohc_comp_change_state(context, ROHC_COMP_STATE_IR);
 	}
 	else if(context->state == ROHC_COMP_STATE_IR &&
-	        context->ir_count >= MAX_IR_COUNT)
+	        context->ir_count >= ROHC_OA_REPEAT_MIN)
 	{
 		/* the compressor got the confidence that the decompressor fully received
 		 * the context: enough IR packets transmitted or positive ACK received */

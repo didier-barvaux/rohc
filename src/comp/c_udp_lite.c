@@ -206,8 +206,8 @@ static bool c_udp_lite_create(struct rohc_comp_ctxt *const context,
 	udp_lite_context->coverage_equal_count = 0;
 	udp_lite_context->coverage_inferred_count = 0;
 	udp_lite_context->sent_cce_only_count = 0;
-	udp_lite_context->sent_cce_on_count = MAX_IR_COUNT;
-	udp_lite_context->sent_cce_off_count = MAX_IR_COUNT;
+	udp_lite_context->sent_cce_on_count = ROHC_OA_REPEAT_MIN;
+	udp_lite_context->sent_cce_off_count = ROHC_OA_REPEAT_MIN;
 	memcpy(&udp_lite_context->old_udp_lite, udp_lite, sizeof(struct udphdr));
 
 	/* init the UDP-Lite-specific temporary variables */
@@ -577,7 +577,7 @@ static bool udp_lite_send_cce_packet(const struct rohc_comp_ctxt *const context,
 	{
 		if(!is_coverage_inferred)
 		{
-			if(udp_lite_context->sent_cce_only_count < MAX_IR_COUNT)
+			if(udp_lite_context->sent_cce_only_count < ROHC_OA_REPEAT_MIN)
 			{
 				udp_lite_context->sent_cce_only_count++;
 				udp_lite_context->FK = 0x01;
@@ -611,7 +611,7 @@ static bool udp_lite_send_cce_packet(const struct rohc_comp_ctxt *const context,
 	{
 		if(is_coverage_inferred || !is_coverage_same)
 		{
-			if(udp_lite_context->sent_cce_only_count < MAX_IR_COUNT)
+			if(udp_lite_context->sent_cce_only_count < ROHC_OA_REPEAT_MIN)
 			{
 				udp_lite_context->sent_cce_only_count++;
 				udp_lite_context->FK = 0x01;
@@ -670,7 +670,7 @@ static bool udp_lite_send_cce_packet(const struct rohc_comp_ctxt *const context,
 		}
 	}
 
-	if(udp_lite_context->sent_cce_off_count < MAX_IR_COUNT)
+	if(udp_lite_context->sent_cce_off_count < ROHC_OA_REPEAT_MIN)
 	{
 		udp_lite_context->sent_cce_off_count++;
 		udp_lite_context->sent_cce_only_count = 0;
@@ -678,7 +678,7 @@ static bool udp_lite_send_cce_packet(const struct rohc_comp_ctxt *const context,
 		memcpy(&udp_lite_context->old_udp_lite, udp_lite, sizeof(struct udphdr));
 		return true;
 	}
-	else if(udp_lite_context->sent_cce_on_count < MAX_IR_COUNT)
+	else if(udp_lite_context->sent_cce_on_count < ROHC_OA_REPEAT_MIN)
 	{
 		udp_lite_context->sent_cce_on_count++;
 		udp_lite_context->sent_cce_only_count = 0;
