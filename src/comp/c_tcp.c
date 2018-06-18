@@ -117,7 +117,7 @@ static void tcp_decide_state(struct rohc_comp_ctxt *const context,
                              struct rohc_ts pkt_time)
 	__attribute__((nonnull(1)));
 
-static rohc_packet_t tcp_decide_packet(struct rohc_comp_ctxt *const context,
+static rohc_packet_t tcp_decide_packet(const struct rohc_comp_ctxt *const context,
                                        const ip_context_t *const ip_inner_context,
                                        const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                        const struct tcp_tmp_variables *const tmp)
@@ -3797,7 +3797,7 @@ static bool tcp_opt_ts_can_be_encoded(const struct c_tcp_opts_ctxt *const opts,
  *                              ROHC_PACKET_TCP_CO_COMMON in case of success
  *                          \li ROHC_PACKET_UNKNOWN in case of failure
  */
-static rohc_packet_t tcp_decide_packet(struct rohc_comp_ctxt *const context,
+static rohc_packet_t tcp_decide_packet(const struct rohc_comp_ctxt *const context,
                                        const ip_context_t *const ip_inner_context,
                                        const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                        const struct tcp_tmp_variables *const tmp)
