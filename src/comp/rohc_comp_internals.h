@@ -63,7 +63,7 @@
 
 /** The minimal number of packets that must be sent while in IR state before
  *  being able to switch to the FO state */
-#define MAX_IR_COUNT  3U
+#define MAX_IR_COUNT  4U
 
 /** The minimal number of packets that must be sent while in CR state before
  *  being able to switch to the FO state */
@@ -71,11 +71,11 @@
 
 /** The minimal number of packets that must be sent while in FO state before
  *  being able to switch to the SO state */
-#define MAX_FO_COUNT  3U
+#define MAX_FO_COUNT  4U
 
 /** The minimal number of packets that must be sent while in INIT_STRIDE
  *  state before being able to switch to the SEND_SCALED state */
-#define ROHC_INIT_TS_STRIDE_MIN  3U
+#define ROHC_INIT_TS_STRIDE_MIN  4U
 
 /**
  * @brief Default number of transmission for lists to become a reference list
@@ -83,7 +83,7 @@
  * The minimal number of times of compressed list shall be sent to become
  * a reference list. L is the name specified in the RFC.
  */
-#define ROHC_LIST_DEFAULT_L  5U
+#define ROHC_LIST_DEFAULT_L  4U
 
 
 /** Print a warning trace for the given compression context */

@@ -32,5 +32,5 @@ compressor_num = 1	packet_num = 16	rohc_size = 25	packet_type = 15
 compressor_num = 2	packet_num = 16	rohc_size = 25	packet_type = 15
 compressor_num = 1	packet_num = 17	rohc_size = 35	packet_type = 1
 compressor_num = 2	packet_num = 17	rohc_size = 35	packet_type = 1
-compressor_num = 1	packet_num = 18	rohc_size = 130	packet_type = 15
-compressor_num = 2	packet_num = 18	rohc_size = 130	packet_type = 15
+compressor_num = 1	packet_num = 18	rohc_size = 131	packet_type = 15
+compressor_num = 2	packet_num = 18	rohc_size = 131	packet_type = 15

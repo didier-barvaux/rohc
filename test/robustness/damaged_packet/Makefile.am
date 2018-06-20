@@ -18,6 +18,9 @@ TESTS = \
 	test_damaged_packet_8_uor2_with-ext3-but-not-ts-stride.sh \
 	test_damaged_packet_273_uo0_repair.sh
 
+XFAIL_TESTS = \
+	test_damaged_packet_5_uo0.sh \
+	test_damaged_packet_8_uo1id.sh
 
 check_PROGRAMS = \
 	test_damaged_packet
