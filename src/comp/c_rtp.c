@@ -698,6 +698,10 @@ static int c_rtp_encode(struct rohc_comp_ctxt *const context,
 		{
 			rtp_context->old_rtp.extension = rtp->extension;
 		}
+		if(rtp_context->tmp.rtp_pt_changed)
+		{
+			rtp_context->old_rtp.pt = rtp->pt;
+		}
 	}
 
 quit:
