@@ -833,7 +833,10 @@ static int generate_comp_stats_one(struct rohc_comp *comp,
                                    const unsigned char *packet,
                                    size_t link_len)
 {
-	struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
+	const struct rohc_ts arrival_time = {
+		.sec = header.ts.tv_sec,
+		.nsec = header.ts.tv_usec * 1000
+	};
 	struct rohc_buf ip_packet =
 		rohc_buf_init_full((unsigned char *) packet, header.caplen, arrival_time);
 	uint8_t rohc_buffer[MAX_ROHC_SIZE];
@@ -1117,7 +1120,10 @@ static int generate_decomp_stats_one(struct rohc_decomp *const decomp,
                                      const unsigned char *packet,
                                      size_t link_len)
 {
-	struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
+	const struct rohc_ts arrival_time = {
+		.sec = header.ts.tv_sec,
+		.nsec = header.ts.tv_usec * 1000
+	};
 	struct rohc_buf rohc_packet =
 		rohc_buf_init_full((unsigned char *) packet, header.caplen, arrival_time);
 	uint8_t ip_buffer[MAX_ROHC_SIZE];
