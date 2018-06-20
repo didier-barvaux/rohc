@@ -255,6 +255,17 @@ static size_t nr_pkts_per_size[MAX_ROHC_SIZE + 1] = { 0 };
 /** The initial Master Sequence Number (MSN) to use, helpful for interop debug */
 static int initial_msn = 1;
 
+/** Whether a lossy link is emulated or not? */
+static bool loss_enabled = false;
+/** How large is a burst (in number of packets) */
+static int burst_pkts_nr = 0;
+/** What packet is not lost in the burst */
+static int pkt_not_lost = 0;
+/** Number of compressors */
+#define NUM_COMP 2
+/** Loss state per compressor and per context */
+static size_t rcvd_pkts_nr_per_burst[NUM_COMP][ROHC_SMALL_CID_MAX + 1] = { { 0 } };
+
 
 /**
  * @brief Main function for the ROHC test program
@@ -389,6 +400,20 @@ int main(int argc, char *argv[])
 			}
 			max_contexts = atoi(argv[1]);
 			args_used++;
+		}
+		else if(!strcmp(*argv, "--loss-ratio"))
+		{
+			/* get the number of packets to loss */
+			if(argc <= 2)
+			{
+				fprintf(stderr, "missing mandatory --loss-ratio parameters\n");
+				usage();
+				goto error;
+			}
+			pkt_not_lost = atoi(argv[1]);
+			burst_pkts_nr = atoi(argv[2]);
+			loss_enabled = true;
+			args_used += 2;
 		}
 		else if(!strcmp(*argv, "--wlsb-width"))
 		{
@@ -1126,6 +1151,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	}
 
 	/* output the size of the ROHC packet to the output file if asked */
+	rohc_cid_t last_cid;
 	{
 		rohc_comp_last_packet_info2_t last_packet_info;
 
@@ -1139,6 +1165,7 @@ static int compress_decompress(struct rohc_comp *comp,
 			goto exit;
 		}
 		nr_pkts_per_size[last_packet_info.header_last_comp_size]++;
+		last_cid = last_packet_info.context_id;
 
 		if(size_output_file != NULL)
 		{
@@ -1171,6 +1198,19 @@ static int compress_decompress(struct rohc_comp *comp,
 			status = 0;
 		}
 	}
+
+	/* decompress the ROHC packet if it is not lost during transmission */
+	rcvd_pkts_nr_per_burst[num_comp - 1][last_cid]++;
+	if(loss_enabled && rcvd_pkts_nr_per_burst[num_comp - 1][last_cid] != pkt_not_lost)
+	{
+		trace("=== ROHC decompression: packet %zu/%d was lost during "
+		      "transmission\n", rcvd_pkts_nr_per_burst[num_comp - 1][last_cid],
+		      burst_pkts_nr);
+	}
+	else
+{
+		trace("=== ROHC decompression: packet %zu/%d received\n",
+		      rcvd_pkts_nr_per_burst[num_comp - 1][last_cid], burst_pkts_nr);
 
 	/* decompress the ROHC packet */
 	trace("=== ROHC decompression: start\n");
@@ -1227,6 +1267,12 @@ static int compress_decompress(struct rohc_comp *comp,
 	else
 	{
 		trace("=== deliver received feedback to compressor: success\n");
+	}
+}
+	if(rcvd_pkts_nr_per_burst[num_comp - 1][last_cid] >= burst_pkts_nr)
+	{
+		trace("=== ROHC decompression: last packet for that burst\n");
+		rcvd_pkts_nr_per_burst[num_comp - 1][last_cid] = 0;
 	}
 
 exit:
