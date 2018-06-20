@@ -218,13 +218,15 @@ XFAIL_TESTS = \
 	test_packet_types_rtp_uo_disambiguation_ipv4rnd1ipv6_ipv4rnd1ipv6_uo1rtp.sh \
 	test_packet_types_rtp_uo_disambiguation_ipv6ipv4rnd1_ipv6ipv4rnd1_uo1rtp.sh \
 	test_packet_types_ipv4rnd_tcp_irdyn.sh \
+	test_packet_types_ipv4rnd_tcp_tcp-rnd-1.sh \
 	test_packet_types_ipv4rnd_tcp_tcp-rnd-3.sh \
 	test_packet_types_ipv4rnd_tcp_tcp-rnd-4.sh \
 	test_packet_types_ipv4rnd_tcp_tcp-rnd-7.sh \
 	test_packet_types_ipv4seq_tcp_irdyn.sh \
 	test_packet_types_ipv4seq_tcp_tcp-seq-3.sh \
 	test_packet_types_ipv4seq_tcp_tcp-seq-4.sh \
-	test_packet_types_ipv4seq_tcp_tcp-seq-7.sh
+	test_packet_types_ipv4seq_tcp_tcp-seq-7.sh \
+	test_packet_types_ipv4rnd_tcp_tcp-rnd-8.sh
 
 check_PROGRAMS = \
 	test_packet_types

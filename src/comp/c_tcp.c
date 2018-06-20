@@ -1096,6 +1096,10 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	{
 		tcp_context->ttl_hopl_change_count++;
 	}
+	if(tcp_context->innermost_ip_id_behavior_trans_nr < ROHC_OA_REPEAT_MIN)
+	{
+		tcp_context->innermost_ip_id_behavior_trans_nr++;
+	}
 
 	return counter;
 
@@ -3674,6 +3678,21 @@ static bool tcp_detect_changes_tcp_hdr(struct rohc_comp_ctxt *const context,
 	tcp_field_descr_change(context, "TCP ACK number", !tmp->tcp_ack_num_unchanged, 0);
 	tmp->tcp_urg_ptr_changed = (tcp->urg_ptr != tcp_context->urg_ptr_nbo);
 	tcp_field_descr_change(context, "TCP URG pointer", tmp->tcp_urg_ptr_changed, 0);
+
+	/* innermost IP-ID behavior that changes shall be transmitted several times */
+	if(tmp->ip_id_behavior_changed)
+	{
+		rohc_comp_debug(context, "innermost IP-ID behavior changed in current "
+		                "packet, it shall be transmitted %u times", ROHC_OA_REPEAT_MIN);
+		tcp_context->innermost_ip_id_behavior_trans_nr = 0;
+	}
+	else if(tcp_context->innermost_ip_id_behavior_trans_nr < ROHC_OA_REPEAT_MIN)
+	{
+		rohc_comp_debug(context, "innermost IP-ID behavior changed in last packets, "
+		                "it shall be transmitted %u times more", ROHC_OA_REPEAT_MIN -
+		                tcp_context->innermost_ip_id_behavior_trans_nr);
+		tmp->ip_id_behavior_changed = true;
+	}
 
 	/* TCP sequence number that changes shall be transmitted several times */
 	if(!tmp->tcp_seq_num_unchanged)

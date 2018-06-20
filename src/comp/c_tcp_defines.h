@@ -115,6 +115,8 @@ struct sc_tcp_context
 	/** The number of times the ECN fields were not needed */
 	uint8_t ecn_used_zero_count:4;
 	uint8_t ttl_hopl_change_count:4;
+	/** The number of innermost IP-ID behavior transmissions since last change */
+	uint8_t innermost_ip_id_behavior_trans_nr;
 
 	uint8_t ecn_used:1; /**< Explicit Congestion Notification used */
 	/* Context Replication */
