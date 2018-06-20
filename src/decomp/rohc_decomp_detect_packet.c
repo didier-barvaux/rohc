@@ -28,6 +28,8 @@
 #include "rohc_bit_ops.h"
 #include "rohc_internal.h"
 
+#include <assert.h>
+
 
 /** The magic bits to find out whether a field is a segment field or not */
 #define D_SEGMENT        (0xfe >> 1)
@@ -72,7 +74,8 @@ bool rohc_decomp_packet_is_padding(const uint8_t *const data)
  */
 bool rohc_decomp_packet_is_ir(const uint8_t *const data, const size_t len)
 {
-	return (len > 0 && GET_BIT_1_7(data) == D_IR_PACKET);
+	assert(len > 0);
+	return (GET_BIT_1_7(data) == D_IR_PACKET);
 }
 
 
@@ -85,7 +88,8 @@ bool rohc_decomp_packet_is_ir(const uint8_t *const data, const size_t len)
  */
 bool rohc_decomp_packet_is_irdyn(const uint8_t *const data, const size_t len)
 {
-	return (len > 0 && GET_BIT_0_7(data) == D_IR_DYN_PACKET);
+	assert(len > 0);
+	return (GET_BIT_0_7(data) == D_IR_DYN_PACKET);
 }
 
 
