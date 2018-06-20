@@ -1100,6 +1100,14 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	{
 		tcp_context->innermost_ip_id_behavior_trans_nr++;
 	}
+	if(tcp_context->ipv6_exts_list_static_trans_nr < ROHC_OA_REPEAT_MIN)
+	{
+		tcp_context->ipv6_exts_list_static_trans_nr++;
+	}
+	if(tcp_context->ipv6_exts_list_dyn_trans_nr < ROHC_OA_REPEAT_MIN)
+	{
+		tcp_context->ipv6_exts_list_dyn_trans_nr++;
+	}
 
 	return counter;
 
@@ -3236,6 +3244,7 @@ static bool tcp_detect_changes_ipv6_exts(struct rohc_comp_ctxt *const context,
                                          const uint8_t *const exts,
                                          const size_t max_exts_len)
 {
+	struct sc_tcp_context *const tcp_context = context->specific;
 	const uint8_t *remain_data = exts;
 	size_t remain_len = max_exts_len;
 	size_t exts_nr;
@@ -3364,11 +3373,25 @@ static bool tcp_detect_changes_ipv6_exts(struct rohc_comp_ctxt *const context,
 	{
 		rohc_comp_debug(context, "  IPv6 extension headers changed too much, static "
 		                "chain is required");
+		tcp_context->ipv6_exts_list_static_trans_nr = 0;
+	}
+	else if(tcp_context->ipv6_exts_list_static_trans_nr < ROHC_OA_REPEAT_MIN)
+	{
+		rohc_comp_debug(context, "  IPv6 extension headers changed too much "
+		                "in last packets, static chain is required");
+		tmp->is_ipv6_exts_list_static_changed = true;
 	}
 	else if(tmp->is_ipv6_exts_list_dyn_changed)
 	{
 		rohc_comp_debug(context, "  IPv6 extension headers changed too much, dynamic "
 		                "chain is required");
+		tcp_context->ipv6_exts_list_dyn_trans_nr = 0;
+	}
+	else if(tcp_context->ipv6_exts_list_dyn_trans_nr < ROHC_OA_REPEAT_MIN)
+	{
+		rohc_comp_debug(context, "  IPv6 extension headers changed too much "
+		                "in last packets, dynamic chain is required");
+		tmp->is_ipv6_exts_list_dyn_changed = true;
 	}
 	else
 	{
