@@ -19,7 +19,6 @@ TESTS = \
 	test_loss_robustness_rfc6846_keep_4_on_4.sh
 
 XFAIL_TESTS = \
-	test_loss_robustness_rfc3095_keep_1_on_4.sh \
 	test_loss_robustness_rfc3095_keep_2_on_4.sh \
 	test_loss_robustness_rfc5225_keep_1_on_4.sh \
 	test_loss_robustness_rfc5225_keep_2_on_4.sh \

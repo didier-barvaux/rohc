@@ -257,7 +257,7 @@ error:
  *
  * See variable_length_32_enc in RFC4996 page 46.
  *
- * @param old_value       The previous 32-bit value
+ * @param is_unchanged    Is the value unchanged since several packets
  * @param new_value       The 32-bit value to compress
  * @param wlsb            The W-LSB encoding context
  * @param[out] rohc_data  The compressed value
@@ -266,7 +266,7 @@ error:
  * @return                The number of ROHC bytes written in case of success,
  *                        -1 in case of error
  */
-int variable_length_32_enc(const uint32_t old_value,
+int variable_length_32_enc(const bool is_unchanged,
                            const uint32_t new_value,
                            const struct c_wlsb *const wlsb,
                            uint8_t *const rohc_data,
@@ -275,7 +275,7 @@ int variable_length_32_enc(const uint32_t old_value,
 {
 	size_t encoded_len;
 
-	if(new_value == old_value)
+	if(is_unchanged)
 	{
 		/* 0-byte value */
 		encoded_len = 0;

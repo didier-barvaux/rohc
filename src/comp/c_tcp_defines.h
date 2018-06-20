@@ -102,6 +102,10 @@ struct sc_tcp_context
 	uint16_t ack_stride;
 	uint8_t ack_deltas_next;
 
+	/** The number of TCP sequence number transmissions since last change */
+	uint8_t tcp_seq_num_trans_nr:4;
+	/** The number of TCP ACK number transmissions since last change */
+	uint8_t tcp_ack_num_trans_nr:4;
 	uint8_t seq_num_scaling_nr:4;
 	uint8_t ack_num_scaling_nr:4;
 	/** The number of times the window field was added to the compressed header */

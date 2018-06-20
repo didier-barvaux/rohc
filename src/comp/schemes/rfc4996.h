@@ -70,7 +70,7 @@ int c_zero_or_irreg32(const uint32_t packet_value,
 	__attribute__((warn_unused_result, nonnull(2, 4)));
 
 /* variable_length_32_enc encoding method */
-int variable_length_32_enc(const uint32_t old_value,
+int variable_length_32_enc(const bool is_unchanged,
                            const uint32_t new_value,
                            const struct c_wlsb *const wlsb,
                            uint8_t *const rohc_data,

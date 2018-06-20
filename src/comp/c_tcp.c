@@ -1079,6 +1079,24 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		c_add_wlsb(&tcp_opts->ts_reply_wlsb, tcp_context->msn, tmp.tcp_opts.ts_reply);
 	}
 
+	/* update transmission counters */
+	if(tcp_context->tcp_seq_num_trans_nr < ROHC_OA_REPEAT_MIN)
+	{
+		tcp_context->tcp_seq_num_trans_nr++;
+	}
+	if(tcp_context->tcp_ack_num_trans_nr < ROHC_OA_REPEAT_MIN)
+	{
+		tcp_context->tcp_ack_num_trans_nr++;
+	}
+	if(tcp_context->tcp_window_change_count < ROHC_OA_REPEAT_MIN)
+	{
+		tcp_context->tcp_window_change_count++;
+	}
+	if(tcp_context->ttl_hopl_change_count < ROHC_OA_REPEAT_MIN)
+	{
+		tcp_context->ttl_hopl_change_count++;
+	}
+
 	return counter;
 
 error:
@@ -2714,7 +2732,7 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 	co_common->msn = tcp_context->msn & 0xf;
 
 	/* seq_number */
-	ret = variable_length_32_enc(tcp_context->seq_num, tmp->seq_num,
+	ret = variable_length_32_enc(tmp->tcp_seq_num_unchanged, tmp->seq_num,
 	                             &tcp_context->seq_wlsb,
 	                             co_common_opt, rohc_remain_len, &indicator);
 	if(ret < 0)
@@ -2733,7 +2751,7 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 	                co_common->seq_indicator);
 
 	/* ack_number */
-	ret = variable_length_32_enc(tcp_context->ack_num, tmp->ack_num,
+	ret = variable_length_32_enc(tmp->tcp_ack_num_unchanged, tmp->ack_num,
 	                             &tcp_context->ack_wlsb,
 	                             co_common_opt, rohc_remain_len, &indicator);
 	if(ret < 0)
@@ -3174,7 +3192,6 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 	else if(tcp_context->ttl_hopl_change_count < ROHC_OA_REPEAT_MIN)
 	{
 		tmp->ttl_hopl_changed = true;
-		tcp_context->ttl_hopl_change_count++;
 	}
 	else
 	{
@@ -3529,7 +3546,6 @@ static bool tcp_detect_changes_tcp_hdr(struct rohc_comp_ctxt *const context,
 	else if(tcp_context->tcp_window_change_count < ROHC_OA_REPEAT_MIN)
 	{
 		tmp->tcp_window_changed = 1;
-		tcp_context->tcp_window_change_count++;
 	}
 	else
 	{
@@ -3658,6 +3674,36 @@ static bool tcp_detect_changes_tcp_hdr(struct rohc_comp_ctxt *const context,
 	tcp_field_descr_change(context, "TCP ACK number", !tmp->tcp_ack_num_unchanged, 0);
 	tmp->tcp_urg_ptr_changed = (tcp->urg_ptr != tcp_context->urg_ptr_nbo);
 	tcp_field_descr_change(context, "TCP URG pointer", tmp->tcp_urg_ptr_changed, 0);
+
+	/* TCP sequence number that changes shall be transmitted several times */
+	if(!tmp->tcp_seq_num_unchanged)
+	{
+		rohc_comp_debug(context, "TCP sequence number changed in current packet, "
+		                "it shall be transmitted %u times", ROHC_OA_REPEAT_MIN);
+		tcp_context->tcp_seq_num_trans_nr = 0;
+	}
+	else if(tcp_context->tcp_seq_num_trans_nr < ROHC_OA_REPEAT_MIN)
+	{
+		rohc_comp_debug(context, "TCP sequence number changed in last packets, "
+		                "it shall be transmitted %u times more",
+		                ROHC_OA_REPEAT_MIN - tcp_context->tcp_seq_num_trans_nr);
+		tmp->tcp_seq_num_unchanged = false;
+	}
+
+	/* TCP ACK number that changes shall be transmitted several times */
+	if(!tmp->tcp_ack_num_unchanged)
+	{
+		rohc_comp_debug(context, "TCP ACK number changed in current packet, "
+		                "it shall be transmitted %u times", ROHC_OA_REPEAT_MIN);
+		tcp_context->tcp_ack_num_trans_nr = 0;
+	}
+	else if(tcp_context->tcp_ack_num_trans_nr < ROHC_OA_REPEAT_MIN)
+	{
+		rohc_comp_debug(context, "TCP ACK number changed in last packets, "
+		                "it shall be transmitted %u times more",
+		                ROHC_OA_REPEAT_MIN - tcp_context->tcp_ack_num_trans_nr);
+		tmp->tcp_ack_num_unchanged = false;
+	}
 
 	return true;
 }
