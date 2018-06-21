@@ -2929,28 +2929,6 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 		                co_common->dscp_present, inner_ip_ctxt->dscp,
 		                inner_ipv4->dscp, ret);
 
-		/* ttl_hopl */
-		{
-			const bool is_ttl_hopl_static =
-				(inner_ip_ctxt->ttl_hopl == uncomp_pkt_hdrs->innermost_ip_hdr->ttl_hl);
-			ret = c_static_or_irreg8(uncomp_pkt_hdrs->innermost_ip_hdr->ttl_hl,
-			                         is_ttl_hopl_static,
-			                         co_common_opt, rohc_remain_len, &indicator);
-			if(ret < 0)
-			{
-				rohc_comp_warn(context, "failed to encode static_or_irreg(ttl_hopl)");
-				goto error;
-			}
-			rohc_comp_debug(context, "TTL = 0x%02x -> 0x%02x", inner_ip_ctxt->ttl_hopl,
-			                uncomp_pkt_hdrs->innermost_ip_hdr->ttl_hl);
-			co_common->ttl_hopl_present = indicator;
-			co_common_opt += ret;
-			co_common_opt_len += ret;
-			rohc_remain_len -= ret;
-			rohc_comp_debug(context, "ttl_hopl_present = %d (TTL encoded on %d bytes)",
-			                co_common->ttl_hopl_present, ret);
-		}
-
 		// =:= dont_fragment(version.UVALUE) [ 1 ];
 		co_common->df = inner_ipv4->df;
 	}
@@ -2977,32 +2955,28 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 		                co_common->dscp_present, inner_ip_ctxt->dscp,
 		                dscp, ret);
 
-		/* ttl_hopl */
-		{
-			const bool is_ttl_hopl_static =
-				(inner_ip_ctxt->ttl_hopl == uncomp_pkt_hdrs->innermost_ip_hdr->ttl_hl);
-			ret = c_static_or_irreg8(uncomp_pkt_hdrs->innermost_ip_hdr->ttl_hl,
-			                         is_ttl_hopl_static,
-			                         co_common_opt, rohc_remain_len, &indicator);
-			if(ret < 0)
-			{
-				rohc_comp_warn(context, "failed to encode static_or_irreg(ttl_hopl)");
-				goto error;
-			}
-			rohc_comp_debug(context, "HOPL = 0x%02x -> 0x%02x", inner_ip_ctxt->ttl_hopl,
-			                uncomp_pkt_hdrs->innermost_ip_hdr->ttl_hl);
-			co_common->ttl_hopl_present = indicator;
-			co_common_opt += ret;
-			co_common_opt_len += ret;
-			rohc_remain_len -= ret;
-			rohc_comp_debug(context, "ttl_hopl_present = %d (HOPL encoded on %d bytes)",
-			                co_common->ttl_hopl_present, ret);
-		}
-
 		// =:= dont_fragment(version.UVALUE) [ 1 ];
 		co_common->df = 0;
 	}
 	rohc_comp_debug(context, "DF = %d", co_common->df);
+
+	/* ttl_hopl */
+	ret = c_static_or_irreg8(uncomp_pkt_hdrs->innermost_ip_hdr->ttl_hl,
+	                         !tmp->ttl_hopl_changed,
+	                         co_common_opt, rohc_remain_len, &indicator);
+	if(ret < 0)
+	{
+		rohc_comp_warn(context, "failed to encode static_or_irreg(ttl_hopl)");
+		goto error;
+	}
+	rohc_comp_debug(context, "TTL/HL = 0x%02x -> 0x%02x", inner_ip_ctxt->ttl_hopl,
+	                uncomp_pkt_hdrs->innermost_ip_hdr->ttl_hl);
+	co_common->ttl_hopl_present = indicator;
+	co_common_opt += ret;
+	co_common_opt_len += ret;
+	rohc_remain_len -= ret;
+	rohc_comp_debug(context, "ttl_hopl_present = %d (TTL/HL encoded on %d bytes)",
+	                co_common->ttl_hopl_present, ret);
 
 	// =:= compressed_value(1, 0) [ 1 ];
 	co_common->reserved = 0;
@@ -3226,11 +3200,18 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 	/* encode innermost IPv4 TTL or IPv6 Hop Limit */
 	if(uncomp_pkt_hdrs->innermost_ip_hdr->ttl_hl != inner_ip_ctxt->ttl_hopl)
 	{
+		rohc_comp_debug(context, "innermost IP TTL/HL changed (%u -> %u) "
+		                "in current packet, it shall be transmitted %u times",
+		                inner_ip_ctxt->ttl_hopl,
+		                uncomp_pkt_hdrs->innermost_ip_hdr->ttl_hl, ROHC_OA_REPEAT_MIN);
 		tmp->ttl_hopl_changed = true;
 		tcp_context->ttl_hopl_change_count = 0;
 	}
 	else if(tcp_context->ttl_hopl_change_count < ROHC_OA_REPEAT_MIN)
 	{
+		rohc_comp_debug(context, "innermost IP TTL/HL changed in last packets, "
+		                "it shall be transmitted %u times more", ROHC_OA_REPEAT_MIN -
+		                tcp_context->ttl_hopl_change_count);
 		tmp->ttl_hopl_changed = true;
 	}
 	else
