@@ -3599,6 +3599,13 @@ static bool d_tcp_decode_bits_tcp_opts(const struct rohc_decomp_ctxt *const cont
 		{
 			if(opt_bits->data.eol.is_static)
 			{
+				if(!tcp_context->tcp_opts.bits[opt_index].used)
+				{
+					rohc_decomp_warn(context, "failed to decode EOL option: packet "
+					                 "reports that option is static, but context "
+					                 "knows nothing about its value");
+					goto error;
+				}
 				opt_bits->data.eol.len =
 					tcp_context->tcp_opts.bits[opt_index].data.eol.len;
 			}
@@ -3607,6 +3614,13 @@ static bool d_tcp_decode_bits_tcp_opts(const struct rohc_decomp_ctxt *const cont
 		{
 			if(opt_bits->data.mss.is_static)
 			{
+				if(!tcp_context->tcp_opts.bits[opt_index].used)
+				{
+					rohc_decomp_warn(context, "failed to decode MSS option: packet "
+					                 "reports that option is static, but context "
+					                 "knows nothing about its value");
+					goto error;
+				}
 				opt_bits->data.mss.value =
 					tcp_context->tcp_opts.bits[opt_index].data.mss.value;
 			}
@@ -3615,6 +3629,13 @@ static bool d_tcp_decode_bits_tcp_opts(const struct rohc_decomp_ctxt *const cont
 		{
 			if(opt_bits->data.ws.is_static)
 			{
+				if(!tcp_context->tcp_opts.bits[opt_index].used)
+				{
+					rohc_decomp_warn(context, "failed to decode WS option: packet "
+					                 "reports that option is static, but context "
+					                 "knows nothing about its value");
+					goto error;
+				}
 				opt_bits->data.ws.value =
 					tcp_context->tcp_opts.bits[opt_index].data.ws.value;
 			}
@@ -3660,6 +3681,13 @@ static bool d_tcp_decode_bits_tcp_opts(const struct rohc_decomp_ctxt *const cont
 			if(bits->tcp_opts.bits[opt_index].data.generic.type == TCP_GENERIC_OPT_STATIC ||
 			   bits->tcp_opts.bits[opt_index].data.generic.type == TCP_GENERIC_OPT_STABLE)
 			{
+				if(!tcp_context->tcp_opts.bits[opt_index].used)
+				{
+					rohc_decomp_warn(context, "failed to decode generic option: packet "
+					                 "reports that option is static, but context "
+					                 "knows nothing about its value");
+					goto error;
+				}
 				opt_bits->data.generic.load_len =
 					tcp_context->tcp_opts.bits[opt_index].data.generic.load_len;
 				memcpy(opt_bits->data.generic.load,
