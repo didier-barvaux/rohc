@@ -976,8 +976,11 @@ static int rohc_list_parse_insertion_scheme(struct list_decomp *const decomp,
 			if(ref_list_cur_pos < ref_list->items_nr)
 			{
 				/* new list, insert the item from reference list */
-				rd_list_debug(decomp, "use item from reference list (index %zu) into "
-				              "current list (index %zu)", ref_list_cur_pos, i);
+				rd_list_debug(decomp, "use %u-byte item (type 0x%02x) from reference "
+				              "list (index %zu) into current list (index %zu)",
+				              ref_list->items[ref_list_cur_pos]->length,
+				              ref_list->items[ref_list_cur_pos]->type,
+				              ref_list_cur_pos, i);
 				/* use next item from reference list */
 				ins_list->items[i] = ref_list->items[ref_list_cur_pos];
 				ins_list->items_nr++;

@@ -159,21 +159,23 @@ bool detect_ipv6_ext_changes(struct list_comp *const comp,
 		       ROHC_LIST_ITEMS_MAX * sizeof(struct rohc_list_item *));
 		comp->lists[new_cur_id].items_nr = pkt_list.items_nr;
 		comp->lists[new_cur_id].counter = 0;
+		comp->lists[ROHC_LIST_GEN_ID_ANON].counter = 0;
 	}
 
 	/* do we need to send some bits of the compressed list? */
 	if(new_cur_id != comp->cur_id)
 	{
 		rc_list_debug(comp, "send some bits for extension header list of the "
-		              "outer IPv6 header because it changed");
+		              "IPv6 header because it changed");
 		*list_struct_changed = true;
 		*list_content_changed = true;
+		comp->lists[new_cur_id].counter = 0;
 	}
 	else if(new_cur_id != ROHC_LIST_GEN_ID_NONE &&
 	        comp->lists[new_cur_id].counter < comp->list_trans_nr)
 	{
 		rc_list_debug(comp, "send some bits for extension header list of the "
-		              "outer IPv6 header because it was not sent enough times");
+		              "IPv6 header because it was not sent enough times");
 		*list_struct_changed = true;
 		*list_content_changed = false;
 	}
@@ -231,9 +233,6 @@ static bool build_ipv6_ext_pkt_list(struct list_comp *const comp,
 
 	/* reset the list of the current packet */
 	rohc_list_reset(pkt_list);
-
-	/* there is one extension or more */
-	rc_list_debug(comp, "there is at least one IPv6 extension in packet");
 
 	/* parse all extension headers:
 	 *  - update the related entries in the translation table,
@@ -400,10 +399,16 @@ void rohc_list_update_context(struct list_comp *const comp)
 	}
 
 	/* current list was sent once more, do we update the reference list? */
-	if(comp->cur_id != comp->ref_id)
+	if(comp->lists[comp->cur_id].counter < comp->list_trans_nr)
 	{
 		comp->lists[comp->cur_id].counter++;
-		if(comp->cur_id != ROHC_LIST_GEN_ID_ANON &&
+		rc_list_debug(comp, "current list (gen_id = %u) was sent %u/%u times",
+		              comp->cur_id, comp->lists[comp->cur_id].counter,
+		              comp->list_trans_nr);
+
+		/* do we update the reference list? */
+		if(comp->cur_id != comp->ref_id &&
+		   comp->cur_id != ROHC_LIST_GEN_ID_ANON &&
 		   comp->lists[comp->cur_id].counter >= comp->list_trans_nr)
 		{
 			if(comp->ref_id != ROHC_LIST_GEN_ID_NONE)
@@ -455,7 +460,7 @@ static unsigned int rohc_list_get_nearest_list(const struct list_comp *const com
 	   rohc_list_equal(pkt_list, &comp->lists[comp->ref_id]))
 	{
 		/* reference list matches, no need for a new list */
-		rc_list_debug(comp, "send reference list with gen_id = %u", comp->ref_id);
+		rc_list_debug(comp, "send reference list with gen_id = %u (counter = %u)", comp->ref_id, comp->lists[comp->ref_id].counter);
 		*is_new_list = false;
 		return comp->ref_id;
 	}
@@ -465,9 +470,10 @@ static unsigned int rohc_list_get_nearest_list(const struct list_comp *const com
 	/* search for an identified list that matches the packet one, avoid the
 	 * reference list that we already checked, stop on first unused list */
 	for(gen_id = 0; new_cur_id == ROHC_LIST_GEN_ID_NONE &&
-	                gen_id <= ROHC_LIST_GEN_ID_MAX &&
-	                comp->lists[gen_id].counter > 0; gen_id++)
+	                gen_id <= ROHC_LIST_GEN_ID_MAX; gen_id++)
 	{
+		rc_list_debug(comp, "compare current list with existing list "
+		              "with gen_id %u (counter = %u)", gen_id, comp->lists[gen_id].counter);
 		if(gen_id != comp->ref_id &&
 		   comp->lists[gen_id].counter > 0 &&
 		   rohc_list_equal(pkt_list, &comp->lists[gen_id]))
@@ -536,16 +542,20 @@ static unsigned int rohc_list_get_nearest_list(const struct list_comp *const com
 	{
 		if(gen_id != comp->ref_id && comp->lists[gen_id].counter == 0)
 		{
+			rc_list_debug(comp, "gen_id %u is free, use it", gen_id);
 			new_cur_id = gen_id;
 		}
 	}
 	if(new_cur_id == ROHC_LIST_GEN_ID_NONE)
 	{
 		new_cur_id = gen_id % (ROHC_LIST_GEN_ID_MAX + 1);
+		rc_list_debug(comp, "no free gen_id found, re-use gen_id %u", new_cur_id);
 		if(new_cur_id == comp->ref_id)
 		{
 			new_cur_id++;
 			new_cur_id %= (ROHC_LIST_GEN_ID_MAX + 1);
+			rc_list_debug(comp, "gen_id %u is the reference list, re-use gen_id %u "
+			              "instead", comp->ref_id, new_cur_id);
 		}
 	}
 	rc_list_debug(comp, "the anonymous list is going to be transmitted for the "
@@ -585,7 +595,8 @@ static int rohc_list_decide_type(struct list_comp *const comp)
 		              "is the empty list");
 		encoding_type = 0;
 	}
-	else if(comp->lists[comp->cur_id].counter > 0)
+	else if(comp->cur_id == comp->ref_id ||
+	        comp->lists[comp->cur_id].counter > 0)
 	{
 		/* the structure of the list did not change, so use encoding type 0 */
 		rc_list_debug(comp, "use list encoding type 0 because the structure of "
@@ -1515,11 +1526,16 @@ static size_t rohc_list_compute_ins_mask(const struct list_comp *const comp,
 		if(ref_k >= ref_m || cur_list->items[k] != ref_list->items[ref_k])
 		{
 			/* item is new, so put 1 in mask */
+			rc_list_debug(comp, "insertion bit mask: insert new item of type %d "
+			              "at position %zu", cur_list->items[k]->type, k);
 			bit = 1;
 		}
 		else
 		{
 			/* item isn't new, so put 0 in mask and skip the reference item */
+			rc_list_debug(comp, "insertion bit mask: re-use item of type %d "
+			              "from position %zu of reference list into position %zu "
+			              "of current list", cur_list->items[k]->type, ref_k, k);
 			bit = 0;
 			ref_k++;
 		}
