@@ -1112,6 +1112,10 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	{
 		tcp_context->tcp_window_change_count++;
 	}
+	if(tcp_context->tcp_urg_ptr_trans_nr < ROHC_OA_REPEAT_MIN)
+	{
+		tcp_context->tcp_urg_ptr_trans_nr++;
+	}
 	if(tcp_context->ttl_hopl_change_count < ROHC_OA_REPEAT_MIN)
 	{
 		tcp_context->ttl_hopl_change_count++;
@@ -3773,6 +3777,21 @@ static bool tcp_detect_changes_tcp_hdr(struct rohc_comp_ctxt *const context,
 		                "it shall be transmitted %u times more",
 		                ROHC_OA_REPEAT_MIN - tcp_context->tcp_ack_num_trans_nr);
 		tmp->tcp_ack_num_unchanged = false;
+	}
+
+	/* TCP URG pointer that changes shall be transmitted several times */
+	if(tmp->tcp_urg_ptr_changed)
+	{
+		rohc_comp_debug(context, "TCP URG pointer changed in current packet, "
+		                "it shall be transmitted %u times", ROHC_OA_REPEAT_MIN);
+		tcp_context->tcp_urg_ptr_trans_nr = 0;
+	}
+	else if(tcp_context->tcp_urg_ptr_trans_nr < ROHC_OA_REPEAT_MIN)
+	{
+		rohc_comp_debug(context, "TCP URG pointer changed in last packets, "
+		                "it shall be transmitted %u times more",
+		                ROHC_OA_REPEAT_MIN - tcp_context->tcp_urg_ptr_trans_nr);
+		tmp->tcp_urg_ptr_changed = true;
 	}
 
 	return true;

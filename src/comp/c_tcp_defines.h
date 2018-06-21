@@ -127,6 +127,8 @@ struct sc_tcp_context
 	uint8_t tcp_opts_list_struct_trans_nr;
 	/** The number of TCP options static transmissions since last change */
 	uint8_t tcp_opts_list_static_trans_nr;
+	/** The number of TCP URG pointer transmissions since last change */
+	uint8_t tcp_urg_ptr_trans_nr;
 
 	uint8_t ecn_used:1; /**< Explicit Congestion Notification used */
 	/* Context Replication */
