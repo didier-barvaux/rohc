@@ -924,6 +924,7 @@ rohc_status_t rohc_decompress3(struct rohc_decomp *const decomp,
 			case ROHC_STATUS_MALFORMED:
 			case ROHC_STATUS_OUTPUT_TOO_SMALL:
 			case ROHC_STATUS_ERROR:
+			case ROHC_STATUS_LACKS_INFO:
 				decomp->stats.failed_decomp++;
 				break;
 			case ROHC_STATUS_NO_CONTEXT:

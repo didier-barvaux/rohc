@@ -2750,7 +2750,7 @@ static void d_tcp_reset_extr_bits(const struct rohc_decomp_ctxt *const context,
  * @param payload_len   The length of the packet payload (in bytes)
  * @param[out] decoded  The corresponding decoded values
  * @return              ROHC_STATUS_OK if decoding is successful,
- *                      ROHC_STATUS_ERROR otherwise
+ *                      ROHC_STATUS_LACKS_INFO otherwise
  */
 static rohc_status_t d_tcp_decode_bits(const struct rohc_decomp_ctxt *const context,
                                        const struct rohc_tcp_extr_bits *const bits,
@@ -2822,7 +2822,7 @@ static rohc_status_t d_tcp_decode_bits(const struct rohc_decomp_ctxt *const cont
 	return ROHC_STATUS_OK;
 
 error:
-	return ROHC_STATUS_ERROR;
+	return ROHC_STATUS_LACKS_INFO;
 }
 
 

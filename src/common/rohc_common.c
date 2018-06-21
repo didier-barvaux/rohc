@@ -90,6 +90,8 @@ const char * rohc_strerror(const rohc_status_t status)
 			return "output buffer too small";
 		case ROHC_STATUS_ERROR:
 			return "undefined problem";
+		case ROHC_STATUS_LACKS_INFO:
+			return "decoding lacked information";
 		default:
 			return "no description";
 	}

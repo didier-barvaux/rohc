@@ -108,8 +108,10 @@ int main(int argc, char *argv[])
 		CHECK(strcmp(rohc_strerror(ROHC_STATUS_OUTPUT_TOO_SMALL), unknown) != 0);
 		CHECK(strcmp(rohc_strerror(ROHC_STATUS_ERROR), "") != 0);
 		CHECK(strcmp(rohc_strerror(ROHC_STATUS_ERROR), unknown) != 0);
+		CHECK(strcmp(rohc_strerror(ROHC_STATUS_LACKS_INFO), "") != 0);
+		CHECK(strcmp(rohc_strerror(ROHC_STATUS_LACKS_INFO), unknown) != 0);
 
-		CHECK(strcmp(rohc_strerror(ROHC_STATUS_ERROR + 1), unknown) == 0);
+		CHECK(strcmp(rohc_strerror(ROHC_STATUS_LACKS_INFO + 1), unknown) == 0);
 	}
 
 	/* rohc_get_mode_descr() */

@@ -93,6 +93,8 @@ typedef enum
 	ROHC_STATUS_OUTPUT_TOO_SMALL  = 5,
 	/** The action encountered an undefined problem */
 	ROHC_STATUS_ERROR             = 6,
+	/** The action failed because decoding lacked information */
+	ROHC_STATUS_LACKS_INFO        = 7,
 
 } rohc_status_t;
 
