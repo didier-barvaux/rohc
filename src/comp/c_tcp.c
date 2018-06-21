@@ -1120,6 +1120,10 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	{
 		tcp_context->innermost_ip_id_behavior_trans_nr++;
 	}
+	if(tcp_context->innermost_dscp_trans_nr < ROHC_OA_REPEAT_MIN)
+	{
+		tcp_context->innermost_dscp_trans_nr++;
+	}
 	if(tcp_context->ipv6_exts_list_static_trans_nr < ROHC_OA_REPEAT_MIN)
 	{
 		tcp_context->ipv6_exts_list_static_trans_nr++;
@@ -2913,7 +2917,7 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 			uncomp_pkt_hdrs->innermost_ip_hdr->ipv4;
 
 		/* dscp_present =:= irregular(1) [ 1 ] */
-		ret = dscp_encode(inner_ip_ctxt->dscp, inner_ipv4->dscp,
+		ret = dscp_encode(!tmp->dscp_changed, inner_ipv4->dscp,
 		                  co_common_opt, rohc_remain_len, &indicator);
 		if(ret < 0)
 		{
@@ -2939,7 +2943,7 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 		const uint8_t dscp = ipv6_get_dscp(inner_ipv6);
 
 		/* dscp_present =:= irregular(1) [ 1 ] */
-		ret = dscp_encode(inner_ip_ctxt->dscp, dscp, co_common_opt,
+		ret = dscp_encode(!tmp->dscp_changed, dscp, co_common_opt,
 		                  rohc_remain_len, &indicator);
 		if(ret < 0)
 		{
@@ -3195,6 +3199,21 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 		tmp->dscp_changed =
 			!!(ipv6_get_dscp(inner_ipv6) != inner_ip_ctxt->dscp);
 		tcp_field_descr_change(context, "DSCP", tmp->dscp_changed, 0);
+	}
+
+	/* innermost IPv4/IPv6 DSCP */
+	if(tmp->dscp_changed)
+	{
+		rohc_comp_debug(context, "innermost IP DSCP changed in current packet, "
+		                "it shall be transmitted %u times", ROHC_OA_REPEAT_MIN);
+		tcp_context->innermost_dscp_trans_nr = 0;
+	}
+	else if(tcp_context->innermost_dscp_trans_nr < ROHC_OA_REPEAT_MIN)
+	{
+		rohc_comp_debug(context, "innermost IP DSCP changed in last packets, "
+		                "it shall be transmitted %u times more", ROHC_OA_REPEAT_MIN -
+		                tcp_context->innermost_dscp_trans_nr);
+		tmp->dscp_changed = true;
 	}
 
 	/* encode innermost IPv4 TTL or IPv6 Hop Limit */

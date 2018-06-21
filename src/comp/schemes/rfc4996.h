@@ -103,7 +103,7 @@ int c_optional_ip_id_lsb(const int behavior,
 	__attribute__((warn_unused_result, nonnull(4, 6, 8)));
 
 // RFC4996 page 75
-int dscp_encode(const uint8_t context_value,
+int dscp_encode(const bool is_static,
                 const uint8_t packet_value,
                 uint8_t *const rohc_data,
                 const size_t rohc_max_len,

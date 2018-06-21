@@ -117,6 +117,8 @@ struct sc_tcp_context
 	uint8_t ttl_hopl_change_count:4;
 	/** The number of innermost IP-ID behavior transmissions since last change */
 	uint8_t innermost_ip_id_behavior_trans_nr;
+	/** The number of innermost DSCP transmissions since last change */
+	uint8_t innermost_dscp_trans_nr;
 	/** The number of IPv6 exts static transmissions since last change */
 	uint8_t ipv6_exts_list_static_trans_nr;
 	/** The number of IPv6 exts dynamic transmissions since last change */

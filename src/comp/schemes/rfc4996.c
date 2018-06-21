@@ -476,7 +476,7 @@ error:
  *
  * See RFC4996 page 75
  *
- * @param context_value    The DSCP value in the compression context
+ * @param is_static        Whether the DSCP value is static or not
  * @param packet_value     The DSCP value in the packet to compress
  * @param[out] rohc_data   The compressed value
  * @param rohc_max_len     The max remaining length in the ROHC buffer
@@ -484,7 +484,7 @@ error:
  * @return                 The number of ROHC bytes written,
  *                         -1 if a problem occurs
  */
-int dscp_encode(const uint8_t context_value,
+int dscp_encode(const bool is_static,
                 const uint8_t packet_value,
                 uint8_t *const rohc_data,
                 const size_t rohc_max_len,
@@ -492,7 +492,7 @@ int dscp_encode(const uint8_t context_value,
 {
 	size_t len;
 
-	if(packet_value == context_value)
+	if(is_static)
 	{
 		*indicator = 0;
 		len = 0;
