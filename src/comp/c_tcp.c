@@ -946,6 +946,26 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		rohc_comp_warn(context, "failed to detect changes in uncompressed packet");
 		goto error;
 	}
+	if(tmp.tcp_opts.do_list_struct_changed)
+	{
+		tcp_context->tcp_opts_list_struct_trans_nr = 0;
+	}
+	else if(tcp_context->tcp_opts_list_struct_trans_nr < ROHC_OA_REPEAT_MIN)
+	{
+		rohc_comp_debug(context, "some TCP options were not present at the very "
+		                "same location in the last few packets");
+		tmp.tcp_opts.do_list_struct_changed = true;
+	}
+	if(tmp.tcp_opts.do_list_static_changed)
+	{
+		tcp_context->tcp_opts_list_static_trans_nr = 0;
+	}
+	else if(tcp_context->tcp_opts_list_static_trans_nr < ROHC_OA_REPEAT_MIN)
+	{
+		rohc_comp_debug(context, "some static TCP options changed in the last "
+		                "few packets");
+		tmp.tcp_opts.do_list_static_changed = true;
+	}
 
 	/* decide in which state to go */
 	tcp_decide_state(context, uncomp_pkt->time);
@@ -1107,6 +1127,14 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	if(tcp_context->ipv6_exts_list_dyn_trans_nr < ROHC_OA_REPEAT_MIN)
 	{
 		tcp_context->ipv6_exts_list_dyn_trans_nr++;
+	}
+	if(tcp_context->tcp_opts_list_struct_trans_nr < ROHC_OA_REPEAT_MIN)
+	{
+		tcp_context->tcp_opts_list_struct_trans_nr++;
+	}
+	if(tcp_context->tcp_opts_list_static_trans_nr < ROHC_OA_REPEAT_MIN)
+	{
+		tcp_context->tcp_opts_list_static_trans_nr++;
 	}
 
 	return counter;
