@@ -108,6 +108,10 @@ dist-hook:
 		-not -name rohcv2_maxcontexts1_wlsb4_largecid.sizes -and \
 		-not -name rohcv2_maxcontexts1_wlsb64_smallcid.sizes -and \
 		-not -name rohcv2_maxcontexts1_wlsb64_largecid.sizes -and \
+		-not -name no_loss_robustness_rfc6846_keep_1_on_4 -and \
+		-not -name no_loss_robustness_rfc6846_keep_2_on_4 -and \
+		-not -name no_loss_robustness_rfc6846_keep_3_on_4 -and \
+		-not -name no_loss_robustness_rfc6846_keep_4_on_4 -and \
 		-not -name README \
 		-exec $(RM) \{\} \;
 
