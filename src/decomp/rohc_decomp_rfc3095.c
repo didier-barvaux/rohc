@@ -1184,7 +1184,7 @@ static int parse_dynamic_part_ipv4(const struct rohc_decomp_ctxt *const context,
 	read++;
 
 	/* read the IP-ID field */
-	bits->id = GET_NEXT_16_BITS(packet);
+	bits->id = ((packet[0] << 8) & 0xff00) | (packet[1] & 0x00ff);
 	bits->id_nr = 16;
 	bits->is_id_enc = false;
 	rohc_decomp_debug(context, "IP-ID = 0x%04x", bits->id);
@@ -4261,9 +4261,10 @@ static bool parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
 		}
 
 		/* retrieve the full outer IP-ID value */
-		bits->outer_ip.id = rohc_ntoh16(GET_NEXT_16_BITS(rohc_remain_data));
+		bits->outer_ip.id = ((rohc_remain_data[0] << 8) & 0xff00) |
+		                    (rohc_remain_data[1] & 0x00ff);
 		bits->outer_ip.id_nr = 16;
-		bits->outer_ip.is_id_enc = true;
+		bits->outer_ip.is_id_enc = false;
 
 		rohc_decomp_debug(context, "replace any existing outer IP-ID bits with "
 		                  "with the ones found at the end of the UO* packet "
@@ -4300,9 +4301,10 @@ static bool parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
 		}
 
 		/* retrieve the full inner IP-ID value */
-		bits->inner_ip.id = rohc_ntoh16(GET_NEXT_16_BITS(rohc_remain_data));
+		bits->inner_ip.id = ((rohc_remain_data[0] << 8) & 0xff00) |
+		                    (rohc_remain_data[1] & 0x00ff);
 		bits->inner_ip.id_nr = 16;
-		bits->inner_ip.is_id_enc = true;
+		bits->inner_ip.is_id_enc = false;
 
 		rohc_decomp_debug(context, "replace any existing inner IP-ID bits "
 		                  "with the ones found at the end of the UO* packet "
@@ -5137,10 +5139,6 @@ static bool build_uncomp_ipv4(const struct rohc_decomp_ctxt *const context,
 	/* dynamic fields */
 	ip->tos = decoded.tos;
 	ip->id = rohc_hton16(decoded.id);
-	if(!decoded.nbo)
-	{
-		ip->id = swab16(ip->id);
-	}
 	ip->frag_off = 0;
 	ip->df = decoded.df;
 	ip->ttl = decoded.ttl;
@@ -5856,45 +5854,22 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 		}
 		rohc_decomp_debug(context, "decoded %s SID = %d", descr, decoded->sid);
 
+		if(decoded->rnd == 1 && decoded->sid == 1)
+		{
+			rohc_decomp_warn(context, "%s IP-ID got both RND and SID flags!", descr);
+			goto error;
+		}
+
 		/* IP-ID */
 		if(!bits->is_id_enc)
 		{
-			/* IR/IR-DYN packets transmit the IP-ID verbatim, so convert to
-			 * host byte order only if nbo=1 */
+			/* IR/IR-DYN packets transmit the IP-ID verbatim, so do not change
+			 * its endianness */
+			/* RFC3095 §5.7: The value of NBO is ignored when value(RND) = 1 */
 			if(bits->id_nr != 16)
 			{
 				rohc_decomp_warn(context, "%s IP-ID is not encoded, but the packet "
 				                 "does not provide 16 bits (only %zu bits provided)",
-				                 descr, bits->id_nr);
-				goto error;
-			}
-			decoded->id = bits->id;
-			if(bits->nbo)
-			{
-				decoded->id = rohc_ntoh16(bits->id);
-			}
-			else
-			{
-#if WORDS_BIGENDIAN == 1
-				decoded->id = swab16(bits->id);
-#else
-				decoded->id = bits->id;
-#endif
-			}
-		}
-		else if(decoded->rnd)
-		{
-			/* take packet value unchanged if random */
-			if(decoded->sid)
-			{
-				rohc_decomp_warn(context, "%s IP-ID got both RND and SID flags!",
-				                 descr);
-				goto error;
-			}
-			if(bits->id_nr != 16)
-			{
-				rohc_decomp_warn(context, "%s IP-ID is random, but the packet does "
-				                 "not provide 16 bits (only %zu bits provided)",
 				                 descr, bits->id_nr);
 				goto error;
 			}
@@ -5917,14 +5892,34 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 			/* the IP-ID of the IPv4 header changed in a predictable way:
 			 * decode its new value with the help of the decoded SN and the
 			 * least-significant IP-ID bits transmitted in the ROHC header */
+			uint16_t decoded_id;
 			int ret;
+			rohc_decomp_debug(context, "decode %s IP-ID from %zu bits of IP-ID delta "
+			                  "0x%x and decoded SN = 0x%04x", descr, bits->id_nr,
+			                  bits->id, decoded_sn);
+			rohc_decomp_debug(context, "ref = 0x%x", rohc_lsb_get_ref(&ip_id_decode->lsb, lsb_ref_type));
 			ret = ip_id_offset_decode(ip_id_decode, lsb_ref_type, bits->id, bits->id_nr,
-			                          decoded_sn, &decoded->id);
+			                          decoded_sn, &decoded_id);
 			if(ret != 1)
 			{
 				rohc_decomp_warn(context, "failed to decode %zu %s IP-ID bits "
 				                 "0x%x", bits->id_nr, descr, bits->id);
 				goto error;
+			}
+
+			/* RFC3095 §5.7: if value(NBO) = 0, the octets of hdr(IP-ID) are
+			 * swapped before compression and after decompression */
+			if(decoded->nbo == 0)
+			{
+				decoded->id = swab16(decoded_id);
+				rohc_decomp_debug(context, "%s IP-ID shall be swapped because NBO=0: "
+				                  "0x%04x -> 0x%04x", descr, decoded_id, decoded->id);
+			}
+			else
+			{
+				decoded->id = decoded_id;
+				rohc_decomp_debug(context, "%s IP-ID shall not be swapped because NBO=1: "
+				                  "0x%04x -> 0x%04x", descr, bits->id, decoded->id);
 			}
 		}
 		rohc_decomp_debug(context, "decoded %s IP-ID = 0x%04x (rnd = %d, "
@@ -6231,6 +6226,9 @@ void rfc3095_decomp_update_ctxt(struct rohc_decomp_ctxt *const context,
 		ipv4_set_id(&rfc3095_ctxt->outer_ip_changes->ip, decoded->outer_ip.id);
 		ip_id_offset_set_ref(&rfc3095_ctxt->outer_ip_id_offset_ctxt,
 		                     decoded->outer_ip.id, decoded->sn, keep_ref_minus_1);
+		rohc_decomp_debug(context, "outer IP-ID delta 0x%04x - 0x%04x = 0x%04x "
+		                  "is the new reference", decoded->outer_ip.id, decoded->sn,
+		                  decoded->outer_ip.id - decoded->sn);
 		ipv4_set_df(&rfc3095_ctxt->outer_ip_changes->ip, decoded->outer_ip.df);
 		rfc3095_ctxt->outer_ip_changes->nbo = decoded->outer_ip.nbo;
 		rfc3095_ctxt->outer_ip_changes->rnd = decoded->outer_ip.rnd;
@@ -6255,6 +6253,9 @@ void rfc3095_decomp_update_ctxt(struct rohc_decomp_ctxt *const context,
 			ipv4_set_id(&rfc3095_ctxt->inner_ip_changes->ip, decoded->inner_ip.id);
 			ip_id_offset_set_ref(&rfc3095_ctxt->inner_ip_id_offset_ctxt,
 			                     decoded->inner_ip.id, decoded->sn, keep_ref_minus_1);
+			rohc_decomp_debug(context, "inner IP-ID delta 0x%04x - 0x%04x = 0x%04x "
+			                  "is the new reference", decoded->inner_ip.id, decoded->sn,
+			                  decoded->inner_ip.id - decoded->sn);
 			ipv4_set_df(&rfc3095_ctxt->inner_ip_changes->ip, decoded->inner_ip.df);
 			rfc3095_ctxt->inner_ip_changes->nbo = decoded->inner_ip.nbo;
 			rfc3095_ctxt->inner_ip_changes->rnd = decoded->inner_ip.rnd;

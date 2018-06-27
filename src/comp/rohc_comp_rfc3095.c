@@ -6169,6 +6169,8 @@ static void update_context_ip_hdr(const struct rohc_comp_ctxt *const context,
 		/* add the new IP-ID / SN delta to the W-LSB encoding object */
 		c_add_wlsb(&ip_flags->info.v4.ip_id_window, rfc3095_ctxt->sn,
 		           ip_flags->info.v4.id_delta);
+		rohc_comp_debug(context, "update context with IP-ID delta 0x%04x",
+		                ip_flags->info.v4.id_delta);
 	}
 	else /* IPV6 */
 	{
