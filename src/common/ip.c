@@ -646,8 +646,10 @@ const struct ipv4_hdr * ipv4_get_header(const struct ip_packet *const ip)
  */
 uint16_t ipv4_get_id(const struct ip_packet *const ip)
 {
+	const unsigned int nbo = 1;
+	const unsigned int rnd = 1;
 	assert(ip->version == IPV4);
-	return ipv4_get_id_nbo(ip, 1);
+	return ipv4_get_id_nbo(ip, nbo, rnd);
 }
 
 
@@ -658,18 +660,20 @@ uint16_t ipv4_get_id(const struct ip_packet *const ip)
  * is not \ref IPV4.
  *
  * @param ip  The IP packet to analyze
- * @param nbo The NBO flag (if RND = 1, use NBO = 1)
+ * @param nbo The NBO flag
+ * @param rnd The RND flag
  * @return    The IP-ID
  */
 uint16_t ipv4_get_id_nbo(const struct ip_packet *const ip,
-                         const unsigned int nbo)
+                         const unsigned int nbo,
+                         const unsigned int rnd)
 {
 	uint16_t id;
 
 	assert(ip->version == IPV4);
 
 	id = ip->header.v4.id;
-	if(!nbo)
+	if(rnd == 0 && nbo == 0)
 	{
 		/* If IP-ID is not transmitted in Network Byte Order,
 		 * swap the two bytes */

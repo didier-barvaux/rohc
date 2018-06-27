@@ -342,7 +342,9 @@ const struct ipv4_hdr * ipv4_get_header(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));
 uint16_t ipv4_get_id(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));
-uint16_t ipv4_get_id_nbo(const struct ip_packet *const ip, const unsigned int nbo)
+uint16_t ipv4_get_id_nbo(const struct ip_packet *const ip,
+                         const unsigned int nbo,
+                         const unsigned int rnd)
 	__attribute__((warn_unused_result, nonnull(1), pure));
 int ipv4_get_df(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));

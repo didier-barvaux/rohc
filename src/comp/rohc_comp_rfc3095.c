@@ -6643,10 +6643,11 @@ static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
 
 		if(new_id == old_id)
 		{
-			/* previous and current IP-ID values are equal: IP-ID is constant */
+			/* previous and current IP-ID values are equal: IP-ID is constant
+			 * (do not change NBO value if RND, decompressor shall ignore it) */
 			rohc_comp_debug(context, "IP-ID is constant (SID detected)");
 			header_info->info.v4.rnd = 0;
-			header_info->info.v4.nbo = 1;
+			header_info->info.v4.nbo = header_info->info.v4.old_nbo;
 			header_info->info.v4.sid = 1;
 		}
 		else if(is_ip_id_increasing(old_id, new_id, 19))
@@ -6676,9 +6677,12 @@ static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
 			}
 			else
 			{
+				/* IP-ID is not constant nor increasing (in Little/Big Endian),
+				 * it seems to behave randomly
+				 * (do not change NBO value if RND, decompressor shall ignore it) */
 				rohc_comp_debug(context, "IP-ID is random (RND detected)");
 				header_info->info.v4.rnd = 1;
-				header_info->info.v4.nbo = 1; /* do not change bit order if RND */
+				header_info->info.v4.nbo = header_info->info.v4.old_nbo;
 				header_info->info.v4.sid = 0;
 			}
 		}
@@ -6816,7 +6820,8 @@ static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		/* compute the new IP-ID / SN delta */
 		rfc3095_ctxt->outer_ip_flags.info.v4.id_delta =
 			rohc_ntoh16(ipv4_get_id_nbo(&uncomp_pkt->outer_ip,
-			                            rfc3095_ctxt->outer_ip_flags.info.v4.nbo)) -
+			                            rfc3095_ctxt->outer_ip_flags.info.v4.nbo,
+			                            rfc3095_ctxt->outer_ip_flags.info.v4.rnd)) -
 			rfc3095_ctxt->sn;
 		rohc_comp_debug(context, "new outer IP-ID delta = 0x%x / %u (NBO = %d, "
 		                "RND = %d, SID = %d)",
@@ -6909,7 +6914,8 @@ static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		/* compute the new IP-ID / SN delta */
 		rfc3095_ctxt->inner_ip_flags.info.v4.id_delta =
 			rohc_ntoh16(ipv4_get_id_nbo(&uncomp_pkt->inner_ip,
-			                            rfc3095_ctxt->inner_ip_flags.info.v4.nbo)) -
+			                            rfc3095_ctxt->inner_ip_flags.info.v4.nbo,
+			                            rfc3095_ctxt->inner_ip_flags.info.v4.rnd)) -
 			rfc3095_ctxt->sn;
 		rohc_comp_debug(context, "new inner IP-ID delta = 0x%x / %u (NBO = %d, "
 		                "RND = %d, SID = %d)",
