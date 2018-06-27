@@ -491,10 +491,10 @@ static int test_decomp_one(struct rohc_decomp *const decomp,
 
 	/* compare the decompressed packet with the original one */
 	printf("=== uncompressed packet comparison: start\n");
-	if(cmp_packet && !compare_packets(rohc_buf_data(uncomp_packet),
-	                                  uncomp_packet.len,
-	                                  cmp_packet + link_len_cmp,
-	                                  cmp_size - link_len_cmp))
+	if(cmp_packet && !compare_packets(cmp_packet + link_len_cmp,
+	                                  cmp_size - link_len_cmp,
+	                                  rohc_buf_data(uncomp_packet),
+	                                  uncomp_packet.len))
 	{
 		printf("=== uncompressed packet comparison: failure\n");
 		printf("\n");
