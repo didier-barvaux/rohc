@@ -6820,6 +6820,8 @@ static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		/* add the new IP-ID / SN delta to the W-LSB encoding object */
 		c_add_wlsb(&rfc3095_ctxt->outer_ip_flags.info.v4.ip_id_window, rfc3095_ctxt->sn,
 		           rfc3095_ctxt->outer_ip_flags.info.v4.id_delta);
+		rohc_comp_debug(context, "update context with outer IP-ID delta 0x%04x",
+		                rfc3095_ctxt->outer_ip_flags.info.v4.id_delta);
 	}
 	else /* IPV6 */
 	{
@@ -6866,6 +6868,8 @@ static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		/* add the new IP-ID / SN delta to the W-LSB encoding object */
 		c_add_wlsb(&rfc3095_ctxt->inner_ip_flags.info.v4.ip_id_window, rfc3095_ctxt->sn,
 		           rfc3095_ctxt->inner_ip_flags.info.v4.id_delta);
+		rohc_comp_debug(context, "update context with inner IP-ID delta 0x%04x",
+		                rfc3095_ctxt->inner_ip_flags.info.v4.id_delta);
 	}
 	else if(uncomp_pkt->ip_hdr_nr > 1) /* IPV6 */
 	{

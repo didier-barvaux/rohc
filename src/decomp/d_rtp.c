@@ -1062,7 +1062,8 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
 		}
 
 		/* both inner and outer IP-ID fields are 2-byte long */
-		I_bits = rohc_ntoh16(GET_NEXT_16_BITS(rohc_remain_data));
+		I_bits = ((rohc_remain_data[0] << 8) & 0xff00) |
+		         (rohc_remain_data[1] & 0x00ff);
 		rohc_remain_data += 2;
 		rohc_remain_len -= 2;
 	}
@@ -1180,6 +1181,7 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
 			}
 			bits->inner_ip.id = I_bits;
 			bits->inner_ip.id_nr = 16;
+			bits->inner_ip.is_id_enc = true;
 			rohc_decomp_debug(context, "%zd bits of inner IP-ID in EXT3 = 0x%x",
 			                  bits->inner_ip.id_nr, bits->inner_ip.id);
 		}
@@ -1197,6 +1199,7 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
 			}
 			bits->outer_ip.id = I_bits;
 			bits->outer_ip.id_nr = 16;
+			bits->outer_ip.is_id_enc = true;
 			rohc_decomp_debug(context, "%zd bits of outer IP-ID in EXT3 = 0x%x",
 			                  bits->outer_ip.id_nr, bits->outer_ip.id);
 		}
