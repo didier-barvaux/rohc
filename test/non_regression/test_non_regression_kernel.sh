@@ -11,8 +11,8 @@ cur_dir="$( dirname "$0" )"
 tests_nr=0
 statuses=0
 
-for standard in rfc3095 rfc6846 ; do
-	for testfile in ${cur_dir}/${standard}/test_non_regression_*_maxcontexts0_wlsb4_smallcid.sh ; do
+for standard in rfc3095 rfc6846 rfc5225 ; do
+	for testfile in ${cur_dir}/${standard}/scripts/test_non_reg_*_mc0_wlsb4_smallcid.sh ; do
 
 		echo -n "running ${testfile}... "
 		tests_nr=$(( ${tests_nr} + 1 ))
