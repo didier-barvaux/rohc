@@ -165,11 +165,10 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 static int code_CO_packet(struct rohc_comp_ctxt *const context,
                           const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                           struct tcp_tmp_variables *const tmp,
-                          const struct rohc_buf *const uncomp_pkt,
                           uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
                           const rohc_packet_t packet_type)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 static int co_baseheader(struct rohc_comp_ctxt *const context,
                          struct sc_tcp_context *const tcp_context,
                          ip_context_t *const ip_inner_context,
@@ -971,7 +970,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	        (*packet_type) != ROHC_PACKET_IR_DYN)
 	{
 		/* co_common, seq_X, or rnd_X */
-		counter = code_CO_packet(context, uncomp_pkt_hdrs, &tmp, uncomp_pkt,
+		counter = code_CO_packet(context, uncomp_pkt_hdrs, &tmp,
 		                         rohc_pkt, rohc_pkt_max_len, *packet_type);
 		if(counter < 0)
 		{
@@ -1355,7 +1354,6 @@ error:
  * @param context           The compression context
  * @param uncomp_pkt_hdrs   The uncompressed headers to encode
  * @param tmp               The temporary state for the compressed packet
- * @param uncomp_pkt        The uncompressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       The type of ROHC packet to create
@@ -1365,14 +1363,13 @@ error:
 static int code_CO_packet(struct rohc_comp_ctxt *const context,
                           const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                           struct tcp_tmp_variables *const tmp,
-                          const struct rohc_buf *const uncomp_pkt,
                           uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
                           const rohc_packet_t packet_type)
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
 
-	const uint8_t *const uncomp_data = rohc_buf_data(*uncomp_pkt);
+	const uint8_t *const uncomp_data = (uint8_t *) uncomp_pkt_hdrs->ip_hdrs[0].ip;
 
 	uint8_t *rohc_remain_data = rohc_pkt;
 	size_t rohc_remain_len = rohc_pkt_max_len;
