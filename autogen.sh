@@ -89,7 +89,6 @@ ${NEW_PWD}/configure \
 	--enable-rohc-debug \
 	--enable-fail-on-warning \
 	--enable-fortify-sources \
-	--enable-app-performance \
 	--enable-app-sniffer \
 	--enable-app-stats \
 	--enable-rohc-tests \

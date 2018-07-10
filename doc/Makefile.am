@@ -135,7 +135,6 @@ rohc_all_sources = \
 	$(top_srcdir)/src/decomp/schemes/*.h \
 	$(top_srcdir)/src/decomp/schemes/test/*.c \
 	$(top_srcdir)/examples/*.c \
-	$(top_srcdir)/app/performance/*.c \
 	$(top_srcdir)/app/sniffer/*.c \
 	$(top_srcdir)/app/stats/*.c \
 	$(top_srcdir)/linux/include/*.h \

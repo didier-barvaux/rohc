@@ -411,16 +411,6 @@ AC_ARG_ENABLE(rohc_tests_valgrind,
 AM_CONDITIONAL([ROHC_TESTS_VALGRIND], [test x$enable_rohc_tests_valgrind = xyes])
 
 
-# check if ROHC performance tool (located in the app/performance/ subdir)
-# is enabled
-AC_ARG_ENABLE(app_performance,
-              AS_HELP_STRING([--enable-app-performance],
-                             [enable ROHC performance tool [default=no]]),
-              enable_app_perf=$enableval,
-              enable_app_perf=no)
-AM_CONDITIONAL([APP_PERF], [test x$enable_app_perf = xyes])
-
-
 # check if ROHC sniffer tool (located in the app/sniffer/ subdir)
 # is enabled
 AC_ARG_ENABLE(app_sniffer,
@@ -542,7 +532,6 @@ fi
 
 # if ROHC tests or apps are enabled: libpcap is mandatory
 if test "x$enable_rohc_tests" = "xyes" || \
-   test "x$enable_app_perf" = "xyes" || \
    test "x$enable_app_sniffer" = "xyes" || \
    test "x$enable_app_stats" = "xyes" ; then
 
@@ -999,7 +988,6 @@ AC_CONFIG_FILES([ \
 	examples/Makefile \
 	linux/Makefile \
 	app/Makefile \
-	app/performance/Makefile \
 	app/sniffer/Makefile \
 	app/stats/Makefile \
 	doc/Makefile \
