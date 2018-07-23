@@ -52,26 +52,14 @@ struct tcp_tmp_variables
 	/** The IP-ID / SN delta (with bits swapped if necessary) */
 	uint16_t ip_id_delta;
 
+	/** The version if the innermost IP header */
+	uint8_t innermost_ip_version;
+
 	/** The new number of IP extensions headers (for every IP header) */
 	uint8_t ip_exts_nr[ROHC_MAX_IP_HDRS];
 
-	/** The minimal number of bits required to encode the MSN value */
-	bits_nr_t nr_msn_bits;
-
-	/** The minimal number of bits required to encode the TCP ACK number
-	 *  with p = 16383 */
-	bits_nr_t nr_ack_bits_16383;
-
-	/** The minimal number of bits required to encode the innermost IP-ID value
-	 *  with p = 3 */
-	bits_nr_t nr_ip_id_bits_3;
-	/** The minimal number of bits required to encode the innermost IP-ID value
-	 *  with p = 1 */
-	bits_nr_t nr_ip_id_bits_1;
-
 	/* innermost IPv4 TTL or IPv6 Hop Limit */
 	uint8_t ttl_hopl;
-	bits_nr_t nr_ttl_hopl_bits;
 
 	/** Whether at least one of the static part of the IPv6 extensions changed
 	 * in the current packet */
@@ -96,16 +84,8 @@ struct tcp_tmp_variables
 	uint16_t ecn_used_changed:1; /**< Whether the ecn_used flag changed or not */
 	uint16_t unused:2;
 
-	uint8_t unused2[2];
+	uint8_t unused2[5];
 };
-
-/* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
-#if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
-     (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
-      (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
-_Static_assert((sizeof(struct tcp_tmp_variables) % 8) == 0,
-               "tcp_tmp_variables length should be multiple of 8 bytes");
-#endif
 
 
 /** Define the TCP part of the profile decompression context */
@@ -162,7 +142,7 @@ struct sc_tcp_context
 
 	/// The previous TCP header
 	struct tcphdr old_tcphdr;
-	uint8_t unused[3];
+	uint8_t unused2[3];
 
 	uint8_t ip_contexts_nr;
 	ip_context_t ip_contexts[ROHC_MAX_IP_HDRS];
@@ -178,8 +158,6 @@ _Static_assert((offsetof(struct sc_tcp_context, ttl_hopl_wlsb) % 8) == 0,
                "ttl_hopl_wlsb in sc_tcp_context should be aligned on 8 bytes");
 _Static_assert((offsetof(struct sc_tcp_context, tcp_opts) % 8) == 0,
                "tcp_opts in sc_tcp_context should be aligned on 8 bytes");
-_Static_assert((offsetof(struct sc_tcp_context, tmp) % 8) == 0,
-               "tmp in sc_tcp_context should be aligned on 8 bytes");
 _Static_assert((offsetof(struct sc_tcp_context, old_tcphdr) % 8) == 0,
                "old_tcphdr in sc_tcp_context should be aligned on 8 bytes");
 _Static_assert((offsetof(struct sc_tcp_context, ip_contexts) % 8) == 0,

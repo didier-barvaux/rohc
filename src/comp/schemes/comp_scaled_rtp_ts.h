@@ -123,17 +123,13 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
               const uint16_t sn)
 	__attribute__((nonnull(1)));
 
-void nb_bits_unscaled(const struct ts_sc_comp *const ts_sc,
-                      size_t *const bits_nr_less_equal_than_2,
-                      size_t *const bits_nr_more_than_2)
-	__attribute__((nonnull(1, 2, 3)));
+size_t nb_bits_unscaled(const struct ts_sc_comp *const ts_sc)
+	__attribute__((nonnull(1), warn_unused_result));
 void add_unscaled(struct ts_sc_comp *const ts_sc, const uint16_t sn)
 	__attribute__((nonnull(1)));
 
-void nb_bits_scaled(const struct ts_sc_comp *const ts_sc,
-                    size_t *const bits_nr_less_equal_than_2,
-                    size_t *const bits_nr_more_than_2)
-	__attribute__((nonnull(1, 2, 3)));
+size_t nb_bits_scaled(const struct ts_sc_comp *const ts_sc)
+	__attribute__((nonnull(1), warn_unused_result));
 void add_scaled(struct ts_sc_comp *const ts_sc, const uint16_t sn)
 	__attribute__((nonnull(1)));
 

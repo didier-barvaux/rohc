@@ -630,9 +630,6 @@ static void decomp_rfc5225_ip_reset_extr_bits(const struct rohc_decomp_ctxt *con
 		}
 		bits->ip_nr = rfc5225_ctxt->ip_contexts_nr;
 	}
-
-	/* default constant LSB shift parameters */
-	bits->msn.p = ROHC_LSB_SHIFT_VAR;
 }
 
 

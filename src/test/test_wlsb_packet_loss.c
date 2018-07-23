@@ -204,7 +204,7 @@ static bool run_test8_with_shift_param(bool be_verbose,
 	assert(win_size > 0);
 
 	/* create the W-LSB encoding context */
-	is_ok = wlsb_new(&wlsb, 8, win_size, p);
+	is_ok = wlsb_new(&wlsb, win_size);
 	if(!is_ok)
 	{
 		fprintf(stderr, "no memory to allocate W-LSB encoding context\n");
@@ -253,7 +253,11 @@ static bool run_test8_with_shift_param(bool be_verbose,
 
 		/* encode */
 		trace(be_verbose, "\tencode value 0x%02x ...\n", value8);
-		required_bits = wlsb_get_k_8bits(&wlsb, value8);
+		for(required_bits = 0;
+		    required_bits <= 8 && !wlsb_is_kp_possible_8bits(&wlsb, value8, required_bits, p);
+		    required_bits++)
+		{
+		}
 		assert(required_bits <= 8);
 		if(required_bits == 8)
 		{
@@ -348,7 +352,7 @@ static bool run_test16_with_shift_param(bool be_verbose,
 	assert(win_size > 0);
 
 	/* create the W-LSB encoding context */
-	is_ok = wlsb_new(&wlsb, 16, win_size, p);
+	is_ok = wlsb_new(&wlsb, win_size);
 	if(!is_ok)
 	{
 		fprintf(stderr, "no memory to allocate W-LSB encoding context\n");
@@ -397,7 +401,11 @@ static bool run_test16_with_shift_param(bool be_verbose,
 
 		/* encode */
 		trace(be_verbose, "\tencode value 0x%04x ...\n", value16);
-		required_bits = wlsb_get_k_16bits(&wlsb, value16);
+		for(required_bits = 0;
+		    required_bits <= 16 && !wlsb_is_kp_possible_16bits(&wlsb, value16, required_bits, p);
+		    required_bits++)
+		{
+		}
 		assert(required_bits <= 16);
 		if(required_bits == 16)
 		{
@@ -492,7 +500,7 @@ static bool run_test32_with_shift_param(bool be_verbose,
 	assert(win_size > 0);
 
 	/* create the W-LSB encoding context */
-	is_ok = wlsb_new(&wlsb, 32, ROHC_WLSB_WINDOW_WIDTH, p);
+	is_ok = wlsb_new(&wlsb, win_size);
 	if(!is_ok)
 	{
 		fprintf(stderr, "no memory to allocate W-LSB encoding context\n");
@@ -541,7 +549,11 @@ static bool run_test32_with_shift_param(bool be_verbose,
 
 		/* encode */
 		trace(be_verbose, "\tencode value 0x%08x ...\n", value32);
-		required_bits = wlsb_get_k_32bits(&wlsb, value32);
+		for(required_bits = 0;
+		    required_bits <= 32 && !wlsb_is_kp_possible_32bits(&wlsb, value32, required_bits, p);
+		    required_bits++)
+		{
+		}
 		assert(required_bits <= 32);
 		if(required_bits == 32)
 		{

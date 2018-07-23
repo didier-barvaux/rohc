@@ -82,6 +82,17 @@ struct c_tcp_opts_ctxt_tmp
 	/** The value of the TCP option timestamp echo reply (in HBO) */
 	uint32_t ts_reply;
 
+	/** Whether the content of every TCP options was transmitted or not */
+	bool is_list_item_present[MAX_TCP_OPTION_INDEX + 1];
+
+	/** The mapping between option types and indexes */
+	uint8_t position2index[ROHC_TCP_OPTS_MAX];
+
+	/** The number of options in the list of TCP options */
+	uint8_t nr;
+	/* The maximum index value used for the list of TCP options */
+	uint8_t idx_max;
+
 	/** Whether the structure of the list of TCP options changed in the
 	 * current packet */
 	uint8_t do_list_struct_changed:1;
@@ -92,40 +103,19 @@ struct c_tcp_opts_ctxt_tmp
 	uint8_t opt_ts_present:1;
 	uint8_t unused:5;
 
-	/** Whether the content of every TCP options was transmitted or not */
-	bool is_list_item_present[MAX_TCP_OPTION_INDEX + 1];
-
-	/** The number of options in the list of TCP options */
-	uint8_t nr;
-	/** The mapping between option types and indexes */
-	uint8_t position2index[ROHC_TCP_OPTS_MAX];
-	/* The maximum index value used for the list of TCP options */
-	uint8_t idx_max;
-
-	/** The minimal number of bits required to encode the TCP option timestamp
-	 *  echo request with p = -1 */
-	bits_nr_t nr_opt_ts_req_bits_minus_1;
-	/** The minimal number of bits required to encode the TCP option timestamp
-	 *  echo request with p = 0x40000 */
-	bits_nr_t nr_opt_ts_req_bits_0x40000;
-	/** The minimal number of bits required to encode the TCP option timestamp
-	 *  echo request with p = 0x4000000 */
-	bits_nr_t nr_opt_ts_req_bits_0x4000000;
-	/** The minimal number of bits required to encode the TCP option timestamp
-	 *  echo reply with p = -1 */
-	bits_nr_t nr_opt_ts_reply_bits_minus_1;
-	/** The minimal number of bits required to encode the TCP option timestamp
-	 *  echo reply with p = 0x40000 */
-	bits_nr_t nr_opt_ts_reply_bits_0x40000;
-	/** The minimal number of bits required to encode the TCP option timestamp
-	 *  echo reply with p = 0x4000000 */
-	bits_nr_t nr_opt_ts_reply_bits_0x4000000;
+	uint8_t unused2[5];
 };
 
 /* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
 #if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
      (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
       (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
+_Static_assert((offsetof(struct c_tcp_opts_ctxt_tmp, ts_req) % 8) == 0,
+               "ts_req in c_tcp_opts_ctxt_tmp should be aligned on 8 bytes");
+_Static_assert((offsetof(struct c_tcp_opts_ctxt_tmp, is_list_item_present) % 8) == 0,
+               "is_list_item_present in c_tcp_opts_ctxt_tmp should be aligned on 8 bytes");
+_Static_assert((offsetof(struct c_tcp_opts_ctxt_tmp, position2index) % 8) == 0,
+               "position2index in c_tcp_opts_ctxt_tmp should be aligned on 8 bytes");
 _Static_assert((sizeof(struct c_tcp_opts_ctxt_tmp) % 8) == 0,
                "c_tcp_opts_ctxt_tmp length should be multiple of 8 bytes");
 #endif

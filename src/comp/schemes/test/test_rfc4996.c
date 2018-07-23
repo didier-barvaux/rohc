@@ -168,7 +168,7 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 	};
 
 	/* create the W-LSB context */
-	is_ok = wlsb_new(&wlsb, 32, ROHC_WLSB_WINDOW_WIDTH, ROHC_LSB_SHIFT_VAR);
+	is_ok = wlsb_new(&wlsb, ROHC_WLSB_WINDOW_WIDTH);
 	if(!is_ok)
 	{
 		trace(be_verbose, "failed to create W-LSB context\n");
@@ -186,18 +186,11 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 	{
 		int indicator;
 		size_t comp_len;
-		size_t nr_bits_16383;
-		size_t nr_bits_63;
-
-		/* detect how many bits are required for the value */
-		nr_bits_16383 = wlsb_get_kp_32bits(&wlsb, inputs[i].uncomp_value, 16383);
-		nr_bits_63 = wlsb_get_kp_32bits(&wlsb, inputs[i].uncomp_value, 63);
 
 		/* compress the value */
 		trace(be_verbose, "\tvariable_length_32_enc(value = 0x%08x)\n",
 		      inputs[i].uncomp_value);
-		comp_len = variable_length_32_enc(old_value, inputs[i].uncomp_value,
-		                                  nr_bits_63, nr_bits_16383,
+		comp_len = variable_length_32_enc(old_value, inputs[i].uncomp_value, &wlsb,
 		                                  comp_data, comp_max_len, &indicator);
 		printf("\t\tindicator %d\n", indicator);
 		printf("\t\tencoded length %zu\n", comp_len);
