@@ -31,6 +31,7 @@
 
 #include "rohc_comp_internals.h"
 #include "rohc_packets.h"
+#include "net_pkt.h"
 #include "schemes/comp_list.h"
 #include "ip.h"
 #include "crc.h"
@@ -334,16 +335,12 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 void rohc_comp_rfc3095_destroy(struct rohc_comp_ctxt *const context)
 	__attribute__((nonnull(1)));
 
-bool rohc_comp_rfc3095_check_profile(const struct rohc_comp *const comp,
-                                     const struct net_pkt *const packet)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
-
 rohc_ext_t decide_extension(const struct rohc_comp_ctxt *const context,
                             const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1)));
 
 int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
-                             const struct net_pkt *const uncomp_pkt,
+                             const struct rohc_buf *const uncomp_pkt,
                              uint8_t *const rohc_pkt,
                              const size_t rohc_pkt_max_len,
                              rohc_packet_t *const packet_type,

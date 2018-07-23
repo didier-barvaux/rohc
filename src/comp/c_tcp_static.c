@@ -64,21 +64,21 @@ static int tcp_code_static_tcp_part(const struct rohc_comp_ctxt *const context,
  * @brief Code the static part of an IR packet
  *
  * @param context           The compression context
- * @param ip                The outer IP header
+ * @param uncomp_pkt        The uncompressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
 int tcp_code_static_part(struct rohc_comp_ctxt *const context,
-                         const struct ip_packet *const ip,
+                         const struct rohc_buf *const uncomp_pkt,
                          uint8_t *const rohc_pkt,
                          const size_t rohc_pkt_max_len)
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
 
-	const uint8_t *remain_data = ip->data;
-	size_t remain_len = ip->size;
+	const uint8_t *remain_data = rohc_buf_data(*uncomp_pkt);
+	size_t remain_len = uncomp_pkt->len;
 
 	uint8_t *rohc_remain_data = rohc_pkt;
 	size_t rohc_remain_len = rohc_pkt_max_len;

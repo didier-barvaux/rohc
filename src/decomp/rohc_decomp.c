@@ -72,28 +72,32 @@ extern const struct rohc_decomp_profile rohc_decomp_rfc5225_ip_udp_profile;
 extern const struct rohc_decomp_profile rohc_decomp_rfc5225_ip_esp_profile;
 
 
-/**
- * @brief The decompression parts of the ROHC profiles.
- */
-static const struct rohc_decomp_profile *const rohc_decomp_profiles[D_NUM_PROFILES] =
+/** The ROHC decompression profiles */
+static const struct rohc_decomp_profile *const
+	rohc_decomp_profiles[ROHC_PROFILE_ID_MAJOR_MAX + 1][ROHC_PROFILE_ID_MINOR_MAX + 1] =
 {
-	&d_uncomp_profile,
-	&d_rtp_profile,
-	&d_udp_profile,
-	&d_esp_profile,
-	&d_ip_profile,
-	&d_tcp_profile,
-	&d_udplite_profile,
-#if 0
-	&rohc_decomp_rfc5225_ip_udp_rtp_profile,
-#endif
-	&rohc_decomp_rfc5225_ip_udp_profile,
-	&rohc_decomp_rfc5225_ip_esp_profile,
-	&rohc_decomp_rfc5225_ip_profile,
-#if 0
-	&rohc_decomp_rfc5225_ip_udplite_rtp_profile,
-	&rohc_decomp_rfc5225_ip_udplite_profile,
-#endif
+	[0] = {
+		[0] = &d_uncomp_profile,
+		[1] = &d_rtp_profile,
+		[2] = &d_udp_profile,
+		[3] = &d_esp_profile,
+		[4] = &d_ip_profile,
+		[5] = NULL,
+		[6] = &d_tcp_profile,
+		[7] = NULL,
+		[8] = &d_udplite_profile,
+	},
+	[1] = {
+		[0] = NULL,
+		[1] = NULL,
+		[2] = &rohc_decomp_rfc5225_ip_udp_profile,
+		[3] = &rohc_decomp_rfc5225_ip_esp_profile,
+		[4] = &rohc_decomp_rfc5225_ip_profile,
+		[5] = NULL,
+		[6] = NULL,
+		[7] = NULL,
+		[8] = NULL,
+	},
 };
 
 
@@ -148,6 +152,10 @@ static const struct rohc_decomp_profile *
 	             const rohc_profile_t profile_id)
 	__attribute__((warn_unused_result, nonnull(1)));
 
+static bool rohc_decomp_profile_enabled_nocheck(const struct rohc_decomp *const decomp,
+                                                const rohc_profile_t profile)
+	__attribute__((warn_unused_result, nonnull(1)));
+
 static struct rohc_decomp_ctxt * context_create(struct rohc_decomp *decomp,
                                                 const rohc_cid_t cid,
                                                 const struct rohc_decomp_profile *const profile,
@@ -158,9 +166,6 @@ static struct rohc_decomp_ctxt * find_context(const struct rohc_decomp *const de
 	__attribute__((nonnull(1), warn_unused_result));
 static void context_free(struct rohc_decomp_ctxt *const context)
 	__attribute__((nonnull(1)));
-
-static int rohc_decomp_get_profile_index(const rohc_profile_t profile)
-	__attribute__((warn_unused_result));
 
 static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
                                      const struct rohc_buf rohc_packet,
@@ -474,8 +479,8 @@ struct rohc_decomp * rohc_decomp_new2(const rohc_cid_type_t cid_type,
 {
 
 	struct rohc_decomp *decomp;
+	uint8_t profile_major;
 	bool is_fine;
-	size_t i;
 
 	/* check input parameters */
 	if(cid_type == ROHC_SMALL_CID)
@@ -529,9 +534,14 @@ struct rohc_decomp * rohc_decomp_new2(const rohc_cid_type_t cid_type,
 	decomp->medium.max_cid = max_cid;
 
 	/* all decompression profiles are disabled by default */
-	for(i = 0; i < D_NUM_PROFILES; i++)
+	for(profile_major = 0; profile_major <= ROHC_PROFILE_ID_MAJOR_MAX; profile_major++)
 	{
-		decomp->enabled_profiles[i] = false;
+		uint8_t profile_minor;
+
+		for(profile_minor = 0; profile_minor <= ROHC_PROFILE_ID_MINOR_MAX; profile_minor++)
+		{
+			decomp->enabled_profiles[profile_major][profile_minor] = false;
+		}
 	}
 
 	/* the operational mode the decompressor shall target for all its contexts */
@@ -2897,8 +2907,6 @@ error:
 bool rohc_decomp_set_mrru(struct rohc_decomp *const decomp,
                           const size_t mrru)
 {
-	size_t idx;
-
 	/* decompressor must be valid */
 	if(decomp == NULL)
 	{
@@ -2925,16 +2933,25 @@ bool rohc_decomp_set_mrru(struct rohc_decomp *const decomp,
 	 */
 	if(mrru > 0)
 	{
-		for(idx = 0; idx < D_NUM_PROFILES; idx++)
+		uint8_t profile_major;
+
+		for(profile_major = 0; profile_major <= ROHC_PROFILE_ID_MAJOR_MAX; profile_major++)
 		{
-			if(decomp->enabled_profiles[idx] &&
-			   rohc_profile_is_rohcv2(rohc_decomp_profiles[idx]->id))
+			uint8_t profile_minor;
+
+			for(profile_minor = 0; profile_minor <= ROHC_PROFILE_ID_MINOR_MAX; profile_minor++)
 			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-				             "failed to set MRRU to %zu bytes: segmentation is not "
-				             "compatible with ROHCv2 profile 0x%04x that is enabled",
-				             mrru, rohc_decomp_profiles[idx]->id);
-				goto error;
+				const uint16_t profile_id = (profile_major << 8) | profile_minor;
+
+				if(rohc_decomp_profile_enabled_nocheck(decomp, profile_id) &&
+				   rohc_profile_is_rohcv2(profile_id))
+				{
+					rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+					             "failed to set MRRU to %zu bytes: segmentation is not "
+					             "compatible with ROHCv2 profile 0x%04x that is enabled",
+					             mrru, profile_id);
+					goto error;
+				}
 			}
 		}
 	}
@@ -3389,35 +3406,23 @@ error:
 
 
 /**
- * @brief Get profile index if profile exists
+ * @brief Is the given decompression profile enabled for a decompressor?
  *
- * @param profile  The profile to enable
- * @return         The profile index if the profile exists,
- *                 -1 if the profile does not exist
+ * @param decomp   The ROHC decompressor, shall be valid
+ * @param profile  The profile to ask status for
+ * @return         Possible return values:
+ *                  \li true if the profile exists and is enabled,
+ *                  \li false if the the profile does not exist,
+ *                  \li false if the profile is disabled
+ *
+ * @see rohc_decomp_profile_enabled
  */
-static int rohc_decomp_get_profile_index(const rohc_profile_t profile)
+static bool rohc_decomp_profile_enabled_nocheck(const struct rohc_decomp *const decomp,
+                                                const rohc_profile_t profile)
 {
-	size_t idx;
-
-	/* search for the profile location */
-	for(idx = 0; idx < D_NUM_PROFILES; idx++)
-	{
-		if(rohc_decomp_profiles[idx]->id == profile)
-		{
-			/* found */
-			break;
-		}
-	}
-
-	if(idx == D_NUM_PROFILES)
-	{
-		goto error;
-	}
-
-	return idx;
-
-error :
-	return -1;
+	const uint8_t profile_major = (profile >> 8) & 0xff;
+	const uint8_t profile_minor = profile & 0xff;
+	return decomp->enabled_profiles[profile_major][profile_minor];
 }
 
 
@@ -3443,27 +3448,22 @@ error :
 bool rohc_decomp_profile_enabled(const struct rohc_decomp *const decomp,
                                  const rohc_profile_t profile)
 {
-	size_t profile_idx;
-	int ret;
+	const uint8_t profile_major = (profile >> 8) & 0xff;
+	const uint8_t profile_minor = profile & 0xff;
+	bool is_profile_enabled;
 
-	if(decomp == NULL)
+	if(decomp == NULL ||
+	   profile_major > ROHC_PROFILE_ID_MAJOR_MAX ||
+	   profile_minor > ROHC_PROFILE_ID_MINOR_MAX)
 	{
-		goto error;
+		is_profile_enabled = false;
+	}
+	else
+	{
+		is_profile_enabled = decomp->enabled_profiles[profile_major][profile_minor];
 	}
 
-	/* search the profile location */
-	ret = rohc_decomp_get_profile_index(profile);
-	if(ret < 0)
-	{
-		goto error;
-	}
-	profile_idx = ret;
-
-	/* return profile status */
-	return decomp->enabled_profiles[profile_idx];
-
-error:
-	return false;
+	return is_profile_enabled;
 }
 
 
@@ -3506,26 +3506,24 @@ error:
 bool rohc_decomp_enable_profile(struct rohc_decomp *const decomp,
                                 const rohc_profile_t profile)
 {
-	size_t profile_idx;
-	int ret;
+	const uint8_t profile_major = (profile >> 8) & 0xff;
+	const uint8_t profile_minor = profile & 0xff;
 
 	if(decomp == NULL)
 	{
 		goto error;
 	}
-
-	/* search the profile location */
-	ret = rohc_decomp_get_profile_index(profile);
-	if(ret < 0)
+	if(profile_major > ROHC_PROFILE_ID_MAJOR_MAX ||
+	   profile_minor > ROHC_PROFILE_ID_MINOR_MAX ||
+	   rohc_decomp_profiles[profile_major][profile_minor] == NULL)
 	{
 		goto error;
 	}
-	profile_idx = ret;
 
 	/* the same profile cannot be enabled in both ROHCv1 and ROHCv2 versions:
 	 * check if the corresponding profile in the other ROHC version is already
 	 * enabled or not */
-	if(rohc_decomp_profile_enabled(decomp, rohc_profile_get_other_version(profile)))
+	if(rohc_decomp_profile_enabled_nocheck(decomp, rohc_profile_get_other_version(profile)))
 	{
 		goto error;
 	}
@@ -3544,7 +3542,7 @@ bool rohc_decomp_enable_profile(struct rohc_decomp *const decomp,
 	}
 
 	/* mark the profile as enabled */
-	decomp->enabled_profiles[profile_idx] = true;
+	decomp->enabled_profiles[profile_major][profile_minor] = true;
 	rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 	          "ROHC decompression profile (ID = 0x%04x) enabled", profile);
 
@@ -3581,24 +3579,22 @@ error:
 bool rohc_decomp_disable_profile(struct rohc_decomp *const decomp,
                                  const rohc_profile_t profile)
 {
-	size_t profile_idx;
-	int ret;
+	const uint8_t profile_major = (profile >> 8) & 0xff;
+	const uint8_t profile_minor = profile & 0xff;
 
 	if(decomp == NULL)
 	{
 		goto error;
 	}
-
-	/* search the profile location */
-	ret = rohc_decomp_get_profile_index(profile);
-	if(ret < 0)
+	if(profile_major > ROHC_PROFILE_ID_MAJOR_MAX ||
+	   profile_minor > ROHC_PROFILE_ID_MINOR_MAX ||
+	   rohc_decomp_profiles[profile_major][profile_minor] == NULL)
 	{
 		goto error;
 	}
-	profile_idx = ret;
 
 	/* mark the profile as disabled */
-	decomp->enabled_profiles[profile_idx] = false;
+	decomp->enabled_profiles[profile_major][profile_minor] = false;
 	rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 	          "ROHC decompression profile (ID = 0x%04x) disabled", profile);
 
@@ -3804,32 +3800,32 @@ error:
 static const struct rohc_decomp_profile * find_profile(const struct rohc_decomp *const decomp,
                                                        const rohc_profile_t profile_id)
 {
-	size_t i;
+	const uint8_t profile_major = (profile_id >> 8) & 0xff;
+	const uint8_t profile_minor = profile_id & 0xff;
+	const struct rohc_decomp_profile *profile;
 
-	/* search for the profile within the enabled profiles */
-	for(i = 0;
-	    i < D_NUM_PROFILES && rohc_decomp_profiles[i]->id != profile_id;
-	    i++)
-	{
-	}
-
-	if(i >= D_NUM_PROFILES)
+	if(profile_major > ROHC_PROFILE_ID_MAJOR_MAX ||
+	   profile_minor > ROHC_PROFILE_ID_MINOR_MAX ||
+	   rohc_decomp_profiles[profile_major][profile_minor] == NULL)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		             "decompression profile with ID 0x%04x not found",
 		             profile_id);
-		return NULL;
+		profile = NULL;
 	}
-
-	if(!decomp->enabled_profiles[i])
+	else if(decomp->enabled_profiles[profile_major][profile_minor] == false)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		             "decompression profile with ID 0x%04x disabled",
 		             profile_id);
-		return NULL;
+		profile = NULL;
+	}
+	else
+	{
+	   profile = rohc_decomp_profiles[profile_major][profile_minor];
 	}
 
-	return rohc_decomp_profiles[i];
+	return profile;
 }
 
 

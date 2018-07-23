@@ -32,7 +32,6 @@
 #include "rohc_packets.h"
 #include "rohc_comp.h"
 #include "schemes/comp_wlsb.h"
-#include "net_pkt.h"
 #include "feedback.h"
 
 #include <stdbool.h>
@@ -41,9 +40,6 @@
 /*
  * Constants and macros
  */
-
-/** The number of ROHC profiles ready to be used */
-#define C_NUM_PROFILES 10U
 
 /** The default maximal number of packets sent in > IR states (= FO and SO
  *  states) before changing back the state to IR (periodic refreshes) */
@@ -140,8 +136,7 @@ struct rohc_comp
 	uint16_t num_contexts_used;
 
 	/** Which profiles are enabled and with one are not? */
-	bool enabled_profiles[C_NUM_PROFILES];
-
+	bool enabled_profiles[ROHC_PROFILE_ID_MAJOR_MAX + 1][ROHC_PROFILE_ID_MINOR_MAX + 1];
 
 	/* CRC-related variables: */
 
@@ -242,7 +237,7 @@ struct rohc_comp_profile
 	 *        compression context from a given packet
 	 */
 	bool (*create)(struct rohc_comp_ctxt *const context,
-	               const struct net_pkt *const packet)
+	               const struct rohc_buf *const packet)
 		__attribute__((warn_unused_result, nonnull(1, 2)));
 
 	/**
@@ -262,18 +257,10 @@ struct rohc_comp_profile
 
 	/**
 	 * @brief The handler used to check whether an uncompressed IP packet
-	 *        fits the current profile or not
-	 */
-	bool (*check_profile)(const struct rohc_comp *const comp,
-	                      const struct net_pkt *const packet)
-		__attribute__((warn_unused_result, nonnull(1, 2)));
-
-	/**
-	 * @brief The handler used to check whether an uncompressed IP packet
 	 *        belongs to a context or not
 	 */
 	bool (*check_context)(const struct rohc_comp_ctxt *const context,
-	                      const struct net_pkt *const packet,
+	                      const struct rohc_buf *const packet,
 	                      size_t *const cr_score)
 		__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
@@ -291,7 +278,7 @@ struct rohc_comp_profile
 	 *                           -1 otherwise
 	 */
 	int (*encode)(struct rohc_comp_ctxt *const context,
-	              const struct net_pkt *const uncomp_pkt,
+	              const struct rohc_buf *const uncomp_pkt,
 	              uint8_t *const rohc_pkt,
 	              const size_t rohc_pkt_max_len,
 	              rohc_packet_t *const packet_type,

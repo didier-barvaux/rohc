@@ -47,6 +47,17 @@
 
 
 /**
+ * @brief The maximum number of IP headers supported
+ *
+ * Used by the ROHCv1 profiles, except the TCP profile.
+ *
+ * The limit value was not chosen arbitrarily, those profiles only support
+ * 2 levels of IP headers.
+ */
+#define ROHC_MAX_IP_HDRS_RFC3095  2U
+
+
+/**
  * @brief The maximum number of IP extension headers supported
  *
  * Used by the ROHCv1 TCP and ROHCv2 profiles. Not used by the other ROHCv1

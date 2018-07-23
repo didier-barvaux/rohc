@@ -64,7 +64,7 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
  * @brief Code the replicate chain of an IR packet
  *
  * @param context           The compression context
- * @param ip                The outer IP header
+ * @param uncomp_pkt        The uncompressed packet to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param[out] parsed_len   The length of uncompressed data parsed
@@ -72,15 +72,15 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
  *                          -1 otherwise
  */
 int tcp_code_replicate_chain(struct rohc_comp_ctxt *const context,
-                             const struct ip_packet *const ip,
+                             const struct rohc_buf *const uncomp_pkt,
                              uint8_t *const rohc_pkt,
                              const size_t rohc_pkt_max_len,
                              size_t *const parsed_len)
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
 
-	const uint8_t *remain_data = ip->data;
-	size_t remain_len = ip->size;
+	const uint8_t *remain_data = rohc_buf_data(*uncomp_pkt);
+	size_t remain_len = uncomp_pkt->len;
 
 	uint8_t *rohc_remain_data = rohc_pkt;
 	size_t rohc_remain_len = rohc_pkt_max_len;
@@ -199,7 +199,7 @@ int tcp_code_replicate_chain(struct rohc_comp_ctxt *const context,
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		remain_len -= (tcp->data_offset << 2);
 #endif
-		*parsed_len = remain_data - ip->data;
+		*parsed_len = remain_data - rohc_buf_data(*uncomp_pkt);
 	}
 
 	return (rohc_pkt_max_len - rohc_remain_len);

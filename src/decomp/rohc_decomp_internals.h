@@ -39,10 +39,6 @@
  */
 
 
-/** The number of ROHC profiles ready to be used */
-#define D_NUM_PROFILES 10U
-
-
 /** Print a warning trace for the given decompression context */
 #define rohc_decomp_warn(context, format, ...) \
 	rohc_warning((context)->decompressor, ROHC_TRACE_DECOMP, \
@@ -148,7 +144,7 @@ struct rohc_decomp
 	rohc_decomp_features_t features;
 
 	/** Which profiles are enabled and with one are not? */
-	bool enabled_profiles[D_NUM_PROFILES];
+	bool enabled_profiles[ROHC_PROFILE_ID_MAJOR_MAX + 1][ROHC_PROFILE_ID_MINOR_MAX + 1];
 
 	/** The operation mode that the contexts shall target */
 	rohc_mode_t target_mode;

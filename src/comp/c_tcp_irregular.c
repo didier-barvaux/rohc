@@ -34,14 +34,6 @@
 
 #include <assert.h>
 
-int tcp_code_irreg_chain(struct rohc_comp_ctxt *const context,
-                         const struct ip_packet *const ip,
-                         const uint8_t ip_inner_ecn,
-                         const struct tcphdr *const tcp,
-                         uint8_t *const rohc_pkt,
-                         const size_t rohc_pkt_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
-
 static int tcp_code_irregular_ipv4_part(const struct rohc_comp_ctxt *const context,
                                         const ip_context_t *const ip_context,
                                         const struct ipv4_hdr *const ipv4,
@@ -84,7 +76,7 @@ static int tcp_code_irregular_tcp_part(const struct rohc_comp_ctxt *const contex
  * @brief Code the irregular chain of one CO packet
  *
  * @param context           The compression context
- * @param ip                The outer IP header
+ * @param uncomp_pkt        The uncompressed packet
  * @param ip_inner_ecn      The ECN flags of the innermost IP header
  * @param tcp               The uncompressed TCP header
  * @param rohc_pkt          OUT: The ROHC packet
@@ -93,7 +85,7 @@ static int tcp_code_irregular_tcp_part(const struct rohc_comp_ctxt *const contex
  *                          -1 otherwise
  */
 int tcp_code_irreg_chain(struct rohc_comp_ctxt *const context,
-                         const struct ip_packet *const ip,
+                         const struct rohc_buf *const uncomp_pkt,
                          const uint8_t ip_inner_ecn,
                          const struct tcphdr *const tcp,
                          uint8_t *const rohc_pkt,
@@ -101,8 +93,8 @@ int tcp_code_irreg_chain(struct rohc_comp_ctxt *const context,
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
 
-	const uint8_t *remain_data = ip->data;
-	size_t remain_len = ip->size;
+	const uint8_t *remain_data = rohc_buf_data(*uncomp_pkt);
+	size_t remain_len = uncomp_pkt->len;
 
 	uint8_t *rohc_remain_data = rohc_pkt;
 	size_t rohc_remain_len = rohc_pkt_max_len;

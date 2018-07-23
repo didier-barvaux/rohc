@@ -719,175 +719,6 @@ void rohc_comp_rfc3095_destroy(struct rohc_comp_ctxt *const context)
 
 
 /**
- * @brief Check if the given packet corresponds to an IP-based profile
- *
- * Conditions are:
- *  \li the version of the outer IP header is 4 or 6
- *  \li if the outer IP header is IPv4, it does not contain options
- *  \li the outer IP header is not an IP fragment
- *  \li if there are at least 2 IP headers, the version of the inner IP header
- *      is 4 or 6
- *  \li if there are at least 2 IP headers and if the inner IP header is IPv4,
- *      it does not contain options
- *  \li if there are at least 2 IP headers, the inner IP header is not an IP
- *      fragment
- *
- * This function is one of the functions that must exist in one profile for the
- * framework to work.
- *
- * @param comp    The ROHC compressor
- * @param packet  The packet to check
- * @return        Whether the IP packet corresponds to the profile:
- *                  \li true if the IP packet corresponds to the profile,
- *                  \li false if the IP packet does not correspond to
- *                      the profile
- */
-bool rohc_comp_rfc3095_check_profile(const struct rohc_comp *const comp,
-                                     const struct net_pkt *const packet)
-{
-	ip_version version;
-
-	/* check the IP version of the outer header */
-	version = ip_get_version(&packet->outer_ip);
-	if(version != IPV4 && version != IPV6)
-	{
-		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "the outer IP packet (type = %d) is not supported by the "
-		           "profile: only IPv%d and IPv%d are supported",
-		           version, IPV4, IPV6);
-		goto bad_profile;
-	}
-
-	/* if outer header is IPv4, check the presence of options */
-	if(version == IPV4 &&
-	   ipv4_get_hdrlen(&packet->outer_ip) != sizeof(struct ipv4_hdr))
-	{
-		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "the outer IPv4 packet is not supported by the profile: "
-		           "IP options are not accepted");
-		goto bad_profile;
-	}
-
-	/* check if the outer header is a fragment */
-	if(ip_is_fragment(&packet->outer_ip))
-	{
-		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "the outer IP packet is fragmented");
-		goto bad_profile;
-	}
-
-	/* check if the checksum of the outer IP header is correct */
-	if(packet->outer_ip.version == IPV4 &&
-	   (comp->features & ROHC_COMP_FEATURE_NO_IP_CHECKSUMS) == 0 &&
-	   ip_fast_csum(packet->outer_ip.data,
-	                sizeof(struct ipv4_hdr) / sizeof(uint32_t)) != 0)
-	{
-		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "the outer IP packet is not correct (bad checksum)");
-		goto bad_profile;
-	}
-
-	/* check length of every IP extension headers */
-	{
-		uint8_t next_hdr_type;
-		const uint8_t *ext;
-
-		ext = ip_get_next_ext_from_ip(&packet->outer_ip, &next_hdr_type);
-		while(ext != NULL)
-		{
-			const unsigned short ext_len = ip_get_extension_size(ext);
-
-			if(ext_len > IPV6_OPT_HDR_LEN_MAX)
-			{
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "the outer IP packet got too long extension headers");
-				goto bad_profile;
-			}
-			ext = ip_get_next_ext_from_ext(ext, &next_hdr_type);
-		}
-	}
-
-	/* check the inner IP header if there is one */
-	if(packet->ip_hdr_nr > 1)
-	{
-		/* check the IP version of the inner header */
-		version = ip_get_version(&packet->inner_ip);
-		if(version != IPV4 && version != IPV6)
-		{
-			if(packet->inner_ip.size > 0)
-			{
-				const uint8_t pkt_vers = (packet->inner_ip.data[0] >> 4) & 0x0f;
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "the inner IP packet contains a bad version (%u): only "
-				           "IPv%d and IPv%d are supported", pkt_vers, IPV4, IPV6);
-			}
-			else
-			{
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "the inner IP packet contains a bad version: only "
-				           "IPv%d and IPv%d are supported", IPV4, IPV6);
-			}
-			goto bad_profile;
-		}
-
-		/* if inner header is IPv4, check the presence of options */
-		if(version == IPV4 &&
-		   ipv4_get_hdrlen(&packet->inner_ip) != sizeof(struct ipv4_hdr))
-		{
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "the inner IPv4 packet is not supported by the profile: "
-			           "IP options are not accepted");
-			goto bad_profile;
-		}
-
-		/* check if the inner header is a fragment */
-		if(ip_is_fragment(&packet->inner_ip))
-		{
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "the inner IP packet is fragmented");
-			goto bad_profile;
-		}
-
-		/* check if the checksum of the inner IP header is correct */
-		if(packet->inner_ip.version == IPV4 &&
-		   (comp->features & ROHC_COMP_FEATURE_NO_IP_CHECKSUMS) == 0 &&
-		   ip_fast_csum(packet->inner_ip.data,
-		                sizeof(struct ipv4_hdr) / sizeof(uint32_t)) != 0)
-		{
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "the inner IP packet is not correct (bad checksum)");
-			goto bad_profile;
-		}
-
-		/* check length of every IP extension headers */
-		{
-			uint8_t next_hdr_type;
-			const uint8_t *ext;
-
-			ext = ip_get_next_ext_from_ip(&packet->inner_ip, &next_hdr_type);
-			while(ext != NULL)
-			{
-				const unsigned short ext_len = ip_get_extension_size(ext);
-
-				if(ext_len > IPV6_OPT_HDR_LEN_MAX)
-				{
-					rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-					           "the outer IP packet got too long extension headers");
-					goto bad_profile;
-				}
-				ext = ip_get_next_ext_from_ext(ext, &next_hdr_type);
-			}
-		}
-	}
-
-	return true;
-
-bad_profile:
-	return false;
-}
-
-
-/**
  * @brief Encode an IP packet according to a pattern decided by several
  *        different factors.
  *
@@ -913,19 +744,24 @@ bad_profile:
  *                          -1 otherwise
  */
 int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
-                             const struct net_pkt *const uncomp_pkt,
+                             const struct rohc_buf *const uncomp_pkt,
                              uint8_t *const rohc_pkt,
                              const size_t rohc_pkt_max_len,
                              rohc_packet_t *const packet_type,
                              size_t *const payload_offset)
 {
 	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
+	struct net_pkt ip_pkt;
 	int size;
 
 	*packet_type = ROHC_PACKET_UNKNOWN;
 
+	/* parse the uncompressed packet */
+	net_pkt_parse(&ip_pkt, *uncomp_pkt, context->compressor->trace_callback,
+	              context->compressor->trace_callback_priv, ROHC_TRACE_COMP);
+
 	/* detect changes between new uncompressed packet and context */
-	if(!rohc_comp_rfc3095_detect_changes(context, uncomp_pkt))
+	if(!rohc_comp_rfc3095_detect_changes(context, &ip_pkt))
 	{
 		rohc_comp_warn(context, "failed to detect changes in uncompressed packet");
 		goto error;
@@ -939,7 +775,7 @@ int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
 	}
 
 	/* compute how many bits are needed to send header fields */
-	if(!encode_uncomp_fields(context, uncomp_pkt))
+	if(!encode_uncomp_fields(context, &ip_pkt))
 	{
 		rohc_comp_warn(context, "failed to compute how many bits are needed "
 		               "to send header fields");
@@ -956,17 +792,17 @@ int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
 	}
 
 	/* code the ROHC header (and the extension if needed) */
-	size = code_packet(context, uncomp_pkt, rohc_pkt, rohc_pkt_max_len, *packet_type);
+	size = code_packet(context, &ip_pkt, rohc_pkt, rohc_pkt_max_len, *packet_type);
 	if(size < 0)
 	{
 		goto error;
 	}
 	/* determine the offset of the payload */
-	*payload_offset = net_pkt_get_payload_offset(uncomp_pkt);
+	*payload_offset = net_pkt_get_payload_offset(&ip_pkt);
 	*payload_offset += rfc3095_ctxt->next_header_len;
 
 	/* update the context with the new headers */
-	update_context(context, uncomp_pkt);
+	update_context(context, &ip_pkt);
 
 	/* return the length of the ROHC packet */
 	return size;
