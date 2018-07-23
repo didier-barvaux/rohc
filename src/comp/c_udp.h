@@ -37,11 +37,6 @@
  * Function prototypes.
  */
 
-bool c_udp_check_context(const struct rohc_comp_ctxt *context,
-                         const struct rohc_buf *const packet,
-                         size_t *const cr_score)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
-
 size_t udp_code_uo_remainder(const struct rohc_comp_ctxt *context,
                              const uint8_t *next_header,
                              uint8_t *const dest,

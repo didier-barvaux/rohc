@@ -110,11 +110,6 @@ static bool c_udp_lite_create(struct rohc_comp_ctxt *const context,
                               const struct rohc_buf *const packet)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static bool c_udp_lite_check_context(const struct rohc_comp_ctxt *const context,
-                                     const struct rohc_buf *const packet,
-                                     size_t *const cr_score)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
-
 static int c_udp_lite_encode(struct rohc_comp_ctxt *const context,
                              const struct rohc_buf *const uncomp_pkt,
                              uint8_t *const rohc_pkt,
@@ -239,71 +234,6 @@ static bool c_udp_lite_create(struct rohc_comp_ctxt *const context,
 clean:
 	rohc_comp_rfc3095_destroy(context);
 quit:
-	return false;
-}
-
-
-/**
- * @brief Check if the IP/UDP-Lite packet belongs to the context
- *
- * Conditions are:
- *  - the number of IP headers must be the same as in context
- *  - IP version of the two IP headers must be the same as in context
- *  - IP packets must not be fragmented
- *  - the source and destination addresses of the two IP headers must match the
- *    ones in the context
- *  - the transport protocol must be UDP-Lite
- *  - the source and destination ports of the UDP-Lite header must match the
- *    ones in the context
- *  - IPv6 only: the Flow Label of the two IP headers must match the ones the
- *    context
- *
- * This function is one of the functions that must exist in one profile for the
- * framework to work.
- *
- * @param context        The compression context
- * @param packet         The IP/UDP-Lite packet to check
- * @param[out] cr_score  The score of the context for Context Replication (CR)
- * @return               true if the IP/UDP-Lite packet belongs to the context,
- *                       false if it does not belong to the context
- */
-static bool c_udp_lite_check_context(const struct rohc_comp_ctxt *const context,
-                                     const struct rohc_buf *const packet,
-                                     size_t *const cr_score)
-{
-	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
-		(struct rohc_comp_rfc3095_ctxt *) context->specific;
-	const struct sc_udp_lite_context *const udp_lite_context =
-	(struct sc_udp_lite_context *) rfc3095_ctxt->specific;
-	const struct udphdr *udp_lite;
-	struct net_pkt ip_pkt;
-
-	/* first, check the same parameters as for the IP-only profile */
-	if(!c_ip_check_context(context, packet, cr_score))
-	{
-		goto bad_context;
-	}
-
-	/* parse the uncompressed packet and get the UDP-Lite header */
-	net_pkt_parse(&ip_pkt, *packet, context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv, ROHC_TRACE_COMP);
-	udp_lite = (struct udphdr *) ip_pkt.transport->data;
-
-	/* check UDP-Lite source port */
-	if(udp_lite_context->old_udp_lite.source != udp_lite->source)
-	{
-		goto bad_context;
-	}
-
-	/* check UDP-Lite destination port */
-	if(udp_lite_context->old_udp_lite.dest != udp_lite->dest)
-	{
-		goto bad_context;
-	}
-
-	return true;
-
-bad_context:
 	return false;
 }
 
@@ -772,7 +702,6 @@ const struct rohc_comp_profile c_udp_lite_profile =
 	.id             = ROHC_PROFILE_UDPLITE, /* profile ID (see 7 in RFC4019) */
 	.create         = c_udp_lite_create,    /* profile handlers */
 	.destroy        = rohc_comp_rfc3095_destroy,
-	.check_context  = c_udp_lite_check_context,
 	.encode         = c_udp_lite_encode,
 	.feedback       = rohc_comp_rfc3095_feedback,
 };

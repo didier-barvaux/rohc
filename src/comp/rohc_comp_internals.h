@@ -32,6 +32,8 @@
 #include "rohc_packets.h"
 #include "rohc_comp.h"
 #include "schemes/comp_wlsb.h"
+#include "protocols/ip.h"
+#include "protocols/ipv6.h"
 #include "feedback.h"
 
 #include <stdbool.h>
@@ -222,6 +224,50 @@ struct rohc_comp
 
 
 /**
+ * @brief The information collected about one of the packet IP headers
+ */
+struct rohc_pkt_ip_hdr
+{
+	union
+	{
+		const struct ipv4_hdr *ipv4;
+		const struct ipv6_hdr *ipv6;
+	};
+	uint8_t version;
+	uint16_t tot_len;
+};
+
+
+/**
+ * @brief The information collected about the packet headers
+ *
+ * The information about the packet headers is collected while the best profile
+ * is detected, and that information may be later used while the best context is
+ * detected or while changes with the compression context are detected.
+ *
+ * The collection of information avoids parsing the packet headers several times.
+ */
+struct rohc_pkt_hdrs
+{
+	/* The network headers */
+	uint8_t ip_hdrs_nr;                               /**< The number of IP headers */
+	struct rohc_pkt_ip_hdr ip_hdrs[ROHC_MAX_IP_HDRS]; /**< The IP headers */
+	const struct rohc_pkt_ip_hdr *innermost_ip_hdr;   /**< The innermost IP header */
+
+	/* The transport header */
+	union
+	{
+		const struct tcphdr *tcp;       /**< The TCP header (if any) */
+		const struct udphdr *udp;       /**< The UDP header (if any) */
+		const struct udphdr *udp_lite;  /**< The UDP-Lite header (if any) */
+		const struct esphdr *esp;       /**< The ESP header (if any) */
+	};
+
+	const struct rtphdr *rtp;          /**< The RTP header (if any) */
+};
+
+
+/**
  * @brief The ROHC compression profile
  *
  * The object defines a ROHC profile. Each field must be filled in
@@ -256,13 +302,11 @@ struct rohc_comp_profile
 		__attribute__((nonnull(1)));
 
 	/**
-	 * @brief The handler used to check whether an uncompressed IP packet
-	 *        belongs to a context or not
+	 * @brief The handler used to check whether Context Replication is possible
 	 */
-	bool (*check_context)(const struct rohc_comp_ctxt *const context,
-	                      const struct rohc_buf *const packet,
-	                      size_t *const cr_score)
-		__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+	bool (*is_cr_possible)(const struct rohc_comp_ctxt *const ctxt,
+	                       const struct rohc_pkt_hdrs *const pkt_hdrs)
+		__attribute__((warn_unused_result, nonnull(1, 2)));
 
 	/**
 	 * @brief The handler used to encode uncompressed IP packets
@@ -300,6 +344,53 @@ struct rohc_comp_profile
 
 
 /**
+ * @brief The unique fingerprint of one IP header
+ */
+struct rohc_fingerprint_ip
+{
+	uint32_t version:4;
+	uint32_t next_proto:8;
+	uint32_t flow_label:20;
+	struct ipv6_addr saddr;
+	struct ipv6_addr daddr;
+} __attribute__((packed));
+
+
+/**
+ * @brief The part of the unique fingerprint for Context Replication
+ */
+struct rohc_fingerprint_base
+{
+	rohc_profile_t profile_id;
+
+	uint8_t ip_hdrs_nr; /**< The number of IP headers */
+	struct rohc_fingerprint_ip ip_hdrs[ROHC_MAX_IP_HDRS];
+} __attribute__((packed));
+
+
+/**
+ * @brief The unique fingerprint of one compression context or uncompressed packet
+ */
+struct rohc_fingerprint
+{
+	struct rohc_fingerprint_base base;
+
+	union
+	{
+		struct
+		{
+			uint16_t src_port;
+			uint16_t dst_port;
+		} __attribute__((packed));
+		uint32_t esp_spi;
+	};
+
+	uint32_t rtp_ssrc;
+
+} __attribute__((packed));
+
+
+/**
  * @brief The ROHC compression context
  */
 struct rohc_comp_ctxt
@@ -313,6 +404,9 @@ struct rohc_comp_ctxt
 
 	/** The context unique ID (CID) */
 	rohc_cid_t cid;
+
+	/** The fingerprint of the context */
+	struct rohc_fingerprint fingerprint;
 
 	/** The associated compressor */
 	struct rohc_comp *compressor;
