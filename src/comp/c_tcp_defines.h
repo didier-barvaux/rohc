@@ -46,6 +46,9 @@
  */
 struct tcp_tmp_variables
 {
+	uint32_t seq_num;
+	uint32_t ack_num;
+
 	/** The IP-ID / SN delta (with bits swapped if necessary) */
 	uint16_t ip_id_delta;
 
@@ -57,8 +60,10 @@ struct tcp_tmp_variables
 	uint16_t is_ipv6_exts_list_dyn_changed:1;
 	/** Whether the TCP window changed or not */
 	uint16_t tcp_window_changed:1;
+	/** Whether the sequence number changed or not */
+	uint16_t tcp_seq_num_unchanged:1;
 	/** Whether the ACK number changed or not */
-	uint16_t tcp_ack_num_changed:1;
+	uint16_t tcp_ack_num_unchanged:1;
 	/** Whether the behavior of the IP-ID field changed with current packet */
 	uint16_t ip_id_behavior_changed:1;
 	uint16_t ttl_hopl_changed:1;
@@ -69,10 +74,11 @@ struct tcp_tmp_variables
 	uint16_t tcp_ack_flag_changed:1;
 	uint16_t tcp_urg_flag_present:1;
 	uint16_t tcp_urg_flag_changed:1;
+	uint16_t tcp_urg_ptr_changed:1;
 	uint16_t ecn_used_changed:1; /**< Whether the ecn_used flag changed or not */
-	uint16_t unused:2;
 
-	uint8_t unused2[4];
+	/** The temporary part of the context for TCP options */
+	struct c_tcp_opts_ctxt_tmp tcp_opts;
 };
 
 
@@ -112,6 +118,12 @@ struct sc_tcp_context
 	uint8_t cr_tcp_urg_ptr_present:1;
 	uint8_t cr_tcp_ack_num_present:1;
 
+	uint8_t res_flags:4;
+	uint8_t urg_flag:1;
+	uint8_t ack_flag:1;
+	uint16_t urg_ptr_nbo;
+	uint16_t window_nbo;
+
 	struct c_wlsb msn_wlsb;    /**< The W-LSB decoding context for MSN */
 	struct c_wlsb ttl_hopl_wlsb;
 	struct c_wlsb ip_id_wlsb;
@@ -124,13 +136,7 @@ struct sc_tcp_context
 	/** The compression context for TCP options */
 	struct c_tcp_opts_ctxt tcp_opts;
 
-	/// @brief TCP-specific temporary variables that are used during one single
-	///        compression of packet
-	struct tcp_tmp_variables tmp;
-
-	/// The previous TCP header
-	struct tcphdr old_tcphdr;
-	uint8_t unused2[3];
+	uint8_t unused[4];
 
 	uint8_t ip_contexts_nr;
 	ip_context_t ip_contexts[ROHC_MAX_IP_HDRS];
@@ -146,8 +152,6 @@ _Static_assert((offsetof(struct sc_tcp_context, ttl_hopl_wlsb) % 8) == 0,
                "ttl_hopl_wlsb in sc_tcp_context should be aligned on 8 bytes");
 _Static_assert((offsetof(struct sc_tcp_context, tcp_opts) % 8) == 0,
                "tcp_opts in sc_tcp_context should be aligned on 8 bytes");
-_Static_assert((offsetof(struct sc_tcp_context, old_tcphdr) % 8) == 0,
-               "old_tcphdr in sc_tcp_context should be aligned on 8 bytes");
 _Static_assert((offsetof(struct sc_tcp_context, ip_contexts) % 8) == 0,
                "ip_contexts in sc_tcp_context should be aligned on 8 bytes");
 _Static_assert((sizeof(struct sc_tcp_context) % 8) == 0,

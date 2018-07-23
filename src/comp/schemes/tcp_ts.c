@@ -35,7 +35,7 @@
  *
  * @param context         The compression context
  * @param timestamp       The timestamp value to compress
- * @param wlsb            The W-LSB encoding context
+ * @param bytes_nr        The number of bytes to use for encoding
  * @param[out] rohc_data  The ROHC packet being built
  * @param rohc_max_len    The max remaining length in the ROHC buffer
  * @param[out] rohc_len   The length appended in the ROHC buffer
@@ -43,58 +43,39 @@
  */
 bool c_tcp_ts_lsb_code(const struct rohc_comp_ctxt *const context,
                        const uint32_t timestamp,
-                       const struct c_wlsb *const wlsb,
+                       const uint8_t bytes_nr,
                        uint8_t *const rohc_data,
                        const size_t rohc_max_len,
                        size_t *const rohc_len)
 {
-	size_t encoded_len;
+	const size_t encoded_len = bytes_nr;
 
-	if(wlsb_is_kp_possible_32bits(wlsb, timestamp, ROHC_SDVL_MAX_BITS_IN_1_BYTE,
-	                              ROHC_LSB_SHIFT_TCP_TS_1B))
+	if(rohc_max_len < encoded_len)
+	{
+		rohc_comp_warn(context, "ROHC buffer too short for encoding the TCP TS "
+		               "option: %zu byte(s) required but only %zu byte(s) "
+		               "available", encoded_len, rohc_max_len);
+		goto error;
+	}
+
+	if(bytes_nr == 1)
 	{
 		/* encoding on 1 byte with discriminator '0' */
-		encoded_len = 1;
-		if(rohc_max_len < encoded_len)
-		{
-			rohc_comp_warn(context, "ROHC buffer too short for encoding the TCP TS "
-			               "option: %zu byte required but only %zu byte(s) "
-			               "available", encoded_len, rohc_max_len);
-			goto error;
-		}
 		rohc_data[0] = timestamp & 0x7F;
 		rohc_comp_debug(context, "encode timestamp = 0x%08x on 1 byte: 0x%02x",
 		                timestamp, rohc_data[0]);
 	}
-	else if(wlsb_is_kp_possible_32bits(wlsb, timestamp, ROHC_SDVL_MAX_BITS_IN_2_BYTES,
-	                                   ROHC_LSB_SHIFT_TCP_TS_2B))
+	else if(bytes_nr == 2)
 	{
 		/* encoding on 2 bytes with discriminator '10' */
-		encoded_len = 2;
-		if(rohc_max_len < encoded_len)
-		{
-			rohc_comp_warn(context, "ROHC buffer too short for encoding the TCP TS "
-			               "option: %zu byte(s) required but only %zu byte(s) "
-			               "available", encoded_len, rohc_max_len);
-			goto error;
-		}
 		rohc_data[0] = 0x80 | ((timestamp >> 8) & 0x3F);
 		rohc_data[1] = timestamp;
 		rohc_comp_debug(context, "encode timestamp = 0x%08x on 2 bytes: 0x%02x "
 		                "0x%02x", timestamp, rohc_data[0], rohc_data[1]);
 	}
-	else if(wlsb_is_kp_possible_32bits(wlsb, timestamp, ROHC_SDVL_MAX_BITS_IN_3_BYTES,
-	                                   ROHC_LSB_SHIFT_TCP_TS_3B))
+	else if(bytes_nr == 3)
 	{
 		/* encoding on 3 bytes with discriminator '110' */
-		encoded_len = 3;
-		if(rohc_max_len < encoded_len)
-		{
-			rohc_comp_warn(context, "ROHC buffer too short for encoding the TCP TS "
-			               "option: %zu byte(s) required but only %zu byte(s) "
-			               "available", encoded_len, rohc_max_len);
-			goto error;
-		}
 		rohc_data[0] = 0xC0 | ((timestamp >> 16) & 0x1F);
 		rohc_data[1] = timestamp >> 8;
 		rohc_data[2] = timestamp;
@@ -102,18 +83,9 @@ bool c_tcp_ts_lsb_code(const struct rohc_comp_ctxt *const context,
 		                "0x%02x 0x%02x", timestamp, rohc_data[0], rohc_data[1],
 		                rohc_data[2]);
 	}
-	else if(wlsb_is_kp_possible_32bits(wlsb, timestamp, ROHC_SDVL_MAX_BITS_IN_4_BYTES,
-	                                   ROHC_LSB_SHIFT_TCP_TS_4B))
+	else if(bytes_nr == 4)
 	{
 		/* encoding on 4 bytes with discriminator '111' */
-		encoded_len = 4;
-		if(rohc_max_len < encoded_len)
-		{
-			rohc_comp_warn(context, "ROHC buffer too short for encoding the TCP TS "
-			               "option: %zu byte(s) required but only %zu byte(s) "
-			               "available", encoded_len, rohc_max_len);
-			goto error;
-		}
 		rohc_data[0] = 0xE0 | ((timestamp >> 24) & 0x1F);
 		rohc_data[1] = timestamp >> 16;
 		rohc_data[2] = timestamp >> 8;
