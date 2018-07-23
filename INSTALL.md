@@ -5,8 +5,6 @@
 The library itself does not require external resources. Optional configure
 flags require external resources:
 
-* `--enable-app-performance` requires:
-  * `libpcap` library and headers
 * `--enable-app-sniffer` requires:
   * `libpcap` library and headers
 * `--enable-app-stats` requires:

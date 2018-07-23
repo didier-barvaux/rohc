@@ -136,12 +136,6 @@ linux/kmod/Module.symvers
 linux/kmod/modules.order
 linux/kmod/*.ko
 linux/kmod/*.mod.c
-app/performance/rohc_test_performance
-app/performance/rohc_test_performance.exe
-app/performance/rohc_test_performance.1
-app/performance/rohc_gen_stream
-app/performance/rohc_gen_stream.exe
-app/performance/rohc_gen_stream.1
 app/sniffer/rohc_sniffer
 app/sniffer/rohc_sniffer.exe
 app/sniffer/rohc_sniffer.1
