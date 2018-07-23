@@ -89,12 +89,12 @@ static bool c_udp_create(struct rohc_comp_ctxt *const context,
 static void udp_decide_state(struct rohc_comp_ctxt *const context);
 
 static int c_udp_encode(struct rohc_comp_ctxt *const context,
+                        const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                         const struct rohc_buf *const uncomp_pkt,
                         uint8_t *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
-                        rohc_packet_t *const packet_type,
-                        size_t *const payload_offset)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
+                        rohc_packet_t *const packet_type)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 6)));
 
 static size_t udp_code_dynamic_udp_part(const struct rohc_comp_ctxt *const context,
                                         const uint8_t *const next_header,
@@ -195,20 +195,20 @@ quit:
  *        different factors.
  *
  * @param context           The compression context
+ * @param uncomp_pkt_hdrs   The uncompressed headers to encode
  * @param uncomp_pkt        The uncompressed packet to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       OUT: The type of ROHC packet that is created
- * @param payload_offset    OUT: The offset for the payload in the IP packet
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
 static int c_udp_encode(struct rohc_comp_ctxt *const context,
+                        const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                         const struct rohc_buf *const uncomp_pkt,
                         uint8_t *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
-                        rohc_packet_t *const packet_type,
-                        size_t *const payload_offset)
+                        rohc_packet_t *const packet_type)
 {
 	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 	struct sc_udp_context *const udp_context = rfc3095_ctxt->specific;
@@ -239,8 +239,8 @@ static int c_udp_encode(struct rohc_comp_ctxt *const context,
 	udp_context->tmp.send_udp_dynamic = udp_changed_udp_dynamic(context, udp);
 
 	/* encode the IP packet */
-	size = rohc_comp_rfc3095_encode(context, uncomp_pkt, rohc_pkt, rohc_pkt_max_len,
-	                                packet_type, payload_offset);
+	size = rohc_comp_rfc3095_encode(context, uncomp_pkt_hdrs, uncomp_pkt,
+	                                rohc_pkt, rohc_pkt_max_len, packet_type);
 	if(size < 0)
 	{
 		goto quit;

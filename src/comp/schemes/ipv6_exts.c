@@ -47,7 +47,8 @@
  *                            out: the protocol type of the transport header
  * @param exts                The beginning of the IPv6 extension headers
  * @param max_exts_len        The maximum length (in bytes) of the extension headers
- * @param[out] exts_len       The length (in bytes) of the IPv6 extension headers
+ * @param[out] exts_nr        The number of the parsed IPv6 extension headers
+ * @param[out] exts_len       The length (in bytes) of the parsed IPv6 extension headers
  * @return                    true if the IPv6 extension headers are acceptable,
  *                            false if they are not
  *
@@ -57,6 +58,7 @@ bool rohc_comp_ipv6_exts_are_acceptable(const struct rohc_comp *const comp,
                                         uint8_t *const next_proto,
                                         const uint8_t *const exts,
                                         const size_t max_exts_len,
+                                        size_t *const exts_nr,
                                         size_t *const exts_len)
 {
 	uint8_t ipv6_ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
@@ -195,6 +197,7 @@ bool rohc_comp_ipv6_exts_are_acceptable(const struct rohc_comp *const comp,
 		}
 	}
 
+	*exts_nr = ipv6_ext_nr;
 	return true;
 
 bad_exts:

@@ -109,6 +109,21 @@ struct tcphdr
 #define ROHC_TCP_OPTS_MAX_PROTO  ROHC_TCP_OPTS_LEN_MAX_PROTO
 
 
+/**
+ * @brief The maximum of TCP options supported by the TCP profile
+ *
+ * One TCP header may contain up to 40 bytes of options, so it may contain
+ * up 40 1-byte options, so the ROHC (de)compressors should expect such TCP
+ * packets. However the m field in the compressed list of TCP options (see
+ * RFC 6846, section 6.3.3 for more details) cannot be larger than 15, so
+ * restrict the number of TCP options that value. One TCP packet with more
+ * than 15 TCP options will be compressed with the IP-only profile.
+ *
+ * @see ROHC_TCP_OPTS_MAX_PROTO
+ */
+#define ROHC_TCP_OPTS_MAX  15U
+
+
 /** The length of the header of one TCP option */
 #define ROHC_TCP_OPT_HDR_LEN  2U
 

@@ -162,17 +162,17 @@ _Static_assert((sizeof(struct c_tcp_opts_ctxt) % 8) == 0,
 
 bool rohc_comp_tcp_are_options_acceptable(const struct rohc_comp *const comp,
                                           const uint8_t *const opts,
-                                          const size_t data_offset)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+                                          const size_t data_offset,
+                                          struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
-bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
-                                const struct tcphdr *const tcp,
-                                struct c_tcp_opts_ctxt *const opts_ctxt,
-                                size_t *const opts_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
+                                const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                                struct c_tcp_opts_ctxt *const opts_ctxt)
+	__attribute__((nonnull(1, 2, 3)));
 
 int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
-                                  const struct tcphdr *const tcp,
+                                  const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                   const uint16_t msn,
                                   const rohc_chain_t chain_type,
                                   struct c_tcp_opts_ctxt *const opts_ctxt,
@@ -182,7 +182,7 @@ int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2, 5, 6, 8)));
 
 int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
-                              const struct tcphdr *const tcp,
+                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                               const uint16_t msn,
                               struct c_tcp_opts_ctxt *const opts_ctxt,
                               uint8_t *const comp_opts,

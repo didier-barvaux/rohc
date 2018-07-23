@@ -543,6 +543,9 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 	if(rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_UNCOMPRESSED))
 	{
 		profile = ROHCv1_PROFILE_UNCOMPRESSED;
+		pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+		pkt_hdrs->payload_len = remain_len;
+		pkt_hdrs->payload = remain_data;
 	}
 
 	/* check that the the versions of IP headers are 4 or 6 and that IP headers
@@ -623,6 +626,9 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 			remain_len -= sizeof(struct ipv4_hdr);
 
 			pkt_hdrs->ip_hdrs[ip_hdrs_nr].ipv4 = ipv4;
+			pkt_hdrs->ip_hdrs[ip_hdrs_nr].tos_tc = ipv4->tos;
+			pkt_hdrs->ip_hdrs[ip_hdrs_nr].ttl_hl = ipv4->ttl;
+			pkt_hdrs->ip_hdrs[ip_hdrs_nr].exts_nr = 0;
 			fingerprint->base.ip_hdrs[ip_hdrs_nr].saddr.u32[0] = ipv4->saddr;
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "\tsource address = " IPV4_ADDR_FORMAT,
@@ -635,6 +641,7 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 		else if(ip->version == IPV6)
 		{
 			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
+			size_t ipv6_exts_nr;
 			size_t ipv6_exts_len;
 
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "found IPv6");
@@ -663,7 +670,7 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 			 * extension headers that are not compatible with the TCP profile */
 			if(!rohc_comp_ipv6_exts_are_acceptable(comp, &next_proto,
 			                                       remain_data, remain_len,
-			                                       &ipv6_exts_len))
+			                                       &ipv6_exts_nr, &ipv6_exts_len))
 			{
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 				           "IP packet #%zu is not supported: malformed or incompatible "
@@ -675,6 +682,9 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 			remain_len -= ipv6_exts_len;
 
 			pkt_hdrs->ip_hdrs[ip_hdrs_nr].ipv6 = ipv6;
+			pkt_hdrs->ip_hdrs[ip_hdrs_nr].tos_tc = ipv6_get_tc(ipv6);
+			pkt_hdrs->ip_hdrs[ip_hdrs_nr].ttl_hl = ipv6->hl;
+			pkt_hdrs->ip_hdrs[ip_hdrs_nr].exts_nr = ipv6_exts_nr;
 			memcpy(&fingerprint->base.ip_hdrs[ip_hdrs_nr].saddr.u8, &ipv6->saddr,
 			       sizeof(struct ipv6_addr));
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -718,11 +728,17 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 	if(rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_IP))
 	{
 		profile = ROHCv1_PROFILE_IP;
+		pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+		pkt_hdrs->payload_len = remain_len;
+		pkt_hdrs->payload = remain_data;
 	}
 	else if(all_ipv6_exts_len == 0 && /* TODO: ROHCv2: add IPv6 ext hdrs support */
 	        rohc_comp_profile_enabled_nocheck(comp, ROHCv2_PROFILE_IP))
 	{
 		profile = ROHCv2_PROFILE_IP;
+		pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+		pkt_hdrs->payload_len = remain_len;
+		pkt_hdrs->payload = remain_data;
 	}
 
 	/* profiles cannot handle the packet if it bypasses internal limit
@@ -740,6 +756,7 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 	if(next_proto == ROHC_IPPROTO_TCP)
 	{
 		const struct tcphdr *tcp_header;
+		size_t tcp_hdr_full_len;
 
 		/* innermost IP payload shall be large enough for TCP header */
 		if(remain_len < sizeof(struct tcphdr))
@@ -757,17 +774,20 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 			           "TCP data offset too small for minimal TCP header");
 			goto unsupported_tcp_hdr;
 		}
-		if(remain_len < (tcp_header->data_offset * sizeof(uint32_t)))
+		tcp_hdr_full_len = tcp_header->data_offset * sizeof(uint32_t);
+		if(remain_len < tcp_hdr_full_len)
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "TCP data too small for full TCP header with options");
 			goto unsupported_tcp_hdr;
 		}
+		remain_data += tcp_hdr_full_len;
+		remain_len -= tcp_hdr_full_len;
 
 		/* reject packets with malformed TCP options or TCP options that are not
 		 * compatible with the TCP profile */
 		if(!rohc_comp_tcp_are_options_acceptable(comp, tcp_header->options,
-		                                         tcp_header->data_offset))
+		                                         tcp_header->data_offset, pkt_hdrs))
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "malformed or incompatible TCP options detected");
@@ -781,6 +801,9 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 		{
 			profile = ROHCv1_PROFILE_IP_TCP;
 			pkt_hdrs->tcp = tcp_header;
+			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+			pkt_hdrs->payload_len = remain_len;
+			pkt_hdrs->payload = remain_data;
 			fingerprint->base.profile_id = profile;
 			fingerprint->src_port = rohc_ntoh16(tcp_header->src_port);
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -793,8 +816,7 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 	else if(next_proto == ROHC_IPPROTO_UDP)
 	{
 		const struct udphdr *udp_header;
-		const uint8_t *udp_payload;
-		unsigned int udp_payload_size;
+		size_t udp_len;
 
 		/* innermost IP payload shall be large enough for UDP header */
 		if(remain_len < sizeof(struct udphdr))
@@ -806,15 +828,16 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 
 		/* retrieve the UDP header and the UDP payload */
 		udp_header = (const struct udphdr *) remain_data;
-		udp_payload = (uint8_t *) (udp_header + 1);
-		udp_payload_size = remain_len - sizeof(struct udphdr);
+		udp_len = remain_len;
+		remain_data += sizeof(struct udphdr);
+		remain_len -= sizeof(struct udphdr);
 
 		/* the UDP length field shall be correct in order to be inferred */
-		if(remain_len != rohc_ntoh16(udp_header->len))
+		if(udp_len != rohc_ntoh16(udp_header->len))
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "UDP header is not supported: UDP length is %u while it "
-			           "shall be %zu", rohc_ntoh16(udp_header->len), remain_len);
+			           "shall be %zu", rohc_ntoh16(udp_header->len), udp_len);
 			goto unsupported_udp_hdr;
 		}
 
@@ -826,6 +849,9 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 		{
 			profile = ROHCv1_PROFILE_IP_UDP;
 			pkt_hdrs->udp = udp_header;
+			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+			pkt_hdrs->payload_len = remain_len;
+			pkt_hdrs->payload = remain_data;
 			fingerprint->base.profile_id = profile;
 			fingerprint->src_port = rohc_ntoh16(udp_header->source);
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -839,6 +865,9 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 		{
 			profile = ROHCv2_PROFILE_IP_UDP;
 			pkt_hdrs->udp = udp_header;
+			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+			pkt_hdrs->payload_len = remain_len;
+			pkt_hdrs->payload = remain_data;
 			fingerprint->base.profile_id = profile;
 			fingerprint->src_port = rohc_ntoh16(udp_header->source);
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -851,16 +880,23 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 		/* check if the IP/UDP packet is a RTP packet */
 		if(comp->rtp_callback != NULL)
 		{
+			const uint8_t *udp_payload;
+			unsigned int udp_payload_size;
 			const struct rtphdr *rtp;
 			bool is_rtp;
 
 			/* UDP payload shall be large enough for RTP header  */
-			if(udp_payload_size < sizeof(struct rtphdr))
+			if(remain_len < sizeof(struct rtphdr))
 			{
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 				           "UDP header is not large enough for RTP header");
 				goto unsupported_rtp_hdr;
 			}
+			udp_payload = (uint8_t *) remain_data;
+			udp_payload_size = remain_len;
+			rtp = (const struct rtphdr *) udp_payload;
+			remain_data += sizeof(struct rtphdr);
+			remain_len -= sizeof(struct rtphdr);
 
 			/* check if the IP/UDP packet is a RTP packet with the user callback
 			   dedicated to RTP stream detection: if the RTP callback returns true,
@@ -878,7 +914,6 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 
 			/* RTP packets with one or more CSRC items cannot be compressed by the
 			 * RTP profile for the moment */
-			rtp = (const struct rtphdr *) udp_payload;
 			if(rtp->cc != 0)
 			{
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -895,6 +930,9 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 			{
 				profile = ROHCv1_PROFILE_IP_UDP_RTP;
 				pkt_hdrs->rtp = rtp;
+				pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+				pkt_hdrs->payload_len = remain_len;
+				pkt_hdrs->payload = remain_data;
 				fingerprint->base.profile_id = profile;
 				fingerprint->src_port = rohc_ntoh16(udp_header->source);
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -911,6 +949,9 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 			{
 				profile = ROHCv2_PROFILE_IP_UDP_RTP;
 				pkt_hdrs->rtp = rtp;
+				pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+				pkt_hdrs->payload_len = remain_len;
+				pkt_hdrs->payload = remain_data;
 				fingerprint->base.profile_id = profile;
 				fingerprint->src_port = rohc_ntoh16(udp_header->source);
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -936,6 +977,8 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 			goto unsupported_esp_hdr;
 		}
 		esp = (const struct esphdr *) remain_data;
+		remain_data += sizeof(struct esphdr);
+		remain_len -= sizeof(struct esphdr);
 
 		/* ROHCv1/v2 IP/ESP profiles are possible if they are enabled */
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -945,6 +988,9 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 		{
 			profile = ROHCv1_PROFILE_IP_ESP;
 			pkt_hdrs->esp = esp;
+			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+			pkt_hdrs->payload_len = remain_len;
+			pkt_hdrs->payload = remain_data;
 			fingerprint->base.profile_id = profile;
 			fingerprint->esp_spi = rohc_ntoh32(esp->spi);
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -955,6 +1001,9 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 		{
 			profile = ROHCv2_PROFILE_IP_ESP;
 			pkt_hdrs->esp = esp;
+			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+			pkt_hdrs->payload_len = remain_len;
+			pkt_hdrs->payload = remain_data;
 			fingerprint->base.profile_id = profile;
 			fingerprint->esp_spi = rohc_ntoh32(esp->spi);
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -973,6 +1022,8 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 			goto unsupported_udplite_hdr;
 		}
 		udp_lite = (const struct udphdr *) remain_data;
+		remain_data += sizeof(struct udphdr);
+		remain_len -= sizeof(struct udphdr);
 
 		/* ROHCv1/v2 IP/UDP-Lite profiles are possible if they are enabled */
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -982,6 +1033,9 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 		{
 			profile = ROHCv1_PROFILE_IP_UDPLITE;
 			pkt_hdrs->udp_lite = udp_lite;
+			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+			pkt_hdrs->payload_len = remain_len;
+			pkt_hdrs->payload = remain_data;
 			fingerprint->base.profile_id = profile;
 			fingerprint->src_port = rohc_ntoh16(udp_lite->source);
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -995,6 +1049,9 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 		{
 			profile = ROHCv2_PROFILE_IP_UDPLITE;
 			pkt_hdrs->udp_lite = udp_lite;
+			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+			pkt_hdrs->payload_len = remain_len;
+			pkt_hdrs->payload = remain_data;
 			fingerprint->base.profile_id = profile;
 			fingerprint->src_port = rohc_ntoh16(udp_lite->source);
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -1092,8 +1149,6 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 	struct rohc_comp_ctxt *c;
 	rohc_packet_t packet_type;
 	int rohc_hdr_size;
-	size_t payload_size;
-	size_t payload_offset;
 
 	const struct rohc_comp_profile *profile;
 	rohc_profile_t profile_id;
@@ -1188,9 +1243,9 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	           "compress the packet #%d", comp->num_packets + 1);
 	rohc_hdr_size =
-		c->profile->encode(c, &uncomp_packet, rohc_buf_data(*rohc_packet),
+		c->profile->encode(c, &pkt_hdrs, &uncomp_packet, rohc_buf_data(*rohc_packet),
 		                   rohc_buf_avail_len(*rohc_packet),
-		                   &packet_type, &payload_offset);
+		                   &packet_type);
 	if(rohc_hdr_size < 0)
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -1200,12 +1255,18 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 	}
 	rohc_packet->len += rohc_hdr_size;
 
+	if(profile_id == ROHCv1_PROFILE_UNCOMPRESSED &&
+	   packet_type == ROHC_PACKET_NORMAL)
+	{
+		pkt_hdrs.all_hdrs_len++;
+		pkt_hdrs.payload_len--;
+	}
+
 	/* the payload starts after the header, skip it */
 	rohc_buf_pull(rohc_packet, rohc_hdr_size);
-	payload_size = uncomp_packet.len - payload_offset;
 
 	/* is packet too large for output buffer? */
-	if(payload_size > rohc_buf_avail_len(*rohc_packet))
+	if(pkt_hdrs.payload_len > rohc_buf_avail_len(*rohc_packet))
 	{
 		const size_t max_rohc_buf_len =
 			rohc_buf_avail_len(*rohc_packet) + rohc_hdr_size;
@@ -1218,18 +1279,19 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 		          "size = %zd, required output size = %d + %zd = %zd, "
 		          "MRRU = %zd)", rohc_get_packet_descr(packet_type),
 		          uncomp_packet.len, max_rohc_buf_len, rohc_hdr_size,
-		          payload_size, rohc_hdr_size + payload_size, comp->mrru);
+		          pkt_hdrs.payload_len, rohc_hdr_size + pkt_hdrs.payload_len,
+		          comp->mrru);
 
 		/* in order to be segmented, a ROHC packet shall be <= MRRU
 		 * (remember that MRRU includes the CRC length) */
-		if((payload_size + CRC_FCS32_LEN) > comp->mrru)
+		if((pkt_hdrs.payload_len + CRC_FCS32_LEN) > comp->mrru)
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			             "%s ROHC packet cannot be segmented: too large (%d + "
 			             "%zu + %u = %zu bytes) for MRRU (%zu bytes)",
 			             rohc_get_packet_descr(packet_type), rohc_hdr_size,
-			             payload_size, CRC_FCS32_LEN, rohc_hdr_size +
-			             payload_size + CRC_FCS32_LEN, comp->mrru);
+			             pkt_hdrs.payload_len, CRC_FCS32_LEN, rohc_hdr_size +
+			             pkt_hdrs.payload_len + CRC_FCS32_LEN, comp->mrru);
 			goto error_free_new_context;
 		}
 		rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -1257,8 +1319,9 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 		comp->rru_len += rohc_hdr_size;
 		/* ROHC payload */
 		memcpy(comp->rru + comp->rru_off + comp->rru_len,
-		       rohc_buf_data_at(uncomp_packet, payload_offset), payload_size);
-		comp->rru_len += payload_size;
+		       rohc_buf_data_at(uncomp_packet, pkt_hdrs.all_hdrs_len),
+		       pkt_hdrs.payload_len);
+		comp->rru_len += pkt_hdrs.payload_len;
 		/* compute FCS-32 CRC over header and payload (optional feedbacks and
 		   the CRC field itself are excluded) */
 		rru_crc = crc_calc_fcs32(comp->rru + comp->rru_off, comp->rru_len,
@@ -1281,17 +1344,17 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 	{
 		/* copy full payload after ROHC header */
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "copy full %zd-byte payload", payload_size);
+		           "copy full %zd-byte payload", pkt_hdrs.payload_len);
 		rohc_buf_append(rohc_packet,
-		                rohc_buf_data_at(uncomp_packet, payload_offset),
-		                payload_size);
+		                rohc_buf_data_at(uncomp_packet, pkt_hdrs.all_hdrs_len),
+		                pkt_hdrs.payload_len);
 
 		/* unhide the ROHC header */
 		rohc_buf_push(rohc_packet, rohc_hdr_size);
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "ROHC size = %zd bytes (header = %d, payload = %zu), output "
 		           "buffer size = %zu", rohc_packet->len, rohc_hdr_size,
-		           payload_size, rohc_buf_avail_len(*rohc_packet));
+		           pkt_hdrs.payload_len, rohc_buf_avail_len(*rohc_packet));
 
 		/* report to user that compression was successful */
 		status = ROHC_STATUS_OK;
@@ -1309,13 +1372,13 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 
 	c->total_uncompressed_size += uncomp_packet.len;
 	c->total_compressed_size += rohc_packet->len;
-	c->header_uncompressed_size += payload_offset;
+	c->header_uncompressed_size += pkt_hdrs.all_hdrs_len;
 	c->header_compressed_size += rohc_hdr_size;
 	c->num_sent_packets++;
 
 	c->total_last_uncompressed_size = uncomp_packet.len;
 	c->total_last_compressed_size = rohc_packet->len;
-	c->header_last_uncompressed_size = payload_offset;
+	c->header_last_uncompressed_size = pkt_hdrs.all_hdrs_len;
 	c->header_last_compressed_size = rohc_hdr_size;
 
 	/* compression is successful */

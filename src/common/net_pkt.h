@@ -63,8 +63,5 @@ void net_pkt_parse(struct net_pkt *const packet,
                    rohc_trace_entity_t trace_entity)
 	__attribute__((nonnull(1)));
 
-size_t net_pkt_get_payload_offset(const struct net_pkt *const packet)
-	__attribute__((warn_unused_result, nonnull(1)));
-
 #endif
 

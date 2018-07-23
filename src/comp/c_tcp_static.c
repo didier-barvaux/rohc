@@ -64,43 +64,31 @@ static int tcp_code_static_tcp_part(const struct rohc_comp_ctxt *const context,
  * @brief Code the static part of an IR packet
  *
  * @param context           The compression context
- * @param uncomp_pkt        The uncompressed packet
+ * @param uncomp_pkt_hdrs   The uncompressed headers to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
 int tcp_code_static_part(struct rohc_comp_ctxt *const context,
-                         const struct rohc_buf *const uncomp_pkt,
+                         const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                          uint8_t *const rohc_pkt,
                          const size_t rohc_pkt_max_len)
 {
-	struct sc_tcp_context *const tcp_context = context->specific;
-
-	const uint8_t *remain_data = rohc_buf_data(*uncomp_pkt);
-	size_t remain_len = uncomp_pkt->len;
-
+	const struct tcphdr *const tcp = (struct tcphdr *) uncomp_pkt_hdrs->tcp;
 	uint8_t *rohc_remain_data = rohc_pkt;
 	size_t rohc_remain_len = rohc_pkt_max_len;
-
 	size_t ip_hdr_pos;
 	int ret;
 
 	/* add IP parts of static chain */
-	for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)
+	for(ip_hdr_pos = 0; ip_hdr_pos < uncomp_pkt_hdrs->ip_hdrs_nr; ip_hdr_pos++)
 	{
-		const struct ip_hdr *const ip_hdr = (struct ip_hdr *) remain_data;
-		size_t ip_ext_pos;
+		const struct ip_hdr *const ip = uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos].ip;
 
-		/* retrieve IP version */
-		assert(remain_len >= sizeof(struct ip_hdr));
-		rohc_comp_debug(context, "found IPv%d", ip_hdr->version);
-
-		if(ip_hdr->version == IPV4)
+		if(ip->version == IPV4)
 		{
-			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) remain_data;
-
-			assert(remain_len >= sizeof(struct ipv4_hdr));
+			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) ip;
 
 			ret = tcp_code_static_ipv4_part(context, ipv4, rohc_remain_data,
 			                                rohc_remain_len);
@@ -112,16 +100,15 @@ int tcp_code_static_part(struct rohc_comp_ctxt *const context,
 			}
 			rohc_remain_data += ret;
 			rohc_remain_len -= ret;
-
-			remain_data += sizeof(struct ipv4_hdr);
-			remain_len -= sizeof(struct ipv4_hdr);
 		}
-		else if(ip_hdr->version == IPV6)
+		else /* IPv6 */
 		{
-			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
-			uint8_t protocol;
-
-			assert(remain_len >= sizeof(struct ipv6_hdr));
+			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) ip;
+			const uint8_t *remain_data = (const uint8_t *) (ipv6 + 1);
+			size_t remain_len =
+				uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos].tot_len - sizeof(struct ipv6_hdr);
+			uint8_t protocol = ipv6->nh;
+			size_t ip_ext_pos;
 
 			ret = tcp_code_static_ipv6_part(context, ipv6, rohc_remain_data,
 			                                rohc_remain_len);
@@ -134,12 +121,8 @@ int tcp_code_static_part(struct rohc_comp_ctxt *const context,
 			rohc_remain_data += ret;
 			rohc_remain_len -= ret;
 
-			protocol = ipv6->nh;
-			remain_data += sizeof(struct ipv6_hdr);
-			remain_len -= sizeof(struct ipv6_hdr);
-
 			for(ip_ext_pos = 0;
-			    ip_ext_pos < tcp_context->tmp.ip_exts_nr[ip_hdr_pos];
+			    ip_ext_pos < uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos].exts_nr;
 			    ip_ext_pos++)
 			{
 				const struct ipv6_opt *const ipv6_opt = (struct ipv6_opt *) remain_data;
@@ -163,32 +146,20 @@ int tcp_code_static_part(struct rohc_comp_ctxt *const context,
 				remain_len -= opt_len;
 			}
 		}
-		else
-		{
-			rohc_comp_warn(context, "unexpected IP version %u", ip_hdr->version);
-			assert(0);
-			goto error;
-		}
 	}
 
 	/* add TCP static part */
+	ret = tcp_code_static_tcp_part(context, tcp, rohc_remain_data, rohc_remain_len);
+	if(ret < 0)
 	{
-		const struct tcphdr *const tcp = (struct tcphdr *) remain_data;
-
-		assert(remain_len >= sizeof(struct tcphdr));
-
-		ret = tcp_code_static_tcp_part(context, tcp, rohc_remain_data, rohc_remain_len);
-		if(ret < 0)
-		{
-			rohc_comp_warn(context, "failed to build the TCP header part of the "
-			               "static chain");
-			goto error;
-		}
-#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
-		rohc_remain_data += ret;
-#endif
-		rohc_remain_len -= ret;
+		rohc_comp_warn(context, "failed to build the TCP header part of the "
+		               "static chain");
+		goto error;
 	}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
+	rohc_remain_data += ret;
+#endif
+	rohc_remain_len -= ret;
 
 	return (rohc_pkt_max_len - rohc_remain_len);
 

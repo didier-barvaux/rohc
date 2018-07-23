@@ -39,22 +39,20 @@ static int tcp_code_irregular_ipv4_part(const struct rohc_comp_ctxt *const conte
                                         const struct ipv4_hdr *const ipv4,
                                         const bool is_innermost,
                                         const bool ecn_used,
-                                        const uint8_t ip_inner_ecn,
                                         const bool ttl_irreg_chain_flag,
                                         uint8_t *const rohc_data,
                                         const size_t rohc_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 8)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 7)));
 
 static int tcp_code_irregular_ipv6_part(const struct rohc_comp_ctxt *const context,
                                         const ip_context_t *const ip_context,
                                         const struct ipv6_hdr *const ipv6,
                                         const bool is_innermost,
                                         const bool ecn_used,
-                                        const uint8_t ip_inner_ecn,
                                         const bool ttl_irreg_chain_flag,
                                         uint8_t *const rohc_data,
                                         const size_t rohc_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 8)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 7)));
 
 static int tcp_code_irregular_ipv6_opt_part(struct rohc_comp_ctxt *const context,
                                             ip_option_context_t *const opt_ctxt,
@@ -65,7 +63,7 @@ static int tcp_code_irregular_ipv6_opt_part(struct rohc_comp_ctxt *const context
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
 static int tcp_code_irregular_tcp_part(const struct rohc_comp_ctxt *const context,
-                                       const struct tcphdr *const tcp,
+                                       const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                        const uint8_t ip_inner_ecn,
                                        uint8_t *const rohc_data,
                                        const size_t rohc_max_len)
@@ -76,51 +74,37 @@ static int tcp_code_irregular_tcp_part(const struct rohc_comp_ctxt *const contex
  * @brief Code the irregular chain of one CO packet
  *
  * @param context           The compression context
- * @param uncomp_pkt        The uncompressed packet
- * @param ip_inner_ecn      The ECN flags of the innermost IP header
- * @param tcp               The uncompressed TCP header
+ * @param uncomp_pkt_hdrs   The uncompressed headers to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
 int tcp_code_irreg_chain(struct rohc_comp_ctxt *const context,
-                         const struct rohc_buf *const uncomp_pkt,
-                         const uint8_t ip_inner_ecn,
-                         const struct tcphdr *const tcp,
+                         const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                          uint8_t *const rohc_pkt,
                          const size_t rohc_pkt_max_len)
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
-
-	const uint8_t *remain_data = rohc_buf_data(*uncomp_pkt);
-	size_t remain_len = uncomp_pkt->len;
-
 	uint8_t *rohc_remain_data = rohc_pkt;
 	size_t rohc_remain_len = rohc_pkt_max_len;
-
+	uint8_t ip_inner_ecn;
 	uint8_t ip_hdr_pos;
 	int ret;
 
-	for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)
+	for(ip_hdr_pos = 0; ip_hdr_pos < uncomp_pkt_hdrs->ip_hdrs_nr; ip_hdr_pos++)
 	{
-		const struct ip_hdr *const ip_hdr = (struct ip_hdr *) remain_data;
+		const struct ip_hdr *const ip = uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos].ip;
 		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
-		const bool is_innermost = !!(ip_hdr_pos == (tcp_context->ip_contexts_nr - 1));
-
-		/* retrieve IP version */
-		assert(remain_len >= sizeof(struct ip_hdr));
-		rohc_comp_debug(context, "found IPv%d", ip_hdr->version);
+		const bool is_innermost = !!((ip_hdr_pos + 1) == uncomp_pkt_hdrs->ip_hdrs_nr);
 
 		/* irregular part for IP header */
-		if(ip_hdr->version == IPV4)
+		if(ip->version == IPV4)
 		{
-			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) remain_data;
-
-			assert(remain_len >= sizeof(struct ipv4_hdr));
+			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) ip;
 
 			ret = tcp_code_irregular_ipv4_part(context, ip_context, ipv4, is_innermost,
-			                                   tcp_context->ecn_used, ip_inner_ecn,
+			                                   tcp_context->ecn_used,
 			                                   tcp_context->tmp.ttl_irreg_chain_flag,
 			                                   rohc_remain_data, rohc_remain_len);
 			if(ret < 0)
@@ -131,20 +115,18 @@ int tcp_code_irreg_chain(struct rohc_comp_ctxt *const context,
 			}
 			rohc_remain_data += ret;
 			rohc_remain_len -= ret;
-
-			remain_data += sizeof(struct ipv4_hdr);
-			remain_len -= sizeof(struct ipv4_hdr);
 		}
-		else if(ip_hdr->version == IPV6)
+		else /* IPv6 */
 		{
-			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
-			uint8_t protocol;
+			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) ip;
+			const uint8_t *remain_data = (const uint8_t *) (ipv6 + 1);
+			size_t remain_len =
+				uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos].tot_len - sizeof(struct ipv6_hdr);
+			uint8_t protocol = ipv6->nh;
 			size_t ip_ext_pos;
 
-			assert(remain_len >= sizeof(struct ipv6_hdr));
-
 			ret = tcp_code_irregular_ipv6_part(context, ip_context, ipv6, is_innermost,
-			                                   tcp_context->ecn_used, ip_inner_ecn,
+			                                   tcp_context->ecn_used,
 			                                   tcp_context->tmp.ttl_irreg_chain_flag,
 			                                   rohc_remain_data, rohc_remain_len);
 			if(ret < 0)
@@ -156,12 +138,10 @@ int tcp_code_irreg_chain(struct rohc_comp_ctxt *const context,
 			rohc_remain_data += ret;
 			rohc_remain_len -= ret;
 
-			protocol = ipv6->nh;
-			remain_data += sizeof(struct ipv6_hdr);
-			remain_len -= sizeof(struct ipv6_hdr);
-
 			/* irregular part for IPv6 extension headers */
-			for(ip_ext_pos = 0; ip_ext_pos < ip_context->opts_nr; ip_ext_pos++)
+			for(ip_ext_pos = 0;
+			    ip_ext_pos < uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos].exts_nr;
+			    ip_ext_pos++)
 			{
 				const struct ipv6_opt *const ipv6_opt = (struct ipv6_opt *) remain_data;
 				ip_option_context_t *const opt_ctxt =
@@ -184,16 +164,24 @@ int tcp_code_irreg_chain(struct rohc_comp_ctxt *const context,
 				remain_len -= opt_ctxt->generic.option_length;
 			}
 		}
-		else
-		{
-			rohc_comp_warn(context, "unexpected IP version %u", ip_hdr->version);
-			assert(0);
-			goto error;
-		}
+	}
+
+	/* get the ECN of the innermost IP header */
+	if(uncomp_pkt_hdrs->innermost_ip_hdr->version == IPV4)
+	{
+		const struct ipv4_hdr *const inner_ipv4 =
+			uncomp_pkt_hdrs->innermost_ip_hdr->ipv4;
+		ip_inner_ecn = inner_ipv4->ecn;
+	}
+	else /* IPv6 */
+	{
+		const struct ipv6_hdr *const inner_ipv6 =
+			uncomp_pkt_hdrs->innermost_ip_hdr->ipv6;
+		ip_inner_ecn = inner_ipv6->ecn;
 	}
 
 	/* TCP part (base header + options) of the irregular chain */
-	ret = tcp_code_irregular_tcp_part(context, tcp, ip_inner_ecn,
+	ret = tcp_code_irregular_tcp_part(context, uncomp_pkt_hdrs, ip_inner_ecn,
 	                                  rohc_remain_data, rohc_remain_len);
 	if(ret < 0)
 	{
@@ -223,7 +211,6 @@ error:
  * @param ipv4                  The IPv4 header
  * @param is_innermost          True if IP header is the innermost of the packet
  * @param ecn_used              The indicator of ECN usage
- * @param ip_inner_ecn          The ECN flags of the IP innermost header
  * @param ttl_irreg_chain_flag  Whether the TTL of an outer header changed
  * @param[out] rohc_data        The ROHC packet being built
  * @param rohc_max_len          The max remaining length in the ROHC buffer
@@ -235,7 +222,6 @@ static int tcp_code_irregular_ipv4_part(const struct rohc_comp_ctxt *const conte
                                         const struct ipv4_hdr *const ipv4,
                                         const bool is_innermost,
                                         const bool ecn_used,
-                                        const uint8_t ip_inner_ecn,
                                         const bool ttl_irreg_chain_flag,
                                         uint8_t *const rohc_data,
                                         const size_t rohc_max_len)
@@ -246,8 +232,8 @@ static int tcp_code_irregular_ipv4_part(const struct rohc_comp_ctxt *const conte
 	assert(ip_context->version == IPV4);
 
 	rohc_comp_debug(context, "ecn_used = %d, is_innermost = %d, "
-	                "ttl_irreg_chain_flag = %d, ip_inner_ecn = %u",
-	                ecn_used, is_innermost, ttl_irreg_chain_flag, ip_inner_ecn);
+	                "ttl_irreg_chain_flag = %d",
+	                ecn_used, is_innermost, ttl_irreg_chain_flag);
 	rohc_comp_debug(context, "IP version = 4, ip_id_behavior = %d",
 	                ip_context->ip_id_behavior);
 
@@ -327,7 +313,6 @@ error:
  * @param ipv6                  The IPv6 header
  * @param is_innermost          True if IP header is the innermost of the packet
  * @param ecn_used              The indicator of ECN usage
- * @param ip_inner_ecn          The ECN flags of the IP innermost header
  * @param ttl_irreg_chain_flag  Whether the TTL of an outer header changed
  * @param[out] rohc_data        The ROHC packet being built
  * @param rohc_max_len          The max remaining length in the ROHC buffer
@@ -339,7 +324,6 @@ static int tcp_code_irregular_ipv6_part(const struct rohc_comp_ctxt *const conte
                                         const struct ipv6_hdr *const ipv6,
                                         const bool is_innermost,
                                         const bool ecn_used,
-                                        const uint8_t ip_inner_ecn,
                                         const bool ttl_irreg_chain_flag,
                                         uint8_t *const rohc_data,
                                         const size_t rohc_max_len)
@@ -350,8 +334,8 @@ static int tcp_code_irregular_ipv6_part(const struct rohc_comp_ctxt *const conte
 	assert(ip_context->version == IPV6);
 
 	rohc_comp_debug(context, "ecn_used = %d, is_innermost = %d, "
-	                "ttl_irreg_chain_flag = %d, ip_inner_ecn = %u",
-	                ecn_used, is_innermost, ttl_irreg_chain_flag, ip_inner_ecn);
+	                "ttl_irreg_chain_flag = %d",
+	                ecn_used, is_innermost, ttl_irreg_chain_flag);
 	rohc_comp_debug(context, "IP version = 6, ip_id_behavior = %d",
 	                ip_context->ip_id_behavior);
 
@@ -446,7 +430,7 @@ static int tcp_code_irregular_ipv6_opt_part(struct rohc_comp_ctxt *const context
  * @brief Build the irregular part of the TCP header.
  *
  * @param context         The compression context
- * @param tcp             The TCP header
+ * @param uncomp_pkt_hdrs The uncompressed headers to encode
  * @param ip_inner_ecn    The ECN flags of the innermost IP header
  * @param[out] rohc_data  The ROHC packet being built
  * @param rohc_max_len    The max remaining length in the ROHC buffer
@@ -454,12 +438,13 @@ static int tcp_code_irregular_ipv6_opt_part(struct rohc_comp_ctxt *const context
  *                        -1 in case of error
  */
 static int tcp_code_irregular_tcp_part(const struct rohc_comp_ctxt *const context,
-                                       const struct tcphdr *const tcp,
+                                       const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                        const uint8_t ip_inner_ecn,
                                        uint8_t *const rohc_data,
                                        const size_t rohc_max_len)
 {
 	struct sc_tcp_context *const tcp_context = context->specific;
+	const struct tcphdr *const tcp = (struct tcphdr *) uncomp_pkt_hdrs->tcp;
 	uint8_t *rohc_remain_data = rohc_data;
 	size_t rohc_remain_len = rohc_max_len;
 	int ret;
@@ -499,7 +484,7 @@ static int tcp_code_irregular_tcp_part(const struct rohc_comp_ctxt *const contex
 	                rohc_ntoh16(tcp->checksum));
 
 	/* irregular part for TCP options */
-	ret = c_tcp_code_tcp_opts_irreg(context, tcp, tcp_context->msn,
+	ret = c_tcp_code_tcp_opts_irreg(context, uncomp_pkt_hdrs, tcp_context->msn,
 		                             &tcp_context->tcp_opts, rohc_remain_data,
 		                             rohc_remain_len);
 	if(ret < 0)

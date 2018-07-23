@@ -340,12 +340,12 @@ rohc_ext_t decide_extension(const struct rohc_comp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1)));
 
 int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
+                             const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                              const struct rohc_buf *const uncomp_pkt,
                              uint8_t *const rohc_pkt,
                              const size_t rohc_pkt_max_len,
-                             rohc_packet_t *const packet_type,
-                             size_t *const payload_offset)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
+                             rohc_packet_t *const packet_type)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 6)));
 
 bool rohc_comp_rfc3095_feedback(struct rohc_comp_ctxt *const context,
                                 const enum rohc_feedback_type feedback_type,
