@@ -296,8 +296,8 @@ static bool build_ipv6_ext_pkt_list(struct list_comp *const comp,
 		pkt_list->items[pkt_list->items_nr] = &(comp->trans_table[index_table]);
 		pkt_list->items_nr++;
 
-		rc_list_debug(comp, "  extension #%zu: extension type %u uses %s entry #%d "
-		              "in translation table (%s entry sent %zu/%zu times)",
+		rc_list_debug(comp, "  extension #%u: extension type %u uses %s entry #%d "
+		              "in translation table (%s entry sent %u/%u times)",
 		              pkt_list->items_nr, ext_type,
 		              (entry_changed ? "updated" : "existing"), index_table,
 		              comp->trans_table[index_table].known ? "known" : "not-yet-known",
@@ -369,12 +369,12 @@ int rohc_list_encode(struct list_comp *const comp,
 
 	if(comp->cur_id == ROHC_LIST_GEN_ID_ANON)
 	{
-		rc_list_debug(comp, "send anonymous list for the #%zu time",
+		rc_list_debug(comp, "send anonymous list for the #%u time",
 		              comp->lists[comp->cur_id].counter + 1);
 	}
 	else
 	{
-		rc_list_debug(comp, "send list with generation ID %u for the #%zu time",
+		rc_list_debug(comp, "send list with generation ID %u for the #%u time",
 		              comp->cur_id, comp->lists[comp->cur_id].counter + 1);
 	}
 
@@ -430,7 +430,7 @@ void rohc_list_update_context(struct list_comp *const comp)
 				/* replace previous reference list */
 				rc_list_debug(comp, "replace the reference list (gen_id = %u) by "
 				              "current list (gen_id = %u) because it was "
-				              "transmitted at least L = %zu times",
+				              "transmitted at least L = %u times",
 				              comp->ref_id, comp->cur_id, comp->list_trans_nr);
 			}
 			else
@@ -438,7 +438,7 @@ void rohc_list_update_context(struct list_comp *const comp)
 				/* first reference list */
 				rc_list_debug(comp, "use the current list (gen_id = %u) as the "
 				              "first reference list because it was transmitted "
-				              "at least L = %zu times", comp->cur_id,
+				              "at least L = %u times", comp->cur_id,
 				              comp->list_trans_nr);
 			}
 			comp->ref_id = comp->cur_id;
@@ -465,7 +465,7 @@ static unsigned int rohc_list_get_nearest_list(const struct list_comp *const com
                                                const struct rohc_list *const pkt_list,
                                                bool *const is_new_list)
 {
-	const size_t anon_thres = 2;
+	const uint8_t anon_thres = 2;
 	unsigned int new_cur_id = ROHC_LIST_GEN_ID_NONE;
 	unsigned int gen_id;
 
@@ -502,7 +502,7 @@ static unsigned int rohc_list_get_nearest_list(const struct list_comp *const com
 	if(new_cur_id != ROHC_LIST_GEN_ID_NONE)
 	{
 		rc_list_debug(comp, "send existing context list with gen_id %u "
-		              "(already sent %zu times)", new_cur_id,
+		              "(already sent %u times)", new_cur_id,
 		              comp->lists[new_cur_id].counter);
 		*is_new_list = false;
 		return new_cur_id;
@@ -528,7 +528,7 @@ static unsigned int rohc_list_get_nearest_list(const struct list_comp *const com
 	{
 		/* new or changed anonymous list */
 		rc_list_debug(comp, "send current list as anonymous list (transmitted "
-		              "0 / %zu)", anon_thres);
+		              "0 / %u)", anon_thres);
 		*is_new_list = true;
 		return ROHC_LIST_GEN_ID_ANON;
 	}
@@ -540,7 +540,7 @@ static unsigned int rohc_list_get_nearest_list(const struct list_comp *const com
 	{
 		/* too early to promote anonymous list to an identified list with a gen_id */
 		rc_list_debug(comp, "send current list as anonymous list (transmitted "
-		              "%zu / %zu)", comp->lists[ROHC_LIST_GEN_ID_ANON].counter,
+		              "%u / %u)", comp->lists[ROHC_LIST_GEN_ID_ANON].counter,
 		              anon_thres);
 		*is_new_list = false;
 		return ROHC_LIST_GEN_ID_ANON;
@@ -568,7 +568,7 @@ static unsigned int rohc_list_get_nearest_list(const struct list_comp *const com
 		}
 	}
 	rc_list_debug(comp, "the anonymous list is going to be transmitted for the "
-	              "%zu time, promote it to an identified list with gen_id = %u",
+	              "%u time, promote it to an identified list with gen_id = %u",
 	              comp->lists[ROHC_LIST_GEN_ID_ANON].counter + 1, new_cur_id);
 	*is_new_list = true;
 	return new_cur_id;
@@ -920,7 +920,7 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 		/* copy the list element if not known yet */
 		if(!item->known)
 		{
-			rc_list_debug(comp, "add %zu-byte not-yet-known item #%zu in "
+			rc_list_debug(comp, "add %u-byte not-yet-known item #%zu in "
 			              "packet", item->length, k);
 			assert(item->length > 1);
 			dest[counter] = item->type & 0xff;
@@ -1112,7 +1112,7 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 		/* copy the list element if not known yet */
 		if(!item->known)
 		{
-			rc_list_debug(comp, "add %zu-byte unknown item #%zu in packet",
+			rc_list_debug(comp, "add %u-byte unknown item #%zu in packet",
 			              item->length, k);
 			assert(item->length > 1);
 			dest[counter] = item->type & 0xff;
@@ -1449,7 +1449,7 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 		/* copy the list element if not known yet */
 		if(!item->known)
 		{
-			rc_list_debug(comp, "add %zu-byte unknown item #%zu in packet",
+			rc_list_debug(comp, "add %u-byte unknown item #%zu in packet",
 			              item->length, k);
 			assert(item->length > 1);
 			dest[counter] = item->type & 0xff;

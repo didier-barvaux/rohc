@@ -235,7 +235,7 @@ static int tcp_code_replicate_ipv4_part(const struct rohc_comp_ctxt *const conte
 	int ttl_hopl_indicator;
 	int ret;
 
-	assert(ip_context->ctxt.vx.version == IPV4);
+	assert(ip_context->version == IPV4);
 
 	if(rohc_max_len < ipv4_replicate_len)
 	{
@@ -251,7 +251,7 @@ static int tcp_code_replicate_ipv4_part(const struct rohc_comp_ctxt *const conte
 	if(is_innermost)
 	{
 		/* all behavior values possible */
-		ipv4_replicate->ip_id_behavior = ip_context->ctxt.v4.ip_id_behavior;
+		ipv4_replicate->ip_id_behavior = ip_context->ip_id_behavior;
 	}
 	else
 	{
@@ -265,10 +265,10 @@ static int tcp_code_replicate_ipv4_part(const struct rohc_comp_ctxt *const conte
 			ipv4_replicate->ip_id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
 		}
 		/* TODO: should not update context there */
-		ip_context->ctxt.v4.ip_id_behavior = ipv4_replicate->ip_id_behavior;
+		ip_context->ip_id_behavior = ipv4_replicate->ip_id_behavior;
 	}
 	/* TODO: should not update context there */
-	ip_context->ctxt.v4.last_ip_id_behavior = ip_context->ctxt.v4.ip_id_behavior;
+	ip_context->last_ip_id_behavior = ip_context->ip_id_behavior;
 
 	ipv4_replicate->df = ipv4->df;
 	ipv4_replicate->dscp = ipv4->dscp;
@@ -300,7 +300,7 @@ static int tcp_code_replicate_ipv4_part(const struct rohc_comp_ctxt *const conte
 	/* ttl_hopl */
 	{
 		const bool is_ttl_hopl_static =
-			(ip_context->ctxt.vx.ttl_hopl == tcp_context->tmp.ttl_hopl);
+			(ip_context->ttl_hopl == tcp_context->tmp.ttl_hopl);
 		const bool cr_ttl_hopl_needed =
 			(!is_ttl_hopl_static || ip_context->cr_ttl_hopl_present);
 		ret = c_static_or_irreg8(tcp_context->tmp.ttl_hopl, !cr_ttl_hopl_needed,
@@ -313,16 +313,16 @@ static int tcp_code_replicate_ipv4_part(const struct rohc_comp_ctxt *const conte
 		}
 		ipv4_replicate_len += ret;
 		rohc_comp_debug(context, "TTL = 0x%02x -> 0x%02x",
-		                ip_context->ctxt.v4.ttl, tcp_context->tmp.ttl_hopl);
+		                ip_context->ttl_hopl, tcp_context->tmp.ttl_hopl);
 		ipv4_replicate->ttl_flag = ttl_hopl_indicator;
 		ip_context->cr_ttl_hopl_present = !!ttl_hopl_indicator;
 	}
 
 	/* TODO: should not update context there */
-	ip_context->ctxt.v4.dscp = ipv4->dscp;
-	ip_context->ctxt.v4.ttl = ipv4->ttl;
-	ip_context->ctxt.v4.df = ipv4->df;
-	ip_context->ctxt.v4.last_ip_id = rohc_ntoh16(ipv4->id);
+	ip_context->dscp = ipv4->dscp;
+	ip_context->ttl_hopl = ipv4->ttl;
+	ip_context->df = ipv4->df;
+	ip_context->last_ip_id = rohc_ntoh16(ipv4->id);
 
 	rohc_comp_dump_buf(context, "IPv4 replicate part", rohc_data, ipv4_replicate_len);
 
@@ -353,7 +353,7 @@ static int tcp_code_replicate_ipv6_part(const struct rohc_comp_ctxt *const conte
 	const uint8_t dscp = ipv6_get_dscp(ipv6);
 	size_t ipv6_replicate_len;
 
-	assert(ip_context->ctxt.v6.version == IPV6);
+	assert(ip_context->version == IPV6);
 
 	if(ipv6->flow1 == 0 && ipv6->flow2 == 0)
 	{
@@ -396,8 +396,8 @@ static int tcp_code_replicate_ipv6_part(const struct rohc_comp_ctxt *const conte
 	}
 
 	/* TODO: should not update context there */
-	ip_context->ctxt.v6.dscp = dscp;
-	ip_context->ctxt.v6.hopl = ipv6->hl;
+	ip_context->dscp = dscp;
+	ip_context->ttl_hopl = ipv6->hl;
 
 	rohc_comp_dump_buf(context, "IPv6 replicate part", rohc_data, ipv6_replicate_len);
 
@@ -666,7 +666,7 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
 		tcp_replicate->ack_stride_flag = indicator;
 		rohc_remain_data += ret;
 		rohc_remain_len -= ret;
-		rohc_comp_debug(context, "TCP ack_stride %spresent (ack_stride = %u, ack_num_scaling_nr = %zu)",
+		rohc_comp_debug(context, "TCP ack_stride %spresent (ack_stride = %u, ack_num_scaling_nr = %u)",
 		                tcp_replicate->ack_stride_flag ? "" : "not ", tcp_context->ack_stride, tcp_context->ack_num_scaling_nr);
 	}
 

@@ -54,7 +54,7 @@ struct list_comp
 	                              is fully OK */
 
 	/** The number of uncompressed transmissions for list compression (L) */
-	size_t list_trans_nr;
+	uint8_t list_trans_nr;
 
 	/* Functions for handling the data to compress */
 

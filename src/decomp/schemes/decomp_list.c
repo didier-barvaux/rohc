@@ -306,7 +306,7 @@ static int rohc_list_decode(struct list_decomp *decomp,
 		 * not update the sliding window of lists */
 		decomp->lists[gen_id].counter++;
 		rd_list_debug(decomp, "list with gen_id %u is already present in "
-		              "reference lists (received for the #%zu times)",
+		              "reference lists (received for the #%u times)",
 		              gen_id, decomp->lists[gen_id].counter);
 	}
 	else
@@ -1177,14 +1177,14 @@ static int rohc_list_parse_removal_scheme(struct list_decomp *const decomp,
 		else
 		{
 			rd_list_debug(decomp, "take item at index %zu of reference list "
-			              "as item at index %zu of current list", i,
+			              "as item at index %u of current list", i,
 			              rem_list->items_nr);
 
 			/* check that reference list is large enough */
 			if(i >= ref_list->items_nr)
 			{
 				rd_list_warn(decomp, "reference list is too short: item at index "
-				             "%zu requested while list contains only %zu items",
+				             "%zu requested while list contains only %u items",
 				             i, ref_list->items_nr);
 				goto error;
 			}

@@ -219,16 +219,16 @@ int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
 	if(inner_ip_hdr->version == IPV4)
 	{
 		const struct ipv4_hdr *const inner_ipv4 = (struct ipv4_hdr *) inner_ip_hdr;
-		inner_ip_context->ctxt.v4.last_ip_id_behavior =
-			inner_ip_context->ctxt.v4.ip_id_behavior;
-		inner_ip_context->ctxt.v4.last_ip_id = rohc_ntoh16(inner_ipv4->id);
-		inner_ip_context->ctxt.v4.df = inner_ipv4->df;
-		inner_ip_context->ctxt.vx.dscp = inner_ipv4->dscp;
+		inner_ip_context->last_ip_id_behavior =
+			inner_ip_context->ip_id_behavior;
+		inner_ip_context->last_ip_id = rohc_ntoh16(inner_ipv4->id);
+		inner_ip_context->df = inner_ipv4->df;
+		inner_ip_context->dscp = inner_ipv4->dscp;
 	}
 	else if(inner_ip_hdr->version == IPV6)
 	{
 		const struct ipv6_hdr *const inner_ipv6 = (struct ipv6_hdr *) inner_ip_hdr;
-		inner_ip_context->ctxt.vx.dscp = ipv6_get_dscp(inner_ipv6);
+		inner_ip_context->dscp = ipv6_get_dscp(inner_ipv6);
 	}
 	else
 	{
@@ -236,7 +236,7 @@ int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
 		assert(0);
 		goto error;
 	}
-	inner_ip_context->ctxt.vx.ttl_hopl = tcp_context->tmp.ttl_hopl;
+	inner_ip_context->ttl_hopl = tcp_context->tmp.ttl_hopl;
 
 	return (rohc_pkt_max_len - rohc_remain_len);
 
@@ -269,7 +269,7 @@ static int tcp_code_dynamic_ipv4_part(const struct rohc_comp_ctxt *const context
 	size_t ipv4_dynamic_len = sizeof(ipv4_dynamic1_t);
 	uint16_t ip_id;
 
-	assert(ip_context->ctxt.vx.version == IPV4);
+	assert(ip_context->version == IPV4);
 
 	if(rohc_max_len < ipv4_dynamic_len)
 	{
@@ -282,8 +282,8 @@ static int tcp_code_dynamic_ipv4_part(const struct rohc_comp_ctxt *const context
 	/* IP-ID */
 	ip_id = rohc_ntoh16(ipv4->id);
 	rohc_comp_debug(context, "ip_id_behavior = %d, last IP-ID = 0x%04x, "
-	                "IP-ID = 0x%04x", ip_context->ctxt.v4.ip_id_behavior,
-	                ip_context->ctxt.v4.last_ip_id, ip_id);
+	                "IP-ID = 0x%04x", ip_context->ip_id_behavior,
+	                ip_context->last_ip_id, ip_id);
 
 	ipv4_dynamic1->reserved = 0;
 	ipv4_dynamic1->df = ipv4->df;
@@ -293,7 +293,7 @@ static int tcp_code_dynamic_ipv4_part(const struct rohc_comp_ctxt *const context
 	if(is_innermost)
 	{
 		/* all behavior values possible */
-		ipv4_dynamic1->ip_id_behavior = ip_context->ctxt.v4.ip_id_behavior;
+		ipv4_dynamic1->ip_id_behavior = ip_context->ip_id_behavior;
 	}
 	else
 	{
@@ -307,10 +307,10 @@ static int tcp_code_dynamic_ipv4_part(const struct rohc_comp_ctxt *const context
 			ipv4_dynamic1->ip_id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
 		}
 		/* TODO: should not update context there */
-		ip_context->ctxt.v4.ip_id_behavior = ipv4_dynamic1->ip_id_behavior;
+		ip_context->ip_id_behavior = ipv4_dynamic1->ip_id_behavior;
 	}
 	/* TODO: should not update context there */
-	ip_context->ctxt.v4.last_ip_id_behavior = ip_context->ctxt.v4.ip_id_behavior;
+	ip_context->last_ip_id_behavior = ip_context->ip_id_behavior;
 
 	ipv4_dynamic1->dscp = ipv4->dscp;
 	ipv4_dynamic1->ip_ecn_flags = ipv4->ecn;
@@ -341,10 +341,10 @@ static int tcp_code_dynamic_ipv4_part(const struct rohc_comp_ctxt *const context
 	}
 
 	/* TODO: should not update context there */
-	ip_context->ctxt.v4.dscp = ipv4->dscp;
-	ip_context->ctxt.v4.ttl = ipv4->ttl;
-	ip_context->ctxt.v4.df = ipv4->df;
-	ip_context->ctxt.v4.last_ip_id = rohc_ntoh16(ipv4->id);
+	ip_context->dscp = ipv4->dscp;
+	ip_context->ttl_hopl = ipv4->ttl;
+	ip_context->df = ipv4->df;
+	ip_context->last_ip_id = rohc_ntoh16(ipv4->id);
 
 	rohc_comp_dump_buf(context, "IPv4 dynamic part", rohc_data, ipv4_dynamic_len);
 
@@ -376,7 +376,7 @@ static int tcp_code_dynamic_ipv6_part(const struct rohc_comp_ctxt *const context
 	const size_t ipv6_dynamic_len = sizeof(ipv6_dynamic_t);
 	const uint8_t dscp = ipv6_get_dscp(ipv6);
 
-	assert(ip_context->ctxt.v6.version == IPV6);
+	assert(ip_context->version == IPV6);
 
 	if(rohc_max_len < ipv6_dynamic_len)
 	{
@@ -391,8 +391,8 @@ static int tcp_code_dynamic_ipv6_part(const struct rohc_comp_ctxt *const context
 	ipv6_dynamic->ttl_hopl = ipv6->hl;
 
 	/* TODO: should not update context there */
-	ip_context->ctxt.v6.dscp = dscp;
-	ip_context->ctxt.v6.hopl = ipv6->hl;
+	ip_context->dscp = dscp;
+	ip_context->ttl_hopl = ipv6->hl;
 
 	rohc_comp_dump_buf(context, "IP dynamic part", rohc_data, ipv6_dynamic_len);
 
@@ -535,9 +535,6 @@ static int tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *const context,
 
 	rohc_remain_data += sizeof(tcp_dynamic_t);
 	rohc_remain_len -= sizeof(tcp_dynamic_t);
-
-	/* TODO: should not update context here */
-	tcp_context->tcp_seq_num_change_count++;
 
 	/* ack_zero flag and ACK number: always check for the ACK number value even
 	 * if the ACK flag is not set in the uncompressed TCP header, this is

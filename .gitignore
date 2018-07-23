@@ -65,6 +65,9 @@ src/comp/schemes/test/test_tcp_ts_opt.log
 src/comp/test/test_api_robustness
 src/comp/test/test_api_robustness.exe
 src/comp/test/test_api_robustness.log
+src/comp/test/print_struct_sizes
+src/comp/test/print_struct_sizes.exe
+src/comp/test/print_struct_sizes.log
 src/decomp/schemes/test/test_wlsb
 src/decomp/schemes/test/test_wlsb.exe
 src/decomp/schemes/test/test_wlsb.log
@@ -77,6 +80,9 @@ src/decomp/schemes/test/test_tcp_sack_opt.log
 src/decomp/test/test_api_robustness
 src/decomp/test/test_api_robustness.exe
 src/decomp/test/test_api_robustness.log
+src/decomp/test/print_struct_sizes
+src/decomp/test/print_struct_sizes.exe
+src/decomp/test/print_struct_sizes.log
 src/test/test_wlsb_wraparound
 src/test/test_wlsb_wraparound.exe
 src/test/test_wlsb_wraparound.log

@@ -5371,7 +5371,7 @@ bool rfc3095_decomp_attempt_repair(const struct rohc_decomp *const decomp,
 	/* do not try to repair packet/context if feature is disabled */
 	if((decomp->features & ROHC_DECOMP_FEATURE_CRC_REPAIR) == 0)
 	{
-		rohc_decomp_warn(context, "CID %zu: CRC repair: feature disabled",
+		rohc_decomp_warn(context, "CID %u: CRC repair: feature disabled",
 		                 context->cid);
 		goto skip;
 	}
@@ -5379,7 +5379,7 @@ bool rfc3095_decomp_attempt_repair(const struct rohc_decomp *const decomp,
 	/* do not try to repair packet/context if repair is already in action */
 	if(crc_corr->algo != ROHC_DECOMP_CRC_CORR_SN_NONE)
 	{
-		rohc_decomp_warn(context, "CID %zu: CRC repair: repair already in action",
+		rohc_decomp_warn(context, "CID %u: CRC repair: repair already in action",
 		                 context->cid);
 		goto skip;
 	}
@@ -5388,7 +5388,7 @@ bool rfc3095_decomp_attempt_repair(const struct rohc_decomp *const decomp,
 	assert(crc_corr->counter == 0);
 
 	/* try to guess the correct SN value in case of failure */
-	rohc_decomp_warn(context, "CID %zu: CRC repair: attempt to correct SN",
+	rohc_decomp_warn(context, "CID %u: CRC repair: attempt to correct SN",
 	                 context->cid);
 
 	/* step b of RFC3095, §5.3.2.2.4. Correction of SN LSB wraparound:
@@ -5404,7 +5404,7 @@ bool rfc3095_decomp_attempt_repair(const struct rohc_decomp *const decomp,
 	                    crc_corr->arrival_times_nr, crc_corr->arrival_times_index,
 	                    extr_bits->sn_nr, rfc3095_ctxt->sn_lsb_p))
 	{
-		rohc_decomp_warn(context, "CID %zu: CRC repair: CRC failure seems to "
+		rohc_decomp_warn(context, "CID %u: CRC repair: CRC failure seems to "
 		                 "be caused by a sequence number LSB wraparound",
 		                 context->cid);
 
@@ -5414,13 +5414,13 @@ bool rfc3095_decomp_attempt_repair(const struct rohc_decomp *const decomp,
 		 *   add 2^k to the reference SN and attempts to decompress the
 		 *   packet using the new reference SN */
 		extr_bits->sn_ref_offset = (1 << extr_bits->sn_nr);
-		rohc_decomp_warn(context, "CID %zu: CRC repair: try adding 2^k = 2^%zu "
+		rohc_decomp_warn(context, "CID %u: CRC repair: try adding 2^k = 2^%zu "
 		                 "= %u to reference SN (ref 0 = %u)", context->cid,
 		                 extr_bits->sn_nr, extr_bits->sn_ref_offset, sn_ref_0);
 	}
 	else if(sn_ref_0 != sn_ref_minus_1)
 	{
-		rohc_decomp_warn(context, "CID %zu: CRC repair: CRC failure seems to "
+		rohc_decomp_warn(context, "CID %u: CRC repair: CRC failure seems to "
 		                 "be caused by an incorrect SN update", context->cid);
 
 		crc_corr->algo = ROHC_DECOMP_CRC_CORR_SN_UPDATES;
@@ -5431,7 +5431,7 @@ bool rfc3095_decomp_attempt_repair(const struct rohc_decomp *const decomp,
 		 *   different from SN curr1, an additional decompression attempt is
 		 *   performed based on SN curr2 as the decompressed SN. */
 		extr_bits->lsb_ref_type = ROHC_LSB_REF_MINUS_1;
-		rohc_decomp_warn(context, "CID %zu: CRC repair: try using ref -1 (%u) "
+		rohc_decomp_warn(context, "CID %u: CRC repair: try using ref -1 (%u) "
 		                 "as reference SN instead of ref 0 (%u)",
 		                 context->cid, sn_ref_minus_1, sn_ref_0);
 	}
@@ -5441,7 +5441,7 @@ bool rfc3095_decomp_attempt_repair(const struct rohc_decomp *const decomp,
 		 *   If the decompressed header generated in b. does not pass the CRC
 		 *   test and SN curr2 is the same as SN curr1, an additional
 		 *   decompression attempt is not useful and is not attempted. */
-		rohc_decomp_warn(context, "CID %zu: CRC repair: repair is not useful",
+		rohc_decomp_warn(context, "CID %u: CRC repair: repair is not useful",
 		                 context->cid);
 		goto skip;
 	}

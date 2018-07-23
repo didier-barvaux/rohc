@@ -156,7 +156,7 @@ struct rohc_decomp
 	/** The array of decompression contexts that use the decompressor */
 	struct rohc_decomp_ctxt **contexts;
 	/** The number of decompression contexts in use */
-	size_t num_contexts_used;
+	uint16_t num_contexts_used;
 	/** The last decompression context used by the decompressor */
 	struct rohc_decomp_ctxt *last_context;
 
@@ -177,10 +177,8 @@ struct rohc_decomp
 
 	/* segment-related variables */
 
-/** The maximal value for MRRU */
-#define ROHC_MAX_MRRU 65535
 	/** The Reconstructed Reception Unit */
-	uint8_t rru[ROHC_MAX_MRRU];
+	uint8_t *rru;
 	/** The length (in bytes) of the Reconstructed Reception Unit */
 	size_t rru_len;
 	/** The Maximum Reconstructed Reception Unit (MRRU) */

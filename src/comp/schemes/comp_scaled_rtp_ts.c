@@ -29,7 +29,6 @@
 #include "sdvl.h"
 #include "rohc_traces_internal.h"
 
-#include <stdlib.h> /* for abs(3) */
 #include <assert.h>
 
 
@@ -48,12 +47,15 @@
  * @param trace_cb           The trace callback
  * @param trace_cb_priv      An optional private context for the trace
  *                           callback, may be NULL
+ * @return                   true if creation is successful, false otherwise
  */
-void c_init_sc(struct ts_sc_comp *const ts_sc,
-               const size_t wlsb_window_width,
-               rohc_trace_callback2_t trace_cb,
-               void *const trace_cb_priv)
+bool c_create_sc(struct ts_sc_comp *const ts_sc,
+                 const size_t wlsb_window_width,
+                 rohc_trace_callback2_t trace_cb,
+                 void *const trace_cb_priv)
 {
+	bool is_ok;
+
 	assert(wlsb_window_width > 0);
 
 	ts_sc->ts_stride = 0;
@@ -73,10 +75,41 @@ void c_init_sc(struct ts_sc_comp *const ts_sc,
 	ts_sc->trace_callback_priv = trace_cb_priv;
 
 	/* W-LSB context for TS_SCALED */
-	wlsb_init(&ts_sc->ts_scaled_wlsb, 32, wlsb_window_width, ROHC_LSB_SHIFT_RTP_TS);
+	is_ok = wlsb_new(&ts_sc->ts_scaled_wlsb, 32, wlsb_window_width, ROHC_LSB_SHIFT_RTP_TS);
+	if(!is_ok)
+	{
+		rohc_error(ts_sc, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "cannot create a W-LSB window for TS_SCALED");
+		goto error;
+	}
 
 	/* W-LSB context for unscaled TS */
-	wlsb_init(&ts_sc->ts_unscaled_wlsb, 32, wlsb_window_width, ROHC_LSB_SHIFT_RTP_TS);
+	is_ok = wlsb_new(&ts_sc->ts_unscaled_wlsb, 32, wlsb_window_width, ROHC_LSB_SHIFT_RTP_TS);
+	if(!is_ok)
+	{
+		rohc_error(ts_sc, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "cannot create a W-LSB window for unscaled TS");
+		goto free_ts_scaled_wlsb;
+	}
+
+	return true;
+
+free_ts_scaled_wlsb:
+	wlsb_free(&ts_sc->ts_scaled_wlsb);
+error:
+	return false;
+}
+
+
+/**
+ * @brief Destroy the ts_sc_comp object
+ *
+ * @param ts_sc        The ts_sc_comp object to destroy
+ */
+void c_destroy_sc(struct ts_sc_comp *const ts_sc)
+{
+	wlsb_free(&ts_sc->ts_unscaled_wlsb);
+	wlsb_free(&ts_sc->ts_scaled_wlsb);
 }
 
 

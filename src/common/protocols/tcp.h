@@ -109,6 +109,14 @@ struct tcphdr
 #define ROHC_TCP_OPTS_MAX_PROTO  ROHC_TCP_OPTS_LEN_MAX_PROTO
 
 
+/** The length of the header of one TCP option */
+#define ROHC_TCP_OPT_HDR_LEN  2U
+
+
+/** The maximum length of TCP options supported by the TCP protocol */
+#define ROHC_TCP_OPT_MAX_LEN_PROTO  0xffU
+
+
 /** The different TCP options */
 typedef enum
 {

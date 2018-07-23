@@ -262,6 +262,7 @@ static int c_tcp_type2index[TCP_LIST_ITEM_MAP_LEN] =
  * @brief Whether TCP options are acceptable for TCP profile or not
  *
  * TCP options are acceptable for the TCP profile if:
+ *  - every TCP option is smaller than \e ROHC_TCP_OPT_MAX_LEN
  *  - the last TCP option is not truncated,
  *  - well-known TCP options got the expected length (see below),
  *  - no more than \e ROHC_TCP_OPTS_MAX options are present,
@@ -311,6 +312,15 @@ bool rohc_comp_tcp_are_options_acceptable(const struct rohc_comp *const comp,
 
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "TCP option %u found", opt_type);
+
+		if(opt_len > ROHC_TCP_OPT_MAX_LEN)
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "packet contains at least one %u-byte TCP option larger "
+			           "than the internal maximum of %u bytes", opt_len,
+			           ROHC_TCP_OPT_MAX_LEN);
+			goto bad_opts;
+		}
 
 		if(opt_types_count[opt_type] >= 255)
 		{
@@ -498,7 +508,10 @@ bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 	{
 		if(opts_ctxt->list[opt_idx].used)
 		{
-			opts_ctxt->list[opt_idx].age++;
+			if(opts_ctxt->list[opt_idx].age < UINT8_MAX)
+			{
+				opts_ctxt->list[opt_idx].age++;
+			}
 		}
 	}
 
@@ -553,7 +566,7 @@ bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 			                "index %u as in previous packet",
 			                tcp_opt_get_descr(opt_type), opt_type, opt_idx);
 			/* option was grown old with all the others, make it grow young again */
-			if(opts_ctxt->list[opt_idx].age > 0)
+			if(opts_ctxt->list[opt_idx].age > 0 && opts_ctxt->list[opt_idx].age < UINT8_MAX)
 			{
 				opts_ctxt->list[opt_idx].age--;
 			}
@@ -565,7 +578,7 @@ bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 			if(opt_idx >= TCP_INDEX_GENERIC7 &&
 			   opt_len != opts_ctxt->list[opt_idx].data_len)
 			{
-				rohc_comp_debug(context, "    generic option changed of length (%zu -> %u)",
+				rohc_comp_debug(context, "    generic option changed of length (%u -> %u)",
 				                opts_ctxt->list[opt_idx].data_len, opt_len);
 				opts_ctxt->tmp.do_list_static_changed = true;
 			}
@@ -646,7 +659,7 @@ bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 		/* the structure was transmitted but not enough times */
 		rohc_comp_debug(context, "structure of TCP options list changed in "
 		                "the last few packets, compressed list must be "
-		                "transmitted at least %zu times more in the compressed "
+		                "transmitted at least %u times more in the compressed "
 		                "base header", context->compressor->list_trans_nr -
 		                opts_ctxt->structure_nr_trans);
 		opts_ctxt->tmp.do_list_struct_changed = true;
@@ -1512,7 +1525,7 @@ static bool c_tcp_is_list_item_needed(const struct rohc_comp_ctxt *const context
 		/* option was already transmitted and didn't change since then, but the
 		 * compressor is not confident yet that decompressor got the list item */
 		rohc_comp_debug(context, "TCP options list: option '%s' shall be "
-		                "transmitted %zu times more to gain transmission confidence",
+		                "transmitted %u times more to gain transmission confidence",
 		                tcp_opt_get_descr(opt_type),
 		                context->compressor->list_trans_nr -
 		                opts_ctxt->list[opt_idx].nr_trans);
@@ -1523,7 +1536,7 @@ static bool c_tcp_is_list_item_needed(const struct rohc_comp_ctxt *const context
 		/* option was already transmitted and didn't change since then,
 		 * item shall not be transmitted again */
 		rohc_comp_debug(context, "TCP options list: option '%s' is unchanged and "
-		                "was transmitted at least %zu times",
+		                "was transmitted at least %u times",
 		                tcp_opt_get_descr(opt_type),
 		                context->compressor->list_trans_nr);
 		item_needed = false;

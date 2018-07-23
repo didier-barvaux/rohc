@@ -138,11 +138,17 @@ bool run_test(bool be_verbose, const unsigned int incr)
 	unsigned int real_incr;
 
 	int is_success = false; /* test fails by default */
+	int ret;
 
 	uint64_t i;
 
 	/* create the RTP TS encoding context */
-	c_init_sc(&ts_sc_comp, ROHC_WLSB_WINDOW_WIDTH, NULL, NULL);
+	ret = c_create_sc(&ts_sc_comp, ROHC_WLSB_WINDOW_WIDTH, NULL, NULL);
+	if(ret != 1)
+	{
+		fprintf(stderr, "failed to initialize the RTP TS encoding context\n");
+		goto error;
+	}
 
 	/* create the RTP TS decoding context */
 	d_init_sc(&ts_sc_decomp, NULL, NULL);
@@ -212,7 +218,7 @@ bool run_test(bool be_verbose, const unsigned int incr)
 				                            &value_decoded))
 				{
 					trace(be_verbose, "failed to decode received absolute unscaled TS\n");
-					goto error;
+					goto destroy_ts_sc_comp;
 				}
 				break;
 
@@ -237,7 +243,7 @@ bool run_test(bool be_verbose, const unsigned int incr)
 				                            &value_decoded))
 				{
 					trace(be_verbose, "failed to decode received unscaled TS\n");
-					goto error;
+					goto destroy_ts_sc_comp;
 				}
 				d_record_ts_stride(&ts_sc_decomp, ts_stride);
 				break;
@@ -285,7 +291,7 @@ bool run_test(bool be_verbose, const unsigned int incr)
 					                          required_bits, &value_decoded))
 					{
 						trace(be_verbose, "failed to decode received TS_SCALED\n");
-						goto error;
+						goto destroy_ts_sc_comp;
 					}
 				}
 				else
@@ -298,7 +304,7 @@ bool run_test(bool be_verbose, const unsigned int incr)
 				trace(be_verbose, "unknown RTP TS encoding state, "
 				      "should not happen\n");
 				assert(0);
-				goto error;
+				goto destroy_ts_sc_comp;
 		}
 		trace(be_verbose, "\t\tencoded on %zu/2 or %zu/32 bits: 0x%04x\n",
 		      required_bits_less_equal_than_2, required_bits_more_than_2,
@@ -309,7 +315,7 @@ bool run_test(bool be_verbose, const unsigned int incr)
 		{
 			fprintf(stderr, "original and decoded values do not match while "
 			        "testing value 0x%08x\n", value);
-			goto error;
+			goto destroy_ts_sc_comp;
 		}
 
 		/* update decoding context */
@@ -320,6 +326,8 @@ bool run_test(bool be_verbose, const unsigned int incr)
 	trace(be_verbose, "\ttest is successful\n");
 	is_success = true;
 
+destroy_ts_sc_comp:
+	c_destroy_sc(&ts_sc_comp);
 error:
 	return is_success;
 }

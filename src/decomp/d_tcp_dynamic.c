@@ -232,7 +232,7 @@ static int tcp_parse_dynamic_ip(const struct rohc_decomp_ctxt *const context,
 		remain_data += sizeof(ipv6_dynamic_t);
 		remain_len -= sizeof(ipv6_dynamic_t);
 
-		rohc_decomp_debug(context, "parse the dynamic parts of the %zu IPv6 "
+		rohc_decomp_debug(context, "parse the dynamic parts of the %u IPv6 "
 		                  "extension headers", ip_bits->opts_nr);
 
 		assert(ip_bits->proto_nr == 8);
@@ -284,7 +284,7 @@ static int tcp_parse_dynamic_ipv6_option(const struct rohc_decomp_ctxt *const co
 	size_t remain_len = rohc_length;
 	size_t size;
 
-	rohc_decomp_debug(context, "parse dynamic part of the %zu-byte IPv6 extension "
+	rohc_decomp_debug(context, "parse dynamic part of the %u-byte IPv6 extension "
 	                  "header '%s' (%u)", opt_context->len,
 	                  rohc_get_ip_proto_descr(opt_context->proto), opt_context->proto);
 
@@ -299,6 +299,19 @@ static int tcp_parse_dynamic_ipv6_option(const struct rohc_decomp_ctxt *const co
 				rohc_decomp_warn(context, "malformed IPv6 option: malformed "
 				                 "option %u: %zu bytes available while %zu bytes "
 				                 "required", opt_context->proto, remain_len, size);
+				goto error;
+			}
+			if(opt_context->len > IPV6_OPT_HDR_LEN_MAX)
+			{
+				rohc_decomp_warn(context, "unexpected IPv6 option: %u-byte option %u "
+				                 "is larger than maximum %u bytes that library was "
+				                 "configured to handle", opt_context->len,
+				                 opt_context->proto, IPV6_OPT_HDR_LEN_MAX);
+				/* TODO: send a feedback with the CONTEXT_MEMORY option to warn
+				 * the compressor that the decompressor is not able to decompress
+				 * the TCP flow the way it was compressed, maybe the compressor
+				 * could compress the flow with the IP-only or the Uncompressed
+				 * profiles instead (see RFC6846 §8.3.2.4 for more details) */
 				goto error;
 			}
 			opt_context->generic.data_len = size;
@@ -405,13 +418,13 @@ static int tcp_parse_dynamic_tcp(const struct rohc_decomp_ctxt *const context,
 	/* retrieve the TCP sequence number from the ROHC packet */
 	bits->seq.bits = rohc_ntoh32(tcp_dynamic->seq_num);
 	bits->seq.bits_nr = 32;
-	rohc_decomp_debug(context, "%zu bits of TCP sequence number 0x%08x",
+	rohc_decomp_debug(context, "%u bits of TCP sequence number 0x%08x",
 	                  bits->seq.bits_nr, bits->seq.bits);
 
 	/* retrieve the MSN from the ROHC packet */
 	bits->msn.bits = rohc_ntoh16(tcp_dynamic->msn);
 	bits->msn.bits_nr = 16;
-	rohc_decomp_debug(context, "%zu bits of MSN 0x%04x",
+	rohc_decomp_debug(context, "%u bits of MSN 0x%04x",
 	                  bits->msn.bits_nr, bits->msn.bits);
 
 	/* optional ACK number */
@@ -505,7 +518,7 @@ static int tcp_parse_dynamic_tcp(const struct rohc_decomp_ctxt *const context,
 		                 "static_or_irreg(ack_stride) failed");
 		goto error;
 	}
-	rohc_decomp_debug(context, "found %zu bits of ACK stride encoded on "
+	rohc_decomp_debug(context, "found %u bits of ACK stride encoded on "
 	                  "%d bytes", bits->ack_stride.bits_nr, ret);
 	remain_data += ret;
 	remain_len -= ret;

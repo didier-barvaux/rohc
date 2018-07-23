@@ -73,14 +73,14 @@
  * Prototypes of main private functions
  */
 
-static void ip_header_info_new(struct ip_header_info *const header_info,
+static bool ip_header_info_new(struct ip_header_info *const header_info,
                                const struct ip_packet *const ip,
                                const size_t list_trans_nr,
                                const size_t wlsb_window_width,
                                rohc_trace_callback2_t trace_cb,
                                void *const trace_cb_priv,
                                const int profile_id)
-	__attribute__((nonnull(1, 2)));
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 static void ip_header_info_free(struct ip_header_info *const header_info)
 	__attribute__((nonnull(1)));
 
@@ -438,8 +438,9 @@ static bool is_field_changed(const unsigned short changed_fields,
  * @param trace_cb           The function to call for printing traces
  * @param trace_cb_priv      An optional private context, may be NULL
  * @param profile_id         The ID of the associated compression profile
+ * @return                   true if successful, false otherwise
  */
-static void ip_header_info_new(struct ip_header_info *const header_info,
+static bool ip_header_info_new(struct ip_header_info *const header_info,
                                const struct ip_packet *const ip,
                                const size_t list_trans_nr,
                                const size_t wlsb_window_width,
@@ -458,8 +459,15 @@ static void ip_header_info_new(struct ip_header_info *const header_info,
 	if(header_info->version == IPV4)
 	{
 		/* init the parameters to encode the IP-ID with W-LSB encoding */
-		wlsb_init(&header_info->info.v4.ip_id_window, 16, wlsb_window_width,
-		          ROHC_LSB_SHIFT_IP_ID);
+		const bool is_ok =
+			wlsb_new(&header_info->info.v4.ip_id_window, 16, wlsb_window_width, ROHC_LSB_SHIFT_IP_ID);
+		if(!is_ok)
+		{
+			__rohc_print(trace_cb, trace_cb_priv, ROHC_TRACE_ERROR,
+			             ROHC_TRACE_COMP, profile_id,
+			             "no memory to allocate W-LSB encoding for IP-ID");
+			goto error;
+		}
 
 		/* init the thresholds the counters must reach before launching
 		 * an action */
@@ -477,6 +485,11 @@ static void ip_header_info_new(struct ip_header_info *const header_info,
 		rohc_comp_list_ipv6_new(&header_info->info.v6.ext_comp, list_trans_nr,
 		                        trace_cb, trace_cb_priv, profile_id);
 	}
+
+	return true;
+
+error:
+	return false;
 }
 
 
@@ -487,7 +500,12 @@ static void ip_header_info_new(struct ip_header_info *const header_info,
  */
 static void ip_header_info_free(struct ip_header_info *const header_info)
 {
-	if(header_info->version == IPV6)
+	if(header_info->version == IPV4)
+	{
+		/* IPv4: destroy the W-LSB context for the IP-ID offset */
+		wlsb_free(&header_info->info.v4.ip_id_window);
+	}
+	else
 	{
 		/* IPv6: destroy the list of IPv6 extension headers */
 		rohc_comp_list_ipv6_free(&header_info->info.v6.ext_comp);
@@ -531,6 +549,7 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
                               const struct net_pkt *const packet)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
+	bool is_ok;
 
 	assert(context->profile != NULL);
 
@@ -557,28 +576,44 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 	/* step 1 */
 	rohc_comp_debug(context, "use shift parameter %d for LSB-encoding of the "
 	                "%zu-bit SN", sn_shift, sn_bits_nr);
-	wlsb_init(&rfc3095_ctxt->sn_window, sn_bits_nr,
-	          context->compressor->wlsb_window_width, sn_shift);
-	wlsb_init(&rfc3095_ctxt->msn_non_acked, 16,
-	          context->compressor->wlsb_window_width, sn_shift);
+	is_ok = wlsb_new(&rfc3095_ctxt->sn_window, sn_bits_nr, context->compressor->wlsb_window_width, sn_shift);
+	if(!is_ok)
+	{
+		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "no memory to allocate W-LSB encoding for SN");
+		goto free_generic_context;
+	}
+	is_ok = wlsb_new(&rfc3095_ctxt->msn_non_acked, 16, context->compressor->wlsb_window_width, sn_shift);
+	if(!is_ok)
+	{
+		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "no memory to allocate W-LSB encoding for non-acknowledged MSN");
+		goto free_sn_window;
+	}
 
 	/* step 3 */
-	ip_header_info_new(&rfc3095_ctxt->outer_ip_flags,
-	                   &packet->outer_ip,
-	                   context->compressor->list_trans_nr,
-	                   context->compressor->wlsb_window_width,
-	                   context->compressor->trace_callback,
-	                   context->compressor->trace_callback_priv,
-	                   context->profile->id);
+	if(!ip_header_info_new(&rfc3095_ctxt->outer_ip_flags,
+	                       &packet->outer_ip,
+	                       context->compressor->list_trans_nr,
+	                       context->compressor->wlsb_window_width,
+	                       context->compressor->trace_callback,
+	                       context->compressor->trace_callback_priv,
+	                       context->profile->id))
+	{
+		goto free_msn_wlsb;
+	}
 	if(packet->ip_hdr_nr > 1)
 	{
-		ip_header_info_new(&rfc3095_ctxt->inner_ip_flags,
-		                   &packet->inner_ip,
-		                   context->compressor->list_trans_nr,
-		                   context->compressor->wlsb_window_width,
-		                   context->compressor->trace_callback,
-		                   context->compressor->trace_callback_priv,
-		                   context->profile->id);
+		if(!ip_header_info_new(&rfc3095_ctxt->inner_ip_flags,
+		                       &packet->inner_ip,
+		                       context->compressor->list_trans_nr,
+		                       context->compressor->wlsb_window_width,
+		                       context->compressor->trace_callback,
+		                       context->compressor->trace_callback_priv,
+		                       context->profile->id))
+		{
+			goto free_header_info;
+		}
 		rfc3095_ctxt->ip_hdr_nr = 2;
 
 		/* RFC 3843, §3.1 Static Chain Termination:
@@ -625,6 +660,14 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 
 	return true;
 
+free_header_info:
+	ip_header_info_free(&rfc3095_ctxt->outer_ip_flags);
+free_msn_wlsb:
+	wlsb_free(&rfc3095_ctxt->msn_non_acked);
+free_sn_window:
+	wlsb_free(&rfc3095_ctxt->sn_window);
+free_generic_context:
+	free(rfc3095_ctxt);
 quit:
 	return false;
 }
@@ -648,6 +691,8 @@ void rohc_comp_rfc3095_destroy(struct rohc_comp_ctxt *const context)
 	{
 		ip_header_info_free(&rfc3095_ctxt->inner_ip_flags);
 	}
+	wlsb_free(&rfc3095_ctxt->msn_non_acked);
+	wlsb_free(&rfc3095_ctxt->sn_window);
 
 	zfree(rfc3095_ctxt->specific);
 	free(rfc3095_ctxt);
@@ -723,6 +768,26 @@ bool rohc_comp_rfc3095_check_profile(const struct rohc_comp *const comp,
 		goto bad_profile;
 	}
 
+	/* check length of every IP extension headers */
+	{
+		uint8_t next_hdr_type;
+		const uint8_t *ext;
+
+		ext = ip_get_next_ext_from_ip(&packet->outer_ip, &next_hdr_type);
+		while(ext != NULL)
+		{
+			const unsigned short ext_len = ip_get_extension_size(ext);
+
+			if(ext_len > IPV6_OPT_HDR_LEN_MAX)
+			{
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "the outer IP packet got too long extension headers");
+				goto bad_profile;
+			}
+			ext = ip_get_next_ext_from_ext(ext, &next_hdr_type);
+		}
+	}
+
 	/* check the inner IP header if there is one */
 	if(packet->ip_hdr_nr > 1)
 	{
@@ -773,6 +838,26 @@ bool rohc_comp_rfc3095_check_profile(const struct rohc_comp *const comp,
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "the inner IP packet is not correct (bad checksum)");
 			goto bad_profile;
+		}
+
+		/* check length of every IP extension headers */
+		{
+			uint8_t next_hdr_type;
+			const uint8_t *ext;
+
+			ext = ip_get_next_ext_from_ip(&packet->inner_ip, &next_hdr_type);
+			while(ext != NULL)
+			{
+				const unsigned short ext_len = ip_get_extension_size(ext);
+
+				if(ext_len > IPV6_OPT_HDR_LEN_MAX)
+				{
+					rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+					           "the outer IP packet got too long extension headers");
+					goto bad_profile;
+				}
+				ext = ip_get_next_ext_from_ext(ext, &next_hdr_type);
+			}
 		}
 	}
 
@@ -913,7 +998,7 @@ bool rohc_comp_rfc3095_feedback(struct rohc_comp_ctxt *const context,
 		sn_bits = remain_data[0] & 0xff;
 		sn_bits_nr = 8;
 
-		rohc_comp_debug(context, "ACK received (CID = %zu, %zu-bit SN = 0x%02x)",
+		rohc_comp_debug(context, "ACK received (CID = %u, %zu-bit SN = 0x%02x)",
 		                context->cid, sn_bits_nr, sn_bits);
 
 		/* the compressor received a positive ACK */
@@ -1003,7 +1088,7 @@ static bool rohc_comp_rfc3095_feedback_2(struct rohc_comp_ctxt *const context,
 			 *  - RFC 3095, §5.6.5: transition to U-mode
 			 */
 			rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			          "mode change (%d -> %d) requested by feedback for CID %zu",
+			          "mode change (%d -> %d) requested by feedback for CID %u",
 			          context->mode, feedback2->mode, context->cid);
 
 			/* RFC 3095, §5.6.1: mode can be changed only if feedback is protected
@@ -1029,7 +1114,7 @@ static bool rohc_comp_rfc3095_feedback_2(struct rohc_comp_ctxt *const context,
 		{
 			const bool sn_not_valid = !!(opts_present[ROHC_FEEDBACK_OPT_SN_NOT_VALID] > 0);
 
-			rohc_comp_debug(context, "ACK received (CID = %zu, %zu-bit SN = 0x%x, "
+			rohc_comp_debug(context, "ACK received (CID = %u, %zu-bit SN = 0x%x, "
 			                "SN-not-valid = %d)", context->cid, sn_bits_nr, sn_bits,
 			                GET_REAL(sn_not_valid));
 
@@ -1041,7 +1126,7 @@ static bool rohc_comp_rfc3095_feedback_2(struct rohc_comp_ctxt *const context,
 		{
 			/* RFC3095 §5.4.1.1.1: NACKs, downward transition */
 			rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			          "NACK received for CID %zu", context->cid);
+			          "NACK received for CID %u", context->cid);
 			/* the compressor transits back to the FO state */
 			if(context->state == ROHC_COMP_STATE_SO)
 			{
@@ -1055,7 +1140,7 @@ static bool rohc_comp_rfc3095_feedback_2(struct rohc_comp_ctxt *const context,
 		{
 			/* RFC3095 §5.4.1.1.1: NACKs, downward transition */
 			rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			          "STATIC-NACK received for CID %zu", context->cid);
+			          "STATIC-NACK received for CID %u", context->cid);
 			/* the compressor transits back to the IR state */
 			rohc_comp_change_state(context, ROHC_COMP_STATE_IR);
 			/* TODO: use the SN field to determine the latest packet successfully
@@ -1308,13 +1393,16 @@ static bool rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const contex
 		if(uncomp_pkt->ip_hdr_nr > 1)
 		{
 			rohc_comp_debug(context, "packet got one more IP header than context");
-			ip_header_info_new(&rfc3095_ctxt->inner_ip_flags,
-			                   &uncomp_pkt->inner_ip,
-			                   context->compressor->list_trans_nr,
-			                   context->compressor->wlsb_window_width,
-			                   context->compressor->trace_callback,
-			                   context->compressor->trace_callback_priv,
-			                   context->profile->id);
+			if(!ip_header_info_new(&rfc3095_ctxt->inner_ip_flags,
+			                       &uncomp_pkt->inner_ip,
+			                       context->compressor->list_trans_nr,
+			                       context->compressor->wlsb_window_width,
+			                       context->compressor->trace_callback,
+			                       context->compressor->trace_callback_priv,
+			                       context->profile->id))
+			{
+				goto error;
+			}
 
 			/* RFC 3843, §3.1 Static Chain Termination:
 			 *   [...] the static chain is terminated if the "Next Header / Protocol"
@@ -1824,7 +1912,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	       (nr_of_ip_hdr == 2 && ip_get_version(&uncomp_pkt->inner_ip) != IPV4 &&
 	        rfc3095_ctxt->tmp.nr_ip_id_bits2 == 0));
 
-	rohc_comp_debug(context, "code IR packet (CID = %zu)", context->cid);
+	rohc_comp_debug(context, "code IR packet (CID %u)", context->cid);
 
 	/* parts 1 and 3:
 	 *  - part 2 will be placed at 'first_position'
@@ -1834,14 +1922,14 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	                      rohc_pkt, rohc_pkt_max_len, &first_position);
 	if(ret < 1)
 	{
-		rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the "
+		rohc_comp_warn(context, "failed to encode %s CID %u: maybe the "
 		               "%zu-byte ROHC buffer is too small",
 		               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 		               "small" : "large", context->cid, rohc_pkt_max_len);
 		goto error;
 	}
 	counter = ret;
-	rohc_comp_debug(context, "%s CID %zu encoded on %zu byte(s)",
+	rohc_comp_debug(context, "%s CID %u encoded on %zu byte(s)",
 	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 	                "small" : "large", context->cid, counter - 1);
 
@@ -1982,7 +2070,7 @@ static int code_IR_DYN_packet(struct rohc_comp_ctxt *const context,
 	int crc_position;
 	int ret;
 
-	rohc_comp_debug(context, "code IR-DYN packet (CID = %zu)", context->cid);
+	rohc_comp_debug(context, "code IR-DYN packet (CID %u)", context->cid);
 
 	assert(packet_type == ROHC_PACKET_IR_DYN);
 
@@ -1994,14 +2082,14 @@ static int code_IR_DYN_packet(struct rohc_comp_ctxt *const context,
 	                      rohc_pkt, rohc_pkt_max_len, &first_position);
 	if(ret < 1)
 	{
-		rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the "
+		rohc_comp_warn(context, "failed to encode %s CID %u: maybe the "
 		               "%zu-byte ROHC buffer is too small",
 		               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 		               "small" : "large", context->cid, rohc_pkt_max_len);
 		goto error;
 	}
 	counter = ret;
-	rohc_comp_debug(context, "%s CID %zu encoded on %zu byte(s)",
+	rohc_comp_debug(context, "%s CID %u encoded on %zu byte(s)",
 	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 	                "small" : "large", context->cid, counter - 1);
 
@@ -2774,7 +2862,7 @@ static int code_UO0_packet(struct rohc_comp_ctxt *const context,
 
 	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
 
-	rohc_comp_debug(context, "code UO-0 packet (CID = %zu)", context->cid);
+	rohc_comp_debug(context, "code UO-0 packet (CID %u)", context->cid);
 
 	assert(packet_type == ROHC_PACKET_UO_0);
 
@@ -2786,14 +2874,14 @@ static int code_UO0_packet(struct rohc_comp_ctxt *const context,
 	                      rohc_pkt, rohc_pkt_max_len, &first_position);
 	if(ret < 1)
 	{
-		rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the "
+		rohc_comp_warn(context, "failed to encode %s CID %u: maybe the "
 		               "%zu-byte ROHC buffer is too small",
 		               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 		               "small" : "large", context->cid, rohc_pkt_max_len);
 		goto error;
 	}
 	counter = ret;
-	rohc_comp_debug(context, "%s CID %zu encoded on %zu byte(s)",
+	rohc_comp_debug(context, "%s CID %u encoded on %zu byte(s)",
 	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 	                "small" : "large", context->cid, counter - 1);
 
@@ -2884,7 +2972,7 @@ static int rohc_comp_rfc3095_build_uo1_pkt(struct rohc_comp_ctxt *const context,
 	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
 	is_rtp = context->profile->id == ROHC_PROFILE_RTP;
 
-	rohc_comp_debug(context, "code UO-1 packet (CID = %zu)", context->cid);
+	rohc_comp_debug(context, "code UO-1 packet (CID %u)", context->cid);
 
 	assert(packet_type == ROHC_PACKET_UO_1);
 	rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -2924,14 +3012,14 @@ static int rohc_comp_rfc3095_build_uo1_pkt(struct rohc_comp_ctxt *const context,
 	                      rohc_pkt, rohc_pkt_max_len, &first_position);
 	if(ret < 1)
 	{
-		rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the "
+		rohc_comp_warn(context, "failed to encode %s CID %u: maybe the "
 		               "%zu-byte ROHC buffer is too small",
 		               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 		               "small" : "large", context->cid, rohc_pkt_max_len);
 		goto error;
 	}
 	counter = ret;
-	rohc_comp_debug(context, "%s CID %zu encoded on %zu byte(s)",
+	rohc_comp_debug(context, "%s CID %u encoded on %zu byte(s)",
 	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 	                "small" : "large", context->cid, counter - 1);
 
@@ -3034,7 +3122,7 @@ static int rohc_comp_rfc3095_build_uo1rtp_pkt(struct rohc_comp_ctxt *const conte
 	is_rtp = context->profile->id == ROHC_PROFILE_RTP;
 	rtp_context = (struct sc_rtp_context *) rfc3095_ctxt->specific;
 
-	rohc_comp_debug(context, "code UO-1-RTP packet (CID = %zu)", context->cid);
+	rohc_comp_debug(context, "code UO-1-RTP packet (CID %u)", context->cid);
 
 	assert(packet_type == ROHC_PACKET_UO_1_RTP);
 	rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -3061,14 +3149,14 @@ static int rohc_comp_rfc3095_build_uo1rtp_pkt(struct rohc_comp_ctxt *const conte
 	                      rohc_pkt, rohc_pkt_max_len, &first_position);
 	if(ret < 1)
 	{
-		rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the "
+		rohc_comp_warn(context, "failed to encode %s CID %u: maybe the "
 		               "%zu-byte ROHC buffer is too small",
 		               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 		               "small" : "large", context->cid, rohc_pkt_max_len);
 		goto error;
 	}
 	counter = ret;
-	rohc_comp_debug(context, "%s CID %zu encoded on %zu byte(s)",
+	rohc_comp_debug(context, "%s CID %u encoded on %zu byte(s)",
 	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 	                "small" : "large", context->cid, counter - 1);
 
@@ -3174,7 +3262,7 @@ static int rohc_comp_rfc3095_build_uo1ts_pkt(struct rohc_comp_ctxt *const contex
 	is_rtp = context->profile->id == ROHC_PROFILE_RTP;
 	rtp_context = (struct sc_rtp_context *) rfc3095_ctxt->specific;
 
-	rohc_comp_debug(context, "code UO-1-TS packet (CID = %zu)", context->cid);
+	rohc_comp_debug(context, "code UO-1-TS packet (CID %u)", context->cid);
 
 	assert(packet_type == ROHC_PACKET_UO_1_TS);
 	rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -3212,14 +3300,14 @@ static int rohc_comp_rfc3095_build_uo1ts_pkt(struct rohc_comp_ctxt *const contex
 	                      rohc_pkt, rohc_pkt_max_len, &first_position);
 	if(ret < 1)
 	{
-		rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the "
+		rohc_comp_warn(context, "failed to encode %s CID %u: maybe the "
 		               "%zu-byte ROHC buffer is too small",
 		               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 		               "small" : "large", context->cid, rohc_pkt_max_len);
 		goto error;
 	}
 	counter = ret;
-	rohc_comp_debug(context, "%s CID %zu encoded on %zu byte(s)",
+	rohc_comp_debug(context, "%s CID %u encoded on %zu byte(s)",
 	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 	                "small" : "large", context->cid, counter - 1);
 
@@ -3334,7 +3422,7 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 	is_rtp = context->profile->id == ROHC_PROFILE_RTP;
 	rtp_context = (struct sc_rtp_context *) rfc3095_ctxt->specific;
 
-	rohc_comp_debug(context, "code UO-1-ID packet (CID = %zu)", context->cid);
+	rohc_comp_debug(context, "code UO-1-ID packet (CID %u)", context->cid);
 
 	assert(packet_type == ROHC_PACKET_UO_1_ID ||
 	       packet_type == ROHC_PACKET_UO_1_ID_EXT0 ||
@@ -3383,14 +3471,14 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 	                      rohc_pkt, rohc_pkt_max_len, &first_position);
 	if(ret < 1)
 	{
-		rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the "
+		rohc_comp_warn(context, "failed to encode %s CID %u: maybe the "
 		               "%zu-byte ROHC buffer is too small",
 		               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 		               "small" : "large", context->cid, rohc_pkt_max_len);
 		goto error;
 	}
 	counter = ret;
-	rohc_comp_debug(context, "%s CID %zu encoded on %zu byte(s)",
+	rohc_comp_debug(context, "%s CID %u encoded on %zu byte(s)",
 	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 	                "small" : "large", context->cid, counter - 1);
 
@@ -3735,7 +3823,7 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 		case ROHC_PACKET_UOR_2_EXT1:
 		case ROHC_PACKET_UOR_2_EXT2:
 		case ROHC_PACKET_UOR_2_EXT3:
-			rohc_comp_debug(context, "code UOR-2 packet (CID = %zu)",
+			rohc_comp_debug(context, "code UOR-2 packet (CID = %u)",
 			                context->cid);
 			code_bytes = code_UOR2_bytes;
 			break;
@@ -3744,7 +3832,7 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 		case ROHC_PACKET_UOR_2_RTP_EXT1:
 		case ROHC_PACKET_UOR_2_RTP_EXT2:
 		case ROHC_PACKET_UOR_2_RTP_EXT3:
-			rohc_comp_debug(context, "code UOR-2-RTP packet (CID = %zu)",
+			rohc_comp_debug(context, "code UOR-2-RTP packet (CID = %u)",
 			                context->cid);
 			code_bytes = code_UOR2_RTP_bytes;
 			break;
@@ -3753,7 +3841,7 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 		case ROHC_PACKET_UOR_2_ID_EXT1:
 		case ROHC_PACKET_UOR_2_ID_EXT2:
 		case ROHC_PACKET_UOR_2_ID_EXT3:
-			rohc_comp_debug(context, "code UOR-2-ID packet (CID = %zu)",
+			rohc_comp_debug(context, "code UOR-2-ID packet (CID = %u)",
 			                context->cid);
 			code_bytes = code_UOR2_ID_bytes;
 			break;
@@ -3762,7 +3850,7 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 		case ROHC_PACKET_UOR_2_TS_EXT1:
 		case ROHC_PACKET_UOR_2_TS_EXT2:
 		case ROHC_PACKET_UOR_2_TS_EXT3:
-			rohc_comp_debug(context, "code UOR-2-TS packet (CID = %zu)",
+			rohc_comp_debug(context, "code UOR-2-TS packet (CID = %u)",
 			                context->cid);
 			code_bytes = code_UOR2_TS_bytes;
 			break;
@@ -3779,14 +3867,14 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 	                      rohc_pkt, rohc_pkt_max_len, &first_position);
 	if(ret < 1)
 	{
-		rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the "
+		rohc_comp_warn(context, "failed to encode %s CID %u: maybe the "
 		               "%zu-byte ROHC buffer is too small",
 		               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 		               "small" : "large", context->cid, rohc_pkt_max_len);
 		goto error;
 	}
 	counter = ret;
-	rohc_comp_debug(context, "%s CID %zu encoded on %zu byte(s)",
+	rohc_comp_debug(context, "%s CID %u encoded on %zu byte(s)",
 	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 	                "small" : "large", context->cid, counter - 1);
 

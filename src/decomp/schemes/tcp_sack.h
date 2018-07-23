@@ -38,8 +38,18 @@
 struct d_tcp_opt_sack
 {
 	sack_block_t blocks[TCP_SACK_BLOCKS_MAX_NR]; /**< The SACK blocks */
-	size_t blocks_nr;                            /**< The number of SACK blocks */
+	uint8_t blocks_nr;                           /**< The number of SACK blocks */
+	uint8_t unused[7];
 };
+
+/* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
+#if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
+     (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
+      (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
+_Static_assert((sizeof(struct d_tcp_opt_sack) % 8) == 0,
+               "d_tcp_opt_sack length should be multiple of 8 bytes");
+#endif
+
 
 int d_tcp_sack_parse(const struct rohc_decomp_ctxt *const context,
                      const uint8_t *const data,

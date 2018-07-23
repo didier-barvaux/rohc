@@ -285,6 +285,7 @@ struct rohc_comp * rohc_comp_new2(const rohc_cid_type_t cid_type,
 	comp->medium.cid_type = cid_type;
 	comp->medium.max_cid = max_cid;
 	comp->mrru = 0; /* no segmentation by default */
+	comp->rru = NULL; /* no segmentation by default */
 	comp->random_cb = rand_cb;
 	comp->random_cb_ctxt = rand_priv;
 
@@ -390,6 +391,12 @@ void rohc_comp_free(struct rohc_comp *const comp)
 
 		/* free memory used by contexts */
 		c_destroy_contexts(comp);
+
+		/* free RRU buffer */
+		if(comp->rru != NULL)
+		{
+			zfree(comp->rru);
+		}
 
 		/* free the compressor */
 		free(comp);
@@ -1037,7 +1044,7 @@ bool rohc_comp_force_contexts_reinit(struct rohc_comp *const comp)
 	}
 
 	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	          "force re-initialization for all %zu contexts",
+	          "force re-initialization for all %u contexts",
 	          comp->num_contexts_used);
 
 	for(i = 0; i <= comp->medium.max_cid; i++)
@@ -1047,7 +1054,7 @@ bool rohc_comp_force_contexts_reinit(struct rohc_comp *const comp)
 			if(!rohc_comp_reinit_context(&(comp->contexts[i])))
 			{
 				rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				             "failed to force re-initialization for CID %zu", i);
+				             "failed to force re-initialization for CID %u", i);
 				goto error;
 			}
 		}
@@ -1315,7 +1322,7 @@ bool rohc_comp_set_list_trans_nr(struct rohc_comp *const comp,
 	{
 		return false;
 	}
-	if(list_trans_nr == 0)
+	if(list_trans_nr == 0 || list_trans_nr > UINT8_MAX)
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "invalid "
 		             "value for uncompressed transmissions of list compression "
@@ -1843,9 +1850,29 @@ bool rohc_comp_set_mrru(struct rohc_comp *const comp,
 	}
 
 	/* set new MRRU */
+	if(mrru == 0)
+	{
+		comp->rru = NULL;
+	}
+	else
+	{
+		uint8_t *const new_rru_buf = malloc(mrru);
+		if(new_rru_buf == NULL)
+		{
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "failed to set MRRU: failed to allocate %zu bytes "
+			             "of memory for MRRU buffer", mrru);
+			goto error;
+		}
+		if(comp->rru != NULL)
+		{
+			zfree(comp->rru);
+		}
+		comp->rru = new_rru_buf;
+	}
 	comp->mrru = mrru;
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "MRRU is now set to %zd", comp->mrru);
+	           "MRRU is now set to %zu", comp->mrru);
 
 	return true;
 
@@ -2066,7 +2093,7 @@ static bool __rohc_comp_deliver_feedback(struct rohc_comp *const comp,
 	{
 		/* context was not found */
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		             "failed to deliver feedback: context with CID = %zu not found",
+		             "failed to deliver feedback: context with CID %u not found",
 		             cid);
 		goto error;
 	}
@@ -2500,7 +2527,7 @@ static struct rohc_comp_ctxt *
 
 		/* destroy the oldest context before replacing it with a new one */
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "recycle oldest context (CID = %zu)", cid_to_use);
+		           "recycle oldest context (CID %u)", cid_to_use);
 		comp->contexts[cid_to_use].profile->destroy(&comp->contexts[cid_to_use]);
 		comp->contexts[cid_to_use].used = 0;
 		assert(comp->num_contexts_used > 0);
@@ -2524,7 +2551,7 @@ static struct rohc_comp_ctxt *
 		}
 
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "take the first unused context (CID = %zu)", cid_to_use);
+		           "take the first unused context (CID %u)", cid_to_use);
 	}
 
 	/* initialize the previously found context */
@@ -2534,8 +2561,8 @@ static struct rohc_comp_ctxt *
 	if(do_ctxt_replication && cid_to_use != cid_for_replication)
 	{
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "create context with CID = %zu as a replication of context "
-		           "with CID %zu", cid_to_use, cid_for_replication);
+		           "create context with CID %u as a replication of context "
+		           "with CID %u", cid_to_use, cid_for_replication);
 
 		/* copy the base context, then reset some parts of it */
 		memcpy(c, &(comp->contexts[cid_for_replication]), sizeof(struct rohc_comp_ctxt));
@@ -2609,7 +2636,7 @@ static struct rohc_comp_ctxt *
 	comp->num_contexts_used++;
 
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "context (CID = %zu) created at %" PRIu64 " seconds (num_used = %zu)",
+	           "context (CID %u) created at %" PRIu64 " seconds (num_used = %u)",
 	           c->cid, c->latest_used, comp->num_contexts_used);
 	return c;
 }
@@ -2672,7 +2699,7 @@ static struct rohc_comp_ctxt *
 		}
 
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "check context CID = %zu with same profile", context->cid);
+		           "check context CID %u with same profile", context->cid);
 
 		/* ask the profile whether the packet matches the context */
 		if(context->profile->check_context(context, packet, &cr_score))
@@ -2688,14 +2715,14 @@ static struct rohc_comp_ctxt *
 			   context->cr_count >= MAX_CR_COUNT)
 			{
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "re-using context CID = %zu", context->cid);
+				           "re-using context CID %u", context->cid);
 				break;
 			}
 			/* check whether the base context changed too much to be re-used or not */
 			base_ctxt = &(comp->contexts[context->cr_base_cid]);
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "Context Replication in action (%zu/%u packets sent): check "
-			           "for CID %zu whether base context with CID %zu changed too much",
+			           "for CID %u whether base context with CID %u changed too much",
 			           context->cr_count, MAX_CR_COUNT, context->cid, base_ctxt->cid);
 			base_ctxt_equals_ctxt =
 				context->profile->check_context(base_ctxt, packet, &cr_score_base_ctxt);
@@ -2706,19 +2733,19 @@ static struct rohc_comp_ctxt *
 			{
 				/* no large change, we may continue the Context Replication */
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "re-using context CID = %zu as a replication of context "
-				           "CID %zu", context->cid, base_ctxt->cid);
+				           "re-using context CID %u as a replication of context "
+				           "CID %u", context->cid, base_ctxt->cid);
 				break;
 			}
 			/* too much change, we need to interrupt the Context Replication */
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "cannot re-use context CID = %zu as replication of context "
-			           "CID %zu, the base context changed too much", context->cid,
+			           "cannot re-use context CID %u as replication of context "
+			           "CID %u, the base context changed too much", context->cid,
 			           base_ctxt->cid);
 			cr_score = 0;
 			/* TODO: destroy that half-opened context */
 		}
-		rohc_comp_debug(context, "context CID %zu scores %zu for Context Replication",
+		rohc_comp_debug(context, "context CID %u scores %zu for Context Replication",
 		                context->cid, cr_score);
 
 		/* several contexts may be used as basis for context replication:
@@ -2737,7 +2764,7 @@ static struct rohc_comp_ctxt *
 			do_ctxt_replication = true;
 			best_ctxt_for_replication = context->cid;
 			best_cr_score = cr_score;
-			rohc_comp_debug(context, "context CID %zu is best for Context Replication",
+			rohc_comp_debug(context, "context CID %u is best for Context Replication",
 			                context->cid);
 		}
 
@@ -2769,7 +2796,7 @@ static struct rohc_comp_ctxt *
 		/* matching context found, update use timestamp */
 		context->latest_used = packet->time.sec;
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "context (CID = %zu) used at %" PRIu64 " seconds",
+		           "context (CID %u) used at %" PRIu64 " seconds",
 		           context->cid, context->latest_used);
 	}
 
@@ -2822,7 +2849,7 @@ static bool c_create_contexts(struct rohc_comp *const comp)
 	comp->num_contexts_used = 0;
 
 	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	          "create enough room for %zu contexts (MAX_CID = %zu)",
+	          "create enough room for %u contexts (MAX_CID = %u)",
 	          comp->medium.max_cid + 1, comp->medium.max_cid);
 
 	comp->contexts = calloc(comp->medium.max_cid + 1,
@@ -2903,7 +2930,7 @@ void rohc_comp_change_mode(struct rohc_comp_ctxt *const context,
 
 		/* change mode and go back to IR state */
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		          "CID %zu: change from mode %d to mode %d",
+		          "CID %u: change from mode %d to mode %d",
 		          context->cid, context->mode, new_mode);
 		context->mode = new_mode;
 	}
@@ -2922,7 +2949,7 @@ void rohc_comp_change_state(struct rohc_comp_ctxt *const context,
 	if(new_state != context->state)
 	{
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		          "CID %zu: change from state %d to state %d",
+		          "CID %u: change from state %d to state %d",
 		          context->cid, context->state, new_state);
 
 		/* reset counters */
@@ -2949,7 +2976,7 @@ void rohc_comp_periodic_down_transition(struct rohc_comp_ctxt *const context,
 	rohc_comp_state_t next_state;
 
 	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-	           "CID %zu: timeouts for periodic refreshes: FO = %zu / %zu, "
+	           "CID %u: timeouts for periodic refreshes: FO = %zu / %zu, "
 	           "IR = %zu / %zu", context->cid, context->go_back_fo_count,
 	           context->compressor->periodic_refreshes_fo_timeout_pkts,
 	           context->go_back_ir_count,
@@ -2959,7 +2986,7 @@ void rohc_comp_periodic_down_transition(struct rohc_comp_ctxt *const context,
 	   context->compressor->periodic_refreshes_ir_timeout_pkts)
 	{
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		          "CID %zu: periodic change to IR state", context->cid);
+		          "CID %u: periodic change to IR state", context->cid);
 		context->go_back_ir_count = 0;
 		next_state = ROHC_COMP_STATE_IR;
 	}
@@ -2970,7 +2997,7 @@ void rohc_comp_periodic_down_transition(struct rohc_comp_ctxt *const context,
 		const uint64_t interval_since_ir_refresh =
 			rohc_time_interval(context->go_back_ir_time, pkt_time);
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		          "CID %zu: force IR refresh since %" PRIu64 " us elapsed since "
+		          "CID %u: force IR refresh since %" PRIu64 " us elapsed since "
 		          "last IR packet", context->cid, interval_since_ir_refresh);
 		context->go_back_ir_count = 0;
 		next_state = ROHC_COMP_STATE_IR;
@@ -2979,7 +3006,7 @@ void rohc_comp_periodic_down_transition(struct rohc_comp_ctxt *const context,
 	        context->compressor->periodic_refreshes_fo_timeout_pkts)
 	{
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		          "CID %zu: periodic change to FO state", context->cid);
+		          "CID %u: periodic change to FO state", context->cid);
 		context->go_back_fo_count = 0;
 		next_state = ROHC_COMP_STATE_FO;
 	}
@@ -2990,7 +3017,7 @@ void rohc_comp_periodic_down_transition(struct rohc_comp_ctxt *const context,
 		const uint64_t interval_since_fo_refresh =
 			rohc_time_interval(context->go_back_fo_time, pkt_time);
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		          "CID %zu: force FO refresh since %" PRIu64 " us elapsed since "
+		          "CID %u: force FO refresh since %" PRIu64 " us elapsed since "
 		          "last FO packet", context->cid, interval_since_fo_refresh);
 		context->go_back_fo_count = 0;
 		next_state = ROHC_COMP_STATE_FO;
@@ -3098,7 +3125,7 @@ static bool rohc_comp_feedback_parse_cid(const struct rohc_comp *const comp,
 	}
 
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "feedback CID = %zu", *cid);
+	           "feedback CID %u", *cid);
 
 	return true;
 

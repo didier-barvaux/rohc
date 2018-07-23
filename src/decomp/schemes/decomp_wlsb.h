@@ -28,6 +28,7 @@
 #define ROHC_DECOMP_SCHEMES_WLSB_H
 
 #include "interval.h" /* for rohc_lsb_shift_t */
+#include "rohc_internal.h" /* for bits_nr_t */
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -38,6 +39,7 @@
 /*
  * Public structures and types
  */
+
 
 /** The different reference values for LSB decoding */
 typedef enum
@@ -56,39 +58,77 @@ typedef enum
  */
 struct rohc_lsb_decode
 {
-	bool is_init;         /**< Whether the reference value was initialized */
-	size_t max_len;       /**< The max length (in bits) of the uncomp. field */
-
 	/** The reference values (ref -1 and ref 0) */
 	uint32_t v_ref_d[ROHC_LSB_REF_MAX];
+
+	bool is_init;         /**< Whether the reference value was initialized */
+	uint8_t max_len;      /**< The max length (in bits) of the uncomp. field */
+	uint8_t unused[6];
 };
+
+/* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
+#if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
+     (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
+      (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
+_Static_assert((offsetof(struct rohc_lsb_decode, v_ref_d) % 8) == 0,
+               "v_ref_d in rohc_lsb_decode should be aligned on 8 bytes");
+_Static_assert((sizeof(struct rohc_lsb_decode) % 8) == 0,
+               "rohc_lsb_decode length should be multiple of 8 bytes");
+#endif
 
 
 /** The context to parse and decode one LSB-encoded 32-bit field */
 struct rohc_lsb_field32
 {
-	uint32_t bits;        /**< The bits extracted from the ROHC packet */
-	size_t bits_nr;       /**< The number of bits extracted from the ROHC packet */
 	rohc_lsb_shift_t p;   /**< The LSB shift parameter to decode extracted bits */
+	uint32_t bits;        /**< The bits extracted from the ROHC packet */
+	bits_nr_t bits_nr;    /**< The number of bits extracted from the ROHC packet */
+	uint8_t unused[7];
 };
+
+/* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
+#if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
+     (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
+      (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
+_Static_assert((sizeof(struct rohc_lsb_field32) % 8) == 0,
+               "rohc_lsb_field32 length should be multiple of 8 bytes");
+#endif
 
 
 /** The context to parse and decode one LSB-encoded 16-bit field */
 struct rohc_lsb_field16
 {
-	uint16_t bits;        /**< The bits extracted from the ROHC packet */
-	size_t bits_nr;       /**< The number of bits extracted from the ROHC packet */
 	rohc_lsb_shift_t p;   /**< The LSB shift parameter to decode extracted bits */
+	uint16_t bits;        /**< The bits extracted from the ROHC packet */
+	bits_nr_t bits_nr;    /**< The number of bits extracted from the ROHC packet */
+	uint8_t unused[1];
 };
+
+/* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
+#if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
+     (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
+      (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
+_Static_assert((sizeof(struct rohc_lsb_field16) % 8) == 0,
+               "rohc_lsb_field16 length should be multiple of 8 bytes");
+#endif
 
 
 /** The context to parse and decode one LSB-encoded 8-bit field */
 struct rohc_lsb_field8
 {
-	uint8_t bits;         /**< The bits extracted from the ROHC packet */
-	size_t bits_nr;       /**< The number of bits extracted from the ROHC packet */
 	rohc_lsb_shift_t p;   /**< The LSB shift parameter to decode extracted bits */
+	uint8_t bits;         /**< The bits extracted from the ROHC packet */
+	bits_nr_t bits_nr;    /**< The number of bits extracted from the ROHC packet */
+	uint8_t unused[2];
 };
+
+/* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
+#if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
+     (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
+      (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
+_Static_assert((sizeof(struct rohc_lsb_field8) % 8) == 0,
+               "rohc_lsb_field8 length should be multiple of 8 bytes");
+#endif
 
 
 /*

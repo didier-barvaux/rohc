@@ -36,6 +36,7 @@
  * @brief Whether IPv6 extension headers are acceptable or not
  *
  * IPv6 options are acceptable if:
+ *  - every IPv6 extension header is smaller than \e IPV6_OPT_HDR_LEN_MAX
  *  - the last IPv6 extension header is not truncated,
  *  - no more than \e ROHC_MAX_IP_EXT_HDRS extension headers are present,
  *  - each extension header is present only once (except Destination that may
@@ -105,6 +106,14 @@ bool rohc_comp_ipv6_exts_are_acceptable(const struct rohc_comp *const comp,
 				{
 					rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 					           "packet too short for IPv6 extension header");
+					goto bad_exts;
+				}
+				if(ext_len > IPV6_OPT_HDR_LEN_MAX)
+				{
+					rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+					           "packet contains at least one %zu-byte IPv6 extension "
+					           "header larger than the internal maximum of %u bytes",
+					           ext_len, IPV6_OPT_HDR_LEN_MAX);
 					goto bad_exts;
 				}
 

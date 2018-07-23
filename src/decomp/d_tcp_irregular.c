@@ -99,7 +99,7 @@ bool tcp_parse_irreg_chain(const struct rohc_decomp_ctxt *const context,
 	size_t remain_len = rohc_length;
 	const ip_context_t *ip_inner_context = NULL;
 	struct rohc_tcp_extr_ip_bits *ip_inner_bits = NULL;
-	size_t ip_contexts_nr;
+	uint8_t ip_contexts_nr;
 	int ret;
 
 	(*parsed_len) = 0;
@@ -124,7 +124,7 @@ bool tcp_parse_irreg_chain(const struct rohc_decomp_ctxt *const context,
 		}
 		else
 		{
-			ip_id_behavior = ip_context->ctxt.vx.ip_id_behavior;
+			ip_id_behavior = ip_context->ip_id_behavior;
 		}
 
 		ret = tcp_parse_irregular_ip(context, ip_context, remain_data, remain_len,
@@ -197,7 +197,7 @@ static int tcp_parse_irregular_ip(const struct rohc_decomp_ctxt *const context,
 	rohc_decomp_debug(context, "is_innermost = %d, ttl_irreg_chain_flag = %d",
 	                  is_innermost, bits->ttl_irreg_chain_flag ? 1 : 0);
 
-	if(ip_context->ctxt.vx.version == IPV4)
+	if(ip_context->version == IPV4)
 	{
 		ret = tcp_parse_irregular_ipv4(context, rohc_data, rohc_data_len,
 		                               is_innermost, ip_id_behavior, bits, ip_bits);
