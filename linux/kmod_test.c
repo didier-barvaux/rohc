@@ -988,7 +988,7 @@ int rohc_proc_init(struct rohc_couple *couple, int index)
 
 	rohc_info("\tcreate interface /proc/%s...\n", proc_comp_in_name);
 	couple->proc_file_comp_in =
-		proc_create(proc_comp_in_name, S_IFREG|S_IRUSR|S_IWUSR,
+		proc_create(proc_comp_in_name, S_IFREG|0600,
 			    NULL, &rohc_proc_comp_in_fops);
 	if (couple->proc_file_comp_in == NULL) {
 		rohc_err("\tfailed to create /proc/%s\n", proc_comp_in_name);
@@ -997,7 +997,7 @@ int rohc_proc_init(struct rohc_couple *couple, int index)
 
 	rohc_info("\tcreate interface /proc/%s...\n", proc_comp_out_name);
 	couple->proc_file_comp_out =
-		proc_create(proc_comp_out_name, S_IFREG|S_IRUSR|S_IWUSR,
+		proc_create(proc_comp_out_name, S_IFREG|0600,
 			    NULL, &rohc_proc_comp_out_fops);
 	if (couple->proc_file_comp_out == NULL) {
 		rohc_err("\tfailed to create /proc/%s\n", proc_comp_out_name);
@@ -1006,7 +1006,7 @@ int rohc_proc_init(struct rohc_couple *couple, int index)
 
 	rohc_info("\tcreate interface /proc/%s...\n", proc_decomp_in_name);
 	couple->proc_file_decomp_in =
-		proc_create(proc_decomp_in_name, S_IFREG|S_IRUSR|S_IWUSR,
+		proc_create(proc_decomp_in_name, S_IFREG|0600,
 			    NULL, &rohc_proc_decomp_in_fops);
 	if (couple->proc_file_decomp_in == NULL) {
 		rohc_err("\tfailed to create /proc/%s\n", proc_decomp_in_name);
@@ -1015,7 +1015,7 @@ int rohc_proc_init(struct rohc_couple *couple, int index)
 
 	rohc_info("\tcreate interface /proc/%s...\n", proc_decomp_out_name);
 	couple->proc_file_decomp_out =
-		proc_create(proc_decomp_out_name, S_IFREG|S_IRUSR|S_IWUSR,
+		proc_create(proc_decomp_out_name, S_IFREG|0600,
 			    NULL, &rohc_proc_decomp_out_fops);
 	if (couple->proc_file_decomp_out == NULL) {
 		rohc_err("\tfailed to create /proc/%s\n", proc_decomp_out_name);
