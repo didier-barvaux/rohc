@@ -371,11 +371,6 @@ struct rohc_comp * rohc_comp_new2(const rohc_cid_type_t cid_type,
 		goto destroy_comp;
 	}
 
-	/* init the tables for fast CRC computation */
-	rohc_crc_init_table(comp->crc_table_3, ROHC_CRC_TYPE_3);
-	rohc_crc_init_table(comp->crc_table_7, ROHC_CRC_TYPE_7);
-	rohc_crc_init_table(comp->crc_table_8, ROHC_CRC_TYPE_8);
-
 	/* create the MAX_CID + 1 contexts */
 	if(!c_create_contexts(comp))
 	{
@@ -3895,13 +3890,12 @@ bool rohc_comp_feedback_parse_opts(const struct rohc_comp_ctxt *const context,
 
 		/* compute the CRC of the feedback packet (skip CRC byte) */
 		crc_computed = crc_calculate(ROHC_CRC_TYPE_8, packet,
-		                             packet_len - crc_pos_from_end, CRC_INIT_8,
-		                             context->compressor->crc_table_8);
+		                             packet_len - crc_pos_from_end, CRC_INIT_8);
 		crc_computed = crc_calculate(ROHC_CRC_TYPE_8, &zeroed_crc, zeroed_crc_len,
-		                             crc_computed, context->compressor->crc_table_8);
+		                             crc_computed);
 		crc_computed = crc_calculate(ROHC_CRC_TYPE_8, packet + packet_len -
 		                             crc_pos_from_end + 1, crc_pos_from_end - 1,
-		                             crc_computed, context->compressor->crc_table_8);
+		                             crc_computed);
 
 		/* ignore feedback in case of bad CRC */
 		if(crc_in_packet != crc_computed)

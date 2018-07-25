@@ -22,6 +22,7 @@ sources = \
 	rohc_packets.c \
 	rohc_traces_internal.c \
 	rohc_utils.c \
+	crcany.c \
 	crc.c \
 	rohc_add_cid.c \
 	interval.c \
@@ -46,6 +47,7 @@ private_headers = \
 	rohc_traces_internal.h \
 	rohc_time_internal.h \
 	rohc_utils.h \
+	crcany.h \
 	crc.h \
 	rohc_add_cid.h \
 	interval.h \

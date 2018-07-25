@@ -332,9 +332,8 @@ static int header_fields(const struct rohc_comp_ctxt *const context,
 static uint8_t compute_uo_crc(struct rohc_comp_ctxt *const context,
                               const struct net_pkt *const uncomp_pkt,
                               const rohc_crc_type_t crc_type,
-                              const uint8_t crc_init,
-                              const uint8_t *const crc_table)
-	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
+                              const uint8_t crc_init)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static void update_context(struct rohc_comp_ctxt *const context,
                            const struct net_pkt *const uncomp_pkt)
@@ -1838,8 +1837,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 
 	/* part 5 */
 	rohc_pkt[crc_position] = crc_calculate(ROHC_CRC_TYPE_8, rohc_pkt, counter,
-	                                       CRC_INIT_8,
-	                                       context->compressor->crc_table_8);
+	                                       CRC_INIT_8);
 	rohc_comp_debug(context, "CRC (header length = %zu, crc = 0x%x)",
 	                counter, rohc_pkt[crc_position]);
 
@@ -1983,8 +1981,7 @@ static int code_IR_DYN_packet(struct rohc_comp_ctxt *const context,
 
 	/* part 5 */
 	rohc_pkt[crc_position] = crc_calculate(ROHC_CRC_TYPE_8, rohc_pkt, counter,
-	                                       CRC_INIT_8,
-	                                       context->compressor->crc_table_8);
+	                                       CRC_INIT_8);
 	rohc_comp_debug(context, "CRC (header length = %zu, crc = 0x%x)",
 	                counter, rohc_pkt[crc_position]);
 
@@ -2734,8 +2731,7 @@ static int code_UO0_packet(struct rohc_comp_ctxt *const context,
 	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
 	 * if the CRC-STATIC fields did not change */
 	f_byte = (rfc3095_ctxt->sn & 0x0f) << 3;
-	crc = compute_uo_crc(context, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3,
-	                     context->compressor->crc_table_3);
+	crc = compute_uo_crc(context, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3);
 	f_byte |= crc;
 	rohc_comp_debug(context, "first byte = 0x%02x (CRC = 0x%x)", f_byte, crc);
 	rohc_pkt[first_position] = f_byte;
@@ -2879,8 +2875,7 @@ static int rohc_comp_rfc3095_build_uo1_pkt(struct rohc_comp_ctxt *const context,
 		rohc_comp_warn(context, "ROHC packet is too small for SN/CRC byte");
 		goto error;
 	}
-	crc = compute_uo_crc(context, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3,
-	                     context->compressor->crc_table_3);
+	crc = compute_uo_crc(context, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3);
 	rohc_pkt[counter] = ((rfc3095_ctxt->sn & 0x1f) << 3) | (crc & 0x07);
 	rohc_comp_debug(context, "SN (%d) + CRC (%x) = 0x%02x",
 	                rfc3095_ctxt->sn, crc, rohc_pkt[counter]);
@@ -3018,8 +3013,7 @@ static int rohc_comp_rfc3095_build_uo1rtp_pkt(struct rohc_comp_ctxt *const conte
 	}
 	rohc_pkt[counter] = ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 7;
 	rohc_pkt[counter] |= (rfc3095_ctxt->sn & 0x0f) << 3;
-	crc = compute_uo_crc(context, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3,
-	                     context->compressor->crc_table_3);
+	crc = compute_uo_crc(context, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3);
 	rohc_pkt[counter] |= crc & 0x07;
 	rohc_comp_debug(context, "M (%d) + SN (%d) + CRC (%x) = 0x%02x",
 	                !!rtp_context->tmp.is_marker_bit_set,
@@ -3168,8 +3162,7 @@ static int rohc_comp_rfc3095_build_uo1ts_pkt(struct rohc_comp_ctxt *const contex
 		rohc_comp_warn(context, "ROHC packet is too small for SN/CRC byte");
 		goto error;
 	}
-	crc = compute_uo_crc(context, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3,
-	                     context->compressor->crc_table_3);
+	crc = compute_uo_crc(context, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3);
 	rohc_pkt[counter] = ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 7;
 	rohc_pkt[counter] |= (rfc3095_ctxt->sn & 0x0f) << 3;
 	rohc_pkt[counter] |= crc & 0x07;
@@ -3435,8 +3428,7 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 		rohc_comp_warn(context, "ROHC packet is too small for SN/CRC byte");
 		goto error;
 	}
-	crc = compute_uo_crc(context, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3,
-	                     context->compressor->crc_table_3);
+	crc = compute_uo_crc(context, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3);
 	s_byte = crc & 0x07;
 	switch(packet_type)
 	{
@@ -3740,8 +3732,7 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 	 *
 	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
 	 * if the CRC-STATIC fields did not change */
-	t_byte = compute_uo_crc(context, uncomp_pkt, ROHC_CRC_TYPE_7, CRC_INIT_7,
-	                        context->compressor->crc_table_7);
+	t_byte = compute_uo_crc(context, uncomp_pkt, ROHC_CRC_TYPE_7, CRC_INIT_7);
 	t_byte_position = counter;
 	counter++;
 
@@ -6062,14 +6053,12 @@ static int header_fields(const struct rohc_comp_ctxt *const context,
  * @param uncomp_pkt  The uncompressed packet to encode
  * @param crc_type    The type of CRC to compute
  * @param crc_init    The initial value of the CRC
- * @param crc_table   The table of pre-computed CRC
  * @return            The computed CRC
  */
 static uint8_t compute_uo_crc(struct rohc_comp_ctxt *const context,
                               const struct net_pkt *const uncomp_pkt,
                               const rohc_crc_type_t crc_type,
-                              const uint8_t crc_init,
-                              const uint8_t *const crc_table)
+                              const uint8_t crc_init)
 {
 	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
@@ -6103,7 +6092,7 @@ static uint8_t compute_uo_crc(struct rohc_comp_ctxt *const context,
 	else
 	{
 		crc = rfc3095_ctxt->compute_crc_static(outer_ip_hdr, inner_ip_hdr, next_header,
-		                                       crc_type, crc, crc_table);
+		                                       crc_type, crc);
 		rohc_comp_debug(context, "compute CRC-STATIC-%d = 0x%x from packet",
 		                crc_type, crc);
 
@@ -6124,7 +6113,7 @@ static uint8_t compute_uo_crc(struct rohc_comp_ctxt *const context,
 
 	/* compute CRC on CRC-DYNAMIC fields */
 	crc = rfc3095_ctxt->compute_crc_dynamic(outer_ip_hdr, inner_ip_hdr, next_header,
-	                                        crc_type, crc, crc_table);
+	                                        crc_type, crc);
 
 	return crc;
 }

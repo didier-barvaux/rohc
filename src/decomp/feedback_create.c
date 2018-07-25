@@ -401,7 +401,6 @@ static bool f_append_cid(struct d_feedback *const feedback,
  * @param cid               The Context ID (CID) to append
  * @param cid_type          The type of CID used for the feedback
  * @param protect_with_crc  Whether the CRC option must be added or not
- * @param crc_table         The pre-computed table for fast CRC computation
  * @param final_size        OUT: The final size of the feedback packet
  * @return                  The feedback packet if successful, NULL otherwise
  */
@@ -409,7 +408,6 @@ uint8_t * f_wrap_feedback(struct d_feedback *const feedback,
                           const uint16_t cid,
                           const rohc_cid_type_t cid_type,
                           const rohc_feedback_crc_t protect_with_crc,
-                          const uint8_t *const crc_table,
                           size_t *const final_size)
 {
 	uint8_t *feedback_packet;
@@ -467,8 +465,8 @@ uint8_t * f_wrap_feedback(struct d_feedback *const feedback,
 	if(protect_with_crc != ROHC_FEEDBACK_WITH_NO_CRC)
 	{
 		crc = crc_calculate(ROHC_CRC_TYPE_8, feedback_packet, feedback->size,
-		                    CRC_INIT_8, crc_table);
-		feedback_packet[crc_pos] = crc & 0xff;
+		                    CRC_INIT_8);
+		feedback_packet[crc_pos] = crc;
 	}
 
 	*final_size = feedback->size;

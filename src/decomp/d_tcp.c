@@ -4242,7 +4242,7 @@ static rohc_status_t d_tcp_build_hdrs(const struct rohc_decomp *const decomp,
 	if(extr_crc->type != ROHC_CRC_TYPE_NONE)
 	{
 		const bool crc_ok =
-			rohc_decomp_check_uncomp_crc(decomp, context, uncomp_hdrs,
+			rohc_decomp_check_uncomp_crc(context, uncomp_hdrs,
 			                             extr_crc->type, extr_crc->bits);
 		if(!crc_ok)
 		{

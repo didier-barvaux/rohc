@@ -217,14 +217,13 @@ static rohc_status_t rohc_decomp_try_decode_pkt(const struct rohc_decomp *const 
                                                 struct rohc_buf *const uncomp_packet)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5, 7, 8)));
 
-static bool rohc_decomp_check_ir_crc(const struct rohc_decomp *const decomp,
-                                     const struct rohc_decomp_ctxt *const context,
+static bool rohc_decomp_check_ir_crc(const struct rohc_decomp_ctxt *const context,
                                      const uint8_t *const rohc_hdr,
                                      const size_t rohc_hdr_len,
                                      const size_t add_cid_len,
                                      const size_t large_cid_len,
                                      const uint8_t crc_packet)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static void rohc_decomp_stats_add_success(struct rohc_decomp_ctxt *const context,
                                           const size_t comp_hdr_len,
@@ -580,11 +579,6 @@ struct rohc_decomp * rohc_decomp_new2(const rohc_cid_type_t cid_type,
 	/* no segmentation by default */
 	decomp->mrru = 0;
 	decomp->rru = NULL;
-
-	/* init the tables for fast CRC computation */
-	rohc_crc_init_table(decomp->crc_table_3, ROHC_CRC_TYPE_3);
-	rohc_crc_init_table(decomp->crc_table_7, ROHC_CRC_TYPE_7);
-	rohc_crc_init_table(decomp->crc_table_8, ROHC_CRC_TYPE_8);
 
 	/* reset the decompressor statistics */
 	rohc_decomp_reset_stats(decomp);
@@ -1438,7 +1432,7 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 		assert(extr_crc_bits->type == ROHC_CRC_TYPE_NONE);
 		assert(extr_crc_bits->bits_nr == 8);
 
-		crc_ok = rohc_decomp_check_ir_crc(decomp, context,
+		crc_ok = rohc_decomp_check_ir_crc(context,
 		                                  rohc_buf_data(rohc_packet) - add_cid_len,
 		                                  add_cid_len + rohc_hdr_len, add_cid_len,
 		                                  large_cid_len, extr_crc_bits->bits);
@@ -1747,7 +1741,6 @@ error:
  * The CRC for IR/IR-DYN headers is always CRC-8. It is computed on the
  * whole compressed header (payload excluded, but any CID bits included).
  *
- * @param decomp          The ROHC decompressor
  * @param context         The decompression context
  * @param rohc_hdr        The compressed IR or IR-DYN header
  * @param rohc_hdr_len    The length (in bytes) of the compressed header
@@ -1756,41 +1749,36 @@ error:
  * @param crc_packet      The CRC extracted from the ROHC header
  * @return                true if the CRC is correct, false otherwise
  */
-static bool rohc_decomp_check_ir_crc(const struct rohc_decomp *const decomp,
-                                     const struct rohc_decomp_ctxt *const context,
+static bool rohc_decomp_check_ir_crc(const struct rohc_decomp_ctxt *const context,
                                      const uint8_t *const rohc_hdr,
                                      const size_t rohc_hdr_len,
                                      const size_t add_cid_len,
                                      const size_t large_cid_len,
                                      const uint8_t crc_packet)
 {
-	const uint8_t *crc_table;
 	const rohc_crc_type_t crc_type = ROHC_CRC_TYPE_8;
 	const uint8_t crc_zero[] = { 0x00 };
 	unsigned int crc_comp; /* computed CRC */
 
 	assert(rohc_hdr_len >= (add_cid_len + 2 + large_cid_len + 1));
 
-	crc_table = decomp->crc_table_8;
-
 	/* ROHC header before CRC field:
 	 * optional Add-CID + IR type + Profile ID + optional large CID */
-	crc_comp = crc_calculate(crc_type, rohc_hdr,
-	                         add_cid_len + 2 + large_cid_len,
-	                         CRC_INIT_8, crc_table);
+	crc_comp = crc_calculate(crc_type, rohc_hdr, add_cid_len + 2 + large_cid_len,
+	                         CRC_INIT_8);
 
 	/* all profiles but the Uncompressed profile compute their CRC through the
 	 * zeroed CRC field and the rest of the ROHC header */
 	if(context->profile->id != ROHC_PROFILE_UNCOMPRESSED)
 	{
 		/* zeroed CRC field */
-		crc_comp = crc_calculate(crc_type, crc_zero, 1, crc_comp, crc_table);
+		crc_comp = crc_calculate(crc_type, crc_zero, 1, crc_comp);
 
 		/* ROHC header after CRC field */
 		crc_comp = crc_calculate(crc_type,
 		                         rohc_hdr + add_cid_len + 2 + large_cid_len + 1,
 		                         rohc_hdr_len - add_cid_len - 2 - large_cid_len - 1,
-		                         crc_comp, crc_table);
+		                         crc_comp);
 	}
 
 	rohc_decomp_debug(context, "CRC-%d on compressed %zu-byte ROHC header = "
@@ -2023,7 +2011,7 @@ static bool rohc_decomp_feedback_ack(struct rohc_decomp *const decomp,
 
 		/* build the feedback packet */
 		feedbackp = f_wrap_feedback(&sfeedback, infos->cid, infos->cid_type,
-		                            crc_present, decomp->crc_table_8, &feedbacksize);
+		                            crc_present, &feedbacksize);
 		if(feedbackp == NULL)
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
@@ -2357,7 +2345,7 @@ static bool rohc_decomp_feedback_nack(struct rohc_decomp *const decomp,
 
 		/* build the feedback packet */
 		feedbackp = f_wrap_feedback(&sfeedback, infos->cid, infos->cid_type,
-		                            crc_present, decomp->crc_table_8, &feedbacksize);
+		                            crc_present, &feedbacksize);
 		if(feedbackp == NULL)
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, infos->profile_id,

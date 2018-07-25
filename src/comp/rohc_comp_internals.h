@@ -144,13 +144,6 @@ struct rohc_comp
 
 	/* CRC-related variables: */
 
-	/** The table to enable fast CRC-3 computation */
-	uint8_t crc_table_3[256];
-	/** The table to enable fast CRC-7 computation */
-	uint8_t crc_table_7[256];
-	/** The table to enable fast CRC-8 computation */
-	uint8_t crc_table_8[256];
-
 
 	/* segment-related variables */
 

@@ -424,9 +424,7 @@ static int uncompressed_code_IR_packet(const struct rohc_comp_ctxt *context,
 
 	/* part 5 */
 	rohc_pkt[counter] = 0;
-	rohc_pkt[counter] = crc_calculate(ROHC_CRC_TYPE_8, rohc_pkt, counter,
-	                                  CRC_INIT_8,
-	                                  context->compressor->crc_table_8);
+	rohc_pkt[counter] = crc_calculate(ROHC_CRC_TYPE_8, rohc_pkt, counter, CRC_INIT_8);
 	rohc_comp_debug(context, "CRC on %zu bytes = 0x%02x", counter,
 	                rohc_pkt[counter]);
 	counter++;
