@@ -56,6 +56,9 @@ src/common/test/test_sdvl.exe
 src/common/test/test_sdvl.log
 src/common/test/test_feedback_parse
 src/common/test/test_api_robustness
+src/common/test/test_csiphash
+src/common/test/test_csiphash.exe
+src/common/test/test_csiphash.log
 src/comp/schemes/test/test_rfc4996
 src/comp/schemes/test/test_rfc4996.exe
 src/comp/schemes/test/test_rfc4996.log

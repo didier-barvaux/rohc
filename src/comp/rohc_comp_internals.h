@@ -36,6 +36,7 @@
 #include "protocols/ipv6.h"
 #include "protocols/tcp.h"
 #include "feedback.h"
+#include "hashtable.h"
 
 #include <stdbool.h>
 
@@ -138,6 +139,9 @@ struct rohc_comp
 	struct rohc_comp_ctxt *contexts;
 	/** The number of compression contexts in use in the array */
 	uint16_t num_contexts_used;
+	struct hashtable contexts_by_fingerprint;
+	struct hashtable contexts_cr;
+	struct rohc_comp_ctxt *uncompressed_ctxt;
 
 	/** Which profiles are enabled and with one are not? */
 	bool enabled_profiles[ROHC_PROFILE_ID_MAJOR_MAX + 1][ROHC_PROFILE_ID_MINOR_MAX + 1];
@@ -436,6 +440,14 @@ struct rohc_fingerprint
  */
 struct rohc_comp_ctxt
 {
+	struct rohc_comp_ctxt *prev;
+	struct rohc_comp_ctxt *next;
+	struct rohc_comp_ctxt *prev_cr;
+	struct rohc_comp_ctxt *next_cr;
+
+	/** The fingerprint of the context */
+	struct rohc_fingerprint fingerprint;
+
 	/** Whether the context is in use or not */
 	int used;
 	/** The time when the context was created (in seconds) */
@@ -445,9 +457,6 @@ struct rohc_comp_ctxt
 
 	/** The context unique ID (CID) */
 	rohc_cid_t cid;
-
-	/** The fingerprint of the context */
-	struct rohc_fingerprint fingerprint;
 
 	/** The associated compressor */
 	struct rohc_comp *compressor;
