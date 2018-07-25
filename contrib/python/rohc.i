@@ -37,6 +37,8 @@
 #include "rohc_helpers.h"
 %}
 
+typedef unsigned short uint16_t;
+
 #define __attribute__(x)
 #define ROHC_DEPRECATED(x)
 
