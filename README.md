@@ -54,8 +54,6 @@ See the [INSTALL.md](INSTALL.md) file to learn to build the ROHC library.
 ## Applications
 
 Several applications are available in the `app/` subdirectory:
-* `app/performance/` contains an application that allows developers to benchmark
-  the (de)compression of the ROHC library
 * `app/sniffer/` contains an application that allows developers to test the
   (de)compression of the ROHC library on any local network
 * `app/stats/` contains an application that allows developers to compute some

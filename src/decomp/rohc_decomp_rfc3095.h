@@ -339,8 +339,6 @@ struct rohc_decomp_rfc3095_ctxt
 	/// Information about the inner IP header
 	struct rohc_decomp_rfc3095_changes *inner_ip_changes;
 
-	/** The LSB shift parameter for the Sequence Number (SN) */
-	rohc_lsb_shift_t sn_lsb_p;
 	/// The LSB decoding context for the Sequence Number (SN)
 	struct rohc_lsb_decode sn_lsb_ctxt;
 	/// The IP-ID of the outer IP header
@@ -431,16 +429,16 @@ struct rohc_decomp_rfc3095_ctxt
 	                              const uint8_t *const ip2,
 	                              const uint8_t *const next_header,
 	                              const rohc_crc_type_t crc_type,
-	                              const uint8_t init_val,
-	                              const uint8_t *const crc_table);
+	                              const uint8_t init_val)
+		__attribute__((warn_unused_result, nonnull(1)));
 
 	/// @brief The handler used to compute the CRC-DYNAMIC value
 	uint8_t (*compute_crc_dynamic)(const uint8_t *const ip,
 	                               const uint8_t *const ip2,
 	                               const uint8_t *const next_header,
 	                               const rohc_crc_type_t crc_type,
-	                               const uint8_t init_val,
-	                               const uint8_t *const crc_table);
+	                               const uint8_t init_val)
+		__attribute__((warn_unused_result, nonnull(1)));
 
 	/** The handler used to update context with decoded next header fields */
 	void (*update_context)(struct rohc_decomp_ctxt *const context,

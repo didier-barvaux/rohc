@@ -397,6 +397,51 @@ int main(int argc, char *argv[])
 		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_RTP_PT_2_SEQ_BOTH), "") != 0);
 		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_RTP_PT_2_SEQ_BOTH), unknown) != 0);
 
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UO_1_ID_EXT0), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UO_1_ID_EXT0), unknown) != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UO_1_ID_EXT1), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UO_1_ID_EXT1), unknown) != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UO_1_ID_EXT2), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UO_1_ID_EXT2), unknown) != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UO_1_ID_EXT3), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UO_1_ID_EXT3), unknown) != 0);
+
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_EXT0), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_EXT0), unknown) != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_EXT1), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_EXT1), unknown) != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_EXT2), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_EXT2), unknown) != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_EXT3), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_EXT3), unknown) != 0);
+
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_RTP_EXT0), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_RTP_EXT0), unknown) != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_RTP_EXT1), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_RTP_EXT1), unknown) != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_RTP_EXT2), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_RTP_EXT2), unknown) != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_RTP_EXT3), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_RTP_EXT3), unknown) != 0);
+
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_ID_EXT0), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_ID_EXT0), unknown) != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_ID_EXT1), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_ID_EXT1), unknown) != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_ID_EXT2), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_ID_EXT2), unknown) != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_ID_EXT3), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_ID_EXT3), unknown) != 0);
+
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_TS_EXT0), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_TS_EXT0), unknown) != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_TS_EXT1), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_TS_EXT1), unknown) != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_TS_EXT2), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_TS_EXT2), unknown) != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_TS_EXT3), "") != 0);
+		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UOR_2_TS_EXT3), unknown) != 0);
+
 		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_MAX), unknown) == 0);
 		CHECK(strcmp(rohc_get_packet_descr(ROHC_PACKET_UNKNOWN), unknown) == 0);
 	}
@@ -440,6 +485,11 @@ int main(int argc, char *argv[])
 			"rtp-pt-0-crc7",
 			"rtp-pt-1-rnd", "rtp-pt-1-seq-id", "rtp-pt-1-seq-ts",
 			"rtp-pt-2-rnd", "rtp-pt-2-seq-id", "rtp-pt-2-seq-ts", "rtp-pt-2-seq-both",
+			"uo1id-ext0", "uo1id-ext1", "uo1id-ext2", "uo1id-ext3",
+			"uor2-ext0", "uor2-ext1", "uor2-ext2", "uor2-ext3",
+			"uor2rtp-ext0", "uor2rtp-ext1", "uor2rtp-ext2", "uor2rtp-ext3",
+			"uor2id-ext0", "uor2id-ext1", "uor2id-ext2", "uor2id-ext3",
+			"uor2ts-ext0", "uor2ts-ext1", "uor2ts-ext2", "uor2ts-ext3",
 		};
 		rohc_packet_t packet_type;
 

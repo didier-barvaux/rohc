@@ -259,10 +259,7 @@ error:
  *
  * @param old_value       The previous 32-bit value
  * @param new_value       The 32-bit value to compress
- * @param nr_bits_63      The number of bits required for W-LSB encoding
- *                        with p = 63
- * @param nr_bits_16383   The number of bits required for W-LSB encoding
- *                        with p = 16383
+ * @param wlsb            The W-LSB encoding context
  * @param[out] rohc_data  The compressed value
  * @param rohc_max_len    The max remaining length in the ROHC buffer
  * @param[out] indicator  The indicator for the compressed value
@@ -271,16 +268,12 @@ error:
  */
 int variable_length_32_enc(const uint32_t old_value,
                            const uint32_t new_value,
-                           const size_t nr_bits_63,
-                           const size_t nr_bits_16383,
+                           const struct c_wlsb *const wlsb,
                            uint8_t *const rohc_data,
                            const size_t rohc_max_len,
                            int *const indicator)
 {
 	size_t encoded_len;
-
-	assert(nr_bits_63 <= 32);
-	assert(nr_bits_16383 <= 32);
 
 	if(new_value == old_value)
 	{
@@ -288,7 +281,7 @@ int variable_length_32_enc(const uint32_t old_value,
 		encoded_len = 0;
 		*indicator = 0;
 	}
-	else if(nr_bits_63 <= 8)
+	else if(wlsb_is_kp_possible_32bits(wlsb, new_value, 8, 63))
 	{
 		/* 1-byte value */
 		encoded_len = 1;
@@ -299,7 +292,7 @@ int variable_length_32_enc(const uint32_t old_value,
 		*indicator = 1;
 		rohc_data[0] = new_value & 0xff;
 	}
-	else if(nr_bits_16383 <= 16)
+	else if(wlsb_is_kp_possible_32bits(wlsb, new_value, 16, 16383))
 	{
 		/* 2-byte value */
 		encoded_len = 2;
@@ -417,7 +410,8 @@ unsigned int rsf_index_enc(const uint8_t rsf_flags)
  * @param behavior         The IP-ID behavior
  * @param ip_id_nbo        The IP-ID value to compress (in NBO)
  * @param ip_id_offset     The IP-ID offset value to compress (in HBO)
- * @param nr_bits_wlsb     The number of IP-ID offset bits required for W-LSB
+ * @param wlsb             The W-LSB encoding context
+ * @param p                The W-LSB shift parameter p
  * @param[out] rohc_data   The compressed value
  * @param rohc_max_len     The max remaining length in the ROHC buffer
  * @param[out] indicator   The indicator: 0 if short, 1 if long
@@ -427,7 +421,8 @@ unsigned int rsf_index_enc(const uint8_t rsf_flags)
 int c_optional_ip_id_lsb(const int behavior,
                          const uint16_t ip_id_nbo,
                          const uint16_t ip_id_offset,
-                         const size_t nr_bits_wlsb,
+                         const struct c_wlsb *const wlsb,
+                         const rohc_lsb_shift_t p,
                          uint8_t *const rohc_data,
                          const size_t rohc_max_len,
                          int *const indicator)
@@ -438,7 +433,7 @@ int c_optional_ip_id_lsb(const int behavior,
 	{
 		case ROHC_IP_ID_BEHAVIOR_SEQ_SWAP:
 		case ROHC_IP_ID_BEHAVIOR_SEQ:
-			if(nr_bits_wlsb <= 8)
+			if(wlsb_is_kp_possible_16bits(wlsb, ip_id_offset, 8, p))
 			{
 				if(rohc_max_len < 1)
 				{

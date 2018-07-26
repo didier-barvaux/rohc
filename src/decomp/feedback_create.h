@@ -84,9 +84,8 @@ uint8_t * f_wrap_feedback(struct d_feedback *feedback,
                           const uint16_t cid,
                           const rohc_cid_type_t cid_type,
                           const rohc_feedback_crc_t protect_with_crc,
-                          const uint8_t *const crc_table,
                           size_t *const final_size)
-	__attribute__((warn_unused_result, nonnull(1, 5, 6)));
+	__attribute__((warn_unused_result, nonnull(1, 5)));
 
 
 #endif

@@ -53,6 +53,7 @@
 
 #include <string.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <assert.h>
 
 
@@ -71,28 +72,32 @@ extern const struct rohc_decomp_profile rohc_decomp_rfc5225_ip_udp_profile;
 extern const struct rohc_decomp_profile rohc_decomp_rfc5225_ip_esp_profile;
 
 
-/**
- * @brief The decompression parts of the ROHC profiles.
- */
-static const struct rohc_decomp_profile *const rohc_decomp_profiles[D_NUM_PROFILES] =
+/** The ROHC decompression profiles */
+static const struct rohc_decomp_profile *const
+	rohc_decomp_profiles[ROHC_PROFILE_ID_MAJOR_MAX + 1][ROHC_PROFILE_ID_MINOR_MAX + 1] =
 {
-	&d_uncomp_profile,
-	&d_rtp_profile,
-	&d_udp_profile,
-	&d_esp_profile,
-	&d_ip_profile,
-	&d_tcp_profile,
-	&d_udplite_profile,
-#if 0
-	&rohc_decomp_rfc5225_ip_udp_rtp_profile,
-#endif
-	&rohc_decomp_rfc5225_ip_udp_profile,
-	&rohc_decomp_rfc5225_ip_esp_profile,
-	&rohc_decomp_rfc5225_ip_profile,
-#if 0
-	&rohc_decomp_rfc5225_ip_udplite_rtp_profile,
-	&rohc_decomp_rfc5225_ip_udplite_profile,
-#endif
+	[0] = {
+		[0] = &d_uncomp_profile,
+		[1] = &d_rtp_profile,
+		[2] = &d_udp_profile,
+		[3] = &d_esp_profile,
+		[4] = &d_ip_profile,
+		[5] = NULL,
+		[6] = &d_tcp_profile,
+		[7] = NULL,
+		[8] = &d_udplite_profile,
+	},
+	[1] = {
+		[0] = NULL,
+		[1] = NULL,
+		[2] = &rohc_decomp_rfc5225_ip_udp_profile,
+		[3] = &rohc_decomp_rfc5225_ip_esp_profile,
+		[4] = &rohc_decomp_rfc5225_ip_profile,
+		[5] = NULL,
+		[6] = NULL,
+		[7] = NULL,
+		[8] = NULL,
+	},
 };
 
 
@@ -147,19 +152,20 @@ static const struct rohc_decomp_profile *
 	             const rohc_profile_t profile_id)
 	__attribute__((warn_unused_result, nonnull(1)));
 
+static bool rohc_decomp_profile_enabled_nocheck(const struct rohc_decomp *const decomp,
+                                                const rohc_profile_t profile)
+	__attribute__((warn_unused_result, nonnull(1)));
+
 static struct rohc_decomp_ctxt * context_create(struct rohc_decomp *decomp,
                                                 const rohc_cid_t cid,
                                                 const struct rohc_decomp_profile *const profile,
                                                 const struct rohc_ts arrival_time)
 	__attribute__((warn_unused_result, nonnull(1, 3)));
 static struct rohc_decomp_ctxt * find_context(const struct rohc_decomp *const decomp,
-                                              const size_t cid)
+                                              const rohc_cid_t cid)
 	__attribute__((nonnull(1), warn_unused_result));
 static void context_free(struct rohc_decomp_ctxt *const context)
 	__attribute__((nonnull(1)));
-
-static int rohc_decomp_get_profile_index(const rohc_profile_t profile)
-	__attribute__((warn_unused_result));
 
 static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
                                      const struct rohc_buf rohc_packet,
@@ -211,14 +217,13 @@ static rohc_status_t rohc_decomp_try_decode_pkt(const struct rohc_decomp *const 
                                                 struct rohc_buf *const uncomp_packet)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5, 7, 8)));
 
-static bool rohc_decomp_check_ir_crc(const struct rohc_decomp *const decomp,
-                                     const struct rohc_decomp_ctxt *const context,
+static bool rohc_decomp_check_ir_crc(const struct rohc_decomp_ctxt *const context,
                                      const uint8_t *const rohc_hdr,
                                      const size_t rohc_hdr_len,
                                      const size_t add_cid_len,
                                      const size_t large_cid_len,
                                      const uint8_t crc_packet)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static void rohc_decomp_stats_add_success(struct rohc_decomp_ctxt *const context,
                                           const size_t comp_hdr_len,
@@ -396,7 +401,7 @@ static void context_free(struct rohc_decomp_ctxt *const context)
 	assert(context->profile != NULL);
 
 	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-	           "free context with CID %zu", context->cid);
+	           "free context with CID %u", context->cid);
 
 	/* destroy the profile-specific data */
 	context->profile->free_context(context->persist_ctxt, &context->volat_ctxt);
@@ -473,8 +478,8 @@ struct rohc_decomp * rohc_decomp_new2(const rohc_cid_type_t cid_type,
 {
 
 	struct rohc_decomp *decomp;
+	uint8_t profile_major;
 	bool is_fine;
-	size_t i;
 
 	/* check input parameters */
 	if(cid_type == ROHC_SMALL_CID)
@@ -528,9 +533,14 @@ struct rohc_decomp * rohc_decomp_new2(const rohc_cid_type_t cid_type,
 	decomp->medium.max_cid = max_cid;
 
 	/* all decompression profiles are disabled by default */
-	for(i = 0; i < D_NUM_PROFILES; i++)
+	for(profile_major = 0; profile_major <= ROHC_PROFILE_ID_MAJOR_MAX; profile_major++)
 	{
-		decomp->enabled_profiles[i] = false;
+		uint8_t profile_minor;
+
+		for(profile_minor = 0; profile_minor <= ROHC_PROFILE_ID_MINOR_MAX; profile_minor++)
+		{
+			decomp->enabled_profiles[profile_major][profile_minor] = false;
+		}
 	}
 
 	/* the operational mode the decompressor shall target for all its contexts */
@@ -568,11 +578,7 @@ struct rohc_decomp * rohc_decomp_new2(const rohc_cid_type_t cid_type,
 	decomp->rru_len = 0;
 	/* no segmentation by default */
 	decomp->mrru = 0;
-
-	/* init the tables for fast CRC computation */
-	rohc_crc_init_table(decomp->crc_table_3, ROHC_CRC_TYPE_3);
-	rohc_crc_init_table(decomp->crc_table_7, ROHC_CRC_TYPE_7);
-	rohc_crc_init_table(decomp->crc_table_8, ROHC_CRC_TYPE_8);
+	decomp->rru = NULL;
 
 	/* reset the decompressor statistics */
 	rohc_decomp_reset_stats(decomp);
@@ -634,6 +640,12 @@ void rohc_decomp_free(struct rohc_decomp *const decomp)
 	}
 	zfree(decomp->contexts);
 	assert(decomp->num_contexts_used == 0);
+
+	/* free RRU buffer */
+	if(decomp->rru != NULL)
+	{
+		zfree(decomp->rru);
+	}
 
 	/* destroy the decompressor itself */
 	free(decomp);
@@ -875,7 +887,7 @@ rohc_status_t rohc_decompress3(struct rohc_decomp *const decomp,
 			           "update decompressor and context statistics");
 			assert(stream.context != NULL);
 			stream.context->num_recv_packets++;
-			stream.context->packet_type = stream.packet_type;
+			stream.context->last_packet_type = stream.packet_type;
 			stream.context->total_last_uncompressed_size = uncomp_packet->len;
 			stream.context->total_uncompressed_size += uncomp_packet->len;
 			stream.context->total_last_compressed_size = rohc_packet.len;
@@ -990,7 +1002,7 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 	stream->profile_id = ROHC_PROFILE_GENERAL;
 	stream->cid_type = decomp->medium.cid_type;
 	stream->cid_found = false;
-	stream->cid = SIZE_MAX;
+	stream->cid = UINT16_MAX;
 	stream->context_found = false;
 	stream->context = NULL;
 	stream->mode = ROHC_UNKNOWN_MODE;
@@ -1148,7 +1160,7 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 	if(stream->cid > decomp->medium.max_cid)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		             "unexpected CID %zu received: MAX_CID was set to %zu",
+		             "unexpected CID %u received: MAX_CID was set to %u",
 		             stream->cid, decomp->medium.max_cid);
 		goto error_no_context;
 	}
@@ -1220,7 +1232,7 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 	   !rohc_packet_carry_static_info(stream->packet_type))
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, profile->id,
-		             "CID %zu: packet '%s' (%d) does not carry static information, "
+		             "CID %u: packet '%s' (%d) does not carry static information, "
 		             "it cannot be received in No Context state",
 		             stream->cid, rohc_get_packet_descr(stream->packet_type),
 		             stream->packet_type);
@@ -1238,7 +1250,7 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 	        !rohc_packet_carry_crc_7_or_8(stream->packet_type))
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, profile->id,
-		             "CID %zu: packet '%s' (%d) does not carry 7- or 8-bit CRC, "
+		             "CID %u: packet '%s' (%d) does not carry 7- or 8-bit CRC, "
 		             "it cannot be received in Static Context state",
 		             stream->cid, rohc_get_packet_descr(stream->packet_type),
 		             stream->packet_type);
@@ -1420,7 +1432,7 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 		assert(extr_crc_bits->type == ROHC_CRC_TYPE_NONE);
 		assert(extr_crc_bits->bits_nr == 8);
 
-		crc_ok = rohc_decomp_check_ir_crc(decomp, context,
+		crc_ok = rohc_decomp_check_ir_crc(context,
 		                                  rohc_buf_data(rohc_packet) - add_cid_len,
 		                                  add_cid_len + rohc_hdr_len, add_cid_len,
 		                                  large_cid_len, extr_crc_bits->bits);
@@ -1453,7 +1465,7 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 
 		if(try_decoding_again)
 		{
-			rohc_decomp_warn(context, "CID %zu: CRC repair: try decoding packet "
+			rohc_decomp_warn(context, "CID %u: CRC repair: try decoding packet "
 			                 "again with new assumptions", context->cid);
 		}
 
@@ -1487,7 +1499,7 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 			}
 			else
 			{
-				rohc_decomp_debug(context, "CID %zu: CRC repair: CRC is correct",
+				rohc_decomp_debug(context, "CID %u: CRC repair: CRC is correct",
 				                  context->cid);
 				try_decoding_again = false;
 			}
@@ -1510,7 +1522,7 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 			{
 				/* uncompressed headers successfully built, CRC is incorrect, repair
 				 * was disabled or attempted without any success, so give up */
-				rohc_decomp_warn(context, "CID %zu: failed to build uncompressed "
+				rohc_decomp_warn(context, "CID %u: failed to build uncompressed "
 				                 "headers (CRC failure)", context->cid);
 				if((decomp->features & ROHC_DECOMP_FEATURE_DUMP_PACKETS) != 0)
 				{
@@ -1548,7 +1560,7 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 			                           rohc_packet.time, do_change_mode);
 
 			context->crc_corr.counter--;
-			rohc_decomp_warn(context, "CID %zu: CRC repair: throw away packet, "
+			rohc_decomp_warn(context, "CID %u: CRC repair: throw away packet, "
 			                 "still %zu CRC-valid packets required",
 			                 context->cid, context->crc_corr.counter);
 
@@ -1557,7 +1569,7 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 		}
 		else if(context->crc_corr.counter == 1)
 		{
-			rohc_decomp_warn(context, "CID %zu: CRC repair: correction is "
+			rohc_decomp_warn(context, "CID %u: CRC repair: correction is "
 			                 "successful, keep packet", context->cid);
 			context->corrected_crc_failures++;
 			decomp->stats.corrected_crc_failures++;
@@ -1574,7 +1586,7 @@ static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
 				case ROHC_DECOMP_CRC_CORR_SN_NONE:
 				default:
 					rohc_error(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-					           "CID %zu: CRC repair: unsupported repair algorithm %d",
+					           "CID %u: CRC repair: unsupported repair algorithm %d",
 					           context->cid, context->crc_corr.algo);
 					assert(0);
 					status = ROHC_STATUS_ERROR;
@@ -1713,7 +1725,7 @@ static rohc_status_t rohc_decomp_try_decode_pkt(const struct rohc_decomp *const 
 	                             uncomp_packet, &uncomp_hdr_len);
 	if(status != ROHC_STATUS_OK)
 	{
-		rohc_decomp_warn(context, "CID %zu: failed to build uncompressed headers: %s",
+		rohc_decomp_warn(context, "CID %u: failed to build uncompressed headers: %s",
 		                 context->cid, rohc_strerror(status));
 		goto error;
 	}
@@ -1729,7 +1741,6 @@ error:
  * The CRC for IR/IR-DYN headers is always CRC-8. It is computed on the
  * whole compressed header (payload excluded, but any CID bits included).
  *
- * @param decomp          The ROHC decompressor
  * @param context         The decompression context
  * @param rohc_hdr        The compressed IR or IR-DYN header
  * @param rohc_hdr_len    The length (in bytes) of the compressed header
@@ -1738,41 +1749,36 @@ error:
  * @param crc_packet      The CRC extracted from the ROHC header
  * @return                true if the CRC is correct, false otherwise
  */
-static bool rohc_decomp_check_ir_crc(const struct rohc_decomp *const decomp,
-                                     const struct rohc_decomp_ctxt *const context,
+static bool rohc_decomp_check_ir_crc(const struct rohc_decomp_ctxt *const context,
                                      const uint8_t *const rohc_hdr,
                                      const size_t rohc_hdr_len,
                                      const size_t add_cid_len,
                                      const size_t large_cid_len,
                                      const uint8_t crc_packet)
 {
-	const uint8_t *crc_table;
 	const rohc_crc_type_t crc_type = ROHC_CRC_TYPE_8;
 	const uint8_t crc_zero[] = { 0x00 };
 	unsigned int crc_comp; /* computed CRC */
 
 	assert(rohc_hdr_len >= (add_cid_len + 2 + large_cid_len + 1));
 
-	crc_table = decomp->crc_table_8;
-
 	/* ROHC header before CRC field:
 	 * optional Add-CID + IR type + Profile ID + optional large CID */
-	crc_comp = crc_calculate(crc_type, rohc_hdr,
-	                         add_cid_len + 2 + large_cid_len,
-	                         CRC_INIT_8, crc_table);
+	crc_comp = crc_calculate(crc_type, rohc_hdr, add_cid_len + 2 + large_cid_len,
+	                         CRC_INIT_8);
 
 	/* all profiles but the Uncompressed profile compute their CRC through the
 	 * zeroed CRC field and the rest of the ROHC header */
 	if(context->profile->id != ROHC_PROFILE_UNCOMPRESSED)
 	{
 		/* zeroed CRC field */
-		crc_comp = crc_calculate(crc_type, crc_zero, 1, crc_comp, crc_table);
+		crc_comp = crc_calculate(crc_type, crc_zero, 1, crc_comp);
 
 		/* ROHC header after CRC field */
 		crc_comp = crc_calculate(crc_type,
 		                         rohc_hdr + add_cid_len + 2 + large_cid_len + 1,
 		                         rohc_hdr_len - add_cid_len - 2 - large_cid_len - 1,
-		                         crc_comp, crc_table);
+		                         crc_comp);
 	}
 
 	rohc_decomp_debug(context, "CRC-%d on compressed %zu-byte ROHC header = "
@@ -1839,7 +1845,9 @@ static bool rohc_decomp_feedback_ack(struct rohc_decomp *const decomp,
                                      const struct rohc_decomp_stream *const infos,
                                      struct rohc_buf *const feedback)
 {
+#ifndef ROHC_NO_TRACES
 	const char mode_short[ROHC_R_MODE + 1] = { '?', 'U', 'O', 'R' };
+#endif
 	bool do_build_ack = false;
 	size_t k;
 
@@ -1847,7 +1855,7 @@ static bool rohc_decomp_feedback_ack(struct rohc_decomp *const decomp,
 	assert(infos->context_found);
 
 	rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
-	           "CID %zu: %s: %s state: %s packet successfully decompressed",
+	           "CID %u: %s: %s state: %s packet successfully decompressed",
 	           infos->cid, rohc_get_mode_descr(infos->mode),
 	           rohc_decomp_get_state_descr(infos->state),
 	           rohc_get_packet_descr(infos->packet_type));
@@ -1939,7 +1947,7 @@ static bool rohc_decomp_feedback_ack(struct rohc_decomp *const decomp,
 		goto skip;
 	}
 	rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
-	           "should send a positive ACK now (CID = %zu, current mode = %d, "
+	           "should send a positive ACK now (CID = %u, current mode = %d, "
 	           "target mode = %d, at least %zu bits of SN 0x%x, rate-limiting = "
 	           "%zu of 3200 with threshold %zu)", infos->cid, infos->mode,
 	           decomp->target_mode, infos->sn_bits_nr, infos->sn_bits,
@@ -2003,7 +2011,7 @@ static bool rohc_decomp_feedback_ack(struct rohc_decomp *const decomp,
 
 		/* build the feedback packet */
 		feedbackp = f_wrap_feedback(&sfeedback, infos->cid, infos->cid_type,
-		                            crc_present, decomp->crc_table_8, &feedbacksize);
+		                            crc_present, &feedbacksize);
 		if(feedbackp == NULL)
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
@@ -2107,7 +2115,7 @@ static bool rohc_decomp_feedback_nack(struct rohc_decomp *const decomp,
 	if(infos->context_found)
 	{
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
-		           "CID %zu: %s: %s state: %s packet %s", infos->cid,
+		           "CID %u: %s: %s state: %s packet %s", infos->cid,
 		           rohc_get_mode_descr(infos->mode),
 		           rohc_decomp_get_state_descr(infos->state),
 		           rohc_get_packet_descr(infos->packet_type),
@@ -2116,7 +2124,7 @@ static bool rohc_decomp_feedback_nack(struct rohc_decomp *const decomp,
 	else
 	{
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
-		           "CID %zu: packet failed to be parsed", infos->cid);
+		           "CID %u: packet failed to be parsed", infos->cid);
 	}
 
 	/* check if the decompressor shall build a negative feedback */
@@ -2301,7 +2309,7 @@ static bool rohc_decomp_feedback_nack(struct rohc_decomp *const decomp,
 		size_t feedback_hdr_len;
 
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
-		           "should send a negative ACK (CID = %zu, NACK type = %d, current "
+		           "should send a negative ACK (CID = %u, NACK type = %d, current "
 		           "mode = %d, target mode = %d, at least %zu bits of SN 0x%x, "
 		           "rate-limiting = %zu of 3200 with threshold %zu and %zu of 3200 "
 		           "with threshold %zu)", infos->cid, ack_type, infos->mode,
@@ -2337,7 +2345,7 @@ static bool rohc_decomp_feedback_nack(struct rohc_decomp *const decomp,
 
 		/* build the feedback packet */
 		feedbackp = f_wrap_feedback(&sfeedback, infos->cid, infos->cid_type,
-		                            crc_present, decomp->crc_table_8, &feedbacksize);
+		                            crc_present, &feedbacksize);
 		if(feedbackp == NULL)
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
@@ -2385,7 +2393,7 @@ static bool rohc_decomp_feedback_nack(struct rohc_decomp *const decomp,
 	else
 	{
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, infos->profile_id,
-		           "perform a downward state transition now (CID = %zu, NACK "
+		           "perform a downward state transition now (CID = %u, NACK "
 		           "type = %d, current mode = %d, target mode = %d, rate-limiting "
 		           "= %zu of 3200 with threshold %zu and %zu of 3200 with "
 		           "threshold %zu)", infos->cid, ack_type, infos->mode,
@@ -2572,7 +2580,7 @@ bool rohc_decomp_get_last_packet_info(const struct rohc_decomp *const decomp,
 			decomp->last_context->corrected_sn_wraparounds;
 		info->corrected_wrong_sn_updates =
 			decomp->last_context->corrected_wrong_sn_updates;
-		info->packet_type = decomp->last_context->packet_type;
+		info->packet_type = decomp->last_context->last_packet_type;
 	}
 
 	/* new fields in 0.2 */
@@ -2630,7 +2638,7 @@ bool rohc_decomp_get_context_info(const struct rohc_decomp *const decomp,
 	if(cid > decomp->medium.max_cid)
 	{
 		rohc_error(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		           "decompressor does not handle CID %zu since MAX_CID is %zu",
+		           "decompressor does not handle CID %u since MAX_CID is %u",
 		           cid, decomp->medium.max_cid);
 		goto error;
 	}
@@ -2887,8 +2895,6 @@ error:
 bool rohc_decomp_set_mrru(struct rohc_decomp *const decomp,
                           const size_t mrru)
 {
-	size_t idx;
-
 	/* decompressor must be valid */
 	if(decomp == NULL)
 	{
@@ -2915,24 +2921,53 @@ bool rohc_decomp_set_mrru(struct rohc_decomp *const decomp,
 	 */
 	if(mrru > 0)
 	{
-		for(idx = 0; idx < D_NUM_PROFILES; idx++)
+		uint8_t profile_major;
+
+		for(profile_major = 0; profile_major <= ROHC_PROFILE_ID_MAJOR_MAX; profile_major++)
 		{
-			if(decomp->enabled_profiles[idx] &&
-			   rohc_profile_is_rohcv2(rohc_decomp_profiles[idx]->id))
+			uint8_t profile_minor;
+
+			for(profile_minor = 0; profile_minor <= ROHC_PROFILE_ID_MINOR_MAX; profile_minor++)
 			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-				             "failed to set MRRU to %zu bytes: segmentation is not "
-				             "compatible with ROHCv2 profile 0x%04x that is enabled",
-				             mrru, rohc_decomp_profiles[idx]->id);
-				goto error;
+				const uint16_t profile_id = (profile_major << 8) | profile_minor;
+
+				if(rohc_decomp_profile_enabled_nocheck(decomp, profile_id) &&
+				   rohc_profile_is_rohcv2(profile_id))
+				{
+					rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+					             "failed to set MRRU to %zu bytes: segmentation is not "
+					             "compatible with ROHCv2 profile 0x%04x that is enabled",
+					             mrru, profile_id);
+					goto error;
+				}
 			}
 		}
 	}
 
 	/* set new MRRU */
+	if(mrru == 0)
+	{
+		decomp->rru = NULL;
+	}
+	else
+	{
+		uint8_t *const new_rru_buf = malloc(mrru);
+		if(new_rru_buf == NULL)
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+			             "failed to set MRRU: failed to allocate %zu bytes "
+			             "of memory for MRRU buffer", mrru);
+			goto error;
+		}
+		if(decomp->rru != NULL)
+		{
+			zfree(decomp->rru);
+		}
+		decomp->rru = new_rru_buf;
+	}
 	decomp->mrru = mrru;
 	rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-	           "MRRU is now set to %zd", decomp->mrru);
+	           "MRRU is now set to %zu", decomp->mrru);
 
 	return true;
 
@@ -3359,35 +3394,23 @@ error:
 
 
 /**
- * @brief Get profile index if profile exists
+ * @brief Is the given decompression profile enabled for a decompressor?
  *
- * @param profile  The profile to enable
- * @return         The profile index if the profile exists,
- *                 -1 if the profile does not exist
+ * @param decomp   The ROHC decompressor, shall be valid
+ * @param profile  The profile to ask status for
+ * @return         Possible return values:
+ *                  \li true if the profile exists and is enabled,
+ *                  \li false if the the profile does not exist,
+ *                  \li false if the profile is disabled
+ *
+ * @see rohc_decomp_profile_enabled
  */
-static int rohc_decomp_get_profile_index(const rohc_profile_t profile)
+static bool rohc_decomp_profile_enabled_nocheck(const struct rohc_decomp *const decomp,
+                                                const rohc_profile_t profile)
 {
-	size_t idx;
-
-	/* search for the profile location */
-	for(idx = 0; idx < D_NUM_PROFILES; idx++)
-	{
-		if(rohc_decomp_profiles[idx]->id == profile)
-		{
-			/* found */
-			break;
-		}
-	}
-
-	if(idx == D_NUM_PROFILES)
-	{
-		goto error;
-	}
-
-	return idx;
-
-error :
-	return -1;
+	const uint8_t profile_major = (profile >> 8) & 0xff;
+	const uint8_t profile_minor = profile & 0xff;
+	return decomp->enabled_profiles[profile_major][profile_minor];
 }
 
 
@@ -3413,27 +3436,22 @@ error :
 bool rohc_decomp_profile_enabled(const struct rohc_decomp *const decomp,
                                  const rohc_profile_t profile)
 {
-	size_t profile_idx;
-	int ret;
+	const uint8_t profile_major = (profile >> 8) & 0xff;
+	const uint8_t profile_minor = profile & 0xff;
+	bool is_profile_enabled;
 
-	if(decomp == NULL)
+	if(decomp == NULL ||
+	   profile_major > ROHC_PROFILE_ID_MAJOR_MAX ||
+	   profile_minor > ROHC_PROFILE_ID_MINOR_MAX)
 	{
-		goto error;
+		is_profile_enabled = false;
+	}
+	else
+	{
+		is_profile_enabled = decomp->enabled_profiles[profile_major][profile_minor];
 	}
 
-	/* search the profile location */
-	ret = rohc_decomp_get_profile_index(profile);
-	if(ret < 0)
-	{
-		goto error;
-	}
-	profile_idx = ret;
-
-	/* return profile status */
-	return decomp->enabled_profiles[profile_idx];
-
-error:
-	return false;
+	return is_profile_enabled;
 }
 
 
@@ -3476,26 +3494,24 @@ error:
 bool rohc_decomp_enable_profile(struct rohc_decomp *const decomp,
                                 const rohc_profile_t profile)
 {
-	size_t profile_idx;
-	int ret;
+	const uint8_t profile_major = (profile >> 8) & 0xff;
+	const uint8_t profile_minor = profile & 0xff;
 
 	if(decomp == NULL)
 	{
 		goto error;
 	}
-
-	/* search the profile location */
-	ret = rohc_decomp_get_profile_index(profile);
-	if(ret < 0)
+	if(profile_major > ROHC_PROFILE_ID_MAJOR_MAX ||
+	   profile_minor > ROHC_PROFILE_ID_MINOR_MAX ||
+	   rohc_decomp_profiles[profile_major][profile_minor] == NULL)
 	{
 		goto error;
 	}
-	profile_idx = ret;
 
 	/* the same profile cannot be enabled in both ROHCv1 and ROHCv2 versions:
 	 * check if the corresponding profile in the other ROHC version is already
 	 * enabled or not */
-	if(rohc_decomp_profile_enabled(decomp, rohc_profile_get_other_version(profile)))
+	if(rohc_decomp_profile_enabled_nocheck(decomp, rohc_profile_get_other_version(profile)))
 	{
 		goto error;
 	}
@@ -3514,7 +3530,7 @@ bool rohc_decomp_enable_profile(struct rohc_decomp *const decomp,
 	}
 
 	/* mark the profile as enabled */
-	decomp->enabled_profiles[profile_idx] = true;
+	decomp->enabled_profiles[profile_major][profile_minor] = true;
 	rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 	          "ROHC decompression profile (ID = 0x%04x) enabled", profile);
 
@@ -3551,24 +3567,22 @@ error:
 bool rohc_decomp_disable_profile(struct rohc_decomp *const decomp,
                                  const rohc_profile_t profile)
 {
-	size_t profile_idx;
-	int ret;
+	const uint8_t profile_major = (profile >> 8) & 0xff;
+	const uint8_t profile_minor = profile & 0xff;
 
 	if(decomp == NULL)
 	{
 		goto error;
 	}
-
-	/* search the profile location */
-	ret = rohc_decomp_get_profile_index(profile);
-	if(ret < 0)
+	if(profile_major > ROHC_PROFILE_ID_MAJOR_MAX ||
+	   profile_minor > ROHC_PROFILE_ID_MINOR_MAX ||
+	   rohc_decomp_profiles[profile_major][profile_minor] == NULL)
 	{
 		goto error;
 	}
-	profile_idx = ret;
 
 	/* mark the profile as disabled */
-	decomp->enabled_profiles[profile_idx] = false;
+	decomp->enabled_profiles[profile_major][profile_minor] = false;
 	rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 	          "ROHC decompression profile (ID = 0x%04x) disabled", profile);
 
@@ -3774,32 +3788,32 @@ error:
 static const struct rohc_decomp_profile * find_profile(const struct rohc_decomp *const decomp,
                                                        const rohc_profile_t profile_id)
 {
-	size_t i;
+	const uint8_t profile_major = (profile_id >> 8) & 0xff;
+	const uint8_t profile_minor = profile_id & 0xff;
+	const struct rohc_decomp_profile *profile;
 
-	/* search for the profile within the enabled profiles */
-	for(i = 0;
-	    i < D_NUM_PROFILES && rohc_decomp_profiles[i]->id != profile_id;
-	    i++)
-	{
-	}
-
-	if(i >= D_NUM_PROFILES)
+	if(profile_major > ROHC_PROFILE_ID_MAJOR_MAX ||
+	   profile_minor > ROHC_PROFILE_ID_MINOR_MAX ||
+	   rohc_decomp_profiles[profile_major][profile_minor] == NULL)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		             "decompression profile with ID 0x%04x not found",
 		             profile_id);
-		return NULL;
+		profile = NULL;
 	}
-
-	if(!decomp->enabled_profiles[i])
+	else if(decomp->enabled_profiles[profile_major][profile_minor] == false)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		             "decompression profile with ID 0x%04x disabled",
 		             profile_id);
-		return NULL;
+		profile = NULL;
+	}
+	else
+	{
+	   profile = rohc_decomp_profiles[profile_major][profile_minor];
 	}
 
-	return rohc_decomp_profiles[i];
+	return profile;
 }
 
 
@@ -3847,7 +3861,7 @@ static bool rohc_decomp_decode_cid(struct rohc_decomp *decomp,
 		else
 		{
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			           "add-CID present (0x%x) contains CID = %zu",
+			           "add-CID present (0x%x) contains CID %u",
 			           packet[0], *cid);
 			*add_cid_len = 1;
 		}
@@ -3875,7 +3889,7 @@ static bool rohc_decomp_decode_cid(struct rohc_decomp *decomp,
 		}
 		*cid = large_cid & 0xffff;
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		           "%zu-byte large CID = %zu", *large_cid_len, *cid);
+		           "%zu-byte large CID %u", *large_cid_len, *cid);
 	}
 	else
 	{
@@ -4279,7 +4293,7 @@ static bool rohc_decomp_create_contexts(struct rohc_decomp *const decomp,
 		return false;
 	}
 	rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-	           "room for %zu decompression contexts created", max_cid + 1);
+	           "room for %u decompression contexts created", max_cid + 1);
 
 	return true;
 }

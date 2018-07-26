@@ -53,12 +53,6 @@
 	(x)[8], (x)[9], (x)[10], (x)[11], (x)[12], (x)[13], (x)[14], (x)[15]
 
 
-/** Compare two IPv6 addresses in (struct ipv6_addr *) format */
-#define IPV6_ADDR_CMP(x, y) \
-	((x)->u32[0] == (y)->u32[0] && (x)->u32[1] == (y)->u32[1] && \
-	 (x)->u32[2] == (y)->u32[2] && (x)->u32[3] == (y)->u32[3])
-
-
 /**
  * @brief The IPv6 address
  */
@@ -147,7 +141,7 @@ _Static_assert(sizeof(struct ipv6_hdr) == 40,
 
 
 /** The maximum value of the length field of one IPv6 extension header */
-#define IPV6_OPT_HDR_LEN_FIELD_MAX_VAL  0xffU
+#define IPV6_OPT_HDR_LEN_FIELD_MAX_VAL  4U
 /** The maximum length of one IPv6 extension header */
 #define IPV6_OPT_HDR_LEN_MAX            ((IPV6_OPT_HDR_LEN_FIELD_MAX_VAL + 1) * 8)
 /** The maximum length for the IPv6 extension header context */

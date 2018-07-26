@@ -220,7 +220,7 @@ int main(int argc, char *argv[])
 		if(cid_max_int < 0 || cid_max_int > cid_very_max)
 		{
 			fprintf(stderr, "the --cid-max option requires a value in range "
-			        "[0;%zu]\n", cid_very_max);
+			        "[0;%u]\n", cid_very_max);
 			usage();
 			goto error;
 		}

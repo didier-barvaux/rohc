@@ -57,7 +57,6 @@ distdir = $(PACKAGE)-$(VERSION)$(PACKAGE_REVNO)
 DISTCHECK_CONFIGURE_FLAGS = \
 	--enable-fail-on-warning \
 	--enable-fortify-sources \
-	--enable-app-performance \
 	--enable-app-sniffer \
 	--enable-rohc-tests \
 	--disable-doc \
@@ -153,12 +152,11 @@ cppcheck:
 		 --suppress=useClosedFile:test/non_regression/test_non_regression_kernel.c:591 \
 		 --suppress=useClosedFile:test/non_regression/test_non_regression_kernel.c:592 \
 		 --suppress=unusedFunction:src/decomp/schemes/test/test_wlsb.c:40 \
-		 --suppress=*:app/performance/rohc_gen_stream.c:218 \
 		 .
 
 # run GNU complexity on all sources and apps, but not tests
 complexity:
-	$(AM_V_GEN)complexity --threshold=20 --horrid-threshold=33 \
+	$(AM_V_GEN)complexity --threshold=20 --horrid-threshold=36 \
 		`find src/ app/ -name \*.c -or -name \*.h`
 
 # run Linux checkpatch.pl script on kernel modules, but ignore warnings about

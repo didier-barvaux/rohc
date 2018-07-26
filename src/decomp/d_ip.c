@@ -85,7 +85,6 @@ static bool d_ip_create(const struct rohc_decomp_ctxt *const context,
 	rfc3095_ctxt->specific = NULL;
 
 	/* create the LSB decoding context for SN */
-	rfc3095_ctxt->sn_lsb_p = ROHC_LSB_SHIFT_SN;
 	rohc_lsb_init(&rfc3095_ctxt->sn_lsb_ctxt, 16);
 
 	/* some IP-specific values and functions */

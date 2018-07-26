@@ -99,8 +99,10 @@ static int d_tcp_opt_list_parse_item(const struct rohc_decomp_ctxt *const contex
                                      struct d_tcp_opt_ctxt opts_bits[MAX_TCP_OPTION_INDEX + 1])
 	__attribute__((warn_unused_result, nonnull(1, 4, 6)));
 
+#ifndef ROHC_NO_TRACES
 static size_t d_tcp_opt_list_get_index_len(const uint8_t ps)
 	__attribute__((warn_unused_result, const));
+#endif
 
 static size_t d_tcp_opt_list_get_indexes_len(const uint8_t ps, const uint8_t m)
 	__attribute__((warn_unused_result, const));
@@ -680,12 +682,14 @@ error:
 }
 
 
+#ifndef ROHC_NO_TRACES
 /* TODO */
 static size_t d_tcp_opt_list_get_index_len(const uint8_t ps)
 {
 	assert(ps == 0 || ps == 1);
 	return (ps == 0 ? 4U : 8U);
 }
+#endif
 
 
 /* TODO */
@@ -1269,6 +1273,22 @@ static int d_tcp_parse_generic_list_item(const struct rohc_decomp_ctxt *const co
 	}
 	opt_load_len = opt_len - opt_hdr_len;
 
+	/* do not accept options that are larger than the limit that was configured
+	 * for the library */
+	if(opt_load_len > ROHC_TCP_OPT_MAX_LEN)
+	{
+		rohc_decomp_warn(context, "unexpected TCP option: %u-byte option %u is "
+		                 "larger than maximum %u bytes that library was configured "
+		                 "to handle", opt_len, opt_type,
+		                 ROHC_TCP_OPT_MAX_LEN + (uint8_t) opt_hdr_len);
+		/* TODO: send a feedback with the CONTEXT_MEMORY option to warn
+		 * the compressor that the decompressor is not able to decompress
+		 * the TCP flow the way it was compressed, maybe the compressor
+		 * could compress the flow with the IP-only profile instead
+		 * (see RFC6846 §8.3.2.4 for more details) */
+		goto error;
+	}
+
 	/* enough data for the whole option? */
 	if(data_len < opt_len)
 	{
@@ -1376,6 +1396,7 @@ static int d_tcp_parse_generic_irreg(const struct rohc_decomp_ctxt *const contex
 			}
 			opt_ctxt->data.generic.type = TCP_GENERIC_OPT_FULL;
 			opt_ctxt->data.generic.load_len = opt_load_len;
+			assert(opt_load_len <= ROHC_TCP_OPT_MAX_LEN);
 			memcpy(opt_ctxt->data.generic.load, data + read, opt_load_len);
 			read += opt_load_len;
 			rohc_decomp_debug(context, "TCP generic option payload = %zu bytes",
@@ -1471,7 +1492,7 @@ bool d_tcp_build_tcp_opts(const struct rohc_decomp_ctxt *const context,
 		*opts_len += opt_len;
 	}
 
-	rohc_decomp_debug(context, "  %zu TCP options built on %zu bytes",
+	rohc_decomp_debug(context, "  %u TCP options built on %zu bytes",
 	                  decoded->tcp_opts.nr, *opts_len);
 
 	/* TCP options shall be aligned on 32-bit words */

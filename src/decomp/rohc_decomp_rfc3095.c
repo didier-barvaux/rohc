@@ -317,14 +317,13 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
  * Private function prototypes for miscellaneous functions
  */
 
-static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
-                             const struct rohc_decomp_ctxt *const context,
+static bool check_uncomp_crc(const struct rohc_decomp_ctxt *const context,
                              const uint8_t *const outer_ip_hdr,
                              const uint8_t *const inner_ip_hdr,
                              const uint8_t *const next_header,
                              const rohc_crc_type_t crc_type,
                              const uint8_t crc_packet)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static bool is_sn_wraparound(const struct rohc_ts cur_arrival_time,
                              const struct rohc_ts arrival_times[ROHC_MAX_ARRIVAL_TIMES],
@@ -5025,7 +5024,7 @@ rohc_status_t rfc3095_decomp_build_hdrs(const struct rohc_decomp *const decomp,
 
 		assert(extr_crc->bits_nr > 0);
 
-		crc_ok = check_uncomp_crc(decomp, context, outer_ip_hdr, inner_ip_hdr,
+		crc_ok = check_uncomp_crc(context, outer_ip_hdr, inner_ip_hdr,
 		                          next_header, extr_crc->type, extr_crc->bits);
 		if(!crc_ok)
 		{
@@ -5241,7 +5240,6 @@ error:
  * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
  *       if the CRC-STATIC fields did not change.
  *
- * @param decomp        The ROHC decompressor
  * @param context       The decompression context
  * @param outer_ip_hdr  The outer IP header
  * @param inner_ip_hdr  The inner IP header if it exists, NULL otherwise
@@ -5250,8 +5248,7 @@ error:
  * @param crc_packet    The CRC extracted from the ROHC header
  * @return              true if the CRC is correct, false otherwise
  */
-static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
-                             const struct rohc_decomp_ctxt *const context,
+static bool check_uncomp_crc(const struct rohc_decomp_ctxt *const context,
                              const uint8_t *const outer_ip_hdr,
                              const uint8_t *const inner_ip_hdr,
                              const uint8_t *const next_header,
@@ -5259,7 +5256,6 @@ static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
                              const uint8_t crc_packet)
 {
 	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
-	const uint8_t *crc_table;
 	uint8_t crc_computed;
 
 	assert(rfc3095_ctxt != NULL);
@@ -5270,15 +5266,12 @@ static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
 	{
 		case ROHC_CRC_TYPE_3:
 			crc_computed = CRC_INIT_3;
-			crc_table = decomp->crc_table_3;
 			break;
 		case ROHC_CRC_TYPE_7:
 			crc_computed = CRC_INIT_7;
-			crc_table = decomp->crc_table_7;
 			break;
 		case ROHC_CRC_TYPE_8:
 			crc_computed = CRC_INIT_8;
-			crc_table = decomp->crc_table_8;
 			break;
 		case ROHC_CRC_TYPE_NONE:
 		default:
@@ -5302,7 +5295,7 @@ static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
 	{
 		crc_computed = rfc3095_ctxt->compute_crc_static(outer_ip_hdr, inner_ip_hdr,
 		                                                next_header, crc_type,
-		                                                crc_computed, crc_table);
+		                                                crc_computed);
 		rohc_decomp_debug(context, "compute CRC-STATIC-%d = 0x%x from packet",
 		                  crc_type, crc_computed);
 
@@ -5324,7 +5317,7 @@ static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
 	/* compute the CRC on CRC-DYNAMIC fields of built uncompressed headers */
 	crc_computed = rfc3095_ctxt->compute_crc_dynamic(outer_ip_hdr, inner_ip_hdr,
 	                                                 next_header, crc_type,
-	                                                 crc_computed, crc_table);
+	                                                 crc_computed);
 	rohc_decomp_debug(context, "CRC-%d on uncompressed header = 0x%x",
 	                  crc_type, crc_computed);
 
@@ -5366,12 +5359,13 @@ bool rfc3095_decomp_attempt_repair(const struct rohc_decomp *const decomp,
 	                                           ROHC_LSB_REF_0);
 	const uint32_t sn_ref_minus_1 = rohc_lsb_get_ref(&rfc3095_ctxt->sn_lsb_ctxt,
 	                                                 ROHC_LSB_REF_MINUS_1);
+	rohc_lsb_shift_t p;
 	bool verdict = false;
 
 	/* do not try to repair packet/context if feature is disabled */
 	if((decomp->features & ROHC_DECOMP_FEATURE_CRC_REPAIR) == 0)
 	{
-		rohc_decomp_warn(context, "CID %zu: CRC repair: feature disabled",
+		rohc_decomp_warn(context, "CID %u: CRC repair: feature disabled",
 		                 context->cid);
 		goto skip;
 	}
@@ -5379,7 +5373,7 @@ bool rfc3095_decomp_attempt_repair(const struct rohc_decomp *const decomp,
 	/* do not try to repair packet/context if repair is already in action */
 	if(crc_corr->algo != ROHC_DECOMP_CRC_CORR_SN_NONE)
 	{
-		rohc_decomp_warn(context, "CID %zu: CRC repair: repair already in action",
+		rohc_decomp_warn(context, "CID %u: CRC repair: repair already in action",
 		                 context->cid);
 		goto skip;
 	}
@@ -5388,8 +5382,21 @@ bool rfc3095_decomp_attempt_repair(const struct rohc_decomp *const decomp,
 	assert(crc_corr->counter == 0);
 
 	/* try to guess the correct SN value in case of failure */
-	rohc_decomp_warn(context, "CID %zu: CRC repair: attempt to correct SN",
+	rohc_decomp_warn(context, "CID %u: CRC repair: attempt to correct SN",
 	                 context->cid);
+
+	if(context->profile->id == ROHCv1_PROFILE_IP_UDP_RTP)
+	{
+		p = rohc_interval_compute_p_rtp_sn(extr_bits->sn_nr);
+	}
+	else if(context->profile->id == ROHCv1_PROFILE_IP_ESP)
+	{
+		p = rohc_interval_compute_p_esp_sn(extr_bits->sn_nr);
+	}
+	else
+	{
+		p = ROHC_LSB_SHIFT_SN;
+	}
 
 	/* step b of RFC3095, §5.3.2.2.4. Correction of SN LSB wraparound:
 	 *   When decompression fails, the decompressor computes the time
@@ -5402,9 +5409,9 @@ bool rfc3095_decomp_attempt_repair(const struct rohc_decomp *const decomp,
 	 *   current header. */
 	if(is_sn_wraparound(pkt_arrival_time, crc_corr->arrival_times,
 	                    crc_corr->arrival_times_nr, crc_corr->arrival_times_index,
-	                    extr_bits->sn_nr, rfc3095_ctxt->sn_lsb_p))
+	                    extr_bits->sn_nr, p))
 	{
-		rohc_decomp_warn(context, "CID %zu: CRC repair: CRC failure seems to "
+		rohc_decomp_warn(context, "CID %u: CRC repair: CRC failure seems to "
 		                 "be caused by a sequence number LSB wraparound",
 		                 context->cid);
 
@@ -5414,13 +5421,13 @@ bool rfc3095_decomp_attempt_repair(const struct rohc_decomp *const decomp,
 		 *   add 2^k to the reference SN and attempts to decompress the
 		 *   packet using the new reference SN */
 		extr_bits->sn_ref_offset = (1 << extr_bits->sn_nr);
-		rohc_decomp_warn(context, "CID %zu: CRC repair: try adding 2^k = 2^%zu "
+		rohc_decomp_warn(context, "CID %u: CRC repair: try adding 2^k = 2^%zu "
 		                 "= %u to reference SN (ref 0 = %u)", context->cid,
 		                 extr_bits->sn_nr, extr_bits->sn_ref_offset, sn_ref_0);
 	}
 	else if(sn_ref_0 != sn_ref_minus_1)
 	{
-		rohc_decomp_warn(context, "CID %zu: CRC repair: CRC failure seems to "
+		rohc_decomp_warn(context, "CID %u: CRC repair: CRC failure seems to "
 		                 "be caused by an incorrect SN update", context->cid);
 
 		crc_corr->algo = ROHC_DECOMP_CRC_CORR_SN_UPDATES;
@@ -5431,7 +5438,7 @@ bool rfc3095_decomp_attempt_repair(const struct rohc_decomp *const decomp,
 		 *   different from SN curr1, an additional decompression attempt is
 		 *   performed based on SN curr2 as the decompressed SN. */
 		extr_bits->lsb_ref_type = ROHC_LSB_REF_MINUS_1;
-		rohc_decomp_warn(context, "CID %zu: CRC repair: try using ref -1 (%u) "
+		rohc_decomp_warn(context, "CID %u: CRC repair: try using ref -1 (%u) "
 		                 "as reference SN instead of ref 0 (%u)",
 		                 context->cid, sn_ref_minus_1, sn_ref_0);
 	}
@@ -5441,7 +5448,7 @@ bool rfc3095_decomp_attempt_repair(const struct rohc_decomp *const decomp,
 		 *   If the decompressed header generated in b. does not pass the CRC
 		 *   test and SN curr2 is the same as SN curr1, an additional
 		 *   decompression attempt is not useful and is not attempted. */
-		rohc_decomp_warn(context, "CID %zu: CRC repair: repair is not useful",
+		rohc_decomp_warn(context, "CID %u: CRC repair: repair is not useful",
 		                 context->cid);
 		goto skip;
 	}
@@ -5609,9 +5616,22 @@ rohc_status_t rfc3095_decomp_decode_bits(const struct rohc_decomp_ctxt *const co
 	else
 	{
 		/* decode SN from packet bits and context */
+		rohc_lsb_shift_t p;
+		if(context->profile->id == ROHCv1_PROFILE_IP_UDP_RTP)
+		{
+			p = rohc_interval_compute_p_rtp_sn(bits->sn_nr);
+		}
+		else if(context->profile->id == ROHCv1_PROFILE_IP_ESP)
+		{
+			p = rohc_interval_compute_p_esp_sn(bits->sn_nr);
+		}
+		else
+		{
+			p = ROHC_LSB_SHIFT_SN;
+		}
 		decode_ok = rohc_lsb_decode(&rfc3095_ctxt->sn_lsb_ctxt, bits->lsb_ref_type,
 		                            bits->sn_ref_offset, bits->sn, bits->sn_nr,
-		                            rfc3095_ctxt->sn_lsb_p, &decoded->sn);
+		                            p, &decoded->sn);
 		if(!decode_ok)
 		{
 			rohc_decomp_warn(context, "failed to decode %zu SN bits 0x%x",

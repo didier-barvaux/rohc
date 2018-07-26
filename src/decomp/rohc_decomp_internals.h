@@ -39,10 +39,6 @@
  */
 
 
-/** The number of ROHC profiles ready to be used */
-#define D_NUM_PROFILES 10U
-
-
 /** Print a warning trace for the given decompression context */
 #define rohc_decomp_warn(context, format, ...) \
 	rohc_warning((context)->decompressor, ROHC_TRACE_DECOMP, \
@@ -148,7 +144,7 @@ struct rohc_decomp
 	rohc_decomp_features_t features;
 
 	/** Which profiles are enabled and with one are not? */
-	bool enabled_profiles[D_NUM_PROFILES];
+	bool enabled_profiles[ROHC_PROFILE_ID_MAJOR_MAX + 1][ROHC_PROFILE_ID_MINOR_MAX + 1];
 
 	/** The operation mode that the contexts shall target */
 	rohc_mode_t target_mode;
@@ -156,7 +152,7 @@ struct rohc_decomp
 	/** The array of decompression contexts that use the decompressor */
 	struct rohc_decomp_ctxt **contexts;
 	/** The number of decompression contexts in use */
-	size_t num_contexts_used;
+	uint16_t num_contexts_used;
 	/** The last decompression context used by the decompressor */
 	struct rohc_decomp_ctxt *last_context;
 
@@ -177,24 +173,12 @@ struct rohc_decomp
 
 	/* segment-related variables */
 
-/** The maximal value for MRRU */
-#define ROHC_MAX_MRRU 65535
 	/** The Reconstructed Reception Unit */
-	uint8_t rru[ROHC_MAX_MRRU];
+	uint8_t *rru;
 	/** The length (in bytes) of the Reconstructed Reception Unit */
 	size_t rru_len;
 	/** The Maximum Reconstructed Reception Unit (MRRU) */
 	size_t mrru;
-
-
-	/* CRC-related variables: */
-
-	/** The table to enable fast CRC-3 computation */
-	uint8_t crc_table_3[256];
-	/** The table to enable fast CRC-7 computation */
-	uint8_t crc_table_7[256];
-	/** The table to enable fast CRC-8 computation */
-	uint8_t crc_table_8[256];
 
 
 	/** Some statistics about the decompression processes */
@@ -307,7 +291,7 @@ struct rohc_decomp_ctxt
 	/* below are some statistics */
 
 	/** The type of the last decompressed ROHC packet */
-	rohc_packet_t packet_type;
+	rohc_packet_t last_packet_type;
 
 	/** The cumulated size of the uncompressed packets */
 	unsigned long total_uncompressed_size;

@@ -144,7 +144,6 @@ static bool d_esp_create(const struct rohc_decomp_ctxt *const context,
 	rfc3095_ctxt->specific = esp_context;
 
 	/* create the LSB decoding context for SN (same shift value as RTP) */
-	rfc3095_ctxt->sn_lsb_p = ROHC_LSB_SHIFT_ESP_SN;
 	rohc_lsb_init(&rfc3095_ctxt->sn_lsb_ctxt, 32);
 
 	/* some ESP-specific values and functions */

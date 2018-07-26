@@ -252,6 +252,10 @@ static size_t nr_rohc_warnings = 0;
 /** The stats about packet sizes */
 static size_t nr_pkts_per_size[MAX_ROHC_SIZE + 1] = { 0 };
 
+/** The initial Master Sequence Number (MSN) to use, helpful for interop debug */
+static int initial_msn = 1;
+
+
 /**
  * @brief Main function for the ROHC test program
  *
@@ -425,6 +429,18 @@ int main(int argc, char *argv[])
 				goto error;
 			}
 			proto_version = atoi(argv[1]);
+			args_used++;
+		}
+		else if(!strcmp(*argv, "--initial-msn"))
+		{
+			/* get the initial Master Sequence Number (MSN) */
+			if(argc <= 1)
+			{
+				fprintf(stderr, "option --initial-msn takes one argument\n\n");
+				usage();
+				goto error;
+			}
+			initial_msn = atoi(argv[1]);
 			args_used++;
 		}
 		else if(cid_type_name == NULL)
@@ -601,6 +617,7 @@ static void usage(void)
 	        "  --no-comparison         Is comparison with ROHC reference optional for test\n"
 	        "  --ignore-malformed      Ignore malformed packets for test\n"
 	        "  --assert-on-error       Stop the test after the very first encountered error\n"
+	        "  --initial-msn NUM       The initial Master Sequence Number (MSN) for debug\n"
 	        "  --verbose               Run the test in verbose mode\n"
 	        "  --quiet                 Run the test in silent mode\n");
 }
@@ -1777,7 +1794,7 @@ static int gen_false_random_num(const struct rohc_comp *const comp,
 {
 	assert(comp != NULL);
 	assert(user_context == NULL);
-	return 0;
+	return initial_msn - 1;
 }
 
 

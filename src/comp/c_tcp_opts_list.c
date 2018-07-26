@@ -30,6 +30,8 @@
 
 #include "schemes/tcp_ts.h"
 #include "schemes/tcp_sack.h"
+#include "rohc_utils.h"
+#include "sdvl.h"
 
 #include <string.h>
 
@@ -56,6 +58,10 @@ struct c_tcp_opt
 		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 };
 
+
+static uint8_t tcp_opt_ts_one_can_be_encoded(const struct c_wlsb *const wlsb,
+                                             const uint32_t ts)
+	__attribute__((warn_unused_result, nonnull(1)));
 
 static bool c_tcp_opt_get_type_len(const uint8_t *const opts_data,
                                    const size_t opts_len,
@@ -84,8 +90,8 @@ static void c_tcp_opt_trace(const struct rohc_comp_ctxt *const context,
 static uint8_t c_tcp_get_opt_index(const struct rohc_comp_ctxt *const context,
                                    struct c_tcp_opts_ctxt *const opts_ctxt,
                                    const uint8_t opt_type,
-                                   const bool indexes_in_use[MAX_TCP_OPTION_INDEX + 1])
-	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
+                                   const uint16_t indexes_in_use)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int c_tcp_opt_compute_ps(const uint8_t idx_max)
 	__attribute__((warn_unused_result, const));
@@ -262,6 +268,7 @@ static int c_tcp_type2index[TCP_LIST_ITEM_MAP_LEN] =
  * @brief Whether TCP options are acceptable for TCP profile or not
  *
  * TCP options are acceptable for the TCP profile if:
+ *  - every TCP option is smaller than \e ROHC_TCP_OPT_MAX_LEN
  *  - the last TCP option is not truncated,
  *  - well-known TCP options got the expected length (see below),
  *  - no more than \e ROHC_TCP_OPTS_MAX options are present,
@@ -274,17 +281,19 @@ static int c_tcp_type2index[TCP_LIST_ITEM_MAP_LEN] =
  *  - SACK shall be 2 + N * 8 with N in range [1, 4]
  *  - TS shall be TCP_OLEN_TS long.
  *
- * @param comp         The ROHC compressor
- * @param opts         The beginning of the TCP options
- * @param data_offset  The length (in 32-bit words) of the full TCP header
- * @return             true if the TCP options are acceptable,
- *                     false if they are not
+ * @param comp                  The ROHC compressor
+ * @param opts                  The beginning of the TCP options
+ * @param data_offset           The length (in 32-bit words) of the full TCP header
+ * @param[out] uncomp_pkt_hdrs  The parsed uncompressed headers
+ * @return                      true if the TCP options are acceptable,
+ *                              false if they are not
  *
  * @see ROHC_TCP_OPTS_MAX
  */
 bool rohc_comp_tcp_are_options_acceptable(const struct rohc_comp *const comp,
                                           const uint8_t *const opts,
-                                          const size_t data_offset)
+                                          const size_t data_offset,
+                                          struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 {
 	const size_t opts_len = data_offset * sizeof(uint32_t) - sizeof(struct tcphdr);
 	uint8_t opt_types_count[TCP_OPT_MAX + 1] = { 0 };
@@ -294,7 +303,7 @@ bool rohc_comp_tcp_are_options_acceptable(const struct rohc_comp *const comp,
 
 	/* parse up to ROHC_TCP_OPTS_MAX TCP options */
 	for(opt_pos = 0, opts_offset = 0;
-	    opt_pos < ROHC_TCP_OPTS_MAX_PROTO && opts_offset < opts_len;
+	    opt_pos < ROHC_TCP_OPTS_MAX && opts_offset < opts_len;
 	    opt_pos++, opts_offset += opt_len)
 	{
 		uint8_t opt_type;
@@ -311,6 +320,15 @@ bool rohc_comp_tcp_are_options_acceptable(const struct rohc_comp *const comp,
 
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "TCP option %u found", opt_type);
+
+		if(opt_len > ROHC_TCP_OPT_MAX_LEN)
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "packet contains at least one %u-byte TCP option larger "
+			           "than the internal maximum of %u bytes", opt_len,
+			           ROHC_TCP_OPT_MAX_LEN);
+			goto bad_opts;
+		}
 
 		if(opt_types_count[opt_type] >= 255)
 		{
@@ -439,10 +457,13 @@ bool rohc_comp_tcp_are_options_acceptable(const struct rohc_comp *const comp,
 				break;
 			}
 		}
+		uncomp_pkt_hdrs->tcp_opts.data[opt_pos] = opts + opts_offset;
+		uncomp_pkt_hdrs->tcp_opts.types[opt_pos] = opt_type;
+		uncomp_pkt_hdrs->tcp_opts.lengths[opt_pos] = opt_len;
 	}
 
 	/* no more than ROHC_TCP_OPTS_MAX TCP options accepted by the TCP profile */
-	if(opt_pos > ROHC_TCP_OPTS_MAX)
+	if(opt_pos > ROHC_TCP_OPTS_MAX || opts_offset != opts_len)
 	{
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "unexpected TCP header: too many TCP options: %zu "
@@ -450,6 +471,12 @@ bool rohc_comp_tcp_are_options_acceptable(const struct rohc_comp *const comp,
 		           opt_pos, ROHC_TCP_OPTS_MAX);
 		goto bad_opts;
 	}
+
+	uncomp_pkt_hdrs->tcp_opts.nr = opt_pos;
+	uncomp_pkt_hdrs->tcp_opts.tot_len = opts_len;
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "%u %u-byte TCP options successfully parsed",
+	           uncomp_pkt_hdrs->tcp_opts.nr, uncomp_pkt_hdrs->tcp_opts.tot_len);
 
 	return true;
 
@@ -462,87 +489,113 @@ bad_opts:
  * @brief Parse the uncompressed TCP options for changes
  *
  * @param context            The compression context
- * @param tcp                The TCP header
+ * @param uncomp_pkt_hdrs    The uncompressed headers to encode
  * @param[in,out] opts_ctxt  The compression context for TCP options
- * @param[out] opts_len      The length (in bytes) of the TCP options
- * @return                   true if the TCP options were successfully parsed and
- *                           can be compressed, false otherwise
+ * @param tmp                The temporary state for compressed TCP options
  */
-bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
-                                const struct tcphdr *const tcp,
+void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
+                                const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                 struct c_tcp_opts_ctxt *const opts_ctxt,
-                                size_t *const opts_len)
+                                struct c_tcp_opts_ctxt_tmp *const tmp)
 {
-	bool indexes_in_use[MAX_TCP_OPTION_INDEX + 1] = { false };
-	uint8_t *opts;
-	size_t opt_pos;
-	uint8_t opt_len;
-	size_t opts_offset;
-	size_t opts_nr = 0;
+	uint16_t indexes_in_use = 0;
+	const uint8_t opts_nr = uncomp_pkt_hdrs->tcp_opts.nr;
 	uint8_t opt_idx;
+	uint8_t opt_pos;
 
+	rohc_comp_debug(context, "detect changes in %u %u-byte TCP options",
+	                opts_nr, uncomp_pkt_hdrs->tcp_opts.tot_len);
+
+	assert(opts_nr <= ROHC_TCP_OPTS_MAX);
 	assert(opts_ctxt->structure_nr <= ROHC_TCP_OPTS_MAX);
+	tmp->nr = opts_nr;
 
-	opts_ctxt->tmp.do_list_struct_changed = false;
-	opts_ctxt->tmp.do_list_static_changed = false;
-	opts_ctxt->tmp.opt_ts_present = false;
-	opts_ctxt->tmp.nr = 0;
-	opts_ctxt->tmp.idx_max = 0;
-
-	opts = ((uint8_t *) tcp) + sizeof(struct tcphdr);
-	*opts_len = (tcp->data_offset << 2) - sizeof(struct tcphdr);
-
-	rohc_comp_debug(context, "parse %zu-byte TCP options", *opts_len);
-
-	for(opt_idx = TCP_INDEX_GENERIC7; opt_idx <= MAX_TCP_OPTION_INDEX; opt_idx++)
+	/* were the TCP options present at the very same location in previous packet? */
+	if(opts_nr != opts_ctxt->structure_nr ||
+	   memcmp(uncomp_pkt_hdrs->tcp_opts.types, opts_ctxt->structure, opts_nr) != 0)
 	{
-		if(opts_ctxt->list[opt_idx].used)
-		{
-			opts_ctxt->list[opt_idx].age++;
-		}
+		rohc_comp_debug(context, "  some TCP options were not present at the very "
+		                "same location in previous packet");
+		tmp->do_list_struct_changed = true;
+	}
+	else
+	{
+		rohc_comp_debug(context, "  all TCP options were at the very same location "
+		                "in previous packet");
+		tmp->do_list_struct_changed = false;
 	}
 
-	for(opt_pos = 0, opts_offset = 0;
-	    opt_pos < ROHC_TCP_OPTS_MAX && opts_offset < (*opts_len);
-	    opt_pos++, opts_offset += opt_len)
+	for(opt_idx = 0; opt_idx <= MAX_TCP_OPTION_INDEX; opt_idx++)
 	{
-		uint8_t opt_type;
-
-		/* get type and length of the next TCP option */
-		if(!c_tcp_opt_get_type_len(opts + opts_offset, (*opts_len) - opts_offset,
-		                           &opt_type, &opt_len))
+		tmp->is_list_item_present[opt_idx] = false;
+		if(opt_idx >= TCP_INDEX_GENERIC7 && opts_ctxt->list[opt_idx].used)
 		{
-			rohc_comp_warn(context, "malformed TCP header: failed to parse "
-			               "option #%zu", opt_pos + 1);
-			goto error;
+			if(opts_ctxt->list[opt_idx].age < UINT8_MAX)
+			{
+				opts_ctxt->list[opt_idx].age++;
+			}
 		}
-		rohc_comp_debug(context, "  TCP option %u found", opt_type);
-		rohc_comp_debug(context, "    option is %u-byte long", opt_len);
+	}
+	tmp->do_list_static_changed = false;
+	tmp->opt_ts_present = false;
+	tmp->idx_max = 0;
+
+	for(opt_pos = 0; opt_pos < opts_nr; opt_pos++)
+	{
+		const uint8_t *const opt_data = uncomp_pkt_hdrs->tcp_opts.data[opt_pos];
+		const uint8_t opt_type = uncomp_pkt_hdrs->tcp_opts.types[opt_pos];
+		const uint8_t opt_len = uncomp_pkt_hdrs->tcp_opts.lengths[opt_pos];
+
+		rohc_comp_debug(context, "  %u-byte TCP option %u found", opt_len, opt_type);
 
 		if(opt_type == TCP_OPT_TS)
 		{
-			memcpy(&opts_ctxt->tmp.ts_req, opts + opts_offset + 2, sizeof(uint32_t));
-			opts_ctxt->tmp.ts_req = rohc_ntoh32(opts_ctxt->tmp.ts_req);
-			memcpy(&opts_ctxt->tmp.ts_reply, opts + opts_offset + 6, sizeof(uint32_t));
-			opts_ctxt->tmp.ts_reply = rohc_ntoh32(opts_ctxt->tmp.ts_reply);
-			opts_ctxt->tmp.opt_ts_present = true;
+			const struct tcp_option_timestamp *const opt_ts =
+				(struct tcp_option_timestamp *) (opt_data + 2);
+
+			tmp->opt_ts_present = true;
+
+			tmp->ts_req = rohc_ntoh32(opt_ts->ts);
+			tmp->ts_req_bytes_nr =
+				tcp_opt_ts_one_can_be_encoded(&opts_ctxt->ts_req_wlsb,
+				                              tmp->ts_req);
+
+			tmp->ts_reply = rohc_ntoh32(opt_ts->ts_reply);
+			tmp->ts_reply_bytes_nr =
+				tcp_opt_ts_one_can_be_encoded(&opts_ctxt->ts_reply_wlsb,
+				                              tmp->ts_reply);
 		}
 
 		/* determine the index of the TCP option */
 		opt_idx = c_tcp_get_opt_index(context, opts_ctxt, opt_type, indexes_in_use);
-		indexes_in_use[opt_idx] = true;
+		indexes_in_use |= (1 << opt_idx);
 
 		/* the EOL, MSS, and WS options are 'static options': they cannot be
 		 * transmitted in irregular chain if their value changed, so the compressor
 		 * needs to detect such changes and to select a packet type that can
 		 * transmit their changes, ie. IR, IR-DYN, co_common, rnd_8 or seq_8 */
-		if(opt_type == TCP_OPT_EOL || opt_type == TCP_OPT_MSS || opt_type == TCP_OPT_WS)
+		if(opts_ctxt->list[opt_idx].used)
 		{
-			if(opts_ctxt->list[opt_idx].used &&
-			   c_tcp_opt_changed(opts_ctxt, opt_idx, opts + opts_offset, opt_len))
+			if(opt_type == TCP_OPT_EOL &&
+			   opts_ctxt->list[opt_idx].data_len != opt_len)
 			{
 				rohc_comp_debug(context, "    static option changed of value");
-				opts_ctxt->tmp.do_list_static_changed = true;
+				tmp->do_list_static_changed = true;
+			}
+			else if(opt_type == TCP_OPT_WS &&
+			        (opts_ctxt->list[opt_idx].data_len != opt_len ||
+			         opts_ctxt->list[opt_idx].data.raw[2] != opt_data[2]))
+			{
+				rohc_comp_debug(context, "    static option changed of value");
+				tmp->do_list_static_changed = true;
+			}
+			else if(opt_type == TCP_OPT_MSS &&
+			        (opts_ctxt->list[opt_idx].data_len != opt_len ||
+			         opts_ctxt->list[opt_idx].data.raw[2] != opt_data[2] ||
+			         opts_ctxt->list[opt_idx].data.raw[3] != opt_data[3]))
+			{
+				rohc_comp_debug(context, "    static option changed of value");
+				tmp->do_list_static_changed = true;
 			}
 		}
 
@@ -553,7 +606,7 @@ bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 			                "index %u as in previous packet",
 			                tcp_opt_get_descr(opt_type), opt_type, opt_idx);
 			/* option was grown old with all the others, make it grow young again */
-			if(opts_ctxt->list[opt_idx].age > 0)
+			if(opts_ctxt->list[opt_idx].age > 0 && opts_ctxt->list[opt_idx].age < UINT8_MAX)
 			{
 				opts_ctxt->list[opt_idx].age--;
 			}
@@ -565,9 +618,9 @@ bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 			if(opt_idx >= TCP_INDEX_GENERIC7 &&
 			   opt_len != opts_ctxt->list[opt_idx].data_len)
 			{
-				rohc_comp_debug(context, "    generic option changed of length (%zu -> %u)",
+				rohc_comp_debug(context, "    generic option changed of length (%u -> %u)",
 				                opts_ctxt->list[opt_idx].data_len, opt_len);
-				opts_ctxt->tmp.do_list_static_changed = true;
+				tmp->do_list_static_changed = true;
 			}
 		}
 		else
@@ -580,49 +633,25 @@ bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 			rohc_comp_debug(context, "    option '%s' (%u) will use new index %u",
 			                tcp_opt_get_descr(opt_type), opt_type, opt_idx);
 		}
-		opts_ctxt->tmp.position2index[opt_pos] = opt_idx;
-		opts_ctxt->tmp.nr++;
-		if(opt_idx > opts_ctxt->tmp.idx_max)
+		tmp->position2index[opt_pos] = opt_idx;
+		if(opt_idx > tmp->idx_max)
 		{
-			opts_ctxt->tmp.idx_max = opt_idx;
-		}
-
-		/* was the TCP option present at the very same location in previous
-		 * packet? */
-		if(opt_pos >= opts_ctxt->structure_nr ||
-		   opts_ctxt->structure[opt_pos] != opt_type)
-		{
-			rohc_comp_debug(context, "    option was not present at the very "
-			                "same location in previous packet");
-			opts_ctxt->tmp.do_list_struct_changed = true;
-		}
-		else
-		{
-			rohc_comp_debug(context, "    option was at the very same location "
-			                "in previous packet");
+			tmp->idx_max = opt_idx;
 		}
 
 		/* record the structure of the current list TCP options in context */
 		opts_ctxt->structure[opt_pos] = opt_type;
 	}
-	if(opt_pos >= ROHC_TCP_OPTS_MAX && opts_offset != (*opts_len))
-	{
-		rohc_comp_warn(context, "unexpected TCP header: too many TCP options: "
-		               "%zu options found in packet but only %u options "
-		               "possible", opt_pos, ROHC_TCP_OPTS_MAX);
-		goto error;
-	}
-	opts_nr = opt_pos;
 
 	/* fewer options than in previous packet? */
 	for(opt_pos = opts_nr; opt_pos < opts_ctxt->structure_nr; opt_pos++)
 	{
 		rohc_comp_debug(context, "  TCP option %d is not present anymore",
 		                opts_ctxt->structure[opt_pos]);
-		opts_ctxt->tmp.do_list_struct_changed = true;
+		tmp->do_list_struct_changed = true;
 	}
 
-	if(opts_ctxt->tmp.do_list_struct_changed)
+	if(tmp->do_list_struct_changed)
 	{
 		/* the new structure has never been transmitted yet */
 		rohc_comp_debug(context, "structure of TCP options list changed, "
@@ -631,7 +660,7 @@ bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 		opts_ctxt->structure_nr = opts_nr;
 		opts_ctxt->structure_nr_trans = 0;
 	}
-	else if(opts_ctxt->tmp.do_list_static_changed)
+	else if(tmp->do_list_static_changed)
 	{
 		/* changes on static options require list transmission */
 		rohc_comp_debug(context, "structure of TCP options list is unchanged, "
@@ -646,10 +675,10 @@ bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 		/* the structure was transmitted but not enough times */
 		rohc_comp_debug(context, "structure of TCP options list changed in "
 		                "the last few packets, compressed list must be "
-		                "transmitted at least %zu times more in the compressed "
+		                "transmitted at least %u times more in the compressed "
 		                "base header", context->compressor->list_trans_nr -
 		                opts_ctxt->structure_nr_trans);
-		opts_ctxt->tmp.do_list_struct_changed = true;
+		tmp->do_list_struct_changed = true;
 		assert(opts_ctxt->structure_nr == opts_nr);
 		opts_ctxt->structure_nr_trans++;
 	}
@@ -664,23 +693,18 @@ bool tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 	}
 
 	/* use 4-bit XI or 8-bit XI ? */
-	if(opts_ctxt->tmp.idx_max <= 7)
+	if(tmp->idx_max <= 7)
 	{
 		rohc_comp_debug(context, "compressed TCP options list will be able to "
 		                "use 4-bit XI since the largest index is %u",
-		                opts_ctxt->tmp.idx_max);
+		                tmp->idx_max);
 	}
 	else
 	{
-		assert(opts_ctxt->tmp.idx_max <= MAX_TCP_OPTION_INDEX);
+		assert(tmp->idx_max <= MAX_TCP_OPTION_INDEX);
 		rohc_comp_debug(context, "compressed TCP options list will use 8-bit "
-		                "XI since the largest index is %u", opts_ctxt->tmp.idx_max);
+		                "XI since the largest index is %u", tmp->idx_max);
 	}
-
-	return true;
-
-error:
-	return false;
 }
 
 
@@ -693,10 +717,10 @@ error:
  *  - at the end of the rnd_8, seq_8, and co_common packets.
  *
  * @param context            The compression context
- * @param tcp                The TCP header
- * @param msn                The Master Sequence Number (MSN) of the packet to compress
+ * @param uncomp_pkt_hdrs    The uncompressed headers to encode
  * @param chain_type         The TCP chain for which the list of items is
  * @param[in,out] opts_ctxt  The compression context for TCP options
+ * @param tmp                The temporary state for compressed TCP options
  * @param[out] comp_opts     The compressed TCP options
  * @param comp_opts_max_len  The max remaining length in the ROHC buffer
  * @param[out] no_item_needed Whether no item was needed at all
@@ -704,42 +728,31 @@ error:
  *                           in case of success, -1 in case of failure
  */
 int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
-                                  const struct tcphdr *const tcp,
-                                  const uint16_t msn,
+                                  const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                   const rohc_chain_t chain_type,
                                   struct c_tcp_opts_ctxt *const opts_ctxt,
+                                  struct c_tcp_opts_ctxt_tmp *const tmp,
                                   uint8_t *const comp_opts,
                                   const size_t comp_opts_max_len,
                                   bool *const no_item_needed)
 {
-	const uint8_t *options = ((uint8_t *) tcp) + sizeof(struct tcphdr);
-	const size_t data_offset_bytes = (tcp->data_offset << 2);
-	const size_t options_length = data_offset_bytes - sizeof(struct tcphdr);
-
 	uint8_t *xi_remain_data = comp_opts;
 	size_t xi_remain_len = comp_opts_max_len;
 	uint8_t *items_remain_data;
 	size_t items_remain_len;
 
-	const size_t m = opts_ctxt->tmp.nr;
+	const size_t m = tmp->nr;
 	size_t opt_pos;
-	uint8_t opt_len;
 	size_t xis_len;
 	int ps;
 
 	size_t comp_opts_len = 0; /* no compressed option at the beginning */
 	int ret;
-	int i;
 
 	(*no_item_needed) = true;
 
-	assert(data_offset_bytes >= sizeof(struct tcphdr));
-
-	/* dump TCP options */
-	rohc_comp_dump_buf(context, "TCP options", options, options_length);
-
 	/* what type of XI fields to use? */
-	ps = c_tcp_opt_compute_ps(opts_ctxt->tmp.idx_max);
+	ps = c_tcp_opt_compute_ps(tmp->idx_max);
 	assert(ps == 0 || ps == 1);
 
 	/* is the ROHC buffer large enough to contain all the XI indexes? */
@@ -766,34 +779,27 @@ int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
 	xi_remain_len--;
 
 	/* see RFC4996 page 25-26 */
-	for(i = options_length, opt_pos = 0;
-	    i > 0 && opt_pos < m;
-	    i -= opt_len, opt_pos++, options += opt_len)
+	for(opt_pos = 0; opt_pos < m; opt_pos++)
 	{
-		const uint8_t opt_idx = opts_ctxt->tmp.position2index[opt_pos];
+		const uint8_t *const opt_data = uncomp_pkt_hdrs->tcp_opts.data[opt_pos];
+		const uint8_t opt_type = uncomp_pkt_hdrs->tcp_opts.types[opt_pos];
+		const uint8_t opt_len = uncomp_pkt_hdrs->tcp_opts.lengths[opt_pos];
+		const uint8_t opt_idx = tmp->position2index[opt_pos];
 		bool item_needed;
-		uint8_t opt_type;
 		size_t comp_opt_len;
 
 		/* the TCP option index shall be in use */
 		assert(opts_ctxt->list[opt_idx].used);
 
-		/* get type and length of the next TCP option */
-		if(!c_tcp_opt_get_type_len(options, i, &opt_type, &opt_len))
-		{
-			rohc_comp_warn(context, "malformed TCP options: failed to parse "
-			               "option #%zu", opt_pos + 1);
-			goto error;
-		}
 		rohc_comp_debug(context, "TCP options list: compress option '%s' (%u)",
 		                tcp_opt_get_descr(opt_type), opt_type);
 
 		/* print a trace that describes the TCP option */
-		c_tcp_opt_trace(context, opt_type, options, opt_len);
+		c_tcp_opt_trace(context, opt_type, opt_data, opt_len);
 
 		/* do we need to transmit the item? */
 		item_needed = c_tcp_is_list_item_needed(context, chain_type, opt_idx,
-		                                        opt_type, opt_len, options, opts_ctxt);
+		                                        opt_type, opt_len, opt_data, opts_ctxt);
 
 		/* if item is transmitted, the option is new, changed now or changed a
 		 * few packets back, so save the option in context */
@@ -802,7 +808,7 @@ int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
 		if(item_needed)
 		{
 			(*no_item_needed) = false;
-			c_tcp_opt_record(opts_ctxt, opt_idx, options, opt_len);
+			c_tcp_opt_record(opts_ctxt, opt_idx, opt_data, opt_len);
 		}
 
 		/* write the XI field for the TCP option */
@@ -820,7 +826,8 @@ int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
 		}
 
 		/* write the item field for the TCP option if transmission is needed */
-		ret = c_tcp_opts[opt_idx].build_list_item(context, tcp, options, opt_len,
+		ret = c_tcp_opts[opt_idx].build_list_item(context, uncomp_pkt_hdrs->tcp,
+		                                          opt_data, opt_len,
 		                                          items_remain_data, items_remain_len);
 		if(ret < 0)
 		{
@@ -834,30 +841,12 @@ int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
 		comp_opt_len = ret;
 
 		/* TCP option is transmitted towards decompressor once more */
-		opts_ctxt->list[opt_idx].nr_trans++;
-		opts_ctxt->tmp.is_list_item_present[opt_idx] = true;
+		opts_ctxt->list[opt_idx].nr_trans++; /* TODO: do not update context here */
+		tmp->is_list_item_present[opt_idx] = true; /* TODO: do not update context here */
 		rohc_comp_debug(context, "TCP options list: option '%s' (%u) added "
 			                "%zu bytes of item", tcp_opt_get_descr(opt_type),
 			                opt_type, comp_opt_len);
 		comp_opts_len += comp_opt_len;
-
-		/* TODO: move at the very end of compression to avoid altering
-		 *       context in case of compression failure */
-		if(opt_type == TCP_OPT_TS)
-		{
-			const struct tcp_option_timestamp *const opt_ts =
-				(struct tcp_option_timestamp *) (options + 2);
-			opts_ctxt->is_timestamp_init = true;
-			c_add_wlsb(&opts_ctxt->ts_req_wlsb, msn, rohc_ntoh32(opt_ts->ts));
-			c_add_wlsb(&opts_ctxt->ts_reply_wlsb, msn, rohc_ntoh32(opt_ts->ts_reply));
-		}
-	}
-	if(opt_pos >= ROHC_TCP_OPTS_MAX && i != 0)
-	{
-		rohc_comp_warn(context, "unexpected TCP header: too many TCP options: %zu "
-		               "options found in packet but only %u options possible",
-		               opt_pos, ROHC_TCP_OPTS_MAX);
-		goto error;
 	}
 
 	rohc_comp_dump_buf(context, "TCP compressed options", comp_opts, comp_opts_len);
@@ -875,9 +864,9 @@ error:
  * All the CO packets contains an irregular chain.
  *
  * @param context            The compression context
- * @param tcp                The TCP header
- * @param msn                The Master Sequence Number (MSN) of the packet to compress
+ * @param uncomp_pkt_hdrs    The uncompressed headers to encode
  * @param[in,out] opts_ctxt  The compression context for TCP options
+ * @param tmp                The temporary state for compressed TCP options
  * @param[out] comp_opts     The compressed TCP options
  * @param comp_opts_max_len  The max remaining length in the ROHC buffer
  * @return                   The length (in bytes) of compressed TCP options
@@ -886,9 +875,9 @@ error:
  * @todo TODO: defines 'options profiles' the same way as for decompressor
  */
 int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
-                              const struct tcphdr *const tcp,
-                              const uint16_t msn,
+                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                               struct c_tcp_opts_ctxt *const opts_ctxt,
+                              const struct c_tcp_opts_ctxt_tmp *const tmp,
                               uint8_t *const comp_opts,
                               const size_t comp_opts_max_len)
 {
@@ -896,10 +885,7 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 	size_t rohc_remain_len = comp_opts_max_len;
 	size_t comp_opts_len = 0;
 
-	const uint8_t *const opts = ((uint8_t *) tcp) + sizeof(struct tcphdr);
-	const size_t opts_len = (tcp->data_offset << 2) - sizeof(struct tcphdr);
-	uint8_t opt_len;
-	size_t opts_offset;
+	const uint8_t opts_nr = uncomp_pkt_hdrs->tcp_opts.nr;
 	size_t opt_pos;
 
 	bool is_ok;
@@ -909,29 +895,20 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 	                "TCP options");
 
 	/* build the list of irregular encodings of TCP options */
-	for(opt_pos = 0, opts_offset = 0;
-	    opt_pos < ROHC_TCP_OPTS_MAX && opts_offset < opts_len;
-	    opt_pos++, opts_offset += opt_len)
+	for(opt_pos = 0; opt_pos < opts_nr; opt_pos++)
 	{
-		const uint8_t opt_idx = opts_ctxt->tmp.position2index[opt_pos];
+		const uint8_t *const opt_data = uncomp_pkt_hdrs->tcp_opts.data[opt_pos];
+		const uint8_t opt_type = uncomp_pkt_hdrs->tcp_opts.types[opt_pos];
+		const uint8_t opt_len = uncomp_pkt_hdrs->tcp_opts.lengths[opt_pos];
+		const uint8_t opt_idx = tmp->position2index[opt_pos];
 		size_t comp_opt_len = 0;
-		uint8_t opt_type;
 
 		/* the TCP option index shall be in use */
 		assert(opts_ctxt->list[opt_idx].used);
 
-		/* get type and length of the next TCP option */
-		if(!c_tcp_opt_get_type_len(opts + opts_offset, opts_len - opts_offset,
-		                           &opt_type, &opt_len))
-		{
-			rohc_comp_warn(context, "malformed TCP options: failed to parse option "
-			               "#%zu", opt_pos + 1);
-			goto error;
-		}
-
 		/* don't put this option in the irregular chain if already present in the
 		 * dynamic chain */
-		if(opts_ctxt->tmp.is_list_item_present[opt_idx])
+		if(tmp->is_list_item_present[opt_idx])
 		{
 			rohc_comp_debug(context, "irregular chain: do not encode irregular "
 			                "content for TCP option %u because it is already "
@@ -945,15 +922,10 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 		/* encode the TCP option in its irregular form */
 		if(opt_type == TCP_OPT_TS)
 		{
-			const struct tcp_option_timestamp *const opt_ts =
-				(struct tcp_option_timestamp *) (opts + opts_offset + 2);
 			size_t encoded_ts_lsb_len;
 
 			/* encode TS with ts_lsb() */
-			is_ok = c_tcp_ts_lsb_code(context, rohc_ntoh32(opt_ts->ts),
-			                          opts_ctxt->tmp.nr_opt_ts_req_bits_minus_1,
-			                          opts_ctxt->tmp.nr_opt_ts_req_bits_0x40000,
-			                          opts_ctxt->tmp.nr_opt_ts_req_bits_0x4000000,
+			is_ok = c_tcp_ts_lsb_code(context, tmp->ts_req, tmp->ts_req_bytes_nr,
 			                          rohc_remain_data, rohc_remain_len,
 			                          &encoded_ts_lsb_len);
 			if(!is_ok)
@@ -967,10 +939,7 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 			comp_opt_len += encoded_ts_lsb_len;
 
 			/* encode TS reply with ts_lsb()*/
-			is_ok = c_tcp_ts_lsb_code(context, rohc_ntoh32(opt_ts->ts_reply),
-			                          opts_ctxt->tmp.nr_opt_ts_reply_bits_minus_1,
-			                          opts_ctxt->tmp.nr_opt_ts_reply_bits_0x40000,
-			                          opts_ctxt->tmp.nr_opt_ts_reply_bits_0x4000000,
+			is_ok = c_tcp_ts_lsb_code(context, tmp->ts_reply, tmp->ts_reply_bytes_nr,
 			                          rohc_remain_data, rohc_remain_len,
 			                          &encoded_ts_lsb_len);
 			if(!is_ok)
@@ -983,21 +952,18 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 			rohc_remain_len -= encoded_ts_lsb_len;
 			comp_opt_len += encoded_ts_lsb_len;
 
+			/* save the option in context */
 			/* TODO: move at the very end of compression to avoid altering
 			 *       context in case of compression failure */
-			opts_ctxt->is_timestamp_init = true;
-			c_add_wlsb(&opts_ctxt->ts_req_wlsb, msn, rohc_ntoh32(opt_ts->ts));
-			c_add_wlsb(&opts_ctxt->ts_reply_wlsb, msn, rohc_ntoh32(opt_ts->ts_reply));
+			c_tcp_opt_record(opts_ctxt, opt_idx, opt_data, opt_len);
 		}
 		else if(opt_type == TCP_OPT_SACK)
 		{
-			const sack_block_t *const sack_blocks =
-				(sack_block_t *) (opts + opts_offset + 2);
+			const sack_block_t *const sack_blocks = (sack_block_t *) (opt_data + 2);
 			const bool is_sack_unchanged =
-				!c_tcp_opt_changed(opts_ctxt, opt_idx, opts + opts_offset, opt_len);
+				!c_tcp_opt_changed(opts_ctxt, opt_idx, opt_data, opt_len);
 
-			assert(opt_len > 2);
-			ret = c_tcp_opt_sack_code(context, rohc_ntoh32(tcp->ack_num),
+			ret = c_tcp_opt_sack_code(context, rohc_ntoh32(uncomp_pkt_hdrs->tcp->ack_num),
 			                          sack_blocks, opt_len - 2, is_sack_unchanged,
 			                          rohc_remain_data, rohc_remain_len);
 			if(ret < 0)
@@ -1008,6 +974,11 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 			rohc_remain_data += ret;
 			rohc_remain_len -= ret;
 			comp_opt_len += ret;
+
+			/* save the option in context */
+			/* TODO: move at the very end of compression to avoid altering
+			 *       context in case of compression failure */
+			c_tcp_opt_record(opts_ctxt, opt_idx, opt_data, opt_len);
 		}
 		else if(opt_type != TCP_OPT_EOL &&
 		        opt_type != TCP_OPT_NOP &&
@@ -1021,8 +992,7 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 			uint8_t discriminator;
 			size_t contents_len;
 
-			if(c_tcp_opt_changed(opts_ctxt, opt_idx, opts + opts_offset,
-			                     opt_len - opts_offset))
+			if(c_tcp_opt_changed(opts_ctxt, opt_idx, opt_data, opt_len))
 			{
 				/* generic_full_irregular: the item that is assumed to change
 				 * constantly. Length is not allowed to change here, since a length
@@ -1056,26 +1026,68 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 			/* option contents, if any */
 			if(contents_len > 0)
 			{
-				memcpy(rohc_remain_data, opts + opts_offset + 2, contents_len);
+				memcpy(rohc_remain_data, opt_data + 2, contents_len);
 				rohc_remain_data += contents_len;
 				rohc_remain_len -= contents_len;
 				comp_opt_len += contents_len;
 			}
+
+			/* save the option in context */
+			/* TODO: move at the very end of compression to avoid altering
+			 *       context in case of compression failure */
+			c_tcp_opt_record(opts_ctxt, opt_idx, opt_data, opt_len);
 		}
 		rohc_comp_debug(context, "irregular chain: added %zu bytes of irregular "
 		                "content for TCP option %u", comp_opt_len, opt_type);
 		comp_opts_len += comp_opt_len;
-
-		/* save the option in context */
-		/* TODO: move at the very end of compression to avoid altering
-		 *       context in case of compression failure */
-		c_tcp_opt_record(opts_ctxt, opt_idx, opts + opts_offset, opts_len - opts_offset);
 	}
 
 	return comp_opts_len;
 
 error:
 	return -1;
+}
+
+
+/**
+ * @brief Whether the TCP Timestamp (TS) reply/request field can be encoded or not
+ *
+ * @param wlsb  The W-LSB compression context of the TS reply/request field
+ * @param ts    The TS reply/request field
+ * @return      true if the TS reply/request field can be encoded,
+ *              false if the TS reply/request field shall be sent in full
+ */
+static uint8_t tcp_opt_ts_one_can_be_encoded(const struct c_wlsb *const wlsb,
+                                             const uint32_t ts)
+{
+	uint8_t is_possible;
+
+	if(wlsb_is_kp_possible_32bits(wlsb, ts, ROHC_SDVL_MAX_BITS_IN_1_BYTE,
+	                              ROHC_LSB_SHIFT_TCP_TS_1B))
+	{
+		is_possible = 1;
+	}
+	else if(wlsb_is_kp_possible_32bits(wlsb, ts, ROHC_SDVL_MAX_BITS_IN_2_BYTES,
+	                                   ROHC_LSB_SHIFT_TCP_TS_2B))
+	{
+		is_possible = 2;
+	}
+	else if(wlsb_is_kp_possible_32bits(wlsb, ts, ROHC_SDVL_MAX_BITS_IN_3_BYTES,
+	                                   ROHC_LSB_SHIFT_TCP_TS_3B))
+	{
+		is_possible = 3;
+	}
+	else if(wlsb_is_kp_possible_32bits(wlsb, ts, ROHC_SDVL_MAX_BITS_IN_4_BYTES,
+	                                   ROHC_LSB_SHIFT_TCP_TS_4B))
+	{
+		is_possible = 4;
+	}
+	else
+	{
+		is_possible = 0;
+	}
+
+	return is_possible;
 }
 
 
@@ -1252,7 +1264,7 @@ static void c_tcp_opt_trace(const struct rohc_comp_ctxt *const context,
 static uint8_t c_tcp_get_opt_index(const struct rohc_comp_ctxt *const context,
                                    struct c_tcp_opts_ctxt *const opts_ctxt,
                                    const uint8_t opt_type,
-                                   const bool indexes_in_use[MAX_TCP_OPTION_INDEX + 1])
+                                   const uint16_t indexes_in_use)
 {
 	uint8_t opt_idx;
 
@@ -1301,7 +1313,7 @@ static uint8_t c_tcp_get_opt_index(const struct rohc_comp_ctxt *const context,
 
 			for(opt_idx = TCP_INDEX_GENERIC7; opt_idx <= MAX_TCP_OPTION_INDEX; opt_idx++)
 			{
-				if(!indexes_in_use[opt_idx] &&
+				if((indexes_in_use & (1 << opt_idx)) == 0 &&
 				   opts_ctxt->list[opt_idx].used &&
 				   opts_ctxt->list[opt_idx].age > oldest_idx_age)
 				{
@@ -1499,6 +1511,17 @@ static bool c_tcp_is_list_item_needed(const struct rohc_comp_ctxt *const context
 		                tcp_opt_get_descr(opt_type));
 		item_needed = true;
 	}
+	else if(opts_ctxt->list[opt_idx].nr_trans < context->compressor->list_trans_nr)
+	{
+		/* option was already transmitted and didn't change since then, but the
+		 * compressor is not confident yet that decompressor got the list item */
+		rohc_comp_debug(context, "TCP options list: option '%s' shall be "
+		                "transmitted %u times more to gain transmission confidence",
+		                tcp_opt_get_descr(opt_type),
+		                context->compressor->list_trans_nr -
+		                opts_ctxt->list[opt_idx].nr_trans);
+		item_needed = true;
+	}
 	else if(c_tcp_opt_changed(opts_ctxt, opt_idx, opt, opt_len))
 	{
 		/* option was already transmitted but it changed since then,
@@ -1507,23 +1530,12 @@ static bool c_tcp_is_list_item_needed(const struct rohc_comp_ctxt *const context
 		                tcp_opt_get_descr(opt_type));
 		item_needed = true;
 	}
-	else if(opts_ctxt->list[opt_idx].nr_trans < context->compressor->list_trans_nr)
-	{
-		/* option was already transmitted and didn't change since then, but the
-		 * compressor is not confident yet that decompressor got the list item */
-		rohc_comp_debug(context, "TCP options list: option '%s' shall be "
-		                "transmitted %zu times more to gain transmission confidence",
-		                tcp_opt_get_descr(opt_type),
-		                context->compressor->list_trans_nr -
-		                opts_ctxt->list[opt_idx].nr_trans);
-		item_needed = true;
-	}
 	else
 	{
 		/* option was already transmitted and didn't change since then,
 		 * item shall not be transmitted again */
 		rohc_comp_debug(context, "TCP options list: option '%s' is unchanged and "
-		                "was transmitted at least %zu times",
+		                "was transmitted at least %u times",
 		                tcp_opt_get_descr(opt_type),
 		                context->compressor->list_trans_nr);
 		item_needed = false;

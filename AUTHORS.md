@@ -7,7 +7,16 @@ The ROHC compression/decompression library is currently developed and
 maintained by [Didier Barvaux](mailto:didier@barvaux.org).
 
 The ROHC library is released under the LGPL2.1+ license. See the
-[COPYING](COPYING) file for more details.
+[COPYING](COPYING) file for more details about the license.
+
+The ROHC library embeds parts that are published under the zlib license:
+ * src/common/crcany.c
+ * src/common/crcany.h
+
+The ROHC library embeds parts that are published under the MIT license:
+ * src/common/csiphash.c
+ * src/common/csiphash.h
+ * src/common/test/test_csiphash.c
 
 
 ## Companies
@@ -47,6 +56,10 @@ The following people are/were involved in the project:
 * [Simon Paillard](mailto:spaillard@debian.org): fix doc and copyright info
 * [Selvaganesan Murugesan]: D flag conformance problem
 * [Bi-Ruei Chiu](mailto:biruei.chiu@gmail.com): GCC-7 fixes
+* [Mark Adler](mailto:madler@alumni.caltech.edu): CRC algorithms imported from
+  [crcany](https://github.com/madler/crcany)
+* [Marek Majkowski](mailto:marek@popcount.org): SipHash implementation in C
+  imported from [csiphash](https://github.com/majek/csiphash).
 
 
 ## History

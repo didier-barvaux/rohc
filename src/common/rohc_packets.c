@@ -58,20 +58,63 @@ const char * rohc_get_packet_descr(const rohc_packet_t packet_type)
 		case ROHC_PACKET_UO_1:
 			return "ROHCv1/non-RTP/UO-1";
 		case ROHC_PACKET_UO_1_ID:
-			return "ROHCv1/RTP/UO-1-ID";
+			return "ROHCv1/RTP/UO-1-ID-NO-EXT";
+		case ROHC_PACKET_UO_1_ID_EXT0:
+			return "ROHCv1/RTP/UO-1-ID-EXT-0";
+		case ROHC_PACKET_UO_1_ID_EXT1:
+			return "ROHCv1/RTP/UO-1-ID-EXT-1";
+		case ROHC_PACKET_UO_1_ID_EXT2:
+			return "ROHCv1/RTP/UO-1-ID-EXT-2";
+		case ROHC_PACKET_UO_1_ID_EXT3:
+			return "ROHCv1/RTP/UO-1-ID-EXT-3";
 		case ROHC_PACKET_UO_1_TS:
 			return "ROHCv1/RTP/UO-1-TS";
 		case ROHC_PACKET_UO_1_RTP:
 			return "ROHCv1/RTP/UO-1";
 
 		case ROHC_PACKET_UOR_2:
-			return "ROHCv1/non-RTP/UOR-2";
+			return "ROHCv1/non-RTP/UOR-2-NO-EXT";
+		case ROHC_PACKET_UOR_2_EXT0:
+			return "ROHCv1/non-RTP/UOR-2-EXT-0";
+		case ROHC_PACKET_UOR_2_EXT1:
+			return "ROHCv1/non-RTP/UOR-2-EXT-1";
+		case ROHC_PACKET_UOR_2_EXT2:
+			return "ROHCv1/non-RTP/UOR-2-EXT-2";
+		case ROHC_PACKET_UOR_2_EXT3:
+			return "ROHCv1/non-RTP/UOR-2-EXT-3";
+
 		case ROHC_PACKET_UOR_2_RTP:
 			return "ROHCv1/RTP/UOR-2";
+		case ROHC_PACKET_UOR_2_RTP_EXT0:
+			return "ROHCv1/RTP/UOR-2-EXT-0";
+		case ROHC_PACKET_UOR_2_RTP_EXT1:
+			return "ROHCv1/RTP/UOR-2-EXT-1";
+		case ROHC_PACKET_UOR_2_RTP_EXT2:
+			return "ROHCv1/RTP/UOR-2-EXT-2";
+		case ROHC_PACKET_UOR_2_RTP_EXT3:
+			return "ROHCv1/RTP/UOR-2-EXT-3";
+
 		case ROHC_PACKET_UOR_2_ID:
-			return "ROHCv1/RTP/UOR-2-ID";
+			return "ROHCv1/RTP/UOR-2-ID-NO-EXT";
+		case ROHC_PACKET_UOR_2_ID_EXT0:
+			return "ROHCv1/RTP/UOR-2-ID-EXT-0";
+		case ROHC_PACKET_UOR_2_ID_EXT1:
+			return "ROHCv1/RTP/UOR-2-ID-EXT-1";
+		case ROHC_PACKET_UOR_2_ID_EXT2:
+			return "ROHCv1/RTP/UOR-2-ID-EXT-2";
+		case ROHC_PACKET_UOR_2_ID_EXT3:
+			return "ROHCv1/RTP/UOR-2-ID-EXT-3";
+
 		case ROHC_PACKET_UOR_2_TS:
-			return "ROHCv1/RTP/UOR-2-TS";
+			return "ROHCv1/RTP/UOR-2-TS-NO-EXT";
+		case ROHC_PACKET_UOR_2_TS_EXT0:
+			return "ROHCv1/RTP/UOR-2-TS-EXT-0";
+		case ROHC_PACKET_UOR_2_TS_EXT1:
+			return "ROHCv1/RTP/UOR-2-TS-EXT-1";
+		case ROHC_PACKET_UOR_2_TS_EXT2:
+			return "ROHCv1/RTP/UOR-2-TS-EXT-2";
+		case ROHC_PACKET_UOR_2_TS_EXT3:
+			return "ROHCv1/RTP/UOR-2-TS-EXT-3";
 
 		case ROHC_PACKET_NORMAL:
 			return "ROHCv1/Uncomp/Normal";
@@ -222,6 +265,22 @@ rohc_packet_t rohc_get_packet_type(const char *const packet_id)
 	{
 		return ROHC_PACKET_UO_1_ID;
 	}
+	else if(strcmp(packet_id, "uo1id-ext0") == 0)
+	{
+		return ROHC_PACKET_UO_1_ID_EXT0;
+	}
+	else if(strcmp(packet_id, "uo1id-ext1") == 0)
+	{
+		return ROHC_PACKET_UO_1_ID_EXT1;
+	}
+	else if(strcmp(packet_id, "uo1id-ext2") == 0)
+	{
+		return ROHC_PACKET_UO_1_ID_EXT2;
+	}
+	else if(strcmp(packet_id, "uo1id-ext3") == 0)
+	{
+		return ROHC_PACKET_UO_1_ID_EXT3;
+	}
 	else if(strcmp(packet_id, "uo1ts") == 0)
 	{
 		return ROHC_PACKET_UO_1_TS;
@@ -234,17 +293,81 @@ rohc_packet_t rohc_get_packet_type(const char *const packet_id)
 	{
 		return ROHC_PACKET_UOR_2;
 	}
+	else if(strcmp(packet_id, "uor2-ext0") == 0)
+	{
+		return ROHC_PACKET_UOR_2_EXT0;
+	}
+	else if(strcmp(packet_id, "uor2-ext1") == 0)
+	{
+		return ROHC_PACKET_UOR_2_EXT1;
+	}
+	else if(strcmp(packet_id, "uor2-ext2") == 0)
+	{
+		return ROHC_PACKET_UOR_2_EXT2;
+	}
+	else if(strcmp(packet_id, "uor2-ext3") == 0)
+	{
+		return ROHC_PACKET_UOR_2_EXT3;
+	}
 	else if(strcmp(packet_id, "uor2rtp") == 0)
 	{
 		return ROHC_PACKET_UOR_2_RTP;
+	}
+	else if(strcmp(packet_id, "uor2rtp-ext0") == 0)
+	{
+		return ROHC_PACKET_UOR_2_RTP_EXT0;
+	}
+	else if(strcmp(packet_id, "uor2rtp-ext1") == 0)
+	{
+		return ROHC_PACKET_UOR_2_RTP_EXT1;
+	}
+	else if(strcmp(packet_id, "uor2rtp-ext2") == 0)
+	{
+		return ROHC_PACKET_UOR_2_RTP_EXT2;
+	}
+	else if(strcmp(packet_id, "uor2rtp-ext3") == 0)
+	{
+		return ROHC_PACKET_UOR_2_RTP_EXT3;
 	}
 	else if(strcmp(packet_id, "uor2id") == 0)
 	{
 		return ROHC_PACKET_UOR_2_ID;
 	}
+	else if(strcmp(packet_id, "uor2id-ext0") == 0)
+	{
+		return ROHC_PACKET_UOR_2_ID_EXT0;
+	}
+	else if(strcmp(packet_id, "uor2id-ext1") == 0)
+	{
+		return ROHC_PACKET_UOR_2_ID_EXT1;
+	}
+	else if(strcmp(packet_id, "uor2id-ext2") == 0)
+	{
+		return ROHC_PACKET_UOR_2_ID_EXT2;
+	}
+	else if(strcmp(packet_id, "uor2id-ext3") == 0)
+	{
+		return ROHC_PACKET_UOR_2_ID_EXT3;
+	}
 	else if(strcmp(packet_id, "uor2ts") == 0)
 	{
 		return ROHC_PACKET_UOR_2_TS;
+	}
+	else if(strcmp(packet_id, "uor2ts-ext0") == 0)
+	{
+		return ROHC_PACKET_UOR_2_TS_EXT0;
+	}
+	else if(strcmp(packet_id, "uor2ts-ext1") == 0)
+	{
+		return ROHC_PACKET_UOR_2_TS_EXT1;
+	}
+	else if(strcmp(packet_id, "uor2ts-ext2") == 0)
+	{
+		return ROHC_PACKET_UOR_2_TS_EXT2;
+	}
+	else if(strcmp(packet_id, "uor2ts-ext3") == 0)
+	{
+		return ROHC_PACKET_UOR_2_TS_EXT3;
 	}
 	else if(strcmp(packet_id, "uncomp-normal") == 0)
 	{

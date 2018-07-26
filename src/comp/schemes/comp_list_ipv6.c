@@ -75,7 +75,6 @@ void rohc_comp_list_ipv6_new(struct list_comp *const comp,
 	comp->list_trans_nr = list_trans_nr;
 
 	/* specific callbacks for IPv6 extension headers */
-	comp->get_size = ip_get_extension_size;
 	comp->get_index_table = get_index_ipv6_table;
 	comp->cmp_item = cmp_ipv6_ext;
 
@@ -143,37 +142,19 @@ static int get_index_ipv6_table(const uint8_t next_header_type,
 			index_table = 3;
 			break;
 #endif
-		case ROHC_IPPROTO_FRAGMENT:
-			index_table = 4;
-			break;
 #if 0 /* TODO: add support for null ESP header */
 		case ROHC_IPPROTO_ESP:
-			index_table = 5;
+			index_table = 4;
 			break;
 #endif
-		case ROHC_IPPROTO_MOBILITY:
-			index_table = 6;
-			break;
-		case ROHC_IPPROTO_HIP:
-			index_table = 7;
-			break;
-		case ROHC_IPPROTO_SHIM:
-			index_table = 8;
-			break;
-		case ROHC_IPPROTO_RESERVED1:
-			index_table = 9;
-			break;
-		case ROHC_IPPROTO_RESERVED2:
-			index_table = 10;
-			break;
 #if 0 /* TODO: add support for GRE header */
 		case ROHC_IPPROTO_GRE:
-			index_table = 11;
+			index_table = 5;
 			break;
 #endif
 #if 0 /* TODO: add support for MINE header */
 		case ROHC_IPPROTO_MINE:
-			index_table = 12;
+			index_table = 6;
 			break;
 #endif
 		/* 13 is used for the 2nd Destination option if any */

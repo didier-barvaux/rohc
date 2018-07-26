@@ -56,6 +56,9 @@ src/common/test/test_sdvl.exe
 src/common/test/test_sdvl.log
 src/common/test/test_feedback_parse
 src/common/test/test_api_robustness
+src/common/test/test_csiphash
+src/common/test/test_csiphash.exe
+src/common/test/test_csiphash.log
 src/comp/schemes/test/test_rfc4996
 src/comp/schemes/test/test_rfc4996.exe
 src/comp/schemes/test/test_rfc4996.log
@@ -65,6 +68,9 @@ src/comp/schemes/test/test_tcp_ts_opt.log
 src/comp/test/test_api_robustness
 src/comp/test/test_api_robustness.exe
 src/comp/test/test_api_robustness.log
+src/comp/test/print_struct_sizes
+src/comp/test/print_struct_sizes.exe
+src/comp/test/print_struct_sizes.log
 src/decomp/schemes/test/test_wlsb
 src/decomp/schemes/test/test_wlsb.exe
 src/decomp/schemes/test/test_wlsb.log
@@ -77,6 +83,9 @@ src/decomp/schemes/test/test_tcp_sack_opt.log
 src/decomp/test/test_api_robustness
 src/decomp/test/test_api_robustness.exe
 src/decomp/test/test_api_robustness.log
+src/decomp/test/print_struct_sizes
+src/decomp/test/print_struct_sizes.exe
+src/decomp/test/print_struct_sizes.log
 src/test/test_wlsb_wraparound
 src/test/test_wlsb_wraparound.exe
 src/test/test_wlsb_wraparound.log
@@ -136,12 +145,6 @@ linux/kmod/Module.symvers
 linux/kmod/modules.order
 linux/kmod/*.ko
 linux/kmod/*.mod.c
-app/performance/rohc_test_performance
-app/performance/rohc_test_performance.exe
-app/performance/rohc_test_performance.1
-app/performance/rohc_gen_stream
-app/performance/rohc_gen_stream.exe
-app/performance/rohc_gen_stream.1
 app/sniffer/rohc_sniffer
 app/sniffer/rohc_sniffer.exe
 app/sniffer/rohc_sniffer.1

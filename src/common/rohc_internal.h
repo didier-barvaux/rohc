@@ -27,6 +27,8 @@
 #ifndef ROHC_INTERNAL_H
 #define ROHC_INTERNAL_H
 
+#include <stdint.h>
+
 /**
  * \mainpage
  *
@@ -158,6 +160,10 @@
 #include "rohc.h"
 
 
+/** The maximal value for MRRU */
+#define ROHC_MAX_MRRU 65535
+
+
 /**
  * @brief The padding field defined by the ROHC protocol
  *
@@ -174,6 +180,12 @@
 \endverbatim
  */
 #define ROHC_PADDING_BYTE  0xe0
+
+
+/**
+ * @brief A number of bits required or retrieved
+ */
+typedef uint8_t bits_nr_t;
 
 
 /**

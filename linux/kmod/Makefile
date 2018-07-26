@@ -18,6 +18,7 @@ rohc_common_sources = \
 	../../src/common/rohc_packets.c \
 	../../src/common/rohc_traces_internal.c \
 	../../src/common/rohc_utils.c \
+	../../src/common/crcany.c \
 	../../src/common/crc.c \
 	../../src/common/rohc_add_cid.c \
 	../../src/common/interval.c \
@@ -25,7 +26,10 @@ rohc_common_sources = \
 	../../src/common/ip.c \
 	../../src/common/net_pkt.c \
 	../../src/common/rohc_list.c \
-	../../src/common/feedback_parse.c
+	../../src/common/feedback_parse.c \
+	../../src/common/csiphash.c \
+	../../src/common/hashtable.c \
+	../../src/common/hashtable_cr.c
 
 rohc_comp_sources = \
 	../../src/comp/schemes/cid.c \

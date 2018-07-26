@@ -37,182 +37,97 @@
  * @brief Define the IPv6 option context for Destination, Hop-by-Hop
  *        and Routing option
  */
-typedef struct __attribute__((packed))
+typedef struct
 {
-	size_t data_len;
 	uint8_t data[IPV6_OPT_CTXT_LEN_MAX];
+	uint16_t data_len; /* max length = (0xff + 1) * 8 = 2048 bytes */
 
 } ipv6_generic_option_context_t;
 
-
-/**
- * @brief Define the IPv6 option context for GRE option
- */
-typedef struct __attribute__((packed)) ipv6_gre_option_context
-{
-	uint8_t c_flag:1;
-	uint8_t k_flag:1;
-	uint8_t s_flag:1;
-	uint8_t protocol:1;
-	uint8_t padding:4;
-
-	uint32_t key;               // if k_flag set
-	uint32_t sequence_number;   // if s_flag set
-
-} ipv6_gre_option_context_t;
-
-
-/**
- * @brief Define the IPv6 option context for MIME option
- */
-typedef struct __attribute__((packed)) ipv6_mime_option_context
-{
-	uint8_t s_bit:1;
-	uint8_t res_bits:7;
-	uint32_t orig_dest;
-	uint32_t orig_src;         // if s_bit set
-
-} ipv6_mime_option_context_t;
-
-
-/**
- * @brief Define the IPv6 option context for AH option
- */
-typedef struct __attribute__((packed)) ipv6_ah_option_context
-{
-	uint32_t spi;
-	uint32_t sequence_number;
-	uint32_t auth_data[1];
-} ipv6_ah_option_context_t;
+/* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
+#if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
+     (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
+      (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
+_Static_assert((sizeof(ipv6_generic_option_context_t) % 8) == 0,
+               "ipv6_generic_option_context_t length should be multiple of 8 bytes");
+#endif
 
 
 /** The decompression context for one IP extension header */
 typedef struct
 {
-	size_t len;        /**< The length (in bytes) of the extension header */
+	uint16_t len;      /**< The length (in bytes) of the extension header */
+
 	uint8_t proto;     /**< The protocol of the extension header */
 	uint8_t nh_proto;  /**< The protocol of the next header */
+	uint8_t unused[4];
 
-	union
-	{
-		ipv6_generic_option_context_t generic; /**< IPv6 generic extension header */
-		ipv6_gre_option_context_t gre;         /**< IPv6 GRE extension header */
-		ipv6_mime_option_context_t mime;       /**< IPv6 MIME extension header */
-		ipv6_ah_option_context_t ah;           /**< IPv6 AH extension header */
-	};
+	ipv6_generic_option_context_t generic; /**< IPv6 generic extension header */
 
 } ip_option_context_t;
 
-
-/**
- * @brief Define the common IP header context to IPv4 and IPv6
- */
-typedef struct __attribute__((packed)) ipvx_context
-{
-	uint8_t version:4;
-	uint8_t unused:4;
-
-	union
-	{
-		struct
-		{
-			uint8_t dscp:6;
-			uint8_t ip_ecn_flags:2;
-		};
-		uint8_t tos_tc;
-	};
-
-	uint8_t next_header;
-
-	uint8_t ttl_hopl;
-
-	uint8_t ip_id_behavior;
-
-} ipvx_context_t;
+/* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
+#if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
+     (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
+      (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
+_Static_assert((offsetof(ip_option_context_t, generic) % 8) == 0,
+               "generic in ip_option_context_t should be aligned on 8 bytes");
+_Static_assert((sizeof(ip_option_context_t) % 8) == 0,
+               "ip_option_context_t length should be multiple of 8 bytes");
+#endif
 
 
 /**
- * @brief Define the IPv4 header context
- */
-typedef struct __attribute__((packed)) ipv4_context
-{
-	uint8_t version:4;
-	uint8_t df:1;
-	uint8_t unused:3;
-
-	union
-	{
-		struct
-		{
-			uint8_t dscp:6;
-			uint8_t ip_ecn_flags:2;
-		};
-		uint8_t tos;
-	};
-
-	uint8_t protocol;
-
-	uint8_t ttl;
-
-	uint8_t ip_id_behavior;
-	uint16_t ip_id;
-
-	uint32_t src_addr;
-	uint32_t dst_addr;
-
-} ipv4_context_t;
-
-
-/**
- * @brief Define the IPv6 header context
- */
-typedef struct __attribute__((packed)) ipv6_context
-{
-	uint8_t version:4;
-	uint8_t unused:4;
-
-	union
-	{
-		struct
-		{
-			uint8_t dscp:6;
-			uint8_t ip_ecn_flags:2;
-		};
-		uint8_t tc;
-	};
-
-	uint8_t next_header;
-
-	uint8_t hopl;
-
-	uint8_t ip_id_behavior;
-
-	uint32_t flow_label:20; /**< IPv6 Flow Label */
-
-	uint32_t src_addr[4];
-	uint32_t dest_addr[4];
-
-} ipv6_context_t;
-
-
-/**
- * @brief Define union of IP contexts
+ * @brief The TCP decompression context for one IPv4 or IPv6 header
  */
 typedef struct
 {
-	ip_version version;
+	uint32_t flow_label:20; /**< IPv6 Flow Label */
 	union
 	{
-		ipvx_context_t vx;
-		ipv4_context_t v4;
-		ipv6_context_t v6;
-	} ctxt;
+		struct
+		{
+			uint32_t dscp:6;
+			uint32_t ip_ecn_flags:2;
+		};
+		uint32_t tos_tc:8;
+	};
+	uint32_t df:1;
+	uint32_t unused:3;
 
-	size_t opts_nr;
-	size_t opts_len;
+	uint16_t ip_id;
+	uint8_t next_header;
+	uint8_t ttl_hopl;
+
+	uint32_t saddr[4];
+	uint32_t daddr[4];
+
 	ip_option_context_t opts[ROHC_MAX_IP_EXT_HDRS];
+	uint16_t opts_len; /* no more than the max IPv6 length, ie. 65535 */
+	uint8_t opts_nr;
+
+	uint8_t version:4;
+	uint8_t ip_id_behavior:2;
+	uint8_t unused2:2;
+	uint8_t unused3[4];
 
 } ip_context_t;
+
+/* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
+#if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
+     (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
+      (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
+_Static_assert((offsetof(ip_context_t, saddr) % 8) == 0,
+               "saddr in ip_context_t should be aligned on 8 bytes");
+_Static_assert((offsetof(ip_context_t, daddr) % 8) == 0,
+               "daddr in ip_context_t should be aligned on 8 bytes");
+_Static_assert((offsetof(ip_context_t, opts_len) % 8) == 0,
+               "opts_len in ip_context_t should be aligned on 8 bytes");
+_Static_assert((offsetof(ip_context_t, opts) % 8) == 0,
+               "opts in ip_context_t should be aligned on 8 bytes");
+_Static_assert((sizeof(ip_context_t) % 8) == 0,
+               "ip_context_t length should be multiple of 8 bytes");
+#endif
 
 #endif /* ROHC_DECOMP_SCHEMES_IP_CTXT_H */
 

@@ -299,7 +299,7 @@ static int tcp_parse_replicate_ip(const struct rohc_decomp_ctxt *const context,
 		ip_bits->id_behavior_nr = 2;
 
 		/* parse IPv6 extension headers */
-		rohc_decomp_debug(context, "parse the replicate parts of the %zu IPv6 "
+		rohc_decomp_debug(context, "parse the replicate parts of the %u IPv6 "
 		                  "extension headers", ip_bits->opts_nr);
 
 		assert(ip_bits->proto_nr == 8);
@@ -351,7 +351,7 @@ static int tcp_parse_replicate_ipv6_option(const struct rohc_decomp_ctxt *const 
 	size_t remain_len = rohc_length;
 	size_t size = 0;
 
-	rohc_decomp_debug(context, "parse replicate part of the %zu-byte IPv6 extension "
+	rohc_decomp_debug(context, "parse replicate part of the %u-byte IPv6 extension "
 	                  "header '%s' (%u)", opt_context->len,
 	                  rohc_get_ip_proto_descr(opt_context->proto), opt_context->proto);
 
@@ -405,7 +405,8 @@ static int tcp_parse_replicate_ipv6_option(const struct rohc_decomp_ctxt *const 
 				}
 				opt_context->len = opt_len;
 				opt_context->generic.data_len = opt_len - 2;
-				memcpy(&opt_context->generic.data, remain_data, opt_context->generic.data_len);
+				memcpy(&opt_context->generic.data, remain_data,
+				       opt_context->generic.data_len);
 				size += opt_context->generic.data_len;
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 				remain_data += opt_context->generic.data_len;
@@ -520,13 +521,13 @@ static int tcp_parse_replicate_tcp(const struct rohc_decomp_ctxt *const context,
 	/* retrieve the MSN from the TCP replicate part */
 	bits->msn.bits = rohc_ntoh16(tcp_replicate->msn);
 	bits->msn.bits_nr = 16;
-	rohc_decomp_debug(context, "%zu bits of MSN 0x%04x",
+	rohc_decomp_debug(context, "%u bits of MSN 0x%04x",
 	                  bits->msn.bits_nr, bits->msn.bits);
 
 	/* retrieve the TCP sequence number from the TCP replicate part */
 	bits->seq.bits = rohc_ntoh32(tcp_replicate->seq_num);
 	bits->seq.bits_nr = 32;
-	rohc_decomp_debug(context, "%zu bits of TCP sequence number 0x%08x",
+	rohc_decomp_debug(context, "%u bits of TCP sequence number 0x%08x",
 	                  bits->seq.bits_nr, bits->seq.bits);
 
 	/* TCP source port */
@@ -603,7 +604,7 @@ static int tcp_parse_replicate_tcp(const struct rohc_decomp_ctxt *const context,
 		                 "static_or_irreg(window) failed");
 		goto error;
 	}
-	rohc_decomp_debug(context, "found %zu bits of TCP window encoded on "
+	rohc_decomp_debug(context, "found %u bits of TCP window encoded on "
 	                  "%d bytes", bits->window.bits_nr, ret);
 	remain_data += ret;
 	remain_len -= ret;
@@ -617,7 +618,7 @@ static int tcp_parse_replicate_tcp(const struct rohc_decomp_ctxt *const context,
 		                 "static_or_irreg(urg_ptr) failed");
 		goto error;
 	}
-	rohc_decomp_debug(context, "found %zu bits of TCP URG Pointer encoded on "
+	rohc_decomp_debug(context, "found %u bits of TCP URG Pointer encoded on "
 	                  "%d bytes", bits->urg_ptr.bits_nr, ret);
 	remain_data += ret;
 	remain_len -= ret;
@@ -631,7 +632,7 @@ static int tcp_parse_replicate_tcp(const struct rohc_decomp_ctxt *const context,
 		                 "static_or_irreg(ack_number) failed");
 		goto error;
 	}
-	rohc_decomp_debug(context, "found %zu bits of TCP ACK number encoded on "
+	rohc_decomp_debug(context, "found %u bits of TCP ACK number encoded on "
 	                  "%d bytes", bits->ack.bits_nr, ret);
 	remain_data += ret;
 	remain_len -= ret;
@@ -689,7 +690,7 @@ static int tcp_parse_replicate_tcp(const struct rohc_decomp_ctxt *const context,
 		                 "static_or_irreg(ack_stride) failed");
 		goto error;
 	}
-	rohc_decomp_debug(context, "found %zu bits of ACK stride encoded on "
+	rohc_decomp_debug(context, "found %u bits of ACK stride encoded on "
 	                  "%d bytes", bits->ack_stride.bits_nr, ret);
 	remain_data += ret;
 	remain_len -= ret;

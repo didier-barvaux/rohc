@@ -57,7 +57,6 @@ bool rohc_is_ipv6_opt(const uint8_t protocol)
 {
 	return (protocol == ROHC_IPPROTO_HOPOPTS ||
 	        protocol == ROHC_IPPROTO_ROUTING ||
-	        protocol == ROHC_IPPROTO_FRAGMENT ||
 #if 0 /* TODO: add support for GRE header */
 	        protocol == ROHC_IPPROTO_GRE ||
 #endif
@@ -70,12 +69,7 @@ bool rohc_is_ipv6_opt(const uint8_t protocol)
 #if 0 /* TODO: add support for MINE header */
 	        protocol == ROHC_IPPROTO_MINE ||
 #endif
-	        protocol == ROHC_IPPROTO_DSTOPTS ||
-	        protocol == ROHC_IPPROTO_MOBILITY ||
-	        protocol == ROHC_IPPROTO_HIP ||
-	        protocol == ROHC_IPPROTO_SHIM ||
-	        protocol == ROHC_IPPROTO_RESERVED1 ||
-	        protocol == ROHC_IPPROTO_RESERVED2);
+	        protocol == ROHC_IPPROTO_DSTOPTS);
 }
 
 

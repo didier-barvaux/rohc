@@ -26,17 +26,18 @@
 #define ROHC_COMP_TCP_REPLICATE_H
 
 #include "rohc_comp_internals.h"
-#include "ip.h"
+#include "rohc_buf.h"
+#include "c_tcp_defines.h"
 
 #include <stdint.h>
 #include <stdlib.h>
 
 int tcp_code_replicate_chain(struct rohc_comp_ctxt *const context,
-                             const struct ip_packet *const ip,
+                             const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                             struct tcp_tmp_variables *const tmp,
                              uint8_t *const rohc_pkt,
-                             const size_t rohc_pkt_max_len,
-                             size_t *const parsed_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
+                             const size_t rohc_pkt_max_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 
 #endif /* ROHC_COMP_TCP_REPLICATE_H */
 

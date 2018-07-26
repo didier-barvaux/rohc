@@ -52,9 +52,14 @@
 #include "rohc_bit_ops.h"
 #include "ip.h"
 #include "crc.h"
+#include "protocols/ip.h"
+#include "schemes/ipv6_exts.h"
 #include "protocols/udp.h"
 #include "protocols/ip_numbers.h"
+#include "c_tcp_opts_list.h"
 #include "feedback_parse.h"
+#include "hashtable.h"
+#include "hashtable_cr.h"
 
 #include "config.h" /* for PACKAGE_(NAME|URL|VERSION) */
 
@@ -64,6 +69,16 @@
 #include <stdbool.h>
 #include <assert.h>
 #include <stdarg.h>
+
+
+/** The affinity between packet and context */
+typedef enum
+{
+	ROHC_AFFINITY_NONE = 0,
+	ROHC_AFFINITY_LOW  = 1,
+	ROHC_AFFINITY_MED  = 2,
+	ROHC_AFFINITY_HIGH = 3,
+} rohc_ctxt_affinity_t;
 
 
 /* ROHCv1 profiles */
@@ -81,50 +96,82 @@ extern const struct rohc_comp_profile rohc_comp_rfc5225_ip_udp_profile;
 extern const struct rohc_comp_profile rohc_comp_rfc5225_ip_esp_profile;
 
 
-/**
- * @brief The compression parts of the ROHC profiles.
- *
- * The order of profiles declaration is important: they are evaluated in that
- * order. The RTP profile shall be declared before the UDP one for example.
- */
-static const struct rohc_comp_profile *const rohc_comp_profiles[C_NUM_PROFILES] =
+/** The ROHC compression profiles */
+static const struct rohc_comp_profile *const
+	rohc_comp_profiles[ROHC_PROFILE_ID_MAJOR_MAX + 1][ROHC_PROFILE_ID_MINOR_MAX + 1] =
 {
-	&c_rtp_profile,
-#if 0
-	&rohc_comp_rfc5225_ip_udp_rtp_profile,
-	&rohc_comp_rfc5225_ip_udplite_rtp_profile,
-#endif
-	&c_udp_profile,  /* must be declared after RTP profiles */
-	&rohc_comp_rfc5225_ip_udp_profile,
-	&c_udp_lite_profile,
-#if 0
-	&rohc_comp_rfc5225_ip__udplite_profile,
-#endif
-	&c_esp_profile,
-	&rohc_comp_rfc5225_ip_esp_profile,
-	&c_tcp_profile,
-	&c_ip_profile,  /* must be declared after all IP-based profiles */
-	&rohc_comp_rfc5225_ip_profile,
-	&c_uncompressed_profile, /* must be declared last */
+	[0] = {
+		[0] = &c_uncompressed_profile,
+		[1] = &c_rtp_profile,
+		[2] = &c_udp_profile,
+		[3] = &c_esp_profile,
+		[4] = &c_ip_profile,
+		[5] = NULL,
+		[6] = &c_tcp_profile,
+		[7] = NULL,
+		[8] = &c_udp_lite_profile,
+	},
+	[1] = {
+		[0] = NULL,
+		[1] = NULL,
+		[2] = &rohc_comp_rfc5225_ip_udp_profile,
+		[3] = &rohc_comp_rfc5225_ip_esp_profile,
+		[4] = &rohc_comp_rfc5225_ip_profile,
+		[5] = NULL,
+		[6] = NULL,
+		[7] = NULL,
+		[8] = NULL,
+	},
 };
+
 
 
 /*
  * Prototypes of private functions related to ROHC compression profiles
  */
 
-static const struct rohc_comp_profile *
-	rohc_get_profile_from_id(const struct rohc_comp *comp,
-	                         const rohc_profile_t profile_id)
+static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
+                                            const struct rohc_buf *const packet,
+                                            struct rohc_fingerprint *const fingerprint,
+                                            struct rohc_pkt_hdrs *const pkt_hdrs)
+	__attribute__((nonnull(1, 2, 3, 4), warn_unused_result));
+
+static bool rohc_comp_are_ip_hdrs_supported(const struct rohc_comp *const comp,
+                                            const uint8_t *const packet,
+                                            const size_t packet_len,
+                                            struct rohc_fingerprint *const fingerprint,
+                                            struct rohc_pkt_hdrs *const pkt_hdrs,
+                                            size_t *const all_ip_hdrs_len,
+                                            size_t *const all_ipv6_exts_len)
+	__attribute__((nonnull(1, 2, 4, 5, 6, 7), warn_unused_result));
+
+static rohc_profile_t rohc_comp_get_profile_l4(const struct rohc_comp *const comp,
+                                               const struct rohc_buf *const packet,
+                                               const rohc_profile_t l3_profile,
+                                               const size_t all_ipv6_exts_len,
+                                               const uint8_t l4_proto,
+                                               const uint8_t *const l4_data,
+                                               const size_t l4_len,
+                                               struct rohc_fingerprint *const fingerprint,
+                                               struct rohc_pkt_hdrs *const pkt_hdrs)
+	__attribute__((nonnull(1, 2, 6, 8, 9), warn_unused_result));
+
+static bool rohc_comp_is_tcp_hdr_supported(const struct rohc_comp *const comp,
+                                           const uint8_t *const packet,
+                                           const size_t packet_len,
+                                           struct rohc_pkt_hdrs *const pkt_hdrs,
+                                           size_t *const tcp_hdr_full_len)
+	__attribute__((nonnull(1, 2, 4, 5), warn_unused_result));
+
+static bool rohc_comp_is_rtp_hdr_supported(const struct rohc_comp *const comp,
+                                           const uint8_t *const packet,
+                                           const size_t packet_len,
+                                           struct rohc_pkt_hdrs *const pkt_hdrs)
+	__attribute__((nonnull(1, 2, 4), warn_unused_result));
+
+static bool rohc_comp_profile_enabled_nocheck(const struct rohc_comp *const comp,
+                                              const rohc_profile_t profile)
 	__attribute__((warn_unused_result, nonnull(1)));
-
-static const struct rohc_comp_profile *
-	c_get_profile_from_packet(const struct rohc_comp *const comp,
-	                          const struct net_pkt *const packet)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
-
-static int rohc_comp_get_profile_index(const rohc_profile_t profile)
-	__attribute__((warn_unused_result));
 
 
 /*
@@ -139,20 +186,26 @@ static void c_destroy_contexts(struct rohc_comp *const comp)
 static struct rohc_comp_ctxt *
 	c_create_context(struct rohc_comp *const comp,
 	                 const struct rohc_comp_profile *const profile,
-	                 const struct net_pkt *const packet,
-	                 const struct rohc_ts arrival_time,
-	                 const bool do_ctxt_replication,
-	                 const rohc_cid_t cid_for_replication)
-	__attribute__((nonnull(1, 2, 3), warn_unused_result));
+	                 const struct rohc_buf *const packet,
+	                 const struct rohc_fingerprint *const fingerprint,
+	                 const struct rohc_pkt_hdrs *const pkt_hdrs)
+	__attribute__((nonnull(1, 2, 3, 4, 5), warn_unused_result));
 static struct rohc_comp_ctxt *
 	rohc_comp_find_ctxt(struct rohc_comp *const comp,
-	                    const struct net_pkt *const packet,
-	                    const int profile_id_hint,
-	                    const struct rohc_ts arrival_time)
-	__attribute__((nonnull(1, 2), warn_unused_result));
+	                    const struct rohc_comp_profile *const profile,
+	                    const struct rohc_buf *const packet,
+	                    const struct rohc_fingerprint *const pkt_fingerprint,
+	                    const struct rohc_pkt_hdrs *const pkt_hdrs)
+	__attribute__((nonnull(1, 2, 3, 4, 5), warn_unused_result));
 static struct rohc_comp_ctxt *
 	c_get_context(struct rohc_comp *const comp, const rohc_cid_t cid)
 	__attribute__((nonnull(1), warn_unused_result));
+
+static rohc_ctxt_affinity_t
+	rohc_comp_get_ctxt_affinity(const struct rohc_comp_ctxt *const ctxt,
+	                            const struct rohc_fingerprint *const pkt_fingerprint,
+	                            const struct rohc_pkt_hdrs *const pkt_hdrs)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 
 /*
@@ -253,8 +306,8 @@ struct rohc_comp * rohc_comp_new2(const rohc_cid_type_t cid_type,
 	const size_t wlsb_width = 4; /* default window width for W-LSB encoding */
 	const size_t reorder_ratio = ROHC_REORDERING_NONE; /* default reordering ratio */
 	struct rohc_comp *comp;
+	uint8_t profile_major;
 	bool is_fine;
-	size_t i;
 
 	/* check input parameters */
 	if(cid_type == ROHC_SMALL_CID)
@@ -293,13 +346,19 @@ struct rohc_comp * rohc_comp_new2(const rohc_cid_type_t cid_type,
 	comp->medium.cid_type = cid_type;
 	comp->medium.max_cid = max_cid;
 	comp->mrru = 0; /* no segmentation by default */
+	comp->rru = NULL; /* no segmentation by default */
 	comp->random_cb = rand_cb;
 	comp->random_cb_ctxt = rand_priv;
 
 	/* all compression profiles are disabled by default */
-	for(i = 0; i < C_NUM_PROFILES; i++)
+	for(profile_major = 0; profile_major <= ROHC_PROFILE_ID_MAJOR_MAX; profile_major++)
 	{
-		comp->enabled_profiles[i] = false;
+		uint8_t profile_minor;
+
+		for(profile_minor = 0; profile_minor <= ROHC_PROFILE_ID_MINOR_MAX; profile_minor++)
+		{
+			comp->enabled_profiles[profile_major][profile_minor] = false;
+		}
 	}
 
 	/* reset statistics */
@@ -346,19 +405,50 @@ struct rohc_comp * rohc_comp_new2(const rohc_cid_type_t cid_type,
 		goto destroy_comp;
 	}
 
-	/* init the tables for fast CRC computation */
-	rohc_crc_init_table(comp->crc_table_3, ROHC_CRC_TYPE_3);
-	rohc_crc_init_table(comp->crc_table_7, ROHC_CRC_TYPE_7);
-	rohc_crc_init_table(comp->crc_table_8, ROHC_CRC_TYPE_8);
-
 	/* create the MAX_CID + 1 contexts */
 	if(!c_create_contexts(comp))
 	{
 		goto destroy_comp;
 	}
+	{
+		const unsigned int max_ctxts = max_cid + 1;
+		const size_t items_nr = 1 << (32 - __builtin_clz(max_ctxts - 1));
+		const size_t hashtable_size = items_nr << 5;
+		size_t i;
+
+		/* create hash table for finding contexts by their fingerprint */
+		for(i = 0; i < sizeof(comp->contexts_by_fingerprint.key); i++)
+		{
+			comp->contexts_by_fingerprint.key[i] =
+				comp->random_cb(comp, comp->random_cb_ctxt) & 0xff;
+		}
+		if(!hashtable_new(&comp->contexts_by_fingerprint,
+		                  sizeof(struct rohc_fingerprint), hashtable_size))
+		{
+			goto destroy_contexts;
+		}
+
+		/* create hash table for finding Context Replication (CR) contexts
+		 * by their base fingerprint */
+		for(i = 0; i < sizeof(comp->contexts_cr.key); i++)
+		{
+			comp->contexts_cr.key[i] =
+				comp->random_cb(comp, comp->random_cb_ctxt) & 0xff;
+		}
+		if(!hashtable_cr_new(&comp->contexts_cr,
+		                     sizeof(struct rohc_fingerprint_base),
+		                     sizeof(struct rohc_fingerprint), hashtable_size))
+		{
+			goto free_hashtable;
+		}
+	}
 
 	return comp;
 
+free_hashtable:
+	hashtable_free(&comp->contexts_by_fingerprint);
+destroy_contexts:
+	c_destroy_contexts(comp);
 destroy_comp:
 	zfree(comp);
 error:
@@ -397,7 +487,15 @@ void rohc_comp_free(struct rohc_comp *const comp)
 		           "free ROHC compressor");
 
 		/* free memory used by contexts */
+		hashtable_cr_free(&comp->contexts_cr);
+		hashtable_free(&comp->contexts_by_fingerprint);
 		c_destroy_contexts(comp);
+
+		/* free RRU buffer */
+		if(comp->rru != NULL)
+		{
+			zfree(comp->rru);
+		}
 
 		/* free the compressor */
 		free(comp);
@@ -479,6 +577,768 @@ error:
 
 
 /**
+ * @brief Get the best compression profile for the given network packet
+ *
+ * @param comp              The ROHC compressor to compress the packet with
+ * @param packet            The packet to search the best compression profile for
+ * @param[out] fingerprint  The computed fingerprint of the packet to later help
+ *                          finding the best compression context
+ * @param[out] pkt_hdrs     The information collected about the packet headers,
+ *                          may be used later during the detection of changes
+ *                          with the compression context, thus avoiding another
+ *                          packet parsing
+ * @return                  The ID of the best compression profile to compress
+ *                          the packet
+ */
+static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
+                                            const struct rohc_buf *const packet,
+                                            struct rohc_fingerprint *const fingerprint,
+                                            struct rohc_pkt_hdrs *const pkt_hdrs)
+{
+	const uint8_t *remain_data = rohc_buf_data(*packet);
+	size_t remain_len = packet->len;
+	size_t all_ip_hdrs_len = 0;
+	size_t all_ipv6_exts_len = 0;
+	uint8_t next_proto;
+	rohc_profile_t profile = ROHC_PROFILE_MAX;
+
+	/* reset the fingerprint */
+	memset(fingerprint, 0, sizeof(struct rohc_fingerprint));
+
+	/* ROHCv1 Uncompressed profile is possible if it is enabled */
+	if(rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_UNCOMPRESSED))
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "ROHCv1 Uncompressed profile is possible");
+		profile = ROHCv1_PROFILE_UNCOMPRESSED;
+		pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+		pkt_hdrs->payload_len = remain_len;
+		pkt_hdrs->payload = remain_data;
+	}
+
+	/* check that the IP headers are supported by the ROHC profiles */
+	if(!rohc_comp_are_ip_hdrs_supported(comp, remain_data, remain_len,
+	                                    fingerprint, pkt_hdrs,
+	                                    &all_ip_hdrs_len, &all_ipv6_exts_len))
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "unsupported IP headers");
+		goto unsupported_ip_hdr;
+	}
+	next_proto = pkt_hdrs->innermost_ip_hdr->next_proto;
+	remain_data += all_ip_hdrs_len;
+	remain_len -= all_ip_hdrs_len;
+
+	/* ROHCv1/v2 IP-only profiles are possible if they are enabled */
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "IP packet detected");
+	if(rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_IP))
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "ROHCv1 IP-Only profile is possible");
+		profile = ROHCv1_PROFILE_IP;
+		pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+		pkt_hdrs->payload_len = remain_len;
+		pkt_hdrs->payload = remain_data;
+	}
+	else if(all_ipv6_exts_len == 0 && /* TODO: ROHCv2: add IPv6 ext hdrs support */
+	        rohc_comp_profile_enabled_nocheck(comp, ROHCv2_PROFILE_IP))
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "ROHCv2 IP-Only profile is possible");
+		profile = ROHCv2_PROFILE_IP;
+		pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+		pkt_hdrs->payload_len = remain_len;
+		pkt_hdrs->payload = remain_data;
+	}
+
+	/* profiles cannot handle the packet if it bypasses internal limit
+	 * of IP headers, except the IP-only profiles that got support for
+	 * Static Chain Termination (see RFC 3843, §3.1) */
+	if(rohc_is_tunneling(next_proto))
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "too many IP headers (%u headers max) for non-IP profiles",
+		           ROHC_MAX_IP_HDRS);
+		goto too_many_ip_hdrs;
+	}
+
+	/* determine the best profile for the layer-4 header */
+	profile = rohc_comp_get_profile_l4(comp, packet,
+	                                   profile, all_ipv6_exts_len, next_proto,
+	                                   remain_data, remain_len,
+	                                   fingerprint, pkt_hdrs);
+
+too_many_ip_hdrs:
+unsupported_ip_hdr:
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "profile '%s' (0x%04x) will be used to compress the packet",
+	           rohc_get_profile_descr(profile), profile);
+	return profile;
+}
+
+
+/**
+ * @brief Get the best compression profile for the given network packet
+ *
+ * @param comp              The ROHC compressor to compress the packet with
+ * @param packet            The packet to search the best compression profile for
+ * @param l3_profile        The best ROHC profile identified for layer-3 headers
+ * @param all_ipv6_exts_len The length of the IPv6 extension headers
+ * @param l4_proto          The IP protocol type of the layer-4 header
+ * @param l4_data           The layer-4 header to search the best profile for
+ * @param l4_len            The length of the layer-4 header
+ * @param[out] fingerprint  The computed fingerprint of the packet to later help
+ *                          finding the best compression context
+ * @param[out] pkt_hdrs     The information collected about the packet headers,
+ *                          may be used later during the detection of changes
+ *                          with the compression context, thus avoiding another
+ *                          packet parsing
+ * @return                  The ID of the best compression profile to compress
+ *                          the packet
+ */
+static rohc_profile_t rohc_comp_get_profile_l4(const struct rohc_comp *const comp,
+                                               const struct rohc_buf *const packet,
+                                               const rohc_profile_t l3_profile,
+                                               const size_t all_ipv6_exts_len,
+                                               const uint8_t l4_proto,
+                                               const uint8_t *const l4_data,
+                                               const size_t l4_len,
+                                               struct rohc_fingerprint *const fingerprint,
+                                               struct rohc_pkt_hdrs *const pkt_hdrs)
+{
+	rohc_profile_t profile = l3_profile;
+	const uint8_t *remain_data = l4_data;
+	size_t remain_len = l4_len;
+
+	/* check that the transport protocol is supported */
+	if(l4_proto == ROHC_IPPROTO_TCP)
+	{
+		const struct tcphdr *tcp_header;
+		size_t tcp_hdr_full_len;
+
+		/* check that the TCP header is supported by the ROHC profiles */
+		if(!rohc_comp_is_tcp_hdr_supported(comp, remain_data, remain_len,
+		                                   pkt_hdrs, &tcp_hdr_full_len))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "unsupported TCP header");
+			goto unsupported_tcp_hdr;
+		}
+		tcp_header = (const struct tcphdr *) remain_data;
+		remain_data += tcp_hdr_full_len;
+		remain_len -= tcp_hdr_full_len;
+
+		/* ROHCv1 IP/TCP profiles is possible if it is enabled */
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "IP/TCP packet detected");
+		if(rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_IP_TCP))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "ROHCv1 IP/TCP profile is possible");
+			profile = ROHCv1_PROFILE_IP_TCP;
+			pkt_hdrs->tcp = tcp_header;
+			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+			pkt_hdrs->payload_len = remain_len;
+			pkt_hdrs->payload = remain_data;
+			fingerprint->base.profile_id = profile;
+			fingerprint->src_port = rohc_ntoh16(tcp_header->src_port);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tsource port = %u", fingerprint->src_port);
+			fingerprint->dst_port = rohc_ntoh16(tcp_header->dst_port);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tdestination port = %u", fingerprint->dst_port);
+		}
+	}
+	else if(l4_proto == ROHC_IPPROTO_UDP)
+	{
+		const struct udphdr *udp_header;
+		const struct rtphdr *rtp;
+		size_t udp_len;
+
+		/* innermost IP payload shall be large enough for UDP header */
+		if(remain_len < sizeof(struct udphdr))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "innermost IP payload too small for UDP header");
+			goto unsupported_udp_hdr;
+		}
+
+		/* retrieve the UDP header and the UDP payload */
+		udp_header = (const struct udphdr *) remain_data;
+		udp_len = remain_len;
+		remain_data += sizeof(struct udphdr);
+		remain_len -= sizeof(struct udphdr);
+
+		/* the UDP length field shall be correct in order to be inferred */
+		if(udp_len != rohc_ntoh16(udp_header->len))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "UDP header is not supported: UDP length is %u while it "
+			           "shall be %zu", rohc_ntoh16(udp_header->len), udp_len);
+			goto unsupported_udp_hdr;
+		}
+		pkt_hdrs->udp = udp_header;
+
+		/* ROHCv1/v2 IP/UDP profiles are possible if they are enabled */
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "IP/UDP packet detected");
+		if(pkt_hdrs->ip_hdrs_nr <= ROHC_MAX_IP_HDRS_RFC3095 &&
+		   rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_IP_UDP))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "ROHCv1 IP/UDP profile is possible");
+			profile = ROHCv1_PROFILE_IP_UDP;
+			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+			pkt_hdrs->payload_len = remain_len;
+			pkt_hdrs->payload = remain_data;
+			fingerprint->base.profile_id = profile;
+			fingerprint->src_port = rohc_ntoh16(udp_header->source);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tsource port = %u", fingerprint->src_port);
+			fingerprint->dst_port = rohc_ntoh16(udp_header->dest);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tdestination port = %u", fingerprint->dst_port);
+		}
+		else if(all_ipv6_exts_len == 0 && /* TODO: ROHCv2: add IPv6 ext hdrs support */
+		        rohc_comp_profile_enabled_nocheck(comp, ROHCv2_PROFILE_IP_UDP))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "ROHCv2 IP/UDP profile is possible");
+			profile = ROHCv2_PROFILE_IP_UDP;
+			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+			pkt_hdrs->payload_len = remain_len;
+			pkt_hdrs->payload = remain_data;
+			fingerprint->base.profile_id = profile;
+			fingerprint->src_port = rohc_ntoh16(udp_header->source);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tsource port = %u", fingerprint->src_port);
+			fingerprint->dst_port = rohc_ntoh16(udp_header->dest);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tdestination port = %u", fingerprint->dst_port);
+		}
+
+		/* check if the IP/UDP packet is a RTP packet */
+		if(!rohc_comp_is_rtp_hdr_supported(comp, remain_data, remain_len, pkt_hdrs))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "unsupported RTP header");
+			goto unsupported_rtp_hdr;
+		}
+		rtp = (const struct rtphdr *) remain_data;
+		pkt_hdrs->rtp = rtp;
+		remain_data += sizeof(struct rtphdr);
+		remain_len -= sizeof(struct rtphdr);
+
+		/* ROHCv1/v2 IP/UDP/RTP profiles are possible if they are enabled */
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "IP/UDP/RTP packet detected by the RTP callback");
+		if(pkt_hdrs->ip_hdrs_nr <= ROHC_MAX_IP_HDRS_RFC3095 &&
+		   rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_IP_UDP_RTP))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "ROHCv1 IP/UDP/RTP profile is possible");
+			profile = ROHCv1_PROFILE_IP_UDP_RTP;
+			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+			pkt_hdrs->payload_len = remain_len;
+			pkt_hdrs->payload = remain_data;
+			fingerprint->base.profile_id = profile;
+			fingerprint->src_port = rohc_ntoh16(udp_header->source);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tsource port = %u", fingerprint->src_port);
+			fingerprint->dst_port = rohc_ntoh16(udp_header->dest);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tdestination port = %u", fingerprint->dst_port);
+			fingerprint->rtp_ssrc = rohc_ntoh32(rtp->ssrc);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tSSRC = 0x%08x", fingerprint->rtp_ssrc);
+		}
+		else if(all_ipv6_exts_len == 0 && /* TODO: ROHCv2: add IPv6 ext hdrs support */
+		        rohc_comp_profile_enabled_nocheck(comp, ROHCv2_PROFILE_IP_UDP_RTP))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "ROHCv2 IP/UDP/RTP profile is possible");
+			profile = ROHCv2_PROFILE_IP_UDP_RTP;
+			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+			pkt_hdrs->payload_len = remain_len;
+			pkt_hdrs->payload = remain_data;
+			fingerprint->base.profile_id = profile;
+			fingerprint->src_port = rohc_ntoh16(udp_header->source);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tsource port = %u", fingerprint->src_port);
+			fingerprint->dst_port = rohc_ntoh16(udp_header->dest);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tdestination port = %u", fingerprint->dst_port);
+			fingerprint->rtp_ssrc = rohc_ntoh32(rtp->ssrc);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tSSRC = 0x%08x", fingerprint->rtp_ssrc);
+		}
+	}
+	else if(l4_proto == ROHC_IPPROTO_ESP)
+	{
+		const struct esphdr *esp;
+
+		/* innermost IP payload shall be large enough for ESP header */
+		if(remain_len < sizeof(struct esphdr))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "innermost IP payload too small for ESP header");
+			goto unsupported_esp_hdr;
+		}
+		esp = (const struct esphdr *) remain_data;
+		pkt_hdrs->esp = esp;
+		remain_data += sizeof(struct esphdr);
+		remain_len -= sizeof(struct esphdr);
+
+		/* ROHCv1/v2 IP/ESP profiles are possible if they are enabled */
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "IP/ESP packet detected");
+		if(pkt_hdrs->ip_hdrs_nr <= ROHC_MAX_IP_HDRS_RFC3095 &&
+		   rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_IP_ESP))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "ROHCv1 IP/ESP profile is possible");
+			profile = ROHCv1_PROFILE_IP_ESP;
+			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+			pkt_hdrs->payload_len = remain_len;
+			pkt_hdrs->payload = remain_data;
+			fingerprint->base.profile_id = profile;
+			fingerprint->esp_spi = rohc_ntoh32(esp->spi);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tSPI = 0x%08x", fingerprint->esp_spi);
+		}
+		else if(all_ipv6_exts_len == 0 && /* TODO: ROHCv2: add IPv6 ext hdrs support */
+		        rohc_comp_profile_enabled_nocheck(comp, ROHCv2_PROFILE_IP_ESP))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "ROHCv2 IP/ESP profile is possible");
+			profile = ROHCv2_PROFILE_IP_ESP;
+			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+			pkt_hdrs->payload_len = remain_len;
+			pkt_hdrs->payload = remain_data;
+			fingerprint->base.profile_id = profile;
+			fingerprint->esp_spi = rohc_ntoh32(esp->spi);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tSPI = 0x%08x", fingerprint->esp_spi);
+		}
+	}
+	else if(l4_proto == ROHC_IPPROTO_UDPLITE)
+	{
+		const struct udphdr *udp_lite;
+
+		/* innermost IP payload shall be large enough for UDP-Lite header */
+		if(remain_len < sizeof(struct udphdr))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "innermost IP payload too small for UDP-Lite header");
+			goto unsupported_udplite_hdr;
+		}
+		udp_lite = (const struct udphdr *) remain_data;
+		pkt_hdrs->udp_lite = udp_lite;
+		remain_data += sizeof(struct udphdr);
+		remain_len -= sizeof(struct udphdr);
+
+		/* ROHCv1/v2 IP/UDP-Lite profiles are possible if they are enabled */
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "IP/UDP-Lite packet detected");
+		if(pkt_hdrs->ip_hdrs_nr <= ROHC_MAX_IP_HDRS_RFC3095 &&
+		   rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_IP_UDPLITE))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "ROHCv1 IP/UDP-Lite profile is possible");
+			profile = ROHCv1_PROFILE_IP_UDPLITE;
+			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+			pkt_hdrs->payload_len = remain_len;
+			pkt_hdrs->payload = remain_data;
+			fingerprint->base.profile_id = profile;
+			fingerprint->src_port = rohc_ntoh16(udp_lite->source);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tsource port = %u", fingerprint->src_port);
+			fingerprint->dst_port = rohc_ntoh16(udp_lite->dest);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tdestination port = %u", fingerprint->dst_port);
+		}
+		else if(all_ipv6_exts_len == 0 && /* TODO: ROHCv2: add IPv6 ext hdrs support */
+		        rohc_comp_profile_enabled_nocheck(comp, ROHCv2_PROFILE_IP_UDPLITE))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "ROHCv2 IP/ESP profile is possible");
+			profile = ROHCv2_PROFILE_IP_UDPLITE;
+			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
+			pkt_hdrs->payload_len = remain_len;
+			pkt_hdrs->payload = remain_data;
+			fingerprint->base.profile_id = profile;
+			fingerprint->src_port = rohc_ntoh16(udp_lite->source);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tsource port = %u", fingerprint->src_port);
+			fingerprint->dst_port = rohc_ntoh16(udp_lite->dest);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tdestination port = %u", fingerprint->dst_port);
+		}
+	}
+
+unsupported_rtp_hdr:
+unsupported_udplite_hdr:
+unsupported_esp_hdr:
+unsupported_udp_hdr:
+unsupported_tcp_hdr:
+	return profile;
+}
+
+
+/**
+ * @brief Are the given IP headers supported?
+ *
+ * @param comp                    The ROHC compressor to compress the packet with
+ * @param packet                  The packet to search the best compression profile
+ *                                for
+ * @param packet_len              The length (in bytes) of the uncompressed packet
+ * @param[out] fingerprint        The fingerprint computed on the packet to later
+ *                                help finding the best compression context
+ * @param[out] pkt_hdrs           The information collected about the packet
+ *                                headers, may be used later during the detection
+ *                                of changes with the compression context, thus
+ *                                avoiding another packet parsing
+ * @param[out] all_ip_hdrs_len    The length (in bytes) of the parsed IP headers
+ * @param[out] all_ipv6_exts_len  The length (in bytes) of the parsed IP extension
+ *                                headers
+ * @return                        The ID of the best compression profile to compress
+ *                                the packet
+ */
+static bool rohc_comp_are_ip_hdrs_supported(const struct rohc_comp *const comp,
+                                            const uint8_t *const packet,
+                                            const size_t packet_len,
+                                            struct rohc_fingerprint *const fingerprint,
+                                            struct rohc_pkt_hdrs *const pkt_hdrs,
+                                            size_t *const all_ip_hdrs_len,
+                                            size_t *const all_ipv6_exts_len)
+{
+	const uint8_t *remain_data = packet;
+	size_t remain_len = packet_len;
+	bool are_ip_hdrs_supported = false;
+	size_t ip_hdrs_nr;
+	uint8_t next_proto;
+
+	/* check that the the versions of IP headers are 4 or 6 and that IP headers
+	 * are not IP fragments */
+	ip_hdrs_nr = 0;
+	do
+	{
+		const struct ip_hdr *const ip = (struct ip_hdr *) remain_data;
+
+		/* check minimal length for IP version */
+		if(remain_len < sizeof(struct ip_hdr))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "failed to determine the version of IP header #%zu",
+			           ip_hdrs_nr + 1);
+			goto unsupported_ip_hdr;
+		}
+
+		pkt_hdrs->ip_hdrs[ip_hdrs_nr].tot_len = remain_len;
+		pkt_hdrs->ip_hdrs[ip_hdrs_nr].version = ip->version;
+
+		if(ip->version == IPV4)
+		{
+			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) remain_data;
+			const size_t ipv4_min_words_nr = sizeof(struct ipv4_hdr) / sizeof(uint32_t);
+
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "found IPv4");
+			if(remain_len < sizeof(struct ipv4_hdr))
+			{
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "uncompressed packet too short for IP header #%zu",
+				           ip_hdrs_nr + 1);
+				goto unsupported_ip_hdr;
+			}
+
+			/* IPv4 options are not supported by the TCP profile */
+			if(ipv4->ihl != ipv4_min_words_nr)
+			{
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "IP packet #%zu is not supported: IP options are not "
+				           "accepted", ip_hdrs_nr + 1);
+				goto unsupported_ip_hdr;
+			}
+
+			/* IPv4 total length shall be correct */
+			if(rohc_ntoh16(ipv4->tot_len) != remain_len)
+			{
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "IP packet #%zu is not supported: total length is %u "
+				           "while it shall be %zu", ip_hdrs_nr + 1,
+				           rohc_ntoh16(ipv4->tot_len), remain_len);
+				goto unsupported_ip_hdr;
+			}
+
+			/* check if the IPv4 header is a fragment */
+			if(ipv4_is_fragment(ipv4))
+			{
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "IP packet #%zu is not supported: header is fragmented",
+				           ip_hdrs_nr + 1);
+				goto unsupported_ip_hdr;
+			}
+
+			/* the IPv4 header checksum shall be correct in order to be inferred */
+			if((comp->features & ROHC_COMP_FEATURE_NO_IP_CHECKSUMS) == 0 &&
+			   ip_fast_csum(remain_data, ipv4_min_words_nr) != 0)
+			{
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "IP packet #%zu is not supported: checksum is not correct",
+				           ip_hdrs_nr + 1);
+				goto unsupported_ip_hdr;
+			}
+
+			next_proto = ipv4->protocol;
+			remain_data += sizeof(struct ipv4_hdr);
+			remain_len -= sizeof(struct ipv4_hdr);
+
+			pkt_hdrs->ip_hdrs[ip_hdrs_nr].ipv4 = ipv4;
+			pkt_hdrs->ip_hdrs[ip_hdrs_nr].tos_tc = ipv4->tos;
+			pkt_hdrs->ip_hdrs[ip_hdrs_nr].ttl_hl = ipv4->ttl;
+			pkt_hdrs->ip_hdrs[ip_hdrs_nr].exts_nr = 0;
+			fingerprint->base.ip_hdrs[ip_hdrs_nr].saddr.u32[0] = ipv4->saddr;
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tsource address = " IPV4_ADDR_FORMAT,
+			           IPV4_ADDR_RAW(fingerprint->base.ip_hdrs[ip_hdrs_nr].saddr.u8));
+			fingerprint->base.ip_hdrs[ip_hdrs_nr].daddr.u32[0] = ipv4->daddr;
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tdestination address = " IPV4_ADDR_FORMAT,
+			           IPV4_ADDR_RAW(fingerprint->base.ip_hdrs[ip_hdrs_nr].daddr.u8));
+		}
+		else if(ip->version == IPV6)
+		{
+			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
+
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "found IPv6");
+			if(remain_len < sizeof(struct ipv6_hdr))
+			{
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "uncompressed packet too short for IP header #%zu",
+				           ip_hdrs_nr + 1);
+				goto unsupported_ip_hdr;
+			}
+			next_proto = ipv6->nh;
+			remain_data += sizeof(struct ipv6_hdr);
+			remain_len -= sizeof(struct ipv6_hdr);
+
+			/* payload length shall be correct */
+			if(rohc_ntoh16(ipv6->plen) != remain_len)
+			{
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "IP packet #%zu is not supported: payload length is %u "
+				           "while it shall be %zu", ip_hdrs_nr + 1,
+				           rohc_ntoh16(ipv6->plen), remain_len);
+				goto unsupported_ip_hdr;
+			}
+
+			/* reject packets with malformed IPv6 extension headers or IPv6
+			 * extension headers that are not compatible with the TCP profile */
+			if(!rohc_comp_ipv6_exts_are_acceptable(comp, &next_proto,
+			                                       remain_data, remain_len,
+			                                       pkt_hdrs->ip_hdrs + ip_hdrs_nr))
+			{
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "IP packet #%zu is not supported: malformed or incompatible "
+				           "IPv6 extension headers detected", ip_hdrs_nr + 1);
+				goto unsupported_ip_hdr;
+			}
+			(*all_ipv6_exts_len) += pkt_hdrs->ip_hdrs[ip_hdrs_nr].exts_len;
+			remain_data += pkt_hdrs->ip_hdrs[ip_hdrs_nr].exts_len;
+			remain_len -= pkt_hdrs->ip_hdrs[ip_hdrs_nr].exts_len;
+
+			pkt_hdrs->ip_hdrs[ip_hdrs_nr].ipv6 = ipv6;
+			pkt_hdrs->ip_hdrs[ip_hdrs_nr].tos_tc = ipv6_get_tc(ipv6);
+			pkt_hdrs->ip_hdrs[ip_hdrs_nr].ttl_hl = ipv6->hl;
+			memcpy(&fingerprint->base.ip_hdrs[ip_hdrs_nr].saddr.u8, &ipv6->saddr,
+			       sizeof(struct ipv6_addr));
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tsource address = " IPV6_ADDR_FORMAT,
+			           IPV6_ADDR_RAW(fingerprint->base.ip_hdrs[ip_hdrs_nr].saddr.u8));
+			memcpy(&fingerprint->base.ip_hdrs[ip_hdrs_nr].daddr.u8, &ipv6->daddr,
+			       sizeof(struct ipv6_addr));
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tdestination address = " IPV6_ADDR_FORMAT,
+			           IPV6_ADDR_RAW(fingerprint->base.ip_hdrs[ip_hdrs_nr].daddr.u8));
+			fingerprint->base.ip_hdrs[ip_hdrs_nr].flow_label = ipv6_get_flow_label(ipv6);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "\tflow label = 0x%x",
+			           fingerprint->base.ip_hdrs[ip_hdrs_nr].flow_label);
+		}
+		else
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "unsupported version %u for header #%zu",
+			           ip->version, ip_hdrs_nr + 1);
+			goto unsupported_ip_hdr;
+		}
+
+		fingerprint->base.ip_hdrs[ip_hdrs_nr].version = ip->version;
+		fingerprint->base.ip_hdrs[ip_hdrs_nr].next_proto = next_proto;
+		pkt_hdrs->ip_hdrs[ip_hdrs_nr].next_proto = next_proto;
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "\tnext protocol = %u", next_proto);
+		fingerprint->base.ip_hdrs_nr++;
+		ip_hdrs_nr++;
+	}
+	while(rohc_is_tunneling(next_proto) && ip_hdrs_nr < ROHC_MAX_IP_HDRS);
+
+	/* remember the number of IP headers and the innermost IP header */
+	assert(ip_hdrs_nr > 0);
+	pkt_hdrs->ip_hdrs_nr = ip_hdrs_nr;
+	pkt_hdrs->innermost_ip_hdr = &(pkt_hdrs->ip_hdrs[ip_hdrs_nr - 1]);
+
+	/* IP headers are supported */
+	(*all_ip_hdrs_len) = packet_len - remain_len;
+	are_ip_hdrs_supported = true;
+
+unsupported_ip_hdr:
+	return are_ip_hdrs_supported;
+}
+
+
+/**
+ * @brief Is the given TCP header supported?
+ *
+ * @param comp                   The ROHC compressor to compress the packet with
+ * @param packet                 The TCP packet to search the best compression
+ *                               profile for
+ * @param packet_len             The length (in bytes) of the uncompressed packet
+ * @param[out] pkt_hdrs          The information collected about the packet
+ *                               headers, may be used later during the detection
+ *                               of changes with the compression context, thus
+ *                               avoiding another packet parsing
+ * @param[out] tcp_hdr_full_len  The length of the TCP header including options
+ * @return                       The ID of the best compression profile to
+ *                               compress the packet
+ */
+static bool rohc_comp_is_tcp_hdr_supported(const struct rohc_comp *const comp,
+                                           const uint8_t *const packet,
+                                           const size_t packet_len,
+                                           struct rohc_pkt_hdrs *const pkt_hdrs,
+                                           size_t *const tcp_hdr_full_len)
+{
+	const uint8_t *remain_data = packet;
+	size_t remain_len = packet_len;
+	const struct tcphdr *tcp_header;
+	bool is_tcp_hdr_supported = false;
+
+	/* innermost IP payload shall be large enough for TCP header */
+	if(remain_len < sizeof(struct tcphdr))
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "innermost IP payload too small for minimal TCP header");
+		goto unsupported_tcp_hdr;
+	}
+
+	/* retrieve the TCP header */
+	tcp_header = (const struct tcphdr *) remain_data;
+	if(tcp_header->data_offset < 5)
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "TCP data offset too small for minimal TCP header");
+		goto unsupported_tcp_hdr;
+	}
+
+	/* is packet large enough for the full TCP header with options? */
+	*tcp_hdr_full_len = tcp_header->data_offset * sizeof(uint32_t);
+	if(remain_len < (*tcp_hdr_full_len))
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "TCP data too small for full TCP header with options");
+		goto unsupported_tcp_hdr;
+	}
+
+	/* reject packets with malformed TCP options or TCP options that are not
+	 * compatible with the TCP profile */
+	if(!rohc_comp_tcp_are_options_acceptable(comp, tcp_header->options,
+	                                         tcp_header->data_offset, pkt_hdrs))
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "malformed or incompatible TCP options detected");
+		goto unsupported_tcp_hdr;
+	}
+
+	/* TCP header is supported */
+	is_tcp_hdr_supported = true;
+
+unsupported_tcp_hdr:
+	return is_tcp_hdr_supported;
+}
+
+
+/**
+ * @brief Is the given RTP header supported?
+ *
+ * @param comp              The ROHC compressor to compress the packet with
+ * @param packet            The uncompressed packet to search the best compression
+ *                          profile for
+ * @param packet_len        The length (in bytes) of the uncompressed packet
+ * @param[out] pkt_hdrs     The information collected about the packet headers,
+ *                          may be used later during the detection of changes
+ *                          with the compression context, thus avoiding another
+ *                          packet parsing
+ * @return                  The ID of the best compression profile to compress
+ *                          the packet
+ */
+static bool rohc_comp_is_rtp_hdr_supported(const struct rohc_comp *const comp,
+                                           const uint8_t *const packet,
+                                           const size_t packet_len,
+                                           struct rohc_pkt_hdrs *const pkt_hdrs)
+{
+	const uint8_t *remain_data = packet;
+	size_t remain_len = packet_len;
+	const uint8_t *udp_payload;
+	unsigned int udp_payload_size;
+	const struct rtphdr *rtp;
+	bool is_rtp = false;
+
+	if(comp->rtp_callback == NULL)
+	{
+		goto unsupported_rtp_hdr;
+	}
+
+	/* UDP payload shall be large enough for RTP header  */
+	if(remain_len < sizeof(struct rtphdr))
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "UDP header is not large enough for RTP header");
+		goto unsupported_rtp_hdr;
+	}
+	udp_payload = (uint8_t *) remain_data;
+	udp_payload_size = remain_len;
+	rtp = (const struct rtphdr *) udp_payload;
+
+	/* RTP packets with one or more CSRC items cannot be compressed by the
+	 * RTP profile for the moment */
+	if(rtp->cc != 0)
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "RTP header is not supported: compression of CSRC items is "
+		           "not supported yet by RTP profile");
+		goto unsupported_rtp_hdr;
+	}
+
+	/* check if the IP/UDP packet is a RTP packet with the user callback
+	   dedicated to RTP stream detection: if the RTP callback returns true,
+	   consider that the packet matches the RTP profile */
+	is_rtp = comp->rtp_callback((const uint8_t *) pkt_hdrs->innermost_ip_hdr->ip,
+	                            (const uint8_t *) pkt_hdrs->udp,
+	                            udp_payload, udp_payload_size,
+	                            comp->rtp_private);
+	if(is_rtp)
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "user said the IP/UDP packet is one IP/UDP/RTP packet");
+	}
+
+unsupported_rtp_hdr:
+	return is_rtp;
+}
+
+
+/**
  * @brief Compress the given uncompressed packet into a ROHC packet
  *
  * Compress the given uncompressed packet into a ROHC packet. The compression
@@ -548,12 +1408,15 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
                              const struct rohc_buf uncomp_packet,
                              struct rohc_buf *const rohc_packet)
 {
-	struct net_pkt ip_pkt;
 	struct rohc_comp_ctxt *c;
 	rohc_packet_t packet_type;
 	int rohc_hdr_size;
-	size_t payload_size;
-	size_t payload_offset;
+
+	const struct rohc_comp_profile *profile;
+	rohc_profile_t profile_id;
+
+	struct rohc_fingerprint fingerprint;
+	struct rohc_pkt_hdrs pkt_hdrs;
 
 	rohc_status_t status = ROHC_STATUS_ERROR; /* error status by default */
 
@@ -601,12 +1464,32 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 		                 "uncompressed data, max 100 bytes", uncomp_packet);
 	}
 
-	/* parse the uncompressed packet */
-	net_pkt_parse(&ip_pkt, uncomp_packet, comp->trace_callback,
-	              comp->trace_callback_priv, ROHC_TRACE_COMP);
+	/* what ROHC profile fits the uncompressed packet best? */
+	profile_id = rohc_comp_get_profile(comp, &uncomp_packet, &fingerprint, &pkt_hdrs);
+	if(profile_id == ROHC_PROFILE_MAX)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "failed to find a matching profile among the enabled profiles "
+		             "for the uncompressed packet");
+		goto error;
+	}
 
-	/* find the best context for the packet */
-	c = rohc_comp_find_ctxt(comp, &ip_pkt, -1, uncomp_packet.time);
+	/* find the profile identified by the given profile ID */
+	{
+		const uint8_t profile_major = (profile_id >> 8) & 0xff;
+		const uint8_t profile_minor = profile_id & 0xff;
+		profile = rohc_comp_profiles[profile_major][profile_minor];
+		if(profile == NULL)
+		{
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "profile '%s' (0x%04x) is not implemented yet",
+			             rohc_get_profile_descr(profile_id), profile_id);
+			goto error;
+		}
+	}
+
+	/* find the best profile context for the packet */
+	c = rohc_comp_find_ctxt(comp, profile, &uncomp_packet, &fingerprint, &pkt_hdrs);
 	if(c == NULL)
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -622,65 +1505,30 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	           "compress the packet #%d", comp->num_packets + 1);
 	rohc_hdr_size =
-		c->profile->encode(c, &ip_pkt, rohc_buf_data(*rohc_packet),
+		c->profile->encode(c, &pkt_hdrs, &uncomp_packet, rohc_buf_data(*rohc_packet),
 		                   rohc_buf_avail_len(*rohc_packet),
-		                   &packet_type, &payload_offset);
+		                   &packet_type);
 	if(rohc_hdr_size < 0)
 	{
-		/* error while compressing, use the Uncompressed profile
-		 * (except if we were already using the Uncompressed profile) */
-		if(c->profile->id == ROHC_PROFILE_UNCOMPRESSED)
-		{
-			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			             "error while compressing with uncompressed profile, "
-			             "giving up");
-			goto error_free_new_context;
-		}
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		             "error while compressing with the profile, using "
-		             "uncompressed profile");
-
-		/* free context if it was just created */
-		if(c->num_sent_packets <= 1)
-		{
-			c->profile->destroy(c);
-			c->used = 0;
-			assert(comp->num_contexts_used > 0);
-			comp->num_contexts_used--;
-		}
-
-		/* find the best context for the Uncompressed profile */
-		c = rohc_comp_find_ctxt(comp, &ip_pkt, ROHC_PROFILE_UNCOMPRESSED,
-		                        uncomp_packet.time);
-		if(c == NULL)
-		{
-			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			             "failed to find a matching Uncompressed context or to "
-			             "create a new Uncompressed context");
-			goto error;
-		}
-
-		/* use the Uncompressed profile to compress the packet */
-		rohc_hdr_size =
-			c->profile->encode(c, &ip_pkt, rohc_buf_data(*rohc_packet),
-			                   rohc_buf_avail_len(*rohc_packet),
-			                   &packet_type, &payload_offset);
-		if(rohc_hdr_size < 0)
-		{
-			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			             "error while compressing with uncompressed profile, "
-			             "giving up");
-			goto error_free_new_context;
-		}
+		             "error while compressing with profile '%s' (0x%04x)",
+		             rohc_get_profile_descr(profile_id), profile_id);
+		goto error_free_new_context;
 	}
 	rohc_packet->len += rohc_hdr_size;
 
+	if(profile_id == ROHCv1_PROFILE_UNCOMPRESSED &&
+	   packet_type == ROHC_PACKET_NORMAL)
+	{
+		pkt_hdrs.all_hdrs_len++;
+		pkt_hdrs.payload_len--;
+	}
+
 	/* the payload starts after the header, skip it */
 	rohc_buf_pull(rohc_packet, rohc_hdr_size);
-	payload_size = ip_pkt.len - payload_offset;
 
 	/* is packet too large for output buffer? */
-	if(payload_size > rohc_buf_avail_len(*rohc_packet))
+	if(pkt_hdrs.payload_len > rohc_buf_avail_len(*rohc_packet))
 	{
 		const size_t max_rohc_buf_len =
 			rohc_buf_avail_len(*rohc_packet) + rohc_hdr_size;
@@ -693,18 +1541,19 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 		          "size = %zd, required output size = %d + %zd = %zd, "
 		          "MRRU = %zd)", rohc_get_packet_descr(packet_type),
 		          uncomp_packet.len, max_rohc_buf_len, rohc_hdr_size,
-		          payload_size, rohc_hdr_size + payload_size, comp->mrru);
+		          pkt_hdrs.payload_len, rohc_hdr_size + pkt_hdrs.payload_len,
+		          comp->mrru);
 
 		/* in order to be segmented, a ROHC packet shall be <= MRRU
 		 * (remember that MRRU includes the CRC length) */
-		if((payload_size + CRC_FCS32_LEN) > comp->mrru)
+		if((pkt_hdrs.payload_len + CRC_FCS32_LEN) > comp->mrru)
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			             "%s ROHC packet cannot be segmented: too large (%d + "
 			             "%zu + %u = %zu bytes) for MRRU (%zu bytes)",
 			             rohc_get_packet_descr(packet_type), rohc_hdr_size,
-			             payload_size, CRC_FCS32_LEN, rohc_hdr_size +
-			             payload_size + CRC_FCS32_LEN, comp->mrru);
+			             pkt_hdrs.payload_len, CRC_FCS32_LEN, rohc_hdr_size +
+			             pkt_hdrs.payload_len + CRC_FCS32_LEN, comp->mrru);
 			goto error_free_new_context;
 		}
 		rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -732,8 +1581,9 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 		comp->rru_len += rohc_hdr_size;
 		/* ROHC payload */
 		memcpy(comp->rru + comp->rru_off + comp->rru_len,
-		       rohc_buf_data_at(uncomp_packet, payload_offset), payload_size);
-		comp->rru_len += payload_size;
+		       rohc_buf_data_at(uncomp_packet, pkt_hdrs.all_hdrs_len),
+		       pkt_hdrs.payload_len);
+		comp->rru_len += pkt_hdrs.payload_len;
 		/* compute FCS-32 CRC over header and payload (optional feedbacks and
 		   the CRC field itself are excluded) */
 		rru_crc = crc_calc_fcs32(comp->rru + comp->rru_off, comp->rru_len,
@@ -756,17 +1606,17 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 	{
 		/* copy full payload after ROHC header */
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "copy full %zd-byte payload", payload_size);
+		           "copy full %zd-byte payload", pkt_hdrs.payload_len);
 		rohc_buf_append(rohc_packet,
-		                rohc_buf_data_at(uncomp_packet, payload_offset),
-		                payload_size);
+		                rohc_buf_data_at(uncomp_packet, pkt_hdrs.all_hdrs_len),
+		                pkt_hdrs.payload_len);
 
 		/* unhide the ROHC header */
 		rohc_buf_push(rohc_packet, rohc_hdr_size);
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "ROHC size = %zd bytes (header = %d, payload = %zu), output "
 		           "buffer size = %zu", rohc_packet->len, rohc_hdr_size,
-		           payload_size, rohc_buf_avail_len(*rohc_packet));
+		           pkt_hdrs.payload_len, rohc_buf_avail_len(*rohc_packet));
 
 		/* report to user that compression was successful */
 		status = ROHC_STATUS_OK;
@@ -784,13 +1634,13 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 
 	c->total_uncompressed_size += uncomp_packet.len;
 	c->total_compressed_size += rohc_packet->len;
-	c->header_uncompressed_size += payload_offset;
+	c->header_uncompressed_size += pkt_hdrs.all_hdrs_len;
 	c->header_compressed_size += rohc_hdr_size;
 	c->num_sent_packets++;
 
 	c->total_last_uncompressed_size = uncomp_packet.len;
 	c->total_last_compressed_size = rohc_packet->len;
-	c->header_last_uncompressed_size = payload_offset;
+	c->header_last_uncompressed_size = pkt_hdrs.all_hdrs_len;
 	c->header_last_compressed_size = rohc_hdr_size;
 
 	/* compression is successful */
@@ -800,6 +1650,19 @@ error_free_new_context:
 	/* free context if it was just created */
 	if(c->num_sent_packets <= 1)
 	{
+		if(c->profile->id == ROHCv1_PROFILE_UNCOMPRESSED)
+		{
+			comp->uncompressed_ctxt = NULL;
+		}
+		else
+		{
+			hashtable_del(&comp->contexts_by_fingerprint, &c->fingerprint);
+			/* TODO: replace TCP by CR capacity */
+			if(c->profile->id == ROHCv1_PROFILE_IP_TCP)
+			{
+				hashtable_cr_del(&comp->contexts_cr, &c->fingerprint);
+			}
+		}
 		c->profile->destroy(c);
 		c->used = 0;
 		assert(comp->num_contexts_used > 0);
@@ -1086,7 +1949,7 @@ bool rohc_comp_force_contexts_reinit(struct rohc_comp *const comp)
 	}
 
 	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	          "force re-initialization for all %zu contexts",
+	          "force re-initialization for all %u contexts",
 	          comp->num_contexts_used);
 
 	for(i = 0; i <= comp->medium.max_cid; i++)
@@ -1096,7 +1959,7 @@ bool rohc_comp_force_contexts_reinit(struct rohc_comp *const comp)
 			if(!rohc_comp_reinit_context(&(comp->contexts[i])))
 			{
 				rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				             "failed to force re-initialization for CID %zu", i);
+				             "failed to force re-initialization for CID %u", i);
 				goto error;
 			}
 		}
@@ -1364,7 +2227,7 @@ bool rohc_comp_set_list_trans_nr(struct rohc_comp *const comp,
 	{
 		return false;
 	}
-	if(list_trans_nr == 0)
+	if(list_trans_nr == 0 || list_trans_nr > UINT8_MAX)
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "invalid "
 		             "value for uncompressed transmissions of list compression "
@@ -1457,35 +2320,23 @@ bool rohc_comp_set_rtp_detection_cb(struct rohc_comp *const comp,
 
 
 /**
- * @brief Get profile index if profile exists
+ * @brief Is the given compression profile enabled for a compressor?
  *
- * @param profile  The profile to enable
- * @return         The profile index if the profile exists,
- *                 -1 if the profile does not exist
+ * @param comp     The ROHC compressor, shall be valid
+ * @param profile  The profile to ask status for
+ * @return         Possible return values:
+ *                  \li true if the profile exists and is enabled,
+ *                  \li false if the profile does not exist,
+ *                  \li false if the profile is disabled
+ *
+ * @see rohc_comp_profile_enabled
  */
-static int rohc_comp_get_profile_index(const rohc_profile_t profile)
+static bool rohc_comp_profile_enabled_nocheck(const struct rohc_comp *const comp,
+                                              const rohc_profile_t profile)
 {
-	size_t idx;
-
-	/* search for the profile location */
-	for(idx = 0; idx < C_NUM_PROFILES; idx++)
-	{
-		if(rohc_comp_profiles[idx]->id == profile)
-		{
-			/* found */
-			break;
-		}
-	}
-
-	if(idx == C_NUM_PROFILES)
-	{
-		goto error;
-	}
-
-	return idx;
-
-error :
-	return -1;
+	const uint8_t profile_major = (profile >> 8) & 0xff;
+	const uint8_t profile_minor = profile & 0xff;
+	return comp->enabled_profiles[profile_major][profile_minor];
 }
 
 
@@ -1511,27 +2362,22 @@ error :
 bool rohc_comp_profile_enabled(const struct rohc_comp *const comp,
                                const rohc_profile_t profile)
 {
-	size_t profile_idx;
-	int ret;
+	const uint8_t profile_major = (profile >> 8) & 0xff;
+	const uint8_t profile_minor = profile & 0xff;
+	bool is_profile_enabled;
 
-	if(comp == NULL)
+	if(comp == NULL ||
+	   profile_major > ROHC_PROFILE_ID_MAJOR_MAX ||
+	   profile_minor > ROHC_PROFILE_ID_MINOR_MAX)
 	{
-		goto error;
+		is_profile_enabled = false;
+	}
+	else
+	{
+		is_profile_enabled = comp->enabled_profiles[profile_major][profile_minor];
 	}
 
-	/* search the profile location */
-	ret = rohc_comp_get_profile_index(profile);
-	if(ret < 0)
-	{
-		goto error;
-	}
-	profile_idx = ret;
-
-	/* return profile status */
-	return comp->enabled_profiles[profile_idx];
-
-error:
-	return false;
+	return is_profile_enabled;
 }
 
 
@@ -1574,26 +2420,24 @@ error:
 bool rohc_comp_enable_profile(struct rohc_comp *const comp,
                               const rohc_profile_t profile)
 {
-	size_t profile_idx;
-	int ret;
+	const uint8_t profile_major = (profile >> 8) & 0xff;
+	const uint8_t profile_minor = profile & 0xff;
 
 	if(comp == NULL)
 	{
 		goto error;
 	}
-
-	/* search the profile location */
-	ret = rohc_comp_get_profile_index(profile);
-	if(ret < 0)
+	if(profile_major > ROHC_PROFILE_ID_MAJOR_MAX ||
+	   profile_minor > ROHC_PROFILE_ID_MINOR_MAX ||
+	   rohc_comp_profiles[profile_major][profile_minor] == NULL)
 	{
 		goto error;
 	}
-	profile_idx = ret;
 
 	/* the same profile cannot be enabled in both ROHCv1 and ROHCv2 versions:
 	 * check if the corresponding profile in the other ROHC version is already
 	 * enabled or not */
-	if(rohc_comp_profile_enabled(comp, rohc_profile_get_other_version(profile)))
+	if(rohc_comp_profile_enabled_nocheck(comp, rohc_profile_get_other_version(profile)))
 	{
 		goto error;
 	}
@@ -1612,7 +2456,7 @@ bool rohc_comp_enable_profile(struct rohc_comp *const comp,
 	}
 
 	/* mark the profile as enabled */
-	comp->enabled_profiles[profile_idx] = true;
+	comp->enabled_profiles[profile_major][profile_minor] = true;
 	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	          "ROHC compression profile (ID = 0x%04x) enabled", profile);
 
@@ -1649,24 +2493,22 @@ error:
 bool rohc_comp_disable_profile(struct rohc_comp *const comp,
                                const rohc_profile_t profile)
 {
-	size_t profile_idx;
-	int ret;
+	const uint8_t profile_major = (profile >> 8) & 0xff;
+	const uint8_t profile_minor = profile & 0xff;
 
 	if(comp == NULL)
 	{
 		goto error;
 	}
-
-	/* search the profile location */
-	ret = rohc_comp_get_profile_index(profile);
-	if(ret < 0)
+	if(profile_major > ROHC_PROFILE_ID_MAJOR_MAX ||
+	   profile_minor > ROHC_PROFILE_ID_MINOR_MAX ||
+	   rohc_comp_profiles[profile_major][profile_minor] == NULL)
 	{
 		goto error;
 	}
-	profile_idx = ret;
 
 	/* mark the profile as disabled */
-	comp->enabled_profiles[profile_idx] = false;
+	comp->enabled_profiles[profile_major][profile_minor] = false;
 	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	          "ROHC compression profile (ID = 0x%04x) disabled", profile);
 
@@ -1849,8 +2691,6 @@ error:
 bool rohc_comp_set_mrru(struct rohc_comp *const comp,
                         const size_t mrru)
 {
-	size_t idx;
-
 	/* compressor must be valid */
 	if(comp == NULL)
 	{
@@ -1877,24 +2717,53 @@ bool rohc_comp_set_mrru(struct rohc_comp *const comp,
 	 */
 	if(mrru > 0)
 	{
-		for(idx = 0; idx < C_NUM_PROFILES; idx++)
+		uint8_t profile_major;
+
+		for(profile_major = 0; profile_major <= ROHC_PROFILE_ID_MAJOR_MAX; profile_major++)
 		{
-			if(comp->enabled_profiles[idx] &&
-			   rohc_profile_is_rohcv2(rohc_comp_profiles[idx]->id))
+			uint8_t profile_minor;
+
+			for(profile_minor = 0; profile_minor <= ROHC_PROFILE_ID_MINOR_MAX; profile_minor++)
 			{
-				rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				             "failed to set MRRU to %zu bytes: segmentation is not "
-				             "compatible with ROHCv2 profile 0x%04x that is enabled",
-				             mrru, rohc_comp_profiles[idx]->id);
-				goto error;
+				const uint16_t profile_id = (profile_major << 8) | profile_minor;
+
+				if(rohc_comp_profile_enabled_nocheck(comp, profile_id) &&
+				   rohc_profile_is_rohcv2(profile_id))
+				{
+					rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+					             "failed to set MRRU to %zu bytes: segmentation is not "
+					             "compatible with ROHCv2 profile 0x%04x that is enabled",
+					             mrru, profile_id);
+					goto error;
+				}
 			}
 		}
 	}
 
 	/* set new MRRU */
+	if(mrru == 0)
+	{
+		comp->rru = NULL;
+	}
+	else
+	{
+		uint8_t *const new_rru_buf = malloc(mrru);
+		if(new_rru_buf == NULL)
+		{
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "failed to set MRRU: failed to allocate %zu bytes "
+			             "of memory for MRRU buffer", mrru);
+			goto error;
+		}
+		if(comp->rru != NULL)
+		{
+			zfree(comp->rru);
+		}
+		comp->rru = new_rru_buf;
+	}
 	comp->mrru = mrru;
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "MRRU is now set to %zd", comp->mrru);
+	           "MRRU is now set to %zu", comp->mrru);
 
 	return true;
 
@@ -2115,7 +2984,7 @@ static bool __rohc_comp_deliver_feedback(struct rohc_comp *const comp,
 	{
 		/* context was not found */
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		             "failed to deliver feedback: context with CID = %zu not found",
+		             "failed to deliver feedback: context with CID %u not found",
 		             cid);
 		goto error;
 	}
@@ -2451,103 +3320,23 @@ const char * rohc_comp_get_state_descr(const rohc_comp_state_t state)
 
 
 /**
- * @brief Find out a ROHC profile given a profile ID
- *
- * @param comp       The ROHC compressor
- * @param profile_id The ID of the ROHC profile to find out
- * @return           The ROHC profile if found, NULL otherwise
- */
-static const struct rohc_comp_profile *
-	rohc_get_profile_from_id(const struct rohc_comp *comp,
-	                         const rohc_profile_t profile_id)
-{
-	size_t i;
-
-	/* test all compression profiles */
-	for(i = 0; i < C_NUM_PROFILES; i++)
-	{
-		/* if the profile IDs match and the profile is enabled */
-		if(rohc_comp_profiles[i]->id == profile_id && comp->enabled_profiles[i])
-		{
-			return rohc_comp_profiles[i];
-		}
-	}
-
-	return NULL;
-}
-
-
-/**
- * @brief Find out a ROHC profile given an IP protocol ID
- *
- * @param comp    The ROHC compressor
- * @param packet  The packet to find a compression profile for
- * @return        The ROHC profile if found, NULL otherwise
- */
-static const struct rohc_comp_profile *
-	c_get_profile_from_packet(const struct rohc_comp *const comp,
-	                          const struct net_pkt *const packet)
-{
-	size_t i;
-
-	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "try to find the best profile for packet with transport "
-	           "protocol %u", packet->transport->proto);
-
-	/* test all compression profiles */
-	for(i = 0; i < C_NUM_PROFILES; i++)
-	{
-		bool check_profile;
-
-		/* skip profile if the profile is not enabled */
-		if(!comp->enabled_profiles[i])
-		{
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "skip disabled profile '%s' (0x%04x)",
-			           rohc_get_profile_descr(rohc_comp_profiles[i]->id),
-			           rohc_comp_profiles[i]->id);
-			continue;
-		}
-
-		/* does the profile accept the packet? */
-		check_profile = rohc_comp_profiles[i]->check_profile(comp, packet);
-		if(!check_profile)
-		{
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "skip profile '%s' (0x%04x) because it does not match "
-			           "packet",rohc_get_profile_descr(rohc_comp_profiles[i]->id),
-			           rohc_comp_profiles[i]->id);
-			continue;
-		}
-
-		/* the packet is compatible with the profile, let's go with it! */
-		return rohc_comp_profiles[i];
-	}
-
-	return NULL;
-}
-
-
-/**
  * @brief Create a compression context
  *
- * @param comp          The ROHC compressor
- * @param profile       The profile to associate the context with
- * @param packet        The packet to create a compression context for
- * @param arrival_time  The time at which packet was received (0 if unknown,
- *                      or to disable time-related features in ROHC protocol)
- * @param do_ctxt_replication  Are we able to replicate an existing context?
- * @param cid_for_replication  The context to replicate if any
- * @return              The compression context if successful, NULL otherwise
+ * @param comp         The ROHC compressor
+ * @param profile      The profile to associate the context with
+ * @param packet       The packet to create a compression context for
+ * @param fingerprint  The packet/context fingerprint
+ * @param pkt_hdrs     The information collected about packet headers
+ * @return             The compression context if successful, NULL otherwise
  */
 static struct rohc_comp_ctxt *
 	c_create_context(struct rohc_comp *const comp,
 	                 const struct rohc_comp_profile *const profile,
-	                 const struct net_pkt *const packet,
-	                 const struct rohc_ts arrival_time,
-	                 const bool do_ctxt_replication,
-	                 const rohc_cid_t cid_for_replication)
+	                 const struct rohc_buf *const packet,
+	                 const struct rohc_fingerprint *const fingerprint,
+	                 const struct rohc_pkt_hdrs *const pkt_hdrs)
 {
+	const struct rohc_comp_ctxt *base_ctxt = NULL;
 	struct rohc_comp_ctxt *c;
 	rohc_cid_t cid_to_use;
 
@@ -2576,12 +3365,27 @@ static struct rohc_comp_ctxt *
 				cid_to_use = i;
 			}
 		}
+		c = &comp->contexts[cid_to_use];
 
 		/* destroy the oldest context before replacing it with a new one */
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "recycle oldest context (CID = %zu)", cid_to_use);
-		comp->contexts[cid_to_use].profile->destroy(&comp->contexts[cid_to_use]);
-		comp->contexts[cid_to_use].used = 0;
+		           "recycle oldest context (CID %u with profile 0x%04x)",
+		           cid_to_use, c->profile->id);
+		if(c->profile->id == ROHCv1_PROFILE_UNCOMPRESSED)
+		{
+			comp->uncompressed_ctxt = NULL;
+		}
+		else
+		{
+			hashtable_del(&comp->contexts_by_fingerprint, &c->fingerprint);
+			/* TODO: replace TCP by CR capacity */
+			if(c->profile->id == ROHCv1_PROFILE_IP_TCP)
+			{
+				hashtable_cr_del(&comp->contexts_cr, &c->fingerprint);
+			}
+		}
+		c->profile->destroy(&comp->contexts[cid_to_use]);
+		c->used = 0;
 		assert(comp->num_contexts_used > 0);
 		comp->num_contexts_used--;
 	}
@@ -2601,39 +3405,117 @@ static struct rohc_comp_ctxt *
 				break;
 			}
 		}
+		c = &comp->contexts[cid_to_use];
 
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "take the first unused context (CID = %zu)", cid_to_use);
+		           "take the first unused context (CID %u)", cid_to_use);
 	}
 
-	/* initialize the previously found context */
-	c = &comp->contexts[cid_to_use];
+	/* search for a possible base context if Context Replication is possible */
+	/* TODO: replace TCP by CR capacity */
+	if(profile->id == ROHCv1_PROFILE_IP_TCP)
+	{
+		size_t best_ctxt_affinity = ROHC_AFFINITY_NONE;
+		struct rohc_comp_ctxt *candidate;
+
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "search a base context for Context Replication");
+
+		/* search for a base context that we may clone the new context from */
+		for(candidate = hashtable_cr_get_first(&comp->contexts_cr, fingerprint);
+		    candidate != NULL;
+		    candidate = hashtable_cr_get_next(&comp->contexts_cr, fingerprint,
+		                                      candidate))
+		{
+			/* context partially matches the fingerprint of the packet */
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "CR: context CID %u shares enough with packet for base context",
+			           candidate->cid);
+
+			/* check if context may be used as a base context */
+			if(!profile->is_cr_possible(candidate, pkt_hdrs))
+			{
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "CR: context CID %u cannot be used as base context: "
+				           "IR-CR packet cannot transmit some differences",
+				           candidate->cid);
+			}
+			else
+			{
+				/* context can be used base context for Context Replication (CR),
+				 * compute how much it shares with packet */
+				rohc_ctxt_affinity_t ctxt_affinity = ROHC_AFFINITY_LOW;
+				if(candidate->fingerprint.src_port == fingerprint->src_port)
+				{
+					ctxt_affinity++;
+				}
+				if(candidate->fingerprint.dst_port == fingerprint->dst_port)
+				{
+					ctxt_affinity++;
+				}
+				assert(ctxt_affinity != ROHC_AFFINITY_HIGH);
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "CR: context CID %u scores %u as base context",
+				           candidate->cid, ctxt_affinity);
+				if(ctxt_affinity > best_ctxt_affinity)
+				{
+					base_ctxt = candidate;
+					best_ctxt_affinity = ctxt_affinity;
+					rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+					           "CR: context CID %u is the best base context found yet",
+					           candidate->cid);
+					if(ctxt_affinity == ROHC_AFFINITY_MED)
+					{
+						rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+						           "CR: maximum affinity reached, stop search");
+						break;
+					}
+				}
+			}
+		}
+
+		if(base_ctxt != NULL)
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "CR: context CID %u is the best base context found",
+			           base_ctxt->cid);
+		}
+		else
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "CR: no context may be used as base context");
+		}
+	}
 
 	/* context replication? */
-	if(do_ctxt_replication && cid_to_use != cid_for_replication)
+	if(base_ctxt != NULL)
 	{
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "create context with CID = %zu as a replication of context "
-		           "with CID %zu", cid_to_use, cid_for_replication);
+		           "create context with CID %u as a replication of context "
+		           "with CID %u", cid_to_use, base_ctxt->cid);
 
 		/* copy the base context, then reset some parts of it */
-		memcpy(c, &(comp->contexts[cid_for_replication]), sizeof(struct rohc_comp_ctxt));
+		memcpy(c, base_ctxt, sizeof(struct rohc_comp_ctxt));
 		c->do_ctxt_replication = true;
-		c->cr_base_cid = cid_for_replication;
+		c->cr_base_cid = base_ctxt->cid;
 		c->cr_count = 0;
+		c->state = ROHC_COMP_STATE_CR;
 	}
 	else
 	{
 		c->do_ctxt_replication = false;
+		c->state = ROHC_COMP_STATE_IR;
 	}
+
+	memcpy(&c->fingerprint, fingerprint, sizeof(struct rohc_fingerprint));
 
 	c->ir_count = 0;
 	c->fo_count = 0;
 	c->so_count = 0;
 	c->go_back_fo_count = 0;
-	c->go_back_fo_time = arrival_time;
+	c->go_back_fo_time = packet->time;
 	c->go_back_ir_count = 0;
-	c->go_back_ir_time = arrival_time;
+	c->go_back_ir_time = packet->time;
 
 	c->total_uncompressed_size = 0;
 	c->total_compressed_size = 0;
@@ -2652,22 +3534,12 @@ static struct rohc_comp_ctxt *
 
 	c->mode = ROHC_U_MODE;
 
-	/* use Context Replication (CR) compressor state instead of IR */
-	if(c->do_ctxt_replication)
-	{
-		c->state = ROHC_COMP_STATE_CR;
-	}
-	else
-	{
-		c->state = ROHC_COMP_STATE_IR;
-	}
-
 	c->compressor = comp;
 
 	/* create profile-specific context */
 	if(c->do_ctxt_replication)
 	{
-		if(!profile->clone(c, &(comp->contexts[cid_for_replication])))
+		if(!profile->clone(c, base_ctxt))
 		{
 			return NULL;
 		}
@@ -2682,15 +3554,78 @@ static struct rohc_comp_ctxt *
 
 	/* if creation is successful, mark the context as used */
 	c->used = 1;
-	c->first_used = arrival_time.sec;
-	c->latest_used = arrival_time.sec;
+	c->first_used = packet->time.sec;
+	c->latest_used = packet->time.sec;
 	assert(comp->num_contexts_used <= comp->medium.max_cid);
 	comp->num_contexts_used++;
 
+	/* insert the context in the hash table of contexts to efficiently find it
+	 * again through its fingerprint */
+	if(profile->id == ROHCv1_PROFILE_UNCOMPRESSED)
+	{
+		comp->uncompressed_ctxt = c;
+	}
+	else
+	{
+		hashtable_add(&comp->contexts_by_fingerprint, &(c->fingerprint), c);
+	}
+
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "context (CID = %zu) created at %" PRIu64 " seconds (num_used = %zu)",
+	           "context (CID %u) created at %" PRIu64 " seconds (num_used = %u)",
 	           c->cid, c->latest_used, comp->num_contexts_used);
 	return c;
+}
+
+
+/**
+ * @brief Compute the affinity between the given packet and context
+ *
+ * @param ctxt             The context to compute the affinity with
+ * @param pkt_fingerprint  The fingerprint of the packet to compute the affinity with
+ * @param pkt_hdrs         The information collected about packet headers
+ * @return                 The affinity between the packet and context
+ */
+static rohc_ctxt_affinity_t
+	rohc_comp_get_ctxt_affinity(const struct rohc_comp_ctxt *const ctxt,
+	                            const struct rohc_fingerprint *const pkt_fingerprint,
+	                            const struct rohc_pkt_hdrs *const pkt_hdrs)
+{
+	size_t affinity;
+
+	/* TODO: replace TCP by CR capacity */
+	assert(pkt_fingerprint->base.profile_id == ROHCv1_PROFILE_IP_TCP);
+	assert(ctxt->profile->id == ROHCv1_PROFILE_IP_TCP);
+
+	if(memcmp(&ctxt->fingerprint.base, &pkt_fingerprint->base,
+	          sizeof(struct rohc_fingerprint_base)) == 0)
+	{
+		/* the TCP context partially matches, it might be used as a base for Context
+		 * Replication (CR) */
+		if(ctxt->profile->is_cr_possible(ctxt, pkt_hdrs))
+		{
+			/* context can be used base context for Context Replication (CR),
+			 * compute how much it shares with packet */
+			affinity = ROHC_AFFINITY_LOW;
+			if(ctxt->fingerprint.src_port == pkt_fingerprint->src_port)
+			{
+				affinity++;
+			}
+			if(ctxt->fingerprint.dst_port == pkt_fingerprint->dst_port)
+			{
+				affinity++;
+			}
+		}
+		else
+		{
+			affinity = ROHC_AFFINITY_NONE;
+		}
+	}
+	else
+	{
+		affinity = ROHC_AFFINITY_NONE;
+	}
+
+	return affinity;
 }
 
 
@@ -2698,178 +3633,105 @@ static struct rohc_comp_ctxt *
  * @brief Find a compression context given an IP packet
  *
  * @param comp             The ROHC compressor
+ * @param profile          The profile to use
  * @param packet           The packet to find a compression context for
- * @param profile_id_hint  If positive, indicate the profile to use
- * @param arrival_time     The time at which packet was received
- *                         (0 if unknown, or to disable time-related features
- *                          in the ROHC protocol)
+ * @param pkt_fingerprint  The packet fingerprint
+ * @param pkt_hdrs         The information collected about packet headers
  * @return                 The context if found or successfully created,
  *                         NULL if not found
  */
 static struct rohc_comp_ctxt *
 	rohc_comp_find_ctxt(struct rohc_comp *const comp,
-	                    const struct net_pkt *const packet,
-	                    const int profile_id_hint,
-	                    const struct rohc_ts arrival_time)
+	                    const struct rohc_comp_profile *const profile,
+	                    const struct rohc_buf *const packet,
+	                    const struct rohc_fingerprint *const pkt_fingerprint,
+	                    const struct rohc_pkt_hdrs *const pkt_hdrs)
 {
-	const struct rohc_comp_profile *profile;
 	struct rohc_comp_ctxt *context;
-	size_t num_used_ctxt_seen = 0;
-	rohc_cid_t i;
 
-	size_t best_cr_score = 0;
-	bool do_ctxt_replication = false;
-	rohc_cid_t best_ctxt_for_replication = ROHC_LARGE_CID_MAX + 1;
-
-	/* use the suggested profile if any, otherwise find the best profile for
-	 * the packet */
-	if(profile_id_hint < 0)
+	/* get the context matching the packet */
+	if(profile->id == ROHCv1_PROFILE_UNCOMPRESSED)
 	{
-		profile = c_get_profile_from_packet(comp, packet);
+		/* there is already one context with the Uncompressed profile, and
+		 * there is no need for several contexts, let's re-use that one */
+		context = comp->uncompressed_ctxt;
 	}
-	else
+	else /* non-Uncompressed profiles */
 	{
-		profile = rohc_get_profile_from_id(comp, profile_id_hint);
-	}
-	if(profile == NULL)
-	{
-		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		             "no profile found for packet, giving up");
-		goto not_found;
-	}
-	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "using profile '%s' (0x%04x)",
-	           rohc_get_profile_descr(profile->id), profile->id);
+		/* search for an existing context matching the packet fingerprint */
+		context = hashtable_get(&comp->contexts_by_fingerprint, pkt_fingerprint);
 
-	/* get the context using help from the profile we just found */
-	for(i = 0; i <= comp->medium.max_cid; i++)
-	{
-		bool is_feedback_channel_available;
-		bool is_static_part_transmitted;
-		bool is_ctxt_established;
-		size_t cr_score = 0;
-
-		context = &comp->contexts[i];
-
-		/* don't even look at unused contexts */
-		if(!context->used)
+		/* hmmm, looks like we could re-use that context ; if Context Replication
+		 * is in action, check that the base context didn't change too much */
+		if(context != NULL &&
+		   profile->id == ROHCv1_PROFILE_IP_TCP && /* TODO: replace TCP by CR capacity */
+		   context->do_ctxt_replication &&
+		   context->state == ROHC_COMP_STATE_CR &&
+		   context->cr_count < MAX_CR_COUNT)
 		{
-			continue;
-		}
-		num_used_ctxt_seen++;
+			/* Context Replication is in action, so check whether the base context
+			 * changed too much to be re-used or not */
+			const struct rohc_comp_ctxt *const base_ctxt =
+				&(comp->contexts[context->cr_base_cid]);
+			rohc_ctxt_affinity_t base_ctxt_affinity;
 
-		/* don't look at contexts with the wrong profile */
-		if(context->profile->id != profile->id)
-		{
-			continue;
-		}
-
-		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "check context CID = %zu with same profile", context->cid);
-
-		/* ask the profile whether the packet matches the context */
-		if(context->profile->check_context(context, packet, &cr_score))
-		{
-			const struct rohc_comp_ctxt *base_ctxt;
-			size_t cr_score_base_ctxt = 0;
-			bool base_ctxt_equals_ctxt;
-
-			/* hmmm, looks like we could re-use that context ; if Context Replication
-			 * is in action, check that the base context didn't change too much */
-			if(!context->do_ctxt_replication ||
-			   context->state != ROHC_COMP_STATE_CR ||
-			   context->cr_count >= MAX_CR_COUNT)
-			{
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "re-using context CID = %zu", context->cid);
-				break;
-			}
-			/* check whether the base context changed too much to be re-used or not */
-			base_ctxt = &(comp->contexts[context->cr_base_cid]);
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "Context Replication in action (%zu/%u packets sent): check "
-			           "for CID %zu whether base context with CID %zu changed too much",
+			           "for CID %u whether base context with CID %u changed too much",
 			           context->cr_count, MAX_CR_COUNT, context->cid, base_ctxt->cid);
-			base_ctxt_equals_ctxt =
-				context->profile->check_context(base_ctxt, packet, &cr_score_base_ctxt);
+
 			/* there are two ways the base context may have changed:
 			 *   - the base context now matches exactly the replicated context
 			 *   - the base context does not share enough with the replicated context */
-			if(!base_ctxt_equals_ctxt && cr_score_base_ctxt > 0)
+			base_ctxt_affinity =
+				rohc_comp_get_ctxt_affinity(base_ctxt, pkt_fingerprint, pkt_hdrs);
+			if(base_ctxt_affinity != ROHC_AFFINITY_NONE)
 			{
 				/* no large change, we may continue the Context Replication */
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "re-using context CID = %zu as a replication of context "
-				           "CID %zu", context->cid, base_ctxt->cid);
-				break;
+				           "re-using context CID %u as a replication of context "
+				           "CID %u", context->cid, base_ctxt->cid);
 			}
-			/* too much change, we need to interrupt the Context Replication */
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "cannot re-use context CID = %zu as replication of context "
-			           "CID %zu, the base context changed too much", context->cid,
-			           base_ctxt->cid);
-			cr_score = 0;
-			/* TODO: destroy that half-opened context */
-		}
-		rohc_comp_debug(context, "context CID %zu scores %zu for Context Replication",
-		                context->cid, cr_score);
-
-		/* several contexts may be used as basis for context replication:
-		 *  - drop the ones that are not fully established with decompressor (fully
-		 *    established means that the static part of the context was explicitly
-		 *    acknowledged by the decompressor through one ACK protected by a CRC),
-		 *  - keep the one that is the nearest from the new stream (more bytes
-		 *    in common) */
-		is_feedback_channel_available = !!(context->mode > ROHC_U_MODE);
-		is_static_part_transmitted = !!(context->state == ROHC_COMP_STATE_FO ||
-		                                context->state == ROHC_COMP_STATE_SO);
-		is_ctxt_established =
-			(is_feedback_channel_available && is_static_part_transmitted);
-		if(is_ctxt_established && cr_score > best_cr_score)
-		{
-			do_ctxt_replication = true;
-			best_ctxt_for_replication = context->cid;
-			best_cr_score = cr_score;
-			rohc_comp_debug(context, "context CID %zu is best for Context Replication",
-			                context->cid);
-		}
-
-		/* if all used contexts were checked, no need go search further */
-		if(num_used_ctxt_seen >= comp->num_contexts_used)
-		{
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "no context was found");
-			context = NULL;
-			break;
+			else
+			{
+				/* too much change, we need to interrupt the Context Replication */
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "cannot re-use context CID %u as replication of context "
+				           "CID %u, the base context changed too much", context->cid,
+				           base_ctxt->cid);
+				context = NULL;
+				/* TODO: destroy that half-opened context */
+			}
 		}
 	}
-	if(context == NULL || i > comp->medium.max_cid)
+
+	if(context != NULL)
 	{
-		/* context not found, create a new one */
+		/* matching context found, update use timestamp */
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "no existing context found for packet, create a new one");
-		context = c_create_context(comp, profile, packet, arrival_time,
-		                           do_ctxt_replication, best_ctxt_for_replication);
+		           "re-using context CID %u", context->cid);
+		context->latest_used = packet->time.sec;
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "context (CID %u) used at %" PRIu64 " seconds",
+		           context->cid, context->latest_used);
+	}
+	else /* context not found, create a new one */
+	{
+
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "no existing context found for packet, create it");
+
+		/* create the new context from packet (and from the base context if
+		 * Context Replication is possible) */
+		context = c_create_context(comp, profile, packet, pkt_fingerprint, pkt_hdrs);
 		if(context == NULL)
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			             "failed to create a new context");
-			goto not_found;
 		}
-	}
-	else
-	{
-		/* matching context found, update use timestamp */
-		context->latest_used = arrival_time.sec;
-		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "context (CID = %zu) used at %" PRIu64 " seconds",
-		           context->cid, context->latest_used);
 	}
 
 	return context;
-
-not_found:
-	return NULL;
 }
 
 
@@ -2915,7 +3777,7 @@ static bool c_create_contexts(struct rohc_comp *const comp)
 	comp->num_contexts_used = 0;
 
 	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	          "create enough room for %zu contexts (MAX_CID = %zu)",
+	          "create enough room for %u contexts (MAX_CID = %u)",
 	          comp->medium.max_cid + 1, comp->medium.max_cid);
 
 	comp->contexts = calloc(comp->medium.max_cid + 1,
@@ -2996,9 +3858,34 @@ void rohc_comp_change_mode(struct rohc_comp_ctxt *const context,
 
 		/* change mode and go back to IR state */
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		          "CID %zu: change from mode %d to mode %d",
+		          "CID %u: change from mode %d to mode %d",
 		          context->cid, context->mode, new_mode);
 		context->mode = new_mode;
+
+		/* the context can be used as a base context for Context Replication
+		 * if it is fully established with the remote decompressor: fully
+		 * established means that the static part of the context was explicitly
+		 * acknowledged by the decompressor through one ACK protected by a CRC
+		 */
+		if(context->profile->id == ROHCv1_PROFILE_IP_TCP) /* TODO: replace TCP by CR capacity */
+		{
+			if(context->mode > ROHC_U_MODE &&
+			   (context->state == ROHC_COMP_STATE_FO ||
+			    context->state == ROHC_COMP_STATE_SO))
+			{
+				rohc_comp_debug(context, "CR: context CID %u is considered as "
+				                "established", context->cid);
+				hashtable_cr_add(&context->compressor->contexts_cr,
+				                 &context->fingerprint, context);
+			}
+			else
+			{
+				rohc_comp_debug(context, "CR: context CID %u is not considered as "
+				                "established", context->cid);
+				hashtable_cr_del(&context->compressor->contexts_cr,
+				                 &context->fingerprint);
+			}
+		}
 	}
 }
 
@@ -3015,7 +3902,7 @@ void rohc_comp_change_state(struct rohc_comp_ctxt *const context,
 	if(new_state != context->state)
 	{
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		          "CID %zu: change from state %d to state %d",
+		          "CID %u: change from state %d to state %d",
 		          context->cid, context->state, new_state);
 
 		/* reset counters */
@@ -3025,6 +3912,31 @@ void rohc_comp_change_state(struct rohc_comp_ctxt *const context,
 
 		/* change state */
 		context->state = new_state;
+
+		/* the context can be used as a base context for Context Replication
+		 * if it is fully established with the remote decompressor: fully
+		 * established means that the static part of the context was explicitly
+		 * acknowledged by the decompressor through one ACK protected by a CRC
+		 */
+		if(context->profile->id == ROHCv1_PROFILE_IP_TCP) /* TODO: replace TCP by CR capacity */
+		{
+			if(context->mode > ROHC_U_MODE &&
+			   (context->state == ROHC_COMP_STATE_FO ||
+			    context->state == ROHC_COMP_STATE_SO))
+			{
+				rohc_comp_debug(context, "CR: context CID %u is considered as "
+				                "established", context->cid);
+				hashtable_cr_add(&context->compressor->contexts_cr,
+				                 &context->fingerprint, context);
+			}
+			else
+			{
+				rohc_comp_debug(context, "CR: context CID %u is not considered as "
+				                "established", context->cid);
+				hashtable_cr_del(&context->compressor->contexts_cr,
+				                 &context->fingerprint);
+			}
+		}
 	}
 }
 
@@ -3042,7 +3954,7 @@ void rohc_comp_periodic_down_transition(struct rohc_comp_ctxt *const context,
 	rohc_comp_state_t next_state;
 
 	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-	           "CID %zu: timeouts for periodic refreshes: FO = %zu / %zu, "
+	           "CID %u: timeouts for periodic refreshes: FO = %zu / %zu, "
 	           "IR = %zu / %zu", context->cid, context->go_back_fo_count,
 	           context->compressor->periodic_refreshes_fo_timeout_pkts,
 	           context->go_back_ir_count,
@@ -3052,7 +3964,7 @@ void rohc_comp_periodic_down_transition(struct rohc_comp_ctxt *const context,
 	   context->compressor->periodic_refreshes_ir_timeout_pkts)
 	{
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		          "CID %zu: periodic change to IR state", context->cid);
+		          "CID %u: periodic change to IR state", context->cid);
 		context->go_back_ir_count = 0;
 		next_state = ROHC_COMP_STATE_IR;
 	}
@@ -3063,7 +3975,7 @@ void rohc_comp_periodic_down_transition(struct rohc_comp_ctxt *const context,
 		const uint64_t interval_since_ir_refresh =
 			rohc_time_interval(context->go_back_ir_time, pkt_time);
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		          "CID %zu: force IR refresh since %" PRIu64 " us elapsed since "
+		          "CID %u: force IR refresh since %" PRIu64 " us elapsed since "
 		          "last IR packet", context->cid, interval_since_ir_refresh);
 		context->go_back_ir_count = 0;
 		next_state = ROHC_COMP_STATE_IR;
@@ -3072,7 +3984,7 @@ void rohc_comp_periodic_down_transition(struct rohc_comp_ctxt *const context,
 	        context->compressor->periodic_refreshes_fo_timeout_pkts)
 	{
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		          "CID %zu: periodic change to FO state", context->cid);
+		          "CID %u: periodic change to FO state", context->cid);
 		context->go_back_fo_count = 0;
 		next_state = ROHC_COMP_STATE_FO;
 	}
@@ -3083,7 +3995,7 @@ void rohc_comp_periodic_down_transition(struct rohc_comp_ctxt *const context,
 		const uint64_t interval_since_fo_refresh =
 			rohc_time_interval(context->go_back_fo_time, pkt_time);
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		          "CID %zu: force FO refresh since %" PRIu64 " us elapsed since "
+		          "CID %u: force FO refresh since %" PRIu64 " us elapsed since "
 		          "last FO packet", context->cid, interval_since_fo_refresh);
 		context->go_back_fo_count = 0;
 		next_state = ROHC_COMP_STATE_FO;
@@ -3191,7 +4103,7 @@ static bool rohc_comp_feedback_parse_cid(const struct rohc_comp *const comp,
 	}
 
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "feedback CID = %zu", *cid);
+	           "feedback CID %u", *cid);
 
 	return true;
 
@@ -3334,13 +4246,12 @@ bool rohc_comp_feedback_parse_opts(const struct rohc_comp_ctxt *const context,
 
 		/* compute the CRC of the feedback packet (skip CRC byte) */
 		crc_computed = crc_calculate(ROHC_CRC_TYPE_8, packet,
-		                             packet_len - crc_pos_from_end, CRC_INIT_8,
-		                             context->compressor->crc_table_8);
+		                             packet_len - crc_pos_from_end, CRC_INIT_8);
 		crc_computed = crc_calculate(ROHC_CRC_TYPE_8, &zeroed_crc, zeroed_crc_len,
-		                             crc_computed, context->compressor->crc_table_8);
+		                             crc_computed);
 		crc_computed = crc_calculate(ROHC_CRC_TYPE_8, packet + packet_len -
 		                             crc_pos_from_end + 1, crc_pos_from_end - 1,
-		                             crc_computed, context->compressor->crc_table_8);
+		                             crc_computed);
 
 		/* ignore feedback in case of bad CRC */
 		if(crc_in_packet != crc_computed)

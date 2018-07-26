@@ -32,17 +32,17 @@
 #include "rohc_comp_internals.h"
 #include "ip.h"
 #include "protocols/tcp.h"
+#include "c_tcp_defines.h"
 
 #include <stdint.h>
 #include <stdlib.h>
 
 int tcp_code_irreg_chain(struct rohc_comp_ctxt *const context,
-                         const struct ip_packet *const ip,
-                         const uint8_t ip_inner_ecn,
-                         const struct tcphdr *const tcp,
+                         const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                         const struct tcp_tmp_variables *const tmp,
                          uint8_t *const rohc_pkt,
                          const size_t rohc_pkt_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 
 #endif /* ROHC_COMP_TCP_IRREGULAR_H */
 

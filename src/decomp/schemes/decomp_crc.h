@@ -34,12 +34,11 @@
 #include <stdbool.h>
 
 
-bool rohc_decomp_check_uncomp_crc(const struct rohc_decomp *const decomp,
-                                  const struct rohc_decomp_ctxt *const context,
+bool rohc_decomp_check_uncomp_crc(const struct rohc_decomp_ctxt *const context,
                                   struct rohc_buf *const uncomp_hdrs,
                                   const rohc_crc_type_t crc_type,
                                   const uint8_t crc_packet)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 #endif
 

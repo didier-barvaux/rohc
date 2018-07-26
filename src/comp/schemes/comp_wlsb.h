@@ -32,6 +32,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 
 /*
@@ -43,11 +44,22 @@
  */
 struct c_window
 {
-	bool used;       /**< Whether the window entry is used or not */
 	uint32_t sn;     /**< The Sequence Number (SN) associated with the entry
 	                      (used to acknowledge the entry) */
 	uint32_t value;  /**< The value stored in the window entry */
 };
+
+/* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
+#if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
+     (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
+      (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
+_Static_assert((offsetof(struct c_window, sn) % 8) == 0,
+               "sn in c_window should be aligned on 8 bytes");
+_Static_assert((offsetof(struct c_window, value) % 4) == 0,
+               "value in c_window should be aligned on 4 bytes");
+_Static_assert((sizeof(struct c_window) % 8) == 0,
+               "c_window length should be multiple of 8 bytes");
+#endif
 
 
 /**
@@ -55,35 +67,43 @@ struct c_window
  */
 struct c_wlsb
 {
-	/** The width of the window */
-	size_t window_width; /* TODO: R-mode needs a non-fixed window width */
+	/** The window in which previous values of the encoded value are stored */
+	struct c_window *window;
 
-	/** A pointer on the oldest entry in the window (change on acknowledgement) */
-	size_t oldest;
-	/** A pointer on the current entry in the window  (change on add and ack) */
-	size_t next;
+	/** The width of the window */
+	uint8_t window_width; /* TODO: R-mode needs a non-fixed window width */
+
+	/** A pointer on the next entry in the window */
+	uint8_t next;
 
 	/** The count of entries in the window */
-	size_t count;
+	uint8_t count;
 
-	/** The maximal number of bits for representing the value */
-	size_t bits;
-	/** The shift parameter (see 4.5.2 in the RFC 3095) */
-	rohc_lsb_shift_t p;
-
-	/** The window in which previous values of the encoded value are stored */
-	struct c_window window[ROHC_WLSB_WIDTH_MAX];
 };
+
+/* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
+#if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
+     (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
+      (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
+_Static_assert((offsetof(struct c_wlsb, window) % 8) == 0,
+               "window in c_wlsb should be aligned on 8 bytes");
+_Static_assert((sizeof(struct c_wlsb) % 8) == 0,
+               "c_wlsb length should be multiple of 8 bytes");
+#endif
+
 
 
 /*
  * Public function prototypes:
  */
 
-void wlsb_init(struct c_wlsb *const wlsb,
-               const size_t bits,
-               const size_t window_width,
-               const rohc_lsb_shift_t p)
+bool wlsb_new(struct c_wlsb *const wlsb,
+              const size_t window_width)
+	__attribute__((warn_unused_result, nonnull(1)));
+bool wlsb_copy(struct c_wlsb *const dst,
+               const struct c_wlsb *const src)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
+void wlsb_free(struct c_wlsb *const wlsb)
 	__attribute__((nonnull(1)));
 
 void c_add_wlsb(struct c_wlsb *const wlsb,
@@ -91,53 +111,16 @@ void c_add_wlsb(struct c_wlsb *const wlsb,
                 const uint32_t value)
 	__attribute__((nonnull(1)));
 
-size_t wlsb_get_k_8bits(const struct c_wlsb *const wlsb,
-                        const uint8_t value)
-	__attribute__((warn_unused_result, nonnull(1)));
-size_t wlsb_get_kp_8bits(const struct c_wlsb *const wlsb,
-                         const uint8_t value,
-                         const rohc_lsb_shift_t p)
-	__attribute__((warn_unused_result, nonnull(1)));
-
 bool wlsb_is_kp_possible_8bits(const struct c_wlsb *const wlsb,
                                const uint8_t value,
                                const size_t k,
                                const rohc_lsb_shift_t p)
 	__attribute__((warn_unused_result, nonnull(1)));
 
-size_t wlsb_get_k_16bits(const struct c_wlsb *const wlsb,
-                         const uint16_t value)
-	__attribute__((warn_unused_result, nonnull(1)));
-size_t wlsb_get_mink_16bits(const struct c_wlsb *const wlsb,
-                            const uint16_t value,
-                            const size_t min_k)
-	__attribute__((warn_unused_result, nonnull(1)));
-size_t wlsb_get_kp_16bits(const struct c_wlsb *const wlsb,
-                          const uint16_t value,
-                          const rohc_lsb_shift_t p)
-	__attribute__((warn_unused_result, nonnull(1)));
-size_t wlsb_get_minkp_16bits(const struct c_wlsb *const wlsb,
-                             const uint16_t value,
-                             const size_t min_k,
-                             const rohc_lsb_shift_t p)
-	__attribute__((warn_unused_result, nonnull(1)));
-
 bool wlsb_is_kp_possible_16bits(const struct c_wlsb *const wlsb,
                                 const uint16_t value,
                                 const size_t k,
                                 const rohc_lsb_shift_t p)
-	__attribute__((warn_unused_result, nonnull(1)));
-
-size_t wlsb_get_k_32bits(const struct c_wlsb *const wlsb,
-                         const uint32_t value)
-	__attribute__((warn_unused_result, nonnull(1)));
-size_t wlsb_get_mink_32bits(const struct c_wlsb *const wlsb,
-                            const uint32_t value,
-                            const size_t min_k)
-	__attribute__((warn_unused_result, nonnull(1)));
-size_t wlsb_get_kp_32bits(const struct c_wlsb *const wlsb,
-                          const uint32_t value,
-                          const rohc_lsb_shift_t p)
 	__attribute__((warn_unused_result, nonnull(1)));
 
 bool wlsb_is_kp_possible_32bits(const struct c_wlsb *const wlsb,

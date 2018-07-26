@@ -33,6 +33,8 @@
 #include "rohc_traces.h"
 #include <rohc/rohc_buf.h>
 
+#ifndef ROHC_NO_TRACES
+
 #include <stdlib.h>
 #include <assert.h>
 
@@ -77,6 +79,23 @@
 	rohc_print(entity_struct, ROHC_TRACE_ERROR, entity, profile, \
 	           format, ##__VA_ARGS__)
 
+#else
+
+#define __rohc_print(trace_cb, trace_cb_priv, \
+                     level, entity, profile, format, ...) \
+	do { } while(0)
+#define rohc_debug(entity_struct, entity, profile, format, ...) \
+	do { } while(0)
+#define rohc_info(entity_struct, entity, profile, format, ...) \
+	do { } while(0)
+#define rohc_warning(entity_struct, entity, profile, format, ...) \
+	do { } while(0)
+#define rohc_error(entity_struct, entity, profile, format, ...) \
+	do { } while(0)
+
+#endif
+
+
 /**
  * @brief Stop processing if the given condition is false
  *
@@ -98,6 +117,8 @@
 	} while(0)
 
 
+#ifndef ROHC_NO_TRACES
+
 void rohc_dump_packet(const rohc_trace_callback2_t trace_cb,
                       void *const trace_cb_priv,
                       const rohc_trace_entity_t trace_entity,
@@ -114,6 +135,15 @@ void rohc_dump_buf(const rohc_trace_callback2_t trace_cb,
                    const uint8_t *const packet,
                    const size_t length)
 	__attribute__((nonnull(5, 6)));
+
+#else
+#define rohc_dump_packet(trace_cb, trace_cb_priv, trace_entity, trace_level, \
+                         descr, packet) \
+	do { } while(0)
+#define rohc_dump_buf(trace_cb, trace_cb_priv, trace_entity, trace_level, \
+                      descr, packet, length) \
+	do { } while(0)
+#endif
 
 #endif
 

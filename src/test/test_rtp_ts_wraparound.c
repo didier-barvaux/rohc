@@ -138,11 +138,17 @@ bool run_test(bool be_verbose, const unsigned int incr)
 	unsigned int real_incr;
 
 	int is_success = false; /* test fails by default */
+	int ret;
 
 	uint64_t i;
 
 	/* create the RTP TS encoding context */
-	c_init_sc(&ts_sc_comp, ROHC_WLSB_WINDOW_WIDTH, NULL, NULL);
+	ret = c_create_sc(&ts_sc_comp, ROHC_WLSB_WINDOW_WIDTH, NULL, NULL);
+	if(ret != 1)
+	{
+		fprintf(stderr, "failed to initialize the RTP TS encoding context\n");
+		goto error;
+	}
 
 	/* create the RTP TS decoding context */
 	d_init_sc(&ts_sc_decomp, NULL, NULL);
@@ -162,8 +168,7 @@ bool run_test(bool be_verbose, const unsigned int incr)
 	 * and [0, 49 * incr] */
 	for(i = 1; i < 100; i++)
 	{
-		size_t required_bits_less_equal_than_2;
-		size_t required_bits_more_than_2;
+		size_t required_bits;
 		uint32_t required_bits_mask;
 		uint32_t ts_stride;
 
@@ -201,18 +206,16 @@ bool run_test(bool be_verbose, const unsigned int incr)
 				/* transmit all bits without encoding */
 				trace(be_verbose, "\t\ttransmit all bits without encoding\n");
 				value_encoded = value;
-				required_bits_less_equal_than_2 = 32;
-				required_bits_more_than_2 = 32;
+				required_bits = 32;
 				/* change for INIT_STRIDE state */
 				ts_sc_comp.state = INIT_STRIDE;
 				/* simulate transmission */
 				/* decode received unscaled TS */
 				if(!ts_decode_unscaled_bits(&ts_sc_decomp, value_encoded,
-				                            required_bits_more_than_2,
-				                            &value_decoded))
+				                            required_bits, &value_decoded))
 				{
 					trace(be_verbose, "failed to decode received absolute unscaled TS\n");
-					goto error;
+					goto destroy_ts_sc_comp;
 				}
 				break;
 
@@ -222,8 +225,7 @@ bool run_test(bool be_verbose, const unsigned int incr)
 				      "and TS_STRIDE\n");
 				value_encoded = value;
 				ts_stride = get_ts_stride(&ts_sc_comp);
-				required_bits_less_equal_than_2 = 32;
-				required_bits_more_than_2 = 32;
+				required_bits = 32;
 				/* change for INIT_STRIDE state? */
 				ts_sc_comp.nr_init_stride_packets++;
 				if(ts_sc_comp.nr_init_stride_packets >= ROHC_INIT_TS_STRIDE_MIN)
@@ -233,11 +235,10 @@ bool run_test(bool be_verbose, const unsigned int incr)
 				/* simulate transmission */
 				/* decode received unscaled TS */
 				if(!ts_decode_unscaled_bits(&ts_sc_decomp, value_encoded,
-				                            required_bits_more_than_2,
-				                            &value_decoded))
+				                            required_bits, &value_decoded))
 				{
 					trace(be_verbose, "failed to decode received unscaled TS\n");
-					goto error;
+					goto destroy_ts_sc_comp;
 				}
 				d_record_ts_stride(&ts_sc_decomp, ts_stride);
 				break;
@@ -248,44 +249,30 @@ bool run_test(bool be_verbose, const unsigned int incr)
 				/* get TS_SCALED */
 				value_encoded = get_ts_scaled(&ts_sc_comp);
 				/* determine how many bits of TS_SCALED we need to send */
-				nb_bits_scaled(&ts_sc_comp, &required_bits_less_equal_than_2,
-				               &required_bits_more_than_2);
-				assert(required_bits_less_equal_than_2 <= 32);
-				assert(required_bits_more_than_2 <= 32);
+				required_bits = nb_bits_scaled(&ts_sc_comp);
+				assert(required_bits <= 32);
 				/* truncate the encoded TS_SCALED to the number of bits we send */
-				if(required_bits_more_than_2 == 32)
+				if(required_bits == 32)
 				{
 					required_bits_mask = 0xffffffff;
 				}
-				else if(required_bits_less_equal_than_2 <= 2)
-				{
-					required_bits_mask = (1 << required_bits_less_equal_than_2) - 1;
-				}
-				else if(required_bits_more_than_2 > 2)
-				{
-					required_bits_mask = (1 << required_bits_more_than_2) - 1;
-				}
 				else
 				{
-					assert(0);
+					required_bits_mask = (1 << required_bits) - 1;
 				}
 				value_encoded = value_encoded & required_bits_mask;
 				/* save the new TS_SCALED value */
 				add_scaled(&ts_sc_comp, i);
 				/* simulate transmission */
 				/* decode TS */
-				if(required_bits_less_equal_than_2 > 0 || required_bits_more_than_2 > 0)
+				if(required_bits > 0)
 				{
-					const size_t required_bits =
-						(required_bits_less_equal_than_2 <= 2 ?
-						 required_bits_less_equal_than_2 : required_bits_more_than_2);
-
 					/* decode the received TS_SCALED value */
 					if(!ts_decode_scaled_bits(&ts_sc_decomp, value_encoded,
 					                          required_bits, &value_decoded))
 					{
 						trace(be_verbose, "failed to decode received TS_SCALED\n");
-						goto error;
+						goto destroy_ts_sc_comp;
 					}
 				}
 				else
@@ -298,18 +285,17 @@ bool run_test(bool be_verbose, const unsigned int incr)
 				trace(be_verbose, "unknown RTP TS encoding state, "
 				      "should not happen\n");
 				assert(0);
-				goto error;
+				goto destroy_ts_sc_comp;
 		}
-		trace(be_verbose, "\t\tencoded on %zu/2 or %zu/32 bits: 0x%04x\n",
-		      required_bits_less_equal_than_2, required_bits_more_than_2,
-		      value_encoded);
+		trace(be_verbose, "\t\tencoded on %zu bits: 0x%04x\n",
+		      required_bits, value_encoded);
 
 		/* check test result */
 		if(value != value_decoded)
 		{
 			fprintf(stderr, "original and decoded values do not match while "
 			        "testing value 0x%08x\n", value);
-			goto error;
+			goto destroy_ts_sc_comp;
 		}
 
 		/* update decoding context */
@@ -320,6 +306,8 @@ bool run_test(bool be_verbose, const unsigned int incr)
 	trace(be_verbose, "\ttest is successful\n");
 	is_success = true;
 
+destroy_ts_sc_comp:
+	c_destroy_sc(&ts_sc_comp);
 error:
 	return is_success;
 }

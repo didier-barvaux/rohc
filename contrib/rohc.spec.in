@@ -119,7 +119,6 @@ sed -i -e 's|-Wframe-larger-than=1024||g' configure
 %build
 # configure for tools, doc and tests
 %configure \
-	--enable-app-performance \
 %if %{rohc_sniffer}
 	--enable-app-sniffer \
 %endif
@@ -184,8 +183,6 @@ rm -rf %{buildroot}
 %files tools
 %defattr(0644, root, root, 0755)
 # library tools
-%{_bindir}/rohc_test_performance
-%{_bindir}/rohc_gen_stream
 %{_bindir}/rohc_stats
 %{_bindir}/rohc_stats.sh
 %if %{rohc_sniffer}

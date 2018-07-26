@@ -104,32 +104,3 @@ void net_pkt_parse(struct net_pkt *const packet,
 	}
 }
 
-
-/**
- * @brief Get the offset of the IP payload in the given packet
- *
- * The payload begins after the innermost IP header (and its extension headers).
- *
- * @param packet  The packet to get the payload offset for
- * @return        The payload offset (in bytes)
- */
-size_t net_pkt_get_payload_offset(const struct net_pkt *const packet)
-{
-	size_t payload_offset;
-
-	/* outer IP header (and its extension headers) if any */
-	payload_offset = ip_get_hdrlen(&packet->outer_ip) +
-	                 ip_get_total_extension_size(&packet->outer_ip);
-
-	/* inner IP header (and its extension headers) if any */
-	if(packet->ip_hdr_nr > 1)
-	{
-		payload_offset += ip_get_hdrlen(&packet->inner_ip) +
-		                  ip_get_total_extension_size(&packet->inner_ip);
-	}
-
-	/* the length of the transport header depends on the compression profile */
-
-	return payload_offset;
-}
-
