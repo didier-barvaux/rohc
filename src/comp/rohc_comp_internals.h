@@ -189,8 +189,6 @@ struct rohc_comp
 	uint64_t periodic_refreshes_fo_timeout_time;
 	/** Maximum Reconstructed Reception Unit */
 	size_t mrru;
-	/** The connection type (currently not used) */
-	int connection_type;
 
 	/** The callback function used to manage traces */
 	rohc_trace_callback2_t trace_callback;
