@@ -398,8 +398,8 @@ size_t wlsb_ack(struct c_wlsb *const wlsb,
 	size_t entry = wlsb->next;
 	uint32_t sn_mask;
 	bool do_remove = false;
-	uint32_t sn;
-	uint32_t value;
+	uint32_t sn = wlsb->window[entry].sn;
+	uint32_t value = wlsb->window[entry].value;
 	uint8_t i;
 	size_t acked_nr = 0;
 
