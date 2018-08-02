@@ -172,7 +172,7 @@ bool detect_ipv6_ext_changes(struct list_comp *const comp,
 		comp->lists[new_cur_id].counter = 0;
 	}
 	else if(new_cur_id != ROHC_LIST_GEN_ID_NONE &&
-	        comp->lists[new_cur_id].counter < comp->list_trans_nr)
+	        comp->lists[new_cur_id].counter < comp->oa_repetitions_nr)
 	{
 		rc_list_debug(comp, "send some bits for extension header list of the "
 		              "IPv6 header because it was not sent enough times");
@@ -291,7 +291,7 @@ static bool build_ipv6_ext_pkt_list(struct list_comp *const comp,
 		              pkt_list->items_nr, ext->type,
 		              (entry_changed ? "updated" : "existing"), index_table,
 		              comp->trans_table[index_table].known ? "known" : "not-yet-known",
-		              comp->trans_table[index_table].counter, comp->list_trans_nr);
+		              comp->trans_table[index_table].counter, comp->oa_repetitions_nr);
 	}
 
 	return true;
@@ -391,7 +391,7 @@ void rohc_list_update_context(struct list_comp *const comp)
 		if(!comp->lists[comp->cur_id].items[i]->known)
 		{
 			comp->lists[comp->cur_id].items[i]->counter++;
-			if(comp->lists[comp->cur_id].items[i]->counter >= comp->list_trans_nr)
+			if(comp->lists[comp->cur_id].items[i]->counter >= comp->oa_repetitions_nr)
 			{
 				comp->lists[comp->cur_id].items[i]->known = true;
 			}
@@ -399,17 +399,17 @@ void rohc_list_update_context(struct list_comp *const comp)
 	}
 
 	/* current list was sent once more, do we update the reference list? */
-	if(comp->lists[comp->cur_id].counter < comp->list_trans_nr)
+	if(comp->lists[comp->cur_id].counter < comp->oa_repetitions_nr)
 	{
 		comp->lists[comp->cur_id].counter++;
 		rc_list_debug(comp, "current list (gen_id = %u) was sent %u/%u times",
 		              comp->cur_id, comp->lists[comp->cur_id].counter,
-		              comp->list_trans_nr);
+		              comp->oa_repetitions_nr);
 
 		/* do we update the reference list? */
 		if(comp->cur_id != comp->ref_id &&
 		   comp->cur_id != ROHC_LIST_GEN_ID_ANON &&
-		   comp->lists[comp->cur_id].counter >= comp->list_trans_nr)
+		   comp->lists[comp->cur_id].counter >= comp->oa_repetitions_nr)
 		{
 			if(comp->ref_id != ROHC_LIST_GEN_ID_NONE)
 			{
@@ -417,7 +417,7 @@ void rohc_list_update_context(struct list_comp *const comp)
 				rc_list_debug(comp, "replace the reference list (gen_id = %u) by "
 				              "current list (gen_id = %u) because it was "
 				              "transmitted at least L = %u times",
-				              comp->ref_id, comp->cur_id, comp->list_trans_nr);
+				              comp->ref_id, comp->cur_id, comp->oa_repetitions_nr);
 			}
 			else
 			{
@@ -425,7 +425,7 @@ void rohc_list_update_context(struct list_comp *const comp)
 				rc_list_debug(comp, "use the current list (gen_id = %u) as the "
 				              "first reference list because it was transmitted "
 				              "at least L = %u times", comp->cur_id,
-				              comp->list_trans_nr);
+				              comp->oa_repetitions_nr);
 			}
 			comp->ref_id = comp->cur_id;
 		}

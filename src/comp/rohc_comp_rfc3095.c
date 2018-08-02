@@ -75,11 +75,10 @@
 
 static bool ip_header_info_new(struct ip_header_info *const header_info,
                                const struct ip_packet *const ip,
-                               const size_t list_trans_nr,
-                               const size_t wlsb_window_width,
+                               const size_t oa_repetitions_nr,
+                               const int profile_id,
                                rohc_trace_callback2_t trace_cb,
-                               void *const trace_cb_priv,
-                               const int profile_id)
+                               void *const trace_cb_priv)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 static void ip_header_info_free(struct ip_header_info *const header_info)
 	__attribute__((nonnull(1)));
@@ -437,22 +436,18 @@ static bool is_field_changed(const unsigned short changed_fields,
  *
  * @param header_info        The IP header info to initialize
  * @param ip                 The IP header
- * @param list_trans_nr      The number of uncompressed transmissions for
- *                           list compression (L)
- * @param wlsb_window_width  The width of the W-LSB sliding window for IPv4
- *                           IP-ID (must be > 0)
+ * @param oa_repetitions_nr  The number of repetitions for Optimistic Approach
+ * @param profile_id         The ID of the associated compression profile
  * @param trace_cb           The function to call for printing traces
  * @param trace_cb_priv      An optional private context, may be NULL
- * @param profile_id         The ID of the associated compression profile
  * @return                   true if successful, false otherwise
  */
 static bool ip_header_info_new(struct ip_header_info *const header_info,
                                const struct ip_packet *const ip,
-                               const size_t list_trans_nr,
-                               const size_t wlsb_window_width,
+                               const size_t oa_repetitions_nr,
+                               const int profile_id,
                                rohc_trace_callback2_t trace_cb,
-                               void *const trace_cb_priv,
-                               const int profile_id)
+                               void *const trace_cb_priv)
 {
 	/* store the IP version in the header info */
 	header_info->version = ip_get_version(ip);
@@ -466,7 +461,7 @@ static bool ip_header_info_new(struct ip_header_info *const header_info,
 	{
 		/* init the parameters to encode the IP-ID with W-LSB encoding */
 		const bool is_ok =
-			wlsb_new(&header_info->info.v4.ip_id_window, wlsb_window_width);
+			wlsb_new(&header_info->info.v4.ip_id_window, oa_repetitions_nr);
 		if(!is_ok)
 		{
 			__rohc_print(trace_cb, trace_cb_priv, ROHC_TRACE_ERROR,
@@ -488,8 +483,8 @@ static bool ip_header_info_new(struct ip_header_info *const header_info,
 	else
 	{
 		/* init the compression context for IPv6 extension header list */
-		rohc_comp_list_ipv6_new(&header_info->info.v6.ext_comp, list_trans_nr,
-		                        trace_cb, trace_cb_priv, profile_id);
+		rohc_comp_list_ipv6_new(&header_info->info.v6.ext_comp, oa_repetitions_nr,
+		                        profile_id, trace_cb, trace_cb_priv);
 	}
 
 	return true;
@@ -595,14 +590,14 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 	 */
 
 	/* step 1 */
-	is_ok = wlsb_new(&rfc3095_ctxt->sn_window, context->compressor->wlsb_window_width);
+	is_ok = wlsb_new(&rfc3095_ctxt->sn_window, context->compressor->oa_repetitions_nr);
 	if(!is_ok)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		           "no memory to allocate W-LSB encoding for SN");
 		goto free_generic_context;
 	}
-	is_ok = wlsb_new(&rfc3095_ctxt->msn_non_acked, context->compressor->wlsb_window_width);
+	is_ok = wlsb_new(&rfc3095_ctxt->msn_non_acked, context->compressor->oa_repetitions_nr);
 	if(!is_ok)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -613,11 +608,10 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 	/* step 3 */
 	if(!ip_header_info_new(&rfc3095_ctxt->outer_ip_flags,
 	                       &packet->outer_ip,
-	                       context->compressor->list_trans_nr,
-	                       context->compressor->wlsb_window_width,
+	                       context->compressor->oa_repetitions_nr,
+	                       context->profile->id,
 	                       context->compressor->trace_callback,
-	                       context->compressor->trace_callback_priv,
-	                       context->profile->id))
+	                       context->compressor->trace_callback_priv))
 	{
 		goto free_msn_wlsb;
 	}
@@ -625,11 +619,10 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 	{
 		if(!ip_header_info_new(&rfc3095_ctxt->inner_ip_flags,
 		                       &packet->inner_ip,
-		                       context->compressor->list_trans_nr,
-		                       context->compressor->wlsb_window_width,
+		                       context->compressor->oa_repetitions_nr,
+		                       context->profile->id,
 		                       context->compressor->trace_callback,
-		                       context->compressor->trace_callback_priv,
-		                       context->profile->id))
+		                       context->compressor->trace_callback_priv))
 		{
 			goto free_header_info;
 		}
@@ -1246,11 +1239,10 @@ static bool rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const contex
 			rohc_comp_debug(context, "packet got one more IP header than context");
 			if(!ip_header_info_new(&rfc3095_ctxt->inner_ip_flags,
 			                       &uncomp_pkt->inner_ip,
-			                       context->compressor->list_trans_nr,
-			                       context->compressor->wlsb_window_width,
+			                       context->compressor->oa_repetitions_nr,
+			                       context->profile->id,
 			                       context->compressor->trace_callback,
-			                       context->compressor->trace_callback_priv,
-			                       context->profile->id))
+			                       context->compressor->trace_callback_priv))
 			{
 				goto error;
 			}

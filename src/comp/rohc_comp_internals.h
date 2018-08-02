@@ -170,8 +170,8 @@ struct rohc_comp
 
 	/* user interaction variables: */
 
-	/** The width of the W-LSB sliding window */
-	size_t wlsb_window_width;
+	/** The nr of Optimistic Approach repetitions to gain transmission confidence */
+	uint8_t oa_repetitions_nr;
 	/** The reorder offset specifies how much reordering is handled by the
 	 *  W-LSB encoding of the MSN in ROHCv2 profiles */
 	rohc_reordering_offset_t reorder_ratio;
@@ -191,8 +191,6 @@ struct rohc_comp
 	size_t mrru;
 	/** The connection type (currently not used) */
 	int connection_type;
-	/** The number of uncompressed transmissions for list compression (L) */
-	uint8_t list_trans_nr;
 
 	/** The callback function used to manage traces */
 	rohc_trace_callback2_t trace_callback;

@@ -87,7 +87,7 @@ for cid_type in small large ; do
 	for wlsb_width in 4 64 ; do
 		for max_contexts in 1 ${MAX_CONTEXTS} ; do
 			CMD_PARAMS=""
-			CMD_PARAMS="${CMD_PARAMS} --wlsb-width ${wlsb_width}"
+			CMD_PARAMS="${CMD_PARAMS} --optimistic-approach ${wlsb_width}"
 			CMD_PARAMS="${CMD_PARAMS} --max-contexts ${max_contexts}"
 			CMD_PARAMS="${CMD_PARAMS} --rohc-version ${ROHC_VERSION}"
 			CMD_PARAMS="${CMD_PARAMS} --loss-ratio ${KEEP} ${BURST_SIZE}"

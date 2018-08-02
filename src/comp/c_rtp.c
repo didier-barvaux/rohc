@@ -162,7 +162,7 @@ static bool c_rtp_create(struct rohc_comp_ctxt *const context,
 	rtp_context->rtp_extension_change_count = 0;
 	memcpy(&rtp_context->old_rtp, rtp, sizeof(struct rtphdr));
 	if(!c_create_sc(&rtp_context->ts_sc,
-	                context->compressor->wlsb_window_width,
+	                context->compressor->oa_repetitions_nr,
 	                context->compressor->trace_callback,
 	                context->compressor->trace_callback_priv))
 	{

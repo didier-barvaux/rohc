@@ -677,13 +677,13 @@ void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 		assert(opts_ctxt->structure_nr == opts_nr);
 		opts_ctxt->structure_nr_trans = 0;
 	}
-	else if(opts_ctxt->structure_nr_trans < context->compressor->list_trans_nr)
+	else if(opts_ctxt->structure_nr_trans < context->compressor->oa_repetitions_nr)
 	{
 		/* the structure was transmitted but not enough times */
 		rohc_comp_debug(context, "structure of TCP options list changed in "
 		                "the last few packets, compressed list must be "
 		                "transmitted at least %u times more in the compressed "
-		                "base header", context->compressor->list_trans_nr -
+		                "base header", context->compressor->oa_repetitions_nr -
 		                opts_ctxt->structure_nr_trans);
 		tmp->do_list_struct_changed = true;
 		assert(opts_ctxt->structure_nr == opts_nr);
@@ -1515,14 +1515,14 @@ static bool c_tcp_is_list_item_needed(const struct rohc_comp_ctxt *const context
 		                "or just changed", tcp_opt_get_descr(opt_type));
 		item_needed = true;
 	}
-	else if(opts_ctxt->list[opt_idx].nr_trans < context->compressor->list_trans_nr)
+	else if(opts_ctxt->list[opt_idx].nr_trans < context->compressor->oa_repetitions_nr)
 	{
 		/* option was already transmitted and didn't change since then, but the
 		 * compressor is not confident yet that decompressor got the list item */
 		rohc_comp_debug(context, "TCP options list: option '%s' shall be "
 		                "transmitted %u times more to gain transmission confidence",
 		                tcp_opt_get_descr(opt_type),
-		                context->compressor->list_trans_nr -
+		                context->compressor->oa_repetitions_nr -
 		                opts_ctxt->list[opt_idx].nr_trans);
 		item_needed = true;
 	}
@@ -1533,7 +1533,7 @@ static bool c_tcp_is_list_item_needed(const struct rohc_comp_ctxt *const context
 		rohc_comp_debug(context, "TCP options list: option '%s' is unchanged and "
 		                "was transmitted at least %u times",
 		                tcp_opt_get_descr(opt_type),
-		                context->compressor->list_trans_nr);
+		                context->compressor->oa_repetitions_nr);
 		item_needed = false;
 	}
 

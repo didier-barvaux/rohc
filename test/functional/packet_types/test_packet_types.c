@@ -279,11 +279,10 @@ static int test_comp_and_decomp(const char *const filename,
 		goto destroy_comp;
 	}
 
-	/* reduce uncompressed transmissions for list compression to ease test */
-	if(!rohc_comp_set_list_trans_nr(comp, 2U))
+	/* reduce the number of repetitions for Optimistic Approach to ease test */
+	if(!rohc_comp_set_optimistic_approach(comp, 2U))
 	{
-		fprintf(stderr, "failed to reduce uncompressed transmissions for list "
-		        "compression\n");
+		fprintf(stderr, "failed to reduce Optimistic Approach repetitions\n");
 		goto destroy_comp;
 	}
 

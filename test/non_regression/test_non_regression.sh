@@ -127,13 +127,13 @@ if [ -n "${KERNEL_SUFFIX}" ] ; then
 elif [ "${VERBOSE}" = "generate" ] ; then
 	# generate ROHC output captures
 	CMD="${APP} -o ${CAPTURE_COMPARE} --rohc-size-output ${SIZE_COMPARE}"
-	CMD="${CMD} --wlsb-width ${WLSB_WIDTH}"
+	CMD="${CMD} --optimistic-approach ${WLSB_WIDTH}"
 	CMD="${CMD} --max-contexts ${MAX_CONTEXTS}"
 	CMD="${CMD} --rohc-version ${ROHC_VERSION}"
 	CMD="${CMD} ${CID_TYPE} ${CAPTURE_SOURCE}"
 else
 	# normal mode: compare with existing ROHC output captures
-	CMD_PARAMS="${CMD_PARAMS} --wlsb-width ${WLSB_WIDTH}"
+	CMD_PARAMS="${CMD_PARAMS} --optimistic-approach ${WLSB_WIDTH}"
 	CMD_PARAMS="${CMD_PARAMS} --max-contexts ${MAX_CONTEXTS}"
 	CMD_PARAMS="${CMD_PARAMS} --rohc-version ${ROHC_VERSION}"
 	CMD_PARAMS="${CMD_PARAMS} ${CID_TYPE} ${CAPTURE_SOURCE}"
