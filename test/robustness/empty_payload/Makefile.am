@@ -16,12 +16,6 @@ TESTS = \
 	test_empty_payload_uo1.sh \
 	test_empty_payload_uor2.sh
 
-XFAIL_TESTS = \
-	test_empty_payload_uo0.sh \
-	test_empty_payload_uo0_iponlyprofile.sh \
-	test_empty_payload_uo0_udpprofile.sh \
-	test_empty_payload_uo0_espprofile.sh \
-	test_empty_payload_uo1.sh
 
 check_PROGRAMS = \
 	test_empty_payload

@@ -208,12 +208,6 @@ TESTS = \
 	$(TESTS_UOR2) \
 	$(TESTS_TCP)
 
-XFAIL_TESTS = \
-	test_packet_types_ipv4rnd_tcp_irdyn.sh \
-	test_packet_types_ipv4rnd_tcp_tcp-rnd-3.sh \
-	test_packet_types_ipv4seq_tcp_irdyn.sh \
-	test_packet_types_ipv4seq_tcp_tcp-seq-3.sh
-
 check_PROGRAMS = \
 	test_packet_types
 
