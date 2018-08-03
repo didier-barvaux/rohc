@@ -1345,11 +1345,11 @@ void rohc_comp_rfc3095_decide_state(struct rohc_comp_ctxt *const context)
 
 	if(curr_state == ROHC_COMP_STATE_IR)
 	{
-		if(context->ir_count < ROHC_OA_REPEAT_MIN)
+		if(context->state_oa_repeat_nr < ROHC_OA_REPEAT_MIN)
 		{
 			rohc_comp_debug(context, "no enough packets transmitted in IR state "
-			                "for the moment (%zu/%u), so stay in IR state",
-			                context->ir_count, ROHC_OA_REPEAT_MIN);
+			                "for the moment (%u/%u), so stay in IR state",
+			                context->state_oa_repeat_nr, ROHC_OA_REPEAT_MIN);
 			next_state = ROHC_COMP_STATE_IR;
 		}
 		else if(rfc3095_ctxt->tmp.send_static)
@@ -1385,11 +1385,11 @@ void rohc_comp_rfc3095_decide_state(struct rohc_comp_ctxt *const context)
 	}
 	else if(curr_state == ROHC_COMP_STATE_FO)
 	{
-		if(context->fo_count < ROHC_OA_REPEAT_MIN)
+		if(context->state_oa_repeat_nr < ROHC_OA_REPEAT_MIN)
 		{
 			rohc_comp_debug(context, "no enough packets transmitted in FO state "
-			                "for the moment (%zu/%u), so stay in FO state",
-			                context->fo_count, ROHC_OA_REPEAT_MIN);
+			                "for the moment (%u/%u), so stay in FO state",
+			                context->state_oa_repeat_nr, ROHC_OA_REPEAT_MIN);
 			next_state = ROHC_COMP_STATE_FO;
 		}
 		else if(rfc3095_ctxt->tmp.send_static || rfc3095_ctxt->tmp.send_dynamic)
@@ -1479,7 +1479,6 @@ static rohc_packet_t decide_packet(struct rohc_comp_ctxt *const context)
 		case ROHC_COMP_STATE_IR:
 		{
 			rohc_comp_debug(context, "decide packet in IR state");
-			context->ir_count++;
 			packet = ROHC_PACKET_IR;
 			break;
 		}
@@ -1487,7 +1486,6 @@ static rohc_packet_t decide_packet(struct rohc_comp_ctxt *const context)
 		case ROHC_COMP_STATE_FO:
 		{
 			rohc_comp_debug(context, "decide packet in FO state");
-			context->fo_count++;
 			if(rfc3095_ctxt->decide_FO_packet != NULL)
 			{
 				packet = rfc3095_ctxt->decide_FO_packet(context);
@@ -1502,7 +1500,6 @@ static rohc_packet_t decide_packet(struct rohc_comp_ctxt *const context)
 		case ROHC_COMP_STATE_SO:
 		{
 			rohc_comp_debug(context, "decide packet in SO state");
-			context->so_count++;
 			if(rfc3095_ctxt->decide_SO_packet != NULL)
 			{
 				packet = rfc3095_ctxt->decide_SO_packet(context);
@@ -6262,7 +6259,6 @@ static int changed_static_one_hdr(struct rohc_comp_ctxt *const context,
 		if(is_field_changed(changed_fields, MOD_PROTOCOL))
 		{
 			header_info->protocol_count = 0;
-			context->fo_count = 0;
 		}
 		nb_fields += 1;
 	}
@@ -6348,7 +6344,6 @@ static int changed_dynamic_one_hdr(struct rohc_comp_ctxt *const context,
 		{
 			rohc_comp_debug(context, "TOS/TC changed in the current packet");
 			header_info->tos_count = 0;
-			context->fo_count = 0;
 		}
 		else
 		{
@@ -6365,7 +6360,6 @@ static int changed_dynamic_one_hdr(struct rohc_comp_ctxt *const context,
 		{
 			rohc_comp_debug(context, "TTL/HL changed in the current packet");
 			header_info->ttl_count = 0;
-			context->fo_count = 0;
 		}
 		else
 		{
@@ -6390,7 +6384,6 @@ static int changed_dynamic_one_hdr(struct rohc_comp_ctxt *const context,
 			{
 				rohc_comp_debug(context, "DF changed in the current packet");
 				header_info->info.v4.df_count = 0;
-				context->fo_count = 0;
 			}
 			else
 			{
@@ -6409,7 +6402,6 @@ static int changed_dynamic_one_hdr(struct rohc_comp_ctxt *const context,
 				                "current packet", header_info->info.v4.old_rnd,
 				                header_info->info.v4.rnd);
 				header_info->info.v4.rnd_count = 0;
-				context->fo_count = 0;
 			}
 			else
 			{
@@ -6428,7 +6420,6 @@ static int changed_dynamic_one_hdr(struct rohc_comp_ctxt *const context,
 				                "current packet", header_info->info.v4.old_nbo,
 				                header_info->info.v4.nbo);
 				header_info->info.v4.nbo_count = 0;
-				context->fo_count = 0;
 			}
 			else
 			{
@@ -6452,7 +6443,6 @@ static int changed_dynamic_one_hdr(struct rohc_comp_ctxt *const context,
 				                "current packet", header_info->info.v4.old_sid,
 				                header_info->info.v4.sid);
 				header_info->info.v4.sid_count = 0;
-				context->fo_count = 0;
 			}
 			else
 			{

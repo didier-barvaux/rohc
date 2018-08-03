@@ -1502,8 +1502,7 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 	rohc_packet->len = 0;
 
 	/* use profile to compress packet */
-	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "compress the packet #%d", comp->num_packets + 1);
+	rohc_comp_debug(c, "compress the packet #%d", comp->num_packets + 1);
 	rohc_hdr_size =
 		c->profile->encode(c, &pkt_hdrs, &uncomp_packet, rohc_buf_data(*rohc_packet),
 		                   rohc_buf_avail_len(*rohc_packet),
@@ -1522,6 +1521,15 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 	{
 		pkt_hdrs.all_hdrs_len++;
 		pkt_hdrs.payload_len--;
+	}
+
+	/* increment the number of packets that were emitted in the current
+	 * compression state */
+	if(c->state_oa_repeat_nr < ROHC_OA_REPEAT_MIN)
+	{
+		c->state_oa_repeat_nr++;
+		rohc_comp_debug(c, "last change was transmitted %u/%u times",
+		                c->state_oa_repeat_nr, ROHC_OA_REPEAT_MIN);
 	}
 
 	/* the payload starts after the header, skip it */
@@ -3498,7 +3506,6 @@ static struct rohc_comp_ctxt *
 		memcpy(c, base_ctxt, sizeof(struct rohc_comp_ctxt));
 		c->do_ctxt_replication = true;
 		c->cr_base_cid = base_ctxt->cid;
-		c->cr_count = 0;
 		c->state = ROHC_COMP_STATE_CR;
 	}
 	else
@@ -3509,9 +3516,7 @@ static struct rohc_comp_ctxt *
 
 	memcpy(&c->fingerprint, fingerprint, sizeof(struct rohc_fingerprint));
 
-	c->ir_count = 0;
-	c->fo_count = 0;
-	c->so_count = 0;
+	c->state_oa_repeat_nr = 0;
 	c->go_back_fo_count = 0;
 	c->go_back_fo_time = packet->time;
 	c->go_back_ir_count = 0;
@@ -3667,7 +3672,7 @@ static struct rohc_comp_ctxt *
 		   profile->id == ROHCv1_PROFILE_IP_TCP && /* TODO: replace TCP by CR capacity */
 		   context->do_ctxt_replication &&
 		   context->state == ROHC_COMP_STATE_CR &&
-		   context->cr_count < ROHC_OA_REPEAT_MIN)
+		   context->state_oa_repeat_nr < ROHC_OA_REPEAT_MIN)
 		{
 			/* Context Replication is in action, so check whether the base context
 			 * changed too much to be re-used or not */
@@ -3676,9 +3681,10 @@ static struct rohc_comp_ctxt *
 			rohc_ctxt_affinity_t base_ctxt_affinity;
 
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "Context Replication in action (%zu/%u packets sent): check "
+			           "Context Replication in action (%u/%u packets sent): check "
 			           "for CID %u whether base context with CID %u changed too much",
-			           context->cr_count, ROHC_OA_REPEAT_MIN, context->cid, base_ctxt->cid);
+			           context->state_oa_repeat_nr, ROHC_OA_REPEAT_MIN,
+			           context->cid, base_ctxt->cid);
 
 			/* there are two ways the base context may have changed:
 			 *   - the base context now matches exactly the replicated context
@@ -3906,9 +3912,7 @@ void rohc_comp_change_state(struct rohc_comp_ctxt *const context,
 		          context->cid, context->state, new_state);
 
 		/* reset counters */
-		context->ir_count = 0;
-		context->fo_count = 0;
-		context->so_count = 0;
+		context->state_oa_repeat_nr = 0;
 
 		/* change state */
 		context->state = new_state;

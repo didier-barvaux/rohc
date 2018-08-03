@@ -3471,6 +3471,8 @@ static void tcp_decide_state(struct rohc_comp_ctxt *const context,
 	const rohc_comp_state_t curr_state = context->state;
 	rohc_comp_state_t next_state;
 
+	assert(curr_state != ROHC_COMP_STATE_UNKNOWN);
+
 	if(curr_state == ROHC_COMP_STATE_SO)
 	{
 		/* do not change state */
@@ -3478,59 +3480,19 @@ static void tcp_decide_state(struct rohc_comp_ctxt *const context,
 		next_state = ROHC_COMP_STATE_SO;
 		/* TODO: handle NACK and STATIC-NACK */
 	}
-	else if(curr_state == ROHC_COMP_STATE_IR)
+	else if(context->state_oa_repeat_nr < ROHC_OA_REPEAT_MIN)
 	{
-		if(context->ir_count < ROHC_OA_REPEAT_MIN)
-		{
-			rohc_comp_debug(context, "no enough packets transmitted in IR state "
-			                "for the moment (%zu/%d), so stay in IR state",
-			                context->ir_count, ROHC_OA_REPEAT_MIN);
-			next_state = ROHC_COMP_STATE_IR;
-		}
-		else
-		{
-			rohc_comp_debug(context, "enough packets transmitted in IR state (%zu/%u), "
-			                "go to SO state", context->ir_count, ROHC_OA_REPEAT_MIN);
-			next_state = ROHC_COMP_STATE_SO;
-		}
-	}
-	else if(curr_state == ROHC_COMP_STATE_CR)
-	{
-		if(context->cr_count < ROHC_OA_REPEAT_MIN)
-		{
-			rohc_comp_debug(context, "no enough packets transmitted in CR state "
-			                "for the moment (%zu/%d), so stay in CR state",
-			                context->cr_count, ROHC_OA_REPEAT_MIN);
-			next_state = ROHC_COMP_STATE_CR;
-		}
-		else
-		{
-			rohc_comp_debug(context, "enough packets transmitted in CR state (%zu/%u), "
-			                "go to SO state", context->cr_count, ROHC_OA_REPEAT_MIN);
-			next_state = ROHC_COMP_STATE_SO;
-		}
-	}
-	else if(curr_state == ROHC_COMP_STATE_FO)
-	{
-		if(context->fo_count < ROHC_OA_REPEAT_MIN)
-		{
-			rohc_comp_debug(context, "no enough packets transmitted in FO state "
-			                "for the moment (%zu/%u), so stay in FO state",
-			                context->fo_count, ROHC_OA_REPEAT_MIN);
-			next_state = ROHC_COMP_STATE_FO;
-		}
-		else
-		{
-			rohc_comp_debug(context, "enough packets transmitted in FO state (%zu/%u), "
-			                "go to SO state", context->fo_count, ROHC_OA_REPEAT_MIN);
-			next_state = ROHC_COMP_STATE_SO;
-		}
+		rohc_comp_debug(context, "not enough packets transmitted in current state "
+		                "for the moment (%u/%u), so stay in current state",
+		                context->state_oa_repeat_nr, ROHC_OA_REPEAT_MIN);
+		next_state = curr_state;
 	}
 	else
 	{
-		rohc_comp_warn(context, "unexpected compressor state %d", curr_state);
-		assert(0);
-		return;
+		rohc_comp_debug(context, "enough packets transmitted in current state "
+		                "(%u/%u), go to upper state", context->state_oa_repeat_nr,
+		                ROHC_OA_REPEAT_MIN);
+		next_state = ROHC_COMP_STATE_SO;
 	}
 
 	rohc_comp_change_state(context, next_state);
@@ -3840,7 +3802,6 @@ static rohc_packet_t tcp_decide_packet(struct rohc_comp_ctxt *const context,
 		case ROHC_COMP_STATE_IR: /* The Initialization and Refresh (IR) state */
 			rohc_comp_debug(context, "code IR packet");
 			packet_type = ROHC_PACKET_IR;
-			context->ir_count++;
 			break;
 		case ROHC_COMP_STATE_CR: /* The Context Replication (CR) state */
 			if(tmp->is_ipv6_exts_list_static_changed)
@@ -3853,15 +3814,12 @@ static rohc_packet_t tcp_decide_packet(struct rohc_comp_ctxt *const context,
 				rohc_comp_debug(context, "code IR-CR packet");
 				packet_type = ROHC_PACKET_IR_CR;
 			}
-			context->cr_count++;
 			break;
 		case ROHC_COMP_STATE_FO: /* The First Order (FO) state */
-			context->fo_count++;
 			packet_type = tcp_decide_FO_packet(context, ip_inner_context,
 			                                   uncomp_pkt_hdrs, tmp);
 			break;
 		case ROHC_COMP_STATE_SO: /* The Second Order (SO) state */
-			context->so_count++;
 			packet_type = tcp_decide_SO_packet(context, ip_inner_context,
 			                                   uncomp_pkt_hdrs, tmp);
 			break;

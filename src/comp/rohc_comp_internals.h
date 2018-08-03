@@ -461,14 +461,8 @@ struct rohc_comp_ctxt
 	/* The type of ROHC packet created for the last compressed packet */
 	rohc_packet_t packet_type;
 
-	/** The number of packets sent while in Initialization & Refresh (IR) state */
-	size_t ir_count;
-	/** The number of packets sent while in First Order (FO) state */
-	size_t fo_count;
-	/** The number of packets sent while in Second Order (SO) state */
-	size_t so_count;
-	/** The number of packets sent while in Context Replication (CR) state */
-	size_t cr_count;
+	/** The number of packets sent while in the different compression states */
+	uint8_t state_oa_repeat_nr;
 
 	/**
 	 * @brief The number of packet sent while in SO state, used for the periodic

@@ -489,15 +489,15 @@ static void udp_lite_init_cc(struct rohc_comp_ctxt *const context,
 	const struct udphdr *const udp_lite = (struct udphdr *) next_header;
 	int packet_length = udp_lite_context->tmp.udp_size;
 
-	if(context->ir_count == 1)
+	if(context->state_oa_repeat_nr == 1)
 	{
 		udp_lite_context->cfp = 0;
 		udp_lite_context->cfi = 1;
 	}
 
-	rohc_comp_debug(context, "CFP = %d, CFI = %d (ir_count = %zu)",
+	rohc_comp_debug(context, "CFP = %d, CFI = %d (ir_count = %u)",
 	                udp_lite_context->cfp, udp_lite_context->cfi,
-	                context->ir_count);
+	                context->state_oa_repeat_nr);
 
 	udp_lite_context->cfp =
 		(rohc_ntoh16(udp_lite->len) != packet_length) || udp_lite_context->cfp;

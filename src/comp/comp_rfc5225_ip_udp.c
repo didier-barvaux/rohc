@@ -1594,45 +1594,29 @@ static void rohc_comp_rfc5225_ip_udp_decide_state(struct rohc_comp_ctxt *const c
 	const rohc_comp_state_t curr_state = context->state;
 	rohc_comp_state_t next_state;
 
-	if(curr_state == ROHC_COMP_STATE_IR)
+	assert(curr_state != ROHC_COMP_STATE_UNKNOWN);
+	assert(curr_state != ROHC_COMP_STATE_CR);
+
+	if(curr_state == ROHC_COMP_STATE_SO)
 	{
-		if(context->ir_count < ROHC_OA_REPEAT_MIN)
-		{
-			rohc_comp_debug(context, "not enough packets transmitted in IR state "
-			                "for the moment (%zu/%d), so stay in IR state",
-			                context->ir_count, ROHC_OA_REPEAT_MIN);
-			next_state = ROHC_COMP_STATE_IR;
-		}
-		else
-		{
-			rohc_comp_debug(context, "enough packets transmitted in IR state (%zu/%u), "
-			                "go to SO state", context->ir_count, ROHC_OA_REPEAT_MIN);
-			next_state = ROHC_COMP_STATE_SO;
-		}
-	}
-	else if(curr_state == ROHC_COMP_STATE_FO)
-	{
-		if(context->fo_count < ROHC_OA_REPEAT_MIN)
-		{
-			rohc_comp_debug(context, "not enough packets transmitted in FO state "
-			                "for the moment (%zu/%u), so stay in FO state",
-			                context->fo_count, ROHC_OA_REPEAT_MIN);
-			next_state = ROHC_COMP_STATE_FO;
-		}
-		else
-		{
-			rohc_comp_debug(context, "enough packets transmitted in FO state (%zu/%u), "
-			                "go to SO state", context->fo_count, ROHC_OA_REPEAT_MIN);
-			next_state = ROHC_COMP_STATE_SO;
-		}
-	}
-	else /* SO state */
-	{
-		assert(curr_state == ROHC_COMP_STATE_SO);
 		/* do not change state */
 		rohc_comp_debug(context, "stay in SO state");
 		next_state = ROHC_COMP_STATE_SO;
 		/* TODO: handle NACK and STATIC-NACK */
+	}
+	else if(context->state_oa_repeat_nr < ROHC_OA_REPEAT_MIN)
+	{
+		rohc_comp_debug(context, "not enough packets transmitted in current state "
+		                "for the moment (%u/%u), so stay in current state",
+		                context->state_oa_repeat_nr, ROHC_OA_REPEAT_MIN);
+		next_state = curr_state;
+	}
+	else
+	{
+		rohc_comp_debug(context, "enough packets transmitted in current state "
+		                "(%u/%u), go to upper state", context->state_oa_repeat_nr,
+		                ROHC_OA_REPEAT_MIN);
+		next_state = ROHC_COMP_STATE_SO;
 	}
 
 	rohc_comp_change_state(context, next_state);
@@ -1666,15 +1650,12 @@ static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_pkt(struct rohc_comp_ctxt *
 		case ROHC_COMP_STATE_IR: /* The Initialization and Refresh (IR) state */
 			rohc_comp_debug(context, "code IR packet");
 			packet_type = ROHC_PACKET_IR;
-			context->ir_count++;
 			break;
 		case ROHC_COMP_STATE_FO:
 			packet_type = rohc_comp_rfc5225_ip_udp_decide_FO_pkt(context);
-			context->fo_count++;
 			break;
 		case ROHC_COMP_STATE_SO:
 			packet_type = rohc_comp_rfc5225_ip_udp_decide_SO_pkt(context);
-			context->so_count++;
 			break;
 		case ROHC_COMP_STATE_UNKNOWN:
 		default:
