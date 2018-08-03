@@ -141,6 +141,7 @@ linux/.tmp_versions/
 linux/.kmod.o.d
 linux/kmod/*.ko.cmd
 linux/kmod/.tmp_versions/
+linux/kmod/.cache.mk
 linux/kmod/Module.symvers
 linux/kmod/modules.order
 linux/kmod/*.ko
