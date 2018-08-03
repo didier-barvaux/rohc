@@ -303,7 +303,7 @@ struct rohc_comp * rohc_comp_new2(const rohc_cid_type_t cid_type,
                                   const rohc_comp_random_cb_t rand_cb,
                                   void *const rand_priv)
 {
-	const size_t oa_repetitions_nr = 4; /* default Optimistic Approach repetitions */
+	const size_t oa_repetitions_nr = ROHC_OA_REPEAT_DEFAULT;
 	const size_t reorder_ratio = ROHC_REORDERING_NONE; /* default reordering ratio */
 	struct rohc_comp *comp;
 	uint8_t profile_major;
@@ -1517,11 +1517,11 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 
 	/* increment the number of packets that were emitted in the current
 	 * compression state */
-	if(c->state_oa_repeat_nr < ROHC_OA_REPEAT_MIN)
+	if(c->state_oa_repeat_nr < comp->oa_repetitions_nr)
 	{
 		c->state_oa_repeat_nr++;
 		rohc_comp_debug(c, "last change was transmitted %u/%u times",
-		                c->state_oa_repeat_nr, ROHC_OA_REPEAT_MIN);
+		                c->state_oa_repeat_nr, comp->oa_repetitions_nr);
 	}
 
 	/* the payload starts after the header, skip it */
@@ -2272,7 +2272,7 @@ bool rohc_comp_set_periodic_refreshes_time(struct rohc_comp *const comp,
  * list items uncompressed L times before compressing them. The compressor
  * also sends the list structure L times before compressing it out.
  *
- * The L parameter is set to \ref ROHC_OA_REPEAT_MIN by default.
+ * The L parameter is set to \ref ROHC_OA_REPEAT_DEFAULT by default.
  *
  * @warning The value can not be modified after library initialization
  *
@@ -3705,7 +3705,7 @@ static struct rohc_comp_ctxt *
 		   profile->id == ROHCv1_PROFILE_IP_TCP && /* TODO: replace TCP by CR capacity */
 		   context->do_ctxt_replication &&
 		   context->state == ROHC_COMP_STATE_CR &&
-		   context->state_oa_repeat_nr < ROHC_OA_REPEAT_MIN)
+		   context->state_oa_repeat_nr < comp->oa_repetitions_nr)
 		{
 			/* Context Replication is in action, so check whether the base context
 			 * changed too much to be re-used or not */
@@ -3716,7 +3716,7 @@ static struct rohc_comp_ctxt *
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "Context Replication in action (%u/%u packets sent): check "
 			           "for CID %u whether base context with CID %u changed too much",
-			           context->state_oa_repeat_nr, ROHC_OA_REPEAT_MIN,
+			           context->state_oa_repeat_nr, comp->oa_repetitions_nr,
 			           context->cid, base_ctxt->cid);
 
 			/* there are two ways the base context may have changed:

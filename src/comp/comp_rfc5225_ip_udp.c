@@ -362,6 +362,7 @@ static bool rohc_comp_rfc5225_is_ipid_sequential(const rohc_ip_id_behavior_t beh
 
 static bool rohc_comp_rfc5225_is_seq_ipid_inferred(const ip_context_t *const ip_ctxt,
                                                    const uint8_t ip_id_offset_trans_nr,
+                                                   const uint8_t oa_repetitions_nr,
                                                    const uint16_t new_ip_id,
                                                    const int16_t msn_offset)
 	__attribute__((warn_unused_result, nonnull(1)));
@@ -570,6 +571,7 @@ static int rohc_comp_rfc5225_ip_udp_encode(struct rohc_comp_ctxt *const context,
                                            const size_t rohc_pkt_max_len,
                                            rohc_packet_t *const packet_type)
 {
+	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	struct rohc_comp_rfc5225_ip_udp_ctxt *const rfc5225_ctxt = context->specific;
 
 	const uint8_t *remain_data;
@@ -697,51 +699,51 @@ static int rohc_comp_rfc5225_ip_udp_encode(struct rohc_comp_ctxt *const context,
 	/* update context for the UDP header */
 	rfc5225_ctxt->udp_checksum_used = rfc5225_ctxt->tmp.new_udp_checksum_used;
 	/* update transmission counters */
-	if(rfc5225_ctxt->all_df_trans_nr < ROHC_OA_REPEAT_MIN)
+	if(rfc5225_ctxt->all_df_trans_nr < oa_repetitions_nr)
 	{
 		rfc5225_ctxt->all_df_trans_nr++;
 	}
-	if(rfc5225_ctxt->innermost_df_trans_nr < ROHC_OA_REPEAT_MIN)
+	if(rfc5225_ctxt->innermost_df_trans_nr < oa_repetitions_nr)
 	{
 		rfc5225_ctxt->innermost_df_trans_nr++;
 	}
-	if(rfc5225_ctxt->outer_df_trans_nr < ROHC_OA_REPEAT_MIN)
+	if(rfc5225_ctxt->outer_df_trans_nr < oa_repetitions_nr)
 	{
 		rfc5225_ctxt->outer_df_trans_nr++;
 	}
-	if(rfc5225_ctxt->all_ip_id_behavior_trans_nr < ROHC_OA_REPEAT_MIN)
+	if(rfc5225_ctxt->all_ip_id_behavior_trans_nr < oa_repetitions_nr)
 	{
 		rfc5225_ctxt->all_ip_id_behavior_trans_nr++;
 	}
-	if(rfc5225_ctxt->innermost_ip_id_behavior_trans_nr < ROHC_OA_REPEAT_MIN)
+	if(rfc5225_ctxt->innermost_ip_id_behavior_trans_nr < oa_repetitions_nr)
 	{
 		rfc5225_ctxt->innermost_ip_id_behavior_trans_nr++;
 	}
-	if(rfc5225_ctxt->innermost_ip_id_offset_trans_nr < ROHC_OA_REPEAT_MIN)
+	if(rfc5225_ctxt->innermost_ip_id_offset_trans_nr < oa_repetitions_nr)
 	{
 		rfc5225_ctxt->innermost_ip_id_offset_trans_nr++;
 	}
-	if(rfc5225_ctxt->outer_ip_id_behavior_trans_nr < ROHC_OA_REPEAT_MIN)
+	if(rfc5225_ctxt->outer_ip_id_behavior_trans_nr < oa_repetitions_nr)
 	{
 		rfc5225_ctxt->outer_ip_id_behavior_trans_nr++;
 	}
-	if(rfc5225_ctxt->innermost_ip_flag_trans_nr < ROHC_OA_REPEAT_MIN)
+	if(rfc5225_ctxt->innermost_ip_flag_trans_nr < oa_repetitions_nr)
 	{
 		rfc5225_ctxt->innermost_ip_flag_trans_nr++;
 	}
-	if(rfc5225_ctxt->outer_ip_flag_trans_nr < ROHC_OA_REPEAT_MIN)
+	if(rfc5225_ctxt->outer_ip_flag_trans_nr < oa_repetitions_nr)
 	{
 		rfc5225_ctxt->outer_ip_flag_trans_nr++;
 	}
-	if(rfc5225_ctxt->innermost_tos_tc_trans_nr < ROHC_OA_REPEAT_MIN)
+	if(rfc5225_ctxt->innermost_tos_tc_trans_nr < oa_repetitions_nr)
 	{
 		rfc5225_ctxt->innermost_tos_tc_trans_nr++;
 	}
-	if(rfc5225_ctxt->innermost_ttl_hopl_trans_nr < ROHC_OA_REPEAT_MIN)
+	if(rfc5225_ctxt->innermost_ttl_hopl_trans_nr < oa_repetitions_nr)
 	{
 		rfc5225_ctxt->innermost_ttl_hopl_trans_nr++;
 	}
-	if(rfc5225_ctxt->udp_checksum_used_trans_nr < ROHC_OA_REPEAT_MIN)
+	if(rfc5225_ctxt->udp_checksum_used_trans_nr < oa_repetitions_nr)
 	{
 		rfc5225_ctxt->udp_checksum_used_trans_nr++;
 	}
@@ -764,6 +766,7 @@ error:
 static bool rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const context,
                                                     const struct rohc_buf *const uncomp_pkt)
 {
+	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	struct rohc_comp_rfc5225_ip_udp_ctxt *const rfc5225_ctxt = context->specific;
 	const uint8_t *remain_data = rohc_buf_data(*uncomp_pkt);
 	size_t remain_len = uncomp_pkt->len;
@@ -948,42 +951,42 @@ static bool rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const
 	if(rfc5225_ctxt->tmp.at_least_one_df_changed)
 	{
 		rohc_comp_debug(context, "at least one DF changed in current packet, "
-		                "it shall be transmitted %u times", ROHC_OA_REPEAT_MIN);
+		                "it shall be transmitted %u times", oa_repetitions_nr);
 		rfc5225_ctxt->all_df_trans_nr = 0;
 	}
-	else if(rfc5225_ctxt->all_df_trans_nr < ROHC_OA_REPEAT_MIN)
+	else if(rfc5225_ctxt->all_df_trans_nr < oa_repetitions_nr)
 	{
 		rohc_comp_debug(context, "at least one DF changed in last packets, "
 		                "it shall be transmitted %u times more",
-		                ROHC_OA_REPEAT_MIN - rfc5225_ctxt->all_df_trans_nr);
+		                oa_repetitions_nr - rfc5225_ctxt->all_df_trans_nr);
 		rfc5225_ctxt->tmp.at_least_one_df_changed = true;
 	}
 	/* the innermost DF that changes shall be transmitted several times */
 	if(rfc5225_ctxt->tmp.innermost_df_changed)
 	{
 		rohc_comp_debug(context, "innermost DF changed in current packet, "
-		                "it shall be transmitted %u times", ROHC_OA_REPEAT_MIN);
+		                "it shall be transmitted %u times", oa_repetitions_nr);
 		rfc5225_ctxt->innermost_df_trans_nr = 0;
 	}
-	else if(rfc5225_ctxt->innermost_df_trans_nr < ROHC_OA_REPEAT_MIN)
+	else if(rfc5225_ctxt->innermost_df_trans_nr < oa_repetitions_nr)
 	{
 		rohc_comp_debug(context, "innermost DF changed in last packets, "
 		                "it shall be transmitted %u times more",
-		                ROHC_OA_REPEAT_MIN - rfc5225_ctxt->innermost_df_trans_nr);
+		                oa_repetitions_nr - rfc5225_ctxt->innermost_df_trans_nr);
 		rfc5225_ctxt->tmp.innermost_df_changed = true;
 	}
 	/* any outer DF that changes shall be transmitted several times */
 	if(rfc5225_ctxt->tmp.outer_df_changed)
 	{
 		rohc_comp_debug(context, "at least one outer DF changed in current packet, "
-		                "it shall be transmitted %u times", ROHC_OA_REPEAT_MIN);
+		                "it shall be transmitted %u times", oa_repetitions_nr);
 		rfc5225_ctxt->outer_df_trans_nr = 0;
 	}
-	else if(rfc5225_ctxt->outer_df_trans_nr < ROHC_OA_REPEAT_MIN)
+	else if(rfc5225_ctxt->outer_df_trans_nr < oa_repetitions_nr)
 	{
 		rohc_comp_debug(context, "at least one outer DF changed in last packets, "
 		                "it shall be transmitted %u times more",
-		                ROHC_OA_REPEAT_MIN - rfc5225_ctxt->outer_df_trans_nr);
+		                oa_repetitions_nr - rfc5225_ctxt->outer_df_trans_nr);
 		rfc5225_ctxt->tmp.outer_df_changed = true;
 	}
 
@@ -991,27 +994,27 @@ static bool rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const
 	if(rfc5225_ctxt->tmp.at_least_one_ip_id_behavior_changed)
 	{
 		rohc_comp_debug(context, "at least one IP-ID behavior changed in current "
-		                "packet, it shall be transmitted %u times", ROHC_OA_REPEAT_MIN);
+		                "packet, it shall be transmitted %u times", oa_repetitions_nr);
 		rfc5225_ctxt->all_ip_id_behavior_trans_nr = 0;
 	}
-	else if(rfc5225_ctxt->all_ip_id_behavior_trans_nr < ROHC_OA_REPEAT_MIN)
+	else if(rfc5225_ctxt->all_ip_id_behavior_trans_nr < oa_repetitions_nr)
 	{
 		rohc_comp_debug(context, "at least one IP-ID behavior changed in last "
 		                "packets, it shall be transmitted %u times more",
-		                ROHC_OA_REPEAT_MIN - rfc5225_ctxt->all_ip_id_behavior_trans_nr);
+		                oa_repetitions_nr - rfc5225_ctxt->all_ip_id_behavior_trans_nr);
 		rfc5225_ctxt->tmp.at_least_one_ip_id_behavior_changed = true;
 	}
 	/* innermost IP-ID behavior that changes shall be transmitted several times */
 	if(rfc5225_ctxt->tmp.innermost_ip_id_behavior_changed)
 	{
 		rohc_comp_debug(context, "innermost IP-ID behavior changed in current "
-		                "packet, it shall be transmitted %u times", ROHC_OA_REPEAT_MIN);
+		                "packet, it shall be transmitted %u times", oa_repetitions_nr);
 		rfc5225_ctxt->innermost_ip_id_behavior_trans_nr = 0;
 	}
-	else if(rfc5225_ctxt->innermost_ip_id_behavior_trans_nr < ROHC_OA_REPEAT_MIN)
+	else if(rfc5225_ctxt->innermost_ip_id_behavior_trans_nr < oa_repetitions_nr)
 	{
 		rohc_comp_debug(context, "innermost IP-ID behavior changed in last packets, "
-		                "it shall be transmitted %u times more", ROHC_OA_REPEAT_MIN -
+		                "it shall be transmitted %u times more", oa_repetitions_nr -
 		                rfc5225_ctxt->innermost_ip_id_behavior_trans_nr);
 		rfc5225_ctxt->tmp.innermost_ip_id_behavior_changed = true;
 	}
@@ -1020,13 +1023,13 @@ static bool rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const
 	if(rfc5225_ctxt->tmp.innermost_ip_id_offset_changed)
 	{
 		rohc_comp_debug(context, "innermost IP-ID offset changed in current "
-		                "packet, it shall be transmitted %u times", ROHC_OA_REPEAT_MIN);
+		                "packet, it shall be transmitted %u times", oa_repetitions_nr);
 		rfc5225_ctxt->innermost_ip_id_offset_trans_nr = 0;
 	}
-	else if(rfc5225_ctxt->innermost_ip_id_offset_trans_nr < ROHC_OA_REPEAT_MIN)
+	else if(rfc5225_ctxt->innermost_ip_id_offset_trans_nr < oa_repetitions_nr)
 	{
 		rohc_comp_debug(context, "innermost IP-ID offset changed in last packets, "
-		                "it shall be transmitted %u times more", ROHC_OA_REPEAT_MIN -
+		                "it shall be transmitted %u times more", oa_repetitions_nr -
 		                rfc5225_ctxt->innermost_ip_id_offset_trans_nr);
 		rfc5225_ctxt->tmp.innermost_ip_id_offset_changed = true;
 	}
@@ -1035,14 +1038,14 @@ static bool rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const
 	{
 		rohc_comp_debug(context, "at least one outer IP-ID behavior changed in "
 		                "current packet, it shall be transmitted %u times",
-		                ROHC_OA_REPEAT_MIN);
+		                oa_repetitions_nr);
 		rfc5225_ctxt->outer_ip_id_behavior_trans_nr = 0;
 	}
-	else if(rfc5225_ctxt->outer_ip_id_behavior_trans_nr < ROHC_OA_REPEAT_MIN)
+	else if(rfc5225_ctxt->outer_ip_id_behavior_trans_nr < oa_repetitions_nr)
 	{
 		rohc_comp_debug(context, "at least one outer IP-ID behavior changed in "
 		                "last packets, it shall be transmitted %u times more",
-		                ROHC_OA_REPEAT_MIN - rfc5225_ctxt->outer_ip_id_behavior_trans_nr);
+		                oa_repetitions_nr - rfc5225_ctxt->outer_ip_id_behavior_trans_nr);
 		rfc5225_ctxt->tmp.outer_ip_id_behavior_changed = true;
 	}
 
@@ -1050,28 +1053,28 @@ static bool rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const
 	if(rfc5225_ctxt->tmp.innermost_ip_flag)
 	{
 		rohc_comp_debug(context, "innermost IP flag changed in current packet, "
-		                "it shall be transmitted %u times", ROHC_OA_REPEAT_MIN);
+		                "it shall be transmitted %u times", oa_repetitions_nr);
 		rfc5225_ctxt->innermost_ip_flag_trans_nr = 0;
 	}
-	else if(rfc5225_ctxt->innermost_ip_flag_trans_nr < ROHC_OA_REPEAT_MIN)
+	else if(rfc5225_ctxt->innermost_ip_flag_trans_nr < oa_repetitions_nr)
 	{
 		rohc_comp_debug(context, "innermost IP flag changed in last packets, "
 		                "it shall be transmitted %u times more",
-		                ROHC_OA_REPEAT_MIN - rfc5225_ctxt->innermost_ip_flag_trans_nr);
+		                oa_repetitions_nr - rfc5225_ctxt->innermost_ip_flag_trans_nr);
 		rfc5225_ctxt->tmp.innermost_ip_flag = true;
 	}
 	/* any outer IP-ID behavior that changes shall be transmitted several times */
 	if(rfc5225_ctxt->tmp.outer_ip_flag)
 	{
 		rohc_comp_debug(context, "at least one outer IP flag changed in current "
-		                "packet, it shall be transmitted %u times", ROHC_OA_REPEAT_MIN);
+		                "packet, it shall be transmitted %u times", oa_repetitions_nr);
 		rfc5225_ctxt->outer_ip_flag_trans_nr = 0;
 	}
-	else if(rfc5225_ctxt->outer_ip_flag_trans_nr < ROHC_OA_REPEAT_MIN)
+	else if(rfc5225_ctxt->outer_ip_flag_trans_nr < oa_repetitions_nr)
 	{
 		rohc_comp_debug(context, "at least one outer IP flag changed in last "
 		                "packets, it shall be transmitted %u times more",
-		                ROHC_OA_REPEAT_MIN - rfc5225_ctxt->outer_ip_flag_trans_nr);
+		                oa_repetitions_nr - rfc5225_ctxt->outer_ip_flag_trans_nr);
 		rfc5225_ctxt->tmp.outer_ip_flag = true;
 	}
 
@@ -1079,14 +1082,14 @@ static bool rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const
 	if(rfc5225_ctxt->tmp.innermost_tos_tc_changed)
 	{
 		rohc_comp_debug(context, "innermost TOS/TC changed in current packet, "
-		                "it shall be transmitted %u times", ROHC_OA_REPEAT_MIN);
+		                "it shall be transmitted %u times", oa_repetitions_nr);
 		rfc5225_ctxt->innermost_tos_tc_trans_nr = 0;
 	}
-	else if(rfc5225_ctxt->innermost_tos_tc_trans_nr < ROHC_OA_REPEAT_MIN)
+	else if(rfc5225_ctxt->innermost_tos_tc_trans_nr < oa_repetitions_nr)
 	{
 		rohc_comp_debug(context, "innermost TOS/TC changed in last packets, "
 		                "it shall be transmitted %u times more",
-		                ROHC_OA_REPEAT_MIN - rfc5225_ctxt->innermost_tos_tc_trans_nr);
+		                oa_repetitions_nr - rfc5225_ctxt->innermost_tos_tc_trans_nr);
 		rfc5225_ctxt->tmp.innermost_tos_tc_changed = true;
 	}
 
@@ -1094,14 +1097,14 @@ static bool rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const
 	if(rfc5225_ctxt->tmp.innermost_ttl_hopl_changed)
 	{
 		rohc_comp_debug(context, "innermost TTL/HL changed in current packet, "
-		                "it shall be transmitted %u times", ROHC_OA_REPEAT_MIN);
+		                "it shall be transmitted %u times", oa_repetitions_nr);
 		rfc5225_ctxt->innermost_ttl_hopl_trans_nr = 0;
 	}
-	else if(rfc5225_ctxt->innermost_ttl_hopl_trans_nr < ROHC_OA_REPEAT_MIN)
+	else if(rfc5225_ctxt->innermost_ttl_hopl_trans_nr < oa_repetitions_nr)
 	{
 		rohc_comp_debug(context, "innermost TTL/HL changed in last packets, "
 		                "it shall be transmitted %u times more",
-		                ROHC_OA_REPEAT_MIN - rfc5225_ctxt->innermost_ttl_hopl_trans_nr);
+		                oa_repetitions_nr - rfc5225_ctxt->innermost_ttl_hopl_trans_nr);
 		rfc5225_ctxt->tmp.innermost_ttl_hopl_changed = true;
 	}
 
@@ -1109,14 +1112,14 @@ static bool rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const
 	if(rfc5225_ctxt->tmp.udp_checksum_used_changed)
 	{
 		rohc_comp_debug(context, "'UDP checksum used' changed in current packet, "
-		                "it shall be transmitted %u times", ROHC_OA_REPEAT_MIN);
+		                "it shall be transmitted %u times", oa_repetitions_nr);
 		rfc5225_ctxt->udp_checksum_used_trans_nr = 0;
 	}
-	else if(rfc5225_ctxt->udp_checksum_used_trans_nr < ROHC_OA_REPEAT_MIN)
+	else if(rfc5225_ctxt->udp_checksum_used_trans_nr < oa_repetitions_nr)
 	{
 		rohc_comp_debug(context, "'UDP checksum used' changed in last packets, "
 		                "it shall be transmitted %u times more",
-		                ROHC_OA_REPEAT_MIN - rfc5225_ctxt->udp_checksum_used_trans_nr);
+		                oa_repetitions_nr - rfc5225_ctxt->udp_checksum_used_trans_nr);
 		rfc5225_ctxt->tmp.udp_checksum_used_changed = true;
 	}
 
@@ -1591,6 +1594,7 @@ static void rohc_comp_rfc5225_ip_udp_feedback_ack(struct rohc_comp_ctxt *const c
 static void rohc_comp_rfc5225_ip_udp_decide_state(struct rohc_comp_ctxt *const context,
                                                   const struct rohc_ts pkt_time)
 {
+	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	const rohc_comp_state_t curr_state = context->state;
 	rohc_comp_state_t next_state;
 
@@ -1604,18 +1608,18 @@ static void rohc_comp_rfc5225_ip_udp_decide_state(struct rohc_comp_ctxt *const c
 		next_state = ROHC_COMP_STATE_SO;
 		/* TODO: handle NACK and STATIC-NACK */
 	}
-	else if(context->state_oa_repeat_nr < ROHC_OA_REPEAT_MIN)
+	else if(context->state_oa_repeat_nr < oa_repetitions_nr)
 	{
 		rohc_comp_debug(context, "not enough packets transmitted in current state "
 		                "for the moment (%u/%u), so stay in current state",
-		                context->state_oa_repeat_nr, ROHC_OA_REPEAT_MIN);
+		                context->state_oa_repeat_nr, oa_repetitions_nr);
 		next_state = curr_state;
 	}
 	else
 	{
 		rohc_comp_debug(context, "enough packets transmitted in current state "
 		                "(%u/%u), go to upper state", context->state_oa_repeat_nr,
-		                ROHC_OA_REPEAT_MIN);
+		                oa_repetitions_nr);
 		next_state = ROHC_COMP_STATE_SO;
 	}
 
@@ -1737,6 +1741,7 @@ static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_FO_SO_pkt(const struct rohc
 {
 	struct rohc_comp_rfc5225_ip_udp_ctxt *const rfc5225_ctxt = ctxt->specific;
 	const int16_t msn_offset = rfc5225_ctxt->tmp.msn_offset;
+	const uint8_t oa_repetitions_nr = ctxt->compressor->oa_repetitions_nr;
 	const rohc_reordering_offset_t reorder_ratio = ctxt->compressor->reorder_ratio;
 	const ip_context_t *const innermost_ip_ctxt =
 		&(rfc5225_ctxt->ip_contexts[rfc5225_ctxt->ip_contexts_nr - 1]);
@@ -1770,6 +1775,7 @@ static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_FO_SO_pkt(const struct rohc
 	        (!rohc_comp_rfc5225_is_ipid_sequential(innermost_ip_id_behavior) ||
 	         rohc_comp_rfc5225_is_seq_ipid_inferred(innermost_ip_ctxt,
 	                                                innermost_ip_id_offset_trans_nr,
+	                                                oa_repetitions_nr,
 	                                                innermost_ip_id, msn_offset)) &&
 	        !rfc5225_ctxt->tmp.outer_ip_flag &&
 	        !rfc5225_ctxt->tmp.innermost_ip_flag &&
@@ -1794,6 +1800,7 @@ static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_FO_SO_pkt(const struct rohc
 	        (!rohc_comp_rfc5225_is_ipid_sequential(innermost_ip_id_behavior) ||
 	         rohc_comp_rfc5225_is_seq_ipid_inferred(innermost_ip_ctxt,
 	                                                innermost_ip_id_offset_trans_nr,
+	                                                oa_repetitions_nr,
 	                                                innermost_ip_id, msn_offset)) &&
 	        !rfc5225_ctxt->tmp.outer_ip_flag &&
 	        !rfc5225_ctxt->tmp.innermost_ip_flag &&
@@ -1924,6 +1931,7 @@ static bool rohc_comp_rfc5225_is_ipid_sequential(const rohc_ip_id_behavior_t beh
  *
  * @param ip_ctxt                The context for the given IP header
  * @param ip_id_offset_trans_nr  The number of IP-ID offset transmissions
+ * @param oa_repetitions_nr      The number of repetitions for Optimistic Approach
  * @param new_ip_id              The new value of the IP-ID
  * @param msn_offset             The offset between the previous and current MSN
  * @return                       true if the given IP-ID is sequential and
@@ -1931,6 +1939,7 @@ static bool rohc_comp_rfc5225_is_ipid_sequential(const rohc_ip_id_behavior_t beh
  */
 static bool rohc_comp_rfc5225_is_seq_ipid_inferred(const ip_context_t *const ip_ctxt,
                                                    const uint8_t ip_id_offset_trans_nr,
+                                                   const uint8_t oa_repetitions_nr,
                                                    const uint16_t new_ip_id,
                                                    const int16_t msn_offset)
 {
@@ -1940,7 +1949,7 @@ static bool rohc_comp_rfc5225_is_seq_ipid_inferred(const ip_context_t *const ip_
 	{
 		is_inferred = false;
 	}
-	else if(ip_id_offset_trans_nr < ROHC_OA_REPEAT_MIN)
+	else if(ip_id_offset_trans_nr < oa_repetitions_nr)
 	{
 		is_inferred = false;
 	}

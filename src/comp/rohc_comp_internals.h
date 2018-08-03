@@ -46,7 +46,7 @@
  */
 
 /** The minimal number of repetitions for the Optimistic Approach */
-#define ROHC_OA_REPEAT_MIN 4U
+#define ROHC_OA_REPEAT_DEFAULT 4U
 
 /** The default maximal number of packets sent in > IR states (= FO and SO
  *  states) before changing back the state to IR (periodic refreshes) */

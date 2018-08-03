@@ -685,7 +685,7 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 	tcp_context->ttl_hopl_change_count = 0;
 	tcp_context->tcp_window_change_count = 0;
 	tcp_context->ecn_used = false;
-	tcp_context->ecn_used_change_count = ROHC_OA_REPEAT_MIN;
+	tcp_context->ecn_used_change_count = comp->oa_repetitions_nr;
 	tcp_context->ecn_used_zero_count = 0;
 
 	/* TCP header begins just after the IP headers */
@@ -930,6 +930,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
                         const size_t rohc_pkt_max_len,
                         rohc_packet_t *const packet_type)
 {
+	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	struct sc_tcp_context *const tcp_context = context->specific;
 	struct c_tcp_opts_ctxt *const tcp_opts = &(tcp_context->tcp_opts);
 	const struct tcphdr *const tcp = uncomp_pkt_hdrs->tcp;
@@ -950,7 +951,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	{
 		tcp_context->tcp_opts_list_struct_trans_nr = 0;
 	}
-	else if(tcp_context->tcp_opts_list_struct_trans_nr < ROHC_OA_REPEAT_MIN)
+	else if(tcp_context->tcp_opts_list_struct_trans_nr < oa_repetitions_nr)
 	{
 		rohc_comp_debug(context, "some TCP options were not present at the very "
 		                "same location in the last few packets");
@@ -960,7 +961,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	{
 		tcp_context->tcp_opts_list_static_trans_nr = 0;
 	}
-	else if(tcp_context->tcp_opts_list_static_trans_nr < ROHC_OA_REPEAT_MIN)
+	else if(tcp_context->tcp_opts_list_static_trans_nr < oa_repetitions_nr)
 	{
 		rohc_comp_debug(context, "some static TCP options changed in the last "
 		                "few packets");
@@ -1060,13 +1061,13 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 
 		/* sequence number sent once more, count the number of transmissions to
 		 * know when scaled sequence number is possible */
-		if(tcp_context->seq_num_scaling_nr < ROHC_OA_REPEAT_MIN)
+		if(tcp_context->seq_num_scaling_nr < oa_repetitions_nr)
 		{
 			tcp_context->seq_num_scaling_nr++;
 			rohc_comp_debug(context, "unscaled sequence number was transmitted "
 			                "%u / %u times since the scaling factor or residue "
 			                "changed", tcp_context->seq_num_scaling_nr,
-			                ROHC_OA_REPEAT_MIN);
+			                oa_repetitions_nr);
 		}
 	}
 
@@ -1079,12 +1080,12 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 
 		/* ACK number sent once more, count the number of transmissions to
 		 * know when scaled ACK number is possible */
-		if(tcp_context->ack_num_scaling_nr < ROHC_OA_REPEAT_MIN)
+		if(tcp_context->ack_num_scaling_nr < oa_repetitions_nr)
 		{
 			tcp_context->ack_num_scaling_nr++;
 			rohc_comp_debug(context, "unscaled ACK number was transmitted %u / %u "
 			                "times since the scaling factor or residue changed",
-			                tcp_context->ack_num_scaling_nr, ROHC_OA_REPEAT_MIN);
+			                tcp_context->ack_num_scaling_nr, oa_repetitions_nr);
 		}
 	}
 
@@ -1100,47 +1101,47 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	}
 
 	/* update transmission counters */
-	if(tcp_context->tcp_seq_num_trans_nr < ROHC_OA_REPEAT_MIN)
+	if(tcp_context->tcp_seq_num_trans_nr < oa_repetitions_nr)
 	{
 		tcp_context->tcp_seq_num_trans_nr++;
 	}
-	if(tcp_context->tcp_ack_num_trans_nr < ROHC_OA_REPEAT_MIN)
+	if(tcp_context->tcp_ack_num_trans_nr < oa_repetitions_nr)
 	{
 		tcp_context->tcp_ack_num_trans_nr++;
 	}
-	if(tcp_context->tcp_window_change_count < ROHC_OA_REPEAT_MIN)
+	if(tcp_context->tcp_window_change_count < oa_repetitions_nr)
 	{
 		tcp_context->tcp_window_change_count++;
 	}
-	if(tcp_context->tcp_urg_ptr_trans_nr < ROHC_OA_REPEAT_MIN)
+	if(tcp_context->tcp_urg_ptr_trans_nr < oa_repetitions_nr)
 	{
 		tcp_context->tcp_urg_ptr_trans_nr++;
 	}
-	if(tcp_context->ttl_hopl_change_count < ROHC_OA_REPEAT_MIN)
+	if(tcp_context->ttl_hopl_change_count < oa_repetitions_nr)
 	{
 		tcp_context->ttl_hopl_change_count++;
 	}
-	if(tcp_context->innermost_ip_id_behavior_trans_nr < ROHC_OA_REPEAT_MIN)
+	if(tcp_context->innermost_ip_id_behavior_trans_nr < oa_repetitions_nr)
 	{
 		tcp_context->innermost_ip_id_behavior_trans_nr++;
 	}
-	if(tcp_context->innermost_dscp_trans_nr < ROHC_OA_REPEAT_MIN)
+	if(tcp_context->innermost_dscp_trans_nr < oa_repetitions_nr)
 	{
 		tcp_context->innermost_dscp_trans_nr++;
 	}
-	if(tcp_context->ipv6_exts_list_static_trans_nr < ROHC_OA_REPEAT_MIN)
+	if(tcp_context->ipv6_exts_list_static_trans_nr < oa_repetitions_nr)
 	{
 		tcp_context->ipv6_exts_list_static_trans_nr++;
 	}
-	if(tcp_context->ipv6_exts_list_dyn_trans_nr < ROHC_OA_REPEAT_MIN)
+	if(tcp_context->ipv6_exts_list_dyn_trans_nr < oa_repetitions_nr)
 	{
 		tcp_context->ipv6_exts_list_dyn_trans_nr++;
 	}
-	if(tcp_context->tcp_opts_list_struct_trans_nr < ROHC_OA_REPEAT_MIN)
+	if(tcp_context->tcp_opts_list_struct_trans_nr < oa_repetitions_nr)
 	{
 		tcp_context->tcp_opts_list_struct_trans_nr++;
 	}
-	if(tcp_context->tcp_opts_list_static_trans_nr < ROHC_OA_REPEAT_MIN)
+	if(tcp_context->tcp_opts_list_static_trans_nr < oa_repetitions_nr)
 	{
 		tcp_context->tcp_opts_list_static_trans_nr++;
 	}
@@ -2744,6 +2745,7 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
                                  uint8_t *const rohc_data,
                                  const size_t rohc_max_len)
 {
+	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	const struct tcphdr *const tcp = uncomp_pkt_hdrs->tcp;
 	co_common_t *const co_common = (co_common_t *) rohc_data;
 	uint8_t *co_common_opt = (uint8_t *) (co_common + 1); /* optional part */
@@ -2820,7 +2822,8 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 	{
 		const bool is_ack_stride_static =
 			tcp_is_ack_stride_static(tcp_context->ack_stride,
-			                         tcp_context->ack_num_scaling_nr);
+			                         tcp_context->ack_num_scaling_nr,
+			                         oa_repetitions_nr);
 		ret = c_static_or_irreg16(rohc_hton16(tcp_context->ack_stride),
 		                          is_ack_stride_static,
 		                          co_common_opt, rohc_remain_len, &indicator);
@@ -3050,6 +3053,7 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
                                const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                struct tcp_tmp_variables *const tmp)
 {
+	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	struct sc_tcp_context *const tcp_context = context->specific;
 	size_t ip_hdr_pos;
 	bool pkt_outer_dscp_changed;
@@ -3209,13 +3213,13 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 	if(tmp->dscp_changed)
 	{
 		rohc_comp_debug(context, "innermost IP DSCP changed in current packet, "
-		                "it shall be transmitted %u times", ROHC_OA_REPEAT_MIN);
+		                "it shall be transmitted %u times", oa_repetitions_nr);
 		tcp_context->innermost_dscp_trans_nr = 0;
 	}
-	else if(tcp_context->innermost_dscp_trans_nr < ROHC_OA_REPEAT_MIN)
+	else if(tcp_context->innermost_dscp_trans_nr < oa_repetitions_nr)
 	{
 		rohc_comp_debug(context, "innermost IP DSCP changed in last packets, "
-		                "it shall be transmitted %u times more", ROHC_OA_REPEAT_MIN -
+		                "it shall be transmitted %u times more", oa_repetitions_nr -
 		                tcp_context->innermost_dscp_trans_nr);
 		tmp->dscp_changed = true;
 	}
@@ -3226,14 +3230,14 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 		rohc_comp_debug(context, "innermost IP TTL/HL changed (%u -> %u) "
 		                "in current packet, it shall be transmitted %u times",
 		                inner_ip_ctxt->ttl_hopl,
-		                uncomp_pkt_hdrs->innermost_ip_hdr->ttl_hl, ROHC_OA_REPEAT_MIN);
+		                uncomp_pkt_hdrs->innermost_ip_hdr->ttl_hl, oa_repetitions_nr);
 		tmp->ttl_hopl_changed = true;
 		tcp_context->ttl_hopl_change_count = 0;
 	}
-	else if(tcp_context->ttl_hopl_change_count < ROHC_OA_REPEAT_MIN)
+	else if(tcp_context->ttl_hopl_change_count < oa_repetitions_nr)
 	{
 		rohc_comp_debug(context, "innermost IP TTL/HL changed in last packets, "
-		                "it shall be transmitted %u times more", ROHC_OA_REPEAT_MIN -
+		                "it shall be transmitted %u times more", oa_repetitions_nr -
 		                tcp_context->ttl_hopl_change_count);
 		tmp->ttl_hopl_changed = true;
 	}
@@ -3276,6 +3280,7 @@ static bool tcp_detect_changes_ipv6_exts(struct rohc_comp_ctxt *const context,
                                          const uint8_t *const exts,
                                          const size_t max_exts_len)
 {
+	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	struct sc_tcp_context *const tcp_context = context->specific;
 	const uint8_t *remain_data = exts;
 	size_t remain_len = max_exts_len;
@@ -3407,7 +3412,7 @@ static bool tcp_detect_changes_ipv6_exts(struct rohc_comp_ctxt *const context,
 		                "chain is required");
 		tcp_context->ipv6_exts_list_static_trans_nr = 0;
 	}
-	else if(tcp_context->ipv6_exts_list_static_trans_nr < ROHC_OA_REPEAT_MIN)
+	else if(tcp_context->ipv6_exts_list_static_trans_nr < oa_repetitions_nr)
 	{
 		rohc_comp_debug(context, "  IPv6 extension headers changed too much "
 		                "in last packets, static chain is required");
@@ -3419,7 +3424,7 @@ static bool tcp_detect_changes_ipv6_exts(struct rohc_comp_ctxt *const context,
 		                "chain is required");
 		tcp_context->ipv6_exts_list_dyn_trans_nr = 0;
 	}
-	else if(tcp_context->ipv6_exts_list_dyn_trans_nr < ROHC_OA_REPEAT_MIN)
+	else if(tcp_context->ipv6_exts_list_dyn_trans_nr < oa_repetitions_nr)
 	{
 		rohc_comp_debug(context, "  IPv6 extension headers changed too much "
 		                "in last packets, dynamic chain is required");
@@ -3468,6 +3473,7 @@ static uint16_t c_tcp_get_next_msn(const struct rohc_comp_ctxt *const context)
 static void tcp_decide_state(struct rohc_comp_ctxt *const context,
                              struct rohc_ts pkt_time)
 {
+	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	const rohc_comp_state_t curr_state = context->state;
 	rohc_comp_state_t next_state;
 
@@ -3480,18 +3486,18 @@ static void tcp_decide_state(struct rohc_comp_ctxt *const context,
 		next_state = ROHC_COMP_STATE_SO;
 		/* TODO: handle NACK and STATIC-NACK */
 	}
-	else if(context->state_oa_repeat_nr < ROHC_OA_REPEAT_MIN)
+	else if(context->state_oa_repeat_nr < oa_repetitions_nr)
 	{
 		rohc_comp_debug(context, "not enough packets transmitted in current state "
 		                "for the moment (%u/%u), so stay in current state",
-		                context->state_oa_repeat_nr, ROHC_OA_REPEAT_MIN);
+		                context->state_oa_repeat_nr, oa_repetitions_nr);
 		next_state = curr_state;
 	}
 	else
 	{
 		rohc_comp_debug(context, "enough packets transmitted in current state "
 		                "(%u/%u), go to upper state", context->state_oa_repeat_nr,
-		                ROHC_OA_REPEAT_MIN);
+		                oa_repetitions_nr);
 		next_state = ROHC_COMP_STATE_SO;
 	}
 
@@ -3517,6 +3523,7 @@ static bool tcp_detect_changes_tcp_hdr(struct rohc_comp_ctxt *const context,
                                        const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                        struct tcp_tmp_variables *const tmp)
 {
+	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	struct sc_tcp_context *const tcp_context = context->specific;
 	const struct tcphdr *const tcp = uncomp_pkt_hdrs->tcp;
 
@@ -3564,7 +3571,7 @@ static bool tcp_detect_changes_tcp_hdr(struct rohc_comp_ctxt *const context,
 		tmp->tcp_window_changed = 1;
 		tcp_context->tcp_window_change_count = 0;
 	}
-	else if(tcp_context->tcp_window_change_count < ROHC_OA_REPEAT_MIN)
+	else if(tcp_context->tcp_window_change_count < oa_repetitions_nr)
 	{
 		tmp->tcp_window_changed = 1;
 	}
@@ -3598,7 +3605,7 @@ static bool tcp_detect_changes_tcp_hdr(struct rohc_comp_ctxt *const context,
 		rohc_comp_debug(context, "unscaled sequence number was transmitted at "
 		                "least %u / %u times since the scaling factor or "
 		                "residue changed", tcp_context->seq_num_scaling_nr,
-		                ROHC_OA_REPEAT_MIN);
+		                oa_repetitions_nr);
 
 		/* TODO: should update context at the very end only */
 		tcp_context->seq_num_scaled = seq_num_scaled;
@@ -3667,7 +3674,7 @@ static bool tcp_detect_changes_tcp_hdr(struct rohc_comp_ctxt *const context,
 		if(context->num_sent_packets == 0)
 		{
 			/* no need to transmit the ack_stride until it becomes non-zero */
-			tcp_context->ack_num_scaling_nr = ROHC_OA_REPEAT_MIN;
+			tcp_context->ack_num_scaling_nr = oa_repetitions_nr;
 		}
 		else
 		{
@@ -3679,7 +3686,7 @@ static bool tcp_detect_changes_tcp_hdr(struct rohc_comp_ctxt *const context,
 			}
 			rohc_comp_debug(context, "unscaled ACK number was transmitted at least "
 			                "%u / %u times since the scaling factor or residue changed",
-			                tcp_context->ack_num_scaling_nr, ROHC_OA_REPEAT_MIN);
+			                tcp_context->ack_num_scaling_nr, oa_repetitions_nr);
 		}
 
 		/* TODO: should update context at the very end only */
@@ -3700,13 +3707,13 @@ static bool tcp_detect_changes_tcp_hdr(struct rohc_comp_ctxt *const context,
 	if(tmp->ip_id_behavior_changed)
 	{
 		rohc_comp_debug(context, "innermost IP-ID behavior changed in current "
-		                "packet, it shall be transmitted %u times", ROHC_OA_REPEAT_MIN);
+		                "packet, it shall be transmitted %u times", oa_repetitions_nr);
 		tcp_context->innermost_ip_id_behavior_trans_nr = 0;
 	}
-	else if(tcp_context->innermost_ip_id_behavior_trans_nr < ROHC_OA_REPEAT_MIN)
+	else if(tcp_context->innermost_ip_id_behavior_trans_nr < oa_repetitions_nr)
 	{
 		rohc_comp_debug(context, "innermost IP-ID behavior changed in last packets, "
-		                "it shall be transmitted %u times more", ROHC_OA_REPEAT_MIN -
+		                "it shall be transmitted %u times more", oa_repetitions_nr -
 		                tcp_context->innermost_ip_id_behavior_trans_nr);
 		tmp->ip_id_behavior_changed = true;
 	}
@@ -3715,14 +3722,14 @@ static bool tcp_detect_changes_tcp_hdr(struct rohc_comp_ctxt *const context,
 	if(!tmp->tcp_seq_num_unchanged)
 	{
 		rohc_comp_debug(context, "TCP sequence number changed in current packet, "
-		                "it shall be transmitted %u times", ROHC_OA_REPEAT_MIN);
+		                "it shall be transmitted %u times", oa_repetitions_nr);
 		tcp_context->tcp_seq_num_trans_nr = 0;
 	}
-	else if(tcp_context->tcp_seq_num_trans_nr < ROHC_OA_REPEAT_MIN)
+	else if(tcp_context->tcp_seq_num_trans_nr < oa_repetitions_nr)
 	{
 		rohc_comp_debug(context, "TCP sequence number changed in last packets, "
 		                "it shall be transmitted %u times more",
-		                ROHC_OA_REPEAT_MIN - tcp_context->tcp_seq_num_trans_nr);
+		                oa_repetitions_nr - tcp_context->tcp_seq_num_trans_nr);
 		tmp->tcp_seq_num_unchanged = false;
 	}
 
@@ -3730,14 +3737,14 @@ static bool tcp_detect_changes_tcp_hdr(struct rohc_comp_ctxt *const context,
 	if(!tmp->tcp_ack_num_unchanged)
 	{
 		rohc_comp_debug(context, "TCP ACK number changed in current packet, "
-		                "it shall be transmitted %u times", ROHC_OA_REPEAT_MIN);
+		                "it shall be transmitted %u times", oa_repetitions_nr);
 		tcp_context->tcp_ack_num_trans_nr = 0;
 	}
-	else if(tcp_context->tcp_ack_num_trans_nr < ROHC_OA_REPEAT_MIN)
+	else if(tcp_context->tcp_ack_num_trans_nr < oa_repetitions_nr)
 	{
 		rohc_comp_debug(context, "TCP ACK number changed in last packets, "
 		                "it shall be transmitted %u times more",
-		                ROHC_OA_REPEAT_MIN - tcp_context->tcp_ack_num_trans_nr);
+		                oa_repetitions_nr - tcp_context->tcp_ack_num_trans_nr);
 		tmp->tcp_ack_num_unchanged = false;
 	}
 
@@ -3745,14 +3752,14 @@ static bool tcp_detect_changes_tcp_hdr(struct rohc_comp_ctxt *const context,
 	if(tmp->tcp_urg_ptr_changed)
 	{
 		rohc_comp_debug(context, "TCP URG pointer changed in current packet, "
-		                "it shall be transmitted %u times", ROHC_OA_REPEAT_MIN);
+		                "it shall be transmitted %u times", oa_repetitions_nr);
 		tcp_context->tcp_urg_ptr_trans_nr = 0;
 	}
-	else if(tcp_context->tcp_urg_ptr_trans_nr < ROHC_OA_REPEAT_MIN)
+	else if(tcp_context->tcp_urg_ptr_trans_nr < oa_repetitions_nr)
 	{
 		rohc_comp_debug(context, "TCP URG pointer changed in last packets, "
 		                "it shall be transmitted %u times more",
-		                ROHC_OA_REPEAT_MIN - tcp_context->tcp_urg_ptr_trans_nr);
+		                oa_repetitions_nr - tcp_context->tcp_urg_ptr_trans_nr);
 		tmp->tcp_urg_ptr_changed = true;
 	}
 
@@ -3906,6 +3913,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet(const struct rohc_comp_ctxt *const 
                                              const struct tcp_tmp_variables *const tmp,
                                              const bool crc7_at_least)
 {
+	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	struct sc_tcp_context *const tcp_context = context->specific;
 	const struct tcphdr *const tcp = uncomp_pkt_hdrs->tcp;
 	rohc_packet_t packet_type;
@@ -3951,7 +3959,8 @@ static rohc_packet_t tcp_decide_FO_SO_packet(const struct rohc_comp_ctxt *const 
 	        tmp->tcp_urg_flag_changed ||
 	        tmp->tcp_urg_ptr_changed ||
 	        !tcp_is_ack_stride_static(tcp_context->ack_stride,
-	                                  tcp_context->ack_num_scaling_nr))
+	                                  tcp_context->ack_num_scaling_nr,
+	                                  oa_repetitions_nr))
 	{
 		TRACE_GOTO_CHOICE;
 		packet_type = ROHC_PACKET_TCP_CO_COMMON;
@@ -4044,6 +4053,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
                                                  const struct tcp_tmp_variables *const tmp,
                                                  const bool crc7_at_least)
 {
+	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	struct sc_tcp_context *const tcp_context = context->specific;
 	const struct tcphdr *const tcp = uncomp_pkt_hdrs->tcp;
 	rohc_packet_t packet_type;
@@ -4057,7 +4067,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 	   wlsb_is_kp_possible_16bits(&tcp_context->ip_id_wlsb,
 	                              tmp->ip_id_delta, 7, 3) &&
 	   tcp_context->seq_num_factor > 0 &&
-	   tcp_context->seq_num_scaling_nr >= ROHC_OA_REPEAT_MIN &&
+	   tcp_context->seq_num_scaling_nr >= oa_repetitions_nr &&
 	   wlsb_is_kp_possible_32bits(&tcp_context->seq_scaled_wlsb,
 	                              tcp_context->seq_num_scaled, 4, 7))
 	{
@@ -4126,7 +4136,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 		   wlsb_is_kp_possible_16bits(&tcp_context->ip_id_wlsb,
 		                              tmp->ip_id_delta, 7, 3) &&
 		   tcp_context->seq_num_factor > 0 &&
-		   tcp_context->seq_num_scaling_nr >= ROHC_OA_REPEAT_MIN &&
+		   tcp_context->seq_num_scaling_nr >= oa_repetitions_nr &&
 		   wlsb_is_kp_possible_32bits(&tcp_context->seq_scaled_wlsb,
 		                              tcp_context->seq_num_scaled, 4, 7))
 		{
@@ -4166,7 +4176,8 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 		   wlsb_is_kp_possible_16bits(&tcp_context->ip_id_wlsb,
 		                              tmp->ip_id_delta, 3, 1) &&
 		   tcp_is_ack_scaled_possible(tcp_context->ack_stride,
-		                              tcp_context->ack_num_scaling_nr) &&
+		                              tcp_context->ack_num_scaling_nr,
+		                              oa_repetitions_nr) &&
 		   wlsb_is_kp_possible_32bits(&tcp_context->ack_scaled_wlsb,
 		                              tcp_context->ack_num_scaled, 4, 3))
 		{
@@ -4203,7 +4214,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 		 * seq_6, seq_5, seq_8 or co_common */
 		if(!crc7_at_least &&
 		   tcp_context->seq_num_factor > 0 &&
-		   tcp_context->seq_num_scaling_nr >= ROHC_OA_REPEAT_MIN &&
+		   tcp_context->seq_num_scaling_nr >= oa_repetitions_nr &&
 		   wlsb_is_kp_possible_32bits(&tcp_context->seq_scaled_wlsb,
 		                              tcp_context->seq_num_scaled, 4, 7) &&
 		   wlsb_is_kp_possible_32bits(&tcp_context->ack_wlsb, tmp->ack_num, 16, 16383))
@@ -4267,6 +4278,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
                                                  const struct tcp_tmp_variables *const tmp,
                                                  const bool crc7_at_least)
 {
+	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	struct sc_tcp_context *const tcp_context = context->specific;
 	const struct tcphdr *const tcp = uncomp_pkt_hdrs->tcp;
 	rohc_packet_t packet_type;
@@ -4279,7 +4291,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 	   tmp->tcp_ack_num_unchanged &&
 	   uncomp_pkt_hdrs->payload_len > 0 &&
 	   tcp_context->seq_num_factor > 0 &&
-	   tcp_context->seq_num_scaling_nr >= ROHC_OA_REPEAT_MIN &&
+	   tcp_context->seq_num_scaling_nr >= oa_repetitions_nr &&
 	   wlsb_is_kp_possible_32bits(&tcp_context->seq_scaled_wlsb,
 	                              tcp_context->seq_num_scaled, 4, 7))
 	{
@@ -4328,7 +4340,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 		        tmp->tcp_ack_num_unchanged &&
 		        uncomp_pkt_hdrs->payload_len > 0 &&
 		        tcp_context->seq_num_factor > 0 &&
-		        tcp_context->seq_num_scaling_nr >= ROHC_OA_REPEAT_MIN &&
+		        tcp_context->seq_num_scaling_nr >= oa_repetitions_nr &&
 		        wlsb_is_kp_possible_32bits(&tcp_context->seq_scaled_wlsb,
 		                                   tcp_context->seq_num_scaled, 4, 7))
 		{
@@ -4340,7 +4352,8 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 		else if(!crc7_at_least &&
 		        tcp->ack_flag != 0 &&
 		        tcp_is_ack_scaled_possible(tcp_context->ack_stride,
-		                                   tcp_context->ack_num_scaling_nr) &&
+		                                   tcp_context->ack_num_scaling_nr,
+		                                   oa_repetitions_nr) &&
 		        wlsb_is_kp_possible_32bits(&tcp_context->ack_scaled_wlsb,
 		                                   tcp_context->ack_num_scaled, 4, 3) &&
 		        tmp->tcp_seq_num_unchanged)
@@ -4369,7 +4382,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 		else if(!crc7_at_least &&
 		        tcp->ack_flag != 0 &&
 		        tcp_context->seq_num_factor > 0 &&
-		        tcp_context->seq_num_scaling_nr >= ROHC_OA_REPEAT_MIN &&
+		        tcp_context->seq_num_scaling_nr >= oa_repetitions_nr &&
 		        wlsb_is_kp_possible_32bits(&tcp_context->seq_scaled_wlsb,
 		                                   tcp_context->seq_num_scaled, 4, 7) &&
 		        wlsb_is_kp_possible_32bits(&tcp_context->ack_wlsb, tmp->ack_num, 16, 16383))
@@ -4432,6 +4445,7 @@ static bool tcp_detect_ecn_used_behavior(struct rohc_comp_ctxt *const context,
                                          const uint8_t pkt_outer_dscp_changed,
                                          const uint8_t pkt_res_val)
 {
+	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	struct sc_tcp_context *const tcp_context = context->specific;
 	bool ecn_used_changed;
 
@@ -4462,14 +4476,14 @@ static bool tcp_detect_ecn_used_behavior(struct rohc_comp_ctxt *const context,
 	{
 		/* a change of ecn_used value seems to be required */
 		if(ecn_used_change_needed_by_ecn_flags_unset &&
-		   tcp_context->ecn_used_zero_count < ROHC_OA_REPEAT_MIN)
+		   tcp_context->ecn_used_zero_count < oa_repetitions_nr)
 		{
 			/* do not change ecn_used = 0 too quickly, wait for a few packets
 			 * that do not need ecn_used = 1 to actually perform the change */
 			rohc_comp_debug(context, "ECN: packet doesn't use ECN any more but "
 			                "context does, wait for %u more packets without ECN "
 			                "before changing the context ecn_used parameter",
-			                ROHC_OA_REPEAT_MIN - tcp_context->ecn_used_zero_count);
+			                oa_repetitions_nr - tcp_context->ecn_used_zero_count);
 			ecn_used_changed = false;
 			tcp_context->ecn_used_zero_count++;
 		}
@@ -4483,7 +4497,7 @@ static bool tcp_detect_ecn_used_behavior(struct rohc_comp_ctxt *const context,
 			tcp_context->ecn_used_zero_count = 0;
 		}
 	}
-	else if(tcp_context->ecn_used_change_count < ROHC_OA_REPEAT_MIN)
+	else if(tcp_context->ecn_used_change_count < oa_repetitions_nr)
 	{
 		rohc_comp_debug(context, "ECN: behavior didn't change but changed a few "
 		                "packet before");

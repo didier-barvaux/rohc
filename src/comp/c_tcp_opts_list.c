@@ -888,6 +888,7 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
                               uint8_t *const comp_opts,
                               const size_t comp_opts_max_len)
 {
+	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	uint8_t *rohc_remain_data = comp_opts;
 	size_t rohc_remain_len = comp_opts_max_len;
 	size_t comp_opts_len = 0;
@@ -968,7 +969,7 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 		{
 			const sack_block_t *const sack_blocks = (sack_block_t *) (opt_data + 2);
 			const bool is_sack_unchanged =
-				!!(opts_ctxt->list[opt_idx].nr_trans >= ROHC_OA_REPEAT_MIN);
+				!!(opts_ctxt->list[opt_idx].nr_trans >= oa_repetitions_nr);
 
 			ret = c_tcp_opt_sack_code(context, rohc_ntoh32(uncomp_pkt_hdrs->tcp->ack_num),
 			                          sack_blocks, opt_len - 2, is_sack_unchanged,
@@ -999,7 +1000,7 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 			uint8_t discriminator;
 			size_t contents_len;
 
-			if(opts_ctxt->list[opt_idx].nr_trans < ROHC_OA_REPEAT_MIN)
+			if(opts_ctxt->list[opt_idx].nr_trans < oa_repetitions_nr)
 			{
 				/* generic_full_irregular: the item that is assumed to change
 				 * constantly. Length is not allowed to change here, since a length

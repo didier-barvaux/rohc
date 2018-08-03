@@ -524,29 +524,33 @@ error:
  *  \li both the \e ack_stride scaling factor and the scaling residue didn't
  *      change in the last few packets
  *
- * @param ack_stride  The \e ack_stride scaling factor
- * @param nr_trans    The number of transmissions since last change
- * @return            true if the ACK number may be transmitted scaled,
- *                    false if the ACK number shall be transmitted unscaled
+ * @param ack_stride         The \e ack_stride scaling factor
+ * @param nr_trans           The number of transmissions since last change
+ * @param oa_repetitions_nr  The number of repetitions for Optimistic Approach
+ * @return                   true if the ACK number may be transmitted scaled,
+ *                           false if the ACK number shall be transmitted unscaled
  */
 bool tcp_is_ack_scaled_possible(const uint16_t ack_stride,
-                                const size_t nr_trans)
+                                const uint8_t nr_trans,
+                                const uint8_t oa_repetitions_nr)
 {
-	return (ack_stride != 0 && nr_trans >= ROHC_OA_REPEAT_MIN);
+	return (ack_stride != 0 && nr_trans >= oa_repetitions_nr);
 }
 
 
 /**
  * @brief Whether the \e ack_stride scaling factor shall be transmitted or not
  *
- * @param ack_stride  The \e ack_stride scaling factor
- * @param nr_trans    The number of transmissions since last change
- * @return            true if the ACK number may be transmitted scaled,
- *                    false if the ACK number shall be transmitted unscaled
+ * @param ack_stride         The \e ack_stride scaling factor
+ * @param nr_trans           The number of transmissions since last change
+ * @param oa_repetitions_nr  The number of repetitions for Optimistic Approach
+ * @return                   true if the ACK number may be transmitted scaled,
+ *                           false if the ACK number shall be transmitted unscaled
  */
 bool tcp_is_ack_stride_static(const uint16_t ack_stride,
-                              const size_t nr_trans)
+                              const uint8_t nr_trans,
+                              const uint8_t oa_repetitions_nr)
 {
-	return (ack_stride == 0 || nr_trans >= ROHC_OA_REPEAT_MIN);
+	return (ack_stride == 0 || nr_trans >= oa_repetitions_nr);
 }
 

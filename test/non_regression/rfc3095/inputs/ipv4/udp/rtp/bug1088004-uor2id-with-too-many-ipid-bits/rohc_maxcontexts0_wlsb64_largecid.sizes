@@ -8,9 +8,9 @@ compressor_num = 1	packet_num = 4	rohc_size = 18	packet_type = 57
 compressor_num = 2	packet_num = 4	rohc_size = 18	packet_type = 57
 compressor_num = 1	packet_num = 5	rohc_size = 18	packet_type = 57
 compressor_num = 2	packet_num = 5	rohc_size = 18	packet_type = 57
-compressor_num = 1	packet_num = 6	rohc_size = 10	packet_type = 2
-compressor_num = 2	packet_num = 6	rohc_size = 10	packet_type = 2
-compressor_num = 1	packet_num = 7	rohc_size = 10	packet_type = 2
-compressor_num = 2	packet_num = 7	rohc_size = 10	packet_type = 2
-compressor_num = 1	packet_num = 8	rohc_size = 15	packet_type = 61
-compressor_num = 2	packet_num = 8	rohc_size = 15	packet_type = 61
+compressor_num = 1	packet_num = 6	rohc_size = 18	packet_type = 57
+compressor_num = 2	packet_num = 6	rohc_size = 18	packet_type = 57
+compressor_num = 1	packet_num = 7	rohc_size = 18	packet_type = 57
+compressor_num = 2	packet_num = 7	rohc_size = 18	packet_type = 57
+compressor_num = 1	packet_num = 8	rohc_size = 19	packet_type = 61
+compressor_num = 2	packet_num = 8	rohc_size = 19	packet_type = 61

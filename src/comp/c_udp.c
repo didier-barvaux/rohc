@@ -427,6 +427,7 @@ static size_t udp_code_dynamic_udp_part(const struct rohc_comp_ctxt *const conte
 static int udp_changed_udp_dynamic(const struct rohc_comp_ctxt *context,
                                    const struct udphdr *udp)
 {
+	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	const struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	struct sc_udp_context *udp_context;
 
@@ -435,7 +436,7 @@ static int udp_changed_udp_dynamic(const struct rohc_comp_ctxt *context,
 
 	if((udp->check != 0 && udp_context->old_udp.check == 0) ||
 	   (udp->check == 0 && udp_context->old_udp.check != 0) ||
-	   (udp_context->udp_checksum_change_count < ROHC_OA_REPEAT_MIN))
+	   (udp_context->udp_checksum_change_count < oa_repetitions_nr))
 	{
 		if((udp->check != 0 && udp_context->old_udp.check == 0) ||
 		   (udp->check == 0 && udp_context->old_udp.check != 0))
