@@ -395,6 +395,8 @@ struct rohc_fingerprint
 {
 	struct rohc_fingerprint_base base;
 
+	uint8_t outermost_ip_dscp;
+
 	union
 	{
 		struct

@@ -1181,6 +1181,14 @@ static bool rohc_comp_are_ip_hdrs_supported(const struct rohc_comp *const comp,
 	pkt_hdrs->ip_hdrs_nr = ip_hdrs_nr;
 	pkt_hdrs->innermost_ip_hdr = &(pkt_hdrs->ip_hdrs[ip_hdrs_nr - 1]);
 
+	/* if user did not disable the feature, use the outermost IP DSCP to
+	 * classify packets into streams (we do not want to mix different QoS
+	 * priorities into one single stream) */
+	if((comp->features & ROHC_COMP_FEATURE_NO_CLASSIFY_IP_DSCP) == 0)
+	{
+		fingerprint->outermost_ip_dscp = (pkt_hdrs->ip_hdrs[0].tos_tc >> 2) & 0x3f;
+	}
+
 	/* IP headers are supported */
 	(*all_ip_hdrs_len) = packet_len - remain_len;
 	are_ip_hdrs_supported = true;
@@ -2954,7 +2962,8 @@ bool rohc_comp_set_features(struct rohc_comp *const comp,
 	const rohc_comp_features_t all_features =
 		ROHC_COMP_FEATURE_NO_IP_CHECKSUMS |
 		ROHC_COMP_FEATURE_DUMP_PACKETS |
-		ROHC_COMP_FEATURE_TIME_BASED_REFRESHES;
+		ROHC_COMP_FEATURE_TIME_BASED_REFRESHES |
+		ROHC_COMP_FEATURE_NO_CLASSIFY_IP_DSCP;
 
 	/* compressor must be valid */
 	if(comp == NULL)
@@ -3494,7 +3503,6 @@ static struct rohc_comp_ctxt *
 				{
 					ctxt_affinity++;
 				}
-				assert(ctxt_affinity != ROHC_AFFINITY_HIGH);
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 				           "CR: context CID %u scores %u as base context",
 				           candidate->cid, ctxt_affinity);

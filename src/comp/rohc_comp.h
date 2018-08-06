@@ -235,6 +235,8 @@ typedef enum
 	ROHC_COMP_FEATURE_DUMP_PACKETS    = (1 << 3),
 	/** Allow periodic refreshes based on inter-packet time */
 	ROHC_COMP_FEATURE_TIME_BASED_REFRESHES = (1 << 4),
+	/** Disallow packet classification based on outermost IP DSCP */
+	ROHC_COMP_FEATURE_NO_CLASSIFY_IP_DSCP  = (1 << 5),
 
 } rohc_comp_features_t;
 

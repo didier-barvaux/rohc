@@ -333,6 +333,14 @@ static int test_comp_and_decomp(const char *const filename,
 		goto destroy_comp;
 	}
 
+	/* disable packet classification with the outermost IP DSCP field */
+	if(!rohc_comp_set_features(comp, ROHC_COMP_FEATURE_NO_CLASSIFY_IP_DSCP))
+	{
+		fprintf(stderr, "failed to disable the packet classification with "
+		        "the outermost IP DSCP\n");
+		goto destroy_comp;
+	}
+
 	/* reduce the number of repetitions for Optimistic Approach to ease test */
 	if(!rohc_comp_set_optimistic_approach(comp, 3U))
 	{
