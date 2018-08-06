@@ -84,53 +84,51 @@ for cid_type in small large ; do
 		MAX_CONTEXTS=16384
 	fi
 
-	for wlsb_width in 4 64 ; do
-		for max_contexts in 1 ${MAX_CONTEXTS} ; do
-			CMD_PARAMS=""
-			CMD_PARAMS="${CMD_PARAMS} --optimistic-approach ${wlsb_width}"
-			CMD_PARAMS="${CMD_PARAMS} --max-contexts ${max_contexts}"
-			CMD_PARAMS="${CMD_PARAMS} --rohc-version ${ROHC_VERSION}"
-			CMD_PARAMS="${CMD_PARAMS} --loss-ratio ${KEEP} ${BURST_SIZE}"
-			CMD_PARAMS="${CMD_PARAMS} --no-comparison"
-			CMD_PARAMS="${CMD_PARAMS} --quiet"
-			CMD_PARAMS="${CMD_PARAMS} ${cid_type}cid"
+	for max_contexts in 1 ${MAX_CONTEXTS} ; do
+		CMD_PARAMS=""
+		CMD_PARAMS="${CMD_PARAMS} --optimistic-approach ${BURST_SIZE}"
+		CMD_PARAMS="${CMD_PARAMS} --max-contexts ${max_contexts}"
+		CMD_PARAMS="${CMD_PARAMS} --rohc-version ${ROHC_VERSION}"
+		CMD_PARAMS="${CMD_PARAMS} --loss-ratio ${KEEP} ${BURST_SIZE}"
+		CMD_PARAMS="${CMD_PARAMS} --no-comparison"
+		CMD_PARAMS="${CMD_PARAMS} --quiet"
+		CMD_PARAMS="${CMD_PARAMS} ${cid_type}cid"
 
-			echo -en "\t${cid_type} CID + W-LSB ${wlsb_width} + ${max_contexts} context(s): "
-			runs_nr=0
-			errors_nr=0
-			for capture in $( find ${BASEDIR}/rfc${RFC_NUM}/inputs/ -name source.pcap ) ; do
-				capture_name="$( echo ${capture} | ${SED} -e "s|${BASEDIR}/rfc${RFC_NUM}/inputs/||" )"
-				if [ -f "$( dirname ${capture} )/no_loss_robustness_${PARAMS}" ] ; then
+		echo -en "\t${cid_type} CID + W-LSB ${BURST_SIZE} + ${max_contexts} context(s): "
+		runs_nr=0
+		errors_nr=0
+		for capture in $( find ${BASEDIR}/rfc${RFC_NUM}/inputs/ -name source.pcap ) ; do
+			capture_name="$( echo ${capture} | ${SED} -e "s|${BASEDIR}/rfc${RFC_NUM}/inputs/||" )"
+			if [ -f "$( dirname ${capture} )/no_loss_robustness_${PARAMS}" ] ; then
+				[ ${runs_nr} -eq 0 ] && [ ${errors_nr} -eq 0 ] && echo
+				[ "${VERBOSE}" = "verbose" ] && echo -e "\t\t${capture_name}: SKIP"
+			else
+				${APP} ${CMD_PARAMS} ${capture}
+				ret=$?
+				if [ ${ret} -eq 0 ] ; then
+					[ "${VERBOSE}" = "verbose" ] && [ ${runs_nr} -eq 0 ] && echo
+					[ "${VERBOSE}" = "verbose" ] && echo -e "\t\t${capture_name}: PASS"
+				elif [ ${ret} -eq 77 ] ; then
 					[ ${runs_nr} -eq 0 ] && [ ${errors_nr} -eq 0 ] && echo
-					[ "${VERBOSE}" = "verbose" ] && echo -e "\t\t${capture_name}: SKIP"
+					echo -e "\t\t${capture_name}: SKIP"
+					errors_nr=$(( ${errors_nr} + 1 ))
+				elif [ ${ret} -ne 1 ] ; then
+					[ ${runs_nr} -eq 0 ] && [ ${errors_nr} -eq 0 ] && echo
+					echo -e "\t\t${capture_name}: CRASH"
+					errors_nr=$(( ${errors_nr} + 1 ))
 				else
-					${APP} ${CMD_PARAMS} ${capture}
-					ret=$?
-					if [ ${ret} -eq 0 ] ; then
-						[ "${VERBOSE}" = "verbose" ] && [ ${runs_nr} -eq 0 ] && echo
-						[ "${VERBOSE}" = "verbose" ] && echo -e "\t\t${capture_name}: PASS"
-					elif [ ${ret} -eq 77 ] ; then
-						[ ${runs_nr} -eq 0 ] && [ ${errors_nr} -eq 0 ] && echo
-						echo -e "\t\t${capture_name}: SKIP"
-						errors_nr=$(( ${errors_nr} + 1 ))
-					elif [ ${ret} -ne 1 ] ; then
-						[ ${runs_nr} -eq 0 ] && [ ${errors_nr} -eq 0 ] && echo
-						echo -e "\t\t${capture_name}: CRASH"
-						errors_nr=$(( ${errors_nr} + 1 ))
-					else
-						[ ${runs_nr} -eq 0 ] && [ ${errors_nr} -eq 0 ] && echo
-						echo -e "\t\t${capture_name}: FAIL"
-						errors_nr=$(( ${errors_nr} + 1 ))
-					fi
+					[ ${runs_nr} -eq 0 ] && [ ${errors_nr} -eq 0 ] && echo
+					echo -e "\t\t${capture_name}: FAIL"
+					errors_nr=$(( ${errors_nr} + 1 ))
 				fi
-				runs_nr=$(( ${runs_nr} + 1 ))
-			done
-
-			[ ${errors_nr} -gt 0 ] && echo -en "\t\t"
-			echo "${errors_nr}/${runs_nr} failures"
-
-			all_errors_nr=$(( ${all_errors_nr} + ${errors_nr} ))
+			fi
+			runs_nr=$(( ${runs_nr} + 1 ))
 		done
+
+		[ ${errors_nr} -gt 0 ] && echo -en "\t\t"
+		echo "${errors_nr}/${runs_nr} failures"
+
+		all_errors_nr=$(( ${all_errors_nr} + ${errors_nr} ))
 	done
 done
 
