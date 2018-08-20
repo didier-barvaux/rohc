@@ -3499,6 +3499,8 @@ bool rohc_decomp_enable_profile(struct rohc_decomp *const decomp,
 	   profile_minor > ROHC_PROFILE_ID_MINOR_MAX ||
 	   rohc_decomp_profiles[profile_major][profile_minor] == NULL)
 	{
+		rohc_error(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		           "unsupported ROHC decompression profile ID 0x%04x", profile);
 		goto error;
 	}
 
@@ -3507,6 +3509,10 @@ bool rohc_decomp_enable_profile(struct rohc_decomp *const decomp,
 	 * enabled or not */
 	if(rohc_decomp_profile_enabled_nocheck(decomp, rohc_profile_get_other_version(profile)))
 	{
+		rohc_error(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		           "failed to enable ROHC decompression profile 0x%04x: "
+		           "incompatible profile 0x%04x is already enabled",
+		           profile, rohc_profile_get_other_version(profile));
 		goto error;
 	}
 
@@ -3520,6 +3526,9 @@ bool rohc_decomp_enable_profile(struct rohc_decomp *const decomp,
 	 */
 	if(rohc_profile_is_rohcv2(profile) && decomp->mrru > 0)
 	{
+		rohc_error(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		           "failed to enable ROHC decompression profile 0x%04x: ROHC "
+		           "segmentation is not compatible with ROHCv2 profiles", profile);
 		goto error;
 	}
 
@@ -3572,6 +3581,8 @@ bool rohc_decomp_disable_profile(struct rohc_decomp *const decomp,
 	   profile_minor > ROHC_PROFILE_ID_MINOR_MAX ||
 	   rohc_decomp_profiles[profile_major][profile_minor] == NULL)
 	{
+		rohc_error(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		           "unsupported ROHC decompression profile ID 0x%04x", profile);
 		goto error;
 	}
 

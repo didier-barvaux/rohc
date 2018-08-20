@@ -2472,6 +2472,8 @@ bool rohc_comp_enable_profile(struct rohc_comp *const comp,
 	   profile_minor > ROHC_PROFILE_ID_MINOR_MAX ||
 	   rohc_comp_profiles[profile_major][profile_minor] == NULL)
 	{
+		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "unsupported ROHC compression profile ID 0x%04x", profile);
 		goto error;
 	}
 
@@ -2480,6 +2482,10 @@ bool rohc_comp_enable_profile(struct rohc_comp *const comp,
 	 * enabled or not */
 	if(rohc_comp_profile_enabled_nocheck(comp, rohc_profile_get_other_version(profile)))
 	{
+		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "failed to enable ROHC compression profile 0x%04x: "
+		           "incompatible profile 0x%04x is already enabled",
+		           profile, rohc_profile_get_other_version(profile));
 		goto error;
 	}
 
@@ -2493,6 +2499,9 @@ bool rohc_comp_enable_profile(struct rohc_comp *const comp,
 	 */
 	if(rohc_profile_is_rohcv2(profile) && comp->mrru > 0)
 	{
+		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "failed to enable ROHC compression profile 0x%04x: ROHC "
+		           "segmentation is not compatible with ROHCv2 profiles", profile);
 		goto error;
 	}
 
@@ -2545,6 +2554,8 @@ bool rohc_comp_disable_profile(struct rohc_comp *const comp,
 	   profile_minor > ROHC_PROFILE_ID_MINOR_MAX ||
 	   rohc_comp_profiles[profile_major][profile_minor] == NULL)
 	{
+		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "unsupported ROHC compression profile ID 0x%04x", profile);
 		goto error;
 	}
 
