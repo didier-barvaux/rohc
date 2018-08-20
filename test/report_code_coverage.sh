@@ -31,7 +31,7 @@
 #       MAKELEVEL makes the non-regression script to mis-compute paths
 #
 
-coverage_lines_min_req=90
+coverage_lines_min_req=89
 coverage_functions_min_req=98
 coverage_branches_min_req=58
 
