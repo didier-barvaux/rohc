@@ -393,7 +393,8 @@ int ip_parse_ext3(const struct rohc_decomp_ctxt *const context,
 		}
 
 		/* both inner and outer IP-ID fields are 2-byte long */
-		I_bits = rohc_ntoh16(GET_NEXT_16_BITS(rohc_remain_data));
+		I_bits = ((rohc_remain_data[0] << 8) & 0xff00) |
+		         (rohc_remain_data[1] & 0x00ff);
 		rohc_remain_data += 2;
 		rohc_remain_len -= 2;
 	}
@@ -437,6 +438,7 @@ int ip_parse_ext3(const struct rohc_decomp_ctxt *const context,
 			}
 			bits->inner_ip.id = I_bits;
 			bits->inner_ip.id_nr = 16;
+			bits->inner_ip.is_id_enc = true;
 			rohc_decomp_debug(context, "%zd bits of inner IP-ID in EXT3 = 0x%x",
 			                  bits->inner_ip.id_nr, bits->inner_ip.id);
 		}
@@ -454,6 +456,7 @@ int ip_parse_ext3(const struct rohc_decomp_ctxt *const context,
 			}
 			bits->outer_ip.id = I_bits;
 			bits->outer_ip.id_nr = 16;
+			bits->outer_ip.is_id_enc = true;
 			rohc_decomp_debug(context, "%zd bits of outer IP-ID in EXT3 = 0x%x",
 			                  bits->outer_ip.id_nr, bits->outer_ip.id);
 		}
@@ -536,12 +539,6 @@ int parse_inner_header_flags(const struct rohc_decomp_ctxt *const context,
 	rohc_decomp_debug(context, "header flags: TOS = %u, TTL = %u, PR = %u, "
 	                  "IPX = %u, NBO = %u, RND = %u", is_tos, is_ttl, is_pr,
 	                  is_ipx, nbo, rnd);
-
-	/* force the NBO flag to 1 if RND is detected */
-	if(rnd)
-	{
-		nbo = 1;
-	}
 
 	/* check the minimal length to decode the header fields */
 	if(length < ((size_t) (is_tos + is_ttl + is_pr + is_ipx)))
@@ -732,7 +729,7 @@ int parse_outer_header_flags(const struct rohc_decomp_ctxt *const context,
 			goto error;
 		}
 
-		bits->id = rohc_ntoh16(GET_NEXT_16_BITS(fields));
+		bits->id = ((fields[0] << 8) & 0xff00) | (fields[1] & 0x00ff);
 		bits->id_nr = 16;
 
 		rohc_decomp_debug(context, "%zd bits of outer IP-ID in EXT3 = 0x%x",

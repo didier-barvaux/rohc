@@ -8,7 +8,8 @@
 
 TESTS = \
 	test_interop_Aeroflex-TM500-1.sh \
-	test_interop_Aeroflex-TM500-2.sh
+	test_interop_Aeroflex-TM500-2.sh \
+	test_interop_Effnet-IPonly-rnd-ip-id-without-nbo.sh
 
 
 check_PROGRAMS = \
