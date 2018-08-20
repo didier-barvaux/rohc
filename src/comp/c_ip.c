@@ -108,13 +108,14 @@ rohc_packet_t c_ip_decide_FO_packet(const struct rohc_comp_ctxt *const context)
 {
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
 		(const struct rohc_comp_rfc3095_ctxt *const) context->specific;
+	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	rohc_packet_t packet;
 
 	if((rfc3095_ctxt->outer_ip_flags.version == IPV4 &&
-	    rfc3095_ctxt->outer_ip_flags.info.v4.sid_count < MAX_FO_COUNT) ||
+	    rfc3095_ctxt->outer_ip_flags.info.v4.sid_count < oa_repetitions_nr) ||
 	   (rfc3095_ctxt->ip_hdr_nr > 1 &&
 	    rfc3095_ctxt->inner_ip_flags.version == IPV4 &&
-	    rfc3095_ctxt->inner_ip_flags.info.v4.sid_count < MAX_FO_COUNT))
+	    rfc3095_ctxt->inner_ip_flags.info.v4.sid_count < oa_repetitions_nr))
 	{
 		packet = ROHC_PACKET_IR_DYN;
 		rohc_comp_debug(context, "choose packet IR-DYN because at least one "
@@ -177,15 +178,16 @@ rohc_packet_t c_ip_decide_SO_packet(const struct rohc_comp_ctxt *const context)
 {
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
+	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	rohc_packet_t packet;
 
 	if(rfc3095_ctxt->ip_hdr_nr == 1) /* single IP header */
 	{
 		if(rfc3095_ctxt->outer_ip_flags.version == IPV4)
 		{
-			assert(rfc3095_ctxt->outer_ip_flags.info.v4.sid_count >= MAX_FO_COUNT);
-			assert(rfc3095_ctxt->outer_ip_flags.info.v4.rnd_count >= MAX_FO_COUNT);
-			assert(rfc3095_ctxt->outer_ip_flags.info.v4.nbo_count >= MAX_FO_COUNT);
+			assert(rfc3095_ctxt->outer_ip_flags.info.v4.sid_count >= oa_repetitions_nr);
+			assert(rfc3095_ctxt->outer_ip_flags.info.v4.rnd_count >= oa_repetitions_nr);
+			assert(rfc3095_ctxt->outer_ip_flags.info.v4.nbo_count >= oa_repetitions_nr);
 		}
 
 		if(rfc3095_ctxt->tmp.sn_4bits_possible &&
@@ -225,15 +227,15 @@ rohc_packet_t c_ip_decide_SO_packet(const struct rohc_comp_ctxt *const context)
 	{
 		if(rfc3095_ctxt->outer_ip_flags.version == IPV4)
 		{
-			assert(rfc3095_ctxt->outer_ip_flags.info.v4.sid_count >= MAX_FO_COUNT);
-			assert(rfc3095_ctxt->outer_ip_flags.info.v4.rnd_count >= MAX_FO_COUNT);
-			assert(rfc3095_ctxt->outer_ip_flags.info.v4.nbo_count >= MAX_FO_COUNT);
+			assert(rfc3095_ctxt->outer_ip_flags.info.v4.sid_count >= oa_repetitions_nr);
+			assert(rfc3095_ctxt->outer_ip_flags.info.v4.rnd_count >= oa_repetitions_nr);
+			assert(rfc3095_ctxt->outer_ip_flags.info.v4.nbo_count >= oa_repetitions_nr);
 		}
 		if(rfc3095_ctxt->inner_ip_flags.version == IPV4)
 		{
-			assert(rfc3095_ctxt->inner_ip_flags.info.v4.sid_count >= MAX_FO_COUNT);
-			assert(rfc3095_ctxt->inner_ip_flags.info.v4.rnd_count >= MAX_FO_COUNT);
-			assert(rfc3095_ctxt->inner_ip_flags.info.v4.nbo_count >= MAX_FO_COUNT);
+			assert(rfc3095_ctxt->inner_ip_flags.info.v4.sid_count >= oa_repetitions_nr);
+			assert(rfc3095_ctxt->inner_ip_flags.info.v4.rnd_count >= oa_repetitions_nr);
+			assert(rfc3095_ctxt->inner_ip_flags.info.v4.nbo_count >= oa_repetitions_nr);
 		}
 
 		if(rfc3095_ctxt->tmp.sn_4bits_possible &&

@@ -451,6 +451,7 @@ static int tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *const context,
                                      uint8_t *const rohc_data,
                                      const size_t rohc_max_len)
 {
+	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	struct sc_tcp_context *const tcp_context = context->specific;
 	const struct tcphdr *const tcp = (struct tcphdr *) uncomp_pkt_hdrs->tcp;
 
@@ -558,7 +559,8 @@ static int tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *const context,
 	{
 		const bool is_ack_stride_static =
 			tcp_is_ack_stride_static(tcp_context->ack_stride,
-			                         tcp_context->ack_num_scaling_nr);
+			                         tcp_context->ack_num_scaling_nr,
+			                         oa_repetitions_nr);
 		ret = c_static_or_irreg16(rohc_hton16(tcp_context->ack_stride),
 		                          is_ack_stride_static,
 		                          rohc_remain_data, rohc_remain_len, &indicator);

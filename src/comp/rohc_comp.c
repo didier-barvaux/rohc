@@ -294,7 +294,7 @@ static bool rohc_comp_feedback_check_opts(const struct rohc_comp_ctxt *const con
  * @see rohc_comp_disable_profiles
  * @see rohc_comp_disable_profile
  * @see rohc_comp_set_mrru
- * @see rohc_comp_set_wlsb_window_width
+ * @see rohc_comp_set_optimistic_approach
  * @see rohc_comp_set_periodic_refreshes
  * @see rohc_comp_set_rtp_detection_cb
  */
@@ -303,7 +303,7 @@ struct rohc_comp * rohc_comp_new2(const rohc_cid_type_t cid_type,
                                   const rohc_comp_random_cb_t rand_cb,
                                   void *const rand_priv)
 {
-	const size_t wlsb_width = 4; /* default window width for W-LSB encoding */
+	const size_t oa_repetitions_nr = ROHC_OA_REPEAT_DEFAULT;
 	const size_t reorder_ratio = ROHC_REORDERING_NONE; /* default reordering ratio */
 	struct rohc_comp *comp;
 	uint8_t profile_major;
@@ -367,8 +367,8 @@ struct rohc_comp * rohc_comp_new2(const rohc_cid_type_t cid_type,
 	comp->total_uncompressed_size = 0;
 	comp->last_context = NULL;
 
-	/* set the default W-LSB window width */
-	is_fine = rohc_comp_set_wlsb_window_width(comp, wlsb_width);
+	/* set the default number of repetitions for Optimistic Approach */
+	is_fine = rohc_comp_set_optimistic_approach(comp, oa_repetitions_nr);
 	if(is_fine != true)
 	{
 		goto destroy_comp;
@@ -392,14 +392,6 @@ struct rohc_comp * rohc_comp_new2(const rohc_cid_type_t cid_type,
 	is_fine = rohc_comp_set_periodic_refreshes_time(comp,
 	                                                CHANGE_TO_IR_TIME,
 	                                                CHANGE_TO_FO_TIME);
-	if(is_fine != true)
-	{
-		goto destroy_comp;
-	}
-
-	/* set the default number of uncompressed transmissions for list
-	 * compression */
-	is_fine = rohc_comp_set_list_trans_nr(comp, ROHC_LIST_DEFAULT_L);
 	if(is_fine != true)
 	{
 		goto destroy_comp;
@@ -1502,8 +1494,7 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 	rohc_packet->len = 0;
 
 	/* use profile to compress packet */
-	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "compress the packet #%d", comp->num_packets + 1);
+	rohc_comp_debug(c, "compress the packet #%d", comp->num_packets + 1);
 	rohc_hdr_size =
 		c->profile->encode(c, &pkt_hdrs, &uncomp_packet, rohc_buf_data(*rohc_packet),
 		                   rohc_buf_avail_len(*rohc_packet),
@@ -1522,6 +1513,15 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 	{
 		pkt_hdrs.all_hdrs_len++;
 		pkt_hdrs.payload_len--;
+	}
+
+	/* increment the number of packets that were emitted in the current
+	 * compression state */
+	if(c->state_oa_repeat_nr < comp->oa_repetitions_nr)
+	{
+		c->state_oa_repeat_nr++;
+		rohc_comp_debug(c, "last change was transmitted %u/%u times",
+		                c->state_oa_repeat_nr, comp->oa_repetitions_nr);
 	}
 
 	/* the payload starts after the header, skip it */
@@ -1973,6 +1973,96 @@ error:
 
 
 /**
+ * @brief Set the number of repetitions required to gain transmission confidence
+ *
+ * The Optimistic Approach is defined by RFC 3095 §5.3.1.1.1 as follow:
+ *
+ *   Transition to a higher compression state in Unidirectional mode is
+ *   carried out according to the optimistic approach principle.  This
+ *   means that the compressor transits to a higher compression state when
+ *   it is fairly confident that the decompressor has received enough
+ *   information to correctly decompress packets sent according to the
+ *   higher compression state.
+ *
+ *   When the compressor is in the IR state, it will stay there until it
+ *   assumes that the decompressor has correctly received the static
+ *   context information.  For transition from the FO to the SO state, the
+ *   compressor should be confident that the decompressor has all
+ *   parameters needed to decompress according to a fixed pattern.
+ *
+ *   The compressor normally obtains its confidence about decompressor
+ *   status by sending several packets with the same information according
+ *   to the lower compression state.  If the decompressor receives any of
+ *   these packets, it will be in sync with the compressor.  The number of
+ *   consecutive packets to send for confidence is not defined in this
+ *   document.
+ *
+ * This function allows the library users to set the number of repetitions
+ * required by the ROHC compressor to gain confidence that the ROHC
+ * decompressor got the transmitted information.
+ *
+ * It controls:
+ *  - the number of IR packets transmitted in a row at context initialization,
+ *  - the number of context-updating packets transmitted in case of stream change,
+ *  - the number of transmissions of TS stride, list structures or list items
+ *    before they are considered as known,
+ *  - the width of the W-LSB window.
+ *
+ * The number of repetitions may be chosen as follow:
+ *  a/ define the largest loss burst that you want to be robust to,
+ *  b/ increment that number by one, so that at least one packet per burst
+ *     is received by the decompressor.
+ *
+ * @warning The value can not be modified after library initialization
+ *
+ * @param comp            The ROHC compressor to configure
+ * @param repetitions_nr  The number of repetitions (4 by default)
+ * @return                true in case of success, false in case of failure
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_comp_set_optimistic_approach(struct rohc_comp *const comp,
+                                       const size_t repetitions_nr)
+{
+	/* we need a valid compressor */
+	if(comp == NULL)
+	{
+		return false;
+	}
+
+	/* the window width shall be in both ranges ]0;ROHC_WLSB_WIDTH_MAX]
+	 * and ]0;UINT8_MAX] */
+	if(repetitions_nr == 0 ||
+	   repetitions_nr > ROHC_WLSB_WIDTH_MAX ||
+	   repetitions_nr > UINT8_MAX)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "failed to "
+		             "set the number of Optimistic Approach repetitions to %zu: "
+		             "value must be in range ]0;%u]",
+		             repetitions_nr, rohc_min(ROHC_WLSB_WIDTH_MAX, UINT8_MAX));
+		return false;
+	}
+
+	/* refuse to set a value if compressor is in use */
+	if(comp->num_packets > 0)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "unable to "
+		             "modify the number of Optimistic Approach repetitions "
+		             "after initialization");
+		return false;
+	}
+
+	comp->oa_repetitions_nr = repetitions_nr;
+
+	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	          "number of Optimistic Approach repetitions set to %u",
+	          comp->oa_repetitions_nr);
+
+	return true;
+}
+
+
+/**
  * @brief Set the window width for the W-LSB encoding scheme
  *
  * Set the window width for the Window-based Least Significant Bits (W-LSB)
@@ -1988,39 +2078,14 @@ error:
  * @return       true in case of success, false in case of failure
  *
  * @ingroup rohc_comp
+ *
+ * @deprecated please use rohc_comp_set_optimistic_approach() instead
  */
 bool rohc_comp_set_wlsb_window_width(struct rohc_comp *const comp,
                                      const size_t width)
 {
-	/* we need a valid compressor */
-	if(comp == NULL)
-	{
-		return false;
-	}
-
-	/* the window width shall be in range ]0;ROHC_WLSB_WIDTH_MAX] */
-	if(width == 0 || width > ROHC_WLSB_WIDTH_MAX)
-	{
-		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "failed to "
-		             "set width of W-LSB sliding window to %zd: window width "
-		             "must be in range ]0;%u]", width, ROHC_WLSB_WIDTH_MAX);
-		return false;
-	}
-
-	/* refuse to set a value if compressor is in use */
-	if(comp->num_packets > 0)
-	{
-		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "unable to "
-		             "modify the W-LSB window width after initialization");
-		return false;
-	}
-
-	comp->wlsb_window_width = width;
-
-	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	          "width of W-LSB sliding window set to %zd", width);
-
-	return true;
+	/* fallback on the new function */
+	return rohc_comp_set_optimistic_approach(comp, width);
 }
 
 
@@ -2207,7 +2272,7 @@ bool rohc_comp_set_periodic_refreshes_time(struct rohc_comp *const comp,
  * list items uncompressed L times before compressing them. The compressor
  * also sends the list structure L times before compressing it out.
  *
- * The L parameter is set to \ref ROHC_LIST_DEFAULT_L by default.
+ * The L parameter is set to \ref ROHC_OA_REPEAT_DEFAULT by default.
  *
  * @warning The value can not be modified after library initialization
  *
@@ -2218,38 +2283,14 @@ bool rohc_comp_set_periodic_refreshes_time(struct rohc_comp *const comp,
  *                       false if the value is rejected
  *
  * @ingroup rohc_comp
+ *
+ * @deprecated please use rohc_comp_set_optimistic_approach() instead
  */
 bool rohc_comp_set_list_trans_nr(struct rohc_comp *const comp,
                                  const size_t list_trans_nr)
 {
-	/* we need a valid compressor and a positive non-zero value for L */
-	if(comp == NULL)
-	{
-		return false;
-	}
-	if(list_trans_nr == 0 || list_trans_nr > UINT8_MAX)
-	{
-		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "invalid "
-		             "value for uncompressed transmissions of list compression "
-		             "(%zu)", list_trans_nr);
-		return false;
-	}
-
-	/* refuse to set values if compressor is in use */
-	if(comp->num_packets > 0)
-	{
-		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		             "unable to modify the value for uncompressed transmissions"
-		             " of list compression after initialization");
-		return false;
-	}
-
-	comp->list_trans_nr = list_trans_nr;
-
-	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "uncompressed "
-	          "transmissions of list compression set to %zu", list_trans_nr);
-
-	return true;
+	/* fallback on the new function */
+	return rohc_comp_set_optimistic_approach(comp, list_trans_nr);
 }
 
 
@@ -3498,7 +3539,6 @@ static struct rohc_comp_ctxt *
 		memcpy(c, base_ctxt, sizeof(struct rohc_comp_ctxt));
 		c->do_ctxt_replication = true;
 		c->cr_base_cid = base_ctxt->cid;
-		c->cr_count = 0;
 		c->state = ROHC_COMP_STATE_CR;
 	}
 	else
@@ -3509,9 +3549,7 @@ static struct rohc_comp_ctxt *
 
 	memcpy(&c->fingerprint, fingerprint, sizeof(struct rohc_fingerprint));
 
-	c->ir_count = 0;
-	c->fo_count = 0;
-	c->so_count = 0;
+	c->state_oa_repeat_nr = 0;
 	c->go_back_fo_count = 0;
 	c->go_back_fo_time = packet->time;
 	c->go_back_ir_count = 0;
@@ -3667,7 +3705,7 @@ static struct rohc_comp_ctxt *
 		   profile->id == ROHCv1_PROFILE_IP_TCP && /* TODO: replace TCP by CR capacity */
 		   context->do_ctxt_replication &&
 		   context->state == ROHC_COMP_STATE_CR &&
-		   context->cr_count < MAX_CR_COUNT)
+		   context->state_oa_repeat_nr < comp->oa_repetitions_nr)
 		{
 			/* Context Replication is in action, so check whether the base context
 			 * changed too much to be re-used or not */
@@ -3676,9 +3714,10 @@ static struct rohc_comp_ctxt *
 			rohc_ctxt_affinity_t base_ctxt_affinity;
 
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "Context Replication in action (%zu/%u packets sent): check "
+			           "Context Replication in action (%u/%u packets sent): check "
 			           "for CID %u whether base context with CID %u changed too much",
-			           context->cr_count, MAX_CR_COUNT, context->cid, base_ctxt->cid);
+			           context->state_oa_repeat_nr, comp->oa_repetitions_nr,
+			           context->cid, base_ctxt->cid);
 
 			/* there are two ways the base context may have changed:
 			 *   - the base context now matches exactly the replicated context
@@ -3906,9 +3945,7 @@ void rohc_comp_change_state(struct rohc_comp_ctxt *const context,
 		          context->cid, context->state, new_state);
 
 		/* reset counters */
-		context->ir_count = 0;
-		context->fo_count = 0;
-		context->so_count = 0;
+		context->state_oa_repeat_nr = 0;
 
 		/* change state */
 		context->state = new_state;

@@ -70,7 +70,7 @@ int c_zero_or_irreg32(const uint32_t packet_value,
 	__attribute__((warn_unused_result, nonnull(2, 4)));
 
 /* variable_length_32_enc encoding method */
-int variable_length_32_enc(const uint32_t old_value,
+int variable_length_32_enc(const bool is_unchanged,
                            const uint32_t new_value,
                            const struct c_wlsb *const wlsb,
                            uint8_t *const rohc_data,
@@ -103,7 +103,7 @@ int c_optional_ip_id_lsb(const int behavior,
 	__attribute__((warn_unused_result, nonnull(4, 6, 8)));
 
 // RFC4996 page 75
-int dscp_encode(const uint8_t context_value,
+int dscp_encode(const bool is_static,
                 const uint8_t packet_value,
                 uint8_t *const rohc_data,
                 const size_t rohc_max_len,
@@ -112,10 +112,12 @@ int dscp_encode(const uint8_t context_value,
 
 /* helper functions related to Scaled ACK and ACK Stride */
 bool tcp_is_ack_scaled_possible(const uint16_t ack_stride,
-                                const size_t nr_trans)
+                                const uint8_t nr_trans,
+                                const uint8_t oa_repetitions_nr)
 	__attribute__((warn_unused_result, const));
 bool tcp_is_ack_stride_static(const uint16_t ack_stride,
-                              const size_t nr_trans)
+                              const uint8_t nr_trans,
+                              const uint8_t oa_repetitions_nr)
 	__attribute__((warn_unused_result, const));
 
 #endif /* ROHC_COMP_RFC4996_ENCODING_H */

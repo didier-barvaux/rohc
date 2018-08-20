@@ -57,16 +57,16 @@ struct ipv4_header_info
 	struct ipv4_hdr old_ip;
 
 	/// The number of times the DF field was added to the compressed header
-	size_t df_count;
+	uint8_t df_count;
 	/// @brief The number of times the IP-ID is specified as random in the
 	///        compressed header
-	size_t rnd_count;
+	uint8_t rnd_count;
 	/// @brief The number of times the IP-ID is specified as coded in Network
 	///        Byte Order (NBO) in the compressed header
-	size_t nbo_count;
+	uint8_t nbo_count;
 	/// @brief The number of times the IP-ID is specified as static in the
 	///        compressed header
-	size_t sid_count;
+	uint8_t sid_count;
 
 	/// Whether the IP-ID is considered as random or not
 	int rnd;
@@ -243,9 +243,11 @@ struct rohc_comp_rfc3095_ctxt
 	///        next packet
 	void (*decide_state)(struct rohc_comp_ctxt *const context);
 	/** @brief The handler used to decide which packet to send in FO state */
-	rohc_packet_t (*decide_FO_packet)(const struct rohc_comp_ctxt *context);
+	rohc_packet_t (*decide_FO_packet)(const struct rohc_comp_ctxt *const context)
+		__attribute__((warn_unused_result, nonnull(1)));
 	/** @brief The handler used to decide which packet to send in SO state */
-	rohc_packet_t (*decide_SO_packet)(const struct rohc_comp_ctxt *context);
+	rohc_packet_t (*decide_SO_packet)(const struct rohc_comp_ctxt *const context)
+		__attribute__((warn_unused_result, nonnull(1)));
 	/** The handler used to decide which extension to send */
 	rohc_ext_t (*decide_extension)(const struct rohc_comp_ctxt *const context,
 	                               const rohc_packet_t packet_type)

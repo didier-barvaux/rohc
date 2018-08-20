@@ -184,14 +184,15 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 	old_value = 0;
 	while(inputs[i].expected_indicator <= 3)
 	{
+		const bool is_unchanged = !!(old_value == inputs[i].uncomp_value);
 		int indicator;
 		size_t comp_len;
 
 		/* compress the value */
 		trace(be_verbose, "\tvariable_length_32_enc(value = 0x%08x)\n",
 		      inputs[i].uncomp_value);
-		comp_len = variable_length_32_enc(old_value, inputs[i].uncomp_value, &wlsb,
-		                                  comp_data, comp_max_len, &indicator);
+		comp_len = variable_length_32_enc(is_unchanged, inputs[i].uncomp_value,
+		                                  &wlsb, comp_data, comp_max_len, &indicator);
 		printf("\t\tindicator %d\n", indicator);
 		printf("\t\tencoded length %zu\n", comp_len);
 

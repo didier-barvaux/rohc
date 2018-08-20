@@ -333,6 +333,13 @@ static int test_comp_and_decomp(const char *const filename,
 		goto destroy_comp;
 	}
 
+	/* reduce the number of repetitions for Optimistic Approach to ease test */
+	if(!rohc_comp_set_optimistic_approach(comp, 3U))
+	{
+		fprintf(stderr, "failed to reduce Optimistic Approach repetitions\n");
+		goto destroy_comp;
+	}
+
 	/* enable profiles */
 	if(!rohc_comp_enable_profiles(comp, ROHC_PROFILE_UNCOMPRESSED,
 	                              ROHC_PROFILE_UDP, ROHC_PROFILE_IP,

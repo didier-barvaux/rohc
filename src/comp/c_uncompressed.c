@@ -246,6 +246,8 @@ static void uncompressed_decide_state(struct rohc_comp_ctxt *const context,
                                       const struct rohc_ts pkt_time,
                                       const ip_version ip_vers)
 {
+	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
+
 	/* non-IPv4/6 packets cannot be compressed with Normal packets because the
 	 * first byte could be mis-interpreted as ROHC packet types (see note at
 	 * the end of §5.10.2 in RFC 3095) */
@@ -256,7 +258,7 @@ static void uncompressed_decide_state(struct rohc_comp_ctxt *const context,
 		rohc_comp_change_state(context, ROHC_COMP_STATE_IR);
 	}
 	else if(context->state == ROHC_COMP_STATE_IR &&
-	        context->ir_count >= MAX_IR_COUNT)
+	        context->state_oa_repeat_nr >= oa_repetitions_nr)
 	{
 		/* the compressor got the confidence that the decompressor fully received
 		 * the context: enough IR packets transmitted or positive ACK received */
@@ -317,13 +319,11 @@ static int uncompressed_code_packet(struct rohc_comp_ctxt *const context,
 	if((*packet_type) == ROHC_PACKET_IR)
 	{
 		rohc_comp_debug(context, "build IR packet");
-		context->ir_count++;
 		code_packet = uncompressed_code_IR_packet;
 	}
 	else /* ROHC_PACKET_NORMAL */
 	{
 		rohc_comp_debug(context, "build normal packet");
-		context->fo_count++; /* FO is used instead of Normal */
 		code_packet = uncompressed_code_normal_packet;
 	}
 

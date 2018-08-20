@@ -102,6 +102,10 @@ struct sc_tcp_context
 	uint16_t ack_stride;
 	uint8_t ack_deltas_next;
 
+	/** The number of TCP sequence number transmissions since last change */
+	uint8_t tcp_seq_num_trans_nr:4;
+	/** The number of TCP ACK number transmissions since last change */
+	uint8_t tcp_ack_num_trans_nr:4;
 	uint8_t seq_num_scaling_nr:4;
 	uint8_t ack_num_scaling_nr:4;
 	/** The number of times the window field was added to the compressed header */
@@ -111,6 +115,20 @@ struct sc_tcp_context
 	/** The number of times the ECN fields were not needed */
 	uint8_t ecn_used_zero_count:4;
 	uint8_t ttl_hopl_change_count:4;
+	/** The number of innermost IP-ID behavior transmissions since last change */
+	uint8_t innermost_ip_id_behavior_trans_nr;
+	/** The number of innermost DSCP transmissions since last change */
+	uint8_t innermost_dscp_trans_nr;
+	/** The number of IPv6 exts static transmissions since last change */
+	uint8_t ipv6_exts_list_static_trans_nr;
+	/** The number of IPv6 exts dynamic transmissions since last change */
+	uint8_t ipv6_exts_list_dyn_trans_nr;
+	/** The number of TCP options structure transmissions since last change */
+	uint8_t tcp_opts_list_struct_trans_nr;
+	/** The number of TCP options static transmissions since last change */
+	uint8_t tcp_opts_list_static_trans_nr;
+	/** The number of TCP URG pointer transmissions since last change */
+	uint8_t tcp_urg_ptr_trans_nr;
 
 	uint8_t ecn_used:1; /**< Explicit Congestion Notification used */
 	/* Context Replication */

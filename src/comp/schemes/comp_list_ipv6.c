@@ -42,21 +42,22 @@ static bool cmp_ipv6_ext(const struct rohc_list_item *const item,
 /**
  * @brief Create one context for compressing lists of IPv6 extension headers
  *
- * @param comp            The context to create
- * @param list_trans_nr   The number of uncompressed transmissions (L)
- * @param trace_cb        The function to call for printing traces
- * @param trace_cb_priv   An optional private context, may be NULL
- * @param profile_id      The ID of the associated decompression profile
+ * @param comp               The context to create
+ * @param oa_repetitions_nr  The number of repetitions for Optimistic Approach
+ * @param profile_id         The ID of the associated decompression profile
+ * @param trace_cb           The function to call for printing traces
+ * @param trace_cb_priv      An optional private context, may be NULL
  */
 void rohc_comp_list_ipv6_new(struct list_comp *const comp,
-                             const size_t list_trans_nr,
+                             const size_t oa_repetitions_nr,
+                             const int profile_id,
                              rohc_trace_callback2_t trace_cb,
-                             void *const trace_cb_priv,
-                             const int profile_id)
+                             void *const trace_cb_priv)
 {
 	size_t i;
 
-	assert(list_trans_nr > 0);
+	assert(oa_repetitions_nr > 0);
+	assert(oa_repetitions_nr <= UINT8_MAX);
 
 	comp->ref_id = ROHC_LIST_GEN_ID_NONE;
 	comp->cur_id = ROHC_LIST_GEN_ID_NONE;
@@ -72,7 +73,7 @@ void rohc_comp_list_ipv6_new(struct list_comp *const comp,
 		rohc_list_item_reset(&comp->trans_table[i]);
 	}
 
-	comp->list_trans_nr = list_trans_nr;
+	comp->oa_repetitions_nr = oa_repetitions_nr;
 
 	/* specific callbacks for IPv6 extension headers */
 	comp->get_index_table = get_index_ipv6_table;

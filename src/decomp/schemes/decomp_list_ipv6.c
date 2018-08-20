@@ -185,6 +185,8 @@ static bool create_ip6_item(const uint8_t *const data,
 	}
 	item_type = data[0];
 
+	rd_list_debug(decomp, "update %zu-byte item #%zu (type %u/0x%02x) "
+	              "in translation table", length, index_table, item_type, item_type);
 	ret = rohc_list_item_update_if_changed(decomp->cmp_item,
 	                                       &decomp->trans_table[index_table],
 	                                       item_type, data, length);

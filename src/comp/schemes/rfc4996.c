@@ -257,7 +257,7 @@ error:
  *
  * See variable_length_32_enc in RFC4996 page 46.
  *
- * @param old_value       The previous 32-bit value
+ * @param is_unchanged    Is the value unchanged since several packets
  * @param new_value       The 32-bit value to compress
  * @param wlsb            The W-LSB encoding context
  * @param[out] rohc_data  The compressed value
@@ -266,7 +266,7 @@ error:
  * @return                The number of ROHC bytes written in case of success,
  *                        -1 in case of error
  */
-int variable_length_32_enc(const uint32_t old_value,
+int variable_length_32_enc(const bool is_unchanged,
                            const uint32_t new_value,
                            const struct c_wlsb *const wlsb,
                            uint8_t *const rohc_data,
@@ -275,7 +275,7 @@ int variable_length_32_enc(const uint32_t old_value,
 {
 	size_t encoded_len;
 
-	if(new_value == old_value)
+	if(is_unchanged)
 	{
 		/* 0-byte value */
 		encoded_len = 0;
@@ -476,7 +476,7 @@ error:
  *
  * See RFC4996 page 75
  *
- * @param context_value    The DSCP value in the compression context
+ * @param is_static        Whether the DSCP value is static or not
  * @param packet_value     The DSCP value in the packet to compress
  * @param[out] rohc_data   The compressed value
  * @param rohc_max_len     The max remaining length in the ROHC buffer
@@ -484,7 +484,7 @@ error:
  * @return                 The number of ROHC bytes written,
  *                         -1 if a problem occurs
  */
-int dscp_encode(const uint8_t context_value,
+int dscp_encode(const bool is_static,
                 const uint8_t packet_value,
                 uint8_t *const rohc_data,
                 const size_t rohc_max_len,
@@ -492,7 +492,7 @@ int dscp_encode(const uint8_t context_value,
 {
 	size_t len;
 
-	if(packet_value == context_value)
+	if(is_static)
 	{
 		*indicator = 0;
 		len = 0;
@@ -524,29 +524,33 @@ error:
  *  \li both the \e ack_stride scaling factor and the scaling residue didn't
  *      change in the last few packets
  *
- * @param ack_stride  The \e ack_stride scaling factor
- * @param nr_trans    The number of transmissions since last change
- * @return            true if the ACK number may be transmitted scaled,
- *                    false if the ACK number shall be transmitted unscaled
+ * @param ack_stride         The \e ack_stride scaling factor
+ * @param nr_trans           The number of transmissions since last change
+ * @param oa_repetitions_nr  The number of repetitions for Optimistic Approach
+ * @return                   true if the ACK number may be transmitted scaled,
+ *                           false if the ACK number shall be transmitted unscaled
  */
 bool tcp_is_ack_scaled_possible(const uint16_t ack_stride,
-                                const size_t nr_trans)
+                                const uint8_t nr_trans,
+                                const uint8_t oa_repetitions_nr)
 {
-	return (ack_stride != 0 && nr_trans >= ROHC_INIT_TS_STRIDE_MIN);
+	return (ack_stride != 0 && nr_trans >= oa_repetitions_nr);
 }
 
 
 /**
  * @brief Whether the \e ack_stride scaling factor shall be transmitted or not
  *
- * @param ack_stride  The \e ack_stride scaling factor
- * @param nr_trans    The number of transmissions since last change
- * @return            true if the ACK number may be transmitted scaled,
- *                    false if the ACK number shall be transmitted unscaled
+ * @param ack_stride         The \e ack_stride scaling factor
+ * @param nr_trans           The number of transmissions since last change
+ * @param oa_repetitions_nr  The number of repetitions for Optimistic Approach
+ * @return                   true if the ACK number may be transmitted scaled,
+ *                           false if the ACK number shall be transmitted unscaled
  */
 bool tcp_is_ack_stride_static(const uint16_t ack_stride,
-                              const size_t nr_trans)
+                              const uint8_t nr_trans,
+                              const uint8_t oa_repetitions_nr)
 {
-	return (ack_stride == 0 || nr_trans >= ROHC_INIT_TS_STRIDE_MIN);
+	return (ack_stride == 0 || nr_trans >= oa_repetitions_nr);
 }
 

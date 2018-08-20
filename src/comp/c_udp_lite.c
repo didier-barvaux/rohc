@@ -206,8 +206,8 @@ static bool c_udp_lite_create(struct rohc_comp_ctxt *const context,
 	udp_lite_context->coverage_equal_count = 0;
 	udp_lite_context->coverage_inferred_count = 0;
 	udp_lite_context->sent_cce_only_count = 0;
-	udp_lite_context->sent_cce_on_count = MAX_IR_COUNT;
-	udp_lite_context->sent_cce_off_count = MAX_IR_COUNT;
+	udp_lite_context->sent_cce_on_count = comp->oa_repetitions_nr;
+	udp_lite_context->sent_cce_off_count = comp->oa_repetitions_nr;
 	memcpy(&udp_lite_context->old_udp_lite, udp_lite, sizeof(struct udphdr));
 
 	/* init the UDP-Lite-specific temporary variables */
@@ -489,15 +489,15 @@ static void udp_lite_init_cc(struct rohc_comp_ctxt *const context,
 	const struct udphdr *const udp_lite = (struct udphdr *) next_header;
 	int packet_length = udp_lite_context->tmp.udp_size;
 
-	if(context->ir_count == 1)
+	if(context->state_oa_repeat_nr == 1)
 	{
 		udp_lite_context->cfp = 0;
 		udp_lite_context->cfi = 1;
 	}
 
-	rohc_comp_debug(context, "CFP = %d, CFI = %d (ir_count = %zu)",
+	rohc_comp_debug(context, "CFP = %d, CFI = %d (ir_count = %u)",
 	                udp_lite_context->cfp, udp_lite_context->cfi,
-	                context->ir_count);
+	                context->state_oa_repeat_nr);
 
 	udp_lite_context->cfp =
 		(rohc_ntoh16(udp_lite->len) != packet_length) || udp_lite_context->cfp;
@@ -528,6 +528,7 @@ static void udp_lite_init_cc(struct rohc_comp_ctxt *const context,
 static bool udp_lite_send_cce_packet(const struct rohc_comp_ctxt *const context,
                                      const struct udphdr *const udp_lite)
 {
+	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 	struct sc_udp_lite_context *const udp_lite_context = rfc3095_ctxt->specific;
 	int is_coverage_inferred;
@@ -577,7 +578,7 @@ static bool udp_lite_send_cce_packet(const struct rohc_comp_ctxt *const context,
 	{
 		if(!is_coverage_inferred)
 		{
-			if(udp_lite_context->sent_cce_only_count < MAX_IR_COUNT)
+			if(udp_lite_context->sent_cce_only_count < oa_repetitions_nr)
 			{
 				udp_lite_context->sent_cce_only_count++;
 				udp_lite_context->FK = 0x01;
@@ -611,7 +612,7 @@ static bool udp_lite_send_cce_packet(const struct rohc_comp_ctxt *const context,
 	{
 		if(is_coverage_inferred || !is_coverage_same)
 		{
-			if(udp_lite_context->sent_cce_only_count < MAX_IR_COUNT)
+			if(udp_lite_context->sent_cce_only_count < oa_repetitions_nr)
 			{
 				udp_lite_context->sent_cce_only_count++;
 				udp_lite_context->FK = 0x01;
@@ -670,7 +671,7 @@ static bool udp_lite_send_cce_packet(const struct rohc_comp_ctxt *const context,
 		}
 	}
 
-	if(udp_lite_context->sent_cce_off_count < MAX_IR_COUNT)
+	if(udp_lite_context->sent_cce_off_count < oa_repetitions_nr)
 	{
 		udp_lite_context->sent_cce_off_count++;
 		udp_lite_context->sent_cce_only_count = 0;
@@ -678,7 +679,7 @@ static bool udp_lite_send_cce_packet(const struct rohc_comp_ctxt *const context,
 		memcpy(&udp_lite_context->old_udp_lite, udp_lite, sizeof(struct udphdr));
 		return true;
 	}
-	else if(udp_lite_context->sent_cce_on_count < MAX_IR_COUNT)
+	else if(udp_lite_context->sent_cce_on_count < oa_repetitions_nr)
 	{
 		udp_lite_context->sent_cce_on_count++;
 		udp_lite_context->sent_cce_only_count = 0;

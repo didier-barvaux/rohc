@@ -139,7 +139,7 @@ for ./configure ? If yes, check configure output and config.log"
 /* prototypes of private functions */
 static void usage(void);
 static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
-                                const size_t wlsb_width,
+                                const size_t oa_repetitions,
                                 const size_t max_contexts,
                                 const size_t proto_version,
                                 const size_t padding_up_to,
@@ -170,7 +170,7 @@ static int compress_decompress(struct rohc_comp *comp,
                                struct rohc_buf *const feedback_send_by_other);
 
 static struct rohc_comp * create_compressor(const rohc_cid_type_t cid_type,
-                                            const size_t wlsb_width,
+                                            const size_t oa_repetitions,
                                             const size_t max_contexts,
                                             const size_t proto_version)
 	__attribute__((warn_unused_result));
@@ -255,6 +255,17 @@ static size_t nr_pkts_per_size[MAX_ROHC_SIZE + 1] = { 0 };
 /** The initial Master Sequence Number (MSN) to use, helpful for interop debug */
 static int initial_msn = 1;
 
+/** Whether a lossy link is emulated or not? */
+static bool loss_enabled = false;
+/** How large is a burst (in number of packets) */
+static int burst_pkts_nr = 0;
+/** What packet is not lost in the burst */
+static int pkt_not_lost = 0;
+/** Number of compressors */
+#define NUM_COMP 2
+/** Loss state per compressor and per context */
+static size_t rcvd_pkts_nr_per_burst[NUM_COMP][ROHC_SMALL_CID_MAX + 1] = { { 0 } };
+
 
 /**
  * @brief Main function for the ROHC test program
@@ -275,7 +286,7 @@ int main(int argc, char *argv[])
 	char *ofilename = NULL;
 	char *cmp_filename = NULL;
 	int max_contexts = ROHC_SMALL_CID_MAX + 1;
-	int wlsb_width = 4;
+	int oa_repetitions = 4;
 	int padding_up_to = 0;
 	int proto_version = 1; /* ROHC protocol version, v1 by default */
 	bool no_comparison = false;
@@ -390,16 +401,30 @@ int main(int argc, char *argv[])
 			max_contexts = atoi(argv[1]);
 			args_used++;
 		}
-		else if(!strcmp(*argv, "--wlsb-width"))
+		else if(!strcmp(*argv, "--loss-ratio"))
 		{
-			/* get the width of the WLSB window the test should use */
-			if(argc <= 1)
+			/* get the number of packets to loss */
+			if(argc <= 2)
 			{
-				fprintf(stderr, "option --wlsb-width takes one argument\n\n");
+				fprintf(stderr, "missing mandatory --loss-ratio parameters\n");
 				usage();
 				goto error;
 			}
-			wlsb_width = atoi(argv[1]);
+			pkt_not_lost = atoi(argv[1]);
+			burst_pkts_nr = atoi(argv[2]);
+			loss_enabled = true;
+			args_used += 2;
+		}
+		else if(!strcmp(*argv, "--optimistic-approach"))
+		{
+			/* get the number of repetitions for the Optimistic Approach */
+			if(argc <= 1)
+			{
+				fprintf(stderr, "option --optimistic-approach takes one argument\n\n");
+				usage();
+				goto error;
+			}
+			oa_repetitions = atoi(argv[1]);
 			args_used++;
 		}
 		else if(!strcmp(*argv, "--padding-up-to"))
@@ -510,11 +535,12 @@ int main(int argc, char *argv[])
 		goto error;
 	}
 
-	/* check WLSB width */
-	if(wlsb_width <= 0 || (wlsb_width & (wlsb_width - 1)) != 0)
+	/* check the number of repetitions for Optimistic Approach */
+	if(oa_repetitions <= 0 || oa_repetitions >= UINT8_MAX)
 	{
-		fprintf(stderr, "invalid WLSB width %d: should be a positive power of "
-		        "two\n", wlsb_width);
+		fprintf(stderr, "invalid number of Optimistic Approach repetitions %d: "
+		        "should be in range ]0;%u]\n", oa_repetitions,
+		        (unsigned int) UINT8_MAX);
 		goto error;
 	}
 
@@ -542,7 +568,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* test ROHC compression/decompression with the packets from the file */
-	status = test_comp_and_decomp(cid_type, wlsb_width, max_contexts, proto_version,
+	status = test_comp_and_decomp(cid_type, oa_repetitions, max_contexts, proto_version,
 	                              padding_up_to, no_comparison, ignore_malformed,
 	                              (const char *const *) src_filenames, src_filenames_nr,
 	                              ofilename, cmp_filename,
@@ -601,25 +627,25 @@ static void usage(void)
 	        "                          (in PCAP format)\n"
 	        "\n"
 	        "options:\n"
-	        "  -v                      Print version information and exit\n"
-	        "  -h                      Print this usage and exit\n"
-	        "  -o FILE                 Save the generated ROHC packets in FILE\n"
-	        "                          (PCAP format)\n"
-	        "  -c FILE                 Compare the generated ROHC packets with the\n"
-	        "                          ROHC packets stored in FILE (PCAP format)\n"
-	        "  --rohc-size-output FILE Save the sizes of ROHC packets in FILE\n"
-	        "  --max-contexts NUM      The maximum number of ROHC contexts to\n"
-	        "                          simultaneously use during the test\n"
-	        "  --wlsb-width NUM        The width of the WLSB window to use\n"
-	        "  --rohc-version NUM      The ROHC version to use: 1 for ROHCv1\n"
-	        "                          and 2 for ROHCv2\n"
-	        "  --print-stats           Print some stats at the end of test\n"
-	        "  --no-comparison         Is comparison with ROHC reference optional for test\n"
-	        "  --ignore-malformed      Ignore malformed packets for test\n"
-	        "  --assert-on-error       Stop the test after the very first encountered error\n"
-	        "  --initial-msn NUM       The initial Master Sequence Number (MSN) for debug\n"
-	        "  --verbose               Run the test in verbose mode\n"
-	        "  --quiet                 Run the test in silent mode\n");
+	        "  -v                         Print version information and exit\n"
+	        "  -h                         Print this usage and exit\n"
+	        "  -o FILE                    Save the generated ROHC packets in FILE\n"
+	        "                             (PCAP format)\n"
+	        "  -c FILE                    Compare the generated ROHC packets with the\n"
+	        "                             ROHC packets stored in FILE (PCAP format)\n"
+	        "  --rohc-size-output FILE    Save the sizes of ROHC packets in FILE\n"
+	        "  --max-contexts NUM         The maximum number of ROHC contexts to\n"
+	        "                             simultaneously use during the test\n"
+	        "  --optimistic-approach NUM  The nr of Optimistic Approach repetitions\n"
+	        "  --rohc-version NUM         The ROHC version to use: 1 for ROHCv1\n"
+	        "                             and 2 for ROHCv2\n"
+	        "  --print-stats              Print some stats at the end of test\n"
+	        "  --no-comparison            Is comparison with ROHC reference optional for test\n"
+	        "  --ignore-malformed         Ignore malformed packets for test\n"
+	        "  --assert-on-error          Stop the test after the very first encountered error\n"
+	        "  --initial-msn NUM          The initial Master Sequence Number (MSN) for debug\n"
+	        "  --verbose                  Run the test in verbose mode\n"
+	        "  --quiet                    Run the test in silent mode\n");
 }
 
 
@@ -1126,6 +1152,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	}
 
 	/* output the size of the ROHC packet to the output file if asked */
+	rohc_cid_t last_cid;
 	{
 		rohc_comp_last_packet_info2_t last_packet_info;
 
@@ -1139,6 +1166,7 @@ static int compress_decompress(struct rohc_comp *comp,
 			goto exit;
 		}
 		nr_pkts_per_size[last_packet_info.header_last_comp_size]++;
+		last_cid = last_packet_info.context_id;
 
 		if(size_output_file != NULL)
 		{
@@ -1171,6 +1199,19 @@ static int compress_decompress(struct rohc_comp *comp,
 			status = 0;
 		}
 	}
+
+	/* decompress the ROHC packet if it is not lost during transmission */
+	rcvd_pkts_nr_per_burst[num_comp - 1][last_cid]++;
+	if(loss_enabled && rcvd_pkts_nr_per_burst[num_comp - 1][last_cid] != pkt_not_lost)
+	{
+		trace("=== ROHC decompression: packet %zu/%d was lost during "
+		      "transmission\n", rcvd_pkts_nr_per_burst[num_comp - 1][last_cid],
+		      burst_pkts_nr);
+	}
+	else
+{
+		trace("=== ROHC decompression: packet %zu/%d received\n",
+		      rcvd_pkts_nr_per_burst[num_comp - 1][last_cid], burst_pkts_nr);
 
 	/* decompress the ROHC packet */
 	trace("=== ROHC decompression: start\n");
@@ -1228,6 +1269,12 @@ static int compress_decompress(struct rohc_comp *comp,
 	{
 		trace("=== deliver received feedback to compressor: success\n");
 	}
+}
+	if(rcvd_pkts_nr_per_burst[num_comp - 1][last_cid] >= burst_pkts_nr)
+	{
+		trace("=== ROHC decompression: last packet for that burst\n");
+		rcvd_pkts_nr_per_burst[num_comp - 1][last_cid] = 0;
+	}
 
 exit:
 	trace("\n");
@@ -1240,7 +1287,7 @@ exit:
  *        two compressor/decompressor pairs
  *
  * @param cid_type             The type of CIDs the compressor shall use
- * @param wlsb_width           The width of the WLSB window to use
+ * @param oa_repetitions       The nr of repetitions for the Optimistic Approach
  * @param max_contexts         The maximum number of ROHC contexts to use
  * @param proto_version        The version of the ROHC protocol to use: v1 or v2
  * @param padding_up_to        The amount of padding to use
@@ -1259,7 +1306,7 @@ exit:
  *                             77 if test is skipped
  */
 static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
-                                const size_t wlsb_width,
+                                const size_t oa_repetitions,
                                 const size_t max_contexts,
                                 const size_t proto_version,
                                 const size_t padding_up_to,
@@ -1366,7 +1413,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 	}
 
 	/* create the compressor 1 */
-	comp1 = create_compressor(cid_type, wlsb_width, max_contexts, proto_version);
+	comp1 = create_compressor(cid_type, oa_repetitions, max_contexts, proto_version);
 	if(comp1 == NULL)
 	{
 		trace("failed to create the compressor 1\n");
@@ -1374,7 +1421,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 	}
 
 	/* create the compressor 2 */
-	comp2 = create_compressor(cid_type, wlsb_width, max_contexts, proto_version);
+	comp2 = create_compressor(cid_type, oa_repetitions, max_contexts, proto_version);
 	if(comp2 == NULL)
 	{
 		trace("failed to create the compressor 2\n");
@@ -1553,14 +1600,14 @@ error:
 /**
  * @brief Create and configure a ROHC compressor
  *
- * @param cid_type      The type of CIDs the compressor shall use
- * @param max_contexts  The maximum number of ROHC contexts to use
- * @param wlsb_width    The width of the WLSB window to use
- * @param proto_version The version of the ROHC protocol to use: v1 or v2
- * @return              The new ROHC compressor
+ * @param cid_type        The type of CIDs the compressor shall use
+ * @param max_contexts    The maximum number of ROHC contexts to use
+ * @param oa_repetitions  The number of repetitions for the Optimistic Approach
+ * @param proto_version   The version of the ROHC protocol to use: v1 or v2
+ * @return                The new ROHC compressor
  */
 static struct rohc_comp * create_compressor(const rohc_cid_type_t cid_type,
-                                            const size_t wlsb_width,
+                                            const size_t oa_repetitions,
                                             const size_t max_contexts,
                                             const size_t proto_version)
 {
@@ -1634,10 +1681,10 @@ static struct rohc_comp * create_compressor(const rohc_cid_type_t cid_type,
 		}
 	}
 
-	/* set the WLSB window width */
-	if(!rohc_comp_set_wlsb_window_width(comp, wlsb_width))
+	/* set the number of repetitions for Optimistic Approach */
+	if(!rohc_comp_set_optimistic_approach(comp, oa_repetitions))
 	{
-		trace("failed to set the WLSB window width\n");
+		trace("failed to set the Optimistic Approach repetitions\n");
 		goto destroy_comp;
 	}
 

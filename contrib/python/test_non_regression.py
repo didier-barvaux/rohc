@@ -118,30 +118,28 @@ def usage():
     print("usage: test_non_regression.py [OPTIONS] CID_TYPE FLOW")
     print
     print("with:")
-    print("  CID_TYPE              The type of CID to use among 'smallcid'")
-    print("                        and 'largecid'")
-    print("  FLOW                  The flow of Ethernet frames to compress")
-    print("                        (in PCAP format)")
+    print("  CID_TYPE    The type of CID to use among 'smallcid' and 'largecid'")
+    print("  FLOW        The flow of Ethernet frames to compress (PCAP format)")
     print
     print("options:")
-    print("  -v                    Print version information and exit")
-    print("  -h                    Print this usage and exit")
-    print("  -c FILE               Compare the generated ROHC packets with the")
-    print("                        ROHC packets stored in FILE (PCAP format)")
-    print("  --max-contexts NUM    The maximum number of ROHC contexts to")
-    print("                        simultaneously use during the test")
-    print("  --wlsb-width NUM      The width of the WLSB window to use")
-    print("  --rohc-version NUM    The ROHC version to use: 1 for ROHCv1")
-    print("                        and 2 for ROHCv2")
-    print("  --verbose             Run the test in verbose mode")
-    print("  --quiet               Run the test in silent mode")
+    print("  -v                         Print version information and exit")
+    print("  -h                         Print this usage and exit")
+    print("  -c FILE                    Compare the generated ROHC packets with the")
+    print("                             ROHC packets stored in FILE (PCAP format)")
+    print("  --max-contexts NUM         The maximum number of ROHC contexts to")
+    print("                             simultaneously use during the test")
+    print("  --optimistic-approach NUM  The nr of repetitions for Optimistic Approach")
+    print("  --rohc-version NUM         The ROHC version to use: 1 for ROHCv1")
+    print("                             and 2 for ROHCv2")
+    print("  --verbose                  Run the test in verbose mode")
+    print("  --quiet                    Run the test in silent mode")
 
 
 def parse_opts(opts):
     print_version = False
     cid_type = None
     cid_max = None
-    wlsb_width = None
+    oa_repetitions = None
     proto_version = 1
     verbose = False
     profiles = None
@@ -167,12 +165,12 @@ def parse_opts(opts):
                 print("option --max-contexts expects one value")
                 return (False, False, None, None, None, None, None, None, None)
             cid_max = int(opts[opt_idx]) - 1
-        elif opts[opt_idx] ==  "--wlsb-width":
+        elif opts[opt_idx] ==  "--optimistic-approach":
             opt_idx += 1
             if opt_idx >= max_opts:
-                print("option --wlsb-width expects one value")
+                print("option --optimistic-approach expects one value")
                 return (False, False, None, None, None, None, None, None, None)
-            wlsb_width = int(opts[opt_idx])
+            oa_repetitions = int(opts[opt_idx])
         elif opts[opt_idx] ==  "--rohc-version":
             opt_idx += 1
             if opt_idx >= max_opts:
@@ -228,7 +226,7 @@ def parse_opts(opts):
         print("no input file specified")
         return (False, False, None, None, None, None, None, None, None)
 
-    return (True, False, cid_type, cid_max, wlsb_width, verbose, profiles, \
+    return (True, False, cid_type, cid_max, oa_repetitions, verbose, profiles, \
             pcap_in, pcap_cmp)
 
 
@@ -348,7 +346,7 @@ def remove_padding__str(pkt):
     return pkt
 
 
-def create_comp_decomp(cid_type, cid_max, wlsb_width, profiles, verbose):
+def create_comp_decomp(cid_type, cid_max, oa_repetitions, profiles, verbose):
 
     # setup the list of UDP ports for RTP streams
     for udp_port in [1234, 36780, 33238, 5020, 5002, 5006]:
@@ -358,7 +356,7 @@ def create_comp_decomp(cid_type, cid_max, wlsb_width, profiles, verbose):
             return (False, None, None, None, None)
 
     print("\ncreate ROHC compressor 1")
-    comp1 = RohcCompressor(cid_type, cid_max, wlsb_width, profiles, verbose)
+    comp1 = RohcCompressor(cid_type, cid_max, oa_repetitions, profiles, verbose)
     if comp1 is None:
         print("failed to create the ROHC compressor 1")
         return (False, None, None, None, None)
@@ -370,7 +368,7 @@ def create_comp_decomp(cid_type, cid_max, wlsb_width, profiles, verbose):
         return (False, None, None, None, None)
 
     print("\ncreate ROHC compressor 2")
-    comp2 = RohcCompressor(cid_type, cid_max, wlsb_width, profiles, verbose)
+    comp2 = RohcCompressor(cid_type, cid_max, oa_repetitions, profiles, verbose)
     if comp2 is None:
         print("failed to create the ROHC compressor 2")
         return (False, None, None, None, None)
@@ -496,12 +494,12 @@ def compress_decompress(comp1, decomp1, cmp_pkt1, \
             len(uncomp_pkt), len(comp_pkt), feedback_to_send)
 
 
-def run_test(cid_type, cid_max, wlsb_width, profiles, verbose, pcap_in, pcap_cmp):
+def run_test(cid_type, cid_max, oa_repetitions, profiles, verbose, pcap_in, pcap_cmp):
 
     print("test ROHC library, version", rohc_version())
 
     (status, comp1, decomp1, comp2, decomp2) = \
-        create_comp_decomp(cid_type, cid_max, wlsb_width, profiles, verbose)
+        create_comp_decomp(cid_type, cid_max, oa_repetitions, profiles, verbose)
     if status is not True:
         print("failed to create the ROHC (de)compressors")
         return False
@@ -588,7 +586,7 @@ if __name__ == "__main__":
     print("This is the Python version of the non-regression test\n\n")
 
     # parse command line options
-    (status, print_version, cid_type, cid_max, wlsb_width, verbose, profiles, \
+    (status, print_version, cid_type, cid_max, oa_repetitions, verbose, profiles, \
      pcap_in, pcap_cmp) = parse_opts(sys.argv[1:])
     if status is not True:
         print("failed to parse options\n")
@@ -600,7 +598,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # run the non-regression test
-    status = run_test(cid_type, cid_max, wlsb_width, profiles, verbose, \
+    status = run_test(cid_type, cid_max, oa_repetitions, profiles, verbose, \
                       pcap_in, pcap_cmp)
     if status is not True:
         print("\ntest failed :-/")

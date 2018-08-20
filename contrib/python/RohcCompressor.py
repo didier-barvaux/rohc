@@ -32,7 +32,7 @@ from rohc import ROHC_SMALL_CID, ROHC_SMALL_CID_MAX, \
                  ROHC_PROFILE_UNCOMPRESSED, \
                  ROHC_STATUS_OK, ROHC_STATUS_ERROR, \
                  rohc_comp_new2, rohc_comp_set_traces_cb2, \
-                 rohc_comp_enable_profile, rohc_comp_set_wlsb_window_width, \
+                 rohc_comp_enable_profile, rohc_comp_set_optimistic_approach, \
                  rohc_comp_set_rtp_detection_cb, rohc_compress4, \
                  rohc_comp_deliver_feedback2, rohc_get_profile_descr, \
                  gen_false_random_num, print_rohc_traces, rohc_comp_rtp_cb, \
@@ -47,27 +47,27 @@ class RohcCompressor(object):
     comp = None
     cid_type = None
     cid_max = None
-    wlsb_width = None
+    oa_repetitions = None
     verbose = None
 
     _buf_max_len = 0xffff * 2
     _buf = b""
 
     def __init__(self, cid_type=ROHC_SMALL_CID, cid_max=ROHC_SMALL_CID_MAX, \
-                 wlsb_width=4, profiles=[ROHC_PROFILE_UNCOMPRESSED], verbose=False):
+                 oa_repetitions=4, profiles=[ROHC_PROFILE_UNCOMPRESSED], verbose=False):
         """ Create and return a new ROHC ompressor.
 
         Keyword arguments:
-        cid_type   -- the CID type among ROHC_SMALL_CID and ROHC_LARGE_CID
-        cid_max    -- the maximum CID value to use
-        wlsb_width -- the width of the W-LSB window (power of 2)
-        profiles   -- the list of supported profiles
-        verbose    -- whether to run the compressor in verbose mode or not (bool)
+        cid_type       -- the CID type among ROHC_SMALL_CID and ROHC_LARGE_CID
+        cid_max        -- the maximum CID value to use
+        oa_repetitions -- the nr of repetitions for Optimistic Approach
+        profiles       -- the list of supported profiles
+        verbose        -- whether to run the compressor in verbose mode or not (bool)
         """
 
         self.cid_type = cid_type
         self.cid_max = cid_max
-        self.wlsb_width = wlsb_width
+        self.oa_repetitions = oa_repetitions
         self.verbose = verbose
 
         self.comp = rohc_comp_new2(self.cid_type, self.cid_max, \
@@ -89,9 +89,9 @@ class RohcCompressor(object):
                       (rohc_get_profile_descr(profile), profile))
                 return None
 
-        ret = rohc_comp_set_wlsb_window_width(self.comp, self.wlsb_width)
+        ret = rohc_comp_set_optimistic_approach(self.comp, self.oa_repetitions)
         if ret is not True:
-            print("failed to set WLSB width to %i" % self.wlsb_width)
+            print("failed to set Optimistic Approach repetitions to %i" % self.oa_repetitions)
             return None
 
         ret = rohc_comp_set_rtp_detection_cb(self.comp, rohc_comp_rtp_cb, None)

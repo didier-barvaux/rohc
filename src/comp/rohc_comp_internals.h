@@ -45,6 +45,9 @@
  * Constants and macros
  */
 
+/** The minimal number of repetitions for the Optimistic Approach */
+#define ROHC_OA_REPEAT_DEFAULT 4U
+
 /** The default maximal number of packets sent in > IR states (= FO and SO
  *  states) before changing back the state to IR (periodic refreshes) */
 #define CHANGE_TO_IR_COUNT  1700
@@ -60,30 +63,6 @@
 /** The default maximal delay (in ms) spent in > FO states (= SO state)
  *  before changing back the state to FO (periodic refreshes) */
 #define CHANGE_TO_FO_TIME  500U
-
-/** The minimal number of packets that must be sent while in IR state before
- *  being able to switch to the FO state */
-#define MAX_IR_COUNT  3U
-
-/** The minimal number of packets that must be sent while in CR state before
- *  being able to switch to the FO state */
-#define MAX_CR_COUNT  MAX_IR_COUNT
-
-/** The minimal number of packets that must be sent while in FO state before
- *  being able to switch to the SO state */
-#define MAX_FO_COUNT  3U
-
-/** The minimal number of packets that must be sent while in INIT_STRIDE
- *  state before being able to switch to the SEND_SCALED state */
-#define ROHC_INIT_TS_STRIDE_MIN  3U
-
-/**
- * @brief Default number of transmission for lists to become a reference list
- *
- * The minimal number of times of compressed list shall be sent to become
- * a reference list. L is the name specified in the RFC.
- */
-#define ROHC_LIST_DEFAULT_L  5U
 
 
 /** Print a warning trace for the given compression context */
@@ -191,8 +170,8 @@ struct rohc_comp
 
 	/* user interaction variables: */
 
-	/** The width of the W-LSB sliding window */
-	size_t wlsb_window_width;
+	/** The nr of Optimistic Approach repetitions to gain transmission confidence */
+	uint8_t oa_repetitions_nr;
 	/** The reorder offset specifies how much reordering is handled by the
 	 *  W-LSB encoding of the MSN in ROHCv2 profiles */
 	rohc_reordering_offset_t reorder_ratio;
@@ -212,8 +191,6 @@ struct rohc_comp
 	size_t mrru;
 	/** The connection type (currently not used) */
 	int connection_type;
-	/** The number of uncompressed transmissions for list compression (L) */
-	uint8_t list_trans_nr;
 
 	/** The callback function used to manage traces */
 	rohc_trace_callback2_t trace_callback;
@@ -482,14 +459,8 @@ struct rohc_comp_ctxt
 	/* The type of ROHC packet created for the last compressed packet */
 	rohc_packet_t packet_type;
 
-	/** The number of packets sent while in Initialization & Refresh (IR) state */
-	size_t ir_count;
-	/** The number of packets sent while in First Order (FO) state */
-	size_t fo_count;
-	/** The number of packets sent while in Second Order (SO) state */
-	size_t so_count;
-	/** The number of packets sent while in Context Replication (CR) state */
-	size_t cr_count;
+	/** The number of packets sent while in the different compression states */
+	uint8_t state_oa_repeat_nr;
 
 	/**
 	 * @brief The number of packet sent while in SO state, used for the periodic

@@ -382,9 +382,14 @@ bool ROHC_EXPORT rohc_comp_deliver_feedback2(struct rohc_comp *const comp,
  * loss/damage
  */
 
+bool ROHC_EXPORT rohc_comp_set_optimistic_approach(struct rohc_comp *const comp,
+                                                   const size_t repetitions_nr)
+	__attribute__((warn_unused_result));
+
 bool ROHC_EXPORT rohc_comp_set_wlsb_window_width(struct rohc_comp *const comp,
                                                  const size_t width)
-	__attribute__((warn_unused_result));
+	__attribute__((warn_unused_result))
+	ROHC_DEPRECATED("rohc_comp_set_wlsb_window_width() is deprecated, please use rohc_comp_set_optimistic_approach() instead");
 
 bool ROHC_EXPORT rohc_comp_set_reorder_ratio(struct rohc_comp *const comp,
                                              const rohc_reordering_offset_t reorder_ratio)
@@ -402,7 +407,8 @@ bool ROHC_EXPORT rohc_comp_set_periodic_refreshes_time(struct rohc_comp *const c
 
 bool ROHC_EXPORT rohc_comp_set_list_trans_nr(struct rohc_comp *const comp,
                                              const size_t list_trans_nr)
-	__attribute__((warn_unused_result));
+	__attribute__((warn_unused_result))
+	ROHC_DEPRECATED("rohc_comp_set_list_trans_nr() is deprecated, please use rohc_comp_set_optimistic_approach() instead");
 
 
 /*

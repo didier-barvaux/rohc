@@ -104,7 +104,7 @@ EXPORT_SYMBOL_GPL(rohc_comp_set_mrru);
 EXPORT_SYMBOL_GPL(rohc_comp_get_mrru);
 EXPORT_SYMBOL_GPL(rohc_comp_get_max_cid);
 EXPORT_SYMBOL_GPL(rohc_comp_get_cid_type);
-EXPORT_SYMBOL_GPL(rohc_comp_set_wlsb_window_width);
+EXPORT_SYMBOL_GPL(rohc_comp_set_optimistic_approach);
 EXPORT_SYMBOL_GPL(rohc_comp_set_reorder_ratio);
 EXPORT_SYMBOL_GPL(rohc_comp_set_periodic_refreshes);
 EXPORT_SYMBOL_GPL(rohc_comp_set_periodic_refreshes_time);

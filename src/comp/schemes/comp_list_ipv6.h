@@ -30,10 +30,10 @@
 
 
 void rohc_comp_list_ipv6_new(struct list_comp *const comp,
-                             const size_t list_trans_nr,
+                             const size_t oa_repetitions_nr,
+                             const int profile_id,
                              rohc_trace_callback2_t trace_cb,
-                             void *const trace_cb_priv,
-                             const int profile_id)
+                             void *const trace_cb_priv)
 	__attribute__((nonnull(1)));
 
 void rohc_comp_list_ipv6_free(struct list_comp *const comp)
