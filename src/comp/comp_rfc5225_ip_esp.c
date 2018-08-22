@@ -1488,7 +1488,7 @@ static rohc_packet_t rohc_comp_rfc5225_ip_esp_decide_FO_SO_pkt(const struct rohc
                                                                const struct comp_rfc5225_tmp_variables *const tmp,
                                                                const bool crc7_at_least)
 {
-	struct rohc_comp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt = ctxt->specific;
+	const struct rohc_comp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt = ctxt->specific;
 	const int32_t msn_offset = tmp->msn_offset;
 	const uint8_t oa_repetitions_nr = ctxt->compressor->oa_repetitions_nr;
 	const rohc_reordering_offset_t reorder_ratio = ctxt->compressor->reorder_ratio;
@@ -2911,7 +2911,7 @@ static int rohc_comp_rfc5225_ip_esp_build_pt_0_crc3_pkt(const struct rohc_comp_c
                                                         uint8_t *const rohc_data,
                                                         const size_t rohc_max_len)
 {
-	struct rohc_comp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt = context->specific;
+	const struct rohc_comp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt = context->specific;
 	pt_0_crc3_t *const pt_0_crc3 = (pt_0_crc3_t *) rohc_data;
 
 	if(rohc_max_len < sizeof(pt_0_crc3_t))
@@ -2948,7 +2948,7 @@ static int rohc_comp_rfc5225_ip_esp_build_pt_0_crc7_pkt(const struct rohc_comp_c
                                                         uint8_t *const rohc_data,
                                                         const size_t rohc_max_len)
 {
-	struct rohc_comp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt = context->specific;
+	const struct rohc_comp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt = context->specific;
 	pt_0_crc7_t *const pt_0_crc7 = (pt_0_crc7_t *) rohc_data;
 
 	if(rohc_max_len < sizeof(pt_0_crc7_t))
@@ -2988,7 +2988,7 @@ static int rohc_comp_rfc5225_ip_esp_build_pt_1_seq_id_pkt(const struct rohc_comp
                                                           uint8_t *const rohc_data,
                                                           const size_t rohc_max_len)
 {
-	struct rohc_comp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt = context->specific;
+	const struct rohc_comp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt = context->specific;
 	pt_1_seq_id_t *const pt_1_seq_id = (pt_1_seq_id_t *) rohc_data;
 
 	if(rohc_max_len < sizeof(pt_1_seq_id_t))
@@ -3029,7 +3029,7 @@ static int rohc_comp_rfc5225_ip_esp_build_pt_2_seq_id_pkt(const struct rohc_comp
                                                           uint8_t *const rohc_data,
                                                           const size_t rohc_max_len)
 {
-	struct rohc_comp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt = context->specific;
+	const struct rohc_comp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt = context->specific;
 	pt_2_seq_id_t *const pt_2_seq_id = (pt_2_seq_id_t *) rohc_data;
 
 	if(rohc_max_len < sizeof(pt_2_seq_id_t))
@@ -3070,7 +3070,7 @@ static int rohc_comp_rfc5225_ip_esp_build_co_common_pkt(const struct rohc_comp_c
                                                         uint8_t *const rohc_data,
                                                         const size_t rohc_max_len)
 {
-	struct rohc_comp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt = context->specific;
+	const struct rohc_comp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt = context->specific;
 	const uint8_t innermost_ip_id_behavior = tmp->innermost_ip_id_behavior;
 	uint8_t *rohc_remain_data = rohc_data;
 	size_t rohc_remain_len = rohc_max_len;
