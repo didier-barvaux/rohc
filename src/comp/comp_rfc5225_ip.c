@@ -633,6 +633,7 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 			{
 				c_add_wlsb(&rfc5225_ctxt->innermost_ip_id_offset_wlsb, rfc5225_ctxt->msn,
 				           rfc5225_ctxt->tmp.innermost_ip_id_offset);
+				rfc5225_ctxt->innermost_ip_id_offset = rfc5225_ctxt->tmp.innermost_ip_id_offset;
 			}
 			ip_ctxt->df = ipv4->df;
 			ip_ctxt->tos_tc = ipv4->tos;
@@ -737,6 +738,7 @@ static bool rohc_comp_rfc5225_ip_detect_changes(struct rohc_comp_ctxt *const con
 	rfc5225_ctxt->tmp.outer_ip_flag = false;
 	rfc5225_ctxt->tmp.innermost_df_changed = false;
 	rfc5225_ctxt->tmp.innermost_ip_id_behavior_changed = false;
+	rfc5225_ctxt->tmp.innermost_ip_id_offset_changed = false;
 	rfc5225_ctxt->tmp.innermost_tos_tc_changed = false;
 	rfc5225_ctxt->tmp.innermost_ttl_hopl_changed = false;
 	rfc5225_ctxt->tmp.innermost_ip_flag = false;
@@ -871,10 +873,8 @@ static bool rohc_comp_rfc5225_ip_detect_changes(struct rohc_comp_ctxt *const con
 		                rfc5225_ctxt->tmp.innermost_ip_id_offset,
 		                rfc5225_ctxt->tmp.innermost_ip_id_offset);
 
-		if(rfc5225_ctxt->innermost_ip_id_offset != rfc5225_ctxt->tmp.innermost_ip_id_offset)
-		{
-			rfc5225_ctxt->tmp.innermost_ip_id_offset_changed = true;
-		}
+		rfc5225_ctxt->tmp.innermost_ip_id_offset_changed =
+			!!(rfc5225_ctxt->innermost_ip_id_offset != rfc5225_ctxt->tmp.innermost_ip_id_offset);
 	}
 
 	/* any DF that changes shall be transmitted several times */
