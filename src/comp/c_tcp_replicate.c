@@ -447,8 +447,8 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
 	tcp_replicate->ecn_used = tcp_context->ecn_used;
 
 	/* MSN */
-	tcp_replicate->msn = rohc_hton16(tcp_context->msn);
-	rohc_comp_debug(context, "MSN 0x%02x present", tcp_context->msn);
+	tcp_replicate->msn = rohc_hton16(tmp->new_msn);
+	rohc_comp_debug(context, "MSN 0x%02x present", tmp->new_msn);
 
 	/* TCP sequence number */
 	tcp_replicate->seq_num = tcp->seq_num;

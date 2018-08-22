@@ -46,6 +46,9 @@
  */
 struct tcp_tmp_variables
 {
+	/** The new Master Sequence Number (MSN) */
+	uint16_t new_msn;
+
 	uint32_t seq_num;
 	uint32_t ack_num;
 
@@ -95,7 +98,7 @@ struct tcp_tmp_variables
 /** Define the TCP part of the profile decompression context */
 struct sc_tcp_context
 {
-	uint16_t msn;               /**< The Master Sequence Number (MSN) */
+	uint16_t last_msn;   /**< The Master Sequence Number (MSN) */
 	/** The MSN of the last packet that updated the context (used to determine
 	 * if a positive ACK may cause a transition to a higher compression state) */
 	uint16_t msn_of_last_ctxt_updating_pkt;

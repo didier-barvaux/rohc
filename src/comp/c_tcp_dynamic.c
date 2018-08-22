@@ -462,7 +462,7 @@ static int tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *const context,
 	tcp_dynamic->ack_flag = tcp->ack_flag;
 	tcp_dynamic->psh_flag = tcp->psh_flag;
 	tcp_dynamic->rsf_flags = tcp->rsf_flags;
-	tcp_dynamic->msn = rohc_hton16(tcp_context->msn);
+	tcp_dynamic->msn = rohc_hton16(tmp->new_msn);
 	tcp_dynamic->seq_num = tcp->seq_num;
 
 	rohc_remain_data += sizeof(tcp_dynamic_t);
