@@ -56,28 +56,50 @@ struct comp_rfc5225_tmp_variables
 	/** The new IP-ID behaviors for all IP headers */
 	rohc_ip_id_behavior_t ip_id_behaviors[ROHC_MAX_IP_HDRS];
 
-	/** Whether at least one of the DF fields changed */
+	/** Whether at least one of the DF fields changed in current packet */
+	bool at_least_one_df_just_changed;
+	/** Whether at least one of the DF fields changed in last few packets */
 	bool at_least_one_df_changed;
+	/** Whether the behavior of at least one of the IP-ID fields changed */
+	bool at_least_one_ip_id_behavior_just_changed;
 	/** Whether the behavior of at least one of the IP-ID fields changed */
 	bool at_least_one_ip_id_behavior_changed;
 
 	/** Whether at least one of the DF fields changed in all outer IP headers */
+	bool outer_df_just_changed;
+	/** Whether at least one of the DF fields changed in all outer IP headers */
 	bool outer_df_changed;
+	/** Whether the behavior of at least one of the outer IP-ID fields changed */
+	bool outer_ip_id_behavior_just_changed;
 	/** Whether the behavior of at least one of the outer IP-ID fields changed */
 	bool outer_ip_id_behavior_changed;
 	/* Whether at least one TOS/TC or TTL/HL changed in all outer IP headers */
+	bool outer_ip_flag_just;
+	/* Whether at least one TOS/TC or TTL/HL changed in all outer IP headers */
 	bool outer_ip_flag;
 
-	/** Whether the innermost DF field changed */
+	/** Whether the innermost DF field changed in last current packet */
+	bool innermost_df_just_changed;
+	/** Whether the innermost DF field changed in last few packets */
 	bool innermost_df_changed;
+	/** Whether the behavior of the innermost IP-ID field changed */
+	bool innermost_ip_id_behavior_just_changed;
 	/** Whether the behavior of the innermost IP-ID field changed */
 	bool innermost_ip_id_behavior_changed;
 	/** Whether the innermost IP-ID offset changed */
+	bool innermost_ip_id_offset_just_changed;
+	/** Whether the innermost IP-ID offset changed */
 	bool innermost_ip_id_offset_changed;
+	/** Whether the innermost TOS/TC changed in the innermost IP header */
+	bool innermost_tos_tc_just_changed;
 	/** Whether the innermost TOS/TC changed in the innermost IP header */
 	bool innermost_tos_tc_changed;
 	/** Whether the innermost TTL/HL changed in the innermost IP header */
+	bool innermost_ttl_hopl_just_changed;
+	/** Whether the innermost TTL/HL changed in the innermost IP header */
 	bool innermost_ttl_hopl_changed;
+	/** Whether the innermost TOS/TC or TTL/HL changed in the innermost IP header */
+	bool innermost_ip_flag_just;
 	/** Whether the innermost TOS/TC or TTL/HL changed in the innermost IP header */
 	bool innermost_ip_flag;
 
@@ -360,8 +382,7 @@ static bool rohc_comp_rfc5225_is_ipid_sequential(const rohc_ip_id_behavior_t beh
 	__attribute__((warn_unused_result, const));
 
 static bool rohc_comp_rfc5225_is_seq_ipid_inferred(const ip_context_t *const ip_ctxt,
-                                                   const uint8_t ip_id_offset_trans_nr,
-                                                   const uint8_t oa_repetitions_nr,
+                                                   const bool is_ip_id_offset_known,
                                                    const rohc_ip_id_behavior_t new_ip_id_behavior,
                                                    const uint16_t new_ip_id,
                                                    const int32_t msn_offset)
@@ -637,45 +658,89 @@ static int rohc_comp_rfc5225_ip_esp_encode(struct rohc_comp_ctxt *const context,
 		/* TODO: handle IPv6 extension headers */
 	}
 	/* update transmission counters */
+	if(tmp.at_least_one_df_just_changed)
+	{
+		rfc5225_ctxt->all_df_trans_nr = 0;
+	}
 	if(rfc5225_ctxt->all_df_trans_nr < oa_repetitions_nr)
 	{
 		rfc5225_ctxt->all_df_trans_nr++;
+	}
+	if(tmp.innermost_df_just_changed)
+	{
+		rfc5225_ctxt->innermost_df_trans_nr = 0;
 	}
 	if(rfc5225_ctxt->innermost_df_trans_nr < oa_repetitions_nr)
 	{
 		rfc5225_ctxt->innermost_df_trans_nr++;
 	}
+	if(tmp.outer_df_just_changed)
+	{
+		rfc5225_ctxt->outer_df_trans_nr = 0;
+	}
 	if(rfc5225_ctxt->outer_df_trans_nr < oa_repetitions_nr)
 	{
 		rfc5225_ctxt->outer_df_trans_nr++;
+	}
+	if(tmp.at_least_one_ip_id_behavior_just_changed)
+	{
+		rfc5225_ctxt->all_ip_id_behavior_trans_nr = 0;
 	}
 	if(rfc5225_ctxt->all_ip_id_behavior_trans_nr < oa_repetitions_nr)
 	{
 		rfc5225_ctxt->all_ip_id_behavior_trans_nr++;
 	}
+	if(tmp.innermost_ip_id_behavior_just_changed)
+	{
+		rfc5225_ctxt->innermost_ip_id_behavior_trans_nr = 0;
+	}
 	if(rfc5225_ctxt->innermost_ip_id_behavior_trans_nr < oa_repetitions_nr)
 	{
 		rfc5225_ctxt->innermost_ip_id_behavior_trans_nr++;
+	}
+	if(tmp.innermost_ip_id_offset_just_changed)
+	{
+		rfc5225_ctxt->innermost_ip_id_offset_trans_nr = 0;
 	}
 	if(rfc5225_ctxt->innermost_ip_id_offset_trans_nr < oa_repetitions_nr)
 	{
 		rfc5225_ctxt->innermost_ip_id_offset_trans_nr++;
 	}
+	if(tmp.outer_ip_id_behavior_just_changed)
+	{
+		rfc5225_ctxt->outer_ip_id_behavior_trans_nr = 0;
+	}
 	if(rfc5225_ctxt->outer_ip_id_behavior_trans_nr < oa_repetitions_nr)
 	{
 		rfc5225_ctxt->outer_ip_id_behavior_trans_nr++;
+	}
+	if(tmp.innermost_ip_flag_just)
+	{
+		rfc5225_ctxt->innermost_ip_flag_trans_nr = 0;
 	}
 	if(rfc5225_ctxt->innermost_ip_flag_trans_nr < oa_repetitions_nr)
 	{
 		rfc5225_ctxt->innermost_ip_flag_trans_nr++;
 	}
+	if(tmp.outer_ip_flag_just)
+	{
+		rfc5225_ctxt->outer_ip_flag_trans_nr = 0;
+	}
 	if(rfc5225_ctxt->outer_ip_flag_trans_nr < oa_repetitions_nr)
 	{
 		rfc5225_ctxt->outer_ip_flag_trans_nr++;
 	}
+	if(tmp.innermost_tos_tc_just_changed)
+	{
+		rfc5225_ctxt->innermost_tos_tc_trans_nr = 0;
+	}
 	if(rfc5225_ctxt->innermost_tos_tc_trans_nr < oa_repetitions_nr)
 	{
 		rfc5225_ctxt->innermost_tos_tc_trans_nr++;
+	}
+	if(tmp.innermost_ttl_hopl_just_changed)
+	{
+		rfc5225_ctxt->innermost_ttl_hopl_trans_nr = 0;
 	}
 	if(rfc5225_ctxt->innermost_ttl_hopl_trans_nr < oa_repetitions_nr)
 	{
@@ -701,24 +766,35 @@ static void rohc_comp_rfc5225_ip_esp_detect_changes(const struct rohc_comp_ctxt 
                                                     struct comp_rfc5225_tmp_variables *const tmp)
 {
 	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
-	struct rohc_comp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt = context->specific;
+	const struct rohc_comp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt = context->specific;
 	const ip_context_t *innermost_ip_ctxt = NULL;
 	size_t ip_hdr_pos;
 
 	/* detect changes in all the IP headers */
 	rohc_comp_debug(context, "detect changes the IP packet");
 	assert(rfc5225_ctxt->ip_contexts_nr > 0);
+	tmp->outer_df_just_changed = false;
 	tmp->outer_df_changed = false;
+	tmp->outer_ip_id_behavior_just_changed = false;
 	tmp->outer_ip_id_behavior_changed = false;
+	tmp->outer_ip_flag_just = false;
 	tmp->outer_ip_flag = false;
+	tmp->innermost_df_just_changed = false;
 	tmp->innermost_df_changed = false;
+	tmp->innermost_ip_id_behavior_just_changed = false;
 	tmp->innermost_ip_id_behavior_changed = false;
+	tmp->innermost_ip_id_offset_just_changed = false;
 	tmp->innermost_ip_id_offset_changed = false;
+	tmp->innermost_tos_tc_just_changed = false;
 	tmp->innermost_tos_tc_changed = false;
+	tmp->innermost_ttl_hopl_just_changed = false;
 	tmp->innermost_ttl_hopl_changed = false;
+	tmp->innermost_ip_flag_just = false;
 	tmp->innermost_ip_flag = false;
 	tmp->innermost_ip_id = 0;
+	tmp->at_least_one_df_just_changed = false;
 	tmp->at_least_one_df_changed = false;
+	tmp->at_least_one_ip_id_behavior_just_changed = false;
 	tmp->at_least_one_ip_id_behavior_changed = false;
 	for(ip_hdr_pos = 0; ip_hdr_pos < rfc5225_ctxt->ip_contexts_nr; ip_hdr_pos++)
 	{
@@ -738,16 +814,16 @@ static void rohc_comp_rfc5225_ip_esp_detect_changes(const struct rohc_comp_ctxt 
 			{
 				rohc_comp_debug(context, "    TOS/HL (0x%02x -> 0x%02x) changed",
 				                ip_ctxt->tos_tc, ip_hdr->tos_tc);
-				tmp->innermost_tos_tc_changed = true;
-				tmp->innermost_ip_flag = true;
+				tmp->innermost_tos_tc_just_changed = true;
+				tmp->innermost_ip_flag_just = true;
 			}
 			/* innermost TTL/HL changed? */
 			if(ip_ctxt->ttl_hopl != ip_hdr->ttl_hl)
 			{
 				rohc_comp_debug(context, "    TTL/HL (%u -> %u) changed",
 				                ip_ctxt->ttl_hopl, ip_hdr->ttl_hl);
-				tmp->innermost_ttl_hopl_changed = true;
-				tmp->innermost_ip_flag = true;
+				tmp->innermost_ttl_hopl_just_changed = true;
+				tmp->innermost_ip_flag_just = true;
 			}
 			/* save the new values of innermost TOS/HL and TTL/HL to easily retrieve them
 			 * during packet creation */
@@ -762,7 +838,7 @@ static void rohc_comp_rfc5225_ip_esp_detect_changes(const struct rohc_comp_ctxt 
 				rohc_comp_debug(context, "    TOS/TC (%02x -> %02x) or TTL/HL (%u -> %u) "
 				                "changed", ip_ctxt->tos_tc, ip_hdr->tos_tc,
 				                ip_ctxt->ttl_hopl, ip_hdr->ttl_hl);
-				tmp->outer_ip_flag = true;
+				tmp->outer_ip_flag_just = true;
 			}
 		}
 
@@ -830,8 +906,8 @@ static void rohc_comp_rfc5225_ip_esp_detect_changes(const struct rohc_comp_ctxt 
 		                rohc_ip_id_behavior_get_descr(ip_id_behavior));
 		if(last_ip_id_behavior != ip_id_behavior)
 		{
-			tmp->at_least_one_ip_id_behavior_changed = true;
-			tmp->innermost_ip_id_behavior_changed = true;
+			tmp->at_least_one_ip_id_behavior_just_changed = true;
+			tmp->innermost_ip_id_behavior_just_changed = true;
 		}
 
 		if(ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
@@ -849,7 +925,7 @@ static void rohc_comp_rfc5225_ip_esp_detect_changes(const struct rohc_comp_ctxt 
 		rohc_comp_debug(context, "new IP-ID offset = 0x%x / %u",
 		                tmp->innermost_ip_id_offset, tmp->innermost_ip_id_offset);
 
-		tmp->innermost_ip_id_offset_changed =
+		tmp->innermost_ip_id_offset_just_changed =
 			!!(rfc5225_ctxt->innermost_ip_id_offset != tmp->innermost_ip_id_offset);
 	}
 	else /* behavior of innermost IPv6 IP-ID never changes */
@@ -860,11 +936,11 @@ static void rohc_comp_rfc5225_ip_esp_detect_changes(const struct rohc_comp_ctxt 
 	}
 
 	/* any DF that changes shall be transmitted several times */
-	if(tmp->at_least_one_df_changed)
+	if(tmp->at_least_one_df_just_changed)
 	{
 		rohc_comp_debug(context, "at least one DF changed in current packet, "
 		                "it shall be transmitted %u times", oa_repetitions_nr);
-		rfc5225_ctxt->all_df_trans_nr = 0;
+		tmp->at_least_one_df_changed = true;
 	}
 	else if(rfc5225_ctxt->all_df_trans_nr < oa_repetitions_nr)
 	{
@@ -874,11 +950,11 @@ static void rohc_comp_rfc5225_ip_esp_detect_changes(const struct rohc_comp_ctxt 
 		tmp->at_least_one_df_changed = true;
 	}
 	/* the innermost DF that changes shall be transmitted several times */
-	if(tmp->innermost_df_changed)
+	if(tmp->innermost_df_just_changed)
 	{
 		rohc_comp_debug(context, "innermost DF changed in current packet, "
 		                "it shall be transmitted %u times", oa_repetitions_nr);
-		rfc5225_ctxt->innermost_df_trans_nr = 0;
+		tmp->innermost_df_changed = true;
 	}
 	else if(rfc5225_ctxt->innermost_df_trans_nr < oa_repetitions_nr)
 	{
@@ -888,11 +964,11 @@ static void rohc_comp_rfc5225_ip_esp_detect_changes(const struct rohc_comp_ctxt 
 		tmp->innermost_df_changed = true;
 	}
 	/* any outer DF that changes shall be transmitted several times */
-	if(tmp->outer_df_changed)
+	if(tmp->outer_df_just_changed)
 	{
 		rohc_comp_debug(context, "at least one outer DF changed in current packet, "
 		                "it shall be transmitted %u times", oa_repetitions_nr);
-		rfc5225_ctxt->outer_df_trans_nr = 0;
+		tmp->outer_df_changed = true;
 	}
 	else if(rfc5225_ctxt->outer_df_trans_nr < oa_repetitions_nr)
 	{
@@ -903,11 +979,11 @@ static void rohc_comp_rfc5225_ip_esp_detect_changes(const struct rohc_comp_ctxt 
 	}
 
 	/* any IP-ID behavior that changes shall be transmitted several times */
-	if(tmp->at_least_one_ip_id_behavior_changed)
+	if(tmp->at_least_one_ip_id_behavior_just_changed)
 	{
 		rohc_comp_debug(context, "at least one IP-ID behavior changed in current "
 		                "packet, it shall be transmitted %u times", oa_repetitions_nr);
-		rfc5225_ctxt->all_ip_id_behavior_trans_nr = 0;
+		tmp->at_least_one_ip_id_behavior_changed = true;
 	}
 	else if(rfc5225_ctxt->all_ip_id_behavior_trans_nr < oa_repetitions_nr)
 	{
@@ -917,11 +993,11 @@ static void rohc_comp_rfc5225_ip_esp_detect_changes(const struct rohc_comp_ctxt 
 		tmp->at_least_one_ip_id_behavior_changed = true;
 	}
 	/* innermost IP-ID behavior that changes shall be transmitted several times */
-	if(tmp->innermost_ip_id_behavior_changed)
+	if(tmp->innermost_ip_id_behavior_just_changed)
 	{
 		rohc_comp_debug(context, "innermost IP-ID behavior changed in current "
 		                "packet, it shall be transmitted %u times", oa_repetitions_nr);
-		rfc5225_ctxt->innermost_ip_id_behavior_trans_nr = 0;
+		tmp->innermost_ip_id_behavior_changed = true;
 	}
 	else if(rfc5225_ctxt->innermost_ip_id_behavior_trans_nr < oa_repetitions_nr)
 	{
@@ -932,11 +1008,11 @@ static void rohc_comp_rfc5225_ip_esp_detect_changes(const struct rohc_comp_ctxt 
 	}
 	/* innermost IP-ID offset that changes shall be transmitted several times
 	 * before being inferred */
-	if(tmp->innermost_ip_id_offset_changed)
+	if(tmp->innermost_ip_id_offset_just_changed)
 	{
 		rohc_comp_debug(context, "innermost IP-ID offset changed in current "
 		                "packet, it shall be transmitted %u times", oa_repetitions_nr);
-		rfc5225_ctxt->innermost_ip_id_offset_trans_nr = 0;
+		tmp->innermost_ip_id_offset_changed = true;
 	}
 	else if(rfc5225_ctxt->innermost_ip_id_offset_trans_nr < oa_repetitions_nr)
 	{
@@ -946,12 +1022,12 @@ static void rohc_comp_rfc5225_ip_esp_detect_changes(const struct rohc_comp_ctxt 
 		tmp->innermost_ip_id_offset_changed = true;
 	}
 	/* any outer IP-ID behavior that changes shall be transmitted several times */
-	if(tmp->outer_ip_id_behavior_changed)
+	if(tmp->outer_ip_id_behavior_just_changed)
 	{
 		rohc_comp_debug(context, "at least one outer IP-ID behavior changed in "
 		                "current packet, it shall be transmitted %u times",
 		                oa_repetitions_nr);
-		rfc5225_ctxt->outer_ip_id_behavior_trans_nr = 0;
+		tmp->outer_ip_id_behavior_changed = true;
 	}
 	else if(rfc5225_ctxt->outer_ip_id_behavior_trans_nr < oa_repetitions_nr)
 	{
@@ -962,11 +1038,11 @@ static void rohc_comp_rfc5225_ip_esp_detect_changes(const struct rohc_comp_ctxt 
 	}
 
 	/* innermost IP flag that changes shall be transmitted several times */
-	if(tmp->innermost_ip_flag)
+	if(tmp->innermost_ip_flag_just)
 	{
 		rohc_comp_debug(context, "innermost IP flag changed in current packet, "
 		                "it shall be transmitted %u times", oa_repetitions_nr);
-		rfc5225_ctxt->innermost_ip_flag_trans_nr = 0;
+		tmp->innermost_ip_flag = true;
 	}
 	else if(rfc5225_ctxt->innermost_ip_flag_trans_nr < oa_repetitions_nr)
 	{
@@ -976,11 +1052,11 @@ static void rohc_comp_rfc5225_ip_esp_detect_changes(const struct rohc_comp_ctxt 
 		tmp->innermost_ip_flag = true;
 	}
 	/* any outer IP-ID behavior that changes shall be transmitted several times */
-	if(tmp->outer_ip_flag)
+	if(tmp->outer_ip_flag_just)
 	{
 		rohc_comp_debug(context, "at least one outer IP flag changed in current "
 		                "packet, it shall be transmitted %u times", oa_repetitions_nr);
-		rfc5225_ctxt->outer_ip_flag_trans_nr = 0;
+		tmp->outer_ip_flag = true;
 	}
 	else if(rfc5225_ctxt->outer_ip_flag_trans_nr < oa_repetitions_nr)
 	{
@@ -991,11 +1067,11 @@ static void rohc_comp_rfc5225_ip_esp_detect_changes(const struct rohc_comp_ctxt 
 	}
 
 	/* innermost TOS/TC that changes shall be transmitted several times */
-	if(tmp->innermost_tos_tc_changed)
+	if(tmp->innermost_tos_tc_just_changed)
 	{
 		rohc_comp_debug(context, "innermost TOS/TC changed in current packet, "
 		                "it shall be transmitted %u times", oa_repetitions_nr);
-		rfc5225_ctxt->innermost_tos_tc_trans_nr = 0;
+		tmp->innermost_tos_tc_changed = true;
 	}
 	else if(rfc5225_ctxt->innermost_tos_tc_trans_nr < oa_repetitions_nr)
 	{
@@ -1006,11 +1082,11 @@ static void rohc_comp_rfc5225_ip_esp_detect_changes(const struct rohc_comp_ctxt 
 	}
 
 	/* innermost TTL/HL that changes shall be transmitted several times */
-	if(tmp->innermost_ttl_hopl_changed)
+	if(tmp->innermost_ttl_hopl_just_changed)
 	{
 		rohc_comp_debug(context, "innermost TTL/HL changed in current packet, "
 		                "it shall be transmitted %u times", oa_repetitions_nr);
-		rfc5225_ctxt->innermost_ttl_hopl_trans_nr = 0;
+		tmp->innermost_ttl_hopl_changed = true;
 	}
 	else if(rfc5225_ctxt->innermost_ttl_hopl_trans_nr < oa_repetitions_nr)
 	{
@@ -1043,14 +1119,14 @@ static void rohc_comp_rfc5225_ip_esp_detect_changes_ipv4(const struct rohc_comp_
 	if(ip_ctxt->df != ipv4->df)
 	{
 		rohc_comp_debug(ctxt, "    DF (%u -> %u) changed", ip_ctxt->df, ipv4->df);
-		tmp->at_least_one_df_changed = true;
+		tmp->at_least_one_df_just_changed = true;
 		if(is_innermost)
 		{
-			tmp->innermost_df_changed = true;
+			tmp->innermost_df_just_changed = true;
 		}
 		else
 		{
-			tmp->outer_df_changed = true;
+			tmp->outer_df_just_changed = true;
 		}
 	}
 	/* save the new value of the innermost DF to easily retrieve them during
@@ -1093,8 +1169,8 @@ static void rohc_comp_rfc5225_ip_esp_detect_changes_ipv4(const struct rohc_comp_
 		                rohc_ip_id_behavior_get_descr(*new_ip_id_behavior));
 		if(last_ip_id_behavior != (*new_ip_id_behavior))
 		{
-			tmp->at_least_one_ip_id_behavior_changed = true;
-			tmp->outer_ip_id_behavior_changed = true;
+			tmp->at_least_one_ip_id_behavior_just_changed = true;
+			tmp->outer_ip_id_behavior_just_changed = true;
 		}
 	}
 	else
@@ -1495,13 +1571,10 @@ static rohc_packet_t rohc_comp_rfc5225_ip_esp_decide_FO_SO_pkt(const struct rohc
 {
 	const struct rohc_comp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt = ctxt->specific;
 	const int32_t msn_offset = tmp->msn_offset;
-	const uint8_t oa_repetitions_nr = ctxt->compressor->oa_repetitions_nr;
 	const rohc_reordering_offset_t reorder_ratio = ctxt->compressor->reorder_ratio;
 	const ip_context_t *const innermost_ip_ctxt =
 		&(rfc5225_ctxt->ip_contexts[rfc5225_ctxt->ip_contexts_nr - 1]);
 	const uint16_t innermost_ip_id = tmp->innermost_ip_id;
-	const uint8_t innermost_ip_id_offset_trans_nr =
-		rfc5225_ctxt->innermost_ip_id_offset_trans_nr;
 	const rohc_ip_id_behavior_t innermost_ip_id_behavior =
 		tmp->innermost_ip_id_behavior;
 	rohc_packet_t packet_type;
@@ -1521,8 +1594,7 @@ static rohc_packet_t rohc_comp_rfc5225_ip_esp_decide_FO_SO_pkt(const struct rohc
 	                                         tmp->new_msn, reorder_ratio, 4) &&
 	   (!rohc_comp_rfc5225_is_ipid_sequential(innermost_ip_id_behavior) ||
 	    rohc_comp_rfc5225_is_seq_ipid_inferred(innermost_ip_ctxt,
-	                                           innermost_ip_id_offset_trans_nr,
-	                                           oa_repetitions_nr,
+	                                           !tmp->innermost_ip_id_offset_changed,
 	                                           innermost_ip_id_behavior,
 	                                           innermost_ip_id, msn_offset)) &&
 	   !tmp->outer_ip_flag &&
@@ -1546,8 +1618,7 @@ static rohc_packet_t rohc_comp_rfc5225_ip_esp_decide_FO_SO_pkt(const struct rohc
 	                                              tmp->new_msn, reorder_ratio, 6) &&
 	        (!rohc_comp_rfc5225_is_ipid_sequential(innermost_ip_id_behavior) ||
 	         rohc_comp_rfc5225_is_seq_ipid_inferred(innermost_ip_ctxt,
-	                                                innermost_ip_id_offset_trans_nr,
-	                                                oa_repetitions_nr,
+	                                                !tmp->innermost_ip_id_offset_changed,
 	                                                innermost_ip_id_behavior,
 	                                                innermost_ip_id, msn_offset)) &&
 	        !tmp->outer_ip_flag &&
@@ -1672,8 +1743,7 @@ static bool rohc_comp_rfc5225_is_ipid_sequential(const rohc_ip_id_behavior_t beh
  *  - the new IP-ID value increases from the last IP-ID by the same delta as the MSN.
  *
  * @param ip_ctxt                The context for the given IP header
- * @param ip_id_offset_trans_nr  The number of IP-ID offset transmissions
- * @param oa_repetitions_nr      The number of repetitions for Optimistic Approach
+ * @param is_ip_id_offset_known  Whether IP-ID / MSN offset is known by decompressor
  * @param new_ip_id_behavior     The new behavior of the IP-ID
  * @param new_ip_id              The new value of the IP-ID
  * @param msn_offset             The offset between the previous and current MSN
@@ -1681,8 +1751,7 @@ static bool rohc_comp_rfc5225_is_ipid_sequential(const rohc_ip_id_behavior_t beh
  *                               inferred from MSN, false otherwise
  */
 static bool rohc_comp_rfc5225_is_seq_ipid_inferred(const ip_context_t *const ip_ctxt,
-                                                   const uint8_t ip_id_offset_trans_nr,
-                                                   const uint8_t oa_repetitions_nr,
+                                                   const bool is_ip_id_offset_known,
                                                    const rohc_ip_id_behavior_t new_ip_id_behavior,
                                                    const uint16_t new_ip_id,
                                                    const int32_t msn_offset)
@@ -1693,7 +1762,7 @@ static bool rohc_comp_rfc5225_is_seq_ipid_inferred(const ip_context_t *const ip_
 	{
 		is_inferred = false;
 	}
-	else if(ip_id_offset_trans_nr < oa_repetitions_nr)
+	else if(!is_ip_id_offset_known)
 	{
 		is_inferred = false;
 	}
