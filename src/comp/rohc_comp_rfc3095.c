@@ -65,7 +65,7 @@ static void ip_header_info_free(struct ip_header_info *const header_info)
 
 static void c_init_tmp_variables(struct generic_tmp_vars *const tmp_vars);
 
-static rohc_packet_t decide_packet(struct rohc_comp_ctxt *const context)
+static rohc_packet_t decide_packet(const struct rohc_comp_ctxt *const context)
 	__attribute__((warn_unused_result, nonnull(1)));
 
 static rohc_ext_t decide_extension_uor2(const struct rohc_comp_ctxt *const context,
@@ -1210,7 +1210,7 @@ static void rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const contex
  *                        in case of success
  *                    \li ROHC_PACKET_UNKNOWN in case of failure
  */
-static rohc_packet_t decide_packet(struct rohc_comp_ctxt *const context)
+static rohc_packet_t decide_packet(const struct rohc_comp_ctxt *const context)
 {
 	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;

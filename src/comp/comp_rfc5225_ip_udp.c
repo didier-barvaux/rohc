@@ -326,7 +326,7 @@ static void rohc_comp_rfc5225_ip_udp_feedback_ack(struct rohc_comp_ctxt *const c
 	__attribute__((nonnull(1)));
 
 /* decide packet */
-static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_pkt(struct rohc_comp_ctxt *const context)
+static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_pkt(const struct rohc_comp_ctxt *const context)
 	__attribute__((warn_unused_result, nonnull(1)));
 
 static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_FO_pkt(const struct rohc_comp_ctxt *const ctxt)
@@ -1398,7 +1398,7 @@ static void rohc_comp_rfc5225_ip_udp_feedback_ack(struct rohc_comp_ctxt *const c
  *                              in case of success
  *                          \li ROHC_PACKET_UNKNOWN in case of failure
  */
-static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_pkt(struct rohc_comp_ctxt *const context)
+static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_pkt(const struct rohc_comp_ctxt *const context)
 {
 	rohc_packet_t packet_type;
 
