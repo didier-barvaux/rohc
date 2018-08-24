@@ -135,7 +135,6 @@ struct c_tcp_opts_ctxt
 	/** The number of times the structure of the list of TCP options was
 	 * transmitted since it last changed */
 	uint8_t structure_nr_trans;
-	bool is_timestamp_init;
 	uint8_t unused[6];
 };
 

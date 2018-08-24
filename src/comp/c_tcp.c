@@ -149,9 +149,8 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
                                                  const bool crc7_at_least)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static bool tcp_opt_ts_can_be_encoded(const struct c_tcp_opts_ctxt *const opts,
-                                      const struct c_tcp_opts_ctxt_tmp *const tmp)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+static bool tcp_opt_ts_can_be_encoded(const struct c_tcp_opts_ctxt_tmp *const tmp)
+	__attribute__((warn_unused_result, nonnull(1)));
 
 /* IR and CO packets */
 static int code_IR_packet(struct rohc_comp_ctxt *const context,
@@ -784,8 +783,6 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 		tcp_context->tcp_opts.list[i].used = false;
 	}
 
-	/* no TCP option Timestamp received yet */
-	tcp_context->tcp_opts.is_timestamp_init = false;
 	/* TCP option Timestamp (request) */
 	is_ok = wlsb_new(&tcp_context->tcp_opts.ts_req_wlsb, comp->oa_repetitions_nr);
 	if(!is_ok)
@@ -1095,7 +1092,6 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	/* TCP Timestamp option */
 	if(tmp.tcp_opts.opt_ts_present)
 	{
-		tcp_opts->is_timestamp_init = true;
 		c_add_wlsb(&tcp_opts->ts_req_wlsb, tcp_context->msn, tmp.tcp_opts.ts_req);
 		c_add_wlsb(&tcp_opts->ts_reply_wlsb, tcp_context->msn, tmp.tcp_opts.ts_reply);
 	}
@@ -3770,17 +3766,13 @@ static bool tcp_detect_changes_tcp_hdr(struct rohc_comp_ctxt *const context,
 /**
  * @brief Whether the TCP Timestamp (TS) option can be encoded or not
  *
- * @param opts  The compression context of the TCP options
  * @param tmp   The temporary state for compressed TCP options
  * @return      true if the TCP Timestamp (TS) option can be encoded,
  *              false if the TCP Timestamp (TS) option shall be sent in full
  */
-static bool tcp_opt_ts_can_be_encoded(const struct c_tcp_opts_ctxt *const opts,
-                                      const struct c_tcp_opts_ctxt_tmp *const tmp)
+static bool tcp_opt_ts_can_be_encoded(const struct c_tcp_opts_ctxt_tmp *const tmp)
 {
-	return (opts->is_timestamp_init &&
-	        tmp->ts_req_bytes_nr != 0 &&
-	        tmp->ts_reply_bytes_nr != 0);
+	return (tmp->ts_req_bytes_nr != 0 && tmp->ts_reply_bytes_nr != 0);
 }
 
 
@@ -3931,7 +3923,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet(const struct rohc_comp_ctxt *const 
 		packet_type = ROHC_PACKET_IR_DYN;
 	}
 	else if(tmp->tcp_opts.opt_ts_present &&
-	        !tcp_opt_ts_can_be_encoded(&tcp_context->tcp_opts, &tmp->tcp_opts))
+	        !tcp_opt_ts_can_be_encoded(&tmp->tcp_opts))
 	{
 		rohc_comp_debug(context, "force packet IR-DYN because the TCP TS option "
 		                "changed too much");
