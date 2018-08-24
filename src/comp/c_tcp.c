@@ -149,9 +149,6 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
                                                  const bool crc7_at_least)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static bool tcp_opt_ts_can_be_encoded(const struct c_tcp_opts_ctxt_tmp *const tmp)
-	__attribute__((warn_unused_result, nonnull(1)));
-
 /* IR and CO packets */
 static int code_IR_packet(struct rohc_comp_ctxt *const context,
                           const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
@@ -2131,7 +2128,8 @@ static int c_tcp_build_rnd_8(const struct rohc_comp_ctxt *const context,
 	 * or if some static options changed (irregular chain cannot transmit
 	 * static options) */
 	if(tmp->tcp_opts.do_list_struct_changed ||
-	   tmp->tcp_opts.do_list_static_changed)
+	   tmp->tcp_opts.do_list_static_changed ||
+	   tmp->tcp_opts.opt_ts_do_transmit_item)
 	{
 		/* the structure of the list of TCP options changed or at least one of
 		 * the static option changed, compress them */
@@ -2685,7 +2683,8 @@ static int c_tcp_build_seq_8(const struct rohc_comp_ctxt *const context,
 	 * or if some static options changed (irregular chain cannot transmit
 	 * static options) */
 	if(tmp->tcp_opts.do_list_struct_changed ||
-	   tmp->tcp_opts.do_list_static_changed)
+	   tmp->tcp_opts.do_list_static_changed ||
+	   tmp->tcp_opts.opt_ts_do_transmit_item)
 	{
 		/* the structure of the list of TCP options changed or at least one of
 		 * the static option changed, compress them */
@@ -2992,7 +2991,8 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 	 * or if some static options changed (irregular chain cannot transmit
 	 * static options) */
 	if(tmp->tcp_opts.do_list_struct_changed ||
-	   tmp->tcp_opts.do_list_static_changed)
+	   tmp->tcp_opts.do_list_static_changed ||
+	   tmp->tcp_opts.opt_ts_do_transmit_item)
 	{
 		/* the structure of the list of TCP options changed or at least one of
 		 * the static option changed, compress them */
@@ -3764,19 +3764,6 @@ static bool tcp_detect_changes_tcp_hdr(struct rohc_comp_ctxt *const context,
 
 
 /**
- * @brief Whether the TCP Timestamp (TS) option can be encoded or not
- *
- * @param tmp   The temporary state for compressed TCP options
- * @return      true if the TCP Timestamp (TS) option can be encoded,
- *              false if the TCP Timestamp (TS) option shall be sent in full
- */
-static bool tcp_opt_ts_can_be_encoded(const struct c_tcp_opts_ctxt_tmp *const tmp)
-{
-	return (tmp->ts_req_bytes_nr != 0 && tmp->ts_reply_bytes_nr != 0);
-}
-
-
-/**
  * @brief Decide which packet to send when in the different states.
  *
  * @param context           The compression context
@@ -3922,13 +3909,6 @@ static rohc_packet_t tcp_decide_FO_SO_packet(const struct rohc_comp_ctxt *const 
 		                "changed its dynamic part");
 		packet_type = ROHC_PACKET_IR_DYN;
 	}
-	else if(tmp->tcp_opts.opt_ts_present &&
-	        !tcp_opt_ts_can_be_encoded(&tmp->tcp_opts))
-	{
-		rohc_comp_debug(context, "force packet IR-DYN because the TCP TS option "
-		                "changed too much");
-		packet_type = ROHC_PACKET_IR_DYN;
-	}
 	else if(!wlsb_is_kp_possible_16bits(&tcp_context->msn_wlsb, tcp_context->msn, 4,
 	                                    ROHC_LSB_SHIFT_TCP_SN))
 	{
@@ -4053,6 +4033,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 	if(tcp->rsf_flags == 0 &&
 	   !tmp->tcp_opts.do_list_struct_changed &&
 	   !tmp->tcp_opts.do_list_static_changed &&
+	   !tmp->tcp_opts.opt_ts_do_transmit_item &&
 	   !tmp->tcp_window_changed &&
 	   (tcp->ack_flag == 0 || tmp->tcp_ack_num_unchanged) &&
 	   !crc7_at_least &&
@@ -4070,7 +4051,8 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 	}
 	else if(tcp->rsf_flags != 0 ||
 	        tmp->tcp_opts.do_list_struct_changed ||
-	        tmp->tcp_opts.do_list_static_changed)
+	        tmp->tcp_opts.do_list_static_changed ||
+	        tmp->tcp_opts.opt_ts_do_transmit_item)
 	{
 		/* seq_8 or co_common
 		 *
@@ -4278,7 +4260,8 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 	if(tcp->rsf_flags == 0 &&
 	   !tmp->tcp_opts.do_list_struct_changed &&
 	   !tmp->tcp_opts.do_list_static_changed &&
-		!tmp->tcp_window_changed &&
+	   !tmp->tcp_opts.opt_ts_do_transmit_item &&
+	   !tmp->tcp_window_changed &&
 	   !crc7_at_least &&
 	   tmp->tcp_ack_num_unchanged &&
 	   uncomp_pkt_hdrs->payload_len > 0 &&
@@ -4294,7 +4277,8 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 	}
 	else if(tcp->rsf_flags != 0 ||
 	        tmp->tcp_opts.do_list_struct_changed ||
-	        tmp->tcp_opts.do_list_static_changed)
+	        tmp->tcp_opts.do_list_static_changed ||
+	        tmp->tcp_opts.opt_ts_do_transmit_item)
 	{
 		if(!tmp->tcp_window_changed &&
 		   wlsb_is_kp_possible_32bits(&tcp_context->seq_wlsb, tmp->seq_num, 16, 65535) &&

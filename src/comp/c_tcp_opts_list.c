@@ -536,6 +536,7 @@ void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 	}
 	tmp->do_list_static_changed = false;
 	tmp->opt_ts_present = false;
+	tmp->opt_ts_do_transmit_item = false;
 	tmp->idx_max = 0;
 
 	for(opt_pos = 0; opt_pos < opts_nr; opt_pos++)
@@ -562,6 +563,19 @@ void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 			tmp->ts_reply_bytes_nr =
 				tcp_opt_ts_one_can_be_encoded(&opts_ctxt->ts_reply_wlsb,
 				                              tmp->ts_reply);
+
+			if(tmp->ts_req_bytes_nr == 0 || tmp->ts_reply_bytes_nr == 0)
+			{
+				rohc_comp_debug(context, "  TS option shall be transmitted as "
+				                "list item in one of dynamic, replicate or CO "
+				                "chains");
+				tmp->opt_ts_do_transmit_item = true;
+			}
+			else
+			{
+				rohc_comp_debug(context, "  TS option can be encoded in "
+				                "irregular chain");
+			}
 		}
 
 		/* determine the index of the TCP option */
@@ -1062,8 +1076,8 @@ error:
  *
  * @param wlsb  The W-LSB compression context of the TS reply/request field
  * @param ts    The TS reply/request field
- * @return      true if the TS reply/request field can be encoded,
- *              false if the TS reply/request field shall be sent in full
+ * @return      0 if the TS reply/request field shall be sent in full,
+ *              the nr of required bytes if the TS reply/request field can be encoded
  */
 static uint8_t tcp_opt_ts_one_can_be_encoded(const struct c_wlsb *const wlsb,
                                              const uint32_t ts)

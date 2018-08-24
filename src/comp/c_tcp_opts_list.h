@@ -99,7 +99,8 @@ struct c_tcp_opts_ctxt_tmp
 	uint8_t do_list_static_changed:1;
 	/** Whether the TCP option timestamp echo request is present in packet */
 	uint8_t opt_ts_present:1;
-	uint8_t unused:5;
+	uint8_t opt_ts_do_transmit_item:1;
+	uint8_t unused:4;
 
 	uint8_t ts_req_bytes_nr:4;
 	uint8_t ts_reply_bytes_nr:4;
