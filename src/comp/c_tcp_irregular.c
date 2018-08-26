@@ -484,6 +484,7 @@ static int tcp_code_irregular_tcp_part(const struct rohc_comp_ctxt *const contex
 	/* irregular part for TCP options */
 	ret = c_tcp_code_tcp_opts_irreg(context, uncomp_pkt_hdrs,
 	                                &tcp_context->tcp_opts, &tmp->tcp_opts,
+	                                tmp->tcp_opts.list_item_needed,
 	                                rohc_remain_data, rohc_remain_len);
 	if(ret < 0)
 	{

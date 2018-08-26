@@ -895,17 +895,6 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	/* detect changes between new uncompressed packet and context */
 	tcp_detect_changes(context, ip_inner_context, uncomp_pkt_hdrs, &tmp);
 
-	if(tmp.tcp_opts.do_list_static_changed)
-	{
-		tcp_context->tcp_opts_list_static_trans_nr = 0;
-	}
-	else if(tcp_context->tcp_opts_list_static_trans_nr < oa_repetitions_nr)
-	{
-		rohc_comp_debug(context, "some static TCP options changed in the last "
-		                "few packets");
-		tmp.tcp_opts.do_list_static_changed = true;
-	}
-
 	/* decide which packet to send */
 	*packet_type = tcp_decide_packet(context, uncomp_pkt_hdrs, &tmp);
 
@@ -1083,9 +1072,15 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	{
 		tcp_context->ipv6_exts_list_dyn_trans_nr++;
 	}
-	if(tcp_context->tcp_opts_list_static_trans_nr < oa_repetitions_nr)
+	if(tmp.tcp_opts.do_list_struct_changed)
 	{
-		tcp_context->tcp_opts_list_static_trans_nr++;
+		tcp_opts->structure_nr_trans = 0;
+	}
+	if(tcp_opts->structure_nr_trans < oa_repetitions_nr)
+	{
+		rohc_comp_debug(context, "some TCP options were not present at the very "
+		                "same location in the last few packets");
+		tcp_opts->structure_nr_trans++;
 	}
 
 	return counter;
@@ -2079,21 +2074,17 @@ static int c_tcp_build_rnd_8(const struct rohc_comp_ctxt *const context,
 	rnd8->ack_num = rohc_hton16(rohc_ntoh32(tcp->ack_num) & 0xffff);
 
 	/* include the list of TCP options if the structure of the list changed
-	 * or if some static options changed (irregular chain cannot transmit
-	 * static options) */
-	if(tmp->tcp_opts.do_list_struct_changed ||
-	   tmp->tcp_opts.do_list_static_changed ||
-	   tmp->tcp_opts.opt_ts_do_transmit_item)
+	 * or if at least one option changed in a way that the irregular chain
+	 * cannot transmit */
+	if(tmp->tcp_opts.is_list_needed)
 	{
-		/* the structure of the list of TCP options changed or at least one of
-		 * the static option changed, compress them */
-		bool no_item_needed;
+		rohc_comp_debug(context, "compressed list of TCP options: list present");
 		rnd8->list_present = 1;
 		ret = c_tcp_code_tcp_opts_list_item(context, uncomp_pkt_hdrs,
-		                                    ROHC_CHAIN_CO, &tcp_context->tcp_opts,
-		                                    &tmp->tcp_opts, rnd8->options,
-		                                    rohc_max_len - sizeof(rnd_8_t),
-		                                    &no_item_needed);
+		                                    &tcp_context->tcp_opts, &tmp->tcp_opts,
+		                                    tmp->tcp_opts.list_item_needed,
+		                                    rnd8->options,
+		                                    rohc_max_len - sizeof(rnd_8_t));
 		if(ret < 0)
 		{
 			rohc_comp_warn(context, "failed to compress TCP options");
@@ -2640,21 +2631,17 @@ static int c_tcp_build_seq_8(const struct rohc_comp_ctxt *const context,
 	                seq_num, seq8->seq_num1, seq8->seq_num2);
 
 	/* include the list of TCP options if the structure of the list changed
-	 * or if some static options changed (irregular chain cannot transmit
-	 * static options) */
-	if(tmp->tcp_opts.do_list_struct_changed ||
-	   tmp->tcp_opts.do_list_static_changed ||
-	   tmp->tcp_opts.opt_ts_do_transmit_item)
+	 * or if at least one option changed in a way that the irregular chain
+	 * cannot transmit */
+	if(tmp->tcp_opts.is_list_needed)
 	{
-		/* the structure of the list of TCP options changed or at least one of
-		 * the static option changed, compress them */
-		bool no_item_needed;
+		rohc_comp_debug(context, "compressed list of TCP options: list present");
 		seq8->list_present = 1;
 		ret = c_tcp_code_tcp_opts_list_item(context, uncomp_pkt_hdrs,
-		                                    ROHC_CHAIN_CO, &tcp_context->tcp_opts,
-		                                    &tmp->tcp_opts, seq8->options,
-		                                    rohc_max_len - sizeof(seq_8_t),
-		                                    &no_item_needed);
+		                                    &tcp_context->tcp_opts, &tmp->tcp_opts,
+		                                    tmp->tcp_opts.list_item_needed,
+		                                    seq8->options,
+		                                    rohc_max_len - sizeof(seq_8_t));
 		if(ret < 0)
 		{
 			rohc_comp_warn(context, "failed to compress TCP options");
@@ -2948,21 +2935,16 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 	co_common->reserved = 0;
 
 	/* include the list of TCP options if the structure of the list changed
-	 * or if some static options changed (irregular chain cannot transmit
-	 * static options) */
-	if(tmp->tcp_opts.do_list_struct_changed ||
-	   tmp->tcp_opts.do_list_static_changed ||
-	   tmp->tcp_opts.opt_ts_do_transmit_item)
+	 * or if at least one option changed in a way that the irregular chain
+	 * cannot transmit */
+	if(tmp->tcp_opts.is_list_needed)
 	{
-		/* the structure of the list of TCP options changed or at least one of
-		 * the static option changed, compress them */
-		bool no_item_needed;
+		rohc_comp_debug(context, "compressed list of TCP options: list present");
 		co_common->list_present = 1;
 		ret = c_tcp_code_tcp_opts_list_item(context, uncomp_pkt_hdrs,
-		                                    ROHC_CHAIN_CO, &tcp_context->tcp_opts,
-		                                    &tmp->tcp_opts,
-		                                    co_common_opt, rohc_remain_len,
-		                                    &no_item_needed);
+		                                    &tcp_context->tcp_opts, &tmp->tcp_opts,
+		                                    tmp->tcp_opts.list_item_needed,
+		                                    co_common_opt, rohc_remain_len);
 		if(ret < 0)
 		{
 			rohc_comp_warn(context, "failed to compress TCP options");
@@ -3963,9 +3945,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 	rohc_packet_t packet_type;
 
 	if(tcp->rsf_flags == 0 &&
-	   !tmp->tcp_opts.do_list_struct_changed &&
-	   !tmp->tcp_opts.do_list_static_changed &&
-	   !tmp->tcp_opts.opt_ts_do_transmit_item &&
+	   !tmp->tcp_opts.is_list_needed &&
 	   !tmp->tcp_window_changed &&
 	   (tcp->ack_flag == 0 || tmp->tcp_ack_num_unchanged) &&
 	   !crc7_at_least &&
@@ -3982,9 +3962,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 		packet_type = ROHC_PACKET_TCP_SEQ_2;
 	}
 	else if(tcp->rsf_flags != 0 ||
-	        tmp->tcp_opts.do_list_struct_changed ||
-	        tmp->tcp_opts.do_list_static_changed ||
-	        tmp->tcp_opts.opt_ts_do_transmit_item)
+	        tmp->tcp_opts.is_list_needed)
 	{
 		/* seq_8 or co_common
 		 *
@@ -4190,9 +4168,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 	rohc_packet_t packet_type;
 
 	if(tcp->rsf_flags == 0 &&
-	   !tmp->tcp_opts.do_list_struct_changed &&
-	   !tmp->tcp_opts.do_list_static_changed &&
-	   !tmp->tcp_opts.opt_ts_do_transmit_item &&
+	   !tmp->tcp_opts.is_list_needed &&
 	   !tmp->tcp_window_changed &&
 	   !crc7_at_least &&
 	   tmp->tcp_ack_num_unchanged &&
@@ -4208,9 +4184,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 		packet_type = ROHC_PACKET_TCP_RND_2;
 	}
 	else if(tcp->rsf_flags != 0 ||
-	        tmp->tcp_opts.do_list_struct_changed ||
-	        tmp->tcp_opts.do_list_static_changed ||
-	        tmp->tcp_opts.opt_ts_do_transmit_item)
+	        tmp->tcp_opts.is_list_needed)
 	{
 		if(!tmp->tcp_window_changed &&
 		   wlsb_is_kp_possible_32bits(&tcp_context->seq_wlsb, tmp->seq_num, 16, 65535) &&

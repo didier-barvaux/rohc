@@ -543,32 +543,17 @@ static int tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *const context,
 		                tcp_dynamic->ack_stride_flag ? "" : "not ");
 	}
 
-	/* list of TCP options */
-	if(uncomp_pkt_hdrs->tcp_opts.nr == 0)
+	/* list of TCP options:
+	 * all items are required in dynamic chain, see RFC6846 §6.3.5 */
 	{
-		rohc_comp_debug(context, "TCP no options!");
-
-		/* see RFC4996, §6.3.3 : no XI items, PS = 0, m = 0 */
-		if(rohc_remain_len < 1)
-		{
-			rohc_comp_warn(context, "ROHC buffer too small for the TCP dynamic part: "
-			               "1 byte required for empty list of TCP option, but only "
-			               "%zu bytes available", rohc_remain_len);
-			goto error;
-		}
-		rohc_remain_data[0] = 0x00;
-		rohc_remain_data++;
-		rohc_remain_len--;
-	}
-	else
-	{
-		bool no_item_needed;
+		bool all_items_needed[MAX_TCP_OPTION_INDEX + 1] =
+			{ true, true, true, true, true, true, true, true,
+			  true, true, true, true, true, true, true, true };
 
 		ret = c_tcp_code_tcp_opts_list_item(context, uncomp_pkt_hdrs,
-		                                    ROHC_CHAIN_DYNAMIC,
 		                                    &tcp_context->tcp_opts, &tmp->tcp_opts,
-		                                    rohc_remain_data, rohc_remain_len,
-		                                    &no_item_needed);
+		                                    all_items_needed,
+		                                    rohc_remain_data, rohc_remain_len);
 		if(ret < 0)
 		{
 			rohc_comp_warn(context, "failed to encode the list of TCP options "
