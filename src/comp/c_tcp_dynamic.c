@@ -58,7 +58,7 @@ static int tcp_code_dynamic_ipv6_opt_part(const struct rohc_comp_ctxt *const con
 
 static int tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *const context,
                                      const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                                     struct tcp_tmp_variables *const tmp,
+                                     const struct tcp_tmp_variables *const tmp,
                                      uint8_t *const rohc_data,
                                      const size_t rohc_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
@@ -77,7 +77,7 @@ static int tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *const context,
  */
 int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
                       const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                      struct tcp_tmp_variables *const tmp,
+                      const struct tcp_tmp_variables *const tmp,
                       uint8_t *const rohc_pkt,
                       const size_t rohc_pkt_max_len)
 {
@@ -414,12 +414,12 @@ TODO
  */
 static int tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *const context,
                                      const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                                     struct tcp_tmp_variables *const tmp,
+                                     const struct tcp_tmp_variables *const tmp,
                                      uint8_t *const rohc_data,
                                      const size_t rohc_max_len)
 {
 	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
-	struct sc_tcp_context *const tcp_context = context->specific;
+	const struct sc_tcp_context *const tcp_context = context->specific;
 	const struct tcphdr *const tcp = (struct tcphdr *) uncomp_pkt_hdrs->tcp;
 
 	uint8_t *rohc_remain_data = rohc_data;

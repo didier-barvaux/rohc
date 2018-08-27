@@ -38,7 +38,7 @@
 
 int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
                       const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                      struct tcp_tmp_variables *const tmp,
+                      const struct tcp_tmp_variables *const tmp,
                       uint8_t *const rohc_pkt,
                       const size_t rohc_pkt_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));

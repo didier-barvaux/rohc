@@ -42,32 +42,30 @@
  */
 struct c_tcp_opt_ctxt
 {
-	/** The TCP option data */
-	union
-	{
-		uint8_t raw[ROHC_TCP_OPT_MAX_LEN];
-		sack_block_t sack_blocks[4];
-		struct tcp_option_timestamp timestamp;
-	} data;
+	/** The TCP option data (without type and length fields) */
+	uint8_t payload[ROHC_TCP_OPT_MAX_LEN - 2];
 	/** The number of times the full TCP option was transmitted */
 	uint8_t full_trans_nr;
 	/** The number of times the dynamic part of TCP option was transmitted */
 	uint8_t dyn_trans_nr;
-	/** Whether the option context is in use or not */
-	bool used;
 	/** The type of the TCP option */
 	uint8_t type;
+	/** Whether the option context is in use or not */
+	bool used;
 	uint8_t age;
 	/** The length of the TCP option */
 	uint8_t data_len;
-};
+	uint8_t unused[2];
+} __attribute__((packed));
 
 /* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
 #if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
      (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
       (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
-_Static_assert((offsetof(struct c_tcp_opt_ctxt, data) % 8) == 0,
-               "data in c_tcp_opt_ctxt should be aligned on 8 bytes");
+_Static_assert((sizeof(sack_block_t) * 4) == (ROHC_TCP_OPT_MAX_LEN - 2),
+               "ROHC_TCP_OPT_MAX_LEN shall be large enough for 4 SACK blocks");
+_Static_assert((offsetof(struct c_tcp_opt_ctxt, payload) % 8) == 0,
+               "payload in c_tcp_opt_ctxt should be aligned on 8 bytes");
 _Static_assert((sizeof(struct c_tcp_opt_ctxt) % 8) == 0,
                "c_tcp_opt_ctxt length should be multiple of 8 bytes");
 #endif
@@ -80,6 +78,15 @@ struct c_tcp_opts_ctxt_tmp
 	uint32_t ts_req;
 	/** The value of the TCP option timestamp echo reply (in HBO) */
 	uint32_t ts_reply;
+
+	/** Does the TCP option changed? */
+	struct
+	{
+		uint8_t static_changed:1;  /**< Does static part of option changed? */
+		uint8_t dyn_changed:1;     /**< Does dynamic part of option changed? */
+		uint8_t unused:6;
+	}
+	changes[MAX_TCP_OPTION_INDEX + 1];
 
 	/** Is item of TCP option required in replicate or CO chain? */
 	bool list_item_needed[MAX_TCP_OPTION_INDEX + 1];
@@ -98,9 +105,7 @@ struct c_tcp_opts_ctxt_tmp
 	/** Whether the structure of the list of TCP options changed in the
 	 * current packet */
 	uint8_t do_list_struct_changed:1;
-	/** Whether the TCP option timestamp echo request is present in packet */
-	uint8_t opt_ts_present:1;
-	uint8_t unused:5;
+	uint8_t unused:6;
 
 	uint8_t ts_req_bytes_nr:4;
 	uint8_t ts_reply_bytes_nr:4;
@@ -114,6 +119,8 @@ struct c_tcp_opts_ctxt_tmp
       (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
 _Static_assert((offsetof(struct c_tcp_opts_ctxt_tmp, ts_req) % 8) == 0,
                "ts_req in c_tcp_opts_ctxt_tmp should be aligned on 8 bytes");
+_Static_assert((offsetof(struct c_tcp_opts_ctxt_tmp, changes) % 8) == 0,
+               "changes in c_tcp_opts_ctxt_tmp should be aligned on 8 bytes");
 _Static_assert((offsetof(struct c_tcp_opts_ctxt_tmp, list_item_needed) % 8) == 0,
                "list_item_needed in c_tcp_opts_ctxt_tmp should be aligned on 8 bytes");
 _Static_assert((offsetof(struct c_tcp_opts_ctxt_tmp, position2index) % 8) == 0,
@@ -171,7 +178,7 @@ void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 
 int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
                                   const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                                  struct c_tcp_opts_ctxt *const opts_ctxt,
+                                  const struct c_tcp_opts_ctxt *const opts_ctxt,
                                   const struct c_tcp_opts_ctxt_tmp *const tmp,
                                   const bool items_needed[MAX_TCP_OPTION_INDEX + 1],
                                   uint8_t *const comp_opts,
@@ -180,7 +187,7 @@ int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
 
 int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
                               const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                              struct c_tcp_opts_ctxt *const opts_ctxt,
+                              const struct c_tcp_opts_ctxt *const opts_ctxt,
                               const struct c_tcp_opts_ctxt_tmp *const tmp,
                               const bool items_not_needed[MAX_TCP_OPTION_INDEX + 1],
                               uint8_t *const comp_opts,

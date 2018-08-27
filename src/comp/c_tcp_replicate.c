@@ -55,7 +55,7 @@ static int tcp_code_replicate_ipv6_opt_part(const struct rohc_comp_ctxt *const c
 
 static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const context,
                                        const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                                       struct tcp_tmp_variables *const tmp,
+                                       const struct tcp_tmp_variables *const tmp,
                                        uint8_t *const rohc_data,
                                        const size_t rohc_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
@@ -72,9 +72,9 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
-int tcp_code_replicate_chain(struct rohc_comp_ctxt *const context,
+int tcp_code_replicate_chain(const struct rohc_comp_ctxt *const context,
                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                             struct tcp_tmp_variables *const tmp,
+                             const struct tcp_tmp_variables *const tmp,
                              uint8_t *const rohc_pkt,
                              const size_t rohc_pkt_max_len)
 {
@@ -410,7 +410,7 @@ error:
  */
 static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const context,
                                        const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                                       struct tcp_tmp_variables *const tmp,
+                                       const struct tcp_tmp_variables *const tmp,
                                        uint8_t *const rohc_data,
                                        const size_t rohc_max_len)
 {

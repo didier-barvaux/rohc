@@ -69,12 +69,6 @@ static bool c_tcp_opt_get_type_len(const uint8_t *const opts_data,
                                    uint8_t *const opt_len)
 	__attribute__((warn_unused_result, nonnull(1, 3, 4)));
 
-static void c_tcp_opt_record(struct c_tcp_opts_ctxt *const opts_ctxt,
-                             const uint8_t opt_idx,
-                             const uint8_t *const pkt_opt,
-                             const size_t pkt_opt_len)
-	__attribute__((nonnull(1, 3)));
-
 static void c_tcp_opt_trace(const struct rohc_comp_ctxt *const context,
                             const uint8_t opt_type,
                             const uint8_t *const opt_data,
@@ -104,6 +98,7 @@ static size_t c_tcp_opt_write_xi(const struct rohc_comp_ctxt *const context,
 static bool c_tcp_is_list_item_needed(const struct rohc_comp_ctxt *const context,
                                       const rohc_chain_t chain_type,
                                       const uint8_t opt_type,
+                                      const bool opt_static_changed,
                                       const uint8_t opt_nr_trans)
 	__attribute__((warn_unused_result, nonnull(1)));
 
@@ -521,6 +516,8 @@ void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 
 	for(opt_idx = 0; opt_idx <= MAX_TCP_OPTION_INDEX; opt_idx++)
 	{
+		tmp->changes[opt_idx].static_changed = false;
+		tmp->changes[opt_idx].dyn_changed = false;
 		tmp->list_item_needed[opt_idx] = false;
 		if(opt_idx >= TCP_INDEX_GENERIC7 && opts_ctxt->list[opt_idx].used)
 		{
@@ -530,7 +527,6 @@ void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 			}
 		}
 	}
-	tmp->opt_ts_present = false;
 	tmp->idx_max = 0;
 
 	for(opt_pos = 0; opt_pos < opts_nr; opt_pos++)
@@ -554,8 +550,6 @@ void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 			const struct tcp_option_timestamp *const opt_ts =
 				(struct tcp_option_timestamp *) (opt_data + 2);
 
-			tmp->opt_ts_present = true;
-
 			tmp->ts_req = rohc_ntoh32(opt_ts->ts);
 			tmp->ts_req_bytes_nr =
 				tcp_opt_ts_one_can_be_encoded(&opts_ctxt->ts_req_wlsb,
@@ -571,13 +565,14 @@ void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 				rohc_comp_debug(context, "    TS option shall be transmitted as "
 				                "list item in one of dynamic, replicate or CO "
 				                "chains");
-				opts_ctxt->list[opt_idx].full_trans_nr = 0;
-				opts_ctxt->list[opt_idx].dyn_trans_nr = 0;
+				tmp->changes[opt_idx].static_changed = true;
+				tmp->changes[opt_idx].dyn_changed = true;
 			}
 			else
 			{
 				rohc_comp_debug(context, "    TS option can be encoded in "
 				                "irregular chain");
+				tmp->changes[opt_idx].dyn_changed = true;
 			}
 		}
 
@@ -603,33 +598,33 @@ void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 			   opts_ctxt->list[opt_idx].data_len != opt_len)
 			{
 				rohc_comp_debug(context, "    static option changed of value");
-				opts_ctxt->list[opt_idx].full_trans_nr = 0;
-				opts_ctxt->list[opt_idx].dyn_trans_nr = 0;
+				tmp->changes[opt_idx].static_changed = true;
+				tmp->changes[opt_idx].dyn_changed = true;
 			}
 			else if(opt_type == TCP_OPT_WS &&
 			        (opts_ctxt->list[opt_idx].data_len != opt_len ||
-			         opts_ctxt->list[opt_idx].data.raw[2] != opt_data[2]))
+			         opts_ctxt->list[opt_idx].payload[0] != opt_data[2]))
 			{
 				rohc_comp_debug(context, "    static option changed of value");
-				opts_ctxt->list[opt_idx].full_trans_nr = 0;
-				opts_ctxt->list[opt_idx].dyn_trans_nr = 0;
+				tmp->changes[opt_idx].static_changed = true;
+				tmp->changes[opt_idx].dyn_changed = true;
 			}
 			else if(opt_type == TCP_OPT_MSS &&
 			        (opts_ctxt->list[opt_idx].data_len != opt_len ||
-			         opts_ctxt->list[opt_idx].data.raw[2] != opt_data[2] ||
-			         opts_ctxt->list[opt_idx].data.raw[3] != opt_data[3]))
+			         opts_ctxt->list[opt_idx].payload[0] != opt_data[2] ||
+			         opts_ctxt->list[opt_idx].payload[1] != opt_data[3]))
 			{
 				rohc_comp_debug(context, "    static option changed of value");
-				opts_ctxt->list[opt_idx].full_trans_nr = 0;
-				opts_ctxt->list[opt_idx].dyn_trans_nr = 0;
+				tmp->changes[opt_idx].static_changed = true;
+				tmp->changes[opt_idx].dyn_changed = true;
 			}
 			else if(opt_idx == TCP_INDEX_SACK &&
 			        (tcp_ack_num_changed ||
 			         opt_len != opts_ctxt->list[opt_idx].data_len ||
-			         memcmp(opts_ctxt->list[opt_idx].data.raw, opt_data, opt_len) != 0))
+			         memcmp(opts_ctxt->list[opt_idx].payload, opt_data + 2, opt_len - 2) != 0))
 			{
-				rohc_comp_debug(context, "    SACK option changed");
-				opts_ctxt->list[opt_idx].dyn_trans_nr = 0;
+				rohc_comp_debug(context, "    dynamic option changed");
+				tmp->changes[opt_idx].dyn_changed = true;
 			}
 			else if(opt_idx >= TCP_INDEX_GENERIC7)
 			{
@@ -641,13 +636,13 @@ void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 				{
 					rohc_comp_debug(context, "    generic option changed of length (%u -> %u)",
 					                opts_ctxt->list[opt_idx].data_len, opt_len);
-					opts_ctxt->list[opt_idx].full_trans_nr = 0;
-					opts_ctxt->list[opt_idx].dyn_trans_nr = 0;
+					tmp->changes[opt_idx].static_changed = true;
+					tmp->changes[opt_idx].dyn_changed = true;
 				}
-				else if(memcmp(opts_ctxt->list[opt_idx].data.raw, opt_data, opt_len) != 0)
+				else if(memcmp(opts_ctxt->list[opt_idx].payload, opt_data + 2, opt_len - 2) != 0)
 				{
 					rohc_comp_debug(context, "    generic option changed of content");
-					opts_ctxt->list[opt_idx].dyn_trans_nr = 0;
+					tmp->changes[opt_idx].dyn_changed = true;
 				}
 			}
 		}
@@ -656,8 +651,8 @@ void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 			/* now index is used by this option */
 			opts_ctxt->list[opt_idx].used = true;
 			opts_ctxt->list[opt_idx].type = opt_type;
-			opts_ctxt->list[opt_idx].full_trans_nr = 0;
-			opts_ctxt->list[opt_idx].dyn_trans_nr = 0;
+			tmp->changes[opt_idx].static_changed = true;
+			tmp->changes[opt_idx].dyn_changed = true;
 			opts_ctxt->list[opt_idx].age = 0;
 			rohc_comp_debug(context, "    option '%s' (%u) will use new index %u",
 			                tcp_opt_get_descr(opt_type), opt_type, opt_idx);
@@ -674,6 +669,7 @@ void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 		/* shall the item be transmitted in CO chain? */
 		item_needed =
 			c_tcp_is_list_item_needed(context, ROHC_CHAIN_CO, opt_type,
+			                          tmp->changes[opt_idx].static_changed,
 			                          opts_ctxt->list[opt_idx].full_trans_nr);
 		tmp->list_item_needed[opt_idx] = item_needed;
 		co_chain_at_least_one_item_needed |= item_needed;
@@ -763,13 +759,12 @@ void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
  */
 int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
                                   const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                                  struct c_tcp_opts_ctxt *const opts_ctxt,
+                                  const struct c_tcp_opts_ctxt *const opts_ctxt,
                                   const struct c_tcp_opts_ctxt_tmp *const tmp,
                                   const bool items_needed[MAX_TCP_OPTION_INDEX + 1],
                                   uint8_t *const comp_opts,
                                   const size_t comp_opts_max_len)
 {
-	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	uint8_t *xi_remain_data = comp_opts;
 	size_t xi_remain_len = comp_opts_max_len;
 	uint8_t *items_remain_data;
@@ -829,15 +824,6 @@ int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
 		/* print a trace that describes the TCP option */
 		c_tcp_opt_trace(context, opt_type, opt_data, opt_len);
 
-		/* if item is transmitted, the option is new, changed now or changed a
-		 * few packets back, so save the option in context */
-		/* TODO: move at the very end of compression to avoid altering
-		 *       context in case of compression failure */
-		if(item_needed)
-		{
-			c_tcp_opt_record(opts_ctxt, opt_idx, opt_data, opt_len);
-		}
-
 		/* write the XI field for the TCP option */
 		{
 			const size_t xi_len = c_tcp_opt_write_xi(context, xi_remain_data, ps,
@@ -871,16 +857,6 @@ int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,
 			                "%zu bytes of item", tcp_opt_get_descr(opt_type),
 			                opt_type, comp_opt_len);
 		comp_opts_len += comp_opt_len;
-
-		/* TCP option is transmitted towards decompressor once more */
-		if(opts_ctxt->list[opt_idx].full_trans_nr < oa_repetitions_nr)
-		{
-			opts_ctxt->list[opt_idx].full_trans_nr++; /* TODO: do not update context here */
-		}
-		if(opts_ctxt->list[opt_idx].dyn_trans_nr < oa_repetitions_nr)
-		{
-			opts_ctxt->list[opt_idx].dyn_trans_nr++; /* TODO: do not update context here */
-		}
 	}
 
 	rohc_comp_dump_buf(context, "TCP compressed options", comp_opts, comp_opts_len);
@@ -911,7 +887,7 @@ error:
  */
 int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
                               const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                              struct c_tcp_opts_ctxt *const opts_ctxt,
+                              const struct c_tcp_opts_ctxt *const opts_ctxt,
                               const struct c_tcp_opts_ctxt_tmp *const tmp,
                               const bool items_not_needed[MAX_TCP_OPTION_INDEX + 1],
                               uint8_t *const comp_opts,
@@ -988,17 +964,13 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 			rohc_remain_data += encoded_ts_lsb_len;
 			rohc_remain_len -= encoded_ts_lsb_len;
 			comp_opt_len += encoded_ts_lsb_len;
-
-			/* save the option in context */
-			/* TODO: move at the very end of compression to avoid altering
-			 *       context in case of compression failure */
-			c_tcp_opt_record(opts_ctxt, opt_idx, opt_data, opt_len);
 		}
 		else if(opt_type == TCP_OPT_SACK)
 		{
 			const sack_block_t *const sack_blocks = (sack_block_t *) (opt_data + 2);
 			const bool is_sack_unchanged =
-				!!(opts_ctxt->list[opt_idx].dyn_trans_nr >= oa_repetitions_nr);
+				!(tmp->changes[opt_idx].dyn_changed ||
+				  opts_ctxt->list[opt_idx].dyn_trans_nr < oa_repetitions_nr);
 
 			ret = c_tcp_opt_sack_code(context, rohc_ntoh32(uncomp_pkt_hdrs->tcp->ack_num),
 			                          sack_blocks, opt_len - 2, is_sack_unchanged,
@@ -1011,11 +983,6 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 			rohc_remain_data += ret;
 			rohc_remain_len -= ret;
 			comp_opt_len += ret;
-
-			/* save the option in context */
-			/* TODO: move at the very end of compression to avoid altering
-			 *       context in case of compression failure */
-			c_tcp_opt_record(opts_ctxt, opt_idx, opt_data, opt_len);
 		}
 		else if(opt_type != TCP_OPT_EOL &&
 		        opt_type != TCP_OPT_NOP &&
@@ -1029,11 +996,14 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 			uint8_t discriminator;
 			size_t contents_len;
 
-			if(opts_ctxt->list[opt_idx].dyn_trans_nr < oa_repetitions_nr)
+			if(tmp->changes[opt_idx].dyn_changed ||
+			   opts_ctxt->list[opt_idx].dyn_trans_nr < oa_repetitions_nr)
 			{
 				/* generic_full_irregular: the item that is assumed to change
 				 * constantly. Length is not allowed to change here, since a length
 				 * change is most likely to cause new NOPs or an EOL length change. */
+				rohc_comp_debug(context, "irregular chain: transmit changed "
+				                "generic option in full");
 				discriminator = 0x00;
 				contents_len = opt_len - 2;
 			}
@@ -1041,6 +1011,8 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 			{
 				/* generic_stable_irregular: the item that can change, but currently
 				 * is unchanged */
+				rohc_comp_debug(context, "irregular chain: omit unchanged "
+				                "generic option");
 				discriminator = 0xff;
 				contents_len = 0;
 			}
@@ -1068,21 +1040,10 @@ int c_tcp_code_tcp_opts_irreg(const struct rohc_comp_ctxt *const context,
 				rohc_remain_len -= contents_len;
 				comp_opt_len += contents_len;
 			}
-
-			/* save the option in context */
-			/* TODO: move at the very end of compression to avoid altering
-			 *       context in case of compression failure */
-			c_tcp_opt_record(opts_ctxt, opt_idx, opt_data, opt_len);
 		}
 		rohc_comp_debug(context, "irregular chain: added %zu bytes of irregular "
 		                "content for TCP option %u", comp_opt_len, opt_type);
 		comp_opts_len += comp_opt_len;
-
-		/* TCP option is transmitted towards decompressor once more */
-		if(opts_ctxt->list[opt_idx].dyn_trans_nr < oa_repetitions_nr)
-		{
-			opts_ctxt->list[opt_idx].dyn_trans_nr++; /* TODO: do not update context here */
-		}
 	}
 
 	return comp_opts_len;
@@ -1185,24 +1146,6 @@ static bool c_tcp_opt_get_type_len(const uint8_t *const opts_data,
 
 error:
 	return false;
-}
-
-
-/**
- * @brief Record the TCP option in context
- *
- * @param[out] opts_ctxt  The TCP compression context
- * @param opt_idx         The index of the TCP option in the TCP compression context
- * @param pkt_opt         The TCP option as found in the TCP packet
- * @param pkt_opt_len     The length of the TCP option as found in the TCP packet
- */
-static void c_tcp_opt_record(struct c_tcp_opts_ctxt *const opts_ctxt,
-                             const uint8_t opt_idx,
-                             const uint8_t *const pkt_opt,
-                             const size_t pkt_opt_len)
-{
-	opts_ctxt->list[opt_idx].data_len = pkt_opt_len;
-	memcpy(opts_ctxt->list[opt_idx].data.raw, pkt_opt, pkt_opt_len);
 }
 
 
@@ -1486,16 +1429,18 @@ static size_t c_tcp_opt_write_xi(const struct rohc_comp_ctxt *const context,
 /**
  * @brief Shall the list item be transmitted or not?
  *
- * @param context           The compression context
- * @param chain_type        The TCP chain for which the list of items is
- * @param opt_type          The type of the TCP option to compress
- * @param opt_nr_trans      The nr of times the TCP option was transmitted
- * @return                  true if the list item shall be transmitted,
- *                          false if it shall not
+ * @param context             The compression context
+ * @param chain_type          The TCP chain for which the list of items is
+ * @param opt_type            The type of the TCP option to compress
+ * @param opt_static_changed  Whether the TCP option changed its static part
+ * @param opt_nr_trans        The nr of times the TCP option was transmitted
+ * @return                    true if the list item shall be transmitted,
+ *                            false if it shall not
  */
 static bool c_tcp_is_list_item_needed(const struct rohc_comp_ctxt *const context,
                                       const rohc_chain_t chain_type,
                                       const uint8_t opt_type,
+                                      const bool opt_static_changed,
                                       const uint8_t opt_nr_trans)
 {
 	bool item_needed;
@@ -1511,21 +1456,29 @@ static bool c_tcp_is_list_item_needed(const struct rohc_comp_ctxt *const context
 		                "item is useless", tcp_opt_get_descr(opt_type));
 		item_needed = false;
 	}
+	else if(opt_static_changed)
+	{
+		/* option was already transmitted but it changed since then,
+		 * item must be transmitted again */
+		rohc_comp_debug(context, "TCP options list: static part of option '%s' "
+		                "just changed", tcp_opt_get_descr(opt_type));
+		item_needed = true;
+	}
 	else if(opt_nr_trans == 0)
 	{
 		/* option has never been transmitted, or it was already transmitted
 		 * but it changed since then, item must be transmitted again */
-		rohc_comp_debug(context, "TCP options list: option '%s' is new "
-		                "or just changed", tcp_opt_get_descr(opt_type));
+		rohc_comp_debug(context, "TCP options list: option '%s' is new",
+		                tcp_opt_get_descr(opt_type));
 		item_needed = true;
 	}
 	else if(opt_nr_trans < context->compressor->oa_repetitions_nr)
 	{
 		/* option was already transmitted and didn't change since then, but the
 		 * compressor is not confident yet that decompressor got the list item */
-		rohc_comp_debug(context, "TCP options list: option '%s' shall be "
-		                "transmitted %u times more to gain transmission confidence",
-		                tcp_opt_get_descr(opt_type),
+		rohc_comp_debug(context, "TCP options list: static part of option '%s' "
+		                "shall be transmitted %u times more to gain transmission "
+		                "confidence", tcp_opt_get_descr(opt_type),
 		                context->compressor->oa_repetitions_nr - opt_nr_trans);
 		item_needed = true;
 	}
@@ -1533,8 +1486,8 @@ static bool c_tcp_is_list_item_needed(const struct rohc_comp_ctxt *const context
 	{
 		/* option was already transmitted and didn't change since then,
 		 * item shall not be transmitted again */
-		rohc_comp_debug(context, "TCP options list: option '%s' is unchanged and "
-		                "was transmitted at least %u times",
+		rohc_comp_debug(context, "TCP options list: static part of option '%s' "
+		                "is unchanged and was transmitted at least %u times",
 		                tcp_opt_get_descr(opt_type),
 		                context->compressor->oa_repetitions_nr);
 		item_needed = false;

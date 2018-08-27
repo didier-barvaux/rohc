@@ -140,24 +140,24 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 /* IR and CO packets */
 static int code_IR_packet(struct rohc_comp_ctxt *const context,
                           const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                          struct tcp_tmp_variables *const tmp,
+                          const struct tcp_tmp_variables *const tmp,
                           uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
                           const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 
-static int code_CO_packet(struct rohc_comp_ctxt *const context,
+static int code_CO_packet(const struct rohc_comp_ctxt *const context,
                           const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                          struct tcp_tmp_variables *const tmp,
+                          const struct tcp_tmp_variables *const tmp,
                           uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
                           const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
-static int co_baseheader(struct rohc_comp_ctxt *const context,
-                         struct sc_tcp_context *const tcp_context,
+static int co_baseheader(const struct rohc_comp_ctxt *const context,
+                         const struct sc_tcp_context *const tcp_context,
                          ip_context_t *const ip_inner_context,
                          const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                         struct tcp_tmp_variables *const tmp,
+                         const struct tcp_tmp_variables *const tmp,
                          uint8_t *const rohc_pkt,
                          const size_t rohc_pkt_max_len,
                          const rohc_packet_t packet_type,
@@ -230,9 +230,9 @@ static int c_tcp_build_rnd_7(const struct rohc_comp_ctxt *const context,
 
 static int c_tcp_build_rnd_8(const struct rohc_comp_ctxt *const context,
                              const ip_context_t *const inner_ip_ctxt,
-                             struct sc_tcp_context *const tcp_context,
+                             const struct sc_tcp_context *const tcp_context,
                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                             struct tcp_tmp_variables *const tmp,
+                             const struct tcp_tmp_variables *const tmp,
                              const uint8_t crc,
                              uint8_t *const rohc_data,
                              const size_t rohc_max_len)
@@ -332,9 +332,9 @@ static int c_tcp_build_seq_7(const struct rohc_comp_ctxt *const context,
 
 static int c_tcp_build_seq_8(const struct rohc_comp_ctxt *const context,
                              const ip_context_t *const inner_ip_ctxt,
-                             struct sc_tcp_context *const tcp_context,
+                             const struct sc_tcp_context *const tcp_context,
                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                             struct tcp_tmp_variables *const tmp,
+                             const struct tcp_tmp_variables *const tmp,
                              const uint16_t innermost_ip_id_delta,
                              const uint8_t crc,
                              uint8_t *const rohc_data,
@@ -343,9 +343,9 @@ static int c_tcp_build_seq_8(const struct rohc_comp_ctxt *const context,
 
 static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
                                  const ip_context_t *const inner_ip_ctxt,
-                                 struct sc_tcp_context *const tcp_context,
+                                 const struct sc_tcp_context *const tcp_context,
                                  const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                                 struct tcp_tmp_variables *const tmp,
+                                 const struct tcp_tmp_variables *const tmp,
                                  const uint8_t crc,
                                  uint8_t *const rohc_data,
                                  const size_t rohc_max_len)
@@ -1017,13 +1017,6 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	/* TCP window */
 	c_add_wlsb(&tcp_context->window_wlsb, tmp.new_msn, rohc_ntoh16(tcp->window));
 
-	/* TCP Timestamp option */
-	if(tmp.tcp_opts.opt_ts_present)
-	{
-		c_add_wlsb(&tcp_opts->ts_req_wlsb, tmp.new_msn, tmp.tcp_opts.ts_req);
-		c_add_wlsb(&tcp_opts->ts_reply_wlsb, tmp.new_msn, tmp.tcp_opts.ts_reply);
-	}
-
 	/* update transmission counters */
 	if(tcp_context->tcp_seq_num_trans_nr < oa_repetitions_nr)
 	{
@@ -1072,16 +1065,75 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	{
 		tcp_context->ipv6_exts_list_dyn_trans_nr++;
 	}
-	if(tmp.tcp_opts.do_list_struct_changed)
+	/* TCP options */
 	{
-		tcp_opts->structure_nr_trans = 0;
+		uint8_t opt_pos;
+
+		if(tmp.tcp_opts.do_list_struct_changed)
+		{
+			tcp_opts->structure_nr_trans = 0;
+		}
+		if(tcp_opts->structure_nr_trans < oa_repetitions_nr)
+		{
+			rohc_comp_debug(context, "some TCP options were not present at the very "
+			                "same location in the last few packets");
+			tcp_opts->structure_nr_trans++;
+		}
+
+		for(opt_pos = 0; opt_pos < uncomp_pkt_hdrs->tcp_opts.nr; opt_pos++)
+		{
+			const uint8_t opt_idx = tmp.tcp_opts.position2index[opt_pos];
+
+			if(opt_idx == TCP_INDEX_TS)
+			{
+				c_add_wlsb(&tcp_opts->ts_req_wlsb, tmp.new_msn, tmp.tcp_opts.ts_req);
+				c_add_wlsb(&tcp_opts->ts_reply_wlsb, tmp.new_msn, tmp.tcp_opts.ts_reply);
+			}
+			else if(opt_idx == TCP_INDEX_EOL && tmp.tcp_opts.changes[opt_idx].static_changed)
+			{
+			   tcp_opts->list[opt_idx].data_len =
+				  uncomp_pkt_hdrs->tcp_opts.lengths[opt_pos];
+			}
+			else if(opt_idx == TCP_INDEX_WS && tmp.tcp_opts.changes[opt_idx].static_changed)
+			{
+			   tcp_opts->list[opt_idx].data_len = uncomp_pkt_hdrs->tcp_opts.lengths[opt_pos];
+				tcp_opts->list[opt_idx].payload[0] = uncomp_pkt_hdrs->tcp_opts.data[opt_pos][2];
+			}
+			else if(opt_idx == TCP_INDEX_MSS && tmp.tcp_opts.changes[opt_idx].static_changed)
+			{
+			   tcp_opts->list[opt_idx].data_len = uncomp_pkt_hdrs->tcp_opts.lengths[opt_pos];
+				tcp_opts->list[opt_idx].payload[0] = uncomp_pkt_hdrs->tcp_opts.data[opt_pos][2];
+				tcp_opts->list[opt_idx].payload[1] = uncomp_pkt_hdrs->tcp_opts.data[opt_pos][3];
+			}
+			else if((opt_idx == TCP_INDEX_SACK || opt_idx >= TCP_INDEX_GENERIC7) &&
+			        (tmp.tcp_opts.changes[opt_idx].static_changed || tmp.tcp_opts.changes[opt_idx].dyn_changed))
+			{
+			   tcp_opts->list[opt_idx].data_len = uncomp_pkt_hdrs->tcp_opts.lengths[opt_pos];
+				memcpy(tcp_opts->list[opt_idx].payload,
+				       uncomp_pkt_hdrs->tcp_opts.data[opt_pos] + 2,
+				       tcp_opts->list[opt_idx].data_len - 2);
+			}
+
+			/* TCP option is transmitted towards decompressor once more */
+			if(tmp.tcp_opts.changes[opt_idx].static_changed)
+			{
+				tcp_opts->list[opt_idx].full_trans_nr = 0;
+			}
+			if(tcp_opts->list[opt_idx].full_trans_nr < oa_repetitions_nr)
+			{
+				tcp_opts->list[opt_idx].full_trans_nr++;
+			}
+			if(tmp.tcp_opts.changes[opt_idx].dyn_changed)
+			{
+				tcp_opts->list[opt_idx].dyn_trans_nr = 0;
+			}
+			if(tcp_opts->list[opt_idx].dyn_trans_nr < oa_repetitions_nr)
+			{
+				tcp_opts->list[opt_idx].dyn_trans_nr++;
+			}
+		}
 	}
-	if(tcp_opts->structure_nr_trans < oa_repetitions_nr)
-	{
-		rohc_comp_debug(context, "some TCP options were not present at the very "
-		                "same location in the last few packets");
-		tcp_opts->structure_nr_trans++;
-	}
+
 
 	return counter;
 
@@ -1104,7 +1156,7 @@ error:
  */
 static int code_IR_packet(struct rohc_comp_ctxt *const context,
                           const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                          struct tcp_tmp_variables *const tmp,
+                          const struct tcp_tmp_variables *const tmp,
                           uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
                           const rohc_packet_t packet_type)
@@ -1358,9 +1410,9 @@ error:
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
-static int code_CO_packet(struct rohc_comp_ctxt *const context,
+static int code_CO_packet(const struct rohc_comp_ctxt *const context,
                           const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                          struct tcp_tmp_variables *const tmp,
+                          const struct tcp_tmp_variables *const tmp,
                           uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
                           const rohc_packet_t packet_type)
@@ -1492,11 +1544,11 @@ error:
  * @return                  The position in the rohc-packet-under-build buffer
  *                          -1 in case of problem
  */
-static int co_baseheader(struct rohc_comp_ctxt *const context,
-                         struct sc_tcp_context *const tcp_context,
+static int co_baseheader(const struct rohc_comp_ctxt *const context,
+                         const struct sc_tcp_context *const tcp_context,
                          ip_context_t *const inner_ip_ctxt,
                          const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                         struct tcp_tmp_variables *const tmp,
+                         const struct tcp_tmp_variables *const tmp,
                          uint8_t *const rohc_pkt,
                          const size_t rohc_pkt_max_len,
                          const rohc_packet_t packet_type,
@@ -2009,9 +2061,9 @@ error:
  */
 static int c_tcp_build_rnd_8(const struct rohc_comp_ctxt *const context,
                              const ip_context_t *const inner_ip_ctxt,
-                             struct sc_tcp_context *const tcp_context,
+                             const struct sc_tcp_context *const tcp_context,
                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                             struct tcp_tmp_variables *const tmp,
+                             const struct tcp_tmp_variables *const tmp,
                              const uint8_t crc,
                              uint8_t *const rohc_data,
                              const size_t rohc_max_len)
@@ -2569,9 +2621,9 @@ error:
  */
 static int c_tcp_build_seq_8(const struct rohc_comp_ctxt *const context,
                              const ip_context_t *const inner_ip_ctxt,
-                             struct sc_tcp_context *const tcp_context,
+                             const struct sc_tcp_context *const tcp_context,
                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                             struct tcp_tmp_variables *const tmp,
+                             const struct tcp_tmp_variables *const tmp,
                              const uint16_t innermost_ip_id_delta,
                              const uint8_t crc,
                              uint8_t *const rohc_data,
@@ -2680,9 +2732,9 @@ error:
  */
 static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
                                  const ip_context_t *const inner_ip_ctxt,
-                                 struct sc_tcp_context *const tcp_context,
+                                 const struct sc_tcp_context *const tcp_context,
                                  const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                                 struct tcp_tmp_variables *const tmp,
+                                 const struct tcp_tmp_variables *const tmp,
                                  const uint8_t crc,
                                  uint8_t *const rohc_data,
                                  const size_t rohc_max_len)
@@ -3382,7 +3434,7 @@ static void tcp_detect_changes_ipv6_exts(struct rohc_comp_ctxt *const context,
  */
 static uint16_t c_tcp_get_next_msn(const struct rohc_comp_ctxt *const context)
 {
-	struct sc_tcp_context *const tcp_context = context->specific;
+	const struct sc_tcp_context *const tcp_context = context->specific;
 
 	return (tcp_context->last_msn + 1); /* wraparound on overflow is expected */
 }
@@ -3801,7 +3853,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet(const struct rohc_comp_ctxt *const 
                                              const bool crc7_at_least)
 {
 	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
-	struct sc_tcp_context *const tcp_context = context->specific;
+	const struct sc_tcp_context *const tcp_context = context->specific;
 	const struct tcphdr *const tcp = uncomp_pkt_hdrs->tcp;
 	rohc_packet_t packet_type;
 
@@ -3940,7 +3992,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
                                                  const bool crc7_at_least)
 {
 	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
-	struct sc_tcp_context *const tcp_context = context->specific;
+	const struct sc_tcp_context *const tcp_context = context->specific;
 	const struct tcphdr *const tcp = uncomp_pkt_hdrs->tcp;
 	rohc_packet_t packet_type;
 
@@ -4163,7 +4215,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
                                                  const bool crc7_at_least)
 {
 	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
-	struct sc_tcp_context *const tcp_context = context->specific;
+	const struct sc_tcp_context *const tcp_context = context->specific;
 	const struct tcphdr *const tcp = uncomp_pkt_hdrs->tcp;
 	rohc_packet_t packet_type;
 
