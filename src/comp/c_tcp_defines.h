@@ -143,15 +143,10 @@ struct sc_tcp_context
 	uint8_t ttl_hopl_change_count[ROHC_MAX_IP_HDRS];
 
 	uint8_t ecn_used:1; /**< Explicit Congestion Notification used */
-	/* Context Replication */
-	uint8_t cr_tcp_window_present:1;
-	uint8_t cr_tcp_urg_ptr_present:1;
-	uint8_t cr_tcp_ack_num_present:1;
-
 	uint8_t res_flags:4;
 	uint8_t urg_flag:1;
 	uint8_t ack_flag:1;
-	uint8_t unused2:6;
+	uint8_t unused2:1;
 
 	struct c_wlsb msn_wlsb;    /**< The W-LSB decoding context for MSN */
 	struct c_wlsb ttl_hopl_wlsb;

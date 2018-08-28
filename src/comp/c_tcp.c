@@ -138,7 +138,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 /* IR and CO packets */
-static int code_IR_packet(struct rohc_comp_ctxt *const context,
+static int code_IR_packet(const struct rohc_comp_ctxt *const context,
                           const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                           const struct tcp_tmp_variables *const tmp,
                           uint8_t *const rohc_pkt,
@@ -155,7 +155,7 @@ static int code_CO_packet(const struct rohc_comp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 static int co_baseheader(const struct rohc_comp_ctxt *const context,
                          const struct sc_tcp_context *const tcp_context,
-                         ip_context_t *const ip_inner_context,
+                         const ip_context_t *const ip_inner_context,
                          const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                          const struct tcp_tmp_variables *const tmp,
                          uint8_t *const rohc_pkt,
@@ -589,9 +589,9 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 	ipv4_hdrs_nr = 0;
 	for(ip_hdr_pos = 0; ip_hdr_pos < uncomp_pkt_hdrs->ip_hdrs_nr; ip_hdr_pos++)
 	{
+		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
 		const struct rohc_pkt_ip_hdr *const pkt_ip_hdr =
 			&(uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos]);
-		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
 
 		ip_context->version = pkt_ip_hdr->version;
 		ip_context->dscp = pkt_ip_hdr->dscp;
@@ -603,7 +603,6 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 			ip_context->last_ip_id = rohc_ntoh16(pkt_ip_hdr->ipv4->id);
 			rohc_debug(comp, ROHC_TRACE_COMP, context->profile->id,
 			           "IP-ID 0x%04x", ip_context->last_ip_id);
-			ip_context->last_ip_id_behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
 			ip_context->ip_id_behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
 			ip_context->df = pkt_ip_hdr->ipv4->df;
 			ip_context->saddr[0] = pkt_ip_hdr->ipv4->saddr;
@@ -884,7 +883,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	struct sc_tcp_context *const tcp_context = context->specific;
 	struct c_tcp_opts_ctxt *const tcp_opts = &(tcp_context->tcp_opts);
 	const struct tcphdr *const tcp = uncomp_pkt_hdrs->tcp;
-	ip_context_t *const ip_inner_context =
+	ip_context_t *const inner_ip_ctxt =
 		&(tcp_context->ip_contexts[uncomp_pkt_hdrs->ip_hdrs_nr - 1]);
 	struct tcp_tmp_variables tmp;
 	size_t ip_hdr_pos;
@@ -893,7 +892,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	*packet_type = ROHC_PACKET_UNKNOWN;
 
 	/* detect changes between new uncompressed packet and context */
-	tcp_detect_changes(context, ip_inner_context, uncomp_pkt_hdrs, &tmp);
+	tcp_detect_changes(context, inner_ip_ctxt, uncomp_pkt_hdrs, &tmp);
 
 	/* decide which packet to send */
 	*packet_type = tcp_decide_packet(context, uncomp_pkt_hdrs, &tmp);
@@ -966,7 +965,16 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		tcp_context->ip_contexts[ip_hdr_pos].opts_nr =
 			uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos].exts_nr;
 
+		ip_ctxt->ip_id_behavior = tmp.ip_id_behaviors[ip_hdr_pos];
+
+		ip_ctxt->dscp = ip_hdr->dscp;
 		ip_ctxt->ttl_hopl = ip_hdr->ttl_hl;
+
+		if(ip_hdr->version == IPV4)
+		{
+			ip_ctxt->df = ip_hdr->ipv4->df;
+			ip_ctxt->last_ip_id = rohc_ntoh16(ip_hdr->ipv4->id);
+		}
 	}
 	/* add the new innermost IP-ID / SN delta to the W-LSB encoding object */
 	if(uncomp_pkt_hdrs->innermost_ip_hdr->version == IPV4)
@@ -1154,7 +1162,7 @@ error:
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
-static int code_IR_packet(struct rohc_comp_ctxt *const context,
+static int code_IR_packet(const struct rohc_comp_ctxt *const context,
                           const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                           const struct tcp_tmp_variables *const tmp,
                           uint8_t *const rohc_pkt,
@@ -1546,7 +1554,7 @@ error:
  */
 static int co_baseheader(const struct rohc_comp_ctxt *const context,
                          const struct sc_tcp_context *const tcp_context,
-                         ip_context_t *const inner_ip_ctxt,
+                         const ip_context_t *const inner_ip_ctxt,
                          const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                          const struct tcp_tmp_variables *const tmp,
                          uint8_t *const rohc_pkt,
@@ -1665,23 +1673,6 @@ static int co_baseheader(const struct rohc_comp_ctxt *const context,
 	rohc_hdr_len += ret;
 
 	rohc_comp_dump_buf(context, "co_header", rohc_pkt, rohc_hdr_len);
-
-	/* update context with new values (done at the very end to avoid wrongly
-	 * updating the context in case of compression failure) */
-	if(uncomp_pkt_hdrs->innermost_ip_hdr->version == IPV4)
-	{
-		const struct ipv4_hdr *const inner_ipv4 = uncomp_pkt_hdrs->innermost_ip_hdr->ipv4;
-		inner_ip_ctxt->last_ip_id_behavior = inner_ip_ctxt->ip_id_behavior;
-		inner_ip_ctxt->last_ip_id = rohc_ntoh16(inner_ipv4->id);
-		inner_ip_ctxt->df = inner_ipv4->df;
-		inner_ip_ctxt->dscp = inner_ipv4->dscp;
-	}
-	else
-	{
-		const struct ipv6_hdr *const inner_ipv6 = uncomp_pkt_hdrs->innermost_ip_hdr->ipv6;
-		inner_ip_ctxt->dscp = ipv6_get_dscp(inner_ipv6);
-	}
-	inner_ip_ctxt->ttl_hopl = uncomp_pkt_hdrs->innermost_ip_hdr->ttl_hl;
 
 	return rohc_hdr_len;
 
@@ -3172,7 +3163,6 @@ static void tcp_detect_changes(struct rohc_comp_ctxt *const context,
 		{
 		   tcp_detect_changes_ipv6_exts(context, ip_context, ip_hdr, tmp);
 		}
-
 	}
 	tmp->outer_ip_ttl_changed = (tmp->ttl_irreg_chain_flag != 0);
 	if(uncomp_pkt_hdrs->ip_hdrs_nr > 1)

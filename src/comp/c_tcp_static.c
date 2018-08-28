@@ -69,7 +69,7 @@ static int tcp_code_static_tcp_part(const struct rohc_comp_ctxt *const context,
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
-int tcp_code_static_part(struct rohc_comp_ctxt *const context,
+int tcp_code_static_part(const struct rohc_comp_ctxt *const context,
                          const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                          uint8_t *const rohc_pkt,
                          const size_t rohc_pkt_max_len)

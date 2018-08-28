@@ -36,7 +36,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
+int tcp_code_dyn_part(const struct rohc_comp_ctxt *const context,
                       const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                       const struct tcp_tmp_variables *const tmp,
                       uint8_t *const rohc_pkt,
