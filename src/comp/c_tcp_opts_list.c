@@ -76,10 +76,11 @@ static void c_tcp_opt_trace(const struct rohc_comp_ctxt *const context,
 	__attribute__((nonnull(1, 3)));
 
 static uint8_t c_tcp_get_opt_index(const struct rohc_comp_ctxt *const context,
-                                   struct c_tcp_opts_ctxt *const opts_ctxt,
+                                   const struct c_tcp_opts_ctxt *const opts_ctxt,
                                    const uint8_t opt_type,
-                                   const uint16_t indexes_in_use)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+                                   const uint16_t indexes_in_use,
+                                   bool *const recycle_index)
+	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
 
 static int c_tcp_opt_compute_ps(const uint8_t idx_max)
 	__attribute__((warn_unused_result, const));
@@ -487,7 +488,6 @@ void tcp_detect_options_changes(const struct rohc_comp_ctxt *const context,
                                 const bool tcp_ack_num_changed)
 {
 	bool co_chain_at_least_one_item_needed = false;
-	uint16_t indexes_in_use = 0;
 	const uint8_t opts_nr = uncomp_pkt_hdrs->tcp_opts.nr;
 	uint8_t opt_idx;
 	uint8_t opt_pos;
@@ -519,14 +519,8 @@ void tcp_detect_options_changes(const struct rohc_comp_ctxt *const context,
 		tmp->changes[opt_idx].static_changed = false;
 		tmp->changes[opt_idx].dyn_changed = false;
 		tmp->list_item_needed[opt_idx] = false;
-		if(opt_idx >= TCP_INDEX_GENERIC7 && opts_ctxt->list[opt_idx].used)
-		{
-			if(opts_ctxt->list[opt_idx].age < UINT8_MAX)
-			{
-				opts_ctxt->list[opt_idx].age++;
-			}
-		}
 	}
+	tmp->indexes_in_use = 0;
 	tmp->idx_max = 0;
 
 	for(opt_pos = 0; opt_pos < opts_nr; opt_pos++)
@@ -534,13 +528,19 @@ void tcp_detect_options_changes(const struct rohc_comp_ctxt *const context,
 		const uint8_t *const opt_data = uncomp_pkt_hdrs->tcp_opts.data[opt_pos];
 		const uint8_t opt_type = uncomp_pkt_hdrs->tcp_opts.types[opt_pos];
 		const uint8_t opt_len = uncomp_pkt_hdrs->tcp_opts.lengths[opt_pos];
+		bool recycle_index = false;
 		bool item_needed;
 
 		rohc_comp_debug(context, "  %u-byte TCP option %u found", opt_len, opt_type);
 
 		/* determine the index of the TCP option */
-		opt_idx = c_tcp_get_opt_index(context, opts_ctxt, opt_type, indexes_in_use);
-		indexes_in_use |= (1 << opt_idx);
+		opt_idx = c_tcp_get_opt_index(context, opts_ctxt, opt_type,
+		                              tmp->indexes_in_use, &recycle_index);
+		if(recycle_index)
+		{
+			opts_ctxt->list[opt_idx].used = false;
+		}
+		tmp->indexes_in_use |= (1 << opt_idx);
 
 		/* detect changes in the TS option: large changes cannot be transmitted
 		 * in the irregular chain, they require a list item in the compressed list
@@ -582,12 +582,6 @@ void tcp_detect_options_changes(const struct rohc_comp_ctxt *const context,
 			rohc_comp_debug(context, "    option '%s' (%u) will use same "
 			                "index %u as in previous packet",
 			                tcp_opt_get_descr(opt_type), opt_type, opt_idx);
-
-			/* option was grown old with all the others, make it grow young again */
-			if(opts_ctxt->list[opt_idx].age > 0 && opts_ctxt->list[opt_idx].age < UINT8_MAX)
-			{
-				opts_ctxt->list[opt_idx].age--;
-			}
 
 			/* the EOL, MSS, and WS options are 'static options': they cannot be
 			 * transmitted in irregular chain if their value changed, so the
@@ -1222,13 +1216,14 @@ static void c_tcp_opt_trace(const struct rohc_comp_ctxt *const context,
  * @param[in,out] opts_ctxt  The compression context for TCP options
  * @param opt_type           The type of the option
  * @param indexes_in_use     What indexes are used by the current packet?
- * @return                   true if the TCP options were successfully parsed and
- *                           can be compressed, false otherwise
+ * @param[out] recycle_index Whether index is recycled from another older option
+ * @return                   The index to use for the TCP option
  */
 static uint8_t c_tcp_get_opt_index(const struct rohc_comp_ctxt *const context,
-                                   struct c_tcp_opts_ctxt *const opts_ctxt,
+                                   const struct c_tcp_opts_ctxt *const opts_ctxt,
                                    const uint8_t opt_type,
-                                   const uint16_t indexes_in_use)
+                                   const uint16_t indexes_in_use,
+                                   bool *const recycle_index)
 {
 	uint8_t opt_idx;
 
@@ -1236,6 +1231,7 @@ static uint8_t c_tcp_get_opt_index(const struct rohc_comp_ctxt *const context,
 	{
 		/* TCP option got a reserved index */
 		opt_idx = c_tcp_type2index[opt_type];
+		*recycle_index = false;
 		rohc_comp_debug(context, "    option '%s' (%u) will use reserved index %u",
 		                tcp_opt_get_descr(opt_type), opt_type, opt_idx);
 	}
@@ -1253,6 +1249,7 @@ static uint8_t c_tcp_get_opt_index(const struct rohc_comp_ctxt *const context,
 				rohc_comp_debug(context, "    re-use index %u that was already "
 				                "used for the same option previously", opt_idx);
 				opt_idx_free = opt_idx;
+				*recycle_index = false;
 			}
 		}
 
@@ -1265,6 +1262,7 @@ static uint8_t c_tcp_get_opt_index(const struct rohc_comp_ctxt *const context,
 				rohc_comp_debug(context, "    use free index %u that was never "
 				                "used before", opt_idx);
 				opt_idx_free = opt_idx;
+				*recycle_index = false;
 			}
 		}
 
@@ -1288,7 +1286,7 @@ static uint8_t c_tcp_get_opt_index(const struct rohc_comp_ctxt *const context,
 			rohc_comp_debug(context, "    no free index, recycle index %u "
 			                "because it is the oldest one", oldest_idx);
 			opt_idx_free = oldest_idx;
-			opts_ctxt->list[opt_idx_free].used = false;
+			*recycle_index = true;
 		}
 		opt_idx = opt_idx_free;
 	}

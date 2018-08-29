@@ -1110,6 +1110,21 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 			tcp_opts->structure_nr_trans++;
 		}
 
+		/* grow old the generic TCP options that were not used in current packet */
+		{
+			uint8_t opt_idx;
+			for(opt_idx = TCP_INDEX_GENERIC7;
+			    opt_idx <= MAX_TCP_OPTION_INDEX;
+			    opt_idx++)
+			{
+				if((tmp.tcp_opts.indexes_in_use & (1 << opt_idx)) == 0 &&
+				   tcp_opts->list[opt_idx].age < UINT8_MAX)
+				{
+					tcp_opts->list[opt_idx].age++;
+				}
+			}
+		}
+
 		for(opt_pos = 0; opt_pos < uncomp_pkt_hdrs->tcp_opts.nr; opt_pos++)
 		{
 			const uint8_t opt_idx = tmp.tcp_opts.position2index[opt_pos];

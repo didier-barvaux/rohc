@@ -110,7 +110,7 @@ struct c_tcp_opts_ctxt_tmp
 	uint8_t ts_req_bytes_nr:4;
 	uint8_t ts_reply_bytes_nr:4;
 
-	uint8_t unused4[2];
+	uint16_t indexes_in_use;
 };
 
 /* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
