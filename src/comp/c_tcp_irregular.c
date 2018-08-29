@@ -110,8 +110,7 @@ int tcp_code_irreg_chain(const struct rohc_comp_ctxt *const context,
 
 			ret = tcp_code_irregular_ipv4_part(context, ip_context, ip_hdr->ipv4,
 			                                   ip_id_behavior, is_innermost,
-			                                   tcp_context->ecn_used,
-			                                   tmp->ttl_irreg_chain_flag,
+			                                   tmp->ecn_used, tmp->ttl_irreg_chain_flag,
 			                                   rohc_remain_data, rohc_remain_len);
 			if(ret < 0)
 			{
@@ -127,7 +126,7 @@ int tcp_code_irreg_chain(const struct rohc_comp_ctxt *const context,
 			uint8_t ip_ext_pos;
 
 			ret = tcp_code_irregular_ipv6_part(context, ip_context, ip_hdr->ipv6,
-			                                   is_innermost, tcp_context->ecn_used,
+			                                   is_innermost, tmp->ecn_used,
 			                                   tmp->ttl_irreg_chain_flag,
 			                                   rohc_remain_data, rohc_remain_len);
 			if(ret < 0)
@@ -450,7 +449,7 @@ static int tcp_code_irregular_tcp_part(const struct rohc_comp_ctxt *const contex
 	/* ip_ecn_flags = := tcp_irreg_ip_ecn(ip_inner_ecn)
 	 * tcp_res_flags =:= static_or_irreg(ecn_used.CVALUE,4)
 	 * tcp_ecn_flags =:= static_or_irreg(ecn_used.CVALUE,2) */
-	if(tcp_context->ecn_used)
+	if(tmp->ecn_used)
 	{
 		if(rohc_remain_len < 1)
 		{

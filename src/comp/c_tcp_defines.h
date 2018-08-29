@@ -89,6 +89,9 @@ struct tcp_tmp_variables
 
 	/** Whether the behavior of at least one of the outer IP-ID fields changed */
 	bool outer_ip_id_behavior_changed;
+	/** Explicit Congestion Notification used */
+	bool ecn_used;
+	bool ecn_used_just_changed;
 
 	/** The temporary part of the context for TCP options */
 	struct c_tcp_opts_ctxt_tmp tcp_opts;

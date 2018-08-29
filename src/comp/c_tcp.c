@@ -104,7 +104,7 @@ static void tcp_detect_changes_ipv6_exts(struct rohc_comp_ctxt *const context,
                                          const struct rohc_pkt_ip_hdr *const ip_hdr,
                                          struct tcp_tmp_variables *const tmp)
 	__attribute__((nonnull(1, 2, 3, 4)));
-static void tcp_detect_changes_tcp_hdr(struct rohc_comp_ctxt *const context,
+static void tcp_detect_changes_tcp_hdr(const struct rohc_comp_ctxt *const context,
                                        const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                        struct tcp_tmp_variables *const tmp)
 	__attribute__((nonnull(1, 2, 3)));
@@ -357,11 +357,12 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
  * Misc functions
  */
 
-static bool tcp_detect_ecn_used_behavior(struct rohc_comp_ctxt *const context,
+static void tcp_detect_ecn_used_behavior(const struct rohc_comp_ctxt *const context,
                                          const uint8_t pkt_ecn_vals,
                                          const uint8_t pkt_outer_dscp_changed,
-                                         const uint8_t pkt_res_val)
-	__attribute__((nonnull(1), warn_unused_result));
+                                         const uint8_t pkt_res_val,
+                                         struct tcp_tmp_variables *const tmp)
+	__attribute__((nonnull(1, 5)));
 
 static void tcp_field_descr_change(const struct rohc_comp_ctxt *const context,
                                    const char *const name,
@@ -1026,6 +1027,27 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	c_add_wlsb(&tcp_context->window_wlsb, tmp.new_msn, rohc_ntoh16(tcp->window));
 
 	/* update transmission counters */
+	tcp_context->ecn_used = tmp.ecn_used;
+	if(tmp.ecn_used_just_changed)
+	{
+		if(!tmp.ecn_used_changed)
+		{
+		  tcp_context->ecn_used_zero_count++;
+		}
+		else
+		{
+		  tcp_context->ecn_used_zero_count = 0;
+		  tcp_context->ecn_used_change_count = 0;
+		}
+	}
+	else
+	{
+	  tcp_context->ecn_used_zero_count = 0;
+	}
+	if(tcp_context->ecn_used_change_count < oa_repetitions_nr)
+	{
+	  tcp_context->ecn_used_change_count++;
+	}
 	if(tcp_context->tcp_seq_num_trans_nr < oa_repetitions_nr)
 	{
 		tcp_context->tcp_seq_num_trans_nr++;
@@ -2106,7 +2128,7 @@ static int c_tcp_build_rnd_8(const struct rohc_comp_ctxt *const context,
 		ttl_hl = ipv6->hl;
 	}
 	rnd8->ttl_hopl = ttl_hl & 0x7;
-	rnd8->ecn_used = GET_REAL(tcp_context->ecn_used);
+	rnd8->ecn_used = GET_REAL(tmp->ecn_used);
 
 	/* sequence number */
 	seq_num = rohc_ntoh32(tcp->seq_num) & 0xffff;
@@ -2655,7 +2677,7 @@ static int c_tcp_build_seq_8(const struct rohc_comp_ctxt *const context,
 	seq8->ttl_hopl = ipv4->ttl & 0x7;
 
 	/* ecn_used */
-	seq8->ecn_used = GET_REAL(tcp_context->ecn_used);
+	seq8->ecn_used = GET_REAL(tmp->ecn_used);
 
 	/* ACK number */
 	ack_num = rohc_ntoh32(tcp->ack_num) & 0x7fff;
@@ -2882,7 +2904,7 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 
 	// cf RFC3168 and RFC4996 page 20 :
 	// =:= one_bit_choice [ 1 ];
-	co_common->ecn_used = GET_REAL(tcp_context->ecn_used);
+	co_common->ecn_used = GET_REAL(tmp->ecn_used);
 	rohc_comp_debug(context, "ecn_used = %d", GET_REAL(co_common->ecn_used));
 
 	/* urg_flag */
@@ -3177,9 +3199,8 @@ static void tcp_detect_changes(struct rohc_comp_ctxt *const context,
 	pkt_ecn_vals |= uncomp_pkt_hdrs->tcp->ecn_flags;
 
 	/* what value for ecn_used? */
-	tmp->ecn_used_changed =
-		tcp_detect_ecn_used_behavior(context, pkt_ecn_vals, pkt_outer_dscp_changed,
-		                             uncomp_pkt_hdrs->tcp->res_flags);
+	tcp_detect_ecn_used_behavior(context, pkt_ecn_vals, pkt_outer_dscp_changed,
+	                             uncomp_pkt_hdrs->tcp->res_flags, tmp);
 
 	/* determine the IP-ID behavior of the innermost IPv4 header */
 	if(uncomp_pkt_hdrs->innermost_ip_hdr->version == IPV4)
@@ -3437,7 +3458,7 @@ static uint16_t c_tcp_get_next_msn(const struct rohc_comp_ctxt *const context)
  * @param uncomp_pkt_hdrs  The uncompressed headers to encode
  * @param tmp              The temporary state for the compressed packet
  */
-static void tcp_detect_changes_tcp_hdr(struct rohc_comp_ctxt *const context,
+static void tcp_detect_changes_tcp_hdr(const struct rohc_comp_ctxt *const context,
                                        const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                        struct tcp_tmp_variables *const tmp)
 {
@@ -4362,27 +4383,28 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
  * @param pkt_ecn_vals            The values of the IP/ECN flags in the current packet
  * @param pkt_outer_dscp_changed  Whether at least one DSCP changed in the current packet
  * @param pkt_res_val             The TCP RES flags in the current packet
- * @return                        Whether the ecn_used flag changed or not 
+ * @param[out] tmp                The temporary state for the compressed packet
  */
-static bool tcp_detect_ecn_used_behavior(struct rohc_comp_ctxt *const context,
+static void tcp_detect_ecn_used_behavior(const struct rohc_comp_ctxt *const context,
                                          const uint8_t pkt_ecn_vals,
                                          const uint8_t pkt_outer_dscp_changed,
-                                         const uint8_t pkt_res_val)
+                                         const uint8_t pkt_res_val,
+                                         struct tcp_tmp_variables *const tmp)
 {
 	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
-	struct sc_tcp_context *const tcp_context = context->specific;
-	bool ecn_used_changed;
+	const struct sc_tcp_context *const tcp_context = context->specific;
+	const bool ctxt_ecn_used = tcp_context->ecn_used;
 
 	const bool ecn_used_change_needed_by_outer_dscp =
-		(pkt_outer_dscp_changed && !tcp_context->ecn_used);
+		(pkt_outer_dscp_changed && !ctxt_ecn_used);
 	const bool tcp_res_flag_changed =
 		(pkt_res_val != tcp_context->res_flags);
 	const bool ecn_used_change_needed_by_res_flags =
-		(tcp_res_flag_changed && !tcp_context->ecn_used);
+		(tcp_res_flag_changed && !ctxt_ecn_used);
 	const bool ecn_used_change_needed_by_ecn_flags_unset =
-		(pkt_ecn_vals == 0 && tcp_context->ecn_used);
+		(pkt_ecn_vals == 0 && ctxt_ecn_used);
 	const bool ecn_used_change_needed_by_ecn_flags_set =
-		(pkt_ecn_vals != 0 && !tcp_context->ecn_used);
+		(pkt_ecn_vals != 0 && !ctxt_ecn_used);
 	const bool ecn_used_change_needed =
 		(ecn_used_change_needed_by_outer_dscp ||
 		 ecn_used_change_needed_by_res_flags ||
@@ -4391,7 +4413,7 @@ static bool tcp_detect_ecn_used_behavior(struct rohc_comp_ctxt *const context,
 
 	tcp_field_descr_change(context, "RES flags", tcp_res_flag_changed, 0);
 	rohc_comp_debug(context, "ECN: context did%s use ECN",
-	                tcp_context->ecn_used ? "" : "n't");
+	                ctxt_ecn_used ? "" : "n't");
 	rohc_comp_debug(context, "ECN: packet does%s use ECN",
 	                pkt_ecn_vals != 0 ? "" : "n't");
 
@@ -4408,37 +4430,36 @@ static bool tcp_detect_ecn_used_behavior(struct rohc_comp_ctxt *const context,
 			                "context does, wait for %u more packets without ECN "
 			                "before changing the context ecn_used parameter",
 			                oa_repetitions_nr - tcp_context->ecn_used_zero_count);
-			ecn_used_changed = false;
-			tcp_context->ecn_used_zero_count++;
+			tmp->ecn_used = ctxt_ecn_used;
+			tmp->ecn_used_just_changed = true;
+			tmp->ecn_used_changed = false;
 		}
 		else
 		{
 			rohc_comp_debug(context, "ECN: behavior changed");
-			ecn_used_changed = true;
-			tcp_context->ecn_used =
+			tmp->ecn_used_just_changed = true;
+			tmp->ecn_used_changed = true;
+			tmp->ecn_used =
 				!!(pkt_ecn_vals != 0 || tcp_res_flag_changed || pkt_outer_dscp_changed);
-			tcp_context->ecn_used_change_count = 0;
-			tcp_context->ecn_used_zero_count = 0;
 		}
 	}
 	else if(tcp_context->ecn_used_change_count < oa_repetitions_nr)
 	{
 		rohc_comp_debug(context, "ECN: behavior didn't change but changed a few "
 		                "packet before");
-		ecn_used_changed = true;
-		tcp_context->ecn_used_change_count++;
-		tcp_context->ecn_used_zero_count = 0;
+		tmp->ecn_used = ctxt_ecn_used;
+		tmp->ecn_used_just_changed = false;
+		tmp->ecn_used_changed = true;
 	}
 	else
 	{
 		rohc_comp_debug(context, "ECN: behavior didn't change");
-		ecn_used_changed = false;
-		tcp_context->ecn_used_zero_count = 0;
+		tmp->ecn_used = ctxt_ecn_used;
+		tmp->ecn_used_just_changed = false;
+		tmp->ecn_used_changed = false;
 	}
 	rohc_comp_debug(context, "ECN: context does%s use ECN",
-	                tcp_context->ecn_used ? "" : "n't");
-
-	return ecn_used_changed;
+	                tmp->ecn_used ? "" : "n't");
 }
 
 

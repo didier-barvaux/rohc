@@ -480,7 +480,7 @@ bad_opts:
  * @param tmp                  The temporary state for compressed TCP options
  * @param tcp_ack_num_changed  Whether the TCP ACK number changed or not
  */
-void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
+void tcp_detect_options_changes(const struct rohc_comp_ctxt *const context,
                                 const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                 struct c_tcp_opts_ctxt *const opts_ctxt,
                                 struct c_tcp_opts_ctxt_tmp *const tmp,

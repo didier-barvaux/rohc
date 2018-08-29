@@ -433,7 +433,7 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
 	tcp_replicate->ack_flag = tcp->ack_flag;
 	tcp_replicate->psh_flag = tcp->psh_flag;
 	tcp_replicate->rsf_flags = rsf_index_enc(tcp->rsf_flags);
-	tcp_replicate->ecn_used = tcp_context->ecn_used;
+	tcp_replicate->ecn_used = tmp->ecn_used;
 
 	/* MSN */
 	tcp_replicate->msn = rohc_hton16(tmp->new_msn);
@@ -543,7 +543,7 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
 	}
 
 	/* ecn_padding + tcp_res_flags + tcp_ecn_flags */
-	if(tcp_context->ecn_used)
+	if(tmp->ecn_used)
 	{
 		if(rohc_remain_len < sizeof(uint16_t))
 		{

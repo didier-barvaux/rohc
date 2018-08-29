@@ -417,7 +417,7 @@ static int tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *const context,
 	                "urg_ptr = %d", rohc_ntoh16(tcp->window),
 	                rohc_ntoh16(tcp->checksum), rohc_ntoh16(tcp->urg_ptr));
 
-	tcp_dynamic->ecn_used = tcp_context->ecn_used;
+	tcp_dynamic->ecn_used = tmp->ecn_used;
 	tcp_dynamic->tcp_res_flags = tcp->res_flags;
 	tcp_dynamic->tcp_ecn_flags = tcp->ecn_flags;
 	tcp_dynamic->urg_flag = tcp->urg_flag;
