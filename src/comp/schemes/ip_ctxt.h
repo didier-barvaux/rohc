@@ -41,9 +41,13 @@
 typedef struct
 {
 	uint8_t data[IPV6_OPT_CTXT_LEN_MAX];
-	uint16_t option_length; /* max length = (0xff + 1) * 8 = 2048 bytes */
-	uint8_t next_header;
-	uint8_t unused[7]; /**< pad struct up to multiple of 8 bytes, align next fields */
+	/**
+	 * @brief The IPv6 option length
+	 *
+	 * Standard reads that max length = (0xff + 1) * 8 = 2048 bytes, but the ROHC
+	 * implementation limits the length to (4 + 1) * 8 = 40 bytes.
+	 */
+	uint16_t option_length;
 
 } ipv6_generic_option_context_t;
 
