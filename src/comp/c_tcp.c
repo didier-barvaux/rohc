@@ -3269,6 +3269,9 @@ static bool tcp_detect_changes_ipv6_exts(struct rohc_comp_ctxt *const context,
 	size_t exts_nr;
 	size_t ext_pos;
 
+	tmp->is_ipv6_exts_list_static_changed = false;
+	tmp->is_ipv6_exts_list_dyn_changed = false;
+
 	exts_nr = 0;
 	for(ext_pos = 0;
 	    rohc_is_ipv6_opt(protocol) && ext_pos < ROHC_MAX_IP_EXT_HDRS;
