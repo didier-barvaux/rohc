@@ -1497,14 +1497,14 @@ static int code_CO_packet(const struct rohc_comp_ctxt *const context,
                           const size_t rohc_pkt_max_len,
                           const rohc_packet_t packet_type)
 {
-	struct sc_tcp_context *const tcp_context = context->specific;
+	const struct sc_tcp_context *const tcp_context = context->specific;
 
 	const uint8_t *const uncomp_data = (uint8_t *) uncomp_pkt_hdrs->ip_hdrs[0].ip;
 
 	uint8_t *rohc_remain_data = rohc_pkt;
 	size_t rohc_remain_len = rohc_pkt_max_len;
 
-	ip_context_t *const inner_ip_ctxt =
+	const ip_context_t *const inner_ip_ctxt =
 		&(tcp_context->ip_contexts[uncomp_pkt_hdrs->ip_hdrs_nr - 1]);
 
 	size_t pos_1st_byte;
