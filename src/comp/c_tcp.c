@@ -960,7 +960,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		ip_context_t *const ip_ctxt = &(tcp_context->ip_contexts[ip_hdr_pos]);
 
 		ip_ctxt->opts_nr = ip_hdr->exts_nr;
-		ip_ctxt->ip_id_behavior = tmp.ip_id_behaviors[ip_hdr_pos];
+		ip_ctxt->ip_id_behavior = tmp.changes[ip_hdr_pos].ip_id_behavior;
 		ip_ctxt->dscp = ip_hdr->dscp;
 		ip_ctxt->ttl_hopl = ip_hdr->ttl_hl;
 
@@ -1076,14 +1076,14 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	}
 	for(ip_hdr_pos = 0; ip_hdr_pos < uncomp_pkt_hdrs->ip_hdrs_nr; ip_hdr_pos++)
 	{
+		if(tmp.changes[ip_hdr_pos].ttl_hopl_just_changed)
+		{
+			tcp_context->ttl_hopl_change_count[ip_hdr_pos] = 0;
+		}
 		if(tcp_context->ttl_hopl_change_count[ip_hdr_pos] < oa_repetitions_nr)
 		{
 			tcp_context->ttl_hopl_change_count[ip_hdr_pos]++;
 		}
-	}
-	if(tcp_context->innermost_ttl_hopl_change_count < oa_repetitions_nr)
-	{
-		tcp_context->innermost_ttl_hopl_change_count++;
 	}
 	if(tcp_context->outer_ip_id_behavior_trans_nr < oa_repetitions_nr)
 	{
@@ -1092,6 +1092,10 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	if(tcp_context->innermost_ip_id_behavior_trans_nr < oa_repetitions_nr)
 	{
 		tcp_context->innermost_ip_id_behavior_trans_nr++;
+	}
+	if(tmp.innermost_dscp_just_changed)
+	{
+		tcp_context->innermost_dscp_trans_nr = 0;
 	}
 	if(tcp_context->innermost_dscp_trans_nr < oa_repetitions_nr)
 	{
@@ -2970,7 +2974,7 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 			uncomp_pkt_hdrs->innermost_ip_hdr->ipv4;
 
 		/* dscp_present =:= irregular(1) [ 1 ] */
-		ret = dscp_encode(!tmp->dscp_changed, inner_ipv4->dscp,
+		ret = dscp_encode(!tmp->innermost_dscp_changed, inner_ipv4->dscp,
 		                  co_common_opt, rohc_remain_len, &indicator);
 		if(ret < 0)
 		{
@@ -2996,7 +3000,7 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 		const uint8_t dscp = ipv6_get_dscp(inner_ipv6);
 
 		/* dscp_present =:= irregular(1) [ 1 ] */
-		ret = dscp_encode(!tmp->dscp_changed, dscp, co_common_opt,
+		ret = dscp_encode(!tmp->innermost_dscp_changed, dscp, co_common_opt,
 		                  rohc_remain_len, &indicator);
 		if(ret < 0)
 		{
@@ -3093,7 +3097,7 @@ static void tcp_detect_changes(const struct rohc_comp_ctxt *const context,
                                struct tcp_tmp_variables *const tmp)
 {
 	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
-	struct sc_tcp_context *const tcp_context = context->specific;
+	const struct sc_tcp_context *const tcp_context = context->specific;
 	size_t ip_hdr_pos;
 	bool pkt_outer_dscp_changed;
 	bool last_pkt_outer_dscp_changed;
@@ -3144,35 +3148,37 @@ static void tcp_detect_changes(const struct rohc_comp_ctxt *const context,
 		{
 			rohc_comp_debug(context, "  TTL/HL did change: 0x%02x -> 0x%02x",
 			                ip_context->ttl_hopl, ttl_hl);
-			tmp->ttl_hopl_changed[ip_hdr_pos] = true;
+			tmp->changes[ip_hdr_pos].ttl_hopl_just_changed = true;
 		}
 		else
 		{
 			rohc_comp_debug(context, "  TTL/HL didn't change: 0x%02x -> 0x%02x",
 			                ip_context->ttl_hopl, ttl_hl);
-			tmp->ttl_hopl_changed[ip_hdr_pos] = false;
+			tmp->changes[ip_hdr_pos].ttl_hopl_just_changed = false;
 		}
-		if(tmp->ttl_hopl_changed[ip_hdr_pos])
+		if(tmp->changes[ip_hdr_pos].ttl_hopl_just_changed)
 		{
 			rohc_comp_debug(context, "  TTL/HL changed (%u -> %u) in current "
 			                "packet, it shall be transmitted %u times",
 			                ip_context->ttl_hopl, ttl_hl, oa_repetitions_nr);
-			tcp_context->ttl_hopl_change_count[ip_hdr_pos] = 0;
+			tmp->changes[ip_hdr_pos].ttl_hopl_changed = true;
 		}
 		else if(tcp_context->ttl_hopl_change_count[ip_hdr_pos] < oa_repetitions_nr)
 		{
 			rohc_comp_debug(context, "  TTL/HL changed in last packets, it shall "
 			                "be transmitted %u times more", oa_repetitions_nr -
 			                tcp_context->ttl_hopl_change_count[ip_hdr_pos]);
-			tmp->ttl_hopl_changed[ip_hdr_pos] = true;
+			tmp->changes[ip_hdr_pos].ttl_hopl_changed = true;
+		}
+		else
+		{
+			tmp->changes[ip_hdr_pos].ttl_hopl_changed = false;
 		}
 		if(is_innermost)
 		{
-			tmp->innermost_ttl_hopl_changed = tmp->ttl_hopl_changed[ip_hdr_pos];
-			tcp_context->innermost_ttl_hopl_change_count =
-				tcp_context->ttl_hopl_change_count[ip_hdr_pos];
+			tmp->innermost_ttl_hopl_changed = tmp->changes[ip_hdr_pos].ttl_hopl_changed;
 		}
-		else if(tmp->ttl_hopl_changed[ip_hdr_pos])
+		else if(tmp->changes[ip_hdr_pos].ttl_hopl_just_changed)
 		{
 			tmp->ttl_irreg_chain_flag |= 1;
 		}
@@ -3180,7 +3186,7 @@ static void tcp_detect_changes(const struct rohc_comp_ctxt *const context,
 		/* determine the IP-ID behavior of the outer IPv4 headers */
 		if(ip_hdr->ip->version == IPV6)
 		{
-			tmp->ip_id_behaviors[ip_hdr_pos] = ip_context->ip_id_behavior;
+			tmp->changes[ip_hdr_pos].ip_id_behavior = ip_context->ip_id_behavior;
 		}
 		else if(!is_innermost)
 		{
@@ -3211,7 +3217,7 @@ static void tcp_detect_changes(const struct rohc_comp_ctxt *const context,
 			{
 				new_ip_id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
 			}
-			tmp->ip_id_behaviors[ip_hdr_pos] = new_ip_id_behavior;
+			tmp->changes[ip_hdr_pos].ip_id_behavior = new_ip_id_behavior;
 			rohc_comp_debug(context, "  outer IP-ID now behaves as %s",
 			                rohc_ip_id_behavior_get_descr(new_ip_id_behavior));
 			if(last_ip_id_behavior != new_ip_id_behavior)
@@ -3270,7 +3276,8 @@ static void tcp_detect_changes(const struct rohc_comp_ctxt *const context,
 			new_ip_id_behavior =
 				rohc_comp_detect_ip_id_behavior(last_ip_id, ip_id, 1, 19);
 		}
-		tmp->ip_id_behaviors[tcp_context->ip_contexts_nr - 1] = new_ip_id_behavior;
+		tmp->changes[tcp_context->ip_contexts_nr - 1].ip_id_behavior =
+			new_ip_id_behavior;
 		tmp->innermost_ip_id_behavior = new_ip_id_behavior;
 		rohc_comp_debug(context, "innermost IP-ID now behaves as %s",
 		                rohc_ip_id_behavior_get_descr(new_ip_id_behavior));
@@ -3302,8 +3309,9 @@ static void tcp_detect_changes(const struct rohc_comp_ctxt *const context,
 		tmp->ip_df_changed = !!(inner_ipv4->df != inner_ip_ctxt->df);
 		tcp_field_descr_change(context, "DF", tmp->ip_df_changed, 0);
 
-		tmp->dscp_changed = !!(inner_ipv4->dscp != inner_ip_ctxt->dscp);
-		tcp_field_descr_change(context, "DSCP", tmp->dscp_changed, 0);
+		tmp->innermost_dscp_just_changed =
+			!!(inner_ipv4->dscp != inner_ip_ctxt->dscp);
+		tcp_field_descr_change(context, "DSCP", tmp->innermost_dscp_just_changed, 0);
 	}
 	else /* IPv6 */
 	{
@@ -3317,24 +3325,28 @@ static void tcp_detect_changes(const struct rohc_comp_ctxt *const context,
 
 		tmp->ip_df_changed = false; /* no DF for IPv6 */
 
-		tmp->dscp_changed =
+		tmp->innermost_dscp_just_changed =
 			!!(ipv6_get_dscp(inner_ipv6) != inner_ip_ctxt->dscp);
-		tcp_field_descr_change(context, "DSCP", tmp->dscp_changed, 0);
+		tcp_field_descr_change(context, "DSCP", tmp->innermost_dscp_just_changed, 0);
 	}
 
 	/* innermost IPv4/IPv6 DSCP */
-	if(tmp->dscp_changed)
+	if(tmp->innermost_dscp_just_changed)
 	{
 		rohc_comp_debug(context, "innermost IP DSCP changed in current packet, "
 		                "it shall be transmitted %u times", oa_repetitions_nr);
-		tcp_context->innermost_dscp_trans_nr = 0;
+		tmp->innermost_dscp_changed = true;
 	}
 	else if(tcp_context->innermost_dscp_trans_nr < oa_repetitions_nr)
 	{
 		rohc_comp_debug(context, "innermost IP DSCP changed in last packets, "
 		                "it shall be transmitted %u times more", oa_repetitions_nr -
 		                tcp_context->innermost_dscp_trans_nr);
-		tmp->dscp_changed = true;
+		tmp->innermost_dscp_changed = true;
+	}
+	else
+	{
+		tmp->innermost_dscp_changed = false;
 	}
 
 	/* compute how many bits are needed to send header fields */
@@ -3935,7 +3947,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet(const struct rohc_comp_ctxt *const 
 	else if(tmp->outer_ip_ttl_changed ||
 	        tmp->innermost_ip_id_behavior_changed ||
 	        tmp->ip_df_changed ||
-	        tmp->dscp_changed ||
+	        tmp->innermost_dscp_changed ||
 	        tmp->tcp_ack_flag_changed ||
 	        tmp->tcp_urg_flag_present ||
 	        tmp->tcp_urg_flag_changed ||

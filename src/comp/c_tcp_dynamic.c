@@ -99,7 +99,7 @@ int tcp_code_dyn_part(const struct rohc_comp_ctxt *const context,
 		if(ip_hdr->version == IPV4)
 		{
 			const rohc_ip_id_behavior_t ip_id_behavior =
-				tmp->ip_id_behaviors[ip_hdr_pos];
+				tmp->changes[ip_hdr_pos].ip_id_behavior;
 
 			ret = tcp_code_dynamic_ipv4_part(context, ip_context, ip_hdr->ipv4,
 			                                 ip_id_behavior,

@@ -57,10 +57,17 @@ struct tcp_tmp_variables
 	/** The IP-ID / SN delta (with bits swapped if necessary) */
 	uint16_t ip_id_delta;
 
-	/** The new IP-ID behaviors per IP header */
-	rohc_ip_id_behavior_t ip_id_behaviors[ROHC_MAX_IP_HDRS];
-	/** Whether the TTL/HL changed per IP header */
-	bool ttl_hopl_changed[ROHC_MAX_IP_HDRS];
+	/** The changes per IP header */
+	struct
+	{
+		/** The new IP-ID behavior per IP header */
+		uint8_t ip_id_behavior:2;
+		/** Whether the TTL/HL just changed per IP header */
+		uint8_t ttl_hopl_just_changed:1;
+		/** Whether the TTL/HL changed per IP header */
+		uint8_t ttl_hopl_changed:1;
+		uint8_t unused:4;
+	} changes[ROHC_MAX_IP_HDRS];
 
 	/** Whether at least one of the static part of the IPv6 extensions changed
 	 * in the current packet */
@@ -80,7 +87,7 @@ struct tcp_tmp_variables
 	uint16_t ttl_irreg_chain_flag:1; /* outer IPv4 TTLs or IPv6 Hop Limits */
 	uint16_t outer_ip_ttl_changed:1;
 	uint16_t ip_df_changed:1;
-	uint16_t dscp_changed:1;
+	uint16_t innermost_dscp_changed:1;
 	uint16_t tcp_ack_flag_changed:1;
 	uint16_t tcp_urg_flag_present:1;
 	uint16_t tcp_urg_flag_changed:1;
@@ -94,6 +101,7 @@ struct tcp_tmp_variables
 	bool ecn_used_just_changed;
 	bool is_ipv6_exts_list_static_just_changed;
 	bool is_ipv6_exts_list_dyn_just_changed;
+	bool innermost_dscp_just_changed;
 
 	/** The temporary part of the context for TCP options */
 	struct c_tcp_opts_ctxt_tmp tcp_opts;
@@ -131,8 +139,7 @@ struct sc_tcp_context
 	/** The number of times the ECN fields were added to the compressed header */
 	uint8_t ecn_used_change_count:4;
 	/** The number of times the ECN fields were not needed */
-	uint8_t ecn_used_zero_count:4;
-	uint8_t innermost_ttl_hopl_change_count:4;
+	uint8_t ecn_used_zero_count;
 	/** The number of outer IP-ID behaviors transmissions since last change */
 	uint8_t outer_ip_id_behavior_trans_nr;
 	/** The number of innermost IP-ID behavior transmissions since last change */
