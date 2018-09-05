@@ -92,6 +92,8 @@ struct tcp_tmp_variables
 	/** Explicit Congestion Notification used */
 	bool ecn_used;
 	bool ecn_used_just_changed;
+	bool is_ipv6_exts_list_static_just_changed;
+	bool is_ipv6_exts_list_dyn_just_changed;
 
 	/** The temporary part of the context for TCP options */
 	struct c_tcp_opts_ctxt_tmp tcp_opts;
