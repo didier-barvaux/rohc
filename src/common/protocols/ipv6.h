@@ -143,9 +143,9 @@ _Static_assert(sizeof(struct ipv6_hdr) == 40,
 /** The maximum value of the length field of one IPv6 extension header */
 #define IPV6_OPT_HDR_LEN_FIELD_MAX_VAL  4U
 /** The maximum length of one IPv6 extension header */
-#define IPV6_OPT_HDR_LEN_MAX            ((IPV6_OPT_HDR_LEN_FIELD_MAX_VAL + 1) * 8)
+#define IPV6_OPT_HDR_LEN_MAX            ((IPV6_OPT_HDR_LEN_FIELD_MAX_VAL + 1U) * 8U)
 /** The maximum length for the IPv6 extension header context */
-#define IPV6_OPT_CTXT_LEN_MAX           (IPV6_OPT_HDR_LEN_MAX - 2)
+#define IPV6_OPT_CTXT_LEN_MAX           (IPV6_OPT_HDR_LEN_MAX - 2U)
 
 
 /** The IPv6 option header */

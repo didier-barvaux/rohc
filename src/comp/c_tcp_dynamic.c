@@ -51,11 +51,10 @@ static int tcp_code_dynamic_ipv6_part(const struct rohc_comp_ctxt *const context
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 
 static int tcp_code_dynamic_ipv6_opt_part(const struct rohc_comp_ctxt *const context,
-                                          const struct ipv6_opt *const ipv6_opt,
-                                          const uint8_t protocol,
+                                          const struct rohc_pkt_ip_ext_hdr *const ext,
                                           uint8_t *const rohc_data,
                                           const size_t rohc_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *const context,
                                      const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
@@ -97,16 +96,17 @@ int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
 	/* add dynamic chain for both IR and IR-DYN packet */
 	for(ip_hdr_pos = 0; ip_hdr_pos < uncomp_pkt_hdrs->ip_hdrs_nr; ip_hdr_pos++)
 	{
-		const struct ip_hdr *const ip = uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos].ip;
+		const struct rohc_pkt_ip_hdr *const ip_hdr =
+			&(uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos]);
 		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
 
-		if(ip->version == IPV4)
+		if(ip_hdr->version == IPV4)
 		{
-			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) ip;
 			const rohc_ip_id_behavior_t ip_id_behavior =
 				tmp->ip_id_behaviors[ip_hdr_pos];
 
-			ret = tcp_code_dynamic_ipv4_part(context, ip_context, ipv4, ip_id_behavior,
+			ret = tcp_code_dynamic_ipv4_part(context, ip_context, ip_hdr->ipv4,
+			                                 ip_id_behavior,
 			                                 rohc_remain_data, rohc_remain_len);
 			if(ret < 0)
 			{
@@ -119,14 +119,9 @@ int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
 		}
 		else /* IPv6 */
 		{
-			const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) ip;
-			const uint8_t *remain_data = (const uint8_t *) (ipv6 + 1);
-			size_t remain_len =
-				uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos].tot_len - sizeof(struct ipv6_hdr);
-			uint8_t protocol = ipv6->nh;
-			size_t ip_ext_pos;
+			uint8_t ip_ext_pos;
 
-			ret = tcp_code_dynamic_ipv6_part(context, ip_context, ipv6,
+			ret = tcp_code_dynamic_ipv6_part(context, ip_context, ip_hdr->ipv6,
 			                                 rohc_remain_data, rohc_remain_len);
 			if(ret < 0)
 			{
@@ -137,15 +132,14 @@ int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
 			rohc_remain_data += ret;
 			rohc_remain_len -= ret;
 
-			for(ip_ext_pos = 0;
-			    ip_ext_pos < uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos].exts_nr;
-			    ip_ext_pos++)
+			for(ip_ext_pos = 0; ip_ext_pos < ip_hdr->exts_nr; ip_ext_pos++)
 			{
-				const struct ipv6_opt *const ipv6_opt = (struct ipv6_opt *) remain_data;
-				const size_t opt_len = ipv6_opt_get_length(ipv6_opt);
+				const struct rohc_pkt_ip_ext_hdr *const ext =
+					&(ip_hdr->exts[ip_ext_pos]);
 
-				rohc_comp_debug(context, "IPv6 option %u", protocol);
-				ret = tcp_code_dynamic_ipv6_opt_part(context, ipv6_opt, protocol,
+				rohc_comp_debug(context, "IPv6 option #%u: type %u / length %u",
+				                ip_ext_pos + 1, ext->type, ext->len);
+				ret = tcp_code_dynamic_ipv6_opt_part(context, ext,
 				                                     rohc_remain_data, rohc_remain_len);
 				if(ret < 0)
 				{
@@ -155,10 +149,6 @@ int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
 				}
 				rohc_remain_data += ret;
 				rohc_remain_len -= ret;
-
-				protocol = ipv6_opt->next_header;
-				remain_data += opt_len;
-				remain_len -= opt_len;
 			}
 		}
 	}
@@ -347,27 +337,26 @@ error:
  * @brief Build the dynamic part of the IPv6 option header
  *
  * @param context         The compression context
- * @param ipv6_opt        The IPv6 extension header
- * @param protocol        The protocol of the IPv6 extension header
+ * @param ext             The IPv6 extension header
  * @param[out] rohc_data  The ROHC packet being built
  * @param rohc_max_len    The max remaining length in the ROHC buffer
  * @return                The length appended in the ROHC buffer if positive,
  *                        -1 in case of error
  */
 static int tcp_code_dynamic_ipv6_opt_part(const struct rohc_comp_ctxt *const context,
-                                          const struct ipv6_opt *const ipv6_opt,
-                                          const uint8_t protocol,
+                                          const struct rohc_pkt_ip_ext_hdr *const ext,
                                           uint8_t *const rohc_data,
                                           const size_t rohc_max_len)
 {
+	const struct ipv6_opt *const ipv6_opt = (struct ipv6_opt *) ext->data;
 	size_t ipv6_opt_dynamic_len;
 
-	switch(protocol)
+	switch(ext->type)
 	{
 		case ROHC_IPPROTO_HOPOPTS: /* IPv6 Hop-by-Hop option */
 		case ROHC_IPPROTO_DSTOPTS: /* IPv6 destination option */
 		{
-			ipv6_opt_dynamic_len = ipv6_opt_get_length(ipv6_opt) - 2;
+			ipv6_opt_dynamic_len = ext->len - 2;
 			if(rohc_max_len < ipv6_opt_dynamic_len)
 			{
 				rohc_comp_warn(context, "ROHC buffer too small for the IPv6 extension "
