@@ -71,37 +71,49 @@ struct tcp_tmp_variables
 
 	/** Whether at least one of the static part of the IPv6 extensions changed
 	 * in the current packet */
-	uint16_t is_ipv6_exts_list_static_changed:1;
+	uint32_t is_ipv6_exts_list_static_changed:1;
 	/** Whether at least one of the dynamic part of the IPv6 extensions changed
 	 * in the current packet */
-	uint16_t is_ipv6_exts_list_dyn_changed:1;
+	uint32_t is_ipv6_exts_list_dyn_changed:1;
 	/** Whether the TCP window changed or not */
-	uint16_t tcp_window_changed:1;
+	uint32_t tcp_window_changed:1;
 	/** Whether the sequence number changed or not */
-	uint16_t tcp_seq_num_unchanged:1;
+	uint32_t tcp_seq_num_unchanged:1;
 	/** Whether the ACK number changed or not */
-	uint16_t tcp_ack_num_unchanged:1;
+	uint32_t tcp_ack_num_unchanged:1;
 	/** Whether the behavior of the IP-ID field changed with current packet */
-	uint16_t innermost_ip_id_behavior_changed:1;
-	uint16_t innermost_ttl_hopl_changed:1;
-	uint16_t ttl_irreg_chain_flag:1; /* outer IPv4 TTLs or IPv6 Hop Limits */
-	uint16_t outer_ip_ttl_changed:1;
-	uint16_t ip_df_changed:1;
-	uint16_t innermost_dscp_changed:1;
-	uint16_t tcp_ack_flag_changed:1;
-	uint16_t tcp_urg_flag_present:1;
-	uint16_t tcp_urg_flag_changed:1;
-	uint16_t tcp_urg_ptr_changed:1;
-	uint16_t ecn_used_changed:1; /**< Whether the ecn_used flag changed or not */
+	uint32_t innermost_ip_id_behavior_changed:1;
+	uint32_t innermost_ttl_hopl_changed:1;
+	uint32_t ttl_irreg_chain_flag:1; /* outer IPv4 TTLs or IPv6 Hop Limits */
+
+	uint32_t outer_ip_ttl_changed:1;
+	uint32_t ip_df_changed:1;
+	uint32_t innermost_dscp_changed:1;
+	uint32_t tcp_ack_flag_changed:1;
+	uint32_t tcp_urg_flag_present:1;
+	uint32_t tcp_urg_flag_changed:1;
+	uint32_t tcp_urg_ptr_changed:1;
+	uint32_t ecn_used_changed:1; /**< Whether the ecn_used flag changed or not */
 
 	/** Whether the behavior of at least one of the outer IP-ID fields changed */
-	bool outer_ip_id_behavior_changed;
+	uint32_t outer_ip_id_behavior_changed:1;
 	/** Explicit Congestion Notification used */
-	bool ecn_used;
-	bool ecn_used_just_changed;
-	bool is_ipv6_exts_list_static_just_changed;
-	bool is_ipv6_exts_list_dyn_just_changed;
-	bool innermost_dscp_just_changed;
+	uint32_t ecn_used:1;
+	uint32_t ecn_used_just_changed:1;
+	uint32_t is_ipv6_exts_list_static_just_changed:1;
+	uint32_t is_ipv6_exts_list_dyn_just_changed:1;
+	uint32_t innermost_dscp_just_changed:1;
+	/** Whether the TCP window changed or not */
+	uint32_t tcp_window_just_changed:1;
+	/** Whether the sequence number changed or not */
+	uint32_t tcp_seq_num_just_changed:1;
+
+	/** Whether the ACK number changed or not */
+	uint32_t tcp_ack_num_just_changed:1;
+	uint32_t tcp_urg_ptr_just_changed:1;
+	uint32_t innermost_ip_id_behavior_just_changed:1;
+	uint32_t outer_ip_id_behavior_just_changed:1;
+	uint32_t unused:4;
 
 	/** The temporary part of the context for TCP options */
 	struct c_tcp_opts_ctxt_tmp tcp_opts;

@@ -1058,17 +1058,33 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	{
 	  tcp_context->ecn_used_change_count++;
 	}
+	if(tmp.tcp_seq_num_just_changed)
+	{
+		tcp_context->tcp_seq_num_trans_nr = 0;
+	}
 	if(tcp_context->tcp_seq_num_trans_nr < oa_repetitions_nr)
 	{
 		tcp_context->tcp_seq_num_trans_nr++;
+	}
+	if(tmp.tcp_ack_num_just_changed)
+	{
+		tcp_context->tcp_ack_num_trans_nr = 0;
 	}
 	if(tcp_context->tcp_ack_num_trans_nr < oa_repetitions_nr)
 	{
 		tcp_context->tcp_ack_num_trans_nr++;
 	}
+	if(tmp.tcp_window_just_changed)
+	{
+		tcp_context->tcp_window_change_count = 0;
+	}
 	if(tcp_context->tcp_window_change_count < oa_repetitions_nr)
 	{
 		tcp_context->tcp_window_change_count++;
+	}
+	if(tmp.tcp_urg_ptr_just_changed)
+	{
+		tcp_context->tcp_urg_ptr_trans_nr = 0;
 	}
 	if(tcp_context->tcp_urg_ptr_trans_nr < oa_repetitions_nr)
 	{
@@ -1085,9 +1101,17 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 			tcp_context->ttl_hopl_change_count[ip_hdr_pos]++;
 		}
 	}
+	if(tmp.outer_ip_id_behavior_just_changed)
+	{
+		tcp_context->outer_ip_id_behavior_trans_nr = 0;
+	}
 	if(tcp_context->outer_ip_id_behavior_trans_nr < oa_repetitions_nr)
 	{
 		tcp_context->outer_ip_id_behavior_trans_nr++;
+	}
+	if(tmp.innermost_ip_id_behavior_just_changed)
+	{
+		tcp_context->innermost_ip_id_behavior_trans_nr = 0;
 	}
 	if(tcp_context->innermost_ip_id_behavior_trans_nr < oa_repetitions_nr)
 	{
@@ -3110,6 +3134,7 @@ static void tcp_detect_changes(const struct rohc_comp_ctxt *const context,
 	tmp->is_ipv6_exts_list_dyn_changed = false;
 
 	/* by default, no outer IP-ID changed its behavior */
+	tmp->outer_ip_id_behavior_just_changed = false;
 	tmp->outer_ip_id_behavior_changed = false;
 
 	/* compute or find the new SN */
@@ -3222,7 +3247,7 @@ static void tcp_detect_changes(const struct rohc_comp_ctxt *const context,
 			                rohc_ip_id_behavior_get_descr(new_ip_id_behavior));
 			if(last_ip_id_behavior != new_ip_id_behavior)
 			{
-				tmp->outer_ip_id_behavior_changed = true;
+				tmp->outer_ip_id_behavior_just_changed = true;
 			}
 		}
 
@@ -3235,10 +3260,27 @@ static void tcp_detect_changes(const struct rohc_comp_ctxt *const context,
 	tmp->outer_ip_ttl_changed = (tmp->ttl_irreg_chain_flag != 0);
 	if(uncomp_pkt_hdrs->ip_hdrs_nr > 1)
 	{
-		tcp_field_descr_change(context, "at least one outer IP-ID behavior",
-		                       tmp->outer_ip_id_behavior_changed, 0);
 		tcp_field_descr_change(context, "at least one outer TTL/HL value",
 		                       tmp->outer_ip_ttl_changed, 0);
+
+		/* outer IP-ID behaviors that change shall be transmitted several times */
+		if(tmp->outer_ip_id_behavior_just_changed)
+		{
+			rohc_comp_debug(context, "at least one outer IP-ID behavior changed in current "
+			                "packet, it shall be transmitted %u times", oa_repetitions_nr);
+			tmp->outer_ip_id_behavior_changed = true;
+		}
+		else if(tcp_context->outer_ip_id_behavior_trans_nr < oa_repetitions_nr)
+		{
+			rohc_comp_debug(context, "at least one outer IP-ID behavior changed "
+			                "in last packets, it shall be transmitted %u times more",
+			                oa_repetitions_nr - tcp_context->outer_ip_id_behavior_trans_nr);
+			tmp->outer_ip_id_behavior_changed = true;
+		}
+		else
+		{
+		  tmp->outer_ip_id_behavior_changed = false;
+		}
 	}
 
 	/* TCP ECN */
@@ -3283,10 +3325,25 @@ static void tcp_detect_changes(const struct rohc_comp_ctxt *const context,
 		                rohc_ip_id_behavior_get_descr(new_ip_id_behavior));
 
 		/* does innermost IP-ID behavior changed? */
-		tmp->innermost_ip_id_behavior_changed =
-			(last_ip_id_behavior != new_ip_id_behavior);
-		tcp_field_descr_change(context, "innermost IP-ID behavior",
-		                       tmp->innermost_ip_id_behavior_changed, 0);
+		tmp->innermost_ip_id_behavior_just_changed =
+		  (last_ip_id_behavior != new_ip_id_behavior);
+		if(tmp->innermost_ip_id_behavior_just_changed)
+		{
+			rohc_comp_debug(context, "innermost IP-ID behavior changed in current "
+			                "packet, it shall be transmitted %u times", oa_repetitions_nr);
+			tmp->innermost_ip_id_behavior_changed = true;
+		}
+		else if(tcp_context->innermost_ip_id_behavior_trans_nr < oa_repetitions_nr)
+		{
+			rohc_comp_debug(context, "innermost IP-ID behavior changed in last packets, "
+			                "it shall be transmitted %u times more", oa_repetitions_nr -
+			                tcp_context->innermost_ip_id_behavior_trans_nr);
+			tmp->innermost_ip_id_behavior_changed = true;
+		}
+		else
+		{
+			tmp->innermost_ip_id_behavior_changed = false;
+		}
 
 		/* compute the new innermost IP-ID / SN delta */
 		if(new_ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
@@ -3320,6 +3377,7 @@ static void tcp_detect_changes(const struct rohc_comp_ctxt *const context,
 
 		/* no IP-ID for IPv6 */
 		tmp->ip_id_delta = 0;
+		tmp->innermost_ip_id_behavior_just_changed = false;
 		tmp->innermost_ip_id_behavior_changed = false;
 		tmp->innermost_ip_id_behavior = inner_ip_ctxt->ip_id_behavior;
 
@@ -3550,18 +3608,18 @@ static void tcp_detect_changes_tcp_hdr(const struct rohc_comp_ctxt *const contex
 	}
 
 	/* how many bits are required to encode the new TCP window? */
-	if(tcp->window != tcp_context->window_nbo)
+	tmp->tcp_window_just_changed = (tcp->window != tcp_context->window_nbo);
+	if(tmp->tcp_window_just_changed)
 	{
-		tmp->tcp_window_changed = 1;
-		tcp_context->tcp_window_change_count = 0;
+		tmp->tcp_window_changed = true;
 	}
 	else if(tcp_context->tcp_window_change_count < oa_repetitions_nr)
 	{
-		tmp->tcp_window_changed = 1;
+		tmp->tcp_window_changed = true;
 	}
 	else
 	{
-		tmp->tcp_window_changed = 0;
+		tmp->tcp_window_changed = false;
 	}
 	tcp_field_descr_change(context, "TCP window", tmp->tcp_window_changed,
 	                       tcp_context->tcp_window_change_count);
@@ -3706,50 +3764,13 @@ static void tcp_detect_changes_tcp_hdr(const struct rohc_comp_ctxt *const contex
 		tcp_context->ack_stride = new_ack_stride;
 	}
 
-	/* how many bits are required to encode the new ACK number? */
-	tmp->tcp_seq_num_unchanged = (tmp->seq_num == tcp_context->seq_num);
-	tcp_field_descr_change(context, "TCP sequence number", !tmp->tcp_seq_num_unchanged, 0);
-	tmp->tcp_ack_num_unchanged = (tmp->ack_num == tcp_context->ack_num);
-	tcp_field_descr_change(context, "TCP ACK number", !tmp->tcp_ack_num_unchanged, 0);
-	tmp->tcp_urg_ptr_changed = (tcp->urg_ptr != tcp_context->urg_ptr_nbo);
-	tcp_field_descr_change(context, "TCP URG pointer", tmp->tcp_urg_ptr_changed, 0);
-
-	/* outer IP-ID behaviors that change shall be transmitted several times */
-	if(tmp->outer_ip_id_behavior_changed)
-	{
-		rohc_comp_debug(context, "at least one outer IP-ID behavior changed in current "
-		                "packet, it shall be transmitted %u times", oa_repetitions_nr);
-		tcp_context->outer_ip_id_behavior_trans_nr = 0;
-	}
-	else if(tcp_context->outer_ip_id_behavior_trans_nr < oa_repetitions_nr)
-	{
-		rohc_comp_debug(context, "at least one outer IP-ID behavior changed "
-		                "in last packets, it shall be transmitted %u times more",
-		                oa_repetitions_nr - tcp_context->outer_ip_id_behavior_trans_nr);
-		tmp->outer_ip_id_behavior_changed = true;
-	}
-
-	/* innermost IP-ID behavior that changes shall be transmitted several times */
-	if(tmp->innermost_ip_id_behavior_changed)
-	{
-		rohc_comp_debug(context, "innermost IP-ID behavior changed in current "
-		                "packet, it shall be transmitted %u times", oa_repetitions_nr);
-		tcp_context->innermost_ip_id_behavior_trans_nr = 0;
-	}
-	else if(tcp_context->innermost_ip_id_behavior_trans_nr < oa_repetitions_nr)
-	{
-		rohc_comp_debug(context, "innermost IP-ID behavior changed in last packets, "
-		                "it shall be transmitted %u times more", oa_repetitions_nr -
-		                tcp_context->innermost_ip_id_behavior_trans_nr);
-		tmp->innermost_ip_id_behavior_changed = true;
-	}
-
-	/* TCP sequence number that changes shall be transmitted several times */
-	if(!tmp->tcp_seq_num_unchanged)
+	/* TCP sequence number */
+	tmp->tcp_seq_num_just_changed = (tmp->seq_num != tcp_context->seq_num);
+	if(tmp->tcp_seq_num_just_changed)
 	{
 		rohc_comp_debug(context, "TCP sequence number changed in current packet, "
 		                "it shall be transmitted %u times", oa_repetitions_nr);
-		tcp_context->tcp_seq_num_trans_nr = 0;
+		tmp->tcp_seq_num_unchanged = false;
 	}
 	else if(tcp_context->tcp_seq_num_trans_nr < oa_repetitions_nr)
 	{
@@ -3758,13 +3779,18 @@ static void tcp_detect_changes_tcp_hdr(const struct rohc_comp_ctxt *const contex
 		                oa_repetitions_nr - tcp_context->tcp_seq_num_trans_nr);
 		tmp->tcp_seq_num_unchanged = false;
 	}
+	else
+	{
+		tmp->tcp_seq_num_unchanged = true;
+	}
 
-	/* TCP ACK number that changes shall be transmitted several times */
-	if(!tmp->tcp_ack_num_unchanged)
+	/* TCP ACK number */
+	tmp->tcp_ack_num_just_changed = (tmp->ack_num != tcp_context->ack_num);
+	if(tmp->tcp_ack_num_just_changed)
 	{
 		rohc_comp_debug(context, "TCP ACK number changed in current packet, "
 		                "it shall be transmitted %u times", oa_repetitions_nr);
-		tcp_context->tcp_ack_num_trans_nr = 0;
+		tmp->tcp_ack_num_unchanged = false;
 	}
 	else if(tcp_context->tcp_ack_num_trans_nr < oa_repetitions_nr)
 	{
@@ -3773,13 +3799,18 @@ static void tcp_detect_changes_tcp_hdr(const struct rohc_comp_ctxt *const contex
 		                oa_repetitions_nr - tcp_context->tcp_ack_num_trans_nr);
 		tmp->tcp_ack_num_unchanged = false;
 	}
+	else
+	{
+		tmp->tcp_ack_num_unchanged = true;
+	}
 
-	/* TCP URG pointer that changes shall be transmitted several times */
-	if(tmp->tcp_urg_ptr_changed)
+	/* TCP URG Pointer */
+	tmp->tcp_urg_ptr_just_changed = (tcp->urg_ptr != tcp_context->urg_ptr_nbo);
+	if(tmp->tcp_urg_ptr_just_changed)
 	{
 		rohc_comp_debug(context, "TCP URG pointer changed in current packet, "
 		                "it shall be transmitted %u times", oa_repetitions_nr);
-		tcp_context->tcp_urg_ptr_trans_nr = 0;
+		tmp->tcp_urg_ptr_changed = true;
 	}
 	else if(tcp_context->tcp_urg_ptr_trans_nr < oa_repetitions_nr)
 	{
@@ -3787,6 +3818,10 @@ static void tcp_detect_changes_tcp_hdr(const struct rohc_comp_ctxt *const contex
 		                "it shall be transmitted %u times more",
 		                oa_repetitions_nr - tcp_context->tcp_urg_ptr_trans_nr);
 		tmp->tcp_urg_ptr_changed = true;
+	}
+	else
+	{
+		tmp->tcp_urg_ptr_changed = false;
 	}
 }
 
