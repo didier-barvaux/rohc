@@ -230,13 +230,12 @@ static int c_tcp_build_rnd_7(const struct rohc_comp_ctxt *const context,
 
 static int c_tcp_build_rnd_8(const struct rohc_comp_ctxt *const context,
                              const ip_context_t *const inner_ip_ctxt,
-                             const struct sc_tcp_context *const tcp_context,
                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                              const struct tcp_tmp_variables *const tmp,
                              const uint8_t crc,
                              uint8_t *const rohc_data,
                              const size_t rohc_max_len)
-	__attribute__((nonnull(1, 2, 3, 4, 5, 7), warn_unused_result));
+	__attribute__((nonnull(1, 2, 3, 4, 6), warn_unused_result));
 
 
 /*
@@ -332,14 +331,13 @@ static int c_tcp_build_seq_7(const struct rohc_comp_ctxt *const context,
 
 static int c_tcp_build_seq_8(const struct rohc_comp_ctxt *const context,
                              const ip_context_t *const inner_ip_ctxt,
-                             const struct sc_tcp_context *const tcp_context,
                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                              const struct tcp_tmp_variables *const tmp,
                              const uint16_t innermost_ip_id_delta,
                              const uint8_t crc,
                              uint8_t *const rohc_data,
                              const size_t rohc_max_len)
-	__attribute__((nonnull(1, 2, 3, 4, 5, 8), warn_unused_result));
+	__attribute__((nonnull(1, 2, 3, 4, 7), warn_unused_result));
 
 static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
                                  const ip_context_t *const inner_ip_ctxt,
@@ -731,7 +729,7 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 
 	/* init the last list of TCP options */
 	tcp_context->tcp_opts.structure_nr_trans = 0;
-	tcp_context->tcp_opts.structure_nr = 0;
+	tcp_context->tcp_opts.old_structure_nr = 0;
 	// Initialize TCP options list index used
 	for(i = 0; i <= MAX_TCP_OPTION_INDEX; i++)
 	{
@@ -1102,6 +1100,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		if(tmp.tcp_opts.do_list_struct_changed)
 		{
 			tcp_opts->structure_nr_trans = 0;
+			tcp_opts->old_structure_nr = uncomp_pkt_hdrs->tcp_opts.nr;
 		}
 		if(tcp_opts->structure_nr_trans < oa_repetitions_nr)
 		{
@@ -1117,10 +1116,16 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 			    opt_idx <= MAX_TCP_OPTION_INDEX;
 			    opt_idx++)
 			{
-				if((tmp.tcp_opts.indexes_in_use & (1 << opt_idx)) == 0 &&
-				   tcp_opts->list[opt_idx].age < UINT8_MAX)
+				if(!tmp.tcp_opts.changes[opt_idx].used)
 				{
-					tcp_opts->list[opt_idx].age++;
+					if(tcp_opts->list[opt_idx].age < UINT8_MAX)
+					{
+						tcp_opts->list[opt_idx].age++;
+					}
+				}
+				else if(tmp.tcp_opts.changes[opt_idx].is_index_recycled)
+				{
+				  tcp_opts->list[opt_idx].age = 0;
 				}
 			}
 		}
@@ -1128,6 +1133,13 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		for(opt_pos = 0; opt_pos < uncomp_pkt_hdrs->tcp_opts.nr; opt_pos++)
 		{
 			const uint8_t opt_idx = tmp.tcp_opts.position2index[opt_pos];
+
+			if(tmp.tcp_opts.changes[opt_idx].used)
+			{
+				tcp_opts->list[opt_idx].used = true;
+				tcp_opts->list[opt_idx].type = uncomp_pkt_hdrs->tcp_opts.types[opt_pos];
+				tcp_opts->old_structure[opt_pos] = uncomp_pkt_hdrs->tcp_opts.types[opt_pos];
+			}
 
 			if(opt_idx == TCP_INDEX_TS)
 			{
@@ -1178,7 +1190,6 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 			}
 		}
 	}
-
 
 	return counter;
 
@@ -1639,8 +1650,7 @@ static int co_baseheader(const struct rohc_comp_ctxt *const context,
 			                        rohc_pkt, rohc_pkt_max_len);
 			break;
 		case ROHC_PACKET_TCP_RND_8:
-			ret = c_tcp_build_rnd_8(context, inner_ip_ctxt, tcp_context,
-			                        uncomp_pkt_hdrs, tmp, crc,
+			ret = c_tcp_build_rnd_8(context, inner_ip_ctxt, uncomp_pkt_hdrs, tmp, crc,
 			                        rohc_pkt, rohc_pkt_max_len);
 			break;
 		case ROHC_PACKET_TCP_SEQ_1:
@@ -1686,7 +1696,7 @@ static int co_baseheader(const struct rohc_comp_ctxt *const context,
 			                        rohc_pkt, rohc_pkt_max_len);
 			break;
 		case ROHC_PACKET_TCP_SEQ_8:
-			ret = c_tcp_build_seq_8(context, inner_ip_ctxt, tcp_context,
+			ret = c_tcp_build_seq_8(context, inner_ip_ctxt,
 			                        uncomp_pkt_hdrs, tmp, tmp->ip_id_delta, crc,
 			                        rohc_pkt, rohc_pkt_max_len);
 			break;
@@ -2078,7 +2088,6 @@ error:
  *
  * @param context           The compression context
  * @param inner_ip_ctxt     The specific IP innermost context
- * @param tcp_context       The specific TCP context
  * @param uncomp_pkt_hdrs   The uncompressed headers to encode
  * @param tmp               The temporary state for compressed packet
  * @param crc               The CRC on the uncompressed headers
@@ -2089,7 +2098,6 @@ error:
  */
 static int c_tcp_build_rnd_8(const struct rohc_comp_ctxt *const context,
                              const ip_context_t *const inner_ip_ctxt,
-                             const struct sc_tcp_context *const tcp_context,
                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                              const struct tcp_tmp_variables *const tmp,
                              const uint8_t crc,
@@ -2160,8 +2168,7 @@ static int c_tcp_build_rnd_8(const struct rohc_comp_ctxt *const context,
 	{
 		rohc_comp_debug(context, "compressed list of TCP options: list present");
 		rnd8->list_present = 1;
-		ret = c_tcp_code_tcp_opts_list_item(context, uncomp_pkt_hdrs,
-		                                    &tcp_context->tcp_opts, &tmp->tcp_opts,
+		ret = c_tcp_code_tcp_opts_list_item(context, uncomp_pkt_hdrs, &tmp->tcp_opts,
 		                                    tmp->tcp_opts.list_item_needed,
 		                                    rnd8->options,
 		                                    rohc_max_len - sizeof(rnd_8_t));
@@ -2637,7 +2644,6 @@ error:
  *
  * @param context           The compression context
  * @param inner_ip_ctxt     The specific IP innermost context
- * @param tcp_context       The specific TCP context
  * @param uncomp_pkt_hdrs   The uncompressed headers to encode
  * @param tmp               The temporary state for compressed packet
  * @param innermost_ip_id_delta  The offset between the innermost IP-ID and MSN
@@ -2649,7 +2655,6 @@ error:
  */
 static int c_tcp_build_seq_8(const struct rohc_comp_ctxt *const context,
                              const ip_context_t *const inner_ip_ctxt,
-                             const struct sc_tcp_context *const tcp_context,
                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                              const struct tcp_tmp_variables *const tmp,
                              const uint16_t innermost_ip_id_delta,
@@ -2717,8 +2722,7 @@ static int c_tcp_build_seq_8(const struct rohc_comp_ctxt *const context,
 	{
 		rohc_comp_debug(context, "compressed list of TCP options: list present");
 		seq8->list_present = 1;
-		ret = c_tcp_code_tcp_opts_list_item(context, uncomp_pkt_hdrs,
-		                                    &tcp_context->tcp_opts, &tmp->tcp_opts,
+		ret = c_tcp_code_tcp_opts_list_item(context, uncomp_pkt_hdrs, &tmp->tcp_opts,
 		                                    tmp->tcp_opts.list_item_needed,
 		                                    seq8->options,
 		                                    rohc_max_len - sizeof(seq_8_t));
@@ -3021,8 +3025,7 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 	{
 		rohc_comp_debug(context, "compressed list of TCP options: list present");
 		co_common->list_present = 1;
-		ret = c_tcp_code_tcp_opts_list_item(context, uncomp_pkt_hdrs,
-		                                    &tcp_context->tcp_opts, &tmp->tcp_opts,
+		ret = c_tcp_code_tcp_opts_list_item(context, uncomp_pkt_hdrs, &tmp->tcp_opts,
 		                                    tmp->tcp_opts.list_item_needed,
 		                                    co_common_opt, rohc_remain_len);
 		if(ret < 0)

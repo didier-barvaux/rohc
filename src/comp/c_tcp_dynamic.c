@@ -513,8 +513,7 @@ static int tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *const context,
 			  true, true, true, true, true, true, true, true };
 
 		ret = c_tcp_code_tcp_opts_list_item(context, uncomp_pkt_hdrs,
-		                                    &tcp_context->tcp_opts, &tmp->tcp_opts,
-		                                    all_items_needed,
+		                                    &tmp->tcp_opts, all_items_needed,
 		                                    rohc_remain_data, rohc_remain_len);
 		if(ret < 0)
 		{
