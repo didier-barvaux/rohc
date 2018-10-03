@@ -178,13 +178,13 @@ static int c_tcp_build_rnd_1(const struct rohc_comp_ctxt *const context,
 	__attribute__((nonnull(1, 2, 5), warn_unused_result));
 
 static int c_tcp_build_rnd_2(const struct rohc_comp_ctxt *const context,
-                             const struct sc_tcp_context *const tcp_context,
                              const struct tcphdr *const tcp,
                              const uint16_t msn,
                              const uint8_t crc,
+                             const uint32_t seq_num_scaled,
                              uint8_t *const rohc_data,
                              const size_t rohc_max_len)
-	__attribute__((nonnull(1, 2, 3, 6), warn_unused_result));
+	__attribute__((nonnull(1, 2, 6), warn_unused_result));
 
 static int c_tcp_build_rnd_3(const struct rohc_comp_ctxt *const context,
                              const struct tcphdr *const tcp,
@@ -195,13 +195,13 @@ static int c_tcp_build_rnd_3(const struct rohc_comp_ctxt *const context,
 	__attribute__((nonnull(1, 2, 5), warn_unused_result));
 
 static int c_tcp_build_rnd_4(const struct rohc_comp_ctxt *const context,
-                             const struct sc_tcp_context *const tcp_context,
                              const struct tcphdr *const tcp,
                              const uint16_t msn,
                              const uint8_t crc,
+                             const uint32_t ack_num_scaled,
                              uint8_t *const rohc_data,
                              const size_t rohc_max_len)
-	__attribute__((nonnull(1, 2, 3, 6), warn_unused_result));
+	__attribute__((nonnull(1, 2, 6), warn_unused_result));
 
 static int c_tcp_build_rnd_5(const struct rohc_comp_ctxt *const context,
                              const struct tcphdr *const tcp,
@@ -212,13 +212,13 @@ static int c_tcp_build_rnd_5(const struct rohc_comp_ctxt *const context,
 	__attribute__((nonnull(1, 2, 5), warn_unused_result));
 
 static int c_tcp_build_rnd_6(const struct rohc_comp_ctxt *const context,
-                             const struct sc_tcp_context *const tcp_context,
                              const struct tcphdr *const tcp,
                              const uint16_t msn,
                              const uint8_t crc,
+                             const uint32_t seq_num_scaled,
                              uint8_t *const rohc_data,
                              const size_t rohc_max_len)
-	__attribute__((nonnull(1, 2, 3, 6), warn_unused_result));
+	__attribute__((nonnull(1, 2, 6), warn_unused_result));
 
 static int c_tcp_build_rnd_7(const struct rohc_comp_ctxt *const context,
                              const struct tcphdr *const tcp,
@@ -256,16 +256,16 @@ static int c_tcp_build_seq_1(const struct rohc_comp_ctxt *const context,
 
 static int c_tcp_build_seq_2(const struct rohc_comp_ctxt *const context,
                              const ip_context_t *const inner_ip_ctxt,
-                             const struct sc_tcp_context *const tcp_context,
                              const struct ip_hdr *const inner_ip_hdr,
                              const size_t inner_ip_hdr_len,
                              const struct tcphdr *const tcp,
                              const uint16_t msn,
                              const uint16_t innermost_ip_id_delta,
                              const uint8_t crc,
+                             const uint32_t seq_num_scaled,
                              uint8_t *const rohc_data,
                              const size_t rohc_max_len)
-	__attribute__((nonnull(1, 2, 3, 4, 6, 10), warn_unused_result));
+	__attribute__((nonnull(1, 2, 3, 5, 10), warn_unused_result));
 
 static int c_tcp_build_seq_3(const struct rohc_comp_ctxt *const context,
                              const ip_context_t *const inner_ip_ctxt,
@@ -281,16 +281,16 @@ static int c_tcp_build_seq_3(const struct rohc_comp_ctxt *const context,
 
 static int c_tcp_build_seq_4(const struct rohc_comp_ctxt *const context,
                              const ip_context_t *const inner_ip_ctxt,
-                             const struct sc_tcp_context *const tcp_context,
                              const struct ip_hdr *const inner_ip_hdr,
                              const size_t inner_ip_hdr_len,
                              const struct tcphdr *const tcp,
                              const uint16_t msn,
                              const uint16_t innermost_ip_id_delta,
                              const uint8_t crc,
+                             const uint32_t ack_num_scaled,
                              uint8_t *const rohc_data,
                              const size_t rohc_max_len)
-	__attribute__((nonnull(1, 2, 3, 4, 6, 10), warn_unused_result));
+	__attribute__((nonnull(1, 2, 3, 5, 10), warn_unused_result));
 
 static int c_tcp_build_seq_5(const struct rohc_comp_ctxt *const context,
                              const ip_context_t *const inner_ip_ctxt,
@@ -306,16 +306,16 @@ static int c_tcp_build_seq_5(const struct rohc_comp_ctxt *const context,
 
 static int c_tcp_build_seq_6(const struct rohc_comp_ctxt *const context,
                              const ip_context_t *const inner_ip_ctxt,
-                             const struct sc_tcp_context *const tcp_context,
                              const struct ip_hdr *const inner_ip_hdr,
                              const size_t inner_ip_hdr_len,
                              const struct tcphdr *const tcp,
                              const uint16_t msn,
                              const uint16_t innermost_ip_id_delta,
                              const uint8_t crc,
+                             const uint32_t seq_num_scaled,
                              uint8_t *const rohc_data,
                              const size_t rohc_max_len)
-	__attribute__((nonnull(1, 2, 3, 4, 6, 10), warn_unused_result));
+	__attribute__((nonnull(1, 2, 3, 5, 10), warn_unused_result));
 
 static int c_tcp_build_seq_7(const struct rohc_comp_ctxt *const context,
                              const ip_context_t *const inner_ip_ctxt,
@@ -998,20 +998,24 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 
 	/* sequence number */
 	c_add_wlsb(&tcp_context->seq_wlsb, tmp.new_msn, tcp_context->seq_num);
-	if(tcp_context->seq_num_factor != 0)
+	tcp_context->seq_num_factor = uncomp_pkt_hdrs->payload_len;
+	tcp_context->seq_num_residue = tmp.seq_num_residue;
+	if(uncomp_pkt_hdrs->payload_len > 0)
 	{
-		c_add_wlsb(&tcp_context->seq_scaled_wlsb, tmp.new_msn,
-		           tcp_context->seq_num_scaled);
+		c_add_wlsb(&tcp_context->seq_scaled_wlsb, tmp.new_msn, tmp.seq_num_scaled);
 
 		/* sequence number sent once more, count the number of transmissions to
 		 * know when scaled sequence number is possible */
+		if(tmp.seq_num_scaling_just_changed)
+		{
+			tcp_context->seq_num_scaling_nr = 0;
+		}
 		if(tcp_context->seq_num_scaling_nr < oa_repetitions_nr)
 		{
 			tcp_context->seq_num_scaling_nr++;
 			rohc_comp_debug(context, "unscaled sequence number was transmitted "
-			                "%u / %u times since the scaling factor or residue "
-			                "changed", tcp_context->seq_num_scaling_nr,
-			                oa_repetitions_nr);
+			                "%u / %u times since the scaling residue changed",
+			                tcp_context->seq_num_scaling_nr, oa_repetitions_nr);
 		}
 	}
 
@@ -1019,8 +1023,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	c_add_wlsb(&tcp_context->ack_wlsb, tmp.new_msn, tcp_context->ack_num);
 	if(tcp_context->ack_stride != 0)
 	{
-		c_add_wlsb(&tcp_context->ack_scaled_wlsb, tmp.new_msn,
-		           tcp_context->ack_num_scaled);
+		c_add_wlsb(&tcp_context->ack_scaled_wlsb, tmp.new_msn, tmp.ack_num_scaled);
 
 		/* ACK number sent once more, count the number of transmissions to
 		 * know when scaled ACK number is possible */
@@ -1674,24 +1677,25 @@ static int co_baseheader(const struct rohc_comp_ctxt *const context,
 			                        rohc_pkt, rohc_pkt_max_len);
 			break;
 		case ROHC_PACKET_TCP_RND_2:
-			ret = c_tcp_build_rnd_2(context, tcp_context, uncomp_pkt_hdrs->tcp, msn, crc,
-			                        rohc_pkt, rohc_pkt_max_len);
+			ret = c_tcp_build_rnd_2(context, uncomp_pkt_hdrs->tcp, msn, crc,
+			                        tmp->seq_num_scaled, rohc_pkt, rohc_pkt_max_len);
 			break;
 		case ROHC_PACKET_TCP_RND_3:
 			ret = c_tcp_build_rnd_3(context, uncomp_pkt_hdrs->tcp, msn, crc,
 			                        rohc_pkt, rohc_pkt_max_len);
 			break;
 		case ROHC_PACKET_TCP_RND_4:
-			ret = c_tcp_build_rnd_4(context, tcp_context, uncomp_pkt_hdrs->tcp, msn, crc,
-			                        rohc_pkt, rohc_pkt_max_len);
+			assert(tcp_context->ack_stride != 0);
+			ret = c_tcp_build_rnd_4(context, uncomp_pkt_hdrs->tcp, msn, crc,
+			                        tmp->ack_num_scaled, rohc_pkt, rohc_pkt_max_len);
 			break;
 		case ROHC_PACKET_TCP_RND_5:
 			ret = c_tcp_build_rnd_5(context, uncomp_pkt_hdrs->tcp, msn, crc,
 			                        rohc_pkt, rohc_pkt_max_len);
 			break;
 		case ROHC_PACKET_TCP_RND_6:
-			ret = c_tcp_build_rnd_6(context, tcp_context, uncomp_pkt_hdrs->tcp, msn, crc,
-			                        rohc_pkt, rohc_pkt_max_len);
+			ret = c_tcp_build_rnd_6(context, uncomp_pkt_hdrs->tcp, msn, crc,
+			                        tmp->seq_num_scaled, rohc_pkt, rohc_pkt_max_len);
 			break;
 		case ROHC_PACKET_TCP_RND_7:
 			ret = c_tcp_build_rnd_7(context, uncomp_pkt_hdrs->tcp, msn, crc,
@@ -1708,9 +1712,9 @@ static int co_baseheader(const struct rohc_comp_ctxt *const context,
 			                        rohc_pkt, rohc_pkt_max_len);
 			break;
 		case ROHC_PACKET_TCP_SEQ_2:
-			ret = c_tcp_build_seq_2(context, inner_ip_ctxt, tcp_context,
+			ret = c_tcp_build_seq_2(context, inner_ip_ctxt,
 			                        inner_ip_hdr, inner_ip_hdr_len, tcp,
-			                        msn, tmp->ip_id_delta, crc,
+			                        msn, tmp->ip_id_delta, crc, tmp->seq_num_scaled,
 			                        rohc_pkt, rohc_pkt_max_len);
 			break;
 		case ROHC_PACKET_TCP_SEQ_3:
@@ -1720,9 +1724,10 @@ static int co_baseheader(const struct rohc_comp_ctxt *const context,
 			                        rohc_pkt, rohc_pkt_max_len);
 			break;
 		case ROHC_PACKET_TCP_SEQ_4:
-			ret = c_tcp_build_seq_4(context, inner_ip_ctxt, tcp_context,
+			assert(tcp_context->ack_stride != 0);
+			ret = c_tcp_build_seq_4(context, inner_ip_ctxt,
 			                        inner_ip_hdr, inner_ip_hdr_len, tcp,
-			                        msn, tmp->ip_id_delta, crc,
+			                        msn, tmp->ip_id_delta, crc, tmp->ack_num_scaled,
 			                        rohc_pkt, rohc_pkt_max_len);
 			break;
 		case ROHC_PACKET_TCP_SEQ_5:
@@ -1732,9 +1737,9 @@ static int co_baseheader(const struct rohc_comp_ctxt *const context,
 			                        rohc_pkt, rohc_pkt_max_len);
 			break;
 		case ROHC_PACKET_TCP_SEQ_6:
-			ret = c_tcp_build_seq_6(context, inner_ip_ctxt, tcp_context,
+			ret = c_tcp_build_seq_6(context, inner_ip_ctxt,
 			                        inner_ip_hdr, inner_ip_hdr_len, tcp,
-			                        msn, tmp->ip_id_delta, crc,
+			                        msn, tmp->ip_id_delta, crc, tmp->seq_num_scaled,
 			                        rohc_pkt, rohc_pkt_max_len);
 			break;
 		case ROHC_PACKET_TCP_SEQ_7:
@@ -1831,20 +1836,20 @@ error:
  * See RFC4996 page 81
  *
  * @param context         The compression context
- * @param tcp_context     The specific TCP context
  * @param tcp             The TCP header to compress
  * @param msn             The new Master Sequence Number (MSN)
  * @param crc             The CRC on the uncompressed headers
+ * @param seq_num_scaled  The scaled sequence number
  * @param[out] rohc_data  The ROHC packet being built
  * @param rohc_max_len    The max remaining length in the ROHC buffer
  * @return                The length appended in the ROHC buffer if positive,
  *                        -1 in case of error
  */
 static int c_tcp_build_rnd_2(const struct rohc_comp_ctxt *const context,
-                             const struct sc_tcp_context *const tcp_context,
                              const struct tcphdr *const tcp,
                              const uint16_t msn,
                              const uint8_t crc,
+                             const uint32_t seq_num_scaled,
                              uint8_t *const rohc_data,
                              const size_t rohc_max_len)
 {
@@ -1859,7 +1864,7 @@ static int c_tcp_build_rnd_2(const struct rohc_comp_ctxt *const context,
 	}
 
 	rnd2->discriminator = 0x0c; /* '1100' */
-	rnd2->seq_num_scaled = tcp_context->seq_num_scaled & 0xf;
+	rnd2->seq_num_scaled = seq_num_scaled & 0xf;
 	rnd2->msn = msn & 0xf;
 	rnd2->psh_flag = tcp->psh_flag;
 	rnd2->header_crc = crc;
@@ -1928,26 +1933,24 @@ error:
  * See RFC4996 page 81
  *
  * @param context         The compression context
- * @param tcp_context     The specific TCP context
  * @param tcp             The TCP header to compress
  * @param msn             The new Master Sequence Number (MSN)
  * @param crc             The CRC on the uncompressed headers
+ * @param ack_num_scaled  The scaled ACK number
  * @param[out] rohc_data  The ROHC packet being built
  * @param rohc_max_len    The max remaining length in the ROHC buffer
  * @return                The length appended in the ROHC buffer if positive,
  *                        -1 in case of error
  */
 static int c_tcp_build_rnd_4(const struct rohc_comp_ctxt *const context,
-                             const struct sc_tcp_context *const tcp_context,
                              const struct tcphdr *const tcp,
                              const uint16_t msn,
                              const uint8_t crc,
+                             const uint32_t ack_num_scaled,
                              uint8_t *const rohc_data,
                              const size_t rohc_max_len)
 {
 	rnd_4_t *const rnd4 = (rnd_4_t *) rohc_data;
-
-	assert(tcp_context->ack_stride != 0);
 
 	if(rohc_max_len < sizeof(rnd_4_t))
 	{
@@ -1958,7 +1961,7 @@ static int c_tcp_build_rnd_4(const struct rohc_comp_ctxt *const context,
 	}
 
 	rnd4->discriminator = 0x0d; /* '1101' */
-	rnd4->ack_num_scaled = tcp_context->ack_num_scaled & 0xf;
+	rnd4->ack_num_scaled = ack_num_scaled & 0xf;
 	rnd4->msn = msn & 0xf;
 	rnd4->psh_flag = tcp->psh_flag;
 	rnd4->header_crc = crc;
@@ -2038,20 +2041,20 @@ error:
  * See RFC4996 page 82
  *
  * @param context         The compression context
- * @param tcp_context     The specific TCP context
  * @param tcp             The TCP header to compress
  * @param msn             The new Master Sequence Number (MSN)
  * @param crc             The CRC on the uncompressed headers
+ * @param seq_num_scaled  The scaled sequence number
  * @param[out] rohc_data  The ROHC packet being built
  * @param rohc_max_len    The max remaining length in the ROHC buffer
  * @return                The length appended in the ROHC buffer if positive,
  *                        -1 in case of error
  */
 static int c_tcp_build_rnd_6(const struct rohc_comp_ctxt *const context,
-                             const struct sc_tcp_context *const tcp_context,
                              const struct tcphdr *const tcp,
                              const uint16_t msn,
                              const uint8_t crc,
+                             const uint32_t seq_num_scaled,
                              uint8_t *const rohc_data,
                              const size_t rohc_max_len)
 {
@@ -2070,7 +2073,7 @@ static int c_tcp_build_rnd_6(const struct rohc_comp_ctxt *const context,
 	rnd6->psh_flag = tcp->psh_flag;
 	rnd6->ack_num = rohc_hton16(rohc_ntoh32(tcp->ack_num) & 0xffff);
 	rnd6->msn = msn & 0xf;
-	rnd6->seq_num_scaled = tcp_context->seq_num_scaled & 0xf;
+	rnd6->seq_num_scaled = seq_num_scaled & 0xf;
 
 	return sizeof(rnd_6_t);
 
@@ -2311,13 +2314,13 @@ error:
  *
  * @param context           The compression context
  * @param inner_ip_ctxt     The specific IP innermost context
- * @param tcp_context       The specific TCP context
  * @param inner_ip_hdr      The innermost IP header
  * @param inner_ip_hdr_len  The length of the innermost IP header
  * @param tcp               The TCP header to compress
  * @param msn               The new Master Sequence Number (MSN)
  * @param innermost_ip_id_delta  The offset between the innermost IP-ID and MSN
  * @param crc               The CRC on the uncompressed headers
+ * @param seq_num_scaled    The scaled sequence number
  * @param[out] rohc_data    The ROHC packet being built
  * @param rohc_max_len      The max remaining length in the ROHC buffer
  * @return                  The length appended in the ROHC buffer if positive,
@@ -2325,13 +2328,13 @@ error:
  */
 static int c_tcp_build_seq_2(const struct rohc_comp_ctxt *const context,
                              const ip_context_t *const inner_ip_ctxt,
-                             const struct sc_tcp_context *const tcp_context,
                              const struct ip_hdr *const inner_ip_hdr,
                              const size_t inner_ip_hdr_len,
                              const struct tcphdr *const tcp,
                              const uint16_t msn,
                              const uint16_t innermost_ip_id_delta,
                              const uint8_t crc,
+                             const uint32_t seq_num_scaled,
                              uint8_t *const rohc_data,
                              const size_t rohc_max_len)
 {
@@ -2353,7 +2356,7 @@ static int c_tcp_build_seq_2(const struct rohc_comp_ctxt *const context,
 	seq2->ip_id1 = (innermost_ip_id_delta >> 4) & 0x7;
 	seq2->ip_id2 = innermost_ip_id_delta & 0xf;
 	rohc_comp_debug(context, "7-bit IP-ID offset 0x%x%x", seq2->ip_id1, seq2->ip_id2);
-	seq2->seq_num_scaled = tcp_context->seq_num_scaled & 0xf;
+	seq2->seq_num_scaled = seq_num_scaled & 0xf;
 	seq2->msn = msn & 0xf;
 	seq2->psh_flag = tcp->psh_flag;
 	seq2->header_crc = crc;
@@ -2432,13 +2435,13 @@ error:
  *
  * @param context           The compression context
  * @param inner_ip_ctxt     The specific IP innermost context
- * @param tcp_context       The specific TCP context
  * @param inner_ip_hdr      The innermost IP header
  * @param inner_ip_hdr_len  The length of the innermost IP header
  * @param tcp               The TCP header to compress
  * @param msn               The new Master Sequence Number (MSN)
  * @param innermost_ip_id_delta  The offset between the innermost IP-ID and MSN
  * @param crc               The CRC on the uncompressed headers
+ * @param ack_num_scaled    The scaled ACK number
  * @param[out] rohc_data    The ROHC packet being built
  * @param rohc_max_len      The max remaining length in the ROHC buffer
  * @return                  The length appended in the ROHC buffer if positive,
@@ -2446,13 +2449,13 @@ error:
  */
 static int c_tcp_build_seq_4(const struct rohc_comp_ctxt *const context,
                              const ip_context_t *const inner_ip_ctxt,
-                             const struct sc_tcp_context *const tcp_context,
                              const struct ip_hdr *const inner_ip_hdr,
                              const size_t inner_ip_hdr_len,
                              const struct tcphdr *const tcp,
                              const uint16_t msn,
                              const uint16_t innermost_ip_id_delta,
                              const uint8_t crc,
+                             const uint32_t ack_num_scaled,
                              uint8_t *const rohc_data,
                              const size_t rohc_max_len)
 {
@@ -2461,7 +2464,6 @@ static int c_tcp_build_seq_4(const struct rohc_comp_ctxt *const context,
 	assert(inner_ip_ctxt->version == IPV4);
 	assert(inner_ip_hdr_len >= sizeof(struct ipv4_hdr));
 	assert(inner_ip_hdr->version == IPV4);
-	assert(tcp_context->ack_stride != 0);
 
 	if(rohc_max_len < sizeof(seq_4_t))
 	{
@@ -2472,7 +2474,7 @@ static int c_tcp_build_seq_4(const struct rohc_comp_ctxt *const context,
 	}
 
 	seq4->discriminator = 0x00; /* '0' */
-	seq4->ack_num_scaled = tcp_context->ack_num_scaled & 0xf;
+	seq4->ack_num_scaled = ack_num_scaled & 0xf;
 	seq4->ip_id = innermost_ip_id_delta & 0x7;
 	rohc_comp_debug(context, "3-bit IP-ID offset 0x%x", seq4->ip_id);
 	seq4->msn = msn & 0xf;
@@ -2555,13 +2557,13 @@ error:
  *
  * @param context           The compression context
  * @param inner_ip_ctxt     The specific IP innermost context
- * @param tcp_context       The specific TCP context
  * @param inner_ip_hdr      The innermost IP header
  * @param inner_ip_hdr_len  The length of the innermost IP header
  * @param tcp               The TCP header to compress
  * @param msn               The new Master Sequence Number (MSN)
  * @param innermost_ip_id_delta  The offset between the innermost IP-ID and MSN
  * @param crc               The CRC on the uncompressed headers
+ * @param seq_num_scaled    The scaled sequence number
  * @param[out] rohc_data    The ROHC packet being built
  * @param rohc_max_len      The max remaining length in the ROHC buffer
  * @return                  The length appended in the ROHC buffer if positive,
@@ -2569,18 +2571,17 @@ error:
  */
 static int c_tcp_build_seq_6(const struct rohc_comp_ctxt *const context,
                              const ip_context_t *const inner_ip_ctxt,
-                             const struct sc_tcp_context *const tcp_context,
                              const struct ip_hdr *const inner_ip_hdr,
                              const size_t inner_ip_hdr_len,
                              const struct tcphdr *const tcp,
                              const uint16_t msn,
                              const uint16_t innermost_ip_id_delta,
                              const uint8_t crc,
+                             const uint32_t seq_num_scaled,
                              uint8_t *const rohc_data,
                              const size_t rohc_max_len)
 {
 	seq_6_t *const seq6 = (seq_6_t *) rohc_data;
-	uint8_t seq_num_scaled;
 
 	assert(inner_ip_ctxt->version == IPV4);
 	assert(inner_ip_hdr_len >= sizeof(struct ipv4_hdr));
@@ -2597,7 +2598,6 @@ static int c_tcp_build_seq_6(const struct rohc_comp_ctxt *const context,
 	seq6->discriminator = 0x1b; /* '11011' */
 
 	/* scaled sequence number */
-	seq_num_scaled = tcp_context->seq_num_scaled & 0xf;
 	seq6->seq_num_scaled1 = (seq_num_scaled >> 1) & 0x07;
 	seq6->seq_num_scaled2 = seq_num_scaled & 0x01;
 
@@ -3626,33 +3626,50 @@ static void tcp_detect_changes_tcp_hdr(const struct rohc_comp_ctxt *const contex
 
 	/* compute new scaled TCP sequence number */
 	{
-		const size_t seq_num_factor = uncomp_pkt_hdrs->payload_len;
+		const uint16_t seq_num_factor = uncomp_pkt_hdrs->payload_len;
 		uint32_t seq_num_scaled;
 		uint32_t seq_num_residue;
 
 		c_field_scaling(&seq_num_scaled, &seq_num_residue, seq_num_factor,
 		                tmp->seq_num);
-		rohc_comp_debug(context, "seq_num = 0x%x, scaled = 0x%x, factor = %zu, "
+		rohc_comp_debug(context, "seq_num = 0x%x, scaled = 0x%x, factor = %u, "
 		                "residue = 0x%x", tmp->seq_num, seq_num_scaled,
 		                seq_num_factor, seq_num_residue);
 
 		if(context->num_sent_packets == 0 ||
-		   seq_num_factor == 0 ||
 		   seq_num_factor != tcp_context->seq_num_factor ||
 		   seq_num_residue != tcp_context->seq_num_residue)
 		{
 			/* sequence number is not scalable with same parameters any more */
-			tcp_context->seq_num_scaling_nr = 0;
+			tmp->seq_num_scaling_just_changed = true;
 		}
-		rohc_comp_debug(context, "unscaled sequence number was transmitted at "
-		                "least %u / %u times since the scaling factor or "
-		                "residue changed", tcp_context->seq_num_scaling_nr,
-		                oa_repetitions_nr);
+		else
+		{
+			tmp->seq_num_scaling_just_changed = false;
+		}
 
-		/* TODO: should update context at the very end only */
-		tcp_context->seq_num_scaled = seq_num_scaled;
-		tcp_context->seq_num_residue = seq_num_residue;
-		tcp_context->seq_num_factor = seq_num_factor;
+		if(tmp->seq_num_scaling_just_changed)
+		{
+			rohc_comp_debug(context, "residue for scaled TCP sequence number changed "
+			                "in current packet, it shall be transmitted %u times",
+			                oa_repetitions_nr);
+			tmp->seq_num_scaling_changed = true;
+		}
+		else if(tcp_context->seq_num_scaling_nr < oa_repetitions_nr)
+		{
+			rohc_comp_debug(context, "residue for scaled TCP sequence number changed "
+			                "in last packets, it shall be transmitted %u times more",
+			                oa_repetitions_nr - tcp_context->seq_num_scaling_nr);
+			tmp->seq_num_scaling_changed = true;
+		}
+		else
+		{
+			rohc_comp_debug(context, "TCP sequence number may be transmitted scaled");
+			tmp->seq_num_scaling_changed = false;
+		}
+
+		tmp->seq_num_scaled = seq_num_scaled;
+		tmp->seq_num_residue = seq_num_residue;
 	}
 
 	/* compute new scaled TCP acknowledgment number */
@@ -3759,7 +3776,7 @@ static void tcp_detect_changes_tcp_hdr(const struct rohc_comp_ctxt *const contex
 			tcp_context->ack_deltas_width[tcp_context->ack_deltas_next] = new_ack_delta;
 			tcp_context->ack_deltas_next = (tcp_context->ack_deltas_next + 1) % 20;
 		}
-		tcp_context->ack_num_scaled = ack_num_scaled;
+		tmp->ack_num_scaled = ack_num_scaled;
 		tcp_context->ack_num_residue = ack_num_residue;
 		tcp_context->ack_stride = new_ack_stride;
 	}
@@ -4094,10 +4111,10 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 	   !crc7_at_least &&
 	   wlsb_is_kp_possible_16bits(&tcp_context->ip_id_wlsb,
 	                              tmp->ip_id_delta, 7, 3) &&
-	   tcp_context->seq_num_factor > 0 &&
-	   tcp_context->seq_num_scaling_nr >= oa_repetitions_nr &&
+	   is_field_scaling_possible(uncomp_pkt_hdrs->payload_len,
+	                             tmp->seq_num_scaling_changed) &&
 	   wlsb_is_kp_possible_32bits(&tcp_context->seq_scaled_wlsb,
-	                              tcp_context->seq_num_scaled, 4, 7))
+	                              tmp->seq_num_scaled, 4, 7))
 	{
 		/* seq_2 is possible */
 		TRACE_GOTO_CHOICE;
@@ -4162,10 +4179,10 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 		if(!crc7_at_least &&
 		   wlsb_is_kp_possible_16bits(&tcp_context->ip_id_wlsb,
 		                              tmp->ip_id_delta, 7, 3) &&
-		   tcp_context->seq_num_factor > 0 &&
-		   tcp_context->seq_num_scaling_nr >= oa_repetitions_nr &&
+		   is_field_scaling_possible(uncomp_pkt_hdrs->payload_len,
+		                             tmp->seq_num_scaling_changed) &&
 		   wlsb_is_kp_possible_32bits(&tcp_context->seq_scaled_wlsb,
-		                              tcp_context->seq_num_scaled, 4, 7))
+		                              tmp->seq_num_scaled, 4, 7))
 		{
 			/* seq_2 is possible */
 			TRACE_GOTO_CHOICE;
@@ -4206,7 +4223,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 		                              tcp_context->ack_num_scaling_nr,
 		                              oa_repetitions_nr) &&
 		   wlsb_is_kp_possible_32bits(&tcp_context->ack_scaled_wlsb,
-		                              tcp_context->ack_num_scaled, 4, 3))
+		                              tmp->ack_num_scaled, 4, 3))
 		{
 			TRACE_GOTO_CHOICE;
 			packet_type = ROHC_PACKET_TCP_SEQ_4;
@@ -4240,10 +4257,10 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 		/* sequence and acknowledgment numbers changed:
 		 * seq_6, seq_5, seq_8 or co_common */
 		if(!crc7_at_least &&
-		   tcp_context->seq_num_factor > 0 &&
-		   tcp_context->seq_num_scaling_nr >= oa_repetitions_nr &&
+		   is_field_scaling_possible(uncomp_pkt_hdrs->payload_len,
+		                             tmp->seq_num_scaling_changed) &&
 		   wlsb_is_kp_possible_32bits(&tcp_context->seq_scaled_wlsb,
-		                              tcp_context->seq_num_scaled, 4, 7) &&
+		                              tmp->seq_num_scaled, 4, 7) &&
 		   wlsb_is_kp_possible_32bits(&tcp_context->ack_wlsb, tmp->ack_num, 16, 16383))
 		{
 			TRACE_GOTO_CHOICE;
@@ -4315,11 +4332,10 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 	   !tmp->tcp_window_changed &&
 	   !crc7_at_least &&
 	   tmp->tcp_ack_num_unchanged &&
-	   uncomp_pkt_hdrs->payload_len > 0 &&
-	   tcp_context->seq_num_factor > 0 &&
-	   tcp_context->seq_num_scaling_nr >= oa_repetitions_nr &&
+	   is_field_scaling_possible(uncomp_pkt_hdrs->payload_len,
+	                             tmp->seq_num_scaling_changed) &&
 	   wlsb_is_kp_possible_32bits(&tcp_context->seq_scaled_wlsb,
-	                              tcp_context->seq_num_scaled, 4, 7))
+	                              tmp->seq_num_scaled, 4, 7))
 	{
 		/* rnd_2 is possible */
 		assert(uncomp_pkt_hdrs->payload_len > 0);
@@ -4363,11 +4379,10 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 		}
 		else if(!crc7_at_least &&
 		        tmp->tcp_ack_num_unchanged &&
-		        uncomp_pkt_hdrs->payload_len > 0 &&
-		        tcp_context->seq_num_factor > 0 &&
-		        tcp_context->seq_num_scaling_nr >= oa_repetitions_nr &&
+		        is_field_scaling_possible(uncomp_pkt_hdrs->payload_len,
+		                                  tmp->seq_num_scaling_changed) &&
 		        wlsb_is_kp_possible_32bits(&tcp_context->seq_scaled_wlsb,
-		                                   tcp_context->seq_num_scaled, 4, 7))
+		                                   tmp->seq_num_scaled, 4, 7))
 		{
 			/* rnd_2 is possible */
 			assert(uncomp_pkt_hdrs->payload_len > 0);
@@ -4380,7 +4395,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 		                                   tcp_context->ack_num_scaling_nr,
 		                                   oa_repetitions_nr) &&
 		        wlsb_is_kp_possible_32bits(&tcp_context->ack_scaled_wlsb,
-		                                   tcp_context->ack_num_scaled, 4, 3) &&
+		                                   tmp->ack_num_scaled, 4, 3) &&
 		        tmp->tcp_seq_num_unchanged)
 		{
 			/* rnd_4 is possible */
@@ -4406,10 +4421,10 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 		}
 		else if(!crc7_at_least &&
 		        tcp->ack_flag != 0 &&
-		        tcp_context->seq_num_factor > 0 &&
-		        tcp_context->seq_num_scaling_nr >= oa_repetitions_nr &&
+		        is_field_scaling_possible(uncomp_pkt_hdrs->payload_len,
+		                                  tmp->seq_num_scaling_changed) &&
 		        wlsb_is_kp_possible_32bits(&tcp_context->seq_scaled_wlsb,
-		                                   tcp_context->seq_num_scaled, 4, 7) &&
+		                                   tmp->seq_num_scaled, 4, 7) &&
 		        wlsb_is_kp_possible_32bits(&tcp_context->ack_wlsb, tmp->ack_num, 16, 16383))
 		{
 			/* ACK number present */

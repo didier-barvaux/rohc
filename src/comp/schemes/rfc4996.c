@@ -341,7 +341,7 @@ error:
  */
 void c_field_scaling(uint32_t *const scaled_value,
                      uint32_t *const residue_field,
-                     const uint32_t scaling_factor,
+                     const uint16_t scaling_factor,
                      const uint32_t unscaled_value)
 {
 	if(scaling_factor == 0)
@@ -353,9 +353,16 @@ void c_field_scaling(uint32_t *const scaled_value,
 	{
 		*residue_field = unscaled_value % scaling_factor;
 		*scaled_value = unscaled_value / scaling_factor;
-		assert(unscaled_value ==
-		       (((*scaled_value) * scaling_factor) + (*residue_field)));
 	}
+	assert(unscaled_value ==
+	       (((*scaled_value) * scaling_factor) + (*residue_field)));
+}
+
+
+/* TODO */
+bool is_field_scaling_possible(const uint16_t factor, const bool params_changed)
+{
+  return (factor > 0 && !params_changed);
 }
 
 

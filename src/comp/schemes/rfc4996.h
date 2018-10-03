@@ -81,9 +81,12 @@ int variable_length_32_enc(const bool is_unchanged,
 /* RFC4996 page 49 */
 void c_field_scaling(uint32_t *const scaled_value,
                      uint32_t *const residue_field,
-                     const uint32_t scaling_factor,
+                     const uint16_t scaling_factor,
                      const uint32_t unscaled_value)
 	__attribute__((nonnull(1, 2)));
+
+bool is_field_scaling_possible(const uint16_t factor, const bool params_changed)
+	__attribute__((warn_unused_result, const));
 
 // RFC4996 page 71
 bool rsf_index_enc_possible(const uint8_t rsf_flags)

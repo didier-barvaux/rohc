@@ -50,7 +50,11 @@ struct tcp_tmp_variables
 	uint16_t new_msn;
 
 	uint32_t seq_num;
+	uint32_t seq_num_scaled;
+	uint32_t seq_num_residue;
+
 	uint32_t ack_num;
+	uint32_t ack_num_scaled;
 
 	/** The new innermost IP-ID behavior */
 	rohc_ip_id_behavior_t innermost_ip_id_behavior;
@@ -113,7 +117,9 @@ struct tcp_tmp_variables
 	uint32_t tcp_urg_ptr_just_changed:1;
 	uint32_t innermost_ip_id_behavior_just_changed:1;
 	uint32_t outer_ip_id_behavior_just_changed:1;
-	uint32_t unused:4;
+	uint32_t seq_num_scaling_just_changed:1;
+	uint32_t seq_num_scaling_changed:1;
+	uint32_t unused:2;
 
 	/** The temporary part of the context for TCP options */
 	struct c_tcp_opts_ctxt_tmp tcp_opts;
@@ -128,16 +134,16 @@ struct sc_tcp_context
 	 * if a positive ACK may cause a transition to a higher compression state) */
 	uint16_t msn_of_last_ctxt_updating_pkt;
 
+	uint16_t seq_num_factor;
+	uint16_t ack_stride;
+
 	uint32_t seq_num;
-	uint32_t seq_num_scaled;
 	uint32_t seq_num_residue;
-	uint32_t seq_num_factor;
 
 	uint32_t ack_num;
-	uint16_t ack_deltas_width[20];
-	uint32_t ack_num_scaled;
 	uint32_t ack_num_residue;
-	uint16_t ack_stride;
+
+	uint16_t ack_deltas_width[20];
 	uint8_t ack_deltas_next;
 
 	/** The number of TCP sequence number transmissions since last change */
@@ -172,6 +178,9 @@ struct sc_tcp_context
 	uint8_t ack_flag:1;
 	uint8_t unused2:1;
 
+	uint8_t ip_contexts_nr;
+	ip_context_t ip_contexts[ROHC_MAX_IP_HDRS];
+
 	struct c_wlsb msn_wlsb;    /**< The W-LSB decoding context for MSN */
 	struct c_wlsb ttl_hopl_wlsb;
 	struct c_wlsb ip_id_wlsb;
@@ -186,27 +195,24 @@ struct sc_tcp_context
 
 	uint16_t urg_ptr_nbo;
 	uint16_t window_nbo;
-
-	uint8_t ip_contexts_nr;
-	ip_context_t ip_contexts[ROHC_MAX_IP_HDRS];
 };
 
 /* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
 #if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
      (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
       (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
-_Static_assert((offsetof(struct sc_tcp_context, seq_num_scaled) % 8) == 0,
-               "seq_num_scaled in sc_tcp_context should be aligned on 8 bytes");
+_Static_assert((offsetof(struct sc_tcp_context, seq_num) % 8) == 0,
+               "seq_num in sc_tcp_context should be aligned on 8 bytes");
+_Static_assert((offsetof(struct sc_tcp_context, ack_num) % 8) == 0,
+               "ack_num in sc_tcp_context should be aligned on 8 bytes");
 _Static_assert((offsetof(struct sc_tcp_context, ack_deltas_width) % 8) == 0,
                "ack_deltas_width in sc_tcp_context should be aligned on 8 bytes");
-_Static_assert((offsetof(struct sc_tcp_context, msn_wlsb) % 8) == 0,
-               "msn_wlsb in sc_tcp_context should be aligned on 8 bytes");
-_Static_assert((offsetof(struct sc_tcp_context, ttl_hopl_wlsb) % 8) == 0,
-               "ttl_hopl_wlsb in sc_tcp_context should be aligned on 8 bytes");
-_Static_assert((offsetof(struct sc_tcp_context, tcp_opts) % 8) == 0,
-               "tcp_opts in sc_tcp_context should be aligned on 8 bytes");
 _Static_assert((offsetof(struct sc_tcp_context, ip_contexts) % 8) == 0,
                "ip_contexts in sc_tcp_context should be aligned on 8 bytes");
+_Static_assert((offsetof(struct sc_tcp_context, msn_wlsb) % 8) == 0,
+               "msn_wlsb in sc_tcp_context should be aligned on 8 bytes");
+_Static_assert((offsetof(struct sc_tcp_context, tcp_opts) % 8) == 0,
+               "tcp_opts in sc_tcp_context should be aligned on 8 bytes");
 _Static_assert((sizeof(struct sc_tcp_context) % 8) == 0,
                "sc_tcp_context length should be multiple of 8 bytes");
 #endif
