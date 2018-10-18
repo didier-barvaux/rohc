@@ -3573,7 +3573,7 @@ static void tcp_detect_changes_tcp_hdr(const struct rohc_comp_ctxt *const contex
                                        struct tcp_tmp_variables *const tmp)
 {
 	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
-	struct sc_tcp_context *const tcp_context = context->specific;
+	const struct sc_tcp_context *const tcp_context = context->specific;
 	const struct tcphdr *const tcp = uncomp_pkt_hdrs->tcp;
 
 	tmp->seq_num = rohc_ntoh32(tcp->seq_num);
