@@ -1,14 +1,3 @@
-rohc_buf_is_malformed
-rohc_buf_is_empty
-rohc_buf_pull
-rohc_buf_push
-rohc_buf_avail_len
-rohc_buf_data_at
-rohc_buf_data
-rohc_buf_prepend
-rohc_buf_append
-rohc_buf_append_buf
-rohc_buf_reset
 rohc_version
 rohc_strerror
 rohc_get_ext_descr
