@@ -630,7 +630,6 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 	tcp_context->window_nbo = tcp->window;
 	tcp_context->seq_num = rohc_ntoh32(tcp->seq_num);
 	tcp_context->ack_num = rohc_ntoh32(tcp->ack_num);
-	tcp_context->ack_stride = 0;
 
 	/* no outer IP-ID behavior will ever change if there is no outer IPv4 header */
 	if(tcp_context->ip_contexts[tcp_context->ip_contexts_nr - 1].version == IPV4)
@@ -1021,12 +1020,24 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 
 	/* ACK number */
 	c_add_wlsb(&tcp_context->ack_wlsb, tmp.new_msn, tcp_context->ack_num);
-	if(tcp_context->ack_stride != 0)
+	if(tmp.new_ack_delta != 0)
+	{
+		tcp_context->ack_deltas_width[tcp_context->ack_deltas_next] =
+			tmp.new_ack_delta;
+		tcp_context->ack_deltas_next = (tcp_context->ack_deltas_next + 1) % 20;
+	}
+	tcp_context->old_ack_stride = tmp.ack_stride;
+	tcp_context->ack_num_residue = tmp.ack_num_residue;
+	if(tcp_context->old_ack_stride != 0)
 	{
 		c_add_wlsb(&tcp_context->ack_scaled_wlsb, tmp.new_msn, tmp.ack_num_scaled);
 
 		/* ACK number sent once more, count the number of transmissions to
 		 * know when scaled ACK number is possible */
+		if(tmp.ack_num_scaling_just_changed)
+		{
+			tcp_context->ack_num_scaling_nr = 0;
+		}
 		if(tcp_context->ack_num_scaling_nr < oa_repetitions_nr)
 		{
 			tcp_context->ack_num_scaling_nr++;
@@ -1685,7 +1696,7 @@ static int co_baseheader(const struct rohc_comp_ctxt *const context,
 			                        rohc_pkt, rohc_pkt_max_len);
 			break;
 		case ROHC_PACKET_TCP_RND_4:
-			assert(tcp_context->ack_stride != 0);
+			assert(tmp->ack_stride != 0);
 			ret = c_tcp_build_rnd_4(context, uncomp_pkt_hdrs->tcp, msn, crc,
 			                        tmp->ack_num_scaled, rohc_pkt, rohc_pkt_max_len);
 			break;
@@ -1724,7 +1735,7 @@ static int co_baseheader(const struct rohc_comp_ctxt *const context,
 			                        rohc_pkt, rohc_pkt_max_len);
 			break;
 		case ROHC_PACKET_TCP_SEQ_4:
-			assert(tcp_context->ack_stride != 0);
+			assert(tmp->ack_stride != 0);
 			ret = c_tcp_build_seq_4(context, inner_ip_ctxt,
 			                        inner_ip_hdr, inner_ip_hdr_len, tcp,
 			                        msn, tmp->ip_id_delta, crc, tmp->ack_num_scaled,
@@ -2819,7 +2830,6 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
                                  uint8_t *const rohc_data,
                                  const size_t rohc_max_len)
 {
-	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	const struct tcphdr *const tcp = uncomp_pkt_hdrs->tcp;
 	co_common_t *const co_common = (co_common_t *) rohc_data;
 	uint8_t *co_common_opt = (uint8_t *) (co_common + 1); /* optional part */
@@ -2894,11 +2904,8 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 
 	/* ack_stride */
 	{
-		const bool is_ack_stride_static =
-			tcp_is_ack_stride_static(tcp_context->ack_stride,
-			                         tcp_context->ack_num_scaling_nr,
-			                         oa_repetitions_nr);
-		ret = c_static_or_irreg16(rohc_hton16(tcp_context->ack_stride),
+		const bool is_ack_stride_static = !tmp->ack_num_scaling_changed;
+		ret = c_static_or_irreg16(rohc_hton16(tmp->ack_stride),
 		                          is_ack_stride_static,
 		                          co_common_opt, rohc_remain_len, &indicator);
 		if(ret < 0)
@@ -2912,7 +2919,7 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 		rohc_remain_len -= ret;
 		rohc_comp_debug(context, "ack_stride_indicator = %d, ack_stride 0x%x on "
 		                "%d bytes", co_common->ack_stride_indicator,
-		                tcp_context->ack_stride, ret);
+		                tmp->ack_stride, ret);
 	}
 
 	/* window */
@@ -3690,26 +3697,28 @@ static void tcp_detect_changes_tcp_hdr(const struct rohc_comp_ctxt *const contex
 		if(new_ack_delta == 0)
 		{
 			/* new ACK delta cannot be used, so keep current ACK stride */
-			new_ack_stride = tcp_context->ack_stride;
+			new_ack_stride = tcp_context->old_ack_stride;
 			rohc_comp_debug(context, "new ACK delta cannot be used, so keep current "
 			                "ACK stride");
 		}
 		else if(new_ack_delta == oldest_ack_delta)
 		{
 			/* no change in last N ACK deltas, so keep current ACK stride */
-			new_ack_stride = tcp_context->ack_stride;
+			new_ack_stride = tcp_context->old_ack_stride;
 			rohc_comp_debug(context, "new ACK delta is the same as oldest ACK delta, "
 			                "so keep current ACK stride");
 		}
-		else if(new_ack_delta == tcp_context->ack_stride)
+		else if(new_ack_delta == tcp_context->old_ack_stride)
 		{
 			/* new ACK delta is already current ACK stride, so keep current ACK stride */
-			new_ack_stride = tcp_context->ack_stride;
+			new_ack_stride = tcp_context->old_ack_stride;
 			rohc_comp_debug(context, "new ACK delta is the same as current ACK stride, "
 			                "so keep current ACK stride");
 		}
 		else
 		{
+			/* compute the new number of occurrences for the new ACK delta,
+			 * check if the newest ACK delta became the most used one */
 			size_t nr_new_ack_delta = 1;
 			size_t i;
 
@@ -3732,7 +3741,7 @@ static void tcp_detect_changes_tcp_hdr(const struct rohc_comp_ctxt *const contex
 			}
 			else
 			{
-				new_ack_stride = tcp_context->ack_stride;
+				new_ack_stride = tcp_context->old_ack_stride;
 				rohc_comp_debug(context, "new ACK delta 0x%04x was used %zu times in last "
 				                "20 packets, so keep current ACK stride",
 				                new_ack_delta, nr_new_ack_delta);
@@ -3745,40 +3754,47 @@ static void tcp_detect_changes_tcp_hdr(const struct rohc_comp_ctxt *const contex
 		                "residue = 0x%x", tmp->ack_num, ack_num_scaled,
 		                new_ack_stride, ack_num_residue);
 
+		if(new_ack_stride != tcp_context->old_ack_stride ||
+		   ack_num_residue != tcp_context->ack_num_residue)
+		{
+			/* ACK number is not scalable with same parameters any more */
+			tmp->ack_num_scaling_just_changed = true;
+		}
+		else
+		{
+			tmp->ack_num_scaling_just_changed = false;
+		}
+
 		if(new_ack_stride == 0)
 		{
 			rohc_comp_debug(context, "parameters for scaled TCP ACK number "
 			                "cannot be computed for now (ack_stride = 0)");
+			tmp->ack_num_scaling_changed = false;
 		}
-		else if(new_ack_stride != tcp_context->ack_stride ||
-		        ack_num_residue != tcp_context->ack_num_residue)
+		else if(tmp->ack_num_scaling_just_changed)
 		{
-			/* ACK number is not scalable with same parameters any more */
 			rohc_comp_debug(context, "parameters for scaled TCP ACK number changed "
 			                "in current packet, it shall be transmitted %u times",
 			                oa_repetitions_nr);
-			tcp_context->ack_num_scaling_nr = 0;
+			tmp->ack_num_scaling_changed = true;
 		}
 		else if(tcp_context->ack_num_scaling_nr < oa_repetitions_nr)
 		{
 			rohc_comp_debug(context, "parameters for scaled TCP ACK number changed "
 			                "in last few packets, it shall be transmitted %u times more",
 			                oa_repetitions_nr - tcp_context->ack_num_scaling_nr);
+			tmp->ack_num_scaling_changed = true;
 		}
 		else
 		{
 			rohc_comp_debug(context, "TCP ACK number may be transmitted scaled");
+			tmp->ack_num_scaling_changed = false;
 		}
 
-		/* TODO: should update context at the very end only */
-		if(new_ack_delta != 0)
-		{
-			tcp_context->ack_deltas_width[tcp_context->ack_deltas_next] = new_ack_delta;
-			tcp_context->ack_deltas_next = (tcp_context->ack_deltas_next + 1) % 20;
-		}
 		tmp->ack_num_scaled = ack_num_scaled;
-		tcp_context->ack_num_residue = ack_num_residue;
-		tcp_context->ack_stride = new_ack_stride;
+		tmp->new_ack_delta = new_ack_delta;
+		tmp->ack_stride = new_ack_stride;
+		tmp->ack_num_residue = ack_num_residue;
 	}
 
 	/* TCP sequence number */
@@ -3960,7 +3976,6 @@ static rohc_packet_t tcp_decide_FO_SO_packet(const struct rohc_comp_ctxt *const 
                                              const struct tcp_tmp_variables *const tmp,
                                              const bool crc7_at_least)
 {
-	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	const struct sc_tcp_context *const tcp_context = context->specific;
 	const struct tcphdr *const tcp = uncomp_pkt_hdrs->tcp;
 	rohc_packet_t packet_type;
@@ -4004,9 +4019,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet(const struct rohc_comp_ctxt *const 
 	        tmp->tcp_urg_flag_present ||
 	        tmp->tcp_urg_flag_changed ||
 	        tmp->tcp_urg_ptr_changed ||
-	        !tcp_is_ack_stride_static(tcp_context->ack_stride,
-	                                  tcp_context->ack_num_scaling_nr,
-	                                  oa_repetitions_nr))
+	        tmp->ack_num_scaling_changed)
 	{
 		TRACE_GOTO_CHOICE;
 		packet_type = ROHC_PACKET_TCP_CO_COMMON;
@@ -4099,7 +4112,6 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
                                                  const struct tcp_tmp_variables *const tmp,
                                                  const bool crc7_at_least)
 {
-	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	const struct sc_tcp_context *const tcp_context = context->specific;
 	const struct tcphdr *const tcp = uncomp_pkt_hdrs->tcp;
 	rohc_packet_t packet_type;
@@ -4219,9 +4231,8 @@ static rohc_packet_t tcp_decide_FO_SO_packet_seq(const struct rohc_comp_ctxt *co
 		if(!crc7_at_least &&
 		   wlsb_is_kp_possible_16bits(&tcp_context->ip_id_wlsb,
 		                              tmp->ip_id_delta, 3, 1) &&
-		   tcp_is_ack_scaled_possible(tcp_context->ack_stride,
-		                              tcp_context->ack_num_scaling_nr,
-		                              oa_repetitions_nr) &&
+		   is_field_scaling_possible(tmp->ack_stride,
+		                             tmp->ack_num_scaling_changed) &&
 		   wlsb_is_kp_possible_32bits(&tcp_context->ack_scaled_wlsb,
 		                              tmp->ack_num_scaled, 4, 3))
 		{
@@ -4322,7 +4333,6 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
                                                  const struct tcp_tmp_variables *const tmp,
                                                  const bool crc7_at_least)
 {
-	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	const struct sc_tcp_context *const tcp_context = context->specific;
 	const struct tcphdr *const tcp = uncomp_pkt_hdrs->tcp;
 	rohc_packet_t packet_type;
@@ -4391,9 +4401,8 @@ static rohc_packet_t tcp_decide_FO_SO_packet_rnd(const struct rohc_comp_ctxt *co
 		}
 		else if(!crc7_at_least &&
 		        tcp->ack_flag != 0 &&
-		        tcp_is_ack_scaled_possible(tcp_context->ack_stride,
-		                                   tcp_context->ack_num_scaling_nr,
-		                                   oa_repetitions_nr) &&
+		        is_field_scaling_possible(tmp->ack_stride,
+		                                  tmp->ack_num_scaling_changed) &&
 		        wlsb_is_kp_possible_32bits(&tcp_context->ack_scaled_wlsb,
 		                                   tmp->ack_num_scaled, 4, 3) &&
 		        tmp->tcp_seq_num_unchanged)

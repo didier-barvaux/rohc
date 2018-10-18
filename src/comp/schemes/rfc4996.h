@@ -113,15 +113,5 @@ int dscp_encode(const bool is_static,
                 int *const indicator)
 	__attribute__((warn_unused_result, nonnull(3, 5)));
 
-/* helper functions related to Scaled ACK and ACK Stride */
-bool tcp_is_ack_scaled_possible(const uint16_t ack_stride,
-                                const uint8_t nr_trans,
-                                const uint8_t oa_repetitions_nr)
-	__attribute__((warn_unused_result, const));
-bool tcp_is_ack_stride_static(const uint16_t ack_stride,
-                              const uint8_t nr_trans,
-                              const uint8_t oa_repetitions_nr)
-	__attribute__((warn_unused_result, const));
-
 #endif /* ROHC_COMP_RFC4996_ENCODING_H */
 

@@ -575,11 +575,8 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
 
 	/* ack_stride */
 	{
-		const bool is_ack_stride_static =
-			tcp_is_ack_stride_static(tcp_context->ack_stride,
-			                         tcp_context->ack_num_scaling_nr,
-			                         oa_repetitions_nr);
-		ret = c_static_or_irreg16(rohc_hton16(tcp_context->ack_stride),
+		const bool is_ack_stride_static = !tmp->ack_num_scaling_changed;
+		ret = c_static_or_irreg16(rohc_hton16(tmp->ack_stride),
 		                          is_ack_stride_static,
 		                          rohc_remain_data, rohc_remain_len, &indicator);
 		if(ret < 0)
@@ -590,8 +587,9 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
 		tcp_replicate->ack_stride_flag = indicator;
 		rohc_remain_data += ret;
 		rohc_remain_len -= ret;
-		rohc_comp_debug(context, "TCP ack_stride %spresent (ack_stride = %u, ack_num_scaling_nr = %u)",
-		                tcp_replicate->ack_stride_flag ? "" : "not ", tcp_context->ack_stride, tcp_context->ack_num_scaling_nr);
+		rohc_comp_debug(context, "TCP ack_stride %spresent (ack_stride = %u)",
+		                tcp_replicate->ack_stride_flag ? "" : "not ",
+		                tmp->ack_stride);
 	}
 
 	/* the structure of the list of TCP options changed or at least one of

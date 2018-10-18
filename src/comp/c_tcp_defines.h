@@ -54,7 +54,10 @@ struct tcp_tmp_variables
 	uint32_t seq_num_residue;
 
 	uint32_t ack_num;
+	uint16_t new_ack_delta;
+	uint16_t ack_stride;
 	uint32_t ack_num_scaled;
+	uint32_t ack_num_residue;
 
 	/** The new innermost IP-ID behavior */
 	rohc_ip_id_behavior_t innermost_ip_id_behavior;
@@ -119,7 +122,8 @@ struct tcp_tmp_variables
 	uint32_t outer_ip_id_behavior_just_changed:1;
 	uint32_t seq_num_scaling_just_changed:1;
 	uint32_t seq_num_scaling_changed:1;
-	uint32_t unused:2;
+	uint32_t ack_num_scaling_just_changed:1;
+	uint32_t ack_num_scaling_changed:1;
 
 	/** The temporary part of the context for TCP options */
 	struct c_tcp_opts_ctxt_tmp tcp_opts;
@@ -135,7 +139,7 @@ struct sc_tcp_context
 	uint16_t msn_of_last_ctxt_updating_pkt;
 
 	uint16_t seq_num_factor;
-	uint16_t ack_stride;
+	uint16_t old_ack_stride;
 
 	uint32_t seq_num;
 	uint32_t seq_num_residue;
