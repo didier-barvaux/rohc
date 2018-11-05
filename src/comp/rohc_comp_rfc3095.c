@@ -57,8 +57,6 @@
 #define MOD_TOS       0x0001
 /** A flag to indicate that IPv4 Time To Live field changed in IP header */
 #define MOD_TTL       0x0010
-/** A flag to indicate that the IPv4 Protocol field changed in IP header */
-#define MOD_PROTOCOL  0x0020
 /** A flag to indicate that the structure of the IPv6 extension headers list
  *  changed in IP header */
 #define MOD_IPV6_EXT_LIST_STRUCT 0x0002
@@ -346,13 +344,6 @@ static bool rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const contex
                                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                              const struct net_pkt *const uncomp_pkt)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
-static int changed_static_both_hdr(struct rohc_comp_ctxt *const context,
-                                   const struct net_pkt *const uncomp_pkt)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
-static int changed_static_one_hdr(struct rohc_comp_ctxt *const context,
-                                  const unsigned short changed_fields,
-                                  struct ip_header_info *const header_info)
-	__attribute__((warn_unused_result, nonnull(1, 3)));
 static int changed_dynamic_both_hdr(struct rohc_comp_ctxt *const context,
                                     const struct net_pkt *const uncomp_pkt)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
@@ -449,6 +440,8 @@ static bool ip_header_info_new(struct ip_header_info *const header_info,
                                rohc_trace_callback2_t trace_cb,
                                void *const trace_cb_priv)
 {
+	bool is_ok;
+
 	/* store the IP version in the header info */
 	header_info->version = ip_get_version(ip);
 	header_info->static_chain_end = false;
@@ -459,9 +452,10 @@ static bool ip_header_info_new(struct ip_header_info *const header_info,
 	/* version specific initialization */
 	if(header_info->version == IPV4)
 	{
+		header_info->info.v4.old_ip = *(ipv4_get_header(ip));
+
 		/* init the parameters to encode the IP-ID with W-LSB encoding */
-		const bool is_ok =
-			wlsb_new(&header_info->info.v4.ip_id_window, oa_repetitions_nr);
+		is_ok = wlsb_new(&header_info->info.v4.ip_id_window, oa_repetitions_nr);
 		if(!is_ok)
 		{
 			__rohc_print(trace_cb, trace_cb_priv, ROHC_TRACE_ERROR,
@@ -475,13 +469,14 @@ static bool ip_header_info_new(struct ip_header_info *const header_info,
 		header_info->tos_count = oa_repetitions_nr;
 		header_info->ttl_count = oa_repetitions_nr;
 		header_info->info.v4.df_count = oa_repetitions_nr;
-		header_info->protocol_count = oa_repetitions_nr;
 		header_info->info.v4.rnd_count = oa_repetitions_nr;
 		header_info->info.v4.nbo_count = oa_repetitions_nr;
 		header_info->info.v4.sid_count = oa_repetitions_nr;
 	}
 	else
 	{
+		header_info->info.v6.old_ip = *(ipv6_get_header(ip));
+
 		/* init the compression context for IPv6 extension header list */
 		rohc_comp_list_ipv6_new(&header_info->info.v6.ext_comp, oa_repetitions_nr,
 		                        profile_id, trace_cb, trace_cb_priv);
@@ -523,7 +518,6 @@ static void c_init_tmp_variables(struct generic_tmp_vars *const tmp_vars)
 {
 	tmp_vars->changed_fields = MOD_ERROR;
 	tmp_vars->changed_fields2 = MOD_ERROR;
-	tmp_vars->send_static = -1;
 	tmp_vars->send_dynamic = -1;
 
 	/* do not send any bits of outer/inner IP-IDs by default */
@@ -1084,7 +1078,6 @@ static void rohc_comp_rfc3095_feedback_ack(struct rohc_comp_ctxt *const context,
 				hdr_info->tos_count = oa_repetitions_nr;
 				hdr_info->ttl_count = oa_repetitions_nr;
 				hdr_info->tos_count = oa_repetitions_nr;
-				hdr_info->protocol_count = oa_repetitions_nr;
 				if(hdr_info->version == IPV4)
 				{
 					hdr_info->info.v4.df_count = oa_repetitions_nr;
@@ -1098,7 +1091,6 @@ static void rohc_comp_rfc3095_feedback_ack(struct rohc_comp_ctxt *const context,
 				hdr_info->tos_count = oa_repetitions_nr;
 				hdr_info->ttl_count = oa_repetitions_nr;
 				hdr_info->tos_count = oa_repetitions_nr;
-				hdr_info->protocol_count = oa_repetitions_nr;
 				if(hdr_info->version == IPV4)
 				{
 					hdr_info->info.v4.df_count = oa_repetitions_nr;
@@ -1302,13 +1294,9 @@ static bool rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const contex
 		rfc3095_ctxt->tmp.changed_fields2 = 0;
 	}
 
-	/* how many changed fields are static ones? */
-	rfc3095_ctxt->tmp.send_static = changed_static_both_hdr(context, uncomp_pkt);
-
 	/* how many changed fields are dynamic ones? */
 	rfc3095_ctxt->tmp.send_dynamic = changed_dynamic_both_hdr(context, uncomp_pkt);
-	rohc_comp_debug(context, "send_static = %d, send_dynamic = %d",
-	                rfc3095_ctxt->tmp.send_static, rfc3095_ctxt->tmp.send_dynamic);
+	rohc_comp_debug(context, "send_dynamic = %d", rfc3095_ctxt->tmp.send_dynamic);
 
 	return true;
 
@@ -1344,18 +1332,10 @@ void rohc_comp_rfc3095_decide_state(struct rohc_comp_ctxt *const context)
 			                context->state_oa_repeat_nr, oa_repetitions_nr);
 			next_state = ROHC_COMP_STATE_IR;
 		}
-		else if(rfc3095_ctxt->tmp.send_static)
-		{
-			rohc_comp_debug(context, "%d STATIC fields changed now or in the "
-			                "last few packets, so stay in IR state",
-			                rfc3095_ctxt->tmp.send_static);
-			next_state = ROHC_COMP_STATE_IR;
-		}
 		else if(rfc3095_ctxt->tmp.send_dynamic)
 		{
-			rohc_comp_debug(context, "no STATIC field changed, but %d DYNAMIC "
-			                "fields changed now or in the last few packets, so "
-			                "go to FO state", rfc3095_ctxt->tmp.send_dynamic);
+			rohc_comp_debug(context, "%d DYNAMIC fields changed now or in the last few "
+			                "packets, so go to FO state", rfc3095_ctxt->tmp.send_dynamic);
 			next_state = ROHC_COMP_STATE_FO;
 		}
 		else if((rfc3095_ctxt->outer_ip_flags.version == IPV4 &&
@@ -1370,8 +1350,8 @@ void rohc_comp_rfc3095_decide_state(struct rohc_comp_ctxt *const context)
 		}
 		else
 		{
-			rohc_comp_debug(context, "no STATIC nor DYNAMIC field changed in "
-			                "the last few packets, so go to SO state");
+			rohc_comp_debug(context, "no DYNAMIC field changed in the last few packets, "
+			                "so go to SO state");
 			next_state = ROHC_COMP_STATE_SO;
 		}
 	}
@@ -1384,12 +1364,10 @@ void rohc_comp_rfc3095_decide_state(struct rohc_comp_ctxt *const context)
 			                context->state_oa_repeat_nr, oa_repetitions_nr);
 			next_state = ROHC_COMP_STATE_FO;
 		}
-		else if(rfc3095_ctxt->tmp.send_static || rfc3095_ctxt->tmp.send_dynamic)
+		else if(rfc3095_ctxt->tmp.send_dynamic)
 		{
-			rohc_comp_debug(context, "%d STATIC and %d DYNAMIC fields changed "
-			                "now or in the last few packets, so stay in FO "
-			                "state", rfc3095_ctxt->tmp.send_static,
-			                rfc3095_ctxt->tmp.send_dynamic);
+			rohc_comp_debug(context, "%d DYNAMIC fields changed now or in the last few "
+			                "few packets, so stay in FO state", rfc3095_ctxt->tmp.send_dynamic);
 			next_state = ROHC_COMP_STATE_FO;
 		}
 		else if((rfc3095_ctxt->outer_ip_flags.version == IPV4 &&
@@ -1404,19 +1382,17 @@ void rohc_comp_rfc3095_decide_state(struct rohc_comp_ctxt *const context)
 		}
 		else
 		{
-			rohc_comp_debug(context, "no STATIC nor DYNAMIC field changed in "
-			                "the last few packets, so go to SO state");
+			rohc_comp_debug(context, "no DYNAMIC field changed in the last few packets, "
+			                "so go to SO state");
 			next_state = ROHC_COMP_STATE_SO;
 		}
 	}
 	else if(curr_state == ROHC_COMP_STATE_SO)
 	{
-		if(rfc3095_ctxt->tmp.send_static || rfc3095_ctxt->tmp.send_dynamic)
+		if(rfc3095_ctxt->tmp.send_dynamic)
 		{
-			rohc_comp_debug(context, "%d STATIC and %d DYNAMIC fields changed "
-			                "now or in the last few packets, so go back to FO "
-			                "state", rfc3095_ctxt->tmp.send_static,
-			                rfc3095_ctxt->tmp.send_dynamic);
+			rohc_comp_debug(context, "%d DYNAMIC fields changed now or in the last few "
+			                "packets, so go back to FO state", rfc3095_ctxt->tmp.send_dynamic);
 			next_state = ROHC_COMP_STATE_FO;
 		}
 		else if((rfc3095_ctxt->outer_ip_flags.version == IPV4 &&
@@ -1431,8 +1407,8 @@ void rohc_comp_rfc3095_decide_state(struct rohc_comp_ctxt *const context)
 		}
 		else
 		{
-			rohc_comp_debug(context, "no STATIC nor DYNAMIC field changed in "
-			                "the last few packets, so stay in SO state");
+			rohc_comp_debug(context, "no DYNAMIC field changed in the last few packets, "
+			                "so stay in SO state");
 			next_state = ROHC_COMP_STATE_SO;
 		}
 	}
@@ -2129,7 +2105,6 @@ static int code_ipv4_static_part(const struct rohc_comp_ctxt *const context,
 	rohc_comp_debug(context, "protocol = 0x%02x", protocol);
 	dest[counter] = protocol;
 	counter++;
-	header_info->protocol_count++;
 
 	/* part 3 */
 	saddr = ipv4_get_saddr(ip);
@@ -2209,7 +2184,6 @@ static int code_ipv6_static_part(const struct rohc_comp_ctxt *const context,
 	rohc_comp_debug(context, "next header = 0x%02x", protocol);
 	dest[counter] = protocol;
 	counter++;
-	header_info->protocol_count++;
 
 	/* part 4 */
 	saddr = ipv6_get_saddr(ip);
@@ -5329,8 +5303,7 @@ static int code_EXT3_rtp_packet(struct rohc_comp_ctxt *const context,
 		rohc_comp_debug(context, "check for changed fields in the outer IP header");
 		if(I2 ||
 		   changed_dynamic_one_hdr(context, outer_ip_changed_fields,
-		                           outer_ip_flags, outer_ip) ||
-		   changed_static_one_hdr(context, outer_ip_changed_fields, outer_ip_flags))
+		                           outer_ip_flags, outer_ip))
 		{
 			ip2 = 1;
 		}
@@ -5344,8 +5317,7 @@ static int code_EXT3_rtp_packet(struct rohc_comp_ctxt *const context,
 	rohc_comp_debug(context, "check for changed fields in the innermost IP header");
 	if(ip2 ||
 	   changed_dynamic_one_hdr(context, inner_ip_changed_fields & 0x01FF,
-	                           inner_ip_flags, inner_ip) ||
-	   changed_static_one_hdr(context, inner_ip_changed_fields, inner_ip_flags))
+	                           inner_ip_flags, inner_ip))
 	{
 		ip = 1;
 	}
@@ -5574,8 +5546,7 @@ static int code_EXT3_nortp_packet(struct rohc_comp_ctxt *const context,
 		rohc_comp_debug(context, "check for changed fields in the outer IP header");
 		if(I2 ||
 		   changed_dynamic_one_hdr(context, outer_ip_changed_fields,
-		                           outer_ip_flags, outer_ip) ||
-		   changed_static_one_hdr(context, outer_ip_changed_fields, outer_ip_flags))
+		                           outer_ip_flags, outer_ip))
 		{
 			ip2 = 1;
 		}
@@ -5588,8 +5559,7 @@ static int code_EXT3_nortp_packet(struct rohc_comp_ctxt *const context,
 	/* ip bit */
 	rohc_comp_debug(context, "check for changed fields in the innermost IP header");
 	if(changed_dynamic_one_hdr(context, inner_ip_changed_fields & 0x01FF,
-	                           inner_ip_flags, inner_ip) ||
-	   changed_static_one_hdr(context, inner_ip_changed_fields, inner_ip_flags))
+	                           inner_ip_flags, inner_ip))
 	{
 		ip = 1;
 	}
@@ -5891,11 +5861,6 @@ static int header_flags(const struct rohc_comp_ctxt *const context,
 	{
 		flags |= 0x40;
 	}
-	if(is_field_changed(changed_f, MOD_PROTOCOL) ||
-	   header_info->protocol_count < oa_repetitions_nr)
-	{
-		flags |= 0x10;
-	}
 
 	/* DF, NBO, RND and I2 are IPv4 specific flags,
 	 * there are always set to 0 for IPv6 */
@@ -6012,17 +5977,7 @@ static int header_fields(const struct rohc_comp_ctxt *const context,
 		counter++;
 	}
 
-	/* part 3 */
-	if(is_field_changed(changed_f, MOD_PROTOCOL) ||
-	   header_info->protocol_count < oa_repetitions_nr)
-	{
-		const uint8_t protocol = ip_get_protocol(ip);
-		rohc_comp_debug(context, "IP Protocol/Next Header of IP header #%u "
-		                "= 0x%02x", ip_hdr_pos, protocol);
-		header_info->protocol_count++;
-		dest[counter] = protocol;
-		counter++;
-	}
+	/* part 3: Protocol/Next Header never changes since it defines a flow */
 
 	/* part 5: only for outer IP header if IPv4 */
 	if(ip_hdr_pos == ROHC_IP_HDR_FIRST && I == 1)
@@ -6180,88 +6135,6 @@ static void update_context_ip_hdr(const struct rohc_comp_ctxt *const context,
 		/* update compression list context */
 		rohc_list_update_context(&ip_flags->info.v6.ext_comp);
 	}
-}
-
-
-/**
- * @brief Check if the static parts of the context changed in any of the two
- *        IP headers.
- *
- * @param context     The compression context
- * @param uncomp_pkt  The uncompressed packet
- * @return            The number of static fields that changed
- */
-static int changed_static_both_hdr(struct rohc_comp_ctxt *const context,
-                                   const struct net_pkt *const uncomp_pkt)
-{
-	/* TODO: should not alter the counters in the context there */
-	int nb_fields = 0; /* number of fields that changed */
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-
-	nb_fields = changed_static_one_hdr(context, rfc3095_ctxt->tmp.changed_fields,
-	                                   &rfc3095_ctxt->outer_ip_flags);
-
-	if(uncomp_pkt->ip_hdr_nr > 1)
-	{
-		nb_fields += changed_static_one_hdr(context,
-		                                    rfc3095_ctxt->tmp.changed_fields2,
-		                                    &rfc3095_ctxt->inner_ip_flags);
-	}
-
-	return nb_fields;
-}
-
-
-/**
- * @brief Check if the static part of the context changed in the new IP packet.
- *
- * The fields classified as STATIC-DEF by RFC do not need to be checked for
- * change. These fields are constant for all packets in a stream (ie. a
- * profile context). So, the Source Address and Destination Address fields are
- * not checked for change for both IPv4 and IPv6. The Flow Label is not checked
- * for IPv6.
- *
- * Although not classified as STATIC-DEF, the Version field is the same for
- * all packets in a stream (ie. a profile context) and therefore does not need
- * to be checked for change neither for IPv4 nor IPv6.
- *
- * Although classified as STATIC, the IPv4 Don't Fragment flag is not part of
- * the static initialization, but of the dynamic initialization.
- *
- * Summary:
- *  - For IPv4, check the Protocol field for change.
- *  - For IPv6, check the Next Header field for change.
- *
- * @param context        The compression context
- * @param changed_fields The fields that changed, created by the function
- *                       changed_fields
- * @param header_info    The header info stored in the profile
- * @return               The number of fields that changed
- */
-static int changed_static_one_hdr(struct rohc_comp_ctxt *const context,
-                                  const unsigned short changed_fields,
-                                  struct ip_header_info *const header_info)
-{
-	/* TODO: should not alter the counters in the context there */
-	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
-	int nb_fields = 0; /* number of fields that changed */
-
-	/* check the IPv4 Protocol / IPv6 Next Header field for change */
-	if(is_field_changed(changed_fields, MOD_PROTOCOL) ||
-	   header_info->protocol_count < oa_repetitions_nr)
-	{
-		rohc_comp_debug(context, "protocol_count %zu", header_info->protocol_count);
-
-		if(is_field_changed(changed_fields, MOD_PROTOCOL))
-		{
-			header_info->protocol_count = 0;
-		}
-		nb_fields += 1;
-	}
-
-	return nb_fields;
 }
 
 
@@ -6490,7 +6363,6 @@ static unsigned short detect_changed_fields(const struct rohc_comp_ctxt *const c
 	unsigned short ret_value = 0;
 	uint8_t old_tos;
 	uint8_t old_ttl;
-	uint8_t old_protocol;
 
 	if(ip->version == IPV4)
 	{
@@ -6499,7 +6371,6 @@ static unsigned short detect_changed_fields(const struct rohc_comp_ctxt *const c
 		old_ip = &header_info->info.v4.old_ip;
 		old_tos = old_ip->tos;
 		old_ttl = old_ip->ttl;
-		old_protocol = old_ip->protocol;
 	}
 	else /* IPV6 */
 	{
@@ -6508,7 +6379,6 @@ static unsigned short detect_changed_fields(const struct rohc_comp_ctxt *const c
 		old_ip = &header_info->info.v6.old_ip;
 		old_tos = ipv6_get_tc(old_ip);
 		old_ttl = old_ip->hl;
-		old_protocol = old_ip->nh;
 	}
 
 	if(old_tos != ip->tos_tc)
@@ -6523,13 +6393,6 @@ static unsigned short detect_changed_fields(const struct rohc_comp_ctxt *const c
 		rohc_comp_debug(context, "TTL/HL changed from 0x%02x to 0x%02x",
 		                old_ttl, ip->ttl_hl);
 		ret_value |= MOD_TTL;
-	}
-
-	if(old_protocol != ip->next_proto)
-	{
-		rohc_comp_debug(context, "Protocol/NH changed from 0x%02x to 0x%02x",
-		                old_protocol, ip->next_proto);
-		ret_value |= MOD_PROTOCOL;
 	}
 
 	/* IPv6 extension headers */
@@ -7040,10 +6903,10 @@ rohc_ext_t decide_extension(const struct rohc_comp_ctxt *const context,
 	rohc_ext_t ext;
 
 	/* force extension type 3 if at least one static or dynamic field changed */
-	if(rfc3095_ctxt->tmp.send_static > 0 || rfc3095_ctxt->tmp.send_dynamic > 0)
+	if(rfc3095_ctxt->tmp.send_dynamic > 0)
 	{
-		rohc_comp_debug(context, "force EXT-3 because at least one static or "
-		                "dynamic field changed");
+		rohc_comp_debug(context, "force EXT-3 because at least one dynamic field "
+		                "changed");
 		ext = ROHC_EXT_3;
 	}
 	else

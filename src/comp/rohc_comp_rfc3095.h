@@ -121,9 +121,6 @@ struct ip_header_info
 	size_t tos_count;
 	/// The number of times the TTL/HL field was added to the compressed header
 	size_t ttl_count;
-	/// @brief The number of times the Protocol/Next Header field was added to
-	///        the compressed header
-	size_t protocol_count;
 
 	/** Whether the old_* members of the struct and in its children are
 	 *  initialized or not */
@@ -153,8 +150,6 @@ struct generic_tmp_vars
 	unsigned short changed_fields;
 	/// The number of fields that changed in the inner IP header
 	unsigned short changed_fields2;
-	/// The number of static fields that changed in the two IP headers
-	int send_static;
 	/// The number of dynamic fields that changed in the two IP headers
 	int send_dynamic;
 

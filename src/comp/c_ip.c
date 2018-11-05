@@ -121,13 +121,6 @@ rohc_packet_t c_ip_decide_FO_packet(const struct rohc_comp_ctxt *const context)
 		rohc_comp_debug(context, "choose packet IR-DYN because at least one "
 		                "SID flag changed");
 	}
-	else if(rfc3095_ctxt->tmp.send_static &&
-	        (rfc3095_ctxt->tmp.sn_5bits_possible || rfc3095_ctxt->tmp.sn_13bits_possible))
-	{
-		packet = ROHC_PACKET_UOR_2;
-		rohc_comp_debug(context, "choose packet UOR-2 because at least one "
-		                "static field changed");
-	}
 	else if(rfc3095_ctxt->ip_hdr_nr == 1 && rfc3095_ctxt->tmp.send_dynamic > 2)
 	{
 		packet = ROHC_PACKET_IR_DYN;

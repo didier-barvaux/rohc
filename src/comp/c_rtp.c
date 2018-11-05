@@ -271,14 +271,6 @@ static rohc_packet_t c_rtp_decide_FO_packet(const struct rohc_comp_ctxt *const c
 		rohc_comp_debug(context, "choose packet IR-DYN because at least one "
 		                "SID flag changed");
 	}
-	else if(rfc3095_ctxt->tmp.send_static &&
-	        (rfc3095_ctxt->tmp.sn_6bits_possible || rfc3095_ctxt->tmp.sn_14bits_possible))
-	{
-		packet = ROHC_PACKET_UOR_2_RTP;
-		rohc_comp_debug(context, "choose packet UOR-2-RTP because at least one "
-		                "static field changed and less than 14 SN bits must be "
-		                "transmitted");
-	}
 	else if(nr_of_ip_hdr == 1 && rfc3095_ctxt->tmp.send_dynamic > 2)
 	{
 		packet = ROHC_PACKET_IR_DYN;
@@ -414,7 +406,6 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 		assert(rfc3095_ctxt->inner_ip_flags.info.v4.rnd_count >= oa_repetitions_nr);
 		assert(rfc3095_ctxt->inner_ip_flags.info.v4.nbo_count >= oa_repetitions_nr);
 	}
-	assert(rfc3095_ctxt->tmp.send_static == 0);
 	assert(rfc3095_ctxt->tmp.send_dynamic == 0);
 	assert(rtp_context->tmp.send_rtp_dynamic == 0);
 	/* RTP Padding bit is a STATIC field, not allowed to change in SO state */
