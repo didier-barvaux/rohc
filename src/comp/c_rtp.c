@@ -1151,13 +1151,7 @@ static int rtp_changed_rtp_dynamic(const struct rohc_comp_ctxt *const context,
 		fields += 2;
 	}
 
-	/* check SSRC field */
-	if(rtp->ssrc != rtp_context->old_rtp.ssrc)
-	{
-		rohc_comp_debug(context, "RTP SSRC field changed (0x%08x -> 0x%08x)",
-		                rtp_context->old_rtp.ssrc, rtp->ssrc);
-		fields++;
-	}
+	/* RTP SSRC field never changes since it defines a flow */
 
 	/* check RTP Marker field: remember its value but do not count it
 	 * as a changed field since it is not stored in the context */
