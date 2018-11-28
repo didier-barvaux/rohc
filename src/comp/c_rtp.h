@@ -46,29 +46,19 @@
  */
 struct rtp_tmp_vars
 {
-	/// The number of UDP/RTP fields that changed in the UDP/RTP headers
-	int send_rtp_dynamic;
-
-	/// The number of bits needed to encode ts_send
-	size_t nr_ts_bits;
-
-	/// The number of bits of TS to place in the extension 3 header
-	size_t nr_ts_bits_ext3;
-
-	/// The TS field to send (ts_scaled or ts)
+	/** The TS field to send (ts_scaled or ts) */
 	uint32_t ts_send;
+	/** The number of bits needed to encode ts_send */
+	uint8_t nr_ts_bits;
+	/** The number of bits of TS to place in the extension 3 header */
+	uint8_t nr_ts_bits_ext3;
 
-	/// Whether the Marker (M) bit is set in the RTP header or not
-	bool is_marker_bit_set;
-
-	/** Whether the Padding (P) bit changed or not */
-	bool padding_bit_changed;
-
-	/// Whether the eXtension (X) bit changed or not
-	bool extension_bit_changed;
-
-	/// Whether the Payload Type (PT) field changed or not
-	int rtp_pt_changed;
+	uint8_t send_rtp_dynamic:3;    /**< Nr of changed fields in UDP/RTP headers */
+	uint8_t is_marker_bit_set:1;   /**< Whether RTP Marker (M) bit is set */
+	uint8_t padding_bit_changed:1; /**< Whether RTP Padding (P) bit changed */
+	uint8_t ext_bit_changed:1;     /**< Whether RTP eXtension (X) bit changed */
+	uint8_t rtp_pt_changed:1;      /**< Whether RTP Payload Type (PT) field changed */
+	uint8_t unused:1;
 };
 
 
@@ -85,39 +75,40 @@ struct rtp_tmp_vars
  */
 struct sc_rtp_context
 {
-	/// @brief The number of times the UDP checksum field was added to the
-	///        compressed header
-	size_t udp_checksum_change_count;
+	/** Structure to encode the TS field */
+	struct ts_sc_comp ts_sc;
 
-	/// The previous UDP header
-	struct udphdr old_udp;
+	/** The nr of times the UDP checksum field was added to compressed headers */
+	uint8_t udp_checksum_change_count;
+	/** The nr of times the RTP Version field was added to compressed headers */
+	uint8_t rtp_version_change_count;
+	/** The nr of times the RTP PT field was added to compressed headers */
+	uint8_t rtp_pt_change_count;
+	/** The nr of times the RTP Padding (P) bit was added to compressed headers */
+	uint8_t rtp_padding_change_count;
+	/** The nr of times the RTP eXtension (X) bit was added to compressed headers */
+	uint8_t rtp_extension_change_count;
 
-	/// @brief The number of times the RTP Version field was added to
-	///        the compressed header
-	size_t rtp_version_change_count;
-
-	/// @brief The number of times the RTP Payload Type (PT) field was added to
-	///        the compressed header
-	size_t rtp_pt_change_count;
-
-	/// @brief The number of times the RTP Padding (P) bit was added to
-	///        the compressed header
-	size_t rtp_padding_change_count;
-
-	/// @brief The number of times the RTP eXtension (X) bit was added to
-	///        the compressed header
-	size_t rtp_extension_change_count;
-
-	/// The previous RTP header
-	struct rtphdr old_rtp;
+	uint16_t old_udp_check;       /**< The UDP checksum in previous UDP header */
+	uint16_t old_rtp_version:2;   /**< The RTP Version in previous RTP header */
+	uint16_t old_rtp_padding:1;   /**< The RTP Padding in previous RTP header */
+	uint16_t old_rtp_extension:1; /**< The RTP Extension in previous RTP header */
+	uint16_t old_rtp_cc:4;        /**< The RTP CC in previous RTP header */
+	uint16_t old_rtp_pt:7;        /**< The RTP Payload Type in previous RTP header */
+	uint16_t unused:1;
 
 	/// @brief RTP-specific temporary variables that are used during one single
 	///        compression of packet
 	struct rtp_tmp_vars tmp;
-
-	/// Structure to encode the TS field
-	struct ts_sc_comp ts_sc;
 };
+
+/* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
+#if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
+     (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
+      (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
+_Static_assert((sizeof(struct sc_rtp_context) % 8) == 0,
+               "sc_rtp_context length should be multiple of 8 bytes");
+#endif
 
 
 /*

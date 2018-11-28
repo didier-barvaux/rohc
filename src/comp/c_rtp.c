@@ -91,9 +91,9 @@ static size_t rtp_code_dynamic_rtp_part(const struct rohc_comp_ctxt *const conte
                                         const size_t counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static int rtp_changed_rtp_dynamic(const struct rohc_comp_ctxt *const context,
-                                   const struct udphdr *const udp,
-                                   const struct rtphdr *const rtp)
+static size_t rtp_changed_rtp_dynamic(const struct rohc_comp_ctxt *const context,
+                                      const struct udphdr *const udp,
+                                      const struct rtphdr *const rtp)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 
@@ -155,12 +155,16 @@ static bool c_rtp_create(struct rohc_comp_ctxt *const context,
 
 	/* initialize the RTP part of the profile context */
 	rtp_context->udp_checksum_change_count = 0;
-	memcpy(&rtp_context->old_udp, udp, sizeof(struct udphdr));
 	rtp_context->rtp_version_change_count = 0;
 	rtp_context->rtp_pt_change_count = 0;
 	rtp_context->rtp_padding_change_count = 0;
 	rtp_context->rtp_extension_change_count = 0;
-	memcpy(&rtp_context->old_rtp, rtp, sizeof(struct rtphdr));
+	rtp_context->old_udp_check = rohc_ntoh16(udp->check);
+	rtp_context->old_rtp_version = rtp->version;
+	rtp_context->old_rtp_padding = rtp->padding;
+	rtp_context->old_rtp_extension = rtp->extension;
+	rtp_context->old_rtp_cc = rtp->cc;
+	rtp_context->old_rtp_pt = rtp->pt;
 	if(!c_create_sc(&rtp_context->ts_sc,
 	                context->compressor->oa_repetitions_nr,
 	                context->compressor->trace_callback,
@@ -171,15 +175,16 @@ static bool c_rtp_create(struct rohc_comp_ctxt *const context,
 	}
 
 	/* init the RTP-specific temporary variables */
-	rtp_context->tmp.send_rtp_dynamic = -1;
+	rtp_context->tmp.send_rtp_dynamic = 0;
 	rtp_context->tmp.ts_send = 0;
 	/* do not transmit any RTP TimeStamp (TS) bit by default */
 	rtp_context->tmp.nr_ts_bits = 0;
+	rtp_context->tmp.nr_ts_bits_ext3 = 0;
 	/* RTP Marker (M) bit is not set by default */
 	rtp_context->tmp.is_marker_bit_set = false;
 	rtp_context->tmp.rtp_pt_changed = 0;
 	rtp_context->tmp.padding_bit_changed = false;
-	rtp_context->tmp.extension_bit_changed = false;
+	rtp_context->tmp.ext_bit_changed = false;
 
 	/* init the RTP-specific variables and functions */
 	rfc3095_ctxt->next_header_len = sizeof(struct udphdr) + sizeof(struct rtphdr);
@@ -402,7 +407,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 	/* RTP Padding bit is a STATIC field, not allowed to change in SO state */
 	assert(!rtp_context->tmp.padding_bit_changed);
 	/* RTP eXtension bit is STATIC field, not allowed to change in SO state */
-	assert(!rtp_context->tmp.extension_bit_changed);
+	assert(!rtp_context->tmp.ext_bit_changed);
 
 	/* find out how many IP headers are IPv4 headers with non-random IP-IDs */
 	nr_ipv4_non_rnd = get_nr_ipv4_non_rnd(rfc3095_ctxt);
@@ -442,7 +447,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 	{
 		packet = ROHC_PACKET_UO_0;
 		rohc_comp_debug(context, "choose packet UO-0 because less than 4 SN bits "
-		                "must be transmitted, neither of the %zd IP header(s) "
+		                "must be transmitted, neither of the %zu IP header(s) "
 		                "are IPv4 with non-random IP-ID with some IP-ID bits "
 		                "to transmit, ( no TS bit must be transmitted, "
 		                "or TS bits are deducible from SN ), and RTP M bit is "
@@ -454,9 +459,9 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 	{
 		packet = ROHC_PACKET_UO_1_RTP;
 		rohc_comp_debug(context, "choose packet UO-1-RTP because neither of "
-		                "the %zd IP header(s) are 'IPv4 with non-random IP-ID', "
+		                "the %zu IP header(s) are 'IPv4 with non-random IP-ID', "
 		                "less than 4 SN bits must be transmitted, and "
-		                "%zu <= 6 TS bits must be transmitted", nr_of_ip_hdr,
+		                "%u <= 6 TS bits must be transmitted", nr_of_ip_hdr,
 		                rtp_context->tmp.nr_ts_bits);
 	}
 	else if(rfc3095_ctxt->tmp.sn_4bits_possible &&
@@ -468,7 +473,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 		/* UO-1-ID without extension */
 		packet = ROHC_PACKET_UO_1_ID;
 		rohc_comp_debug(context, "choose packet UO-1-ID because only one of the "
-		                "%zd IP header(s) is IPv4 with non-random IP-ID with "
+		                "%zu IP header(s) is IPv4 with non-random IP-ID with "
 		                "<= 5 IP-ID bits to transmit, less than 4 SN bits "
 		                "must be transmitted, ( no TS bit must be transmitted, "
 		                "or TS bits are deducible from SN ), and RTP M bit is not "
@@ -480,10 +485,10 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 	{
 		packet = ROHC_PACKET_UO_1_TS;
 		rohc_comp_debug(context, "choose packet UO-1-TS because neither of the "
-		                "%zd IP header(s) are IPv4 with non-random IP-ID with "
+		                "%zu IP header(s) are IPv4 with non-random IP-ID with "
 		                "some IP-ID bits to to transmit for that IP header, "
 		                "less than 4 SN bits must be transmitted, and "
-		                "%zu <= 6 TS bits must be transmitted", nr_of_ip_hdr,
+		                "%u <= 6 TS bits must be transmitted", nr_of_ip_hdr,
 		                rtp_context->tmp.nr_ts_bits);
 	}
 	else if((rfc3095_ctxt->tmp.sn_4bits_possible || rfc3095_ctxt->tmp.sn_12bits_possible) &&
@@ -495,10 +500,10 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 
 		packet = ROHC_PACKET_UO_1_ID;
 		rohc_comp_debug(context, "choose packet UO-1-ID because at least "
-		                "one of the %zd IP header(s) is IPv4 with "
+		                "one of the %zu IP header(s) is IPv4 with "
 		                "non-random IP-ID with at least 1 bit of IP-ID to "
 		                "transmit, less than 12 SN bits must be transmitted, "
-		                "and %zu TS bits can be SDVL-encoded", nr_of_ip_hdr,
+		                "and %u TS bits can be SDVL-encoded", nr_of_ip_hdr,
 		                rtp_context->tmp.nr_ts_bits);
 	}
 	else if(rfc3095_ctxt->tmp.sn_6bits_possible || rfc3095_ctxt->tmp.sn_14bits_possible)
@@ -514,7 +519,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 		{
 			packet = ROHC_PACKET_UOR_2_RTP;
 			rohc_comp_debug(context, "choose packet UOR-2-RTP because neither "
-			                "of the %zd IP header(s) are IPv4 with non-random "
+			                "of the %zu IP header(s) are IPv4 with non-random "
 			                "IP-ID", nr_of_ip_hdr);
 		}
 		else if(nr_ipv4_non_rnd_with_bits >= 1 &&
@@ -522,16 +527,16 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 		{
 			packet = ROHC_PACKET_UOR_2_ID;
 			rohc_comp_debug(context, "choose packet UOR-2-ID because at least "
-			                "one of the %zd IP header(s) is IPv4 with non-random "
+			                "one of the %zu IP header(s) is IPv4 with non-random "
 			                "IP-ID with at least 1 bit of IP-ID to transmit, "
-			                "and %zu TS bits can be SDVL-encoded", nr_of_ip_hdr,
+			                "and %u TS bits can be SDVL-encoded", nr_of_ip_hdr,
 			                rtp_context->tmp.nr_ts_bits);
 		}
 		else
 		{
 			packet = ROHC_PACKET_UOR_2_TS;
 			rohc_comp_debug(context, "choose packet UOR-2-TS because at least "
-			                "one of the %zd IP header(s) is IPv4 with "
+			                "one of the %zu IP header(s) is IPv4 with "
 			                "non-random IP-ID", nr_of_ip_hdr);
 		}
 	}
@@ -643,22 +648,26 @@ static int c_rtp_encode(struct rohc_comp_ctxt *const context,
 	if((*packet_type) == ROHC_PACKET_IR ||
 	   (*packet_type) == ROHC_PACKET_IR_DYN)
 	{
-		memcpy(&rtp_context->old_udp, udp, sizeof(struct udphdr));
-		memcpy(&rtp_context->old_rtp, rtp, sizeof(struct rtphdr));
+		rtp_context->old_udp_check = rohc_ntoh16(udp->check);
+		rtp_context->old_rtp_version = rtp->version;
+		rtp_context->old_rtp_padding = rtp->padding;
+		rtp_context->old_rtp_extension = rtp->extension;
+		rtp_context->old_rtp_cc = rtp->cc;
+		rtp_context->old_rtp_pt = rtp->pt;
 	}
 	else
 	{
 		if(rtp_context->tmp.padding_bit_changed)
 		{
-			rtp_context->old_rtp.padding = rtp->padding;
+			rtp_context->old_rtp_padding = rtp->padding;
 		}
-		if(rtp_context->tmp.extension_bit_changed)
+		if(rtp_context->tmp.ext_bit_changed)
 		{
-			rtp_context->old_rtp.extension = rtp->extension;
+			rtp_context->old_rtp_extension = rtp->extension;
 		}
 		if(rtp_context->tmp.rtp_pt_changed)
 		{
-			rtp_context->old_rtp.pt = rtp->pt;
+			rtp_context->old_rtp_pt = rtp->pt;
 		}
 	}
 
@@ -779,7 +788,7 @@ static bool rtp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		/* save the new unscaled value */
 		assert(rfc3095_ctxt->sn <= 0xffff);
 		add_unscaled(&rtp_context->ts_sc, rfc3095_ctxt->sn);
-		rohc_comp_debug(context, "unscaled TS = %u on %zu bits",
+		rohc_comp_debug(context, "unscaled TS = %u on %u bits",
 		                rtp_context->tmp.ts_send, rtp_context->tmp.nr_ts_bits);
 	}
 	else /* SEND_SCALED */
@@ -792,11 +801,11 @@ static bool rtp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		assert(rfc3095_ctxt->sn <= 0xffff);
 		add_unscaled(&rtp_context->ts_sc, rfc3095_ctxt->sn);
 		add_scaled(&rtp_context->ts_sc, rfc3095_ctxt->sn);
-		rohc_comp_debug(context, "TS_SCALED = %u on %zu bits",
+		rohc_comp_debug(context, "TS_SCALED = %u on %u bits",
 		                rtp_context->tmp.ts_send, rtp_context->tmp.nr_ts_bits);
 	}
 
-	rohc_comp_debug(context, "%s%zu bits are required to encode new TS",
+	rohc_comp_debug(context, "%s%u bits are required to encode new TS",
 	                (rohc_ts_sc_is_deducible(&rtp_context->ts_sc) ?
 	                 "0 (TS is deducible from SN bits) or " : ""),
 	                rtp_context->tmp.nr_ts_bits);
@@ -920,12 +929,15 @@ static size_t rtp_code_dynamic_rtp_part(const struct rohc_comp_ctxt *const conte
 	rohc_comp_debug(context, "UDP checksum = 0x%04x", udp->check);
 	memcpy(&dest[counter], &udp->check, 2);
 	nr_written = 2;
-	rtp_context->udp_checksum_change_count++;
+	if(rtp_context->udp_checksum_change_count < oa_repetitions_nr)
+	{
+		rtp_context->udp_checksum_change_count++;
+	}
 
 	/* part 2 */
 	byte = 0;
 	if(rtp_context->ts_sc.state == INIT_STRIDE ||
-	   rtp_context->tmp.extension_bit_changed ||
+	   rtp_context->tmp.ext_bit_changed ||
 	   rtp_context->rtp_extension_change_count < oa_repetitions_nr)
 	{
 		/* send TS_STRIDE and/or the eXtension (X) bit */
@@ -940,8 +952,14 @@ static size_t rtp_code_dynamic_rtp_part(const struct rohc_comp_ctxt *const conte
 	                rtp->version & 0x03, rtp->padding & 0x01, rx_byte,
 	                rtp->cc & 0x0f, dest[counter + nr_written]);
 	nr_written++;
-	rtp_context->rtp_version_change_count++;
-	rtp_context->rtp_padding_change_count++;
+	if(rtp_context->rtp_version_change_count < oa_repetitions_nr)
+	{
+		rtp_context->rtp_version_change_count++;
+	}
+	if(rtp_context->rtp_padding_change_count < oa_repetitions_nr)
+	{
+		rtp_context->rtp_padding_change_count++;
+	}
 
 	/* part 3 */
 	byte = 0;
@@ -951,7 +969,10 @@ static size_t rtp_code_dynamic_rtp_part(const struct rohc_comp_ctxt *const conte
 	rohc_comp_debug(context, "(M = %u, PT = 0x%02x) = 0x%02x", rtp->m & 0x01,
 	                rtp->pt & 0x7f, dest[counter + nr_written]);
 	nr_written++;
-	rtp_context->rtp_pt_change_count++;
+	if(rtp_context->rtp_pt_change_count < oa_repetitions_nr)
+	{
+		rtp_context->rtp_pt_change_count++;
+	}
 
 	/* part 4 */
 	memcpy(&dest[counter + nr_written], &rtp->sn, 2);
@@ -995,7 +1016,10 @@ static size_t rtp_code_dynamic_rtp_part(const struct rohc_comp_ctxt *const conte
 		                rtp->extension & 0x01, context->mode & 0x03, tis & 0x01,
 		                tss & 0x01, dest[counter + nr_written]);
 		nr_written++;
-		rtp_context->rtp_extension_change_count++;
+		if(rtp_context->rtp_extension_change_count < oa_repetitions_nr)
+		{
+			rtp_context->rtp_extension_change_count++;
+		}
 
 		/* part 8 */
 		if(tss)
@@ -1022,7 +1046,10 @@ static size_t rtp_code_dynamic_rtp_part(const struct rohc_comp_ctxt *const conte
 			nr_written += ts_stride_sdvl_len;
 
 			/* do we transmit the scaled RTP Timestamp (TS) in the next packet ? */
-			rtp_context->ts_sc.nr_init_stride_packets++;
+			if(rtp_context->ts_sc.nr_init_stride_packets < oa_repetitions_nr)
+			{
+				rtp_context->ts_sc.nr_init_stride_packets++;
+			}
 			if(rtp_context->ts_sc.nr_init_stride_packets >= oa_repetitions_nr)
 			{
 				rohc_comp_debug(context, "TS_STRIDE transmitted at least %u "
@@ -1055,26 +1082,26 @@ static size_t rtp_code_dynamic_rtp_part(const struct rohc_comp_ctxt *const conte
  * @param rtp     The RTP header
  * @return        The number of UDP/RTP fields that changed
  */
-static int rtp_changed_rtp_dynamic(const struct rohc_comp_ctxt *const context,
-                                   const struct udphdr *const udp,
-                                   const struct rtphdr *const rtp)
+static size_t rtp_changed_rtp_dynamic(const struct rohc_comp_ctxt *const context,
+                                      const struct udphdr *const udp,
+                                      const struct rtphdr *const rtp)
 {
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
 	struct sc_rtp_context *const rtp_context =
 		(struct sc_rtp_context *) rfc3095_ctxt->specific;
 	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
-	int fields = 0;
+	size_t fields = 0;
 
 	rohc_comp_debug(context, "find changes in RTP dynamic fields");
 
 	/* check UDP checksum field */
-	if((udp->check != 0 && rtp_context->old_udp.check == 0) ||
-	   (udp->check == 0 && rtp_context->old_udp.check != 0) ||
+	if((udp->check != 0 && rtp_context->old_udp_check == 0) ||
+	   (udp->check == 0 && rtp_context->old_udp_check != 0) ||
 	   (rtp_context->udp_checksum_change_count < oa_repetitions_nr))
 	{
-		if((udp->check != 0 && rtp_context->old_udp.check == 0) ||
-		   (udp->check == 0 && rtp_context->old_udp.check != 0))
+		if((udp->check != 0 && rtp_context->old_udp_check == 0) ||
+		   (udp->check == 0 && rtp_context->old_udp_check != 0))
 		{
 			rohc_comp_debug(context, "UDP checksum field changed");
 			rtp_context->udp_checksum_change_count = 0;
@@ -1091,13 +1118,13 @@ static int rtp_changed_rtp_dynamic(const struct rohc_comp_ctxt *const context,
 	}
 
 	/* check RTP Version field */
-	if(rtp->version != rtp_context->old_rtp.version ||
+	if(rtp->version != rtp_context->old_rtp_version ||
 	   rtp_context->rtp_version_change_count < oa_repetitions_nr)
 	{
-		if(rtp->version != rtp_context->old_rtp.version)
+		if(rtp->version != rtp_context->old_rtp_version)
 		{
 			rohc_comp_debug(context, "RTP Version field changed (%u -> %u)",
-			                rtp_context->old_rtp.version, rtp->version);
+			                rtp_context->old_rtp_version, rtp->version);
 			rtp_context->rtp_version_change_count = 0;
 		}
 		else
@@ -1112,10 +1139,10 @@ static int rtp_changed_rtp_dynamic(const struct rohc_comp_ctxt *const context,
 	}
 
 	/* check RTP CSRC Counter and CSRC field */
-	if(rtp->cc != rtp_context->old_rtp.cc)
+	if(rtp->cc != rtp_context->old_rtp_cc)
 	{
 		rohc_comp_debug(context, "RTP CC field changed (0x%x -> 0x%x)",
-		                rtp_context->old_rtp.cc, rtp->cc);
+		                rtp_context->old_rtp_cc, rtp->cc);
 		fields += 2;
 	}
 
@@ -1134,13 +1161,13 @@ static int rtp_changed_rtp_dynamic(const struct rohc_comp_ctxt *const context,
 	}
 
 	/* check RTP Padding field */
-	if(rtp->padding != rtp_context->old_rtp.padding ||
+	if(rtp->padding != rtp_context->old_rtp_padding ||
 	   rtp_context->rtp_padding_change_count < oa_repetitions_nr)
 	{
-		if(rtp->padding != rtp_context->old_rtp.padding)
+		if(rtp->padding != rtp_context->old_rtp_padding)
 		{
 			rohc_comp_debug(context, "RTP Padding (P) bit changed (0x%x -> 0x%x)",
-			                rtp_context->old_rtp.padding, rtp->padding);
+			                rtp_context->old_rtp_padding, rtp->padding);
 			rtp_context->tmp.padding_bit_changed = true;
 			rtp_context->rtp_padding_change_count = 0;
 		}
@@ -1159,39 +1186,39 @@ static int rtp_changed_rtp_dynamic(const struct rohc_comp_ctxt *const context,
 	}
 
 	/* check RTP eXtension (X) field */
-	if(rtp->extension != rtp_context->old_rtp.extension ||
+	if(rtp->extension != rtp_context->old_rtp_extension ||
 	   rtp_context->rtp_extension_change_count < oa_repetitions_nr)
 	{
-		if(rtp->extension != rtp_context->old_rtp.extension)
+		if(rtp->extension != rtp_context->old_rtp_extension)
 		{
 			rohc_comp_debug(context, "RTP eXtension (X) bit changed (0x%x -> "
-			                "0x%x)", rtp_context->old_rtp.extension,
+			                "0x%x)", rtp_context->old_rtp_extension,
 			                rtp->extension);
-			rtp_context->tmp.extension_bit_changed = true;
+			rtp_context->tmp.ext_bit_changed = true;
 			rtp_context->rtp_extension_change_count = 0;
 		}
 		else
 		{
 			rohc_comp_debug(context, "RTP eXtension (X) bit did not change but "
 			                "changed in the last few packets");
-			rtp_context->tmp.extension_bit_changed = false;
+			rtp_context->tmp.ext_bit_changed = false;
 		}
 
 		fields++;
 	}
 	else
 	{
-		rtp_context->tmp.extension_bit_changed = false;
+		rtp_context->tmp.ext_bit_changed = false;
 	}
 
 	/* check RTP Payload Type field */
-	if(rtp->pt != rtp_context->old_rtp.pt ||
+	if(rtp->pt != rtp_context->old_rtp_pt ||
 	   rtp_context->rtp_pt_change_count < oa_repetitions_nr)
 	{
-		if(rtp->pt != rtp_context->old_rtp.pt)
+		if(rtp->pt != rtp_context->old_rtp_pt)
 		{
 			rohc_comp_debug(context, "RTP Payload Type (PT) field changed "
-			                "(0x%x -> 0x%x)", rtp_context->old_rtp.pt, rtp->pt);
+			                "(0x%x -> 0x%x)", rtp_context->old_rtp_pt, rtp->pt);
 			rtp_context->tmp.rtp_pt_changed = 1;
 			rtp_context->rtp_pt_change_count = 0;
 		}
@@ -1209,7 +1236,7 @@ static int rtp_changed_rtp_dynamic(const struct rohc_comp_ctxt *const context,
 		rtp_context->tmp.rtp_pt_changed = 0;
 	}
 
-	rohc_comp_debug(context, "%d RTP dynamic fields changed", fields);
+	rohc_comp_debug(context, "%zu RTP dynamic fields changed", fields);
 
 	return fields;
 }
