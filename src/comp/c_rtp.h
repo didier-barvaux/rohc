@@ -115,12 +115,6 @@ struct sc_rtp_context
 	///        compression of packet
 	struct rtp_tmp_vars tmp;
 
-	/// Scaled RTP Time Stamp
-	int tss;
-
-	/// Whether the Time Stride field is present or not
-	int tis;
-
 	/// Structure to encode the TS field
 	struct ts_sc_comp ts_sc;
 };
