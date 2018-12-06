@@ -1219,48 +1219,13 @@ static bool rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const contex
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt =
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
 
+	/* the number of IP headers does not change within a compression context,
+	 * a new context is used instead */
+	assert(uncomp_pkt_hdrs->ip_hdrs_nr == rfc3095_ctxt->ip_hdr_nr);
+
 	/* compute or find the new SN */
 	rfc3095_ctxt->sn = rfc3095_ctxt->get_next_sn(context, uncomp_pkt);
 	rohc_comp_debug(context, "SN = %u", rfc3095_ctxt->sn);
-
-	/* init or free the context of the inner IP header if the number of IP
-	 * headers changed */
-	if(uncomp_pkt_hdrs->ip_hdrs_nr != rfc3095_ctxt->ip_hdr_nr)
-	{
-		if(uncomp_pkt_hdrs->ip_hdrs_nr > 1)
-		{
-			rohc_comp_debug(context, "packet got one more IP header than context");
-			if(!ip_header_info_new(&rfc3095_ctxt->inner_ip_flags,
-			                       &uncomp_pkt->inner_ip,
-			                       context->compressor->oa_repetitions_nr,
-			                       context->profile->id,
-			                       context->compressor->trace_callback,
-			                       context->compressor->trace_callback_priv))
-			{
-				goto error;
-			}
-
-			/* RFC 3843, §3.1 Static Chain Termination:
-			 *   [...] the static chain is terminated if the "Next Header / Protocol"
-			 *   field of a static IP header part indicates anything but IP (IPinIP or
-			 *   IPv6).  Alternatively, the compressor can choose to end the static chain
-			 *   at any IP header, and indicate this by setting the MSB of the IP version
-			 *   field to 1 (0xC for IPv4 or 0xE or IPv6).  The decompressor must store
-			 *   this indication in the context for correct decompression of subsequent
-			 *   headers.
-			 */
-			if(rohc_is_tunneling(uncomp_pkt_hdrs->innermost_ip_hdr->next_proto))
-			{
-				rfc3095_ctxt->inner_ip_flags.static_chain_end = true;
-			}
-		}
-		else
-		{
-			rohc_comp_debug(context, "packet got one less IP header than context");
-			ip_header_info_free(&rfc3095_ctxt->inner_ip_flags);
-		}
-		rfc3095_ctxt->ip_hdr_nr = uncomp_pkt_hdrs->ip_hdrs_nr;
-	}
 
 	/* check NBO and RND of the IP-ID of the IP headers (IPv4 only) */
 	detect_ip_id_behaviours(context, uncomp_pkt);
