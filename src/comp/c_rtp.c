@@ -261,11 +261,7 @@ static rohc_packet_t c_rtp_decide_FO_packet(const struct rohc_comp_ctxt *const c
 		rohc_comp_debug(context, "choose packet IR-DYN because RTP Version "
 		                "changed");
 	}
-	else if((rfc3095_ctxt->outer_ip_flags.version == IPV4 &&
-	         rfc3095_ctxt->outer_ip_flags.info.v4.sid_count < oa_repetitions_nr) ||
-	        (nr_of_ip_hdr > 1 &&
-	         rfc3095_ctxt->inner_ip_flags.version == IPV4 &&
-	         rfc3095_ctxt->inner_ip_flags.info.v4.sid_count < oa_repetitions_nr))
+	else if(does_at_least_one_sid_change(rfc3095_ctxt, oa_repetitions_nr))
 	{
 		packet = ROHC_PACKET_IR_DYN;
 		rohc_comp_debug(context, "choose packet IR-DYN because at least one "
@@ -375,36 +371,31 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 	bool innermost_ip_id_11bits_possible;
 	bool outermost_ip_id_changed;
 	bool outermost_ip_id_11bits_possible;
-	bool is_outer_ipv4_non_rnd;
-	int is_rnd;
-	int is_ip_v4;
 	bool is_ts_deducible;
 	bool is_ts_scaled;
-
-	is_rnd = rfc3095_ctxt->outer_ip_flags.info.v4.rnd;
-	is_ip_v4 = (rfc3095_ctxt->outer_ip_flags.version == IPV4);
-	is_outer_ipv4_non_rnd = (is_ip_v4 && !is_rnd);
+	size_t ip_hdr_pos;
 
 	is_ts_deducible = rohc_ts_sc_is_deducible(&rtp_context->ts_sc);
 	is_ts_scaled = (rtp_context->ts_sc.state == SEND_SCALED);
 
 	rohc_comp_debug(context, "is_ts_deducible = %d, is_ts_scaled = %d, "
-	                "Marker bit = %d, nr_of_ip_hdr = %zd, rnd = %d",
+	                "Marker bit = %d, nr_of_ip_hdr = %zu",
 	                !!is_ts_deducible, !!is_ts_scaled,
-	                !!rtp_context->tmp.is_marker_bit_set, nr_of_ip_hdr, is_rnd);
+	                !!rtp_context->tmp.is_marker_bit_set, nr_of_ip_hdr);
 
 	/* sanity check */
-	if(rfc3095_ctxt->outer_ip_flags.version == IPV4)
+	for(ip_hdr_pos = 0; ip_hdr_pos < rfc3095_ctxt->ip_hdr_nr; ip_hdr_pos++)
 	{
-		assert(rfc3095_ctxt->outer_ip_flags.info.v4.sid_count >= oa_repetitions_nr);
-		assert(rfc3095_ctxt->outer_ip_flags.info.v4.rnd_count >= oa_repetitions_nr);
-		assert(rfc3095_ctxt->outer_ip_flags.info.v4.nbo_count >= oa_repetitions_nr);
-	}
-	if(nr_of_ip_hdr > 1 && rfc3095_ctxt->inner_ip_flags.version == IPV4)
-	{
-		assert(rfc3095_ctxt->inner_ip_flags.info.v4.sid_count >= oa_repetitions_nr);
-		assert(rfc3095_ctxt->inner_ip_flags.info.v4.rnd_count >= oa_repetitions_nr);
-		assert(rfc3095_ctxt->inner_ip_flags.info.v4.nbo_count >= oa_repetitions_nr);
+		const struct ip_header_info *const ip_ctxt =
+			&(rfc3095_ctxt->ip_ctxts[ip_hdr_pos]);
+
+		/* SID, RND and NBO flags shall be established for all IPv4 headers */
+		if(ip_ctxt->version == IPV4)
+		{
+			assert(ip_ctxt->info.v4.sid_count >= oa_repetitions_nr);
+			assert(ip_ctxt->info.v4.rnd_count >= oa_repetitions_nr);
+			assert(ip_ctxt->info.v4.nbo_count >= oa_repetitions_nr);
+		}
 	}
 	assert(rfc3095_ctxt->tmp.send_dynamic == 0);
 	assert(rtp_context->tmp.send_rtp_dynamic == 0);
@@ -414,31 +405,8 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 	assert(!rtp_context->tmp.extension_bit_changed);
 
 	/* find out how many IP headers are IPv4 headers with non-random IP-IDs */
-	nr_ipv4_non_rnd = 0;
-	nr_ipv4_non_rnd_with_bits = 0;
-	if(is_outer_ipv4_non_rnd)
-	{
-		nr_ipv4_non_rnd++;
-		if(rfc3095_ctxt->tmp.ip_id_changed)
-		{
-			nr_ipv4_non_rnd_with_bits++;
-		}
-	}
-	if(nr_of_ip_hdr >= 1)
-	{
-		const int is_ip2_v4 = (rfc3095_ctxt->inner_ip_flags.version == IPV4);
-		const int is_rnd2 = rfc3095_ctxt->inner_ip_flags.info.v4.rnd;
-		const bool is_inner_ipv4_non_rnd = (is_ip2_v4 && !is_rnd2);
-
-		if(is_inner_ipv4_non_rnd)
-		{
-			nr_ipv4_non_rnd++;
-			if(rfc3095_ctxt->tmp.ip_id2_changed)
-			{
-				nr_ipv4_non_rnd_with_bits++;
-			}
-		}
-	}
+	nr_ipv4_non_rnd = get_nr_ipv4_non_rnd(rfc3095_ctxt);
+	nr_ipv4_non_rnd_with_bits = get_nr_ipv4_non_rnd_with_bits(rfc3095_ctxt);
 	rohc_comp_debug(context, "nr_ipv4_non_rnd = %u, nr_ipv4_non_rnd_with_bits = %u",
 	                nr_ipv4_non_rnd, nr_ipv4_non_rnd_with_bits);
 

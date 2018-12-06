@@ -41,6 +41,9 @@ static bool rohc_ip_ctxt_create(struct rohc_comp_ctxt *const context,
                                 const struct rohc_buf *const packet)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
+static bool max_6_bits_of_innermost_nonrnd_ipv4_id_required(const struct rohc_comp_rfc3095_ctxt *const ctxt)
+	__attribute__((warn_unused_result, nonnull(1)));
+
 
 /*
  * Definitions of public functions
@@ -111,11 +114,7 @@ rohc_packet_t c_ip_decide_FO_packet(const struct rohc_comp_ctxt *const context)
 	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	rohc_packet_t packet;
 
-	if((rfc3095_ctxt->outer_ip_flags.version == IPV4 &&
-	    rfc3095_ctxt->outer_ip_flags.info.v4.sid_count < oa_repetitions_nr) ||
-	   (rfc3095_ctxt->ip_hdr_nr > 1 &&
-	    rfc3095_ctxt->inner_ip_flags.version == IPV4 &&
-	    rfc3095_ctxt->inner_ip_flags.info.v4.sid_count < oa_repetitions_nr))
+	if(does_at_least_one_sid_change(rfc3095_ctxt, oa_repetitions_nr))
 	{
 		packet = ROHC_PACKET_IR_DYN;
 		rohc_comp_debug(context, "choose packet IR-DYN because at least one "
@@ -135,7 +134,8 @@ rohc_packet_t c_ip_decide_FO_packet(const struct rohc_comp_ctxt *const context)
 		                "fields changed with double IP header",
 		                rfc3095_ctxt->tmp.send_dynamic);
 	}
-	else if((rfc3095_ctxt->tmp.sn_5bits_possible || rfc3095_ctxt->tmp.sn_13bits_possible))
+	else if(rfc3095_ctxt->tmp.sn_5bits_possible ||
+	        rfc3095_ctxt->tmp.sn_13bits_possible)
 	{
 		/* UOR-2 packet can be used only if SN stand on <= 13 bits (5 bits in
 		   base header + 8 bits in extension 3) */
@@ -172,94 +172,60 @@ rohc_packet_t c_ip_decide_SO_packet(const struct rohc_comp_ctxt *const context)
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
 	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
+	bool some_ip_id_bits_required = false;
 	rohc_packet_t packet;
+	size_t ip_hdr_pos;
 
-	if(rfc3095_ctxt->ip_hdr_nr == 1) /* single IP header */
+	for(ip_hdr_pos = 0; ip_hdr_pos < rfc3095_ctxt->ip_hdr_nr; ip_hdr_pos++)
 	{
-		if(rfc3095_ctxt->outer_ip_flags.version == IPV4)
-		{
-			assert(rfc3095_ctxt->outer_ip_flags.info.v4.sid_count >= oa_repetitions_nr);
-			assert(rfc3095_ctxt->outer_ip_flags.info.v4.rnd_count >= oa_repetitions_nr);
-			assert(rfc3095_ctxt->outer_ip_flags.info.v4.nbo_count >= oa_repetitions_nr);
-		}
+		const struct ip_header_info *const ip_ctxt =
+			&(rfc3095_ctxt->ip_ctxts[ip_hdr_pos]);
+		const struct rohc_rfc3095_tmp_ip_hdr *const tmp_vars_ip =
+			&(rfc3095_ctxt->tmp.ip_hdrs[ip_hdr_pos]);
 
-		if(rfc3095_ctxt->tmp.sn_4bits_possible &&
-		   no_outer_ip_id_bits_required(rfc3095_ctxt))
+		if(ip_ctxt->version == IPV4)
 		{
-			packet = ROHC_PACKET_UO_0;
-			rohc_comp_debug(context, "choose packet UO-0 because <= 4 SN bits must "
-			                "be transmitted, and the single IP header is either "
-			                "'non-IPv4' or 'IPv4 with random IP-ID' or 'IPv4 with "
-			                "non-random IP-ID but 0 IP-ID bit to transmit");
-		}
-		else if(rfc3095_ctxt->tmp.sn_5bits_possible &&
-		        is_outer_ip_id_6bits_possible(rfc3095_ctxt))
-		{
-			packet = ROHC_PACKET_UO_1; /* IPv4 only */
-			rohc_comp_debug(context, "choose packet UO-1 because <= 5 SN bits "
-			                "must be transmitted, and the single IP header is IPv4 "
-			                "with less than 6 non-random IP-ID bits to transmit");
-		}
-		else if((rfc3095_ctxt->tmp.sn_5bits_possible || rfc3095_ctxt->tmp.sn_13bits_possible))
-		{
-			/* UOR-2 packet can be used only if SN stand on <= 13 bits (5 bits in
-			   base header + 8 bits in extension 3) */
-			packet = ROHC_PACKET_UOR_2;
-			rohc_comp_debug(context, "choose packet UOR-2 because <= 13 SN bits "
-			                "must be transmitted");
-		}
-		else
-		{
-			/* UOR-2 packet can not be used, use IR-DYN instead */
-			packet = ROHC_PACKET_IR_DYN;
-			rohc_comp_debug(context, "choose packet IR-DYN because > 13 SN bits "
-			                "must be be transmitted");
+			/* SID, RND and NBO flags shall be established for all IPv4 headers */
+			assert(ip_ctxt->info.v4.sid_count >= oa_repetitions_nr);
+			assert(ip_ctxt->info.v4.rnd_count >= oa_repetitions_nr);
+			assert(ip_ctxt->info.v4.nbo_count >= oa_repetitions_nr);
+
+			/* are some IP-ID bits required for the IP header? */
+			if(ip_ctxt->info.v4.rnd == 0 && tmp_vars_ip->ip_id_changed)
+			{
+				some_ip_id_bits_required = true;
+			}
 		}
 	}
-	else /* double IP headers */
-	{
-		if(rfc3095_ctxt->outer_ip_flags.version == IPV4)
-		{
-			assert(rfc3095_ctxt->outer_ip_flags.info.v4.sid_count >= oa_repetitions_nr);
-			assert(rfc3095_ctxt->outer_ip_flags.info.v4.rnd_count >= oa_repetitions_nr);
-			assert(rfc3095_ctxt->outer_ip_flags.info.v4.nbo_count >= oa_repetitions_nr);
-		}
-		if(rfc3095_ctxt->inner_ip_flags.version == IPV4)
-		{
-			assert(rfc3095_ctxt->inner_ip_flags.info.v4.sid_count >= oa_repetitions_nr);
-			assert(rfc3095_ctxt->inner_ip_flags.info.v4.rnd_count >= oa_repetitions_nr);
-			assert(rfc3095_ctxt->inner_ip_flags.info.v4.nbo_count >= oa_repetitions_nr);
-		}
 
-		if(rfc3095_ctxt->tmp.sn_4bits_possible &&
-		   no_outer_ip_id_bits_required(rfc3095_ctxt) &&
-		   no_inner_ip_id_bits_required(rfc3095_ctxt))
-		{
-			packet = ROHC_PACKET_UO_0;
-			rohc_comp_debug(context, "choose packet UO-0");
-		}
-		else if(rfc3095_ctxt->tmp.sn_5bits_possible &&
-		        is_outer_ip_id_6bits_possible(rfc3095_ctxt) &&
-		        no_inner_ip_id_bits_required(rfc3095_ctxt))
-		{
-			packet = ROHC_PACKET_UO_1; /* IPv4 only for outer header */
-			rohc_comp_debug(context, "choose packet UO-1");
-		}
-		else if((rfc3095_ctxt->tmp.sn_5bits_possible || rfc3095_ctxt->tmp.sn_13bits_possible))
-		{
-			/* UOR-2 packet can be used only if SN stand on <= 13 bits (5 bits in
-			   base header + 8 bits in extension 3) */
-			packet = ROHC_PACKET_UOR_2;
-			rohc_comp_debug(context, "choose packet UOR-2 because <= 13 SN bits "
-			                "must be transmitted");
-		}
-		else
-		{
-			/* UOR-2 packet can not be used, use IR-DYN instead */
-			packet = ROHC_PACKET_IR_DYN;
-			rohc_comp_debug(context, "choose packet IR-DYN because > 13 SN bits "
-			                "must be transmitted");
-		}
+	/* what is the smallest possible packet type? */
+	if(rfc3095_ctxt->tmp.sn_4bits_possible && !some_ip_id_bits_required)
+	{
+		packet = ROHC_PACKET_UO_0;
+		rohc_comp_debug(context, "choose packet UO-0 to transmit <= 4 SN bits, and "
+		                "no IP-ID bits");
+	}
+	else if(rfc3095_ctxt->tmp.sn_5bits_possible &&
+	        max_6_bits_of_innermost_nonrnd_ipv4_id_required(rfc3095_ctxt))
+	{
+		packet = ROHC_PACKET_UO_1; /* IPv4 only for outer header */
+		rohc_comp_debug(context, "choose packet UO-1 to transmit <= 5 SN bits, "
+		                "<= 6 IP-ID bits of innermost IPv4 header with RND=0, and "
+		                "0 IP-ID bits of the other outer IPv4 headers");
+	}
+	else if(rfc3095_ctxt->tmp.sn_5bits_possible ||
+	        rfc3095_ctxt->tmp.sn_13bits_possible)
+	{
+		/* UOR-2 packet can be used only if SN stand on <= 13 bits (5 bits in
+		   base header + 8 bits in extension 3) */
+		packet = ROHC_PACKET_UOR_2;
+		rohc_comp_debug(context, "choose packet UOR-2 to transmit <= 13 SN bits");
+	}
+	else
+	{
+		/* UOR-2 packet can not be used, use IR-DYN instead */
+		packet = ROHC_PACKET_IR_DYN;
+		rohc_comp_debug(context, "choose packet IR-DYN to transmit > 13 SN bits");
 	}
 
 	return packet;
@@ -344,6 +310,48 @@ int c_ip_code_ir_remainder(const struct rohc_comp_ctxt *const context,
 
 error:
 	return -1;
+}
+
+
+/**
+ * @brief May the inner IP header transmit the required non-random IP-ID bits?
+ *
+ * @param ctxt  The generic decompression context
+ * @return      true if the required IP-ID bits may be transmitted,
+ *              false otherwise
+ */
+static bool max_6_bits_of_innermost_nonrnd_ipv4_id_required(const struct rohc_comp_rfc3095_ctxt *const ctxt)
+{
+	bool is_possible;
+
+	if(ctxt->ip_hdr_nr == 1)
+	{
+		is_possible = (ctxt->ip_ctxts[0].version == IPV4 &&
+		               ctxt->ip_ctxts[0].info.v4.rnd != 1 &&
+		               ctxt->tmp.ip_hdrs[0].ip_id_6bits_possible);
+	}
+	else if(ctxt->ip_ctxts[1].version == IPV4 &&
+	        ctxt->ip_ctxts[1].info.v4.rnd != 1)
+	{
+		const bool no_1st_hdr_bits = (ctxt->ip_ctxts[0].version != IPV4 ||
+		                              ctxt->ip_ctxts[0].info.v4.rnd == 1 ||
+		                              !ctxt->tmp.ip_hdrs[0].ip_id_changed);
+		is_possible = (ctxt->tmp.ip_hdrs[1].ip_id_6bits_possible && no_1st_hdr_bits);
+	}
+	else if(ctxt->ip_ctxts[0].version == IPV4 &&
+	        ctxt->ip_ctxts[0].info.v4.rnd != 1)
+	{
+		is_possible = ctxt->tmp.ip_hdrs[1].ip_id_6bits_possible;
+	}
+	else
+	{
+		/* UO-1 is possible even if there is no IPv4 header with RND=0 (the
+		 * decompressor shall then ignore the IP-ID bits transmitted), but
+		 * there is no gain sending one UO-1 packet with useless bits */
+		is_possible = false;
+	}
+
+	return is_possible;
 }
 
 

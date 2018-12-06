@@ -54,53 +54,57 @@ void net_pkt_parse(struct net_pkt *const packet,
 	packet->trace_callback_priv = trace_cb_priv;
 
 	/* create the outer IP packet from raw data */
-	ip_create(&packet->outer_ip, rohc_buf_data(data), data.len);
-	packet->ip_hdr_nr++;
+	ip_create(&packet->ip_hdrs[packet->ip_hdr_nr], rohc_buf_data(data), data.len);
 	rohc_debug(packet, trace_entity, ROHC_PROFILE_GENERAL,
-	           "outer IP header: %u bytes", ip_get_totlen(&packet->outer_ip));
+	           "IP header #%zu:", packet->ip_hdr_nr + 1);
 	rohc_debug(packet, trace_entity, ROHC_PROFILE_GENERAL,
-	           "outer IP header: version %d", ip_get_version(&packet->outer_ip));
-	if(packet->outer_ip.nh.data != NULL)
+	           "  %u bytes", ip_get_totlen(&packet->ip_hdrs[packet->ip_hdr_nr]));
+	rohc_debug(packet, trace_entity, ROHC_PROFILE_GENERAL,
+	           "  version %d", ip_get_version(&packet->ip_hdrs[packet->ip_hdr_nr]));
+	if(packet->ip_hdrs[packet->ip_hdr_nr].nh.data != NULL)
 	{
 		rohc_debug(packet, trace_entity, ROHC_PROFILE_GENERAL,
-		           "outer IP header: next header is of type %d",
-		           packet->outer_ip.nh.proto);
-		if(packet->outer_ip.nl.data != NULL)
+		           "  next header is of type %d",
+		           packet->ip_hdrs[packet->ip_hdr_nr].nh.proto);
+		if(packet->ip_hdrs[packet->ip_hdr_nr].nl.data != NULL)
 		{
 			rohc_debug(packet, trace_entity, ROHC_PROFILE_GENERAL,
-			           "outer IP header: next layer is of type %d",
-			           packet->outer_ip.nl.proto);
+			           "  next layer is of type %d",
+			           packet->ip_hdrs[packet->ip_hdr_nr].nl.proto);
 		}
 	}
 
 	/* get the transport protocol */
-	packet->transport = &packet->outer_ip.nl;
+	packet->transport = &packet->ip_hdrs[packet->ip_hdr_nr].nl;
+	packet->ip_hdr_nr++;
 
 	/* is there any inner IP header? */
 	if(rohc_is_tunneling(packet->transport->proto))
 	{
 		/* create the second IP header */
-		ip_get_inner_packet(&packet->outer_ip, &packet->inner_ip);
-		packet->ip_hdr_nr++;
+		ip_get_inner_packet(&packet->ip_hdrs[0], &packet->ip_hdrs[packet->ip_hdr_nr]);
 		rohc_debug(packet, trace_entity, ROHC_PROFILE_GENERAL,
-		           "inner IP header: %u bytes", ip_get_totlen(&packet->inner_ip));
+		           "IP header #%zu:", packet->ip_hdr_nr + 1);
 		rohc_debug(packet, trace_entity, ROHC_PROFILE_GENERAL,
-		           "inner IP header: version %d", ip_get_version(&packet->inner_ip));
-		if(packet->inner_ip.nh.data != NULL)
+		           "  %u bytes", ip_get_totlen(&packet->ip_hdrs[packet->ip_hdr_nr]));
+		rohc_debug(packet, trace_entity, ROHC_PROFILE_GENERAL,
+		           "  version %d", ip_get_version(&packet->ip_hdrs[packet->ip_hdr_nr]));
+		if(packet->ip_hdrs[packet->ip_hdr_nr].nh.data != NULL)
 		{
 			rohc_debug(packet, trace_entity, ROHC_PROFILE_GENERAL,
-			           "inner IP header: next header is of type %d",
-			           packet->inner_ip.nh.proto);
-			if(packet->inner_ip.nl.data != NULL)
+			           "  next header is of type %d",
+			           packet->ip_hdrs[packet->ip_hdr_nr].nh.proto);
+			if(packet->ip_hdrs[packet->ip_hdr_nr].nl.data != NULL)
 			{
 				rohc_debug(packet, trace_entity, ROHC_PROFILE_GENERAL,
-				           "inner IP header: next layer is of type %d",
-				           packet->inner_ip.nl.proto);
+				           "  next layer is of type %d",
+				           packet->ip_hdrs[packet->ip_hdr_nr].nl.proto);
 			}
 		}
 
 		/* get the transport protocol */
-		packet->transport = &packet->inner_ip.nl;
+		packet->transport = &packet->ip_hdrs[packet->ip_hdr_nr].nl;
+		packet->ip_hdr_nr++;
 	}
 }
 

@@ -141,15 +141,31 @@ struct ip_header_info
  * Structure that contains variables that are temporary, i.e. variables that
  * will only be used for the compression of the current packet. These variables
  * must be reinitialized every time a new packet arrive.
+ */
+struct rohc_rfc3095_tmp_ip_hdr
+{
+	uint16_t changed_fields;     /**< The nr of fields that changed in IP header */
+	bool ip_id_changed;          /**< Whether the IP-ID of the IP header changed */
+	bool ip_id_3bits_possible;   /**< Whether the IP-ID may be encoded on 3 bits */
+	bool ip_id_5bits_possible;   /**< Whether the IP-ID may be encoded on 5 bits */
+	bool ip_id_6bits_possible;   /**< Whether the IP-ID may be encoded on 6 bits */
+	bool ip_id_8bits_possible;   /**< Whether the IP-ID may be encoded on 8 bits */
+	bool ip_id_11bits_possible;  /**< Whether the IP-ID may be encoded on 11 bits */
+};
+
+
+/**
+ * @brief Structure that contains variables that are used during one single
+ *        compression of packet.
+ *
+ * Structure that contains variables that are temporary, i.e. variables that
+ * will only be used for the compression of the current packet. These variables
+ * must be reinitialized every time a new packet arrive.
  *
  * @see c_init_tmp_variables
  */
 struct generic_tmp_vars
 {
-	/// The number of fields that changed in the outer IP header
-	unsigned short changed_fields;
-	/// The number of fields that changed in the inner IP header
-	unsigned short changed_fields2;
 	/// The number of dynamic fields that changed in the two IP headers
 	int send_dynamic;
 
@@ -165,20 +181,10 @@ struct generic_tmp_vars
 	bool sn_9bits_possible;
 	bool sn_14bits_possible;
 
-	/// The number of bits needed to encode the IP-ID of the outer IP header
-	bool ip_id_changed;
-	bool ip_id_3bits_possible;
-	bool ip_id_5bits_possible;
-	bool ip_id_6bits_possible;
-	bool ip_id_8bits_possible;
-	bool ip_id_11bits_possible;
-	/// The number of bits needed to encode the IP-ID of the inner IP header
-	bool ip_id2_changed;
-	bool ip_id2_3bits_possible;
-	bool ip_id2_5bits_possible;
-	bool ip_id2_6bits_possible;
-	bool ip_id2_8bits_possible;
-	bool ip_id2_11bits_possible;
+	/** The number of IP headers */
+	size_t ip_hdr_nr;
+	/** The number of bits needed to encode the IP-ID of the IP headers */
+	struct rohc_rfc3095_tmp_ip_hdr ip_hdrs[ROHC_MAX_IP_HDRS];
 };
 
 
@@ -204,10 +210,8 @@ struct rohc_comp_rfc3095_ctxt
 
 	/** The number of IP headers */
 	size_t ip_hdr_nr;
-	/// Information about the outer IP header
-	struct ip_header_info outer_ip_flags;
-	/// Information about the inner IP header
-	struct ip_header_info inner_ip_flags;
+	/** Information about the IP headers */
+	struct ip_header_info ip_ctxts[ROHC_MAX_IP_HDRS];
 
 	/** Whether the cache for the CRC-3 value on CRC-STATIC fields is initialized or not */
 	bool is_crc_static_3_cached_valid;
@@ -363,50 +367,6 @@ void rohc_get_ipid_bits(const struct rohc_comp_ctxt *const context,
                         bool *const outermost_ip_id_11bits_possible)
 	__attribute__((nonnull(1, 2, 3, 4, 5, 6, 7, 8)));
 
-/**
- * @brief Does the outer IP header require to transmit no non-random IP-ID bit?
- *
- * @param ctxt  The generic decompression context
- * @return      true if no required outer IP-ID bit shall be transmitted,
- *              false otherwise
- */
-static inline bool no_outer_ip_id_bits_required(const struct rohc_comp_rfc3095_ctxt *const ctxt)
-{
-	return (ctxt->outer_ip_flags.version != IPV4 ||
-	        ctxt->outer_ip_flags.info.v4.rnd == 1 ||
-	        !ctxt->tmp.ip_id_changed);
-}
-
-
-/**
- * @brief May the outer IP header transmit the required non-random IP-ID bits?
- *
- * @param ctxt  The generic decompression context
- * @return      true if the required IP-ID bits may be transmitted,
- *              false otherwise
- */
-static inline bool is_outer_ip_id_6bits_possible(const struct rohc_comp_rfc3095_ctxt *const ctxt)
-{
-	return (ctxt->outer_ip_flags.version == IPV4 &&
-	        ctxt->outer_ip_flags.info.v4.rnd != 1 &&
-	        ctxt->tmp.ip_id_6bits_possible);
-}
-
-
-/**
- * @brief Does the inner IP header require to transmit no non-random IP-ID bit?
- *
- * @param ctxt  The generic decompression context
- * @return      true if no required inner IP-ID bit shall be transmitted,
- *              false otherwise
- */
-static inline bool no_inner_ip_id_bits_required(const struct rohc_comp_rfc3095_ctxt *const ctxt)
-{
-	return (ctxt->inner_ip_flags.version != IPV4 ||
-	        ctxt->inner_ip_flags.info.v4.rnd == 1 ||
-	        !ctxt->tmp.ip_id2_changed);
-}
-
 
 /**
  * @brief How many IP headers are IPv4 headers with non-random IP-IDs ?
@@ -417,19 +377,16 @@ static inline bool no_inner_ip_id_bits_required(const struct rohc_comp_rfc3095_c
 static inline size_t get_nr_ipv4_non_rnd(const struct rohc_comp_rfc3095_ctxt *const ctxt)
 {
 	size_t nr_ipv4_non_rnd = 0;
+	size_t ip_hdr_pos;
 
-	/* outer IP header */
-	if(ctxt->outer_ip_flags.version == IPV4 && ctxt->outer_ip_flags.info.v4.rnd != 1)
+	for(ip_hdr_pos = 0; ip_hdr_pos < ctxt->ip_hdr_nr; ip_hdr_pos++)
 	{
-		nr_ipv4_non_rnd++;
-	}
+		const struct ip_header_info *const ip_ctxt = &(ctxt->ip_ctxts[ip_hdr_pos]);
 
-	/* optional inner IP header */
-	if(ctxt->ip_hdr_nr >= 1 &&
-	   ctxt->inner_ip_flags.version == IPV4 &&
-	   ctxt->inner_ip_flags.info.v4.rnd != 1)
-	{
-		nr_ipv4_non_rnd++;
+		if(ip_ctxt->version == IPV4 && ip_ctxt->info.v4.rnd != 1)
+		{
+			nr_ipv4_non_rnd++;
+		}
 	}
 
 	return nr_ipv4_non_rnd;
@@ -440,34 +397,57 @@ static inline size_t get_nr_ipv4_non_rnd(const struct rohc_comp_rfc3095_ctxt *co
  * @brief How many IP headers are IPv4 headers with non-random IP-IDs and some
  *        bits to transmit ?
  *
- * @param ctxt  The generic decompression context
+ * @param ctxt  The generic compression context
  * @return      The number of IPv4 headers with non-random IP-ID fields and some
  *              bits to transmit
  */
 static inline size_t get_nr_ipv4_non_rnd_with_bits(const struct rohc_comp_rfc3095_ctxt *const ctxt)
 {
 	size_t nr_ipv4_non_rnd_with_bits = 0;
+	size_t ip_hdr_pos;
 
-	/* outer IP header */
-	if(ctxt->outer_ip_flags.version == IPV4 &&
-	   ctxt->outer_ip_flags.info.v4.rnd != 1 &&
-	   ctxt->tmp.ip_id_changed)
+	for(ip_hdr_pos = 0; ip_hdr_pos < ctxt->ip_hdr_nr; ip_hdr_pos++)
 	{
-		nr_ipv4_non_rnd_with_bits++;
-	}
+		const struct ip_header_info *const ip_ctxt = &(ctxt->ip_ctxts[ip_hdr_pos]);
+		const struct rohc_rfc3095_tmp_ip_hdr *const tmp =
+			&(ctxt->tmp.ip_hdrs[ip_hdr_pos]);
 
-	/* optional inner IP header */
-	if(ctxt->ip_hdr_nr >= 1 &&
-	   ctxt->inner_ip_flags.version == IPV4 &&
-	   ctxt->inner_ip_flags.info.v4.rnd != 1 &&
-	   ctxt->tmp.ip_id2_changed)
-	{
-		nr_ipv4_non_rnd_with_bits++;
+		if(ip_ctxt->version == IPV4 && ip_ctxt->info.v4.rnd != 1 && tmp->ip_id_changed)
+		{
+			nr_ipv4_non_rnd_with_bits++;
+		}
 	}
 
 	return nr_ipv4_non_rnd_with_bits;
 }
 
+
+/**
+ * @brief at least one SID flag changed now or in the last few packets?
+ *
+ * @param ctxt               The generic compression context
+ * @param oa_repetitions_nr  The number of Optimistic Approach repetitions
+ * @return                   true if at least one SID flag changed now or in
+ *                           last few packets, false otherwise
+ */
+static inline bool does_at_least_one_sid_change(const struct rohc_comp_rfc3095_ctxt *const ctxt,
+                                                const uint8_t oa_repetitions_nr)
+{
+	bool at_least_one_sid_change = false;
+	size_t ip_hdr_pos;
+
+	for(ip_hdr_pos = 0; ip_hdr_pos < ctxt->ip_hdr_nr; ip_hdr_pos++)
+	{
+		const struct ip_header_info *const ip_ctxt = &(ctxt->ip_ctxts[ip_hdr_pos]);
+
+		if(ip_ctxt->version == IPV4 && ip_ctxt->info.v4.sid_count < oa_repetitions_nr)
+		{
+			at_least_one_sid_change = true;
+		}
+	}
+
+	return at_least_one_sid_change;
+}
 
 #endif
 

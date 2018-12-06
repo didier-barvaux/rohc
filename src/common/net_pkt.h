@@ -27,6 +27,7 @@
 #define ROHC_COMMON_NET_PKT_H
 
 #include <rohc/rohc_buf.h>
+#include "protocols/ip.h"
 #include "ip.h"
 #include "rohc_traces.h"
 
@@ -44,8 +45,7 @@ struct net_pkt
 	size_t len;                  /**< The length (in bytes) of the packet data */
 
 	size_t ip_hdr_nr;            /**< The number of IP headers */
-	struct ip_packet outer_ip;   /**< The outer IP header */
-	struct ip_packet inner_ip;   /**< The inner IP header if any */
+	struct ip_packet ip_hdrs[ROHC_MAX_IP_HDRS];   /**< The outer IP headers */
 
 	struct net_hdr *transport;   /**< The transport layer of the packet if any */
 
