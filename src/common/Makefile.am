@@ -28,7 +28,6 @@ sources = \
 	interval.c \
 	sdvl.c \
 	ip.c \
-	net_pkt.c \
 	rohc_list.c \
 	feedback_parse.c \
 	csiphash.c \
@@ -57,7 +56,6 @@ private_headers = \
 	interval.h \
 	sdvl.h \
 	ip.h \
-	net_pkt.h \
 	rohc_list.h \
 	feedback.h \
 	feedback_parse.h \

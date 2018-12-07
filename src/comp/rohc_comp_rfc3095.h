@@ -31,7 +31,6 @@
 
 #include "rohc_comp_internals.h"
 #include "rohc_packets.h"
-#include "net_pkt.h"
 #include "protocols/uncomp_pkt_hdrs.h"
 #include "schemes/comp_list.h"
 #include "ip.h"

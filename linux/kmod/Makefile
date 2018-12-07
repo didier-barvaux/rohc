@@ -24,7 +24,6 @@ rohc_common_sources = \
 	../../src/common/interval.c \
 	../../src/common/sdvl.c \
 	../../src/common/ip.c \
-	../../src/common/net_pkt.c \
 	../../src/common/rohc_list.c \
 	../../src/common/feedback_parse.c \
 	../../src/common/csiphash.c \
