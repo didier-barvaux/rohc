@@ -186,10 +186,10 @@ static void c_destroy_contexts(struct rohc_comp *const comp)
 static struct rohc_comp_ctxt *
 	c_create_context(struct rohc_comp *const comp,
 	                 const struct rohc_comp_profile *const profile,
-	                 const struct rohc_buf *const packet,
 	                 const struct rohc_fingerprint *const fingerprint,
-	                 const struct rohc_pkt_hdrs *const pkt_hdrs)
-	__attribute__((nonnull(1, 2, 3, 4, 5), warn_unused_result));
+	                 const struct rohc_pkt_hdrs *const pkt_hdrs,
+	                 const struct rohc_ts pkt_time)
+	__attribute__((nonnull(1, 2, 3, 4), warn_unused_result));
 static struct rohc_comp_ctxt *
 	rohc_comp_find_ctxt(struct rohc_comp *const comp,
 	                    const struct rohc_comp_profile *const profile,
@@ -3377,17 +3377,17 @@ const char * rohc_comp_get_state_descr(const rohc_comp_state_t state)
  *
  * @param comp         The ROHC compressor
  * @param profile      The profile to associate the context with
- * @param packet       The packet to create a compression context for
  * @param fingerprint  The packet/context fingerprint
  * @param pkt_hdrs     The information collected about packet headers
+ * @param pkt_time     The arrival time of the packet
  * @return             The compression context if successful, NULL otherwise
  */
 static struct rohc_comp_ctxt *
 	c_create_context(struct rohc_comp *const comp,
 	                 const struct rohc_comp_profile *const profile,
-	                 const struct rohc_buf *const packet,
 	                 const struct rohc_fingerprint *const fingerprint,
-	                 const struct rohc_pkt_hdrs *const pkt_hdrs)
+	                 const struct rohc_pkt_hdrs *const pkt_hdrs,
+	                 const struct rohc_ts pkt_time)
 {
 	const struct rohc_comp_ctxt *base_ctxt = NULL;
 	struct rohc_comp_ctxt *c;
@@ -3563,9 +3563,9 @@ static struct rohc_comp_ctxt *
 
 	c->state_oa_repeat_nr = 0;
 	c->go_back_fo_count = 0;
-	c->go_back_fo_time = packet->time;
+	c->go_back_fo_time = pkt_time;
 	c->go_back_ir_count = 0;
-	c->go_back_ir_time = packet->time;
+	c->go_back_ir_time = pkt_time;
 
 	c->total_uncompressed_size = 0;
 	c->total_compressed_size = 0;
@@ -3596,7 +3596,7 @@ static struct rohc_comp_ctxt *
 	}
 	else
 	{
-		if(!profile->create(c, packet))
+		if(!profile->create(c, pkt_hdrs))
 		{
 			return NULL;
 		}
@@ -3604,8 +3604,8 @@ static struct rohc_comp_ctxt *
 
 	/* if creation is successful, mark the context as used */
 	c->used = 1;
-	c->first_used = packet->time.sec;
-	c->latest_used = packet->time.sec;
+	c->first_used = pkt_time.sec;
+	c->latest_used = pkt_time.sec;
 	assert(comp->num_contexts_used <= comp->medium.max_cid);
 	comp->num_contexts_used++;
 
@@ -3774,7 +3774,7 @@ static struct rohc_comp_ctxt *
 
 		/* create the new context from packet (and from the base context if
 		 * Context Replication is possible) */
-		context = c_create_context(comp, profile, packet, pkt_fingerprint, pkt_hdrs);
+		context = c_create_context(comp, profile, pkt_fingerprint, pkt_hdrs, packet->time);
 		if(context == NULL)
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,

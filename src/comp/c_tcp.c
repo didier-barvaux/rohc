@@ -74,7 +74,7 @@ static bool c_tcp_create_from_ctxt(struct rohc_comp_ctxt *const ctxt,
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
-                                  const struct rohc_buf *const packet)
+                                  const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static void c_tcp_destroy(struct rohc_comp_ctxt *const context)
@@ -563,119 +563,66 @@ error:
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param context  The compression context
- * @param packet   The IP/TCP packet given to initialize the new context
- * @return         true if successful, false otherwise
- *
- * @todo TODO: the code that parses IP headers in IP/UDP/RTP profiles could
- *             probably be re-used (and maybe enhanced if needed)
+ * @param context          The compression context
+ * @param uncomp_pkt_hdrs  The uncompressed headers to initialize the new context
+ * @return                 true if successful, false otherwise
  */
 static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
-                                  const struct rohc_buf *const packet)
+                                  const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 {
 	const struct rohc_comp *const comp = context->compressor;
+	const struct tcphdr *const tcp = uncomp_pkt_hdrs->tcp;
 	struct sc_tcp_context *tcp_context;
-	const uint8_t *remain_data = rohc_buf_data(*packet);
-	size_t remain_len = packet->len;
-	const struct tcphdr *tcp;
-	uint8_t proto;
+	size_t ip_hdr_pos;
 	size_t i;
 	bool is_ok;
+
+	assert(uncomp_pkt_hdrs->innermost_ip_hdr->next_proto == ROHC_IPPROTO_TCP);
+	assert(uncomp_pkt_hdrs->tcp != NULL);
 
 	/* create the TCP part of the profile context */
 	tcp_context = calloc(1, sizeof(struct sc_tcp_context));
 	if(tcp_context == NULL)
 	{
-		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		rohc_error(comp, ROHC_TRACE_COMP, context->profile->id,
 		           "no memory for the TCP part of the profile context");
 		goto error;
 	}
 	context->specific = tcp_context;
 
 	/* create contexts for IP headers and their extensions */
-	tcp_context->ip_contexts_nr = 0;
-	do
+	for(ip_hdr_pos = 0; ip_hdr_pos < uncomp_pkt_hdrs->ip_hdrs_nr; ip_hdr_pos++)
 	{
-		const struct ip_hdr *const ip = (struct ip_hdr *) remain_data;
-		ip_context_t *const ip_context =
-			&(tcp_context->ip_contexts[tcp_context->ip_contexts_nr]);
+		const struct rohc_pkt_ip_hdr *const pkt_ip_hdr =
+			&(uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos]);
+		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
 
-		/* retrieve IP version */
-		assert(remain_len >= sizeof(struct ip_hdr));
-		rohc_comp_debug(context, "found IPv%d", ip->version);
-		ip_context->version = ip->version;
-		ip_context->version = ip->version;
+		ip_context->version = pkt_ip_hdr->version;
+		ip_context->dscp = pkt_ip_hdr->dscp;
+		ip_context->ttl_hopl = pkt_ip_hdr->ttl_hl;
+		ip_context->next_header = pkt_ip_hdr->next_proto;
 
-		switch(ip->version)
+		if(pkt_ip_hdr->version == IPV4)
 		{
-			case IPV4:
-			{
-				const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) remain_data;
-
-				assert(remain_len >= sizeof(struct ipv4_hdr));
-				proto = ipv4->protocol;
-
-				ip_context->last_ip_id = rohc_ntoh16(ipv4->id);
-				rohc_comp_debug(context, "IP-ID 0x%04x", ip_context->last_ip_id);
-				ip_context->last_ip_id_behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
-				ip_context->ip_id_behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
-				ip_context->next_header = proto;
-				ip_context->dscp = ipv4->dscp;
-				ip_context->df = ipv4->df;
-				ip_context->ttl_hopl = ipv4->ttl;
-				ip_context->saddr[0] = ipv4->saddr;
-				ip_context->daddr[0] = ipv4->daddr;
-
-				remain_data += sizeof(struct ipv4_hdr);
-				remain_len -= sizeof(struct ipv4_hdr);
-				break;
-			}
-			case IPV6:
-			{
-				const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
-
-				assert(remain_len >= sizeof(struct ipv6_hdr));
-				proto = ipv6->nh;
-
-				ip_context->ip_id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
-				ip_context->dscp = remain_data[1];
-				ip_context->ttl_hopl = ipv6->hl;
-				ip_context->flow_label = ipv6_get_flow_label(ipv6);
-				memcpy(ip_context->saddr, &ipv6->saddr, sizeof(struct ipv6_addr));
-				memcpy(ip_context->daddr, &ipv6->daddr, sizeof(struct ipv6_addr));
-
-				remain_data += sizeof(struct ipv6_hdr);
-				remain_len -= sizeof(struct ipv6_hdr);
-
-				rohc_comp_debug(context, "parse IPv6 extension headers");
-				while(rohc_is_ipv6_opt(proto))
-				{
-					const struct ipv6_opt *const ipv6_opt = (struct ipv6_opt *) remain_data;
-					size_t opt_len;
-					assert(remain_len >= sizeof(struct ipv6_opt));
-					opt_len = ipv6_opt_get_length(ipv6_opt);
-					rohc_comp_debug(context, "  IPv6 extension header is %zu-byte long",
-					                opt_len);
-					remain_data += opt_len;
-					remain_len -= opt_len;
-					proto = ipv6_opt->next_header;
-				}
-				ip_context->next_header = proto;
-				break;
-			}
-			default:
-			{
-				goto free_context;
-			}
+			ip_context->last_ip_id = rohc_ntoh16(pkt_ip_hdr->ipv4->id);
+			rohc_debug(comp, ROHC_TRACE_COMP, context->profile->id,
+			           "IP-ID 0x%04x", ip_context->last_ip_id);
+			ip_context->last_ip_id_behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
+			ip_context->ip_id_behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
+			ip_context->df = pkt_ip_hdr->ipv4->df;
+			ip_context->saddr[0] = pkt_ip_hdr->ipv4->saddr;
+			ip_context->daddr[0] = pkt_ip_hdr->ipv4->daddr;
 		}
-
-		tcp_context->ip_contexts_nr++;
+		else /* IPv6 */
+		{
+			ip_context->ip_id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
+			ip_context->flow_label = ipv6_get_flow_label(pkt_ip_hdr->ipv6);
+			memcpy(ip_context->saddr, &pkt_ip_hdr->ipv6->saddr, sizeof(struct ipv6_addr));
+			memcpy(ip_context->daddr, &pkt_ip_hdr->ipv6->daddr, sizeof(struct ipv6_addr));
+		}
 	}
-	while(rohc_is_tunneling(proto) && tcp_context->ip_contexts_nr < ROHC_MAX_IP_HDRS);
+	tcp_context->ip_contexts_nr = uncomp_pkt_hdrs->ip_hdrs_nr;
 
-	/* profile cannot handle the packet if it bypasses internal limit of IP headers
-	 * (already checked by check_profile) */
-	assert(rohc_is_tunneling(proto) == false);
 
 	/* create context for TCP header */
 	tcp_context->ttl_hopl_change_count = 0;
@@ -683,21 +630,20 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 	tcp_context->ecn_used = false;
 	tcp_context->ecn_used_change_count = comp->oa_repetitions_nr;
 	tcp_context->ecn_used_zero_count = 0;
-
-	/* TCP header begins just after the IP headers */
-	assert(remain_len >= sizeof(struct tcphdr));
-	tcp = (struct tcphdr *) remain_data;
 	tcp_context->res_flags = tcp->res_flags;
 	tcp_context->urg_flag = tcp->urg_flag;
 	tcp_context->ack_flag = tcp->ack_flag;
 	tcp_context->urg_ptr_nbo = tcp->urg_ptr;
 	tcp_context->window_nbo = tcp->window;
+	tcp_context->seq_num = rohc_ntoh32(tcp->seq_num);
+	tcp_context->ack_num = rohc_ntoh32(tcp->ack_num);
+	tcp_context->ack_stride = 0;
 
 	/* MSN */
 	is_ok = wlsb_new(&tcp_context->msn_wlsb, comp->oa_repetitions_nr);
 	if(!is_ok)
 	{
-		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		rohc_error(comp, ROHC_TRACE_COMP, context->profile->id,
 		           "failed to create W-LSB context for MSN");
 		goto free_context;
 	}
@@ -706,7 +652,7 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 	is_ok = wlsb_new(&tcp_context->ip_id_wlsb, comp->oa_repetitions_nr);
 	if(!is_ok)
 	{
-		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		rohc_error(comp, ROHC_TRACE_COMP, context->profile->id,
 		           "failed to create W-LSB context for IP-ID offset");
 		goto free_wlsb_msn;
 	}
@@ -715,7 +661,7 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 	is_ok = wlsb_new(&tcp_context->ttl_hopl_wlsb, comp->oa_repetitions_nr);
 	if(!is_ok)
 	{
-		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		rohc_error(comp, ROHC_TRACE_COMP, context->profile->id,
 		           "failed to create W-LSB context for innermost IPv4 TTL or "
 		           "IPv6 Hop Limit");
 		goto free_wlsb_ip_id;
@@ -725,31 +671,29 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 	is_ok = wlsb_new(&tcp_context->window_wlsb, comp->oa_repetitions_nr);
 	if(!is_ok)
 	{
-		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		rohc_error(comp, ROHC_TRACE_COMP, context->profile->id,
 		           "failed to create W-LSB context for TCP window");
 		goto free_wlsb_ttl_hopl;
 	}
 
 	/* TCP sequence number */
-	tcp_context->seq_num = rohc_ntoh32(tcp->seq_num);
 	is_ok = wlsb_new(&tcp_context->seq_wlsb, comp->oa_repetitions_nr);
 	if(!is_ok)
 	{
-		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		rohc_error(comp, ROHC_TRACE_COMP, context->profile->id,
 		           "failed to create W-LSB context for TCP sequence number");
 		goto free_wlsb_window;
 	}
 	is_ok = wlsb_new(&tcp_context->seq_scaled_wlsb, comp->oa_repetitions_nr);
 	if(!is_ok)
 	{
-		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		rohc_error(comp, ROHC_TRACE_COMP, context->profile->id,
 		           "failed to create W-LSB context for TCP scaled sequence "
 		           "number");
 		goto free_wlsb_seq;
 	}
 
 	/* TCP acknowledgment (ACK) number */
-	tcp_context->ack_num = rohc_ntoh32(tcp->ack_num);
 	is_ok = wlsb_new(&tcp_context->ack_wlsb, comp->oa_repetitions_nr);
 	if(!is_ok)
 	{
@@ -768,8 +712,6 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 	/* init the Master Sequence Number to a random value */
 	tcp_context->msn = comp->random_cb(comp, comp->random_cb_ctxt) & 0xffff;
 	rohc_comp_debug(context, "MSN = 0x%04x / %u", tcp_context->msn, tcp_context->msn);
-
-	tcp_context->ack_stride = 0;
 
 	/* init the last list of TCP options */
 	tcp_context->tcp_opts.structure_nr_trans = 0;

@@ -50,7 +50,7 @@
  */
 
 static bool c_rtp_create(struct rohc_comp_ctxt *const context,
-                         const struct rohc_buf *const packet)
+                         const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 static void c_rtp_destroy(struct rohc_comp_ctxt *const context)
 	__attribute__((nonnull(1)));
@@ -108,41 +108,30 @@ static size_t rtp_changed_rtp_dynamic(const struct rohc_comp_ctxt *const context
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param context  The compression context
- * @param packet   The IP/UDP/RTP packet given to initialize the new context
- * @return         true if successful, false otherwise
+ * @param context          The compression context
+ * @param uncomp_pkt_hdrs  The uncompressed headers to initialize the new context
+ * @return                 true if successful, false otherwise
  */
 static bool c_rtp_create(struct rohc_comp_ctxt *const context,
-                         const struct rohc_buf *const packet)
+                         const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	struct sc_rtp_context *rtp_context;
-	const struct udphdr *udp;
-	const struct rtphdr *rtp;
-	struct net_pkt ip_pkt;
 
-	assert(context->profile != NULL);
-
-	/* parse the uncompressed packet */
-	net_pkt_parse(&ip_pkt, *packet, context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv, ROHC_TRACE_COMP);
+	assert(uncomp_pkt_hdrs->innermost_ip_hdr->next_proto == ROHC_IPPROTO_UDP);
+	assert(uncomp_pkt_hdrs->udp != NULL);
+	assert(uncomp_pkt_hdrs->rtp != NULL);
 
 	/* create and initialize the generic part of the profile context */
-	if(!rohc_comp_rfc3095_create(context, &ip_pkt))
+	if(!rohc_comp_rfc3095_create(context, uncomp_pkt_hdrs))
 	{
 		rohc_comp_warn(context, "generic context creation failed");
 		goto quit;
 	}
 	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
 
-	/* check that transport protocol is UDP, and application protocol is RTP */
-	assert(ip_pkt.transport->proto == ROHC_IPPROTO_UDP);
-	assert(ip_pkt.transport->data != NULL);
-	udp = (struct udphdr *) ip_pkt.transport->data;
-	rtp = (struct rtphdr *) (udp + 1);
-
 	/* initialize SN with the SN found in the RTP header */
-	rfc3095_ctxt->sn = (uint32_t) rohc_ntoh16(rtp->sn);
+	rfc3095_ctxt->sn = (uint32_t) rohc_ntoh16(uncomp_pkt_hdrs->rtp->sn);
 	assert(rfc3095_ctxt->sn <= 0xffff);
 	rohc_comp_debug(context, "initialize context(SN) = hdr(SN) of first "
 	                "packet = %u", rfc3095_ctxt->sn);
@@ -163,12 +152,12 @@ static bool c_rtp_create(struct rohc_comp_ctxt *const context,
 	rtp_context->rtp_pt_change_count = 0;
 	rtp_context->rtp_padding_change_count = 0;
 	rtp_context->rtp_extension_change_count = 0;
-	rtp_context->old_udp_check = rohc_ntoh16(udp->check);
-	rtp_context->old_rtp_version = rtp->version;
-	rtp_context->old_rtp_padding = rtp->padding;
-	rtp_context->old_rtp_extension = rtp->extension;
-	rtp_context->old_rtp_cc = rtp->cc;
-	rtp_context->old_rtp_pt = rtp->pt;
+	rtp_context->old_udp_check = rohc_ntoh16(uncomp_pkt_hdrs->udp->check);
+	rtp_context->old_rtp_version = uncomp_pkt_hdrs->rtp->version;
+	rtp_context->old_rtp_padding = uncomp_pkt_hdrs->rtp->padding;
+	rtp_context->old_rtp_extension = uncomp_pkt_hdrs->rtp->extension;
+	rtp_context->old_rtp_cc = uncomp_pkt_hdrs->rtp->cc;
+	rtp_context->old_rtp_pt = uncomp_pkt_hdrs->rtp->pt;
 	if(!c_create_sc(&rtp_context->ts_sc,
 	                context->compressor->oa_repetitions_nr,
 	                context->compressor->trace_callback,

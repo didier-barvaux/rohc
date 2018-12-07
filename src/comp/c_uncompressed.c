@@ -40,7 +40,7 @@
 
 /* create/destroy context */
 static bool c_uncompressed_create(struct rohc_comp_ctxt *const context,
-                                  const struct rohc_buf *const packet)
+                                  const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 static void c_uncompressed_destroy(struct rohc_comp_ctxt *const context)
 	__attribute__((nonnull(1)));
@@ -99,12 +99,12 @@ static void uncompressed_decide_state(struct rohc_comp_ctxt *const context,
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param context  The compression context
- * @param packet   The packet given to initialize the new context
- * @return         true if successful, false otherwise
+ * @param context          The compression context
+ * @param uncomp_pkt_hdrs  The uncompressed headers to initialize the new context
+ * @return                 true if successful, false otherwise
  */
 static bool c_uncompressed_create(struct rohc_comp_ctxt *const context,
-                                  const struct rohc_buf *const packet __attribute__((unused)))
+                                  const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs __attribute__((unused)))
 {
 	assert(context->profile != NULL);
 

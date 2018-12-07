@@ -83,7 +83,7 @@ struct sc_udp_context
  */
 
 static bool c_udp_create(struct rohc_comp_ctxt *const context,
-                         const struct rohc_buf *const packet)
+                         const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static void udp_decide_state(struct rohc_comp_ctxt *const context);
@@ -113,25 +113,22 @@ static int udp_changed_udp_dynamic(const struct rohc_comp_ctxt *context,
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param context  The compression context
- * @param packet   The IP/UDP packet given to initialize the new context
- * @return         true if successful, false otherwise
+ * @param context          The compression context
+ * @param uncomp_pkt_hdrs  The uncompressed headers to initialize the new context
+ * @return                 true if successful, false otherwise
  */
 static bool c_udp_create(struct rohc_comp_ctxt *const context,
-                         const struct rohc_buf *const packet)
+                         const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 {
 	const struct rohc_comp *const comp = context->compressor;
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	struct sc_udp_context *udp_context;
-	const struct udphdr *udp;
-	struct net_pkt ip_pkt;
 
-	/* parse the uncompressed packet */
-	net_pkt_parse(&ip_pkt, *packet, context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv, ROHC_TRACE_COMP);
+	assert(uncomp_pkt_hdrs->innermost_ip_hdr->next_proto == ROHC_IPPROTO_UDP);
+	assert(uncomp_pkt_hdrs->udp != NULL);
 
 	/* create and initialize the generic part of the profile context */
-	if(!rohc_comp_rfc3095_create(context, &ip_pkt))
+	if(!rohc_comp_rfc3095_create(context, uncomp_pkt_hdrs))
 	{
 		rohc_comp_warn(context, "generic context creation failed");
 		goto quit;
@@ -142,11 +139,6 @@ static bool c_udp_create(struct rohc_comp_ctxt *const context,
 	rfc3095_ctxt->sn = comp->random_cb(comp, comp->random_cb_ctxt) & 0xffff;
 	rohc_comp_debug(context, "initialize context(SN) = random() = %u",
 	                rfc3095_ctxt->sn);
-
-	/* check that transport protocol is UDP */
-	assert(ip_pkt.transport->proto == ROHC_IPPROTO_UDP);
-	assert(ip_pkt.transport->data != NULL);
-	udp = (struct udphdr *) ip_pkt.transport->data;
 
 	/* create the UDP part of the profile context */
 	udp_context = malloc(sizeof(struct sc_udp_context));
@@ -160,7 +152,7 @@ static bool c_udp_create(struct rohc_comp_ctxt *const context,
 
 	/* initialize the UDP part of the profile context */
 	udp_context->udp_checksum_change_count = 0;
-	memcpy(&udp_context->old_udp, udp, sizeof(struct udphdr));
+	memcpy(&udp_context->old_udp, uncomp_pkt_hdrs->udp, sizeof(struct udphdr));
 
 	/* init the UDP-specific temporary variables */
 	udp_context->tmp.send_udp_dynamic = -1;

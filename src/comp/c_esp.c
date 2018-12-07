@@ -61,7 +61,7 @@ struct sc_esp_context
  */
 
 static bool c_esp_create(struct rohc_comp_ctxt *const context,
-                         const struct rohc_buf *const packet)
+                         const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int c_esp_encode(struct rohc_comp_ctxt *const context,
@@ -100,39 +100,29 @@ static size_t esp_code_dynamic_esp_part(const struct rohc_comp_ctxt *const conte
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param context  The compression context
- * @param packet   The IP/ESP packet given to initialize the new context
- * @return         true if successful, false otherwise
+ * @param context          The compression context
+ * @param uncomp_pkt_hdrs  The uncompressed headers to initialize the new context
+ * @return                 true if successful, false otherwise
  */
 static bool c_esp_create(struct rohc_comp_ctxt *const context,
-                         const struct rohc_buf *const packet)
+                         const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	struct sc_esp_context *esp_context;
-	const struct esphdr *esp;
-	struct net_pkt ip_pkt;
 
-	assert(context->profile != NULL);
-
-	/* parse the uncompressed packet */
-	net_pkt_parse(&ip_pkt, *packet, context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv, ROHC_TRACE_COMP);
+	assert(uncomp_pkt_hdrs->innermost_ip_hdr->next_proto == ROHC_IPPROTO_ESP);
+	assert(uncomp_pkt_hdrs->esp != NULL);
 
 	/* create and initialize the generic part of the profile context */
-	if(!rohc_comp_rfc3095_create(context, &ip_pkt))
+	if(!rohc_comp_rfc3095_create(context, uncomp_pkt_hdrs))
 	{
 		rohc_comp_warn(context, "generic context creation failed");
 		goto quit;
 	}
 	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
 
-	/* check that transport protocol is ESP */
-	assert(ip_pkt.transport->proto == ROHC_IPPROTO_ESP);
-	assert(ip_pkt.transport->data != NULL);
-	esp = (struct esphdr *) ip_pkt.transport->data;
-
 	/* initialize SN with the SN found in the ESP header */
-	rfc3095_ctxt->sn = rohc_ntoh32(esp->sn);
+	rfc3095_ctxt->sn = rohc_ntoh32(uncomp_pkt_hdrs->esp->sn);
 	rohc_comp_debug(context, "initialize context(SN) = hdr(SN) of first "
 	                "packet = %u", rfc3095_ctxt->sn);
 
@@ -147,7 +137,7 @@ static bool c_esp_create(struct rohc_comp_ctxt *const context,
 	rfc3095_ctxt->specific = esp_context;
 
 	/* initialize the ESP part of the profile context */
-	memcpy(&(esp_context->old_esp), esp, sizeof(struct esphdr));
+	memcpy(&(esp_context->old_esp), uncomp_pkt_hdrs->esp, sizeof(struct esphdr));
 
 	/* init the ESP-specific variables and functions */
 	rfc3095_ctxt->next_header_len = sizeof(struct esphdr);

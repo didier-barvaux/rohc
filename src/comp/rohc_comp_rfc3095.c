@@ -54,7 +54,7 @@
  */
 
 static bool ip_header_info_new(struct ip_header_info *const header_info,
-                               const struct ip_packet *const ip,
+                               const struct rohc_pkt_ip_hdr *const ip,
                                const size_t oa_repetitions_nr,
                                const int profile_id,
                                rohc_trace_callback2_t trace_cb,
@@ -388,7 +388,7 @@ static void rohc_comp_rfc3095_feedback_ack(struct rohc_comp_ctxt *const context,
  * @return                   true if successful, false otherwise
  */
 static bool ip_header_info_new(struct ip_header_info *const header_info,
-                               const struct ip_packet *const ip,
+                               const struct rohc_pkt_ip_hdr *const ip,
                                const size_t oa_repetitions_nr,
                                const int profile_id,
                                rohc_trace_callback2_t trace_cb,
@@ -397,7 +397,7 @@ static bool ip_header_info_new(struct ip_header_info *const header_info,
 	bool is_ok;
 
 	/* store the IP version in the header info */
-	header_info->version = ip_get_version(ip);
+	header_info->version = ip->version;
 	header_info->static_chain_end = false;
 
 	/* we haven't seen any header so far */
@@ -406,7 +406,7 @@ static bool ip_header_info_new(struct ip_header_info *const header_info,
 	/* version specific initialization */
 	if(header_info->version == IPV4)
 	{
-		header_info->info.v4.old_ip = *(ipv4_get_header(ip));
+		memcpy(&header_info->info.v4.old_ip, ip->ipv4, sizeof(struct ipv4_hdr));
 
 		/* init the parameters to encode the IP-ID with W-LSB encoding */
 		is_ok = wlsb_new(&header_info->info.v4.ip_id_window, oa_repetitions_nr);
@@ -429,7 +429,7 @@ static bool ip_header_info_new(struct ip_header_info *const header_info,
 	}
 	else
 	{
-		header_info->info.v6.old_ip = *(ipv6_get_header(ip));
+		memcpy(&header_info->info.v6.old_ip, ip->ipv6, sizeof(struct ipv6_hdr));
 
 		/* init the compression context for IPv6 extension header list */
 		rohc_comp_list_ipv6_new(&header_info->info.v6.ext_comp, oa_repetitions_nr,
@@ -519,12 +519,12 @@ static void c_init_tmp_variables(struct generic_tmp_vars *const tmp_vars)
 /**
  * @brief Create a new context and initialize it thanks to the given IP packet.
  *
- * @param context     The compression context
- * @param packet      The packet given to initialize the new context
- * @return            true if successful, false otherwise
+ * @param context          The compression context
+ * @param uncomp_pkt_hdrs  The uncompressed headers to initialize the new context
+ * @return                 true if successful, false otherwise
  */
 bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
-                              const struct net_pkt *const packet)
+                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	size_t ip_hdr_pos;
@@ -561,9 +561,10 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 	}
 
 	/* init the info related to the IP headers */
-	for(ip_hdr_pos = 0; ip_hdr_pos < packet->ip_hdr_nr; ip_hdr_pos++)
+	for(ip_hdr_pos = 0; ip_hdr_pos < uncomp_pkt_hdrs->ip_hdrs_nr; ip_hdr_pos++)
 	{
-		const struct ip_packet *const pkt_ip_hdr = &packet->ip_hdrs[ip_hdr_pos];
+		const struct rohc_pkt_ip_hdr *const pkt_ip_hdr =
+			&(uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos]);
 		struct ip_header_info *const ip_ctxt = &(rfc3095_ctxt->ip_ctxts[ip_hdr_pos]);
 
 		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -577,7 +578,7 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 			goto free_header_info;
 		}
 	}
-	rfc3095_ctxt->ip_hdr_nr = packet->ip_hdr_nr;
+	rfc3095_ctxt->ip_hdr_nr = uncomp_pkt_hdrs->ip_hdrs_nr;
 
 	/* RFC 3843, §3.1 Static Chain Termination:
 	 *   [...] the static chain is terminated if the "Next Header / Protocol"
@@ -588,10 +589,10 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 	 *   this indication in the context for correct decompression of subsequent
 	 *   headers.
 	 */
-	if(packet->ip_hdr_nr == ROHC_MAX_IP_HDRS &&
-	   rohc_is_tunneling(packet->ip_hdrs[packet->ip_hdr_nr - 1].nl.proto))
+	if(rfc3095_ctxt->ip_hdr_nr == ROHC_MAX_IP_HDRS &&
+	   rohc_is_tunneling(uncomp_pkt_hdrs->innermost_ip_hdr->next_proto))
 	{
-		rfc3095_ctxt->ip_ctxts[packet->ip_hdr_nr - 1].static_chain_end = true;
+		rfc3095_ctxt->ip_ctxts[uncomp_pkt_hdrs->ip_hdrs_nr - 1].static_chain_end = true;
 	}
 
 	/* init the temporary variables, whose lifetime is limited to the compression
@@ -601,7 +602,7 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 
 	/* init the profile-specific variables to safe values */
 	rfc3095_ctxt->specific = NULL;
-	rfc3095_ctxt->next_header_proto = packet->transport->proto;
+	rfc3095_ctxt->next_header_proto = uncomp_pkt_hdrs->ip_hdrs[1].next_proto;
 	rfc3095_ctxt->next_header_len = 0;
 	rfc3095_ctxt->decide_state = rohc_comp_rfc3095_decide_state;
 	rfc3095_ctxt->decide_FO_packet = NULL;

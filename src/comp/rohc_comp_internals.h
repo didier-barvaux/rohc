@@ -302,9 +302,13 @@ struct rohc_comp_profile
 	/**
 	 * @brief The handler used to create the profile-specific part of the
 	 *        compression context from a given packet
+	 *
+	 * @param context          The compression context
+	 * @param uncomp_pkt_hdrs  The uncompressed headers to initialize the new context
+	 * @return                 true if successful, false otherwise
 	 */
 	bool (*create)(struct rohc_comp_ctxt *const context,
-	               const struct rohc_buf *const packet)
+	               const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 		__attribute__((warn_unused_result, nonnull(1, 2)));
 
 	/**

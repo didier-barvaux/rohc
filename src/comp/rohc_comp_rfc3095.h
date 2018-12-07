@@ -340,7 +340,7 @@ struct rohc_comp_rfc3095_ctxt
  */
 
 bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
-                              const struct net_pkt *const packet)
+                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 void rohc_comp_rfc3095_destroy(struct rohc_comp_ctxt *const context)

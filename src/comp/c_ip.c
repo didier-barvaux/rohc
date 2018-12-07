@@ -38,7 +38,7 @@
  */
 
 static bool rohc_ip_ctxt_create(struct rohc_comp_ctxt *const context,
-                                const struct rohc_buf *const packet)
+                                const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static bool max_6_bits_of_innermost_nonrnd_ipv4_id_required(const struct rohc_comp_rfc3095_ctxt *const ctxt)
@@ -55,23 +55,18 @@ static bool max_6_bits_of_innermost_nonrnd_ipv4_id_required(const struct rohc_co
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param context  The compression context
- * @param packet   The IP packet given to initialize the new context
- * @return         true if successful, false otherwise
+ * @param context          The compression context
+ * @param uncomp_pkt_hdrs  The uncompressed headers to initialize the new context
+ * @return                 true if successful, false otherwise
  */
 static bool rohc_ip_ctxt_create(struct rohc_comp_ctxt *const context,
-                                const struct rohc_buf *const packet)
+                                const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 {
 	const struct rohc_comp *const comp = context->compressor;
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	struct net_pkt ip_pkt;
-
-	/* parse the uncompressed packet */
-	net_pkt_parse(&ip_pkt, *packet, context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv, ROHC_TRACE_COMP);
 
 	/* call the generic function for all IP-based profiles */
-	if(!rohc_comp_rfc3095_create(context, &ip_pkt))
+	if(!rohc_comp_rfc3095_create(context, uncomp_pkt_hdrs))
 	{
 		rohc_comp_warn(context, "generic context creation failed");
 		goto error;

@@ -148,7 +148,7 @@ struct rohc_comp_rfc5225_ip_esp_ctxt
 
 /* create/destroy context */
 static bool rohc_comp_rfc5225_ip_esp_create(struct rohc_comp_ctxt *const context,
-                                            const struct rohc_buf *const packet)
+                                            const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 static void rohc_comp_rfc5225_ip_esp_destroy(struct rohc_comp_ctxt *const context)
 	__attribute__((nonnull(1)));
@@ -373,19 +373,20 @@ static bool sdvl_sn_lsb_encode(uint8_t *const sdvl_bytes,
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param context  The compression context
- * @param packet   The packet given to initialize the new context
- * @return         true if successful, false otherwise
+ * @param context          The compression context
+ * @param uncomp_pkt_hdrs  The uncompressed headers to initialize the new context
+ * @return                 true if successful, false otherwise
  */
 static bool rohc_comp_rfc5225_ip_esp_create(struct rohc_comp_ctxt *const context,
-                                            const struct rohc_buf *const packet)
+                                            const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 {
 	const struct rohc_comp *const comp = context->compressor;
 	struct rohc_comp_rfc5225_ip_esp_ctxt *rfc5225_ctxt;
-	const uint8_t *remain_data = rohc_buf_data(*packet);
-	size_t remain_len = packet->len;
-	uint8_t proto;
+	size_t ip_hdr_pos;
 	bool is_ok;
+
+	assert(uncomp_pkt_hdrs->innermost_ip_hdr->next_proto == ROHC_IPPROTO_ESP);
+	assert(uncomp_pkt_hdrs->esp != NULL);
 
 	/* create the ROHCv2 IP/ESP part of the profile context */
 	rfc5225_ctxt = calloc(1, sizeof(struct rohc_comp_rfc5225_ip_esp_ctxt));
@@ -398,88 +399,50 @@ static bool rohc_comp_rfc5225_ip_esp_create(struct rohc_comp_ctxt *const context
 	context->specific = rfc5225_ctxt;
 
 	/* create contexts for IP headers and their extensions */
-	rfc5225_ctxt->ip_contexts_nr = 0;
-	do
+	for(ip_hdr_pos = 0; ip_hdr_pos < uncomp_pkt_hdrs->ip_hdrs_nr; ip_hdr_pos++)
 	{
-		const struct ip_hdr *const ip = (struct ip_hdr *) remain_data;
-		ip_context_t *const ip_context =
-			&(rfc5225_ctxt->ip_contexts[rfc5225_ctxt->ip_contexts_nr]);
+		const struct rohc_pkt_ip_hdr *const pkt_ip_hdr =
+			&(uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos]);
+		ip_context_t *const ip_context = &(rfc5225_ctxt->ip_contexts[ip_hdr_pos]);
 
-		/* retrieve IP version */
-		assert(remain_len >= sizeof(struct ip_hdr));
-		rohc_comp_debug(context, "found IPv%d", ip->version);
-		ip_context->version = ip->version;
+		ip_context->version = pkt_ip_hdr->version;
+		ip_context->tos_tc = pkt_ip_hdr->tos_tc;
+		ip_context->ttl_hopl = pkt_ip_hdr->ttl_hl;
+		ip_context->next_header = pkt_ip_hdr->next_proto;
 
-		switch(ip->version)
+		if(pkt_ip_hdr->version == IPV4)
 		{
-			case IPV4:
-			{
-				const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) remain_data;
-
-				assert(remain_len >= sizeof(struct ipv4_hdr));
-				proto = ipv4->protocol;
-
-				ip_context->last_ip_id = rohc_ntoh16(ipv4->id);
-				rohc_comp_debug(context, "IP-ID 0x%04x", ip_context->last_ip_id);
-				ip_context->last_ip_id_behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
-				ip_context->ip_id_behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
-				ip_context->next_header = proto;
-				ip_context->tos_tc = ipv4->tos;
-				ip_context->df = ipv4->df;
-				ip_context->ttl_hopl = ipv4->ttl;
-				ip_context->saddr[0] = ipv4->saddr;
-				ip_context->daddr[0] = ipv4->daddr;
-
-				remain_data += sizeof(struct ipv4_hdr);
-				remain_len -= sizeof(struct ipv4_hdr);
-				break;
-			}
-			case IPV6:
-			{
-				const struct ipv6_hdr *const ipv6 = (struct ipv6_hdr *) remain_data;
-
-				assert(remain_len >= sizeof(struct ipv6_hdr));
-				proto = ipv6->nh;
-
-				/* IPv6 got no IP-ID, but for encoding the innermost IP-ID is
-				 * considered bebaving randomly (see RFC5225 page 90):
-				 * ENFORCE(ip_id_behavior_innermost.UVALUE == IP_ID_BEHAVIOR_RANDOM);
-				 */
-				ip_context->ip_id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
-				ip_context->tos_tc = remain_data[1];
-				ip_context->ttl_hopl = ipv6->hl;
-				ip_context->flow_label = ipv6_get_flow_label(ipv6);
-				memcpy(ip_context->saddr, &ipv6->saddr, sizeof(struct ipv6_addr));
-				memcpy(ip_context->daddr, &ipv6->daddr, sizeof(struct ipv6_addr));
-
-				remain_data += sizeof(struct ipv6_hdr);
-				remain_len -= sizeof(struct ipv6_hdr);
-
-				/* TODO: handle IPv6 extension headers */
-				assert(rohc_is_ipv6_opt(proto) == false);
-
-				ip_context->next_header = proto;
-				break;
-			}
-			default:
-			{
-				goto free_context;
-			}
+			ip_context->last_ip_id = rohc_ntoh16(pkt_ip_hdr->ipv4->id);
+			rohc_debug(comp, ROHC_TRACE_COMP, context->profile->id,
+			           "IP-ID 0x%04x", ip_context->last_ip_id);
+			ip_context->last_ip_id_behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
+			ip_context->ip_id_behavior = ROHC_IP_ID_BEHAVIOR_SEQ;
+			ip_context->df = pkt_ip_hdr->ipv4->df;
+			ip_context->saddr[0] = pkt_ip_hdr->ipv4->saddr;
+			ip_context->daddr[0] = pkt_ip_hdr->ipv4->daddr;
 		}
+		else
+		{
+			/* IPv6 got no IP-ID, but for encoding the innermost IP-ID is
+			 * considered bebaving randomly (see RFC5225 page 90):
+			 * ENFORCE(ip_id_behavior_innermost.UVALUE == IP_ID_BEHAVIOR_RANDOM);
+			 */
+			ip_context->ip_id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
+			ip_context->flow_label = ipv6_get_flow_label(pkt_ip_hdr->ipv6);
+			memcpy(ip_context->saddr, &pkt_ip_hdr->ipv6->saddr, sizeof(struct ipv6_addr));
+			memcpy(ip_context->daddr, &pkt_ip_hdr->ipv6->daddr, sizeof(struct ipv6_addr));
 
-		rfc5225_ctxt->ip_contexts_nr++;
+			/* TODO: handle IPv6 extension headers */
+			assert(rohc_is_ipv6_opt(pkt_ip_hdr->ipv6->nh) == false);
+		}
 	}
-	while(rohc_is_tunneling(proto) && rfc5225_ctxt->ip_contexts_nr < ROHC_MAX_IP_HDRS);
-
-	/* profile cannot handle the packet if it bypasses internal limit of IP headers
-	 * (already checked by check_profile) */
-	assert(rohc_is_tunneling(proto) == false);
+	rfc5225_ctxt->ip_contexts_nr = uncomp_pkt_hdrs->ip_hdrs_nr;
 
 	/* MSN */
 	is_ok = wlsb_new(&rfc5225_ctxt->msn_wlsb, comp->oa_repetitions_nr);
 	if(!is_ok)
 	{
-		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		rohc_error(comp, ROHC_TRACE_COMP, context->profile->id,
 		           "failed to create W-LSB context for MSN");
 		goto free_context;
 	}
@@ -489,23 +452,18 @@ static bool rohc_comp_rfc5225_ip_esp_create(struct rohc_comp_ctxt *const context
 	                 comp->oa_repetitions_nr);
 	if(!is_ok)
 	{
-		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		rohc_error(comp, ROHC_TRACE_COMP, context->profile->id,
 		           "failed to create W-LSB context for IP-ID offset");
 		goto free_wlsb_msn;
 	}
 
-	/* initialize the ESP part of the profile context */
-	{
-		const struct esphdr *const esp = (struct esphdr *) remain_data;
+	/* record the ESP SPI in context */
+	rfc5225_ctxt->esp_spi = rohc_ntoh32(uncomp_pkt_hdrs->esp->spi);
 
-		/* record the ESP SPI in context */
-		rfc5225_ctxt->esp_spi = rohc_ntoh32(esp->spi);
-
-		/* init the Master Sequence Number to ESP SN */
-		rfc5225_ctxt->msn = rohc_ntoh32(esp->sn);
-		rohc_comp_debug(context, "MSN = 0x%08x / %u",
-		                rfc5225_ctxt->msn, rfc5225_ctxt->msn);
-	}
+	/* init the Master Sequence Number to ESP SN */
+	rfc5225_ctxt->msn = rohc_ntoh32(uncomp_pkt_hdrs->esp->sn);
+	rohc_debug(comp, ROHC_TRACE_COMP, context->profile->id,
+	           "MSN = 0x%08x / %u", rfc5225_ctxt->msn, rfc5225_ctxt->msn);
 
 	return true;
 
