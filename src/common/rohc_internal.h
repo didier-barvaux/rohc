@@ -160,6 +160,23 @@
 #include "rohc.h"
 
 
+/**
+ * @brief Be strict while parsing ROHC packet?
+ *
+ * Do we respect the robustness principle as stated in 'The Tao of IETF':
+ *
+ *   Be conservative in what you send and liberal in what you accept
+ *
+ * Source: https://www.ietf.org/about/participate/tao/
+ *
+ * Being 'liberal in what you accept' is great for production environments.
+ * Being 'strict in what you accept' is great for dev & testing environments.
+ */
+#define ROHC_RFC_STRICT_DECOMPRESSOR
+/* uncomment the next line to enable strict parsing */
+#undef ROHC_RFC_STRICT_DECOMPRESSOR
+
+
 /** The maximal value for MRRU */
 #define ROHC_MAX_MRRU 65535
 
