@@ -14,6 +14,7 @@ noinst_HEADERS = \
 	rtp.h \
 	tcp.h \
 	esp.h \
+	uncomp_pkt_hdrs.h \
 	rfc6846.h \
 	rfc5225.h
 

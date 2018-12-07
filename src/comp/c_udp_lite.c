@@ -112,11 +112,11 @@ static bool c_udp_lite_create(struct rohc_comp_ctxt *const context,
 
 static int c_udp_lite_encode(struct rohc_comp_ctxt *const context,
                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                             const struct rohc_buf *const uncomp_pkt,
+                             const struct rohc_ts uncomp_pkt_time,
                              uint8_t *const rohc_pkt,
                              const size_t rohc_pkt_max_len,
                              rohc_packet_t *const packet_type)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 6)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 6)));
 
 static size_t udp_lite_code_dynamic_udplite_part(const struct rohc_comp_ctxt *const context,
                                                  const uint8_t *const next_header,
@@ -237,7 +237,7 @@ quit:
  *
  * @param context           The compression context
  * @param uncomp_pkt_hdrs   The uncompressed headers to encode
- * @param uncomp_pkt        The uncompressed packet to encode
+ * @param uncomp_pkt_time   The arrival time of the uncompressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       OUT: The type of ROHC packet that is created
@@ -246,28 +246,23 @@ quit:
  */
 static int c_udp_lite_encode(struct rohc_comp_ctxt *const context,
                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                             const struct rohc_buf *const uncomp_pkt,
+                             const struct rohc_ts uncomp_pkt_time,
                              uint8_t *const rohc_pkt,
                              const size_t rohc_pkt_max_len,
                              rohc_packet_t *const packet_type)
 {
 	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 	struct sc_udp_lite_context *const udp_lite_context = rfc3095_ctxt->specific;
-	const struct udphdr *udp_lite;
-	struct net_pkt ip_pkt;
 	int size;
 
-	/* parse the uncompressed packet */
-	net_pkt_parse(&ip_pkt, *uncomp_pkt, context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv, ROHC_TRACE_COMP);
+	assert(uncomp_pkt_hdrs->innermost_ip_hdr->next_proto == ROHC_IPPROTO_UDPLITE);
+	assert(uncomp_pkt_hdrs->udp_lite != NULL);
 
-	/* retrieve the UDP-Lite header */
-	assert(ip_pkt.transport->data != NULL);
-	udp_lite = (struct udphdr *) ip_pkt.transport->data;
-	udp_lite_context->tmp.udp_size = ip_pkt.transport->len;
+	udp_lite_context->tmp.udp_size =
+		sizeof(struct udphdr) + uncomp_pkt_hdrs->payload_len;
 
 	/* encode the IP packet */
-	size = rohc_comp_rfc3095_encode(context, uncomp_pkt_hdrs, uncomp_pkt,
+	size = rohc_comp_rfc3095_encode(context, uncomp_pkt_hdrs, uncomp_pkt_time,
 	                                rohc_pkt, rohc_pkt_max_len, packet_type);
 	if(size < 0)
 	{
@@ -278,7 +273,8 @@ static int c_udp_lite_encode(struct rohc_comp_ctxt *const context,
 	if((*packet_type) == ROHC_PACKET_IR ||
 	   (*packet_type) == ROHC_PACKET_IR_DYN)
 	{
-		memcpy(&udp_lite_context->old_udp_lite, udp_lite, sizeof(struct udphdr));
+		memcpy(&udp_lite_context->old_udp_lite, uncomp_pkt_hdrs->udp_lite,
+		       sizeof(struct udphdr));
 	}
 
 quit:

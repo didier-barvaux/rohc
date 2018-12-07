@@ -39,6 +39,7 @@ public_headers = \
 	rohc.h \
 	rohc_profiles.h \
 	rohc_packets.h \
+	rohc_fingerprint.h \
 	rohc_traces.h \
 	rohc_time.h \
 	rohc_buf.h

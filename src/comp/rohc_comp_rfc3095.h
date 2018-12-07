@@ -32,6 +32,7 @@
 #include "rohc_comp_internals.h"
 #include "rohc_packets.h"
 #include "net_pkt.h"
+#include "protocols/uncomp_pkt_hdrs.h"
 #include "schemes/comp_list.h"
 #include "ip.h"
 #include "crc.h"
@@ -247,7 +248,7 @@ struct rohc_comp_rfc3095_ctxt
 
 	/** The handler for encoding profile-specific uncompressed header fields */
 	bool (*encode_uncomp_fields)(struct rohc_comp_ctxt *const context,
-	                             const struct net_pkt *const uncomp_pkt)
+	                             const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 		__attribute__((warn_unused_result, nonnull(1, 2)));
 
 	/// @brief The handler used to decide the state that should be used for the
@@ -270,7 +271,7 @@ struct rohc_comp_rfc3095_ctxt
 
 	/** Determine the next SN value */
 	uint32_t (*get_next_sn)(const struct rohc_comp_ctxt *const context,
-	                        const struct net_pkt *const uncomp_pkt)
+	                        const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 		__attribute__((warn_unused_result, nonnull(1, 2)));
 
 	/// @brief The handler used to add the static part of the next header to the
@@ -315,20 +316,16 @@ struct rohc_comp_rfc3095_ctxt
 		__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 	/// @brief The handler used to compute the CRC-STATIC value
-	uint8_t (*compute_crc_static)(const uint8_t *const ip,
-	                              const uint8_t *const ip2,
-	                              const uint8_t *const next_header,
+	uint8_t (*compute_crc_static)(const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
 	                              const rohc_crc_type_t crc_type,
 	                              const uint8_t init_val)
-		__attribute__((nonnull(1, 3), warn_unused_result));
+		__attribute__((nonnull(1), warn_unused_result));
 
 	/// @brief The handler used to compute the CRC-DYNAMIC value
-	uint8_t (*compute_crc_dynamic)(const uint8_t *const ip,
-	                               const uint8_t *const ip2,
-	                               const uint8_t *const next_header,
+	uint8_t (*compute_crc_dynamic)(const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
 	                               const rohc_crc_type_t crc_type,
 	                               const uint8_t init_val)
-		__attribute__((nonnull(1, 3), warn_unused_result));
+		__attribute__((nonnull(1), warn_unused_result));
 
 	/// Profile-specific data
 	void *specific;
@@ -352,11 +349,11 @@ rohc_ext_t decide_extension(const struct rohc_comp_ctxt *const context,
 
 int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                             const struct rohc_buf *const uncomp_pkt,
+                             const struct rohc_ts uncomp_pkt_time,
                              uint8_t *const rohc_pkt,
                              const size_t rohc_pkt_max_len,
                              rohc_packet_t *const packet_type)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 6)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 6)));
 
 bool rohc_comp_rfc3095_feedback(struct rohc_comp_ctxt *const context,
                                 const enum rohc_feedback_type feedback_type,

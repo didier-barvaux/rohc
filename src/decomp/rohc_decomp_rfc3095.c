@@ -318,11 +318,9 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
  */
 
 static bool check_uncomp_crc(const struct rohc_decomp_ctxt *const context,
-                             const uint8_t *const outer_ip_hdr,
-                             const uint8_t *const inner_ip_hdr,
-                             const uint8_t *const next_header,
+                             const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                              const struct rohc_decomp_crc_one *const crc_pkt)
-	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static bool is_sn_wraparound(const struct rohc_ts cur_arrival_time,
                              const struct rohc_ts arrival_times[ROHC_MAX_ARRIVAL_TIMES],
@@ -408,8 +406,8 @@ bool rohc_decomp_rfc3095_create(const struct rohc_decomp_ctxt *const context,
 	rfc3095_ctxt->next_header_proto = 0;
 
 	/* default CRC computation */
-	rfc3095_ctxt->compute_crc_static = compute_crc_static;
-	rfc3095_ctxt->compute_crc_dynamic = compute_crc_dynamic;
+	rfc3095_ctxt->compute_crc_static = ip_compute_crc_static;
+	rfc3095_ctxt->compute_crc_dynamic = ip_compute_crc_dynamic;
 	rfc3095_ctxt->is_crc_static_3_cached_valid = false;
 	rfc3095_ctxt->is_crc_static_7_cached_valid = false;
 
@@ -5179,12 +5177,13 @@ rohc_status_t rfc3095_decomp_build_hdrs(const struct rohc_decomp *const decomp,
 	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
 	uint8_t *uncomp_hdrs_data = rohc_buf_data(*uncomp_hdrs);
 	size_t uncomp_hdrs_max_len = rohc_buf_avail_len(*uncomp_hdrs);
-	uint8_t *outer_ip_hdr;
-	uint8_t *inner_ip_hdr;
-	uint8_t *next_header;
+	struct rohc_pkt_hdrs uncomp_pkt_hdrs = {
+		.ip_hdrs_nr = 0,
+		.all_hdrs_len = 0,
+		.all_hdrs = uncomp_hdrs_data,
+		.payload_len = payload_len,
+	};
 	size_t ip_payload_len = 0;
-
-	*uncomp_hdrs_len = 0;
 
 	/* build the IP headers */
 	if(decoded->multiple_ip)
@@ -5235,7 +5234,41 @@ rohc_status_t rfc3095_decomp_build_hdrs(const struct rohc_decomp *const decomp,
 			rohc_decomp_warn(context, "failed to build the outer IP header");
 			goto error_output_too_small;
 		}
-		outer_ip_hdr = uncomp_hdrs_data;
+		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].data = uncomp_hdrs_data;
+		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].version = decoded->outer_ip.version;
+		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].next_proto = decoded->outer_ip.proto;
+		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].tot_len = outer_ip_hdr_len + ip_payload_len;
+		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].tos_tc = decoded->outer_ip.tos;
+		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].ttl_hl = decoded->outer_ip.ttl;
+		if(decoded->outer_ip.version == IPV4 ||
+		   outer_ip_hdr_len == sizeof(struct ipv6_hdr))
+		{
+			uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_len = 0;
+			uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_nr = 0;
+		}
+		else
+		{
+			size_t count = sizeof(struct ipv6_hdr);
+			size_t ext_pos;
+			uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_len =
+				outer_ip_hdr_len - sizeof(struct ipv6_hdr);
+			uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_nr =
+				rfc3095_ctxt->list_decomp1.pkt_list.items_nr;
+			for(ext_pos = 0;
+			    ext_pos < uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_nr;
+			    ext_pos++)
+			{
+				uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts[ext_pos].data =
+					uncomp_hdrs_data + count;
+				uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts[ext_pos].type =
+					rfc3095_ctxt->list_decomp1.pkt_list.items[ext_pos]->type;
+				uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts[ext_pos].len =
+					rfc3095_ctxt->list_decomp1.pkt_list.items[ext_pos]->length;
+				count += uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts[ext_pos].len;
+			}
+		}
+		uncomp_pkt_hdrs.ip_hdrs_nr++;
+		uncomp_pkt_hdrs.all_hdrs_len += outer_ip_hdr_len;
 		uncomp_hdrs_data += outer_ip_hdr_len;
 		*uncomp_hdrs_len += outer_ip_hdr_len;
 		uncomp_hdrs_max_len -= outer_ip_hdr_len;
@@ -5250,7 +5283,41 @@ rohc_status_t rfc3095_decomp_build_hdrs(const struct rohc_decomp *const decomp,
 			rohc_decomp_warn(context, "failed to build the inner IP header");
 			goto error_output_too_small;
 		}
-		inner_ip_hdr = uncomp_hdrs_data;
+		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].data = uncomp_hdrs_data;
+		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].version = decoded->inner_ip.version;
+		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].next_proto = decoded->inner_ip.proto;
+		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].tot_len = inner_ip_hdr_len + ip_payload_len;
+		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].tos_tc = decoded->inner_ip.tos;
+		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].ttl_hl = decoded->inner_ip.ttl;
+		if(decoded->inner_ip.version == IPV4 ||
+		   inner_ip_hdr_len == sizeof(struct ipv6_hdr))
+		{
+			uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_len = 0;
+			uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_nr = 0;
+		}
+		else
+		{
+			size_t count = sizeof(struct ipv6_hdr);
+			size_t ext_pos;
+			uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_len =
+				inner_ip_hdr_len - sizeof(struct ipv6_hdr);
+			uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_nr =
+				rfc3095_ctxt->list_decomp2.pkt_list.items_nr;
+			for(ext_pos = 0;
+			    ext_pos < uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_nr;
+			    ext_pos++)
+			{
+				uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts[ext_pos].data =
+					uncomp_hdrs_data + count;
+				uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts[ext_pos].type =
+					rfc3095_ctxt->list_decomp2.pkt_list.items[ext_pos]->type;
+				uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts[ext_pos].len =
+					rfc3095_ctxt->list_decomp2.pkt_list.items[ext_pos]->length;
+				count += uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts[ext_pos].len;
+			}
+		}
+		uncomp_pkt_hdrs.ip_hdrs_nr++;
+		uncomp_pkt_hdrs.all_hdrs_len += inner_ip_hdr_len;
 		uncomp_hdrs_data += inner_ip_hdr_len;
 		*uncomp_hdrs_len += inner_ip_hdr_len;
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
@@ -5275,8 +5342,40 @@ rohc_status_t rfc3095_decomp_build_hdrs(const struct rohc_decomp *const decomp,
 			rohc_decomp_warn(context, "failed to build the IP header");
 			goto error_output_too_small;
 		}
-		outer_ip_hdr = uncomp_hdrs_data;
-		inner_ip_hdr = NULL;
+		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].data = uncomp_hdrs_data;
+		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].version = decoded->outer_ip.version;
+		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].next_proto = decoded->outer_ip.proto;
+		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].tot_len = ip_hdr_len + ip_payload_len;
+		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].tos_tc = decoded->outer_ip.tos;
+		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].ttl_hl = decoded->outer_ip.ttl;
+		if(decoded->outer_ip.version == IPV4 || ip_hdr_len == sizeof(struct ipv6_hdr))
+		{
+			uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_len = 0;
+			uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_nr = 0;
+		}
+		else
+		{
+			size_t count = sizeof(struct ipv6_hdr);
+			size_t ext_pos;
+			uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_len =
+				ip_hdr_len - sizeof(struct ipv6_hdr);
+			uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_nr =
+				rfc3095_ctxt->list_decomp1.pkt_list.items_nr;
+			for(ext_pos = 0;
+			    ext_pos < uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_nr;
+			    ext_pos++)
+			{
+				uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts[ext_pos].data =
+					uncomp_hdrs_data + count;
+				uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts[ext_pos].type =
+					rfc3095_ctxt->list_decomp1.pkt_list.items[ext_pos]->type;
+				uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts[ext_pos].len =
+					rfc3095_ctxt->list_decomp1.pkt_list.items[ext_pos]->length;
+				count += uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts[ext_pos].len;
+			}
+		}
+		uncomp_pkt_hdrs.ip_hdrs_nr++;
+		uncomp_pkt_hdrs.all_hdrs_len += ip_hdr_len;
 		uncomp_hdrs_data += ip_hdr_len;
 		*uncomp_hdrs_len += ip_hdr_len;
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
@@ -5286,12 +5385,18 @@ rohc_status_t rfc3095_decomp_build_hdrs(const struct rohc_decomp *const decomp,
 	}
 
 	/* build the next header if present */
-	next_header = uncomp_hdrs_data;
 	if(rfc3095_ctxt->build_next_header != NULL)
 	{
 		/* TODO: check uncomp_hdrs max size */
 		size_t size = rfc3095_ctxt->build_next_header(context, decoded,
 		                                              uncomp_hdrs_data, payload_len);
+		uncomp_pkt_hdrs.transport = uncomp_hdrs_data;
+		if(context->profile->id == ROHCv1_PROFILE_IP_UDP_RTP)
+		{
+			uncomp_pkt_hdrs.rtp =
+				(const struct rtphdr *) (uncomp_hdrs_data + sizeof(struct udphdr));
+		}
+		uncomp_pkt_hdrs.all_hdrs_len += size;
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		uncomp_hdrs_data += size;
 #endif
@@ -5302,12 +5407,14 @@ rohc_status_t rfc3095_decomp_build_hdrs(const struct rohc_decomp *const decomp,
 		uncomp_hdrs->len += size;
 	}
 
+	/* start of payload */
+	uncomp_pkt_hdrs.payload = uncomp_hdrs_data;
+
 	/* compute CRC on uncompressed headers if asked */
 	if(extr_crc->uncomp.type != ROHC_CRC_TYPE_NONE)
 	{
 		const bool crc_ok =
-			check_uncomp_crc(context, outer_ip_hdr, inner_ip_hdr,
-			                 next_header, &extr_crc->uncomp);
+			check_uncomp_crc(context, &uncomp_pkt_hdrs, &extr_crc->uncomp);
 		if(!crc_ok)
 		{
 			rohc_decomp_warn(context, "CRC detected a decompression failure for "
@@ -5317,9 +5424,9 @@ rohc_status_t rfc3095_decomp_build_hdrs(const struct rohc_decomp *const decomp,
 			                 rohc_get_mode_descr(context->mode));
 			if((decomp->features & ROHC_DECOMP_FEATURE_DUMP_PACKETS) != 0)
 			{
-				rohc_dump_buf(decomp->trace_callback, decomp->trace_callback_priv,
-				              ROHC_TRACE_DECOMP, ROHC_TRACE_WARNING,
-				              "uncompressed headers", outer_ip_hdr, *uncomp_hdrs_len);
+				rohc_dump_packet(decomp->trace_callback, decomp->trace_callback_priv,
+				                 ROHC_TRACE_DECOMP, ROHC_TRACE_WARNING,
+				                 "uncompressed headers", *uncomp_hdrs);
 			}
 			goto error_crc;
 		}
@@ -5518,17 +5625,13 @@ error:
  * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
  *       if the CRC-STATIC fields did not change.
  *
- * @param context       The decompression context
- * @param outer_ip_hdr  The outer IP header
- * @param inner_ip_hdr  The inner IP header if it exists, NULL otherwise
- * @param next_header   The transport header, eg. UDP
- * @param crc_pkt       The CRC over the uncompressed headers extracted from packet
- * @return              true if the CRC is correct, false otherwise
+ * @param context          The decompression context
+ * @param uncomp_pkt_hdrs  The uncompressed headers to compute CRC for
+ * @param crc_pkt          The CRC over uncompressed headers extracted from packet
+ * @return                 true if the CRC is correct, false otherwise
  */
 static bool check_uncomp_crc(const struct rohc_decomp_ctxt *const context,
-                             const uint8_t *const outer_ip_hdr,
-                             const uint8_t *const inner_ip_hdr,
-                             const uint8_t *const next_header,
+                             const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                              const struct rohc_decomp_crc_one *const crc_pkt)
 {
 	struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt = context->persist_ctxt;
@@ -5569,9 +5672,8 @@ static bool check_uncomp_crc(const struct rohc_decomp_ctxt *const context,
 	}
 	else
 	{
-		crc_computed = rfc3095_ctxt->compute_crc_static(outer_ip_hdr, inner_ip_hdr,
-		                                                next_header, crc_pkt->type,
-		                                                crc_computed);
+		crc_computed = rfc3095_ctxt->compute_crc_static(uncomp_pkt_hdrs,
+		                                                crc_pkt->type, crc_computed);
 		rohc_decomp_debug(context, "compute CRC-STATIC-%d = 0x%x from packet",
 		                  crc_pkt->type, crc_computed);
 
@@ -5591,9 +5693,8 @@ static bool check_uncomp_crc(const struct rohc_decomp_ctxt *const context,
 	}
 
 	/* compute the CRC on CRC-DYNAMIC fields of built uncompressed headers */
-	crc_computed = rfc3095_ctxt->compute_crc_dynamic(outer_ip_hdr, inner_ip_hdr,
-	                                                 next_header, crc_pkt->type,
-	                                                 crc_computed);
+	crc_computed = rfc3095_ctxt->compute_crc_dynamic(uncomp_pkt_hdrs,
+	                                                 crc_pkt->type, crc_computed);
 	rohc_decomp_debug(context, "CRC-%d on uncompressed header = 0x%x",
 	                  crc_pkt->type, crc_computed);
 

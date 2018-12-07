@@ -274,17 +274,16 @@ rohc_packet_t c_ip_decide_SO_packet(const struct rohc_comp_ctxt *const context)
  *
  * Profile SN is an internal increasing 16-bit number.
  *
- * @param context     The compression context
- * @param uncomp_pkt  The uncompressed packet to encode
- * @return            The SN
+ * @param context          The compression context
+ * @param uncomp_pkt_hdrs  The uncompressed headers to encode
+ * @return                 The SN
  */
 uint32_t c_ip_get_next_sn(const struct rohc_comp_ctxt *const context,
-                          const struct net_pkt *const uncomp_pkt __attribute__((unused)))
+                          const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs __attribute__((unused)))
 {
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
+	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
+		(struct rohc_comp_rfc3095_ctxt *) context->specific;
 	uint32_t next_sn;
-
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
 
 	if(rfc3095_ctxt->sn == 0xffff)
 	{

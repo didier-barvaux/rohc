@@ -30,11 +30,10 @@
 #include "rohc_internal.h"
 #include "rohc_traces_internal.h"
 #include "rohc_packets.h"
+#include "rohc_fingerprint.h"
 #include "rohc_comp.h"
 #include "schemes/comp_wlsb.h"
-#include "protocols/ip.h"
-#include "protocols/ipv6.h"
-#include "protocols/tcp.h"
+#include "protocols/uncomp_pkt_hdrs.h"
 #include "feedback.h"
 #include "hashtable.h"
 
@@ -198,97 +197,6 @@ struct rohc_comp
 
 
 /**
- * @brief The information collected about one of the packet IP extension headers
- */
-struct rohc_pkt_ip_ext_hdr
-{
-	const uint8_t *data;
-	uint8_t type;
-	uint8_t len;
-};
-
-
-/**
- * @brief The information collected about one of the packet IP headers
- */
-struct rohc_pkt_ip_hdr
-{
-	union
-	{
-		const struct ip_hdr *ip;
-		const struct ipv4_hdr *ipv4;
-		const struct ipv6_hdr *ipv6;
-	};
-	uint8_t version;
-	uint8_t next_proto;
-	uint16_t tot_len;
-	union
-	{
-		uint8_t tos_tc;     /**< The IPv4 TOS or IPv6 TC field */
-		struct
-		{
-#if WORDS_BIGENDIAN == 1
-			uint8_t dscp:6;  /**< The IPv4/v6 DSCP value */
-			uint8_t ecn:2;   /**< The IPv4/v6 ECN value */
-#else
-			uint8_t ecn:2;
-			uint8_t dscp:6;
-#endif
-		} __attribute__((packed));
-	};
-	uint8_t ttl_hl;    /**< The IPv4 TTL or IPv6 Hop Limit */
-
-	uint8_t exts_len;  /**< The length of IP extensions headers */
-	uint8_t exts_nr;   /**< The number of IP extensions headers */
-	struct rohc_pkt_ip_ext_hdr exts[ROHC_MAX_IP_EXT_HDRS]; /**< The IP ext. headers */
-};
-
-
-/**
- * @brief The information collected about the packet headers
- *
- * The information about the packet headers is collected while the best profile
- * is detected, and that information may be later used while the best context is
- * detected or while changes with the compression context are detected.
- *
- * The collection of information avoids parsing the packet headers several times.
- */
-struct rohc_pkt_hdrs
-{
-	/* The network headers */
-	uint8_t ip_hdrs_nr;                               /**< The number of IP headers */
-	struct rohc_pkt_ip_hdr ip_hdrs[ROHC_MAX_IP_HDRS]; /**< The IP headers */
-	const struct rohc_pkt_ip_hdr *innermost_ip_hdr;   /**< The innermost IP header */
-
-	/* The transport header */
-	union
-	{
-		struct
-		{
-			const struct tcphdr *tcp;    /**< The TCP header (if any) */
-			struct
-			{
-				uint8_t nr;
-				uint8_t tot_len;
-				const uint8_t *data[ROHC_TCP_OPTS_MAX];
-				uint8_t types[ROHC_TCP_OPTS_MAX];
-				uint8_t lengths[ROHC_TCP_OPTS_MAX];
-			} tcp_opts;
-		};
-		const struct udphdr *udp;       /**< The UDP header (if any) */
-		const struct udphdr *udp_lite;  /**< The UDP-Lite header (if any) */
-		const struct esphdr *esp;       /**< The ESP header (if any) */
-	};
-
-	const struct rtphdr *rtp;          /**< The RTP header (if any) */
-
-	size_t all_hdrs_len;               /**< The cumulated length of all headers */
-	size_t payload_len;                /**< The length of the packet payload */
-	const uint8_t *payload;            /**< The packet payload */
-};
-
-
-/**
  * @brief The ROHC compression profile
  *
  * The object defines a ROHC profile. Each field must be filled in
@@ -337,8 +245,8 @@ struct rohc_comp_profile
 	 * @brief The handler used to encode uncompressed IP packets
 	 *
 	 * @param context            The compression context
-	 * @param ip                 The IP packet to encode
-	 * @param packet_size        The length of the IP packet to encode
+	 * @param uncomp_pkt_hdrs    The uncompressed headers to encode
+	 * @param uncomp_pkt_time    The arrival time of the uncompressed packet
 	 * @param rohc_pkt           OUT: The ROHC packet
 	 * @param rohc_pkt_max_len   The maximum length of the ROHC packet
 	 * @param packet_type        OUT: The type of ROHC packet that is created
@@ -347,11 +255,11 @@ struct rohc_comp_profile
 	 */
 	int (*encode)(struct rohc_comp_ctxt *const context,
 	              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-	              const struct rohc_buf *const uncomp_pkt,
+	              const struct rohc_ts uncomp_pkt_time,
 	              uint8_t *const rohc_pkt,
 	              const size_t rohc_pkt_max_len,
 	              rohc_packet_t *const packet_type)
-		__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 6)));
+		__attribute__((warn_unused_result, nonnull(1, 2, 4, 6)));
 
 	/**
 	 * @brief The handler used to warn the profile-specific part of the
@@ -365,53 +273,6 @@ struct rohc_comp_profile
 	                 const size_t feedback_data_len)
 		__attribute__((warn_unused_result, nonnull(1, 3, 5)));
 };
-
-
-/**
- * @brief The unique fingerprint of one IP header
- */
-struct rohc_fingerprint_ip
-{
-	uint32_t version:4;
-	uint32_t next_proto:8;
-	uint32_t flow_label:20;
-	struct ipv6_addr saddr;
-	struct ipv6_addr daddr;
-} __attribute__((packed));
-
-
-/**
- * @brief The part of the unique fingerprint for Context Replication
- */
-struct rohc_fingerprint_base
-{
-	rohc_profile_t profile_id;
-
-	uint8_t ip_hdrs_nr; /**< The number of IP headers */
-	struct rohc_fingerprint_ip ip_hdrs[ROHC_MAX_IP_HDRS];
-} __attribute__((packed));
-
-
-/**
- * @brief The unique fingerprint of one compression context or uncompressed packet
- */
-struct rohc_fingerprint
-{
-	struct rohc_fingerprint_base base;
-
-	union
-	{
-		struct
-		{
-			uint16_t src_port;
-			uint16_t dst_port;
-		} __attribute__((packed));
-		uint32_t esp_spi;
-	};
-
-	uint32_t rtp_ssrc;
-
-} __attribute__((packed));
 
 
 /**

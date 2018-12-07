@@ -597,6 +597,9 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 	/* reset the fingerprint */
 	memset(fingerprint, 0, sizeof(struct rohc_fingerprint));
 
+	/* remember the beginning of all headers */
+	pkt_hdrs->all_hdrs = remain_data;
+
 	/* ROHCv1 Uncompressed profile is possible if it is enabled */
 	if(rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_UNCOMPRESSED))
 	{
@@ -1497,7 +1500,8 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 	/* use profile to compress packet */
 	rohc_comp_debug(c, "compress the packet #%d", comp->num_packets + 1);
 	rohc_hdr_size =
-		c->profile->encode(c, &pkt_hdrs, &uncomp_packet, rohc_buf_data(*rohc_packet),
+		c->profile->encode(c, &pkt_hdrs, uncomp_packet.time,
+		                   rohc_buf_data(*rohc_packet),
 		                   rohc_buf_avail_len(*rohc_packet),
 		                   &packet_type);
 	if(rohc_hdr_size < 0)

@@ -425,17 +425,13 @@ struct rohc_decomp_rfc3095_ctxt
 	                         const unsigned int payload_len);
 
 	/// @brief The handler used to compute the CRC-STATIC value
-	uint8_t (*compute_crc_static)(const uint8_t *const ip,
-	                              const uint8_t *const ip2,
-	                              const uint8_t *const next_header,
+	uint8_t (*compute_crc_static)(const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
 	                              const rohc_crc_type_t crc_type,
 	                              const uint8_t init_val)
 		__attribute__((warn_unused_result, nonnull(1)));
 
 	/// @brief The handler used to compute the CRC-DYNAMIC value
-	uint8_t (*compute_crc_dynamic)(const uint8_t *const ip,
-	                               const uint8_t *const ip2,
-	                               const uint8_t *const next_header,
+	uint8_t (*compute_crc_dynamic)(const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
 	                               const rohc_crc_type_t crc_type,
 	                               const uint8_t init_val)
 		__attribute__((warn_unused_result, nonnull(1)));

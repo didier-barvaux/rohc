@@ -86,11 +86,11 @@ static bool c_tcp_is_cr_possible(const struct rohc_comp_ctxt *const ctxt,
 
 static int c_tcp_encode(struct rohc_comp_ctxt *const context,
                         const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                        const struct rohc_buf *const uncomp_pkt,
+                        const struct rohc_ts uncomp_pkt_time,
                         uint8_t *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
                         rohc_packet_t *const packet_type)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 6)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 6)));
 
 static uint16_t c_tcp_get_next_msn(const struct rohc_comp_ctxt *const context)
 	__attribute__((warn_unused_result, nonnull(1)));
@@ -849,7 +849,7 @@ static bool c_tcp_is_cr_possible(const struct rohc_comp_ctxt *const ctxt,
  *
  * @param context           The compression context
  * @param uncomp_pkt_hdrs   The uncompressed headers to encode
- * @param uncomp_pkt        The uncompressed packet to encode
+ * @param uncomp_pkt_time   The arrival time of the uncompressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       OUT: The type of ROHC packet that is created
@@ -861,7 +861,7 @@ static bool c_tcp_is_cr_possible(const struct rohc_comp_ctxt *const ctxt,
  */
 static int c_tcp_encode(struct rohc_comp_ctxt *const context,
                         const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                        const struct rohc_buf *const uncomp_pkt,
+                        const struct rohc_ts uncomp_pkt_time,
                         uint8_t *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
                         rohc_packet_t *const packet_type)
@@ -895,7 +895,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	}
 
 	/* decide in which state to go */
-	tcp_decide_state(context, uncomp_pkt->time);
+	tcp_decide_state(context, uncomp_pkt_time);
 
 	/* decide which packet to send */
 	*packet_type = tcp_decide_packet(context, ip_inner_context, uncomp_pkt_hdrs, &tmp);

@@ -48,24 +48,24 @@ static void c_uncompressed_destroy(struct rohc_comp_ctxt *const context)
 /* encode uncompressed packets */
 static int c_uncompressed_encode(struct rohc_comp_ctxt *const context,
                                  const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                                 const struct rohc_buf *const uncomp_pkt,
+                                 const struct rohc_ts uncomp_pkt_time,
                                  uint8_t *const rohc_pkt,
                                  const size_t rohc_pkt_max_len,
                                  rohc_packet_t *const packet_type)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 6)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 6)));
 static int uncompressed_code_packet(struct rohc_comp_ctxt *const context,
-                                    const struct rohc_buf *const uncomp_pkt,
+                                    const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                     uint8_t *const rohc_pkt,
                                     const size_t rohc_pkt_max_len,
                                     rohc_packet_t *const packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 static int uncompressed_code_IR_packet(const struct rohc_comp_ctxt *const context,
-                                       const struct rohc_buf *const uncomp_pkt,
+                                       const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                        uint8_t *const rohc_pkt,
                                        const size_t rohc_pkt_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 static int uncompressed_code_normal_packet(const struct rohc_comp_ctxt *const context,
-                                           const struct rohc_buf *const uncomp_pkt,
+                                           const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                            uint8_t *const rohc_pkt,
                                            const size_t rohc_pkt_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
@@ -140,7 +140,7 @@ static void c_uncompressed_destroy(struct rohc_comp_ctxt *const context)
  *
  * @param context           The compression context
  * @param uncomp_pkt_hdrs   The uncompressed headers to encode
- * @param uncomp_pkt        The uncompressed packet to encode
+ * @param uncomp_pkt_time   The arrival time of the uncompressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       OUT: The type of ROHC packet that is created
@@ -148,8 +148,8 @@ static void c_uncompressed_destroy(struct rohc_comp_ctxt *const context)
  *                          -1 otherwise
  */
 static int c_uncompressed_encode(struct rohc_comp_ctxt *const context,
-                                 const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs __attribute__((unused)),
-                                 const struct rohc_buf *const uncomp_pkt,
+                                 const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                                 const struct rohc_ts uncomp_pkt_time,
                                  uint8_t *const rohc_pkt,
                                  const size_t rohc_pkt_max_len,
                                  rohc_packet_t *const packet_type)
@@ -157,14 +157,14 @@ static int c_uncompressed_encode(struct rohc_comp_ctxt *const context,
 	ip_version ip_vers;
 	int size;
 
-	assert(uncomp_pkt->len > 0);
-	ip_vers = (rohc_buf_byte(*uncomp_pkt) >> 4) & 0x0f;
+	assert(uncomp_pkt_hdrs->payload_len > 0);
+	ip_vers = (uncomp_pkt_hdrs->payload[0] >> 4) & 0x0f;
 
 	/* STEP 1: decide state */
-	uncompressed_decide_state(context, uncomp_pkt->time, ip_vers);
+	uncompressed_decide_state(context, uncomp_pkt_time, ip_vers);
 
 	/* STEP 2: Code packet */
-	size = uncompressed_code_packet(context, uncomp_pkt,
+	size = uncompressed_code_packet(context, uncomp_pkt_hdrs,
 	                                rohc_pkt, rohc_pkt_max_len,
 	                                packet_type);
 
@@ -277,7 +277,7 @@ static void uncompressed_decide_state(struct rohc_comp_ctxt *const context,
  * @brief Build the ROHC packet to send.
  *
  * @param context           The compression context
- * @param uncomp_pkt        The uncompressed packet to encode
+ * @param uncomp_pkt_hdrs   The uncompressed headers to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       OUT: The type of ROHC packet that is created
@@ -285,13 +285,13 @@ static void uncompressed_decide_state(struct rohc_comp_ctxt *const context,
  *                         -1 otherwise
  */
 static int uncompressed_code_packet(struct rohc_comp_ctxt *const context,
-                                    const struct rohc_buf *const uncomp_pkt,
+                                    const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                     uint8_t *const rohc_pkt,
                                     const size_t rohc_pkt_max_len,
                                     rohc_packet_t *const packet_type)
 {
 	int (*code_packet)(const struct rohc_comp_ctxt *const _context,
-	                   const struct rohc_buf *const _uncomp_pkt,
+	                   const struct rohc_pkt_hdrs *const _uncomp_pkt_hdrs,
 	                   uint8_t *const _rohc_pkt,
 	                   const size_t _rohc_pkt_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
@@ -328,7 +328,7 @@ static int uncompressed_code_packet(struct rohc_comp_ctxt *const context,
 	}
 
 	/* code packet according to the selected type */
-	size = code_packet(context, uncomp_pkt, rohc_pkt, rohc_pkt_max_len);
+	size = code_packet(context, uncomp_pkt_hdrs, rohc_pkt, rohc_pkt_max_len);
 
 	return size;
 
@@ -368,14 +368,14 @@ error:
  * Part 6 is not managed by this function.
  *
  * @param context           The compression context
- * @param uncomp_pkt        The uncompressed packet to encode
+ * @param uncomp_pkt_hdrs   The uncompressed headers to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
 static int uncompressed_code_IR_packet(const struct rohc_comp_ctxt *context,
-                                       const struct rohc_buf *const uncomp_pkt __attribute__((unused)),
+                                       const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs __attribute__((unused)),
                                        uint8_t *const rohc_pkt,
                                        const size_t rohc_pkt_max_len)
 {
@@ -463,14 +463,14 @@ error:
  * Part 4 is not managed by this function.
  *
  * @param context           The compression context
- * @param uncomp_pkt        The uncompressed packet to encode
+ * @param uncomp_pkt_hdrs   The uncompressed headers to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
 static int uncompressed_code_normal_packet(const struct rohc_comp_ctxt *context,
-                                           const struct rohc_buf *const uncomp_pkt,
+                                           const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                            uint8_t *const rohc_pkt,
                                            const size_t rohc_pkt_max_len)
 {
@@ -500,10 +500,11 @@ static int uncompressed_code_normal_packet(const struct rohc_comp_ctxt *context,
 	                "small" : "large", context->cid, counter - 1);
 
 	/* part 2 */
-	rohc_pkt[first_position] = rohc_buf_byte(*uncomp_pkt);
+	assert(uncomp_pkt_hdrs->payload_len > 0);
+	rohc_pkt[first_position] = uncomp_pkt_hdrs->payload[0];
 
 	rohc_comp_debug(context, "header length = %zu, payload length = %zu",
-	                counter - 1, uncomp_pkt->len);
+	                counter - 1, uncomp_pkt_hdrs->payload_len);
 
 	return counter;
 

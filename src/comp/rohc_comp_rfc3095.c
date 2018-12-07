@@ -97,55 +97,55 @@ static rohc_ext_t decide_extension_uo1id(const struct rohc_comp_ctxt *const cont
 	__attribute__((warn_unused_result, nonnull(1)));
 
 static int code_packet(struct rohc_comp_ctxt *const context,
-                       const struct net_pkt *const uncomp_pkt,
+                       const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                        uint8_t *const rohc_pkt,
                        const size_t rohc_pkt_max_len,
                        const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int code_IR_packet(struct rohc_comp_ctxt *const context,
-                          const struct net_pkt *const uncomp_pkt,
+                          const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                           uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
                           const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int code_IR_DYN_packet(struct rohc_comp_ctxt *const context,
-                              const struct net_pkt *const uncomp_pkt,
+                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                               uint8_t *const rohc_pkt,
                               const size_t rohc_pkt_max_len,
                               const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int rohc_code_static_part(const struct rohc_comp_ctxt *const context,
-                                 const struct net_pkt *const uncomp_pkt,
+                                 const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                  uint8_t *const rohc_pkt,
                                  int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int rohc_code_static_ip_part(const struct rohc_comp_ctxt *const context,
                                     struct ip_header_info *const header_info,
-                                    const struct ip_packet *const ip,
+                                    const struct rohc_pkt_ip_hdr *const ip,
                                     uint8_t *const dest,
                                     int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 
 static int code_ipv4_static_part(const struct rohc_comp_ctxt *const context,
                                  struct ip_header_info *const header_info,
-                                 const struct ip_packet *const ip,
+                                 const struct rohc_pkt_ip_hdr *const ip,
                                  uint8_t *const dest,
                                  int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 
 static int code_ipv6_static_part(const struct rohc_comp_ctxt *const context,
                                  struct ip_header_info *const header_info,
-                                 const struct ip_packet *const ip,
+                                 const struct rohc_pkt_ip_hdr *const ip,
                                  uint8_t *const dest,
                                  int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 
 static int rohc_code_dynamic_part(const struct rohc_comp_ctxt *const context,
-                                  const struct net_pkt *const uncomp_pkt,
+                                  const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                   uint8_t *const rohc_pkt,
                                   int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
@@ -153,14 +153,14 @@ static int rohc_code_dynamic_part(const struct rohc_comp_ctxt *const context,
 static int rohc_code_dynamic_ip_part(const struct rohc_comp_ctxt *const context,
                                      struct ip_header_info *const header_info,
                                      const bool ext_list_changed,
-                                     const struct ip_packet *const ip,
+                                     const struct rohc_pkt_ip_hdr *const ip,
                                      uint8_t *const dest,
                                      int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
 
 static int code_ipv4_dynamic_part(const struct rohc_comp_ctxt *const context,
                                   struct ip_header_info *const header_info,
-                                  const struct ip_packet *const ip,
+                                  const struct rohc_pkt_ip_hdr *const ip,
                                   uint8_t *const dest,
                                   int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
@@ -168,51 +168,51 @@ static int code_ipv4_dynamic_part(const struct rohc_comp_ctxt *const context,
 static int code_ipv6_dynamic_part(const struct rohc_comp_ctxt *const context,
                                   struct ip_header_info *const header_info,
                                   const bool ext_list_changed,
-                                  const struct ip_packet *const ip,
+                                  const struct rohc_pkt_ip_hdr *const ip,
                                   uint8_t *const dest,
                                   int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
 
 static int code_uo_remainder(struct rohc_comp_ctxt *const context,
-                             const struct net_pkt *const uncomp_pkt,
+                             const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                              uint8_t *const dest,
                              int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int code_UO0_packet(struct rohc_comp_ctxt *const context,
-                           const struct net_pkt *const uncomp_pkt,
+                           const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                            uint8_t *const rohc_pkt,
                            const size_t rohc_pkt_max_len,
                            const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int rohc_comp_rfc3095_build_uo1_pkt(struct rohc_comp_ctxt *const context,
-                                           const struct net_pkt *const uncomp_pkt,
+                                           const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                            uint8_t *const rohc_pkt,
                                            const size_t rohc_pkt_max_len,
                                            const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 static int rohc_comp_rfc3095_build_uo1rtp_pkt(struct rohc_comp_ctxt *const context,
-                                              const struct net_pkt *const uncomp_pkt,
+                                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                               uint8_t *const rohc_pkt,
                                               const size_t rohc_pkt_max_len,
                                               const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 static int rohc_comp_rfc3095_build_uo1ts_pkt(struct rohc_comp_ctxt *const context,
-                                             const struct net_pkt *const uncomp_pkt,
+                                             const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                              uint8_t *const rohc_pkt,
                                              const size_t rohc_pkt_max_len,
                                              const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const context,
-                                             const struct net_pkt *const uncomp_pkt,
+                                             const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                              uint8_t *const rohc_pkt,
                                              const size_t rohc_pkt_max_len,
                                              const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int code_UO2_packet(struct rohc_comp_ctxt *const context,
-                           const struct net_pkt *const uncomp_pkt,
+                           const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                            uint8_t *const rohc_pkt,
                            const size_t rohc_pkt_max_len,
                            const rohc_packet_t packet_type)
@@ -265,34 +265,34 @@ static int code_EXT2_packet(const struct rohc_comp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int code_EXT3_packet(struct rohc_comp_ctxt *const context,
-                            const struct net_pkt *const uncomp_pkt,
+                            const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                             uint8_t *const dest,
                             int counter,
                             const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 static int code_EXT3_rtp_packet(struct rohc_comp_ctxt *const context,
-                                const struct net_pkt *const uncomp_pkt,
+                                const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                 uint8_t *const dest,
                                 int counter,
                                 const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 static int code_EXT3_nortp_packet(struct rohc_comp_ctxt *const context,
-                                  const struct net_pkt *const uncomp_pkt,
+                                  const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                   uint8_t *const dest,
                                   int counter,
                                   const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int rtp_header_flags_and_fields(const struct rohc_comp_ctxt *const context,
-                                       const struct ip_packet *const ip,
+                                       const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                        uint8_t *const dest,
                                        int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int header_flags(const struct rohc_comp_ctxt *const context,
                         struct ip_header_info *const header_info,
+                        const struct rohc_pkt_ip_hdr *const ip,
                         const struct rfc3095_ip_hdr_changes *const changes,
-                        const struct ip_packet *const ip,
                         const int ip2_or_I2,
                         uint8_t *const dest,
                         int counter)
@@ -300,8 +300,8 @@ static int header_flags(const struct rohc_comp_ctxt *const context,
 
 static int header_fields(const struct rohc_comp_ctxt *const context,
                          struct ip_header_info *const header_info,
+                         const struct rohc_pkt_ip_hdr *const ip,
                          const struct rfc3095_ip_hdr_changes *const changes,
-                         const struct ip_packet *ip,
                          const int I,
                          const ip_header_pos_t ip_hdr_pos,
                          uint8_t *const dest,
@@ -309,38 +309,37 @@ static int header_fields(const struct rohc_comp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 7)));
 
 static uint8_t compute_uo_crc(struct rohc_comp_ctxt *const context,
-                              const struct net_pkt *const uncomp_pkt,
+                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                               const rohc_crc_type_t crc_type,
                               const uint8_t crc_init)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static void update_context(struct rohc_comp_ctxt *const context,
-                           const struct net_pkt *const uncomp_pkt)
+                           const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 	__attribute__((nonnull(1, 2)));
 static void update_context_ip_hdr(const struct rohc_comp_ctxt *const context,
-											 struct ip_header_info *const ip_flags,
-                                  const struct ip_packet *const ip)
+											            struct ip_header_info *const ip_flags,
+                                  const struct rohc_pkt_ip_hdr *const ip)
 	__attribute__((nonnull(1, 2, 3)));
 
 static void rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const context,
-                                             const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                                             const struct net_pkt *const uncomp_pkt)
-	__attribute__((nonnull(1, 2, 3)));
+                                             const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
+	__attribute__((nonnull(1, 2)));
 static void detect_ip_changes(const struct rohc_comp_ctxt *const context,
                               /* TODO: const */ struct ip_header_info *const header_info,
                               const struct rohc_pkt_ip_hdr *const ip,
                               struct rfc3095_ip_hdr_changes *const changes)
 	__attribute__((nonnull(1, 2, 3, 4)));
 static void detect_ip_id_behaviours(struct rohc_comp_ctxt *const context,
-                                    const struct net_pkt *const uncomp_pkt)
+                                    const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 	__attribute__((nonnull(1, 2)));
 static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
                                    struct ip_header_info *const header_info,
-                                   const struct ip_packet *const ip)
+                                   const struct rohc_pkt_ip_hdr *const uncomp_pkt_ip_hdr)
 	__attribute__((nonnull(1, 2, 3)));
 
 static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
-                                 const struct net_pkt *const uncomp_pkt)
+                                 const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static void rohc_get_innermost_ipv4_non_rnd(const struct rohc_comp_ctxt *const context,
@@ -350,7 +349,7 @@ static void rohc_get_innermost_ipv4_non_rnd(const struct rohc_comp_ctxt *const c
 	__attribute__((nonnull(1, 2, 3, 4)));
 
 static void rohc_comp_rfc3095_get_ext3_I_flags(const struct rohc_comp_ctxt *const context,
-                                               const struct net_pkt *const uncomp_pkt,
+                                               const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                                const rohc_packet_t packet_type,
                                                ip_header_pos_t *const innermost_ipv4_non_rnd,
                                                uint8_t *const I,
@@ -614,8 +613,8 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 	rfc3095_ctxt->code_dynamic_part = NULL;
 	rfc3095_ctxt->code_UO_packet_head = NULL;
 	rfc3095_ctxt->code_uo_remainder = NULL;
-	rfc3095_ctxt->compute_crc_static = compute_crc_static;
-	rfc3095_ctxt->compute_crc_dynamic = compute_crc_dynamic;
+	rfc3095_ctxt->compute_crc_static = ip_compute_crc_static;
+	rfc3095_ctxt->compute_crc_dynamic = ip_compute_crc_dynamic;
 
 	rfc3095_ctxt->is_crc_static_3_cached_valid = false;
 	rfc3095_ctxt->is_crc_static_7_cached_valid = false;
@@ -686,7 +685,7 @@ void rohc_comp_rfc3095_destroy(struct rohc_comp_ctxt *const context)
  *
  * @param context           The compression context
  * @param uncomp_pkt_hdrs   The uncompressed headers to encode
- * @param uncomp_pkt        The uncompressed packet to encode
+ * @param uncomp_pkt_time   The arrival time of the uncompressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       OUT: The type of ROHC packet that is created
@@ -695,33 +694,28 @@ void rohc_comp_rfc3095_destroy(struct rohc_comp_ctxt *const context)
  */
 int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                             const struct rohc_buf *const uncomp_pkt,
+                             const struct rohc_ts uncomp_pkt_time,
                              uint8_t *const rohc_pkt,
                              const size_t rohc_pkt_max_len,
                              rohc_packet_t *const packet_type)
 {
 	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
-	struct net_pkt ip_pkt;
 	int size;
 
 	*packet_type = ROHC_PACKET_UNKNOWN;
 
-	/* parse the uncompressed packet */
-	net_pkt_parse(&ip_pkt, *uncomp_pkt, context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv, ROHC_TRACE_COMP);
-
 	/* detect changes between new uncompressed packet and context */
-	rohc_comp_rfc3095_detect_changes(context, uncomp_pkt_hdrs, &ip_pkt);
+	rohc_comp_rfc3095_detect_changes(context, uncomp_pkt_hdrs);
 
 	/* decide in which state to go */
 	rfc3095_ctxt->decide_state(context);
 	if(context->mode == ROHC_U_MODE)
 	{
-		rohc_comp_periodic_down_transition(context, uncomp_pkt->time);
+		rohc_comp_periodic_down_transition(context, uncomp_pkt_time);
 	}
 
 	/* compute how many bits are needed to send header fields */
-	if(!encode_uncomp_fields(context, &ip_pkt))
+	if(!encode_uncomp_fields(context, uncomp_pkt_hdrs))
 	{
 		rohc_comp_warn(context, "failed to compute how many bits are needed "
 		               "to send header fields");
@@ -738,14 +732,15 @@ int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
 	}
 
 	/* code the ROHC header (and the extension if needed) */
-	size = code_packet(context, &ip_pkt, rohc_pkt, rohc_pkt_max_len, *packet_type);
+	size = code_packet(context, uncomp_pkt_hdrs,
+	                   rohc_pkt, rohc_pkt_max_len, *packet_type);
 	if(size < 0)
 	{
 		goto error;
 	}
 
 	/* update the context with the new headers */
-	update_context(context, &ip_pkt);
+	update_context(context, uncomp_pkt_hdrs);
 
 	/* return the length of the ROHC packet */
 	return size;
@@ -1149,13 +1144,11 @@ static void rohc_comp_rfc3095_feedback_ack(struct rohc_comp_ctxt *const context,
 /**
  * @brief Detect changes between packet and context
  *
- * @param context           The compression context to compare
- * @param uncomp_pkt_hdrs   The uncompressed headers to encode
- * @param uncomp_pkt        The uncompressed packet to compare
+ * @param context          The compression context to compare
+ * @param uncomp_pkt_hdrs  The uncompressed headers to encode
  */
 static void rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const context,
-                                             const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                                             const struct net_pkt *const uncomp_pkt)
+                                             const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt =
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
@@ -1166,11 +1159,11 @@ static void rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const contex
 	assert(uncomp_pkt_hdrs->ip_hdrs_nr == rfc3095_ctxt->ip_hdr_nr);
 
 	/* compute or find the new SN */
-	rfc3095_ctxt->sn = rfc3095_ctxt->get_next_sn(context, uncomp_pkt);
+	rfc3095_ctxt->sn = rfc3095_ctxt->get_next_sn(context, uncomp_pkt_hdrs);
 	rohc_comp_debug(context, "SN = %u", rfc3095_ctxt->sn);
 
 	/* check NBO and RND of the IP-ID of the IP headers (IPv4 only) */
-	detect_ip_id_behaviours(context, uncomp_pkt);
+	detect_ip_id_behaviours(context, uncomp_pkt_hdrs);
 
 	/* find IP fields that changed */
 	for(ip_hdr_pos = 0; ip_hdr_pos < rfc3095_ctxt->ip_hdr_nr; ip_hdr_pos++)
@@ -1409,7 +1402,7 @@ error:
  * @brief Build the ROHC packet to send.
  *
  * @param context           The compression context
- * @param uncomp_pkt        The uncompressed packet to encode
+ * @param uncomp_pkt_hdrs   The uncompressed headers to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       The type of ROHC packet to create
@@ -1417,13 +1410,13 @@ error:
  *                          -1 otherwise
  */
 static int code_packet(struct rohc_comp_ctxt *const context,
-                       const struct net_pkt *const uncomp_pkt,
+                       const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                        uint8_t *const rohc_pkt,
                        const size_t rohc_pkt_max_len,
                        const rohc_packet_t packet_type)
 {
 	int (*code_packet_type)(struct rohc_comp_ctxt *const _context,
-	                        const struct net_pkt *const _uncomp_pkt,
+	                        const struct rohc_pkt_hdrs *const _uncomp_pkt_hdrs,
 	                        uint8_t *const _rohc_pkt,
 	                        const size_t _rohc_pkt_max_len,
 	                        const rohc_packet_t packet_type)
@@ -1489,8 +1482,8 @@ static int code_packet(struct rohc_comp_ctxt *const context,
 			goto error;
 	}
 
-	return code_packet_type(context, uncomp_pkt, rohc_pkt, rohc_pkt_max_len,
-	                        packet_type);
+	return code_packet_type(context, uncomp_pkt_hdrs,
+	                        rohc_pkt, rohc_pkt_max_len, packet_type);
 
 error:
 	return -1;
@@ -1536,7 +1529,7 @@ error:
 \endverbatim
  *
  * @param context           The compression context
- * @param uncomp_pkt        The uncompressed packet to encode
+ * @param uncomp_pkt_hdrs   The uncompressed headers to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       The type of ROHC packet that is created
@@ -1544,7 +1537,7 @@ error:
  *                          -1 otherwise
  */
 static int code_IR_packet(struct rohc_comp_ctxt *const context,
-                          const struct net_pkt *const uncomp_pkt,
+                          const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                           uint8_t *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
                           const rohc_packet_t packet_type)
@@ -1585,7 +1578,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	 * or IR-DYN packet */
 	if(rfc3095_ctxt->init_at_IR != NULL)
 	{
-		rfc3095_ctxt->init_at_IR(context, uncomp_pkt->transport->data);
+		rfc3095_ctxt->init_at_IR(context, uncomp_pkt_hdrs->transport);
 	}
 
 	/* part 2: type of packet and D flag if dynamic part is included */
@@ -1617,7 +1610,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	counter++;
 
 	/* part 6: static part */
-	ret = rohc_code_static_part(context, uncomp_pkt, rohc_pkt, counter);
+	ret = rohc_code_static_part(context, uncomp_pkt_hdrs, rohc_pkt, counter);
 	if(ret < 0)
 	{
 		goto error;
@@ -1626,7 +1619,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 
 	/* part 7: if we do not want dynamic part in IR packet, we should not
 	 * send the following */
-	ret = rohc_code_dynamic_part(context, uncomp_pkt, rohc_pkt, counter);
+	ret = rohc_code_dynamic_part(context, uncomp_pkt_hdrs, rohc_pkt, counter);
 	if(ret < 0)
 	{
 		goto error;
@@ -1698,7 +1691,7 @@ error:
 \endverbatim
  *
  * @param context           The compression context
- * @param uncomp_pkt        The uncompressed packet to encode
+ * @param uncomp_pkt_hdrs   The uncompressed headers to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       The type of ROHC packet that is created
@@ -1706,7 +1699,7 @@ error:
  *                          -1 otherwise
  */
 static int code_IR_DYN_packet(struct rohc_comp_ctxt *const context,
-                              const struct net_pkt *const uncomp_pkt,
+                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                               uint8_t *const rohc_pkt,
                               const size_t rohc_pkt_max_len,
                               const rohc_packet_t packet_type)
@@ -1744,7 +1737,7 @@ static int code_IR_DYN_packet(struct rohc_comp_ctxt *const context,
 	 * or IR-DYN packet */
 	if(rfc3095_ctxt->init_at_IR != NULL)
 	{
-		rfc3095_ctxt->init_at_IR(context, uncomp_pkt->transport->data);
+		rfc3095_ctxt->init_at_IR(context, uncomp_pkt_hdrs->transport);
 	}
 
 	/* part 2 */
@@ -1770,7 +1763,7 @@ static int code_IR_DYN_packet(struct rohc_comp_ctxt *const context,
 
 	/* part 6: dynamic part of outer and inner IP header and dynamic part
 	 * of next header */
-	ret = rohc_code_dynamic_part(context, uncomp_pkt, rohc_pkt, counter);
+	ret = rohc_code_dynamic_part(context, uncomp_pkt_hdrs, rohc_pkt, counter);
 	if(ret < 0)
 	{
 		goto error;
@@ -1810,14 +1803,14 @@ error:
 /**
  * @brief Build the static part of the IR packet
  *
- * @param context     The compression context
- * @param uncomp_pkt  The uncompressed packet to encode
- * @param rohc_pkt    The rohc-packet-under-build buffer
- * @param counter     The current position in the rohc-packet-under-build buffer
- * @return            The new position in the rohc-packet-under-build buffer
+ * @param context           The compression context
+ * @param uncomp_pkt_hdrs   The uncompressed headers to encode
+ * @param rohc_pkt          The ROHC buffer
+ * @param counter           The current position in the ROHC buffer
+ * @return                  The new position in the ROHC buffer
  */
 static int rohc_code_static_part(const struct rohc_comp_ctxt *const context,
-                                 const struct net_pkt *const uncomp_pkt,
+                                 const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                  uint8_t *const rohc_pkt,
                                  int counter)
 {
@@ -1829,7 +1822,8 @@ static int rohc_code_static_part(const struct rohc_comp_ctxt *const context,
 	/* static part of the IP headers */
 	for(ip_hdr_pos = 0; ip_hdr_pos < rfc3095_ctxt->ip_hdr_nr; ip_hdr_pos++)
 	{
-		const struct ip_packet *const pkt_ip_hdr = &uncomp_pkt->ip_hdrs[ip_hdr_pos];
+		const struct rohc_pkt_ip_hdr *const pkt_ip_hdr =
+			&(uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos]);
 		/* TODO: const */ struct ip_header_info *const ip_ctxt =
 			&(rfc3095_ctxt->ip_ctxts[ip_hdr_pos]);
 
@@ -1843,10 +1837,9 @@ static int rohc_code_static_part(const struct rohc_comp_ctxt *const context,
 	}
 
 	/* static part of the transport header (if any) */
-	if(rfc3095_ctxt->code_static_part != NULL &&
-	   uncomp_pkt->transport->data != NULL)
+	if(rfc3095_ctxt->code_static_part != NULL && uncomp_pkt_hdrs->transport != NULL)
 	{
-		ret = rfc3095_ctxt->code_static_part(context, uncomp_pkt->transport->data,
+		ret = rfc3095_ctxt->code_static_part(context, uncomp_pkt_hdrs->transport,
 		                                     rohc_pkt, counter);
 		if(ret < 0)
 		{
@@ -1868,25 +1861,23 @@ error:
  * @param context     The compression context
  * @param header_info The IP header info stored in the profile
  * @param ip          The IP header the static part is built for
- * @param dest        The rohc-packet-under-build buffer
- * @param counter     The current position in the rohc-packet-under-build buffer
- * @return            The new position in the rohc-packet-under-build buffer
+ * @param dest        The ROHC buffer
+ * @param counter     The current position in the ROHC buffer
+ * @return            The new position in the ROHC buffer
  */
 static int rohc_code_static_ip_part(const struct rohc_comp_ctxt *const context,
                                     struct ip_header_info *const header_info,
-                                    const struct ip_packet *const ip,
+                                    const struct rohc_pkt_ip_hdr *const ip,
                                     uint8_t *const dest,
                                     int counter)
 {
 	if(header_info->version == IPV4)
 	{
-		counter = code_ipv4_static_part(context, header_info,
-		                                ip, dest, counter);
+		counter = code_ipv4_static_part(context, header_info, ip, dest, counter);
 	}
 	else /* IPV6 */
 	{
-		counter = code_ipv6_static_part(context, header_info,
-		                                ip, dest, counter);
+		counter = code_ipv6_static_part(context, header_info, ip, dest, counter);
 	}
 
 	return counter;
@@ -1915,20 +1906,16 @@ static int rohc_code_static_ip_part(const struct rohc_comp_ctxt *const context,
  * @param context     The compression context
  * @param header_info The IP header info stored in the profile
  * @param ip          The IPv4 header the static part is built for
- * @param dest        The rohc-packet-under-build buffer
- * @param counter     The current position in the rohc-packet-under-build buffer
- * @return            The new position in the rohc-packet-under-build buffer
+ * @param dest        The ROHC buffer
+ * @param counter     The current position in the ROHC buffer
+ * @return            The new position in the ROHC buffer
  */
 static int code_ipv4_static_part(const struct rohc_comp_ctxt *const context,
                                  struct ip_header_info *const header_info,
-                                 const struct ip_packet *const ip,
+                                 const struct rohc_pkt_ip_hdr *const ip,
                                  uint8_t *const dest,
                                  int counter)
 {
-	uint8_t protocol;
-	uint32_t saddr;
-	uint32_t daddr;
-
 	/* part 1 */
 	dest[counter] = 0x40;
 	if(header_info->static_chain_end)
@@ -1940,21 +1927,18 @@ static int code_ipv4_static_part(const struct rohc_comp_ctxt *const context,
 	counter++;
 
 	/* part 2 */
-	protocol = ip_get_protocol(ip);
-	rohc_comp_debug(context, "protocol = 0x%02x", protocol);
-	dest[counter] = protocol;
+	rohc_comp_debug(context, "protocol = 0x%02x", ip->next_proto);
+	dest[counter] = ip->next_proto;
 	counter++;
 
 	/* part 3 */
-	saddr = ipv4_get_saddr(ip);
-	memcpy(&dest[counter], &saddr, 4);
+	memcpy(&dest[counter], &(ip->ipv4->saddr), 4);
 	rohc_comp_debug(context, "src addr = " IPV4_ADDR_FORMAT,
 	                IPV4_ADDR_RAW(dest + counter));
 	counter += 4;
 
 	/* part 4 */
-	daddr = ipv4_get_daddr(ip);
-	memcpy(&dest[counter], &daddr, 4);
+	memcpy(&dest[counter], &(ip->ipv4->daddr), 4);
 	rohc_comp_debug(context, "dst addr = " IPV4_ADDR_FORMAT,
 	                IPV4_ADDR_RAW(dest + counter));
 	counter += 4;
@@ -1987,55 +1971,50 @@ static int code_ipv4_static_part(const struct rohc_comp_ctxt *const context,
  * @param context     The compression context
  * @param header_info The IP header info stored in the profile
  * @param ip          The IPv6 header the static part is built for
- * @param dest        The rohc-packet-under-build buffer
- * @param counter     The current position in the rohc-packet-under-build buffer
- * @return            The new position in the rohc-packet-under-build buffer
+ * @param dest        The ROHC buffer
+ * @param counter     The current position in the ROHC buffer
+ * @return            The new position in the ROHC buffer
  */
 static int code_ipv6_static_part(const struct rohc_comp_ctxt *const context,
                                  struct ip_header_info *const header_info,
-                                 const struct ip_packet *const ip,
+                                 const struct rohc_pkt_ip_hdr *const ip,
                                  uint8_t *const dest,
                                  int counter)
 {
-	uint8_t protocol;
 	const struct ipv6_addr *saddr;
 	const struct ipv6_addr *daddr;
 
 	/* part 1 */
-	dest[counter] = ((6 << 4) & 0xf0) | ip->header.v6.flow1;
+	dest[counter] = ((6 << 4) & 0xf0) | ip->ipv6->flow1;
 	if(header_info->static_chain_end)
 	{
 		rohc_comp_debug(context, "indicate Static Chain Termination in version field");
 		dest[counter] |= 0x80;
 	}
-	rohc_comp_debug(context, "version + flow label (msb) = 0x%02x",
-	                dest[counter]);
+	rohc_comp_debug(context, "version + flow label (msb) = 0x%02x", dest[counter]);
 	counter++;
 
 	/* part 2 */
-	memcpy(dest + counter, &ip->header.v6.flow2, sizeof(uint16_t));
+	memcpy(dest + counter, &(ip->ipv6->flow2), sizeof(uint16_t));
 	counter += sizeof(uint16_t);
 	rohc_comp_debug(context, "flow label (lsb) = 0x%02x%02x",
 	                dest[counter - 2], dest[counter - 1]);
 
 	/* part 3 */
-	protocol = ip_get_protocol(ip);
-	rohc_comp_debug(context, "next header = 0x%02x", protocol);
-	dest[counter] = protocol;
+	rohc_comp_debug(context, "next header = 0x%02x", ip->next_proto);
+	dest[counter] = ip->next_proto;
 	counter++;
 
 	/* part 4 */
-	saddr = ipv6_get_saddr(ip);
+	saddr = &(ip->ipv6->saddr);
 	memcpy(&dest[counter], saddr, 16);
-	rohc_comp_debug(context, "src addr = " IPV6_ADDR_FORMAT,
-	                IPV6_ADDR_IN6(saddr));
+	rohc_comp_debug(context, "src addr = " IPV6_ADDR_FORMAT, IPV6_ADDR_IN6(saddr));
 	counter += 16;
 
 	/* part 5 */
-	daddr = ipv6_get_daddr(ip);
+	daddr = &(ip->ipv6->daddr);
 	memcpy(&dest[counter], daddr, 16);
-	rohc_comp_debug(context, "dst addr = " IPV6_ADDR_FORMAT,
-	                IPV6_ADDR_IN6(daddr));
+	rohc_comp_debug(context, "dst addr = " IPV6_ADDR_FORMAT, IPV6_ADDR_IN6(daddr));
 	counter += 16;
 
 	return counter;
@@ -2045,14 +2024,14 @@ static int code_ipv6_static_part(const struct rohc_comp_ctxt *const context,
 /**
  * @brief Build the dynamic part of the IR and IR-DYN packets
  *
- * @param context     The compression context
- * @param uncomp_pkt  The uncompressed packet to encode
- * @param rohc_pkt    The rohc-packet-under-build buffer
- * @param counter     The current position in the rohc-packet-under-build buffer
- * @return            The new position in the rohc-packet-under-build buffer
+ * @param context           The compression context
+ * @param uncomp_pkt_hdrs   The uncompressed headers to encode
+ * @param rohc_pkt          The ROHC buffer
+ * @param counter           The current position in the ROHC buffer
+ * @return                  The new position in the ROHC buffer
  */
 static int rohc_code_dynamic_part(const struct rohc_comp_ctxt *const context,
-                                  const struct net_pkt *const uncomp_pkt,
+                                  const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                   uint8_t *const rohc_pkt,
                                   int counter)
 {
@@ -2064,7 +2043,8 @@ static int rohc_code_dynamic_part(const struct rohc_comp_ctxt *const context,
 	/* dynamic part of the IP headers */
 	for(ip_hdr_pos = 0; ip_hdr_pos < rfc3095_ctxt->ip_hdr_nr; ip_hdr_pos++)
 	{
-		const struct ip_packet *const pkt_ip_hdr = &uncomp_pkt->ip_hdrs[ip_hdr_pos];
+		const struct rohc_pkt_ip_hdr *const pkt_ip_hdr =
+			&(uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos]);
 		/* TODO: const */ struct ip_header_info *const ip_ctxt =
 			&(rfc3095_ctxt->ip_ctxts[ip_hdr_pos]);
 		const struct rfc3095_ip_hdr_changes *const ip_changes =
@@ -2082,10 +2062,9 @@ static int rohc_code_dynamic_part(const struct rohc_comp_ctxt *const context,
 	}
 
 	/* static part of the transport header (if any) */
-	if(rfc3095_ctxt->code_dynamic_part != NULL &&
-	   uncomp_pkt->transport->data != NULL)
+	if(rfc3095_ctxt->code_dynamic_part != NULL && uncomp_pkt_hdrs->transport != NULL)
 	{
-		ret = rfc3095_ctxt->code_dynamic_part(context, uncomp_pkt->transport->data,
+		ret = rfc3095_ctxt->code_dynamic_part(context, uncomp_pkt_hdrs->transport,
 		                                      rohc_pkt, counter);
 		if(ret < 0)
 		{
@@ -2116,7 +2095,7 @@ error:
 static int rohc_code_dynamic_ip_part(const struct rohc_comp_ctxt *const context,
                                      struct ip_header_info *const header_info,
                                      const bool ext_list_changed,
-                                     const struct ip_packet *const ip,
+                                     const struct rohc_pkt_ip_hdr *const ip,
                                      uint8_t *const dest,
                                      int counter)
 {
@@ -2159,32 +2138,26 @@ static int rohc_code_dynamic_ip_part(const struct rohc_comp_ctxt *const context,
  * @param context     The compression context
  * @param header_info The IP header info stored in the profile
  * @param ip          The IPv4 header the dynamic part is built for
- * @param dest        The rohc-packet-under-build buffer
- * @param counter     The current position in the rohc-packet-under-build buffer
- * @return            The new position in the rohc-packet-under-build buffer
+ * @param dest        The ROHC buffer
+ * @param counter     The current position in the ROHC buffer
+ * @return            The new position in the ROHC buffer
  */
 static int code_ipv4_dynamic_part(const struct rohc_comp_ctxt *const context,
                                   struct ip_header_info *const header_info,
-                                  const struct ip_packet *const ip,
+                                  const struct rohc_pkt_ip_hdr *const ip,
                                   uint8_t *const dest,
                                   int counter)
 {
-	unsigned int tos;
-	unsigned int ttl;
-	unsigned int df;
 	uint8_t df_rnd_nbo_sid;
-	uint16_t id;
 
 	/* part 1 */
-	tos = ip_get_tos(ip);
-	dest[counter] = tos;
+	dest[counter] = ip->tos_tc;
 	rohc_comp_debug(context, "TOS = 0x%02x", dest[counter]);
 	counter++;
 	header_info->tos_count++;
 
 	/* part 2 */
-	ttl = ip_get_ttl(ip);
-	dest[counter] = ttl;
+	dest[counter] = ip->ttl_hl;
 	rohc_comp_debug(context, "TTL = 0x%02x", dest[counter]);
 	counter++;
 	header_info->ttl_count++;
@@ -2192,15 +2165,13 @@ static int code_ipv4_dynamic_part(const struct rohc_comp_ctxt *const context,
 	/* part 3 */
 	/* always transmit IP-ID verbatim in IR and IR-DYN as stated by
 	 * http://www.ietf.org/mail-archive/web/rohc/current/msg01675.html */
-	id = ipv4_get_id(ip);
-	memcpy(&dest[counter], &id, 2);
+	memcpy(&dest[counter], &(ip->ipv4->id), 2);
 	rohc_comp_debug(context, "IP-ID = 0x%02x 0x%02x", dest[counter],
 	                dest[counter + 1]);
 	counter += 2;
 
 	/* part 4 */
-	df = ipv4_get_df(ip);
-	df_rnd_nbo_sid = df << 7;
+	df_rnd_nbo_sid = ip->ipv4->df << 7;
 	if(header_info->info.v4.rnd)
 	{
 		df_rnd_nbo_sid |= 0x40;
@@ -2215,7 +2186,7 @@ static int code_ipv4_dynamic_part(const struct rohc_comp_ctxt *const context,
 	}
 	dest[counter] = df_rnd_nbo_sid;
 	rohc_comp_debug(context, "(DF = %u, RND = %u, NBO = %u, SID = %u) = 0x%02x",
-	                df & 0x01, header_info->info.v4.rnd, header_info->info.v4.nbo,
+	                ip->ipv4->df, header_info->info.v4.rnd, header_info->info.v4.nbo,
 	                header_info->info.v4.sid, dest[counter]);
 	counter++;
 
@@ -2264,26 +2235,21 @@ static int code_ipv4_dynamic_part(const struct rohc_comp_ctxt *const context,
 static int code_ipv6_dynamic_part(const struct rohc_comp_ctxt *const context,
                                   struct ip_header_info *const header_info,
                                   const bool ext_list_changed,
-                                  const struct ip_packet *const ip,
+                                  const struct rohc_pkt_ip_hdr *const ip,
                                   uint8_t *const dest,
                                   int counter)
 {
-	unsigned int tos;
-	unsigned int ttl;
-
 	/* part 1 */
-	tos = ip_get_tos(ip);
-	dest[counter] = tos;
+	dest[counter] = ip->tos_tc;
 	counter++;
 	header_info->tos_count++;
-	rohc_comp_debug(context, "TC = 0x%02x", tos);
+	rohc_comp_debug(context, "TC = 0x%02x", ip->tos_tc);
 
 	/* part 2 */
-	ttl = ip_get_ttl(ip);
-	dest[counter] = ttl;
+	dest[counter] = ip->ttl_hl;
 	counter++;
 	header_info->ttl_count++;
-	rohc_comp_debug(context, "HL = 0x%02x", ttl);
+	rohc_comp_debug(context, "HL = 0x%02x", ip->ttl_hl);
 
 	/* part 3: Generic extension header list */
 	if(ext_list_changed)
@@ -2371,14 +2337,14 @@ error:
  * built in packet-specific functions. Parts 6 and 9 are built in this
  * function. Part 13 is built in profile-specific function.
  *
- * @param context     The compression context
- * @param uncomp_pkt  The uncompressed packet to encode
- * @param dest        The rohc-packet-under-build buffer
- * @param counter     The current position in the rohc-packet-under-build buffer
- * @return            The new position in the rohc-packet-under-build buffer
+ * @param context           The compression context
+ * @param uncomp_pkt_hdrs   The uncompressed headers to encode
+ * @param dest              The ROHC buffer
+ * @param counter           The current position in the ROHC buffer
+ * @return                  The new position in the ROHC buffer
  */
 static int code_uo_remainder(struct rohc_comp_ctxt *const context,
-                             const struct net_pkt *const uncomp_pkt,
+                             const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                              uint8_t *const dest,
                              int counter)
 {
@@ -2403,9 +2369,9 @@ static int code_uo_remainder(struct rohc_comp_ctxt *const context,
 	   rfc3095_ctxt->ip_ctxts[outer_ip_hdr_pos].info.v4.rnd == 1)
 	{
 		/* do not care of Network Byte Order because IP-ID is random */
-		const uint16_t id = ipv4_get_id(&uncomp_pkt->ip_hdrs[outer_ip_hdr_pos]);
-		memcpy(&dest[counter], &id, 2);
-		rohc_comp_debug(context, "outer IP-ID = 0x%04x", id);
+		const uint16_t outer_ipid = uncomp_pkt_hdrs->ip_hdrs[outer_ip_hdr_pos].ipv4->id;
+		memcpy(&dest[counter], &outer_ipid, 2);
+		rohc_comp_debug(context, "outer IP-ID = 0x%04x", outer_ipid);
 		counter += 2;
 	}
 
@@ -2416,9 +2382,9 @@ static int code_uo_remainder(struct rohc_comp_ctxt *const context,
 	   rfc3095_ctxt->ip_ctxts[inner_ip_hdr_pos].info.v4.rnd == 1)
 	{
 		/* do not care of Network Byte Order because IP-ID is random */
-		const uint16_t id = ipv4_get_id(&uncomp_pkt->ip_hdrs[inner_ip_hdr_pos]);
-		memcpy(&dest[counter], &id, 2);
-		rohc_comp_debug(context, "inner IP-ID = 0x%04x", id);
+		const uint16_t inner_ipid = uncomp_pkt_hdrs->ip_hdrs[inner_ip_hdr_pos].ipv4->id;
+		memcpy(&dest[counter], &inner_ipid, 2);
+		rohc_comp_debug(context, "inner IP-ID = 0x%04x", inner_ipid);
 		counter += 2;
 	}
 
@@ -2426,10 +2392,9 @@ static int code_uo_remainder(struct rohc_comp_ctxt *const context,
 
 	/* part 13 */
 	/* add fields related to the next header */
-	if(rfc3095_ctxt->code_uo_remainder != NULL &&
-	   uncomp_pkt->transport->data != NULL)
+	if(rfc3095_ctxt->code_uo_remainder != NULL && uncomp_pkt_hdrs->transport != NULL)
 	{
-		counter = rfc3095_ctxt->code_uo_remainder(context, uncomp_pkt->transport->data,
+		counter = rfc3095_ctxt->code_uo_remainder(context, uncomp_pkt_hdrs->transport,
 		                                          dest, counter);
 	}
 
@@ -2463,7 +2428,7 @@ static int code_uo_remainder(struct rohc_comp_ctxt *const context,
 \endverbatim
  *
  * @param context           The compression context
- * @param uncomp_pkt        The uncompressed packet to encode
+ * @param uncomp_pkt_hdrs   The uncompressed headers to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       The type of ROHC packet that is created
@@ -2471,7 +2436,7 @@ static int code_uo_remainder(struct rohc_comp_ctxt *const context,
  *                          -1 otherwise
  */
 static int code_UO0_packet(struct rohc_comp_ctxt *const context,
-                           const struct net_pkt *const uncomp_pkt,
+                           const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                            uint8_t *const rohc_pkt,
                            const size_t rohc_pkt_max_len,
                            const rohc_packet_t packet_type)
@@ -2509,9 +2474,9 @@ static int code_UO0_packet(struct rohc_comp_ctxt *const context,
 	                "small" : "large", context->cid, counter - 1);
 
 	/* build the UO head if necessary */
-	if(rfc3095_ctxt->code_UO_packet_head != NULL && uncomp_pkt->transport->data != NULL)
+	if(rfc3095_ctxt->code_UO_packet_head != NULL && uncomp_pkt_hdrs->transport != NULL)
 	{
-		counter = rfc3095_ctxt->code_UO_packet_head(context, uncomp_pkt->transport->data,
+		counter = rfc3095_ctxt->code_UO_packet_head(context, uncomp_pkt_hdrs->transport,
 		                                            rohc_pkt, counter, &first_position);
 	}
 
@@ -2519,13 +2484,13 @@ static int code_UO0_packet(struct rohc_comp_ctxt *const context,
 	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
 	 * if the CRC-STATIC fields did not change */
 	f_byte = (rfc3095_ctxt->sn & 0x0f) << 3;
-	crc = compute_uo_crc(context, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3);
+	crc = compute_uo_crc(context, uncomp_pkt_hdrs, ROHC_CRC_TYPE_3, CRC_INIT_3);
 	f_byte |= crc;
 	rohc_comp_debug(context, "first byte = 0x%02x (CRC = 0x%x)", f_byte, crc);
 	rohc_pkt[first_position] = f_byte;
 
 	/* build the UO tail */
-	counter = code_uo_remainder(context, uncomp_pkt, rohc_pkt, counter);
+	counter = code_uo_remainder(context, uncomp_pkt_hdrs, rohc_pkt, counter);
 
 	return counter;
 
@@ -2565,7 +2530,7 @@ error:
 \endverbatim
  *
  * @param context           The compression context
- * @param uncomp_pkt        The uncompressed packet to encode
+ * @param uncomp_pkt_hdrs   The uncompressed headers to encode
  * @param[out] rohc_pkt     The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       The type of ROHC packet that is created
@@ -2573,7 +2538,7 @@ error:
  *                          -1 otherwise
  */
 static int rohc_comp_rfc3095_build_uo1_pkt(struct rohc_comp_ctxt *const context,
-                                           const struct net_pkt *const uncomp_pkt,
+                                           const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                            uint8_t *const rohc_pkt,
                                            const size_t rohc_pkt_max_len,
                                            const rohc_packet_t packet_type)
@@ -2648,9 +2613,9 @@ static int rohc_comp_rfc3095_build_uo1_pkt(struct rohc_comp_ctxt *const context,
 	                "small" : "large", context->cid, counter - 1);
 
 	/* build the UO head if necessary */
-	if(rfc3095_ctxt->code_UO_packet_head != NULL && uncomp_pkt->transport->data != NULL)
+	if(rfc3095_ctxt->code_UO_packet_head != NULL && uncomp_pkt_hdrs->transport != NULL)
 	{
-		counter = rfc3095_ctxt->code_UO_packet_head(context, uncomp_pkt->transport->data,
+		counter = rfc3095_ctxt->code_UO_packet_head(context, uncomp_pkt_hdrs->transport,
 		                                            rohc_pkt, counter, &first_position);
 	}
 
@@ -2666,7 +2631,7 @@ static int rohc_comp_rfc3095_build_uo1_pkt(struct rohc_comp_ctxt *const context,
 		rohc_comp_warn(context, "ROHC packet is too small for SN/CRC byte");
 		goto error;
 	}
-	crc = compute_uo_crc(context, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3);
+	crc = compute_uo_crc(context, uncomp_pkt_hdrs, ROHC_CRC_TYPE_3, CRC_INIT_3);
 	rohc_pkt[counter] = ((rfc3095_ctxt->sn & 0x1f) << 3) | (crc & 0x07);
 	rohc_comp_debug(context, "SN (%d) + CRC (%x) = 0x%02x",
 	                rfc3095_ctxt->sn, crc, rohc_pkt[counter]);
@@ -2675,7 +2640,7 @@ static int rohc_comp_rfc3095_build_uo1_pkt(struct rohc_comp_ctxt *const context,
 	/* part 5: no extension */
 
 	/* build the UO tail */
-	counter = code_uo_remainder(context, uncomp_pkt, rohc_pkt, counter);
+	counter = code_uo_remainder(context, uncomp_pkt_hdrs, rohc_pkt, counter);
 
 	return counter;
 
@@ -2715,7 +2680,7 @@ error:
 \endverbatim
  *
  * @param context           The compression context
- * @param uncomp_pkt        The uncompressed packet to encode
+ * @param uncomp_pkt_hdrs   The uncompressed headers to encode
  * @param[out] rohc_pkt     The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       The type of ROHC packet that is created
@@ -2723,7 +2688,7 @@ error:
  *                          -1 otherwise
  */
 static int rohc_comp_rfc3095_build_uo1rtp_pkt(struct rohc_comp_ctxt *const context,
-                                              const struct net_pkt *const uncomp_pkt,
+                                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                               uint8_t *const rohc_pkt,
                                               const size_t rohc_pkt_max_len,
                                               const rohc_packet_t packet_type)
@@ -2784,9 +2749,9 @@ static int rohc_comp_rfc3095_build_uo1rtp_pkt(struct rohc_comp_ctxt *const conte
 	                "small" : "large", context->cid, counter - 1);
 
 	/* build the UO head if necessary */
-	if(rfc3095_ctxt->code_UO_packet_head != NULL && uncomp_pkt->transport->data != NULL)
+	if(rfc3095_ctxt->code_UO_packet_head != NULL && uncomp_pkt_hdrs->transport != NULL)
 	{
-		counter = rfc3095_ctxt->code_UO_packet_head(context, uncomp_pkt->transport->data,
+		counter = rfc3095_ctxt->code_UO_packet_head(context, uncomp_pkt_hdrs->transport,
 		                                            rohc_pkt, counter, &first_position);
 	}
 
@@ -2804,7 +2769,7 @@ static int rohc_comp_rfc3095_build_uo1rtp_pkt(struct rohc_comp_ctxt *const conte
 	}
 	rohc_pkt[counter] = ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 7;
 	rohc_pkt[counter] |= (rfc3095_ctxt->sn & 0x0f) << 3;
-	crc = compute_uo_crc(context, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3);
+	crc = compute_uo_crc(context, uncomp_pkt_hdrs, ROHC_CRC_TYPE_3, CRC_INIT_3);
 	rohc_pkt[counter] |= crc & 0x07;
 	rohc_comp_debug(context, "M (%d) + SN (%d) + CRC (%x) = 0x%02x",
 	                !!rtp_context->tmp.is_marker_bit_set,
@@ -2814,7 +2779,7 @@ static int rohc_comp_rfc3095_build_uo1rtp_pkt(struct rohc_comp_ctxt *const conte
 	/* part 5: no extension */
 
 	/* build the UO tail */
-	counter = code_uo_remainder(context, uncomp_pkt, rohc_pkt, counter);
+	counter = code_uo_remainder(context, uncomp_pkt_hdrs, rohc_pkt, counter);
 
 	return counter;
 
@@ -2854,7 +2819,7 @@ error:
 \endverbatim
  *
  * @param context           The compression context
- * @param uncomp_pkt        The uncompressed packet to encode
+ * @param uncomp_pkt_hdrs   The uncompressed headers to encode
  * @param[out] rohc_pkt     The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       The type of ROHC packet that is created
@@ -2862,7 +2827,7 @@ error:
  *                          -1 otherwise
  */
 static int rohc_comp_rfc3095_build_uo1ts_pkt(struct rohc_comp_ctxt *const context,
-                                             const struct net_pkt *const uncomp_pkt,
+                                             const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                              uint8_t *const rohc_pkt,
                                              const size_t rohc_pkt_max_len,
                                              const rohc_packet_t packet_type)
@@ -2937,9 +2902,9 @@ static int rohc_comp_rfc3095_build_uo1ts_pkt(struct rohc_comp_ctxt *const contex
 	                "small" : "large", context->cid, counter - 1);
 
 	/* build the UO head if necessary */
-	if(rfc3095_ctxt->code_UO_packet_head != NULL && uncomp_pkt->transport->data != NULL)
+	if(rfc3095_ctxt->code_UO_packet_head != NULL && uncomp_pkt_hdrs->transport != NULL)
 	{
-		counter = rfc3095_ctxt->code_UO_packet_head(context, uncomp_pkt->transport->data,
+		counter = rfc3095_ctxt->code_UO_packet_head(context, uncomp_pkt_hdrs->transport,
 		                                            rohc_pkt, counter, &first_position);
 	}
 
@@ -2956,7 +2921,7 @@ static int rohc_comp_rfc3095_build_uo1ts_pkt(struct rohc_comp_ctxt *const contex
 		rohc_comp_warn(context, "ROHC packet is too small for SN/CRC byte");
 		goto error;
 	}
-	crc = compute_uo_crc(context, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3);
+	crc = compute_uo_crc(context, uncomp_pkt_hdrs, ROHC_CRC_TYPE_3, CRC_INIT_3);
 	rohc_pkt[counter] = ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 7;
 	rohc_pkt[counter] |= (rfc3095_ctxt->sn & 0x0f) << 3;
 	rohc_pkt[counter] |= crc & 0x07;
@@ -2968,7 +2933,7 @@ static int rohc_comp_rfc3095_build_uo1ts_pkt(struct rohc_comp_ctxt *const contex
 	/* part 5: no extension */
 
 	/* build the UO tail */
-	counter = code_uo_remainder(context, uncomp_pkt, rohc_pkt, counter);
+	counter = code_uo_remainder(context, uncomp_pkt_hdrs, rohc_pkt, counter);
 
 	return counter;
 
@@ -3014,7 +2979,7 @@ error:
 \endverbatim
  *
  * @param context           The compression context
- * @param uncomp_pkt        The uncompressed packet to encode
+ * @param uncomp_pkt_hdrs   The uncompressed headers to encode
  * @param[out] rohc_pkt     The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       The type of ROHC packet that is created
@@ -3022,7 +2987,7 @@ error:
  *                          -1 otherwise
  */
 static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const context,
-                                             const struct net_pkt *const uncomp_pkt,
+                                             const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                              uint8_t *const rohc_pkt,
                                              const size_t rohc_pkt_max_len,
                                              const rohc_packet_t packet_type)
@@ -3110,9 +3075,9 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 	                "small" : "large", context->cid, counter - 1);
 
 	/* build the UO head if necessary */
-	if(rfc3095_ctxt->code_UO_packet_head != NULL && uncomp_pkt->transport->data != NULL)
+	if(rfc3095_ctxt->code_UO_packet_head != NULL && uncomp_pkt_hdrs->transport != NULL)
 	{
-		counter = rfc3095_ctxt->code_UO_packet_head(context, uncomp_pkt->transport->data,
+		counter = rfc3095_ctxt->code_UO_packet_head(context, uncomp_pkt_hdrs->transport,
 		                                            rohc_pkt, counter, &first_position);
 	}
 
@@ -3217,7 +3182,7 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 		rohc_comp_warn(context, "ROHC packet is too small for SN/CRC byte");
 		goto error;
 	}
-	crc = compute_uo_crc(context, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3);
+	crc = compute_uo_crc(context, uncomp_pkt_hdrs, ROHC_CRC_TYPE_3, CRC_INIT_3);
 	s_byte = crc & 0x07;
 	switch(packet_type)
 	{
@@ -3298,7 +3263,7 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 			ret = code_EXT2_packet(context, rohc_pkt, counter, packet_type);
 			break;
 		case ROHC_PACKET_UO_1_ID_EXT3:
-			ret = code_EXT3_packet(context, uncomp_pkt, rohc_pkt, counter, packet_type);
+			ret = code_EXT3_packet(context, uncomp_pkt_hdrs, rohc_pkt, counter, packet_type);
 			break;
 		default:
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -3312,7 +3277,7 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 	counter = ret;
 
 	/* build the UO tail */
-	counter = code_uo_remainder(context, uncomp_pkt, rohc_pkt, counter);
+	counter = code_uo_remainder(context, uncomp_pkt_hdrs, rohc_pkt, counter);
 
 	return counter;
 
@@ -3394,7 +3359,7 @@ error:
 \endverbatim
  *
  * @param context           The compression context
- * @param uncomp_pkt        The uncompressed packet to encode
+ * @param uncomp_pkt_hdrs   The uncompressed headers to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       The type of ROHC packet that is created
@@ -3402,7 +3367,7 @@ error:
  *                          -1 otherwise
  */
 static int code_UO2_packet(struct rohc_comp_ctxt *const context,
-                           const struct net_pkt *const uncomp_pkt,
+                           const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                            uint8_t *const rohc_pkt,
                            const size_t rohc_pkt_max_len,
                            const rohc_packet_t packet_type)
@@ -3489,9 +3454,9 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 	                "small" : "large", context->cid, counter - 1);
 
 	/* build the UO head if necessary */
-	if(rfc3095_ctxt->code_UO_packet_head != NULL && uncomp_pkt->transport->data != NULL)
+	if(rfc3095_ctxt->code_UO_packet_head != NULL && uncomp_pkt_hdrs->transport != NULL)
 	{
-		counter = rfc3095_ctxt->code_UO_packet_head(context, uncomp_pkt->transport->data,
+		counter = rfc3095_ctxt->code_UO_packet_head(context, uncomp_pkt_hdrs->transport,
 		                                            rohc_pkt, counter, &first_position);
 	}
 
@@ -3521,7 +3486,7 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 	 *
 	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
 	 * if the CRC-STATIC fields did not change */
-	t_byte = compute_uo_crc(context, uncomp_pkt, ROHC_CRC_TYPE_7, CRC_INIT_7);
+	t_byte = compute_uo_crc(context, uncomp_pkt_hdrs, ROHC_CRC_TYPE_7, CRC_INIT_7);
 	t_byte_position = counter;
 	counter++;
 
@@ -3584,7 +3549,7 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 		case ROHC_PACKET_UOR_2_RTP_EXT3:
 		case ROHC_PACKET_UOR_2_ID_EXT3:
 		case ROHC_PACKET_UOR_2_TS_EXT3:
-			ret = code_EXT3_packet(context, uncomp_pkt, rohc_pkt, counter, packet_type);
+			ret = code_EXT3_packet(context, uncomp_pkt_hdrs, rohc_pkt, counter, packet_type);
 			break;
 		default:
 			rohc_comp_warn(context, "unknown packet type (%d)", packet_type);
@@ -3598,7 +3563,7 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 	counter = ret;
 
 	/* build the UO tail */
-	counter = code_uo_remainder(context, uncomp_pkt, rohc_pkt, counter);
+	counter = code_uo_remainder(context, uncomp_pkt_hdrs, rohc_pkt, counter);
 
 	return counter;
 
@@ -4480,10 +4445,10 @@ error:
 \endverbatim
  *
  * @param context      The compression context
- * @param dest         The rohc-packet-under-build buffer
- * @param counter      The current position in the rohc-packet-under-build buffer
+ * @param dest         The ROHC buffer
+ * @param counter      The current position in the ROHC buffer
  * @param packet_type  The type of ROHC packet that is created
- * @return             The new position in the rohc-packet-under-build buffer
+ * @return             The new position in the ROHC buffer
  *                     if successful, -1 otherwise
  */
 static int code_EXT0_packet(const struct rohc_comp_ctxt *const context,
@@ -4581,10 +4546,10 @@ error:
 \endverbatim
  *
  * @param context      The compression context
- * @param dest         The rohc-packet-under-build buffer
- * @param counter      The current position in the rohc-packet-under-build buffer
+ * @param dest         The ROHC buffer
+ * @param counter      The current position in the ROHC buffer
  * @param packet_type  The type of ROHC packet that is created
- * @return             The new position in the rohc-packet-under-build buffer
+ * @return             The new position in the ROHC buffer
  *                     if successful, -1 otherwise
  */
 static int code_EXT1_packet(const struct rohc_comp_ctxt *const context,
@@ -4741,10 +4706,10 @@ error:
 \endverbatim
  *
  * @param context      The compression context
- * @param dest         The rohc-packet-under-build buffer
- * @param counter      The current position in the rohc-packet-under-build buffer
+ * @param dest         The ROHC buffer
+ * @param counter      The current position in the ROHC buffer
  * @param packet_type  The type of ROHC packet that is created
- * @return             The new position in the rohc-packet-under-build buffer
+ * @return             The new position in the ROHC buffer
  *                     if successful, -1 otherwise
  */
 static int code_EXT2_packet(const struct rohc_comp_ctxt *const context,
@@ -4895,27 +4860,29 @@ error:
 /**
  * @brief Build the extension 3 of the UO* packet types
  *
- * @param context     The compression context
- * @param uncomp_pkt  The uncompressed packet to encode
- * @param dest        The rohc-packet-under-build buffer
- * @param counter     The current position in the rohc-packet-under-build buffer
- * @param packet_type The type of ROHC packet that is created
- * @return            The new position in the rohc-packet-under-build buffer
- *                    if successful, -1 otherwise
+ * @param context          The compression context
+ * @param uncomp_pkt_hdrs  The uncompressed headers to encode
+ * @param dest             The ROHC buffer
+ * @param counter          The current position in the ROHC buffer
+ * @param packet_type      The type of ROHC packet that is created
+ * @return                 The new position in the ROHC buffer
+ *                         if successful, -1 otherwise
  */
 static int code_EXT3_packet(struct rohc_comp_ctxt *const context,
-                            const struct net_pkt *const uncomp_pkt,
+                            const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                             uint8_t *const dest,
                             int counter,
                             const rohc_packet_t packet_type)
 {
 	if(context->profile->id == ROHC_PROFILE_RTP)
 	{
-		return code_EXT3_rtp_packet(context, uncomp_pkt, dest, counter, packet_type);
+		return code_EXT3_rtp_packet(context, uncomp_pkt_hdrs,
+		                            dest, counter, packet_type);
 	}
 	else
 	{
-		return code_EXT3_nortp_packet(context, uncomp_pkt, dest, counter, packet_type);
+		return code_EXT3_nortp_packet(context, uncomp_pkt_hdrs,
+		                              dest, counter, packet_type);
 	}
 }
 
@@ -4958,16 +4925,16 @@ static int code_EXT3_packet(struct rohc_comp_ctxt *const context,
 
 \endverbatim
  *
- * @param context     The compression context
- * @param uncomp_pkt  The uncompressed packet to encode
- * @param dest        The rohc-packet-under-build buffer
- * @param counter     The current position in the rohc-packet-under-build buffer
- * @param packet_type The type of ROHC packet that is created
- * @return            The new position in the rohc-packet-under-build buffer
- *                    if successful, -1 otherwise
+ * @param context          The compression context
+ * @param uncomp_pkt_hdrs  The uncompressed headers to encode
+ * @param dest             The ROHC buffer
+ * @param counter          The current position in the ROHC buffer
+ * @param packet_type      The type of ROHC packet that is created
+ * @return                 The new position in the ROHC buffer
+ *                         if successful, -1 otherwise
  */
 static int code_EXT3_rtp_packet(struct rohc_comp_ctxt *const context,
-                                const struct net_pkt *const uncomp_pkt,
+                                const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                 uint8_t *const dest,
                                 int counter,
                                 const rohc_packet_t packet_type)
@@ -4975,7 +4942,6 @@ static int code_EXT3_rtp_packet(struct rohc_comp_ctxt *const context,
 	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = /* TODO: const */
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
-	const size_t nr_of_ip_hdr = uncomp_pkt->ip_hdr_nr;
 	const bool is_rtp = (context->profile->id == ROHC_PROFILE_RTP);
 	ip_header_pos_t innermost_ipv4_non_rnd;
 
@@ -4989,12 +4955,12 @@ static int code_EXT3_rtp_packet(struct rohc_comp_ctxt *const context,
 	uint8_t ip2;
 	int rtp;     /* RTP bit */
 
-	const struct ip_packet *inner_ip;
-	struct ip_header_info *inner_ip_flags; /* TODO: const */
+	const struct rohc_pkt_ip_hdr *inner_ip;
+	struct ip_header_info *inner_ip_ctxt; /* TODO: const */
 	const struct rfc3095_ip_hdr_changes *inner_ip_changes;
 
-	const struct ip_packet *outer_ip;
-	struct ip_header_info *outer_ip_flags; /* TODO: const */
+	const struct rohc_pkt_ip_hdr *outer_ip;
+	struct ip_header_info *outer_ip_ctxt; /* TODO: const */
 	const struct rfc3095_ip_hdr_changes *outer_ip_changes;
 
 	const struct sc_rtp_context *const rtp_context =
@@ -5014,24 +4980,24 @@ static int code_EXT3_rtp_packet(struct rohc_comp_ctxt *const context,
 
 	/* determine the innermost IPv4 header with non-random IP-ID, but also the
 	 * values of the I and I2 flags for additional non-random IP-ID bits */
-	rohc_comp_rfc3095_get_ext3_I_flags(context, uncomp_pkt, packet_type,
+	rohc_comp_rfc3095_get_ext3_I_flags(context, uncomp_pkt_hdrs, packet_type,
 	                                   &innermost_ipv4_non_rnd, &I, &I2);
-	if(nr_of_ip_hdr == 1)
+	if(rfc3095_ctxt->ip_hdr_nr == 1)
 	{
-		inner_ip = &uncomp_pkt->ip_hdrs[0];
-		inner_ip_flags = &rfc3095_ctxt->ip_ctxts[0];
+		inner_ip = &uncomp_pkt_hdrs->ip_hdrs[0];
+		inner_ip_ctxt = &rfc3095_ctxt->ip_ctxts[0];
 		inner_ip_changes = &rfc3095_ctxt->tmp.ip_hdr_changes[0];
 		outer_ip = NULL;
-		outer_ip_flags = NULL;
+		outer_ip_ctxt = NULL;
 		outer_ip_changes = NULL;
 	}
 	else /* double IP headers */
 	{
-		inner_ip = &uncomp_pkt->ip_hdrs[1];
-		inner_ip_flags = &rfc3095_ctxt->ip_ctxts[1];
+		inner_ip = &uncomp_pkt_hdrs->ip_hdrs[1];
+		inner_ip_ctxt = &rfc3095_ctxt->ip_ctxts[1];
 		inner_ip_changes = &rfc3095_ctxt->tmp.ip_hdr_changes[1];
-		outer_ip = &uncomp_pkt->ip_hdrs[0];
-		outer_ip_flags = &rfc3095_ctxt->ip_ctxts[0];
+		outer_ip = &uncomp_pkt_hdrs->ip_hdrs[0];
+		outer_ip_ctxt = &rfc3095_ctxt->ip_ctxts[0];
 		outer_ip_changes = &rfc3095_ctxt->tmp.ip_hdr_changes[0];
 	}
 
@@ -5103,7 +5069,7 @@ static int code_EXT3_rtp_packet(struct rohc_comp_ctxt *const context,
 	       (rtp_context->ts_sc.state == INIT_STRIDE));
 
 	/* ip2 bit (force ip2=1 if I2=1, otherwise I2 is not sent) */
-	if(nr_of_ip_hdr == 1)
+	if(rfc3095_ctxt->ip_hdr_nr == 1)
 	{
 		ip2 = 0;
 	}
@@ -5164,15 +5130,15 @@ static int code_EXT3_rtp_packet(struct rohc_comp_ctxt *const context,
 	/* part 2 */
 	if(ip)
 	{
-		counter = header_flags(context, inner_ip_flags, inner_ip_changes,
-		                       inner_ip, ip2, dest, counter);
+		counter = header_flags(context, inner_ip_ctxt, inner_ip, inner_ip_changes, ip2,
+		                       dest, counter);
 	}
 
 	/* part 3 */
 	if(ip2)
 	{
-		counter = header_flags(context, outer_ip_flags, outer_ip_changes,
-		                       outer_ip, I2, dest, counter);
+		counter = header_flags(context, outer_ip_ctxt, outer_ip, outer_ip_changes, I2,
+		                       dest, counter);
 	}
 
 	/* part 4 */
@@ -5204,8 +5170,8 @@ static int code_EXT3_rtp_packet(struct rohc_comp_ctxt *const context,
 	/* part 6 */
 	if(ip)
 	{
-		counter = header_fields(context, inner_ip_flags, inner_ip_changes,
-		                        inner_ip, 0, ROHC_IP_HDR_SECOND, dest, counter);
+		counter = header_fields(context, inner_ip_ctxt, inner_ip, inner_ip_changes, I,
+		                        ROHC_IP_HDR_SECOND, dest, counter);
 	}
 
 	/* part 7 */
@@ -5231,14 +5197,14 @@ static int code_EXT3_rtp_packet(struct rohc_comp_ctxt *const context,
 	/* part 8 */
 	if(ip2)
 	{
-		counter = header_fields(context, outer_ip_flags, outer_ip_changes,
-		                        outer_ip, I2, ROHC_IP_HDR_FIRST, dest, counter);
+		counter = header_fields(context, outer_ip_ctxt, outer_ip, outer_ip_changes, I2,
+		                        ROHC_IP_HDR_FIRST, dest, counter);
 	}
 
 	/* part 9 */
 	if(rtp)
 	{
-		counter = rtp_header_flags_and_fields(context, inner_ip, dest, counter);
+		counter = rtp_header_flags_and_fields(context, uncomp_pkt_hdrs, dest, counter);
 		if(counter < 0)
 		{
 			goto error;
@@ -5284,24 +5250,24 @@ error:
 
 \endverbatim
  *
- * @param context     The compression context
- * @param uncomp_pkt  The uncompressed packet to encode
- * @param dest        The rohc-packet-under-build buffer
- * @param counter     The current position in the rohc-packet-under-build buffer
- * @param packet_type The type of ROHC packet that is created
- * @return            The new position in the rohc-packet-under-build buffer
- *                    if successful, -1 otherwise
+ * @param context          The compression context
+ * @param uncomp_pkt_hdrs  The uncompressed headers to encode
+ * @param dest             The ROHC buffer
+ * @param counter          The current position in the ROHC buffer
+ * @param packet_type      The type of ROHC packet that is created
+ * @return                 The new position in the ROHC buffer
+ *                         if successful, -1 otherwise
  */
 static int code_EXT3_nortp_packet(struct rohc_comp_ctxt *const context,
-                                  const struct net_pkt *const uncomp_pkt,
+                                  const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                   uint8_t *const dest,
                                   int counter,
                                   const rohc_packet_t packet_type)
 {
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt; /* TODO: const */
-	int nr_of_ip_hdr;
+	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt = /* TODO: const */
+		(struct rohc_comp_rfc3095_ctxt *) context->specific;
+	const bool is_rtp = (context->profile->id == ROHC_PROFILE_RTP);
 	ip_header_pos_t innermost_ipv4_non_rnd;
-	bool is_rtp;
 
 	uint8_t flags;
 	uint8_t S;
@@ -5310,41 +5276,37 @@ static int code_EXT3_nortp_packet(struct rohc_comp_ctxt *const context,
 	uint8_t I2;
 	uint8_t ip2;
 
-	const struct ip_packet *inner_ip;
-	struct ip_header_info *inner_ip_flags; /* TODO: const */
+	const struct rohc_pkt_ip_hdr *inner_ip;
+	struct ip_header_info *inner_ip_ctxt; /* TODO: const */
 	const struct rfc3095_ip_hdr_changes *inner_ip_changes;
 
-	const struct ip_packet *outer_ip;
-	struct ip_header_info *outer_ip_flags; /* TODO: const */
+	const struct rohc_pkt_ip_hdr *outer_ip;
+	struct ip_header_info *outer_ip_ctxt; /* TODO: const */
 	const struct rfc3095_ip_hdr_changes *outer_ip_changes;
-
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-	nr_of_ip_hdr = uncomp_pkt->ip_hdr_nr;
-	is_rtp = (context->profile->id == ROHC_PROFILE_RTP);
 
 	assert(packet_type == ROHC_PACKET_UOR_2_EXT3);
 	assert(!is_rtp);
 
 	/* determine the innermost IPv4 header with non-random IP-ID, but also the
 	 * values of the I and I2 flags for additional non-random IP-ID bits */
-	rohc_comp_rfc3095_get_ext3_I_flags(context, uncomp_pkt, packet_type,
+	rohc_comp_rfc3095_get_ext3_I_flags(context, uncomp_pkt_hdrs, packet_type,
 	                                   &innermost_ipv4_non_rnd, &I, &I2);
-	if(nr_of_ip_hdr == 1)
+	if(rfc3095_ctxt->ip_hdr_nr == 1)
 	{
-		inner_ip = &uncomp_pkt->ip_hdrs[0];
-		inner_ip_flags = &rfc3095_ctxt->ip_ctxts[0];
+		inner_ip = &uncomp_pkt_hdrs->ip_hdrs[0];
+		inner_ip_ctxt = &rfc3095_ctxt->ip_ctxts[0];
 		inner_ip_changes = &rfc3095_ctxt->tmp.ip_hdr_changes[0];
 		outer_ip = NULL;
-		outer_ip_flags = NULL;
+		outer_ip_ctxt = NULL;
 		outer_ip_changes = NULL;
 	}
 	else /* double IP headers */
 	{
-		inner_ip = &uncomp_pkt->ip_hdrs[1];
-		inner_ip_flags = &rfc3095_ctxt->ip_ctxts[1];
+		inner_ip = &uncomp_pkt_hdrs->ip_hdrs[1];
+		inner_ip_ctxt = &rfc3095_ctxt->ip_ctxts[1];
 		inner_ip_changes = &rfc3095_ctxt->tmp.ip_hdr_changes[1];
-		outer_ip = &uncomp_pkt->ip_hdrs[0];
-		outer_ip_flags = &rfc3095_ctxt->ip_ctxts[0];
+		outer_ip = &uncomp_pkt_hdrs->ip_hdrs[0];
+		outer_ip_ctxt = &rfc3095_ctxt->ip_ctxts[0];
 		outer_ip_changes = &rfc3095_ctxt->tmp.ip_hdr_changes[0];
 	}
 
@@ -5352,7 +5314,7 @@ static int code_EXT3_nortp_packet(struct rohc_comp_ctxt *const context,
 	S = !rfc3095_ctxt->tmp.sn_5bits_possible;
 
 	/* ip2 bit (force ip2=1 if I2=1, otherwise I2 is not sent) */
-	if(nr_of_ip_hdr == 1)
+	if(rfc3095_ctxt->ip_hdr_nr == 1)
 	{
 		ip2 = 0;
 	}
@@ -5412,15 +5374,15 @@ static int code_EXT3_nortp_packet(struct rohc_comp_ctxt *const context,
 	if(ip)
 	{
 		const int reserved_flag = 0;
-		counter = header_flags(context, inner_ip_flags, inner_ip_changes,
-		                       inner_ip, reserved_flag, dest, counter);
+		counter = header_flags(context, inner_ip_ctxt, inner_ip, inner_ip_changes,
+		                       reserved_flag, dest, counter);
 	}
 
 	/* part 3 */
 	if(ip2)
 	{
-		counter = header_flags(context, outer_ip_flags, outer_ip_changes,
-		                       outer_ip, I2, dest, counter);
+		counter = header_flags(context, outer_ip_ctxt, outer_ip, outer_ip_changes, I2,
+		                       dest, counter);
 	}
 
 	/* part 4 */
@@ -5433,8 +5395,8 @@ static int code_EXT3_nortp_packet(struct rohc_comp_ctxt *const context,
 	/* part 5 */
 	if(ip)
 	{
-		counter = header_fields(context, inner_ip_flags, inner_ip_changes,
-		                        inner_ip, 0, ROHC_IP_HDR_SECOND, dest, counter);
+		counter = header_fields(context, inner_ip_ctxt, inner_ip, inner_ip_changes, I,
+		                        ROHC_IP_HDR_SECOND, dest, counter);
 	}
 
 	/* part 6 */
@@ -5460,8 +5422,8 @@ static int code_EXT3_nortp_packet(struct rohc_comp_ctxt *const context,
 	/* part 7 */
 	if(ip2)
 	{
-		counter = header_fields(context, outer_ip_flags, outer_ip_changes,
-		                        outer_ip, I2, ROHC_IP_HDR_FIRST, dest, counter);
+		counter = header_fields(context, outer_ip_ctxt, outer_ip, outer_ip_changes, I2,
+		                        ROHC_IP_HDR_FIRST, dest, counter);
 	}
 
 	/* no IP extension until list compression */
@@ -5504,35 +5466,29 @@ static int code_EXT3_nortp_packet(struct rohc_comp_ctxt *const context,
 
 \endverbatim
  *
- * @param context    The compression context
- * @param ip         One inner or outer IP header
- * @param dest       The rohc-packet-under-build buffer
- * @param counter    The current position in the rohc-packet-under-build buffer
- * @return           The new position in the rohc-packet-under-build buffer
- *                   if successful, -1 otherwise
+ * @param context          The compression context
+ * @param uncomp_pkt_hdrs  The uncompressed headers to encode
+ * @param dest             The ROHC buffer
+ * @param counter          The current position in the ROHC buffer
+ * @return                 The new position in the ROHC buffer
+ *                         if successful, -1 otherwise
  *
  * @see changed_fields
  */
 static int rtp_header_flags_and_fields(const struct rohc_comp_ctxt *const context,
-                                       const struct ip_packet *const ip,
+                                       const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                        uint8_t *const dest,
                                        int counter)
 {
 	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
 	struct sc_rtp_context *rtp_context;
-	struct udphdr *udp;
-	struct rtphdr *rtp;
 	int tss;
 	int rpt;
 	uint8_t byte;
 
 	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
 	rtp_context = (struct sc_rtp_context *) rfc3095_ctxt->specific;
-
-	/* get RTP header */
-	udp = (struct udphdr *) ip_get_next_layer(ip);
-	rtp = (struct rtphdr *) (udp + 1);
 
 	/* part 1 */
 	rpt = (rtp_context->tmp.rtp_pt_changed ||
@@ -5543,8 +5499,8 @@ static int rtp_header_flags_and_fields(const struct rohc_comp_ctxt *const contex
 	byte = 0;
 	byte |= (context->mode & 0x03) << 6;
 	byte |= (rpt & 0x01) << 5;
-	byte |= (rtp->m & 0x01) << 4;
-	byte |= (rtp->extension & 0x01) << 3;
+	byte |= (uncomp_pkt_hdrs->rtp->m & 0x01) << 4;
+	byte |= (uncomp_pkt_hdrs->rtp->extension & 0x01) << 3;
 	byte |= (tss & 0x01) << 1;
 	rohc_comp_debug(context, "RTP flags = 0x%x", byte);
 	dest[counter] = byte;
@@ -5558,8 +5514,8 @@ static int rtp_header_flags_and_fields(const struct rohc_comp_ctxt *const contex
 	if(rpt)
 	{
 		byte = 0;
-		byte |= (rtp->padding & 0x01) << 7;
-		byte |= rtp->pt & 0x7f;
+		byte |= (uncomp_pkt_hdrs->rtp->padding & 0x01) << 7;
+		byte |= uncomp_pkt_hdrs->rtp->pt & 0x7f;
 		rohc_comp_debug(context, "part 2 = 0x%x", byte);
 		dest[counter] = byte;
 		counter++;
@@ -5661,21 +5617,20 @@ error:
  *
  * @param context        The compression context
  * @param header_info    The header info stored in the profile
- * @param changes        The fields that changed
  * @param ip             One inner or outer IP header
+ * @param changes        The IP fields that changed
  * @param ip2_or_I2      Whether the ip2 (inner, RTP only) or I2 (outer) flag
  *                       is set or not
- * @param dest           The rohc-packet-under-build buffer
- * @param counter        The current position in the rohc-packet-under-build
- *                       buffer
- * @return               The new position in the rohc-packet-under-build buffer
+ * @param dest           The ROHC buffer
+ * @param counter        The current position in the ROHC buffer
+ * @return               The new position in the ROHC buffer
  *
  * @see changed_fields
  */
 static int header_flags(const struct rohc_comp_ctxt *const context,
                         struct ip_header_info *const header_info,
+                        const struct rohc_pkt_ip_hdr *const ip,
                         const struct rfc3095_ip_hdr_changes *const changes,
-                        const struct ip_packet *const ip,
                         const int ip2_or_I2,
                         uint8_t *const dest,
                         int counter)
@@ -5696,17 +5651,14 @@ static int header_flags(const struct rohc_comp_ctxt *const context,
 	 * there are always set to 0 for IPv6 */
 	if(header_info->version == IPV4)
 	{
-		int df;
-
-		df = ipv4_get_df(ip);
+		flags |= ip->ipv4->df << 5;
 		header_info->info.v4.df_count++;
-		flags |= df << 5;
 
-		header_info->info.v4.nbo_count++;
 		flags |= header_info->info.v4.nbo << 2;
+		header_info->info.v4.nbo_count++;
 
-		header_info->info.v4.rnd_count++;
 		flags |= header_info->info.v4.rnd << 1;
+		header_info->info.v4.rnd_count++;
 	}
 
 	/* the ip2 flag for inner IP flags if non-RTP profile,
@@ -5760,21 +5712,20 @@ static int header_flags(const struct rohc_comp_ctxt *const context,
  *
  * @param context        The compression context
  * @param header_info    The header info stored in the profile
- * @param changes        The fields that changed
  * @param ip             One inner or outer IP header
+ * @param changes        The IP fields that changed
  * @param I              The I flag of the IP header
  * @param ip_hdr_pos     The position of the IP header
- * @param dest           The rohc-packet-under-build buffer
- * @param counter        The current position in the rohc-packet-under-build
- *                       buffer
- * @return               The new position in the rohc-packet-under-build buffer
+ * @param dest           The ROHC buffer
+ * @param counter        The current position in the ROHC buffer
+ * @return               The new position in the ROHC buffer
  *
  * @see changed_fields
  */
 static int header_fields(const struct rohc_comp_ctxt *const context,
                          struct ip_header_info *const header_info,
+                         const struct rohc_pkt_ip_hdr *const ip,
                          const struct rfc3095_ip_hdr_changes *const changes,
-                         const struct ip_packet *const ip,
                          const int I,
                          const ip_header_pos_t ip_hdr_pos,
                          uint8_t *const dest,
@@ -5783,22 +5734,20 @@ static int header_fields(const struct rohc_comp_ctxt *const context,
 	/* part 1 */
 	if(changes->tos_tc_changed)
 	{
-		const unsigned int tos = ip_get_tos(ip);
 		rohc_comp_debug(context, "IP TOS/TC of IP header #%u = 0x%02x",
-		                ip_hdr_pos, tos);
+		                ip_hdr_pos, ip->tos_tc);
 		header_info->tos_count++;
-		dest[counter] = tos;
+		dest[counter] = ip->tos_tc;
 		counter++;
 	}
 
 	/* part 2 */
 	if(changes->ttl_hl_changed)
 	{
-		const unsigned int ttl = ip_get_ttl(ip);
 		rohc_comp_debug(context, "IP TTL/HL of IP header #%u = 0x%02x",
-		                ip_hdr_pos, ttl);
+		                ip_hdr_pos, ip->ttl_hl);
 		header_info->ttl_count++;
-		dest[counter] = ttl;
+		dest[counter] = ip->ttl_hl;
 		counter++;
 	}
 
@@ -5824,34 +5773,20 @@ static int header_fields(const struct rohc_comp_ctxt *const context,
 /**
  * @brief Compute the CRC for a UO* packet
  *
- * @param context     The compression context to update
- * @param uncomp_pkt  The uncompressed packet to encode
- * @param crc_type    The type of CRC to compute
- * @param crc_init    The initial value of the CRC
- * @return            The computed CRC
+ * @param context          The compression context to update
+ * @param uncomp_pkt_hdrs  The uncompressed headers to encode
+ * @param crc_type         The type of CRC to compute
+ * @param crc_init         The initial value of the CRC
+ * @return                 The computed CRC
  */
 static uint8_t compute_uo_crc(struct rohc_comp_ctxt *const context,
-                              const struct net_pkt *const uncomp_pkt,
+                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                               const rohc_crc_type_t crc_type,
                               const uint8_t crc_init)
 {
 	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
-	const uint8_t *outer_ip_hdr;
-	const uint8_t *inner_ip_hdr;
-	const uint8_t *next_header;
 	uint8_t crc = crc_init;
-
-	outer_ip_hdr = ip_get_raw_data(&uncomp_pkt->ip_hdrs[0]);
-	if(uncomp_pkt->ip_hdr_nr > 1)
-	{
-		inner_ip_hdr = ip_get_raw_data(&uncomp_pkt->ip_hdrs[1]);
-	}
-	else
-	{
-		inner_ip_hdr = NULL;
-	}
-	next_header = uncomp_pkt->transport->data;
 
 	/* compute CRC on CRC-STATIC fields */
 	if(rfc3095_ctxt->is_crc_static_3_cached_valid && crc_type == ROHC_CRC_TYPE_3)
@@ -5866,8 +5801,7 @@ static uint8_t compute_uo_crc(struct rohc_comp_ctxt *const context,
 	}
 	else
 	{
-		crc = rfc3095_ctxt->compute_crc_static(outer_ip_hdr, inner_ip_hdr, next_header,
-		                                       crc_type, crc);
+		crc = rfc3095_ctxt->compute_crc_static(uncomp_pkt_hdrs, crc_type, crc);
 		rohc_comp_debug(context, "compute CRC-STATIC-%d = 0x%x from packet",
 		                crc_type, crc);
 
@@ -5887,8 +5821,7 @@ static uint8_t compute_uo_crc(struct rohc_comp_ctxt *const context,
 	}
 
 	/* compute CRC on CRC-DYNAMIC fields */
-	crc = rfc3095_ctxt->compute_crc_dynamic(outer_ip_hdr, inner_ip_hdr, next_header,
-	                                        crc_type, crc);
+	crc = rfc3095_ctxt->compute_crc_dynamic(uncomp_pkt_hdrs, crc_type, crc);
 	rohc_comp_debug(context, "compute CRC-%d = 0x%x from packet",
 	                crc_type, crc);
 
@@ -5899,11 +5832,11 @@ static uint8_t compute_uo_crc(struct rohc_comp_ctxt *const context,
 /**
  * @brief Update the compression context with the successfully compressed packet
  *
- * @param context     The compression context to update
- * @param uncomp_pkt  The uncompressed packet that updates the context
+ * @param context           The compression context to update
+ * @param uncomp_pkt_hdrs   The uncompressed headers to encode
  */
 static void update_context(struct rohc_comp_ctxt *const context,
-                           const struct net_pkt *const uncomp_pkt)
+                           const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 {
 	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
@@ -5912,8 +5845,9 @@ static void update_context(struct rohc_comp_ctxt *const context,
 	/* update the context with the new headers */
 	for(ip_hdr_pos = 0; ip_hdr_pos < rfc3095_ctxt->ip_hdr_nr; ip_hdr_pos++)
 	{
-		const struct ip_packet *const pkt_ip_hdr = &uncomp_pkt->ip_hdrs[ip_hdr_pos];
 		struct ip_header_info *const ip_ctxt = &(rfc3095_ctxt->ip_ctxts[ip_hdr_pos]);
+		const struct rohc_pkt_ip_hdr *const pkt_ip_hdr =
+			&(uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos]);
 
 		update_context_ip_hdr(context, ip_ctxt, pkt_ip_hdr);
 	}
@@ -5932,7 +5866,7 @@ static void update_context(struct rohc_comp_ctxt *const context,
  */
 static void update_context_ip_hdr(const struct rohc_comp_ctxt *const context,
                                   struct ip_header_info *const ip_flags,
-                                  const struct ip_packet *const ip)
+                                  const struct rohc_pkt_ip_hdr *const ip)
 {
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
 		(const struct rohc_comp_rfc3095_ctxt *const) context->specific;
@@ -5941,7 +5875,7 @@ static void update_context_ip_hdr(const struct rohc_comp_ctxt *const context,
 
 	if(ip_flags->version == IPV4)
 	{
-		ip_flags->info.v4.old_ip = *(ipv4_get_header(ip));
+		memcpy(&(ip_flags->info.v4.old_ip), ip->ipv4, sizeof(struct ipv4_hdr));
 		ip_flags->info.v4.old_rnd = ip_flags->info.v4.rnd;
 		ip_flags->info.v4.old_nbo = ip_flags->info.v4.nbo;
 		ip_flags->info.v4.old_sid = ip_flags->info.v4.sid;
@@ -5954,9 +5888,9 @@ static void update_context_ip_hdr(const struct rohc_comp_ctxt *const context,
 	}
 	else /* IPV6 */
 	{
-		ip_flags->info.v6.old_ip = *(ipv6_get_header(ip));
+		memcpy(&(ip_flags->info.v6.old_ip), ip->ipv6, sizeof(struct ipv6_hdr));
 		/* replace Next Header by the one of the last extension header */
-		ip_flags->info.v6.old_ip.nh = ip_get_protocol(ip);
+		ip_flags->info.v6.old_ip.nh = ip->next_proto;
 		/* update compression list context */
 		rohc_list_update_context(&ip_flags->info.v6.ext_comp);
 	}
@@ -6163,11 +6097,11 @@ static void detect_ip_changes(const struct rohc_comp_ctxt *const context,
  *  - increase in Little Endian,
  *  - randomly.
  *
- * @param context     The compression context
- * @param uncomp_pkt  The uncompressed packet
+ * @param context          The compression context
+ * @param uncomp_pkt_hdrs  The uncompressed headers to encode
  */
 static void detect_ip_id_behaviours(struct rohc_comp_ctxt *const context,
-                                    const struct net_pkt *const uncomp_pkt)
+                                    const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 {
 	/* TODO: const */ struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 	size_t ip_hdr_pos;
@@ -6175,7 +6109,8 @@ static void detect_ip_id_behaviours(struct rohc_comp_ctxt *const context,
 	/* detect IP-ID behaviour for the IPv4 headers */
 	for(ip_hdr_pos = 0; ip_hdr_pos < rfc3095_ctxt->ip_hdr_nr; ip_hdr_pos++)
 	{
-		const struct ip_packet *const pkt_ip_hdr = &uncomp_pkt->ip_hdrs[ip_hdr_pos];
+		const struct rohc_pkt_ip_hdr *const pkt_ip_hdr =
+			&(uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos]);
 		/* TODO: const */ struct ip_header_info *const ip_ctxt =
 			&(rfc3095_ctxt->ip_ctxts[ip_hdr_pos]);
 
@@ -6198,13 +6133,13 @@ static void detect_ip_id_behaviours(struct rohc_comp_ctxt *const context,
  *  - increase in Little Endian,
  *  - randomly.
  *
- * @param context      The compression context
- * @param header_info  The header info stored in the profile
- * @param ip           One IPv4 header
+ * @param context            The compression context
+ * @param header_info        The header info stored in the profile
+ * @param uncomp_pkt_ip_hdr  The uncompressed IP header to encode
  */
 static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
                                    struct ip_header_info *const header_info,
-                                   const struct ip_packet *const ip)
+                                   const struct rohc_pkt_ip_hdr *const uncomp_pkt_ip_hdr)
 {
 	rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 	            header_info->version == IPV4, error,
@@ -6214,7 +6149,7 @@ static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
 	{
 		/* IP-ID behaviour cannot be detected for the first header (2 headers are
 		 * needed), so consider that IP-ID is not random/static and in NBO. */
-		rohc_comp_debug(context, "no previous IP-ID, consider non-random/static "
+		rohc_comp_debug(context, "  no previous IP-ID, consider non-random/static "
 		                "and NBO");
 		header_info->info.v4.rnd = 0;
 		header_info->info.v4.nbo = 1;
@@ -6225,20 +6160,17 @@ static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
 		/* we have seen at least one header before this one, so we can (try to)
 		 * detect IP-ID behaviour */
 
-		uint16_t old_id; /* the IP-ID of the previous IPv4 header */
-		uint16_t new_id; /* the IP-ID of the IPv4 header being compressed */
+		const uint16_t old_id = rohc_ntoh16(header_info->info.v4.old_ip.id);
+		const uint16_t new_id = rohc_ntoh16(uncomp_pkt_ip_hdr->ipv4->id);
 
-		old_id = rohc_ntoh16(header_info->info.v4.old_ip.id);
-		new_id = rohc_ntoh16(ipv4_get_id(ip));
-
-		rohc_comp_debug(context, "1) old_id = 0x%04x new_id = 0x%04x",
+		rohc_comp_debug(context, "  NBO: old_id = 0x%04x new_id = 0x%04x",
 		                old_id, new_id);
 
 		if(new_id == old_id)
 		{
 			/* previous and current IP-ID values are equal: IP-ID is constant
 			 * (do not change NBO value if RND, decompressor shall ignore it) */
-			rohc_comp_debug(context, "IP-ID is constant (SID detected)");
+			rohc_comp_debug(context, "  IP-ID is constant (SID detected)");
 			header_info->info.v4.rnd = 0;
 			header_info->info.v4.nbo = header_info->info.v4.old_nbo;
 			header_info->info.v4.sid = 1;
@@ -6246,7 +6178,7 @@ static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
 		else if(is_ip_id_increasing(old_id, new_id, 19))
 		{
 			/* IP-ID is increasing in NBO */
-			rohc_comp_debug(context, "IP-ID is increasing in NBO");
+			rohc_comp_debug(context, "  IP-ID is increasing in NBO");
 			header_info->info.v4.rnd = 0;
 			header_info->info.v4.nbo = 1;
 			header_info->info.v4.sid = 0;
@@ -6254,16 +6186,16 @@ static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
 		else
 		{
 			/* change byte ordering and check behaviour again */
-			old_id = swab16(old_id);
-			new_id = swab16(new_id);
+			const uint16_t old_id_le = swab16(old_id);
+			const uint16_t new_id_le = swab16(new_id);
 
-			rohc_comp_debug(context, "2) old_id = 0x%04x new_id = 0x%04x",
-			                old_id, new_id);
+			rohc_comp_debug(context, "  Little Endian: old_id = 0x%04x new_id = 0x%04x",
+			                old_id_le, new_id_le);
 
-			if(is_ip_id_increasing(old_id, new_id, 19))
+			if(is_ip_id_increasing(old_id_le, new_id_le, 19))
 			{
 				/* IP-ID is increasing in Little Endian */
-				rohc_comp_debug(context, "IP-ID is increasing in Little Endian");
+				rohc_comp_debug(context, "  IP-ID is increasing in Little Endian");
 				header_info->info.v4.rnd = 0;
 				header_info->info.v4.nbo = 0;
 				header_info->info.v4.sid = 0;
@@ -6273,7 +6205,7 @@ static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
 				/* IP-ID is not constant nor increasing (in Little/Big Endian),
 				 * it seems to behave randomly
 				 * (do not change NBO value if RND, decompressor shall ignore it) */
-				rohc_comp_debug(context, "IP-ID is random (RND detected)");
+				rohc_comp_debug(context, "  IP-ID is random (RND detected)");
 				header_info->info.v4.rnd = 1;
 				header_info->info.v4.nbo = header_info->info.v4.old_nbo;
 				header_info->info.v4.sid = 0;
@@ -6298,12 +6230,12 @@ error:
 /**
  * @brief Encode uncompressed fields with the corresponding encoding scheme
  *
- * @param context      The compression context
- * @param uncomp_pkt   The uncompressed packet to encode
- * @return             true in case of success, false otherwise
+ * @param context          The compression context
+ * @param uncomp_pkt_hdrs  The uncompressed headers to encode
+ * @return                 true in case of success, false otherwise
  */
 static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
-                                 const struct net_pkt *const uncomp_pkt)
+                                 const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 {
 	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 	size_t ip_hdr_pos;
@@ -6410,11 +6342,12 @@ static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	/* update info related to the IP-ID of the IPv4 headers */
 	for(ip_hdr_pos = 0; ip_hdr_pos < rfc3095_ctxt->ip_hdr_nr; ip_hdr_pos++)
 	{
-		const struct ip_packet *const pkt_ip_hdr = &uncomp_pkt->ip_hdrs[ip_hdr_pos];
-		struct rfc3095_ip_hdr_changes *const ip_changes =
-			&(rfc3095_ctxt->tmp.ip_hdr_changes[ip_hdr_pos]);
 		struct ip_header_info *const ip_ctxt =
 			&(rfc3095_ctxt->ip_ctxts[ip_hdr_pos]);
+		const struct rohc_pkt_ip_hdr *const pkt_ip_hdr =
+			&(uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos]);
+		struct rfc3095_ip_hdr_changes *const ip_changes =
+			&(rfc3095_ctxt->tmp.ip_hdr_changes[ip_hdr_pos]);
 
 		if(ip_ctxt->version == IPV6)
 		{
@@ -6429,8 +6362,10 @@ static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		else /* IPV4 */
 		{
 			/* compute the new IP-ID / SN delta */
-			const uint16_t id_nbo =
-				ipv4_get_id_nbo(pkt_ip_hdr, ip_ctxt->info.v4.nbo, ip_ctxt->info.v4.rnd);
+			const uint16_t id = pkt_ip_hdr->ipv4->id;
+			const bool is_little_endian =
+				(ip_ctxt->info.v4.rnd == 0 && ip_ctxt->info.v4.nbo == 0);
+			const uint16_t id_nbo = (is_little_endian ? swab16(id) : id);
 			ip_ctxt->info.v4.id_delta = rohc_ntoh16(id_nbo) - rfc3095_ctxt->sn;
 			rohc_comp_debug(context, "IP header #%zu: new IP-ID delta = 0x%x / %u "
 			                "(NBO = %d, RND = %d, SID = %d)", ip_hdr_pos + 1,
@@ -6505,10 +6440,9 @@ static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 
 	/* update info related to transport header */
 	if(rfc3095_ctxt->encode_uncomp_fields != NULL &&
-	   !rfc3095_ctxt->encode_uncomp_fields(context, uncomp_pkt))
+	   !rfc3095_ctxt->encode_uncomp_fields(context, uncomp_pkt_hdrs))
 	{
-		rohc_comp_warn(context, "failed to encode uncompressed next header "
-		               "fields");
+		rohc_comp_warn(context, "failed to encode uncompressed next header fields");
 		goto error;
 	}
 
@@ -7088,7 +7022,7 @@ void rohc_get_ipid_bits(const struct rohc_comp_ctxt *const context,
  * @brief Determine the values of the I and I2 flags for UO* extension 3
  *
  * @param context                      The compression context
- * @param uncomp_pkt                   The uncompressed packet to encode
+ * @param uncomp_pkt_hdrs              The uncompressed headers to encode
  * @param packet_type                  The type of packet that is being built
  * @param[out] innermost_ipv4_non_rnd  The position of the innermost IPv4 header
  *                                     with a non-random IP-ID field
@@ -7102,7 +7036,7 @@ void rohc_get_ipid_bits(const struct rohc_comp_ctxt *const context,
  *                                     some IP-ID bits
  */
 static void rohc_comp_rfc3095_get_ext3_I_flags(const struct rohc_comp_ctxt *const context,
-                                               const struct net_pkt *const uncomp_pkt,
+                                               const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                                const rohc_packet_t packet_type,
                                                ip_header_pos_t *const innermost_ipv4_non_rnd,
                                                uint8_t *const I,
@@ -7111,7 +7045,7 @@ static void rohc_comp_rfc3095_get_ext3_I_flags(const struct rohc_comp_ctxt *cons
 	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	const struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt = context->specific;
 
-	if(uncomp_pkt->ip_hdr_nr == 1)
+	if(uncomp_pkt_hdrs->ip_hdrs_nr == 1)
 	{
 		const struct ip_header_info *const inner_ip_flags = &rfc3095_ctxt->ip_ctxts[0];
 

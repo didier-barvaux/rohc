@@ -125,18 +125,14 @@ static const uint32_t crc_table_fcs32[256] =
  * Prototypes of private functions
  */
 
-static uint8_t ipv6_ext_calc_crc_static(const uint8_t *const ip,
+static uint8_t ipv6_ext_calc_crc_static(const struct rohc_pkt_ip_hdr *const ip_hdr,
                                         const rohc_crc_type_t crc_type,
                                         const uint8_t init_val)
 	__attribute__((warn_unused_result, nonnull(1)));
-static uint8_t ipv6_ext_calc_crc_dyn(const uint8_t *const ip,
+static uint8_t ipv6_ext_calc_crc_dyn(const struct rohc_pkt_ip_hdr *const ip_hdr,
                                      const rohc_crc_type_t crc_type,
                                      const uint8_t init_val)
 	__attribute__((warn_unused_result, nonnull(1)));
-static uint8_t * ipv6_get_first_extension(const uint8_t *const ip,
-                                          uint8_t *const type)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
-
 
 
 
@@ -180,73 +176,40 @@ uint32_t crc_calc_fcs32(const uint8_t *const data,
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param outer_ip    The outer IP packet
- * @param inner_ip    The inner IP packet if there is 2 IP headers, NULL otherwise
- * @param next_header The next header located after the IP header(s)
- * @param crc_type    The type of CRC
- * @param init_val    The initial CRC value
- * @return            The checksum
+ * @param uncomp_pkt_hdrs  The uncompressed headers to compute CRC for
+ * @param crc_type         The type of CRC
+ * @param init_val         The initial CRC value
+ * @return                 The computed CRC
  */
-uint8_t compute_crc_static(const uint8_t *const outer_ip,
-                           const uint8_t *const inner_ip,
-                           const uint8_t *const next_header __attribute__((unused)),
-                           const rohc_crc_type_t crc_type,
-                           const uint8_t init_val)
+uint8_t ip_compute_crc_static(const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                              const rohc_crc_type_t crc_type,
+                              const uint8_t init_val)
 {
-	const struct ip_hdr *const outer_ip_hdr = (struct ip_hdr *) outer_ip;
 	uint8_t crc = init_val;
+	size_t ip_hdr_pos;
 
-	/* first IPv4 header */
-	if(outer_ip_hdr->version == IPV4)
+	for(ip_hdr_pos = 0; ip_hdr_pos < uncomp_pkt_hdrs->ip_hdrs_nr; ip_hdr_pos++)
 	{
-		const struct ipv4_hdr *ip_hdr = (struct ipv4_hdr *) outer_ip;
+		const struct rohc_pkt_ip_hdr *const ip_hdr =
+			&(uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos]);
 
-		/* bytes 1-2 (Version, Header length, TOS) */
-		crc = crc_calculate(crc_type, (uint8_t *)(ip_hdr), 2, crc);
-		/* bytes 7-10 (Flags, Fragment Offset, TTL, Protocol) */
-		crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->frag_off), 4, crc);
-		/* bytes 13-20 (Source Address, Destination Address) */
-		crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->saddr), 8, crc);
-	}
-	else /* first IPv6 header */
-	{
-		const struct ipv6_hdr *ip_hdr = (struct ipv6_hdr *) outer_ip;
-
-		/* bytes 1-4 (Version, TC, Flow Label) */
-		crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->version_tc_flow), 4, crc);
-		/* bytes 7-40 (Next Header, Hop Limit, Source Address, Destination Address) */
-		crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->nh), 34, crc);
-		/* IPv6 extensions */
-		crc = ipv6_ext_calc_crc_static(outer_ip, crc_type, crc);
-	}
-
-	/* second header */
-	if(inner_ip != NULL)
-	{
-		const struct ip_hdr *const inner_ip_hdr = (struct ip_hdr *) inner_ip;
-
-		/* IPv4 */
-		if(inner_ip_hdr->version == IPV4)
+		if(ip_hdr->version == IPV4)
 		{
-			const struct ipv4_hdr *ip_hdr = (struct ipv4_hdr *) inner_ip;
-
 			/* bytes 1-2 (Version, Header length, TOS) */
-			crc = crc_calculate(crc_type, (uint8_t *)(ip_hdr), 2, crc);
+			crc = crc_calculate(crc_type, (uint8_t *)(ip_hdr->ipv4), 2, crc);
 			/* bytes 7-10 (Flags, Fragment Offset, TTL, Protocol) */
-			crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->frag_off), 4, crc);
+			crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->ipv4->frag_off), 4, crc);
 			/* bytes 13-20 (Source Address, Destination Address) */
-			crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->saddr), 8, crc);
+			crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->ipv4->saddr), 8, crc);
 		}
-		else /* IPv6 */
+		else /* first IPv6 header */
 		{
-			const struct ipv6_hdr *ip_hdr = (struct ipv6_hdr *) inner_ip;
-
 			/* bytes 1-4 (Version, TC, Flow Label) */
-			crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->version_tc_flow), 4, crc);
+			crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->ipv6->version_tc_flow), 4, crc);
 			/* bytes 7-40 (Next Header, Hop Limit, Source Address, Destination Address) */
-			crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->nh), 34, crc);
+			crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->ipv6->nh), 34, crc);
 			/* IPv6 extensions */
-			crc = ipv6_ext_calc_crc_static(inner_ip, crc_type, crc);
+			crc = ipv6_ext_calc_crc_static(ip_hdr, crc_type, crc);
 		}
 	}
 
@@ -261,61 +224,36 @@ uint8_t compute_crc_static(const uint8_t *const outer_ip,
  *   - bytes 3-4, 5-6, 11-12 in original IPv4 header
  *   - bytes 5-6 in original IPv6 header
  *
- * @param outer_ip    The outer IP packet
- * @param inner_ip    The inner IP packet if there is 2 IP headers, NULL otherwise
- * @param next_header The next header located after the IP header(s)
- * @param crc_type    The type of CRC
- * @param init_val    The initial CRC value
- * @return            The checksum
+ * @param uncomp_pkt_hdrs  The uncompressed headers to compute CRC for
+ * @param crc_type         The type of CRC
+ * @param init_val         The initial CRC value
+ * @return                 The computed CRC
  */
-uint8_t compute_crc_dynamic(const uint8_t *const outer_ip,
-                            const uint8_t *const inner_ip,
-                            const uint8_t *const next_header __attribute__((unused)),
-                            const rohc_crc_type_t crc_type,
-                            const uint8_t init_val)
+uint8_t ip_compute_crc_dynamic(const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                               const rohc_crc_type_t crc_type,
+                               const uint8_t init_val)
 {
-	const struct ip_hdr *const outer_ip_hdr = (struct ip_hdr *) outer_ip;
 	uint8_t crc = init_val;
+	size_t ip_hdr_pos;
 
-	/* first IPv4 header */
-	if(outer_ip_hdr->version == IPV4)
+	for(ip_hdr_pos = 0; ip_hdr_pos < uncomp_pkt_hdrs->ip_hdrs_nr; ip_hdr_pos++)
 	{
-		const struct ipv4_hdr *ip_hdr = (struct ipv4_hdr *) outer_ip;
-		/* bytes 3-6 (Total Length, Identification) */
-		crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->tot_len), 4, crc);
-		/* bytes 11-12 (Header Checksum) */
-		crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->check), 2, crc);
-	}
-	else /* first IPv6 header */
-	{
-		const struct ipv6_hdr *ip_hdr = (struct ipv6_hdr *) outer_ip;
-		/* bytes 5-6 (Payload Length) */
-		crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->plen), 2, crc);
-		/* IPv6 extensions (only AH is CRC-DYNAMIC) */
-		crc = ipv6_ext_calc_crc_dyn(outer_ip, crc_type, crc);
-	}
+		const struct rohc_pkt_ip_hdr *const ip_hdr =
+			&(uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos]);
 
-	/* second_header */
-	if(inner_ip != NULL)
-	{
-		const struct ip_hdr *const inner_ip_hdr = (struct ip_hdr *) inner_ip;
-
-		/* IPv4 */
-		if(inner_ip_hdr->version == IPV4)
+		if(ip_hdr->version == IPV4)
 		{
-			const struct ipv4_hdr *ip_hdr = (struct ipv4_hdr *) inner_ip;
 			/* bytes 3-6 (Total Length, Identification) */
-			crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->tot_len), 4, crc);
+			crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->ipv4->tot_len), 4, crc);
 			/* bytes 11-12 (Header Checksum) */
-			crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->check), 2, crc);
+			crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->ipv4->check), 2, crc);
 		}
-		else /* IPv6 */
+		else /* first IPv6 header */
 		{
-			const struct ipv6_hdr *ip_hdr = (struct ipv6_hdr *) inner_ip;
 			/* bytes 5-6 (Payload Length) */
-			crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->plen), 2, crc);
+			crc = crc_calculate(crc_type, (uint8_t *)(&ip_hdr->ipv6->plen), 2, crc);
 			/* IPv6 extensions (only AH is CRC-DYNAMIC) */
-			crc = ipv6_ext_calc_crc_dyn(inner_ip, crc_type, crc);
+			crc = ipv6_ext_calc_crc_dyn(ip_hdr, crc_type, crc);
 		}
 	}
 
@@ -381,27 +319,26 @@ uint8_t compute_crc_ctrl_fields(const rohc_profile_t profile_id,
  *
  * All extensions are concerned except entire AH header.
  *
- * @param ip          The IPv6 packet
+ * @param ip_hdr      The IP header for which to compute CRC over extension headers
  * @param crc_type    The type of CRC
  * @param init_val    The initial CRC value
- * @return            The checksum
+ * @return            The compute CRC
  */
-static uint8_t ipv6_ext_calc_crc_static(const uint8_t *const ip,
+static uint8_t ipv6_ext_calc_crc_static(const struct rohc_pkt_ip_hdr *const ip_hdr,
                                         const rohc_crc_type_t crc_type,
                                         const uint8_t init_val)
 {
 	uint8_t crc = init_val;
-	const uint8_t *ext;
-	uint8_t ext_type;
+	size_t ext_pos;
 
-	ext = ipv6_get_first_extension(ip, &ext_type);
-	while(ext != NULL)
+	/* TODO: add support for AH header, see RFC 3095 §5.8.7 */
+	/* TODO: add support for ESP header, see RFC 3095 §5.8.7 */
+	/* TODO: add support for GRE header, see RFC 3095 §5.8.7 */
+	for(ext_pos = 0; ext_pos < ip_hdr->exts_nr; ext_pos++)
 	{
-		if(ext_type != ROHC_IPPROTO_AH)
-		{
-			crc = crc_calculate(crc_type, ext, ip_get_extension_size(ext), crc);
-		}
-		ext = ip_get_next_ext_from_ext(ext, &ext_type);
+		const struct rohc_pkt_ip_ext_hdr *const ext = &(ip_hdr->exts[ext_pos]);
+
+		crc = crc_calculate(crc_type, ext->data, ext->len, crc);
 	}
 
 	return crc;
@@ -413,56 +350,18 @@ static uint8_t ipv6_ext_calc_crc_static(const uint8_t *const ip,
  *
  * Only entire AH header is concerned.
  *
- * @param ip          The IPv6 packet
+ * @param ip_hdr      The IP header for which to compute CRC over extension headers
  * @param crc_type    The type of CRC
  * @param init_val    The initial CRC value
- * @return            The checksum
+ * @return            The compute CRC
  */
-static uint8_t ipv6_ext_calc_crc_dyn(const uint8_t *const ip,
-                                     const rohc_crc_type_t crc_type,
+static uint8_t ipv6_ext_calc_crc_dyn(const struct rohc_pkt_ip_hdr *const ip_hdr __attribute__((unused)),
+                                     const rohc_crc_type_t crc_type __attribute__((unused)),
                                      const uint8_t init_val)
 {
-	uint8_t crc = init_val;
-	const uint8_t *ext;
-	uint8_t ext_type;
-
-	ext = ipv6_get_first_extension(ip, &ext_type);
-	while(ext != NULL)
-	{
-		if(ext_type == ROHC_IPPROTO_AH)
-		{
-			crc = crc_calculate(crc_type, ext, ip_get_extension_size(ext), crc);
-		}
-		ext = ip_get_next_ext_from_ext(ext, &ext_type);
-	}
-
-	return crc;
-}
-
-
-/**
- * @brief Get the first extension in an IPv6 packet
- *
- * @param ip   The IPv6 packet
- * @param type The type of the extension
- * @return     The extension, NULL if there is no extension
- */
-static uint8_t * ipv6_get_first_extension(const uint8_t *const ip,
-                                          uint8_t *const type)
-{
-	const struct ipv6_hdr *const ip_hdr = (struct ipv6_hdr *) ip;
-
-	*type = ip_hdr->nh;
-
-	if(rohc_is_ipv6_opt(*type))
-	{
-		/* known extension header */
-		return (((uint8_t *) ip) + sizeof(struct ipv6_hdr));
-	}
-	else
-	{
-		/* no known extension header */
-		return NULL;
-	}
+	/* TODO: add support for AH header, see RFC 3095 §5.8.7 */
+	/* TODO: add support for ESP header, see RFC 3095 §5.8.7 */
+	/* TODO: add support for GRE header, see RFC 3095 §5.8.7 */
+	return init_val;
 }
 

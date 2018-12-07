@@ -90,11 +90,11 @@ static void udp_decide_state(struct rohc_comp_ctxt *const context);
 
 static int c_udp_encode(struct rohc_comp_ctxt *const context,
                         const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                        const struct rohc_buf *const uncomp_pkt,
+                        const struct rohc_ts uncomp_pkt_time,
                         uint8_t *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
                         rohc_packet_t *const packet_type)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 6)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 6)));
 
 static size_t udp_code_dynamic_udp_part(const struct rohc_comp_ctxt *const context,
                                         const uint8_t *const next_header,
@@ -188,7 +188,7 @@ quit:
  *
  * @param context           The compression context
  * @param uncomp_pkt_hdrs   The uncompressed headers to encode
- * @param uncomp_pkt        The uncompressed packet to encode
+ * @param uncomp_pkt_time   The arrival time of the uncompressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       OUT: The type of ROHC packet that is created
@@ -197,41 +197,24 @@ quit:
  */
 static int c_udp_encode(struct rohc_comp_ctxt *const context,
                         const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                        const struct rohc_buf *const uncomp_pkt,
+                        const struct rohc_ts uncomp_pkt_time,
                         uint8_t *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
                         rohc_packet_t *const packet_type)
 {
 	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 	struct sc_udp_context *const udp_context = rfc3095_ctxt->specific;
-	const struct udphdr *udp;
-	struct net_pkt ip_pkt;
 	int size;
 
-	/* parse the uncompressed packet */
-	net_pkt_parse(&ip_pkt, *uncomp_pkt, context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv, ROHC_TRACE_COMP);
-
-	/* retrieve the UDP header */
-	assert(ip_pkt.transport->data != NULL);
-	udp = (struct udphdr *) ip_pkt.transport->data;
-
-	/* check that UDP length is correct (we have to discard all packets with
-	 * wrong UDP length fields, otherwise the ROHC decompressor will compute
-	 * a different UDP length on its side) */
-	if(rohc_ntoh16(udp->len) != ip_pkt.transport->len)
-	{
-		rohc_comp_warn(context, "wrong UDP Length field in UDP header: %u "
-		               "found while %zu expected", rohc_ntoh16(udp->len),
-		               ip_pkt.transport->len);
-		return -1;
-	}
+	assert(uncomp_pkt_hdrs->innermost_ip_hdr->next_proto == ROHC_IPPROTO_UDP);
+	assert(uncomp_pkt_hdrs->udp != NULL);
 
 	/* how many UDP fields changed? */
-	udp_context->tmp.send_udp_dynamic = udp_changed_udp_dynamic(context, udp);
+	udp_context->tmp.send_udp_dynamic =
+		udp_changed_udp_dynamic(context, uncomp_pkt_hdrs->udp);
 
 	/* encode the IP packet */
-	size = rohc_comp_rfc3095_encode(context, uncomp_pkt_hdrs, uncomp_pkt,
+	size = rohc_comp_rfc3095_encode(context, uncomp_pkt_hdrs, uncomp_pkt_time,
 	                                rohc_pkt, rohc_pkt_max_len, packet_type);
 	if(size < 0)
 	{
@@ -242,7 +225,7 @@ static int c_udp_encode(struct rohc_comp_ctxt *const context,
 	if((*packet_type) == ROHC_PACKET_IR ||
 	   (*packet_type) == ROHC_PACKET_IR_DYN)
 	{
-		memcpy(&udp_context->old_udp, udp, sizeof(struct udphdr));
+		memcpy(&udp_context->old_udp, uncomp_pkt_hdrs->udp, sizeof(struct udphdr));
 	}
 
 quit:

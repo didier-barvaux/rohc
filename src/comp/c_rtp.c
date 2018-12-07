@@ -57,11 +57,11 @@ static void c_rtp_destroy(struct rohc_comp_ctxt *const context)
 
 static int c_rtp_encode(struct rohc_comp_ctxt *const context,
                         const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                        const struct rohc_buf *const uncomp_pkt,
+                        const struct rohc_ts uncomp_pkt_time,
                         uint8_t *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
                         rohc_packet_t *const packet_type)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 6)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 6)));
 
 static void rtp_decide_state(struct rohc_comp_ctxt *const context);
 
@@ -76,11 +76,11 @@ static rohc_ext_t c_rtp_decide_extension(const struct rohc_comp_ctxt *const cont
 	__attribute__((warn_unused_result, nonnull(1)));
 
 static uint32_t c_rtp_get_next_sn(const struct rohc_comp_ctxt *const context,
-                                  const struct net_pkt *const uncomp_pkt)
+                                  const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static bool rtp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
-                                     const struct net_pkt *const uncomp_pkt)
+                                     const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static size_t rtp_code_static_rtp_part(const struct rohc_comp_ctxt *const context,
@@ -634,7 +634,7 @@ static rohc_ext_t c_rtp_decide_extension(const struct rohc_comp_ctxt *const cont
  *
  * @param context           The compression context
  * @param uncomp_pkt_hdrs   The uncompressed headers to encode
- * @param uncomp_pkt        The uncompressed packet to encode
+ * @param uncomp_pkt_time   The arrival time of the uncompressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       OUT: The type of ROHC packet that is created
@@ -643,32 +643,26 @@ static rohc_ext_t c_rtp_decide_extension(const struct rohc_comp_ctxt *const cont
  */
 static int c_rtp_encode(struct rohc_comp_ctxt *const context,
                         const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                        const struct rohc_buf *const uncomp_pkt,
+                        const struct rohc_ts uncomp_pkt_time,
                         uint8_t *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
                         rohc_packet_t *const packet_type)
 {
 	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 	struct sc_rtp_context *const rtp_context = rfc3095_ctxt->specific;
-	const struct udphdr *udp;
-	const struct rtphdr *rtp;
-	struct net_pkt ip_pkt;
+	const struct udphdr *const udp = uncomp_pkt_hdrs->udp;
+	const struct rtphdr *const rtp = uncomp_pkt_hdrs->rtp;
 	int size;
 
-	/* parse the uncompressed packet */
-	net_pkt_parse(&ip_pkt, *uncomp_pkt, context->compressor->trace_callback,
-	              context->compressor->trace_callback_priv, ROHC_TRACE_COMP);
-
-	/* retrieve the UDP and RTP headers */
-	assert(ip_pkt.transport->data != NULL);
-	udp = (struct udphdr *) ip_pkt.transport->data;
-	rtp = (struct rtphdr *) (udp + 1);
+	assert(uncomp_pkt_hdrs->innermost_ip_hdr->next_proto == ROHC_IPPROTO_UDP);
+	assert(uncomp_pkt_hdrs->udp != NULL);
+	assert(uncomp_pkt_hdrs->rtp != NULL);
 
 	/* how many UDP/RTP fields changed? */
 	rtp_context->tmp.send_rtp_dynamic = rtp_changed_rtp_dynamic(context, udp, rtp);
 
 	/* encode the IP packet */
-	size = rohc_comp_rfc3095_encode(context, uncomp_pkt_hdrs, uncomp_pkt,
+	size = rohc_comp_rfc3095_encode(context, uncomp_pkt_hdrs, uncomp_pkt_time,
 	                                rohc_pkt, rohc_pkt_max_len, packet_type);
 	if(size < 0)
 	{
@@ -762,19 +756,14 @@ static void rtp_decide_state(struct rohc_comp_ctxt *const context)
  *
  * Profile SN is the 16-bit RTP SN.
  *
- * @param context     The compression context
- * @param uncomp_pkt  The uncompressed packet to encode
- * @return            The SN
+ * @param context          The compression context
+ * @param uncomp_pkt_hdrs  The uncompressed headers to encode
+ * @return                 The SN
  */
 static uint32_t c_rtp_get_next_sn(const struct rohc_comp_ctxt *const context __attribute__((unused)),
-                                  const struct net_pkt *const uncomp_pkt)
+                                  const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 {
-	const struct udphdr *const udp = (struct udphdr *) uncomp_pkt->transport->data;
-	const struct rtphdr *const rtp = (struct rtphdr *) (udp + 1);
-	uint32_t next_sn;
-
-	next_sn = (uint32_t) rohc_ntoh16(rtp->sn);
-
+	const uint32_t next_sn = (uint32_t) rohc_ntoh16(uncomp_pkt_hdrs->rtp->sn);
 	assert(next_sn <= 0xffff);
 	return next_sn;
 }
@@ -785,25 +774,20 @@ static uint32_t c_rtp_get_next_sn(const struct rohc_comp_ctxt *const context __a
  *
  * Handle the RTP TS field.
  *
- * @param context     The compression context
- * @param uncomp_pkt  The uncompressed packet to encode
- * @return            true in case of success, false otherwise
+ * @param context          The compression context
+ * @param uncomp_pkt_hdrs  The uncompressed headers to encode
+ * @return                 true in case of success, false otherwise
  */
 static bool rtp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
-                                     const struct net_pkt *const uncomp_pkt)
+                                     const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 {
 	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 	struct sc_rtp_context *const rtp_context = rfc3095_ctxt->specific;
-	struct udphdr *udp;
-	struct rtphdr *rtp;
-
-	assert(uncomp_pkt->transport->data != NULL);
-	udp = (struct udphdr *) uncomp_pkt->transport->data;
-	rtp = (struct rtphdr *) (udp + 1);
 
 	/* add new TS value to context */
 	assert(rfc3095_ctxt->sn <= 0xffff);
-	c_add_ts(&rtp_context->ts_sc, rohc_ntoh32(rtp->timestamp), rfc3095_ctxt->sn);
+	c_add_ts(&rtp_context->ts_sc, rohc_ntoh32(uncomp_pkt_hdrs->rtp->timestamp),
+	         rfc3095_ctxt->sn);
 
 	/* determine the number of TS bits to send wrt compression state */
 	if(rtp_context->ts_sc.state == INIT_TS ||
