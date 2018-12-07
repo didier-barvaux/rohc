@@ -475,6 +475,21 @@ bool rfc3095_decomp_parse_pkt(const struct rohc_decomp_ctxt *const context,
                               size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 4, 5, 6, 7)));
 
+int rfc3095_parse_hdr_flags_fields(const struct rohc_decomp_ctxt *const context,
+                                   const uint8_t *const flags,
+                                   const uint8_t *fields,
+                                   const size_t length,
+                                   bool *const last_flag,
+                                   struct rohc_extr_ip_bits *const bits)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
+
+int rfc3095_parse_outer_hdr_flags_fields(const struct rohc_decomp_ctxt *const context,
+                                         const uint8_t *const flags,
+                                         const uint8_t *fields,
+                                         const size_t length,
+                                         struct rohc_extr_ip_bits *const bits)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
+
 rohc_status_t rfc3095_decomp_build_hdrs(const struct rohc_decomp *const decomp,
                                         const struct rohc_decomp_ctxt *const context,
                                         const rohc_packet_t packet_type,

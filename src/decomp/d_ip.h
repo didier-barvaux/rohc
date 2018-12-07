@@ -54,18 +54,11 @@ int ip_parse_ext3(const struct rohc_decomp_ctxt *const context,
                   struct rohc_extr_bits *const bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
 
-int parse_outer_header_flags(const struct rohc_decomp_ctxt *const context,
-                             const uint8_t *const flags,
-                             const uint8_t *fields,
-                             const size_t length,
-                             struct rohc_extr_ip_bits *const bits)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
-
-int parse_inner_header_flags(const struct rohc_decomp_ctxt *const context,
-                             const uint8_t *const flags,
-                             const uint8_t *fields,
-                             const size_t length,
-                             struct rohc_extr_ip_bits *const bits)
+int ip_parse_inner_hdr_flags_fields(const struct rohc_decomp_ctxt *const context,
+                                    const uint8_t *const flags,
+                                    const uint8_t *fields,
+                                    const size_t length,
+                                    struct rohc_extr_ip_bits *const bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
 #endif

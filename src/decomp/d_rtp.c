@@ -1011,15 +1011,18 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
 	 * if present */
 	if(ip)
 	{
-		size = parse_inner_header_flags(context, inner_ip_flags_pos,
-		                                rohc_remain_data, rohc_remain_len,
-		                                inner_ip);
+		bool ip2_duplicate;
+
+		size = rfc3095_parse_hdr_flags_fields(context, inner_ip_flags_pos,
+		                                      rohc_remain_data, rohc_remain_len,
+		                                      &ip2_duplicate, inner_ip);
 		if(size < 0)
 		{
 			rohc_decomp_warn(context, "cannot decode the innermost IP header "
 			                 "flags & fields");
 			goto error;
 		}
+		assert(ip2_duplicate == ip2);
 		rohc_remain_data += size;
 		rohc_remain_len -= size;
 
@@ -1085,9 +1088,9 @@ static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
 		assert(outer_ip != NULL);
 		assert(outer_ip_changes != NULL);
 
-		size = parse_outer_header_flags(context, outer_ip_flags_pos,
-		                                rohc_remain_data, rohc_remain_len,
-		                                outer_ip);
+		size = rfc3095_parse_outer_hdr_flags_fields(context, outer_ip_flags_pos,
+		                                            rohc_remain_data, rohc_remain_len,
+		                                            outer_ip);
 		if(size == -1)
 		{
 			rohc_decomp_warn(context, "cannot decode the outermost IP header "

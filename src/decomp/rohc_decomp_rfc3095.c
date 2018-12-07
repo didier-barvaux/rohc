@@ -4873,6 +4873,279 @@ static uint8_t parse_extension_type(const uint8_t *const rohc_ext)
 
 
 /**
+ * @brief Parse the inner or outer IP header flags and fields
+ *
+ * Store the values in an IP header info structure.
+ *
+ * \verbatim
+
+  Inner IP header flags for RTP profile (5.7.5):
+
+       0     1     2     3     4     5     6     7
+     ..... ..... ..... ..... ..... ..... ..... .....
+    | TOS | TTL | DF  | PR  | IPX | NBO | RND | ip2 |  if ip = 1
+     ..... ..... ..... ..... ..... ..... ..... .....
+
+  Inner IP header flags for non-RTP profiles (5.11.4):
+
+       0     1     2     3     4     5     6     7
+     ..... ..... ..... ..... ..... ..... ..... .....
+    | TOS | TTL | DF  | PR  | IPX | NBO | RND |  0  |  if ip = 1
+     ..... ..... ..... ..... ..... ..... ..... .....
+
+  Outer IP header flags for RTP profile (5.7.5):
+
+       0     1     2     3     4     5     6     7
+     ..... ..... ..... ..... ..... ..... ..... .....
+    | TOS2| TTL2| DF2 | PR2 |IPX2 |NBO2 |RND2 |  I2 |  if ip2 = 1
+     ..... ..... ..... ..... ..... ..... ..... .....
+
+  Inner IP header fields (5.7.5):
+
+    ..... ..... ..... ..... ..... ..... ..... .....
+   |         Type of Service/Traffic Class         |  if TOS = 1
+    ..... ..... ..... ..... ..... ..... ..... .....
+   |         Time to Live/Hop Limit                |  if TTL = 1
+    ..... ..... ..... ..... ..... ..... ..... .....
+   |         Protocol/Next Header                  |  if PR = 1
+    ..... ..... ..... ..... ..... ..... ..... .....
+   /         IP extension headers                  /  variable,
+    ..... ..... ..... ..... ..... ..... ..... .....   if IPX = 1
+
+  Outer IP header fields (5.7.5):
+
+    ..... ..... ..... ..... ..... ..... ..... .....
+   |         Type of Service/Traffic Class         |  if TOS2 = 1
+    ..... ..... ..... ..... ..... ..... ..... .....
+   |         Time to Live/Hop Limit                |  if TTL2 = 1
+    ..... ..... ..... ..... ..... ..... ..... .....
+   |         Protocol/Next Header                  |  if PR2 = 1
+    ..... ..... ..... ..... ..... ..... ..... .....
+   /         IP extension headers                  /  variable,
+    ..... ..... ..... ..... ..... ..... ..... .....   if IPX2 = 1
+   /                  IP-ID                        /  2 octets,
+    ..... ..... ..... ..... ..... ..... ..... .....    if I2 = 1
+
+\endverbatim
+ *
+ * @param context         The decompression context
+ * @param flags           The ROHC flags that indicate which IP fields are present
+ *                        in the packet
+ * @param fields          The ROHC packet part that contains some IP header fields
+ * @param length          The length of the ROHC packet part that contains some IP
+ *                        header fields
+ * @param[out] last_flag  Whether the parsing is performed for the RTP profile or not
+ * @param[out] bits       The bits extracted from extension 3
+ * @return                The data length read from the ROHC packet,
+ *                        -1 in case of error
+ */
+int rfc3095_parse_hdr_flags_fields(const struct rohc_decomp_ctxt *const context,
+                                   const uint8_t *const flags,
+                                   const uint8_t *fields,
+                                   const size_t length,
+                                   bool *const last_flag,
+                                   struct rohc_extr_ip_bits *const bits)
+{
+	uint8_t is_tos;
+	uint8_t is_ttl;
+	uint8_t is_pr;
+	uint8_t is_ipx;
+	uint8_t df;
+	uint8_t nbo;
+	uint8_t rnd;
+	int read = 0;
+
+	/* get the inner IP header flags */
+	is_tos = GET_REAL(GET_BIT_7(flags));
+	is_ttl = GET_REAL(GET_BIT_6(flags));
+	df = GET_REAL(GET_BIT_5(flags));
+	is_pr = GET_REAL(GET_BIT_4(flags));
+	is_ipx = GET_REAL(GET_BIT_3(flags));
+	nbo = GET_REAL(GET_BIT_2(flags));
+	rnd = GET_REAL(GET_BIT_1(flags));
+	*last_flag = GET_BIT_0(flags);
+	rohc_decomp_debug(context, "header flags: TOS = %u, TTL = %u, PR = %u, "
+	                  "IPX = %u, NBO = %u, RND = %u, ip2/I2/reserved = %u",
+	                  is_tos, is_ttl, is_pr, is_ipx, nbo, rnd, *last_flag);
+
+	/* check the minimal length to decode the header fields */
+	if(length < ((size_t) (is_tos + is_ttl + is_pr + is_ipx)))
+	{
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)", length);
+		goto error;
+	}
+
+	/* get the TOS/TC field if present */
+	if(is_tos)
+	{
+		bits->tos = *fields;
+		bits->tos_nr = 8;
+		rohc_decomp_debug(context, "TOS/TC = 0x%02x", bits->tos);
+		fields++;
+		read++;
+	}
+
+	/* get the TTL/HL field if present */
+	if(is_ttl)
+	{
+		bits->ttl = *fields;
+		bits->ttl_nr = 8;
+		rohc_decomp_debug(context, "TTL/HL = 0x%02x", bits->ttl);
+		fields++;
+		read++;
+	}
+
+	/* get the DF flag if IPv4 */
+	if(bits->version == IPV4)
+	{
+		bits->df = df;
+		bits->df_nr = 1;
+		rohc_decomp_debug(context, "DF = %d", bits->df);
+	}
+	else if(df) /* IPv6 and DF flag set */
+	{
+		rohc_decomp_warn(context, "DF flag set and IP header is IPv6");
+		goto error;
+	}
+
+	/* get the Protocol field if present */
+	if(is_pr)
+	{
+		bits->proto = *fields;
+		bits->proto_nr = 8;
+		rohc_decomp_debug(context, "Protocol/Next Header = 0x%02x", bits->proto);
+		fields++;
+		read++;
+	}
+
+	/* get the IP extension headers */
+	if(is_ipx)
+	{
+		/* TODO: list compression */
+		rohc_decomp_warn(context, "IP extension headers list compression is "
+		                 "not supported");
+		goto error;
+	}
+
+	/* get the NBO and RND flags if IPv4 */
+	if(bits->version == IPV4)
+	{
+		bits->nbo = nbo;
+		bits->nbo_nr = 1;
+		bits->rnd = rnd;
+		bits->rnd_nr = 1;
+	}
+	else
+	{
+		/* IPv6 and NBO flag set */
+		if(nbo)
+		{
+			rohc_decomp_warn(context, "NBO flag set and IP header is IPv6");
+			goto error;
+		}
+
+		/* IPv6 and RND flag set */
+		if(rnd)
+		{
+			rohc_decomp_warn(context, "RND flag set and IP header is IPv6");
+			goto error;
+		}
+	}
+
+	return read;
+
+error:
+	return -1;
+}
+
+
+/**
+ * @brief Parse the outer IP header flags and fields
+ *
+ * @param context     The decompression context
+ * @param flags       The ROHC flags that indicate which IP fields are present
+ *                    in the packet
+ * @param fields      The ROHC packet part that contain some IP header fields
+ * @param length      The length of the ROHC packet part that contains some IP
+ *                    header fields
+ * @param bits        OUT: The bits extracted from extension 3
+ * @return            The data length read from the ROHC packet,
+ *                    -1 in case of error
+ */
+int rfc3095_parse_outer_hdr_flags_fields(const struct rohc_decomp_ctxt *const context,
+                                         const uint8_t *const flags,
+                                         const uint8_t *fields,
+                                         const size_t length,
+                                         struct rohc_extr_ip_bits *const bits)
+{
+	size_t inner_header_flags;
+	bool is_I2;
+	int read;
+
+	/* decode some outer IP header flags and fields that are identical
+	 * to inner IP header flags and fields */
+	read = rfc3095_parse_hdr_flags_fields(context, flags, fields, length,
+	                                      &is_I2, bits);
+	if(read == -1)
+	{
+		goto error;
+	}
+	rohc_decomp_debug(context, "header flags: I2 = %u", is_I2);
+	inner_header_flags = read;
+
+	/* check the minimal length to decode the outer header fields */
+	if(length < (inner_header_flags + is_I2 * 2))
+	{
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)",
+		                 length - inner_header_flags);
+		goto error;
+	}
+
+	/* get the outer IP-ID if IPv4 */
+	if(is_I2)
+	{
+		if(bits->version != IPV4)
+		{
+			rohc_decomp_warn(context, "IP-ID field present (I2 = 1) and IP "
+			                 "header is IPv6");
+			goto error;
+		}
+
+		assert(bits->rnd_nr == 1);
+		if(bits->rnd)
+		{
+			rohc_decomp_warn(context, "IP-ID field present (I2 = 1) and IPv4 "
+			                 "header got a random IP-ID");
+			goto error;
+		}
+
+		if(bits->id_nr > 0 && bits->id != 0)
+		{
+			rohc_decomp_warn(context, "IP-ID field present (I2 = 1) but IP-ID "
+			                 "already updated");
+			goto error;
+		}
+
+		bits->id = ((fields[0] << 8) & 0xff00) | (fields[1] & 0x00ff);
+		bits->id_nr = 16;
+
+		rohc_decomp_debug(context, "%zd bits of outer IP-ID in EXT3 = 0x%x",
+		                  bits->id_nr, bits->id);
+
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
+		fields += 2;
+#endif
+		read += 2;
+	}
+
+	return read;
+
+error:
+	return -1;
+}
+
+
+/**
  * @brief Build the uncompressed headers
  *
  * @todo check for uncomp_hdrs size before writing into it
