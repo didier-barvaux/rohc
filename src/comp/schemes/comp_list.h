@@ -77,11 +77,11 @@ struct list_comp
 };
 
 
-bool detect_ipv6_ext_changes(struct list_comp *const comp,
+void detect_ipv6_ext_changes(struct list_comp *const comp,
                              const struct rohc_pkt_ip_hdr *const ip,
                              bool *const list_struct_changed,
                              bool *const list_content_changed)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
+	__attribute__((nonnull(1, 2, 3, 4)));
 
 int rohc_list_encode(struct list_comp *const comp,
                      uint8_t *const dest,

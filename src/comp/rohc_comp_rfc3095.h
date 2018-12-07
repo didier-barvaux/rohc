@@ -134,23 +134,38 @@ struct ip_header_info
 };
 
 
-/**
- * @brief Structure that contains variables that are used during one single
- *        compression of packet.
- *
- * Structure that contains variables that are temporary, i.e. variables that
- * will only be used for the compression of the current packet. These variables
- * must be reinitialized every time a new packet arrive.
- */
-struct rohc_rfc3095_tmp_ip_hdr
+/** The changes of one IP header */
+struct rfc3095_ip_hdr_changes
 {
-	uint16_t changed_fields;     /**< The nr of fields that changed in IP header */
-	bool ip_id_changed;          /**< Whether the IP-ID of the IP header changed */
-	bool ip_id_3bits_possible;   /**< Whether the IP-ID may be encoded on 3 bits */
-	bool ip_id_5bits_possible;   /**< Whether the IP-ID may be encoded on 5 bits */
-	bool ip_id_6bits_possible;   /**< Whether the IP-ID may be encoded on 6 bits */
-	bool ip_id_8bits_possible;   /**< Whether the IP-ID may be encoded on 8 bits */
-	bool ip_id_11bits_possible;  /**< Whether the IP-ID may be encoded on 11 bits */
+	uint8_t tos_tc_just_changed:1; /**< Whether IP TOS/TC just changed */
+	uint8_t tos_tc_changed:1;      /**< Whether IP TOS/TC changed */
+	uint8_t ttl_hl_just_changed:1; /**< Whether IP TTL/HL just changed */
+	uint8_t ttl_hl_changed:1;      /**< Whether IP TTL/HL changed */
+	uint8_t df_just_changed:1;     /**< Whether IP DF just changed */
+	uint8_t df_changed:1;          /**< Whether IP DF changed */
+	uint8_t nbo_just_changed:1;    /**< Whether IP NBO just changed */
+	uint8_t nbo_changed:1;         /**< Whether IP NBO changed */
+
+	uint8_t rnd_just_changed:1;    /**< Whether IP RND just changed */
+	uint8_t rnd_changed:1;         /**< Whether IP RND changed */
+	uint8_t sid_just_changed:1;    /**< Whether IP SID just changed */
+	uint8_t sid_changed:1;         /**< Whether IP SID changed */
+	uint8_t ip_id_changed:1;         /**< Whether IP-ID of the IP header changed */
+	uint8_t ip_id_3bits_possible:1;  /**< Whether IP-ID may be encoded on 3 bits */
+	uint8_t ip_id_5bits_possible:1;  /**< Whether IP-ID may be encoded on 5 bits */
+	uint8_t ip_id_6bits_possible:1;  /**< Whether IP-ID may be encoded on 6 bits */
+
+	uint8_t ip_id_8bits_possible:1;  /**< Whether IP-ID may be encoded on 8 bits */
+	uint8_t ip_id_11bits_possible:1; /**< Whether IP-ID may be encoded on 11 bits */
+	/** Whether innermost IP extension list just changed of structure */
+	uint8_t ext_list_struct_just_changed:1;
+	/** Whether innermost IP extension list changed of structure */
+	uint8_t ext_list_struct_changed:1;
+	/** Whether innermost IP extension list just changed of content */
+	uint8_t ext_list_content_just_changed:1;
+	/** Whether innermost IP extension list changed of content */
+	uint8_t ext_list_content_changed:1;
+	uint8_t unused:2;
 };
 
 
@@ -166,8 +181,10 @@ struct rohc_rfc3095_tmp_ip_hdr
  */
 struct generic_tmp_vars
 {
-	/// The number of dynamic fields that changed in the two IP headers
-	int send_dynamic;
+	/** The number of IP headers */
+	size_t ip_hdr_nr;
+	/** The changes of the IP headers */
+	struct rfc3095_ip_hdr_changes ip_hdr_changes[ROHC_MAX_IP_HDRS];
 
 	bool sn_4bits_possible;
 	bool sn_7bits_possible;
@@ -180,11 +197,6 @@ struct generic_tmp_vars
 	bool sn_6bits_possible;
 	bool sn_9bits_possible;
 	bool sn_14bits_possible;
-
-	/** The number of IP headers */
-	size_t ip_hdr_nr;
-	/** The number of bits needed to encode the IP-ID of the IP headers */
-	struct rohc_rfc3095_tmp_ip_hdr ip_hdrs[ROHC_MAX_IP_HDRS];
 };
 
 
@@ -409,10 +421,12 @@ static inline size_t get_nr_ipv4_non_rnd_with_bits(const struct rohc_comp_rfc309
 	for(ip_hdr_pos = 0; ip_hdr_pos < ctxt->ip_hdr_nr; ip_hdr_pos++)
 	{
 		const struct ip_header_info *const ip_ctxt = &(ctxt->ip_ctxts[ip_hdr_pos]);
-		const struct rohc_rfc3095_tmp_ip_hdr *const tmp =
-			&(ctxt->tmp.ip_hdrs[ip_hdr_pos]);
+		const struct rfc3095_ip_hdr_changes *const ip_changes =
+			&(ctxt->tmp.ip_hdr_changes[ip_hdr_pos]);
 
-		if(ip_ctxt->version == IPV4 && ip_ctxt->info.v4.rnd != 1 && tmp->ip_id_changed)
+		if(ip_ctxt->version == IPV4 &&
+		   ip_ctxt->info.v4.rnd != 1 &&
+		   ip_changes->ip_id_changed)
 		{
 			nr_ipv4_non_rnd_with_bits++;
 		}
@@ -447,6 +461,34 @@ static inline bool does_at_least_one_sid_change(const struct rohc_comp_rfc3095_c
 	}
 
 	return at_least_one_sid_change;
+}
+
+
+/**
+ * @brief at least one RND flag changed now or in the last few packets?
+ *
+ * @param ctxt               The generic compression context
+ * @param oa_repetitions_nr  The number of Optimistic Approach repetitions
+ * @return                   true if at least one RND flag changed now or in
+ *                           last few packets, false otherwise
+ */
+static inline bool does_at_least_one_rnd_change(const struct rohc_comp_rfc3095_ctxt *const ctxt,
+                                                const uint8_t oa_repetitions_nr)
+{
+	bool at_least_one_rnd_change = false;
+	size_t ip_hdr_pos;
+
+	for(ip_hdr_pos = 0; ip_hdr_pos < ctxt->ip_hdr_nr; ip_hdr_pos++)
+	{
+		const struct ip_header_info *const ip_ctxt = &(ctxt->ip_ctxts[ip_hdr_pos]);
+
+		if(ip_ctxt->version == IPV4 && ip_ctxt->info.v4.rnd_count < oa_repetitions_nr)
+		{
+			at_least_one_rnd_change = true;
+		}
+	}
+
+	return at_least_one_rnd_change;
 }
 
 #endif
