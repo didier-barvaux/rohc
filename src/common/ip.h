@@ -285,31 +285,6 @@ out:
 
 /* Generic functions */
 
-void ip_create(struct ip_packet *const ip,
-               const uint8_t *const packet,
-               const size_t size)
-	__attribute__((nonnull(1, 2)));
-void ip_get_inner_packet(const struct ip_packet *const outer,
-                         struct ip_packet *const inner)
-	__attribute__((nonnull(1, 2)));
-
-const uint8_t * ip_get_raw_data(const struct ip_packet *const ip)
-	__attribute__((warn_unused_result, nonnull(1), pure));
-uint8_t * ip_get_next_header(const struct ip_packet *const ip,
-                             uint8_t *const type)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
-uint8_t * ip_get_next_layer(const struct ip_packet *const ip)
-	__attribute__((warn_unused_result, nonnull(1)));
-uint8_t * ip_get_next_ext_from_ip(const struct ip_packet *const ip,
-                                  uint8_t *const type)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
-uint8_t * ip_get_next_ext_from_ext(const uint8_t *const ext,
-                                   uint8_t *const type)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
-
-unsigned int ip_get_totlen(const struct ip_packet *const ip)
-	__attribute__((warn_unused_result, nonnull(1), pure));
-
 static inline
 ip_version ip_get_version(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));
@@ -333,50 +308,6 @@ void ip_set_saddr(struct ip_packet *const ip, const uint8_t *value)
 void ip_set_daddr(struct ip_packet *const ip, const uint8_t *value)
 	__attribute__((nonnull(1, 2)));
 
-/* IPv4 specific functions */
-
-static inline
-size_t ipv4_get_hdrlen(const struct ip_packet *const ip)
-	__attribute__((warn_unused_result, nonnull(1), pure));
-const struct ipv4_hdr * ipv4_get_header(const struct ip_packet *const ip)
-	__attribute__((warn_unused_result, nonnull(1), pure));
-uint16_t ipv4_get_id(const struct ip_packet *const ip)
-	__attribute__((warn_unused_result, nonnull(1), pure));
-uint16_t ipv4_get_id_nbo(const struct ip_packet *const ip,
-                         const unsigned int nbo,
-                         const unsigned int rnd)
-	__attribute__((warn_unused_result, nonnull(1), pure));
-int ipv4_get_df(const struct ip_packet *const ip)
-	__attribute__((warn_unused_result, nonnull(1), pure));
-uint32_t ipv4_get_saddr(const struct ip_packet *const ip)
-	__attribute__((warn_unused_result, nonnull(1), pure));
-uint32_t ipv4_get_daddr(const struct ip_packet *const ip)
-	__attribute__((warn_unused_result, nonnull(1), pure));
-
-void ipv4_set_id(struct ip_packet *const ip, const int value)
-	__attribute__((nonnull(1)));
-void ipv4_set_df(struct ip_packet *const ip, const int value)
-	__attribute__((nonnull(1)));
-
-/* IPv6 specific functions */
-
-static inline
-size_t ipv6_get_hdrlen(const struct ip_packet *const ip)
-	__attribute__((warn_unused_result, nonnull(1), const));
-const struct ipv6_hdr * ipv6_get_header(const struct ip_packet *const ip)
-	__attribute__((warn_unused_result, nonnull(1), pure));
-uint32_t ip_get_flow_label(const struct ip_packet *const ip)
-	__attribute__((warn_unused_result, nonnull(1), pure));
-const struct ipv6_addr * ipv6_get_saddr(const struct ip_packet *const ip)
-	__attribute__((warn_unused_result, nonnull(1), pure));
-const struct ipv6_addr * ipv6_get_daddr(const struct ip_packet *const ip)
-	__attribute__((warn_unused_result, nonnull(1), pure));
-void ip_set_flow_label(struct ip_packet *const ip, const uint32_t value)
-	__attribute__((nonnull(1)));
-unsigned short ip_get_extension_size(const uint8_t *const ext)
-	__attribute__((warn_unused_result, nonnull(1), pure));
-
-
 /**
  * @brief Get the IP version of an IP packet
  *
@@ -391,21 +322,6 @@ ip_version ip_get_version(const struct ip_packet *const ip)
 {
 	return ip->version;
 }
-
-
-static inline
-size_t ipv4_get_hdrlen(const struct ip_packet *const ip)
-{
-	return (ip->header.v4.ihl * 4);
-}
-
-
-static inline
-size_t ipv6_get_hdrlen(const struct ip_packet *const ip __attribute__((unused)))
-{
-	return sizeof(struct ipv6_hdr);
-}
-
 
 #endif
 

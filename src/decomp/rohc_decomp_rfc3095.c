@@ -6259,7 +6259,7 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 		{
 			/* the IP-ID of the IPv4 header is constant: retrieve the value
 			 * that is stored in the context */
-			decoded->id = ipv4_get_id(&ctxt->ip);
+			decoded->id = ctxt->ip.header.v4.id;
 		}
 		else
 		{
@@ -6316,7 +6316,7 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 		else
 		{
 			/* keep context value */
-			decoded->df = ipv4_get_df(&ctxt->ip);
+			decoded->df = ctxt->ip.header.v4.df;
 		}
 		rohc_decomp_debug(context, "decoded %s DF = %d", descr, decoded->df);
 
@@ -6337,8 +6337,7 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 		else
 		{
 			/* keep context value */
-			const uint32_t saddr_ctxt = ipv4_get_saddr(&ctxt->ip);
-			memcpy(decoded->saddr, &saddr_ctxt, 4);
+			memcpy(decoded->saddr, &ctxt->ip.header.v4.saddr, 4);
 		}
 		rohc_decomp_debug(context, "decoded %s src address = " IPV4_ADDR_FORMAT,
 		                  descr, IPV4_ADDR_RAW(decoded->saddr));
@@ -6360,8 +6359,7 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 		else
 		{
 			/* keep context value */
-			const uint32_t daddr_ctxt = ipv4_get_daddr(&ctxt->ip);
-			memcpy(decoded->daddr, &daddr_ctxt, 4);
+			memcpy(decoded->daddr, &ctxt->ip.header.v4.daddr, 4);
 		}
 		rohc_decomp_debug(context, "decoded %s dst address = " IPV4_ADDR_FORMAT,
 		                  descr, IPV4_ADDR_RAW(decoded->daddr));
@@ -6384,7 +6382,7 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 		else
 		{
 			/* keep context value */
-			decoded->flowid = ip_get_flow_label(&ctxt->ip);
+			decoded->flowid = ipv6_get_flow_label(&ctxt->ip.header.v6);
 		}
 		rohc_decomp_debug(context, "decoded %s flow label = 0x%05x", descr,
 		                  decoded->flowid);
@@ -6406,8 +6404,7 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 		else
 		{
 			/* keep context value */
-			const struct ipv6_addr *saddr_ctxt = ipv6_get_saddr(&ctxt->ip);
-			memcpy(decoded->saddr, saddr_ctxt, 16);
+			memcpy(decoded->saddr, &ctxt->ip.header.v6.saddr, 16);
 		}
 		rohc_decomp_debug(context, "decoded %s src address = " IPV6_ADDR_FORMAT,
 		                  descr, IPV6_ADDR_RAW(decoded->saddr));
@@ -6429,8 +6426,7 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 		else
 		{
 			/* keep context value */
-			const struct ipv6_addr *daddr_ctxt = ipv6_get_daddr(&ctxt->ip);
-			memcpy(decoded->daddr, daddr_ctxt, 16);
+			memcpy(decoded->daddr, &ctxt->ip.header.v6.daddr, 16);
 		}
 		rohc_decomp_debug(context, "decoded %s dst address = " IPV6_ADDR_FORMAT,
 		                  descr, IPV6_ADDR_RAW(decoded->daddr));
@@ -6597,20 +6593,21 @@ void rfc3095_decomp_update_ctxt(struct rohc_decomp_ctxt *const context,
 	ip_set_daddr(&rfc3095_ctxt->outer_ip_changes->ip, decoded->outer_ip.daddr);
 	if(decoded->outer_ip.version == IPV4)
 	{
-		ipv4_set_id(&rfc3095_ctxt->outer_ip_changes->ip, decoded->outer_ip.id);
+		rfc3095_ctxt->outer_ip_changes->ip.header.v4.id = decoded->outer_ip.id;
 		ip_id_offset_set_ref(&rfc3095_ctxt->outer_ip_id_offset_ctxt,
 		                     decoded->outer_ip.id, decoded->sn, keep_ref_minus_1);
 		rohc_decomp_debug(context, "outer IP-ID delta 0x%04x - 0x%04x = 0x%04x "
 		                  "is the new reference", decoded->outer_ip.id, decoded->sn,
 		                  decoded->outer_ip.id - decoded->sn);
-		ipv4_set_df(&rfc3095_ctxt->outer_ip_changes->ip, decoded->outer_ip.df);
+		rfc3095_ctxt->outer_ip_changes->ip.header.v4.df = decoded->outer_ip.df;
 		rfc3095_ctxt->outer_ip_changes->nbo = decoded->outer_ip.nbo;
 		rfc3095_ctxt->outer_ip_changes->rnd = decoded->outer_ip.rnd;
 		rfc3095_ctxt->outer_ip_changes->sid = decoded->outer_ip.sid;
 	}
 	else /* IPV6 */
 	{
-		ip_set_flow_label(&rfc3095_ctxt->outer_ip_changes->ip, decoded->outer_ip.flowid);
+		ipv6_set_flow_label(&rfc3095_ctxt->outer_ip_changes->ip.header.v6, 
+		                    decoded->outer_ip.flowid);
 	}
 
 	/* update fields related to the inner IP header (if any) */
@@ -6624,20 +6621,21 @@ void rfc3095_decomp_update_ctxt(struct rohc_decomp_ctxt *const context,
 		ip_set_daddr(&rfc3095_ctxt->inner_ip_changes->ip, decoded->inner_ip.daddr);
 		if(decoded->inner_ip.version == IPV4)
 		{
-			ipv4_set_id(&rfc3095_ctxt->inner_ip_changes->ip, decoded->inner_ip.id);
+			rfc3095_ctxt->inner_ip_changes->ip.header.v4.id = decoded->inner_ip.id;
 			ip_id_offset_set_ref(&rfc3095_ctxt->inner_ip_id_offset_ctxt,
 			                     decoded->inner_ip.id, decoded->sn, keep_ref_minus_1);
 			rohc_decomp_debug(context, "inner IP-ID delta 0x%04x - 0x%04x = 0x%04x "
 			                  "is the new reference", decoded->inner_ip.id, decoded->sn,
 			                  decoded->inner_ip.id - decoded->sn);
-			ipv4_set_df(&rfc3095_ctxt->inner_ip_changes->ip, decoded->inner_ip.df);
+			rfc3095_ctxt->inner_ip_changes->ip.header.v4.df = decoded->inner_ip.df;
 			rfc3095_ctxt->inner_ip_changes->nbo = decoded->inner_ip.nbo;
 			rfc3095_ctxt->inner_ip_changes->rnd = decoded->inner_ip.rnd;
 			rfc3095_ctxt->inner_ip_changes->sid = decoded->inner_ip.sid;
 		}
 		else /* IPV6 */
 		{
-			ip_set_flow_label(&rfc3095_ctxt->inner_ip_changes->ip, decoded->inner_ip.flowid);
+			ipv6_set_flow_label(&rfc3095_ctxt->inner_ip_changes->ip.header.v6, 
+			                    decoded->inner_ip.flowid);
 		}
 		rfc3095_ctxt->inner_ip_changes->ip.nl.proto = decoded->inner_ip.proto;
 	}
