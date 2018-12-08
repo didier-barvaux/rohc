@@ -97,11 +97,14 @@ void rohc_dump_buf(const rohc_trace_callback2_t trace_cb,
 	}
 	else
 	{
-		const size_t byte_width = 3; /* 'XX ' */
-		const size_t byte_nr = 16; /* 16 bytes per line */
-		const size_t column_width = 2; /* spaces between 8 1st/last bytes */
-		const size_t line_max = byte_width * byte_nr + column_width;
-		char line[line_max + 1];
+#define rohc_dump_buf_byte_width   3U /* 'XX ' */
+#define rohc_dump_buf_byte_nr     16U /* 16 bytes per line */
+#define rohc_dump_buf_column_sep   2U /* spaces between 8 1st/last bytes */
+#define rohc_dump_buf_line_max \
+	((rohc_dump_buf_byte_width) * (rohc_dump_buf_byte_nr) + \
+	 (rohc_dump_buf_column_sep))
+#define rohc_dump_buf_size_max ((rohc_dump_buf_line_max) + 1)
+		char line[rohc_dump_buf_size_max];
 		size_t line_index;
 		size_t i;
 
@@ -112,7 +115,7 @@ void rohc_dump_buf(const rohc_trace_callback2_t trace_cb,
 		{
 			if(i > 0 && (i % 16) == 0)
 			{
-				assert(line_index <= line_max);
+				assert(line_index <= rohc_dump_buf_line_max);
 				line[line_index] = '\0';
 				__rohc_print(trace_cb, trace_cb_priv, trace_level, trace_entity,
 				             ROHC_PROFILE_GENERAL, "%s", line);
@@ -120,23 +123,28 @@ void rohc_dump_buf(const rohc_trace_callback2_t trace_cb,
 			}
 			else if(i > 0 && (i % 8) == 0)
 			{
-				assert(line_index <= (line_max - column_width));
-				snprintf(line + line_index, column_width + 1, "  ");
-				line_index += column_width;
+				assert(line_index <= (rohc_dump_buf_line_max - rohc_dump_buf_column_sep));
+				snprintf(line + line_index, rohc_dump_buf_column_sep + 1, "  ");
+				line_index += rohc_dump_buf_column_sep;
 			}
-			assert(line_index <= (line_max - byte_width));
-			snprintf(line + line_index, byte_width + 1, "%02x ", packet[i]);
-			line_index += byte_width;
+			assert(line_index <= (rohc_dump_buf_line_max - rohc_dump_buf_byte_width));
+			snprintf(line + line_index, rohc_dump_buf_byte_width + 1, "%02x ", packet[i]);
+			line_index += rohc_dump_buf_byte_width;
 		}
 
 		/* flush incomplete line */
 		if(line_index > 0)
 		{
-			assert(line_index <= line_max);
+			assert(line_index <= rohc_dump_buf_line_max);
 			line[line_index] = '\0';
 			__rohc_print(trace_cb, trace_cb_priv, trace_level, trace_entity,
 			             ROHC_PROFILE_GENERAL, "%s", line);
 		}
+#undef rohc_dump_buf_byte_width
+#undef rohc_dump_buf_byte_nr
+#undef rohc_dump_buf_column_sep
+#undef rohc_dump_buf_line_max
+#undef rohc_dump_buf_size_max
 	}
 }
 

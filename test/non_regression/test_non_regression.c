@@ -946,7 +946,7 @@ static int compress_decompress(struct rohc_comp *comp,
                                struct rohc_buf *const feedback_send_by_other)
 {
 	/* the layer 2 header */
-	size_t l2_hdr_max_len = max(ETHER_HDR_LEN, LINUX_COOKED_HDR_LEN);
+#define l2_hdr_max_len max(ETHER_HDR_LEN, LINUX_COOKED_HDR_LEN)
 	bool is_vlan_present = false;
 
 	/* the buffer that will contain the initial uncompressed packet */

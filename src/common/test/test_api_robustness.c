@@ -579,9 +579,9 @@ int main(int argc, char *argv[])
 	/* rohc_buf_*() */
 	{
 		const struct rohc_ts time2 = { .sec = 1, .nsec = 2 };
-		const size_t buf1_max_len = 300;
+#define buf1_max_len 300U
 		uint8_t buf1[buf1_max_len];
-		const size_t buf2_max_len = 300;
+#define buf2_max_len 300U
 		const size_t buf2_len = 100;
 		uint8_t buf2[buf2_max_len];
 
@@ -641,7 +641,7 @@ int main(int argc, char *argv[])
 		CHECK(rohc_buf_is_malformed(rbuf1) == false);
 		CHECK(rohc_buf_is_malformed(rbuf2) == false);
 		{
-			const size_t buf3_max_len = 3;
+#define buf3_max_len 3U
 			uint8_t buf3[buf3_max_len];
 			struct rohc_buf rbuf3 = rohc_buf_init_full(buf3, buf3_max_len, time2);
 			CHECK(rohc_buf_is_malformed(rbuf3) == false);

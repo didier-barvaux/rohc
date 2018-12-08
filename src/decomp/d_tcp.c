@@ -1155,18 +1155,20 @@ static bool d_tcp_parse_CO(const struct rohc_decomp_ctxt *const context,
                            struct rohc_tcp_extr_bits *const bits,
                            size_t *const rohc_hdr_len)
 {
-	const size_t packed_rohc_packet_max_len =
-		sizeof(co_common_t) + /* base header */
-		sizeof(uint32_t) + /* seq_number */
-		sizeof(uint32_t) + /* ack_number */
-		sizeof(uint16_t) + /* ack_stride */
-		sizeof(uint16_t) + /* window */
-		sizeof(uint16_t) + /* ip_id */
-		sizeof(uint16_t) + /* urg_ptr */
-		sizeof(uint8_t)  + /* dscp */
-		sizeof(uint8_t);   /* ttl_hopl */
-	uint8_t packed_rohc_packet[packed_rohc_packet_max_len]
+#define packed_rohc_packet_max_len__ \
+	(sizeof(co_common_t) + /* base header */ \
+	 sizeof(uint32_t) +    /* seq_number */  \
+	 sizeof(uint32_t) +    /* ack_number */  \
+	 sizeof(uint16_t) +    /* ack_stride */  \
+	 sizeof(uint16_t) +    /* window */      \
+	 sizeof(uint16_t) +    /* ip_id */       \
+	 sizeof(uint16_t) +    /* urg_ptr */     \
+	 sizeof(uint8_t)  +    /* dscp */        \
+	 sizeof(uint8_t))      /* ttl_hopl */
+	const size_t packed_rohc_packet_max_len = packed_rohc_packet_max_len__;
+	uint8_t packed_rohc_packet[packed_rohc_packet_max_len__]
 		__attribute__((aligned(8)));
+#undef packed_rohc_packet_max_len__
 	const struct d_tcp_context *const tcp_context = context->persist_ctxt;
 	int ret;
 

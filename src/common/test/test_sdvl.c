@@ -196,6 +196,7 @@ int main(int argc, char *argv[])
 		const size_t exp_bits[] =  { 7, 7, 7, 14, 14, 14, 21, 21, 21, 29, 29, 29, 32, 32, 32 };
 		const size_t exp_bits_nr = sizeof(exp_bits) / sizeof(size_t);
 		size_t sdvl_bytes_max_nr;
+#define sdvl_bytes_max_buf_size 4U
 
 		CHECK(values_nr == exp_bytes_nr);
 		CHECK(values_nr == exp_bits_nr);
@@ -207,7 +208,7 @@ int main(int argc, char *argv[])
 			for(i = 0; i < values_nr; i++)
 			{
 				const uint32_t value = (values[i] == 32 ? UINT32_MAX : ((1U << values[i]) - 1U));
-				uint8_t sdvl_bytes[sdvl_bytes_max_nr];
+				uint8_t sdvl_bytes[sdvl_bytes_max_buf_size];
 				size_t sdvl_bytes_nr;
 				uint32_t decoded_value;
 				size_t useful_bits_nr;
@@ -242,7 +243,7 @@ int main(int argc, char *argv[])
 
 				/* sdvl_encode() */
 				{
-					uint8_t sdvl_bytes2[sdvl_bytes_max_nr];
+					uint8_t sdvl_bytes2[sdvl_bytes_max_buf_size];
 					size_t sdvl_bytes2_nr;
 					CHECK(sdvl_encode(sdvl_bytes2, sdvl_bytes_max_nr, &sdvl_bytes2_nr,
 					                  value, exp_bits[i]) == exp_status);

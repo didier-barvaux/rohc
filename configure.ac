@@ -238,6 +238,20 @@ CFLAGS="$old_CFLAGS"
 #fi
 #CFLAGS="$old_CFLAGS"
 
+#### -Wvla
+AC_MSG_CHECKING([whether compiler understands -Wvla])
+old_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS -Werror $unknown_warning_option -Wvla"
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])],
+                  [vla=yes], [vla=no])
+if test "x${vla}" = "xyes" ; then
+	AC_MSG_RESULT(yes)
+	configure_cflags="${configure_cflags} -Wvla"
+else
+	AC_MSG_RESULT(no)
+fi
+CFLAGS="$old_CFLAGS"
+
 
 # Checks for header files.
 AC_CHECK_HEADERS([stdio.h stdlib.h string.h strings.h])

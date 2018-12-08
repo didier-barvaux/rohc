@@ -1295,8 +1295,8 @@ static int compress_decompress(struct rohc_comp *comp,
 	struct rohc_buf uncomp_packet =
 		rohc_buf_init_full(packet, header.caplen, arrival_time);
 
-	const size_t output_packet_max_len =
-		max(ETHER_HDR_LEN, LINUX_COOKED_HDR_LEN) + MAX_ROHC_SIZE;
+#define output_packet_max_len \
+		(max(ETHER_HDR_LEN, LINUX_COOKED_HDR_LEN) + MAX_ROHC_SIZE)
 	uint8_t output_packet[output_packet_max_len];
 	struct rohc_buf rohc_packet =
 		rohc_buf_init_empty(output_packet, output_packet_max_len);
@@ -2070,7 +2070,7 @@ static bool is_path_correct(const char *const path)
  */
 static bool write_pid_file(const char *const path)
 {
-	const size_t pid_max_size = 64;
+#define pid_max_size 64U
 	char pid[pid_max_size];
 	int pidfile;
 	bool is_success = false;

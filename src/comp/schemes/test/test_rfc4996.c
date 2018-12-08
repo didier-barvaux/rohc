@@ -114,7 +114,7 @@ error:
  */
 static bool run_test_variable_length_32_enc(const bool be_verbose)
 {
-	const size_t comp_max_len = sizeof(uint32_t);
+#define comp_max_len sizeof(uint32_t)
 	uint8_t comp_data[comp_max_len];
 	struct c_wlsb wlsb;
 	uint32_t old_value;

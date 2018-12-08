@@ -94,9 +94,9 @@ int main(int argc, char *argv[])
 
 	/* rohc_feedback_get_size() */
 	{
-		const size_t max_len = 10;
-		uint8_t buf[max_len];
-		struct rohc_buf feedback = rohc_buf_init_empty(buf, max_len);
+#define feedback_max_len 10U
+		uint8_t buf[feedback_max_len];
+		struct rohc_buf feedback = rohc_buf_init_empty(buf, feedback_max_len);
 		size_t feedback_hdr_len = 0xff;
 		size_t feedback_data_len = 0xff;
 

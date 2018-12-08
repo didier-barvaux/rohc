@@ -847,14 +847,16 @@ static bool decomp_rfc5225_ip_esp_parse_co(const struct rohc_decomp_ctxt *const 
 {
 	const struct rohc_decomp_rfc5225_ip_esp_ctxt *const rfc5225_ctxt =
 		ctxt->persist_ctxt;
-	const size_t packed_rohc_packet_max_len =
-		sizeof(co_common_base_t) +
-		sizeof(profile_2_3_4_flags_t) +
-		1 /* innermost TOS/TC */ +
-		1 /* innermost TTL/HL */ +
-		5 /* sdvl_sn_lsb(MSN) */ +
-		2 /* innermost IP-ID */;
-	uint8_t packed_rohc_packet[packed_rohc_packet_max_len];
+#define packed_rohc_packet_max_len__ \
+	(sizeof(co_common_base_t) +        \
+	 sizeof(profile_2_3_4_flags_t) +   \
+	 1 /* innermost TOS/TC */ +        \
+	 1 /* innermost TTL/HL */ +        \
+	 5 /* sdvl_sn_lsb(MSN) */ +        \
+	 2) /* innermost IP-ID */
+	const size_t packed_rohc_packet_max_len = packed_rohc_packet_max_len__;
+	uint8_t packed_rohc_packet[packed_rohc_packet_max_len__];
+#undef packed_rohc_packet_max_len__
 
 	const uint8_t *remain_data = rohc_buf_data(rohc_pkt);
 	size_t remain_len = rohc_pkt.len;
