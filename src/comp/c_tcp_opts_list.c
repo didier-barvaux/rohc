@@ -680,6 +680,7 @@ void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 		                "base header");
 		opts_ctxt->structure_nr = opts_nr;
 		opts_ctxt->structure_nr_trans = 0;
+		opts_ctxt->structure_nr_trans++;
 	}
 	else if(tmp->do_list_static_changed)
 	{

@@ -941,16 +941,6 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		rohc_comp_warn(context, "failed to detect changes in uncompressed packet");
 		goto error;
 	}
-	if(tmp.tcp_opts.do_list_struct_changed)
-	{
-		tcp_context->tcp_opts_list_struct_trans_nr = 0;
-	}
-	else if(tcp_context->tcp_opts_list_struct_trans_nr < oa_repetitions_nr)
-	{
-		rohc_comp_debug(context, "some TCP options were not present at the very "
-		                "same location in the last few packets");
-		tmp.tcp_opts.do_list_struct_changed = true;
-	}
 	if(tmp.tcp_opts.do_list_static_changed)
 	{
 		tcp_context->tcp_opts_list_static_trans_nr = 0;
@@ -1129,10 +1119,6 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	if(tcp_context->ipv6_exts_list_dyn_trans_nr < oa_repetitions_nr)
 	{
 		tcp_context->ipv6_exts_list_dyn_trans_nr++;
-	}
-	if(tcp_context->tcp_opts_list_struct_trans_nr < oa_repetitions_nr)
-	{
-		tcp_context->tcp_opts_list_struct_trans_nr++;
 	}
 	if(tcp_context->tcp_opts_list_static_trans_nr < oa_repetitions_nr)
 	{
