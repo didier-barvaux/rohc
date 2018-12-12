@@ -570,6 +570,7 @@ void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 				                "list item in one of dynamic, replicate or CO "
 				                "chains");
 				tmp->opt_ts_do_transmit_item = true;
+				opts_ctxt->list[TCP_INDEX_TS].nr_trans = 0;
 			}
 			else
 			{
@@ -637,7 +638,8 @@ void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 			}
 
 			/* did the option changed? */
-			if(c_tcp_opt_changed(opts_ctxt, opt_idx, opt_data, opt_len))
+			if(opt_idx != TCP_INDEX_TS &&
+			   c_tcp_opt_changed(opts_ctxt, opt_idx, opt_data, opt_len))
 			{
 				rohc_comp_debug(context, "    option '%s' changed",
 				                tcp_opt_get_descr(opt_type));
