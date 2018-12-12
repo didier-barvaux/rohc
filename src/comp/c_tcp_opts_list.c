@@ -566,15 +566,25 @@ void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 
 			if(tmp->ts_req_bytes_nr == 0 || tmp->ts_reply_bytes_nr == 0)
 			{
-				rohc_comp_debug(context, "  TS option shall be transmitted as "
+				rohc_comp_debug(context, "    TS option shall be transmitted as "
 				                "list item in one of dynamic, replicate or CO "
 				                "chains");
 				tmp->opt_ts_do_transmit_item = true;
 				opts_ctxt->list[TCP_INDEX_TS].nr_trans = 0;
 			}
+			else if(opts_ctxt->list[TCP_INDEX_TS].nr_trans <
+			        context->compressor->oa_repetitions_nr)
+			{
+				rohc_comp_debug(context, "    TS option changed in the last few packets, "
+				                "TS option shall be transmitted at least %u times more "
+				                "as list item in one of dynamic, replicate or CO chains",
+				                context->compressor->oa_repetitions_nr -
+				                opts_ctxt->list[TCP_INDEX_TS].nr_trans);
+				tmp->opt_ts_do_transmit_item = true;
+			}
 			else
 			{
-				rohc_comp_debug(context, "  TS option can be encoded in "
+				rohc_comp_debug(context, "    TS option can be encoded in "
 				                "irregular chain");
 			}
 		}
