@@ -49,8 +49,10 @@ struct c_tcp_opt_ctxt
 		sack_block_t sack_blocks[4];
 		struct tcp_option_timestamp timestamp;
 	} data;
-	/** The number of times the TCP option was transmitted */
-	uint8_t nr_trans;
+	/** The number of times the full TCP option was transmitted */
+	uint8_t full_trans_nr;
+	/** The number of times the dynamic part of TCP option was transmitted */
+	uint8_t dyn_trans_nr;
 	/** Whether the option context is in use or not */
 	bool used;
 	/** The type of the TCP option */
@@ -58,7 +60,6 @@ struct c_tcp_opt_ctxt
 	uint8_t age;
 	/** The length of the TCP option */
 	uint8_t data_len;
-	uint8_t unused[1];
 };
 
 /* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
