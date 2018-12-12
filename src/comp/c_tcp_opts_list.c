@@ -486,15 +486,17 @@ bad_opts:
 /**
  * @brief Parse the uncompressed TCP options for changes
  *
- * @param context            The compression context
- * @param uncomp_pkt_hdrs    The uncompressed headers to encode
- * @param[in,out] opts_ctxt  The compression context for TCP options
- * @param tmp                The temporary state for compressed TCP options
+ * @param context              The compression context
+ * @param uncomp_pkt_hdrs      The uncompressed headers to encode
+ * @param[in,out] opts_ctxt    The compression context for TCP options
+ * @param tmp                  The temporary state for compressed TCP options
+ * @param tcp_ack_num_changed  Whether the TCP ACK number changed or not
  */
 void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
                                 const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                 struct c_tcp_opts_ctxt *const opts_ctxt,
-                                struct c_tcp_opts_ctxt_tmp *const tmp)
+                                struct c_tcp_opts_ctxt_tmp *const tmp,
+                                const bool tcp_ack_num_changed)
 {
 	uint16_t indexes_in_use = 0;
 	const uint8_t opts_nr = uncomp_pkt_hdrs->tcp_opts.nr;
@@ -596,6 +598,10 @@ void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 
 		if(opts_ctxt->list[opt_idx].used)
 		{
+			rohc_comp_debug(context, "    option '%s' (%u) will use same "
+			                "index %u as in previous packet",
+			                tcp_opt_get_descr(opt_type), opt_type, opt_idx);
+
 			/* the EOL, MSS, and WS options are 'static options': they cannot be
 			 * transmitted in irregular chain if their value changed, so the compressor
 			 * needs to detect such changes and to select a packet type that can
@@ -627,29 +633,46 @@ void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 				opts_ctxt->list[opt_idx].full_trans_nr = 0;
 				opts_ctxt->list[opt_idx].dyn_trans_nr = 0;
 			}
-			/* generic options cannot be transmitted in irregular chain if their
-			 * length changed, so the compressor needs to detect such changes and
-			 * to select a packet type that can transmit their changes, ie. IR,
-			 * IR-DYN, co_common, rnd_8 or seq_8 */
-			else if(opt_idx >= TCP_INDEX_GENERIC7 &&
-			        opt_len != opts_ctxt->list[opt_idx].data_len)
+			else if(opt_idx == TCP_INDEX_SACK &&
+			        (tcp_ack_num_changed ||
+			         opt_len != opts_ctxt->list[opt_idx].data_len ||
+			         memcmp(opts_ctxt->list[opt_idx].data.raw, opt_data, opt_len) != 0))
 			{
-				rohc_comp_debug(context, "    generic option changed of length (%u -> %u)",
-				                opts_ctxt->list[opt_idx].data_len, opt_len);
-				tmp->do_list_static_changed = true;
-				opts_ctxt->list[opt_idx].full_trans_nr = 0;
+				rohc_comp_debug(context, "    SACK option changed");
 				opts_ctxt->list[opt_idx].dyn_trans_nr = 0;
 			}
-
-			/* did the option changed? */
-			if(opt_idx == TCP_INDEX_SACK ||
-			   opt_idx >= TCP_INDEX_GENERIC7)
+			else if(opt_idx >= TCP_INDEX_GENERIC7)
 			{
-				if(c_tcp_opt_changed(opts_ctxt, opt_idx, opt_data, opt_len))
+				/* generic options cannot be transmitted in irregular chain if their
+				 * length changed, so the compressor needs to detect such changes and
+				 * to select a packet type that can transmit their changes, ie. IR,
+				 * IR-DYN, co_common, rnd_8 or seq_8 */
+				if(opt_len != opts_ctxt->list[opt_idx].data_len)
+				{
+					rohc_comp_debug(context, "    generic option changed of length (%u -> %u)",
+					                opts_ctxt->list[opt_idx].data_len, opt_len);
+					tmp->do_list_static_changed = true;
+					opts_ctxt->list[opt_idx].full_trans_nr = 0;
+					opts_ctxt->list[opt_idx].dyn_trans_nr = 0;
+				}
+				/* did the option changed? */
+				else if(c_tcp_opt_changed(opts_ctxt, opt_idx, opt_data, opt_len))
 				{
 					rohc_comp_debug(context, "    option '%s' changed of content",
 					                tcp_opt_get_descr(opt_type));
 					opts_ctxt->list[opt_idx].dyn_trans_nr = 0;
+				}
+			}
+
+			if(opt_idx != TCP_INDEX_NOP && opt_idx != TCP_INDEX_SACK_PERM)
+			{
+				if(opts_ctxt->list[opt_idx].full_trans_nr <
+				   context->compressor->oa_repetitions_nr)
+				{
+					rohc_comp_debug(context, "    static part of option changed in last "
+					                "few packets, option shall be transmitted at least %u "
+					                "times more", context->compressor->oa_repetitions_nr -
+					                opts_ctxt->list[opt_idx].full_trans_nr);
 				}
 				else if(opts_ctxt->list[opt_idx].dyn_trans_nr <
 				        context->compressor->oa_repetitions_nr)
@@ -662,14 +685,11 @@ void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
 				}
 				else
 				{
-					rohc_comp_debug(context, "    option '%s' did not change of content",
+					rohc_comp_debug(context, "    option '%s' did not change at all",
 					                tcp_opt_get_descr(opt_type));
 				}
 			}
 
-			rohc_comp_debug(context, "    option '%s' (%u) will use same "
-			                "index %u as in previous packet",
-			                tcp_opt_get_descr(opt_type), opt_type, opt_idx);
 			/* option was grown old with all the others, make it grow young again */
 			if(opts_ctxt->list[opt_idx].age > 0 && opts_ctxt->list[opt_idx].age < UINT8_MAX)
 			{

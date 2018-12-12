@@ -3109,10 +3109,6 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 	/* TCP ECN */
 	pkt_ecn_vals |= uncomp_pkt_hdrs->tcp->ecn_flags;
 
-	/* parse TCP options for changes */
-	tcp_detect_options_changes(context, uncomp_pkt_hdrs,
-	                           &tcp_context->tcp_opts, &tmp->tcp_opts);
-
 	/* what value for ecn_used? */
 	tmp->ecn_used_changed =
 		tcp_detect_ecn_used_behavior(context, pkt_ecn_vals, pkt_outer_dscp_changed,
@@ -3235,6 +3231,10 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 		               "transmit all changes in header fields");
 		goto error;
 	}
+
+	/* parse TCP options for changes */
+	tcp_detect_options_changes(context, uncomp_pkt_hdrs, &tcp_context->tcp_opts,
+	                           &tmp->tcp_opts, !tmp->tcp_ack_num_unchanged);
 
 	return true;
 
