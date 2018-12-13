@@ -1036,7 +1036,7 @@ error:
 
 
 /**
- * @brief Parse othe given IR-DYN packet for the TCP profile
+ * @brief Parse other given IR-DYN packet for the TCP profile
  *
  * @param context            The decompression context
  * @param rohc_packet        The ROHC packet to decode

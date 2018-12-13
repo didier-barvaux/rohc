@@ -308,7 +308,7 @@
     ROHC-over-UDP tunnel:
       - Deprecate the ROHC over UDP tunnel. Use the IP/ROHC tunnel instead.
     ROHC sniffer:
-      - Run in brackground mode and use syslog.
+      - Run in background mode and use syslog.
       - add --daemon/-d option to make daemon mode optional.
       - Add option --pidfile/-p to write the child PID in a file.
       - Add --disable option to disable one or more ROHC profiles.
@@ -342,7 +342,7 @@
   Bug fixes:
     Bug # 809028: Write man pages for public API
     Bug # 896842: Add extension support for UO-1-ID packet
-    Bug #1075922: Aligment problem with Timestamp TCP option on ARM
+    Bug #1075922: Alignment problem with Timestamp TCP option on ARM
     Bug #1208900: RTP profile: unscaled TS shall always be encoded with W-LSB
                   in UO* packets
     Bug #1209260: Wrong W-LSB decoding if interpretation interval straddles

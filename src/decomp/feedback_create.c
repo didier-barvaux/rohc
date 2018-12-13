@@ -173,7 +173,7 @@ bool f_feedback2(const rohc_profile_t profile_id,
 #endif
 	feedback->size++;
 
-	/* base header: 8 additional SN bits */ /* TOOD: clear MSB */
+	/* base header: 8 additional SN bits */ /* TODO: clear MSB */
 	sn_bits_shift -= sn_bits_on_2nd_byte;
 	feedback->data[feedback->size] = (sn_bits >> sn_bits_shift) & 0xff;
 #ifdef ROHC_FEEDBACK_DEBUG
