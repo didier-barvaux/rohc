@@ -123,8 +123,6 @@ struct sc_tcp_context
 	uint8_t ipv6_exts_list_static_trans_nr;
 	/** The number of IPv6 exts dynamic transmissions since last change */
 	uint8_t ipv6_exts_list_dyn_trans_nr;
-	/** The number of TCP options structure transmissions since last change */
-	uint8_t tcp_opts_list_struct_trans_nr;
 	/** The number of TCP options static transmissions since last change */
 	uint8_t tcp_opts_list_static_trans_nr;
 	/** The number of TCP URG pointer transmissions since last change */

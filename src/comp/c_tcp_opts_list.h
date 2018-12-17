@@ -49,8 +49,10 @@ struct c_tcp_opt_ctxt
 		sack_block_t sack_blocks[4];
 		struct tcp_option_timestamp timestamp;
 	} data;
-	/** The number of times the TCP option was transmitted */
-	uint8_t nr_trans;
+	/** The number of times the full TCP option was transmitted */
+	uint8_t full_trans_nr;
+	/** The number of times the dynamic part of TCP option was transmitted */
+	uint8_t dyn_trans_nr;
 	/** Whether the option context is in use or not */
 	bool used;
 	/** The type of the TCP option */
@@ -58,7 +60,6 @@ struct c_tcp_opt_ctxt
 	uint8_t age;
 	/** The length of the TCP option */
 	uint8_t data_len;
-	uint8_t unused[1];
 };
 
 /* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
@@ -99,7 +100,8 @@ struct c_tcp_opts_ctxt_tmp
 	uint8_t do_list_static_changed:1;
 	/** Whether the TCP option timestamp echo request is present in packet */
 	uint8_t opt_ts_present:1;
-	uint8_t unused:5;
+	uint8_t opt_ts_do_transmit_item:1;
+	uint8_t unused:4;
 
 	uint8_t ts_req_bytes_nr:4;
 	uint8_t ts_reply_bytes_nr:4;
@@ -164,7 +166,8 @@ bool rohc_comp_tcp_are_options_acceptable(const struct rohc_comp *const comp,
 void tcp_detect_options_changes(struct rohc_comp_ctxt *const context,
                                 const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                 struct c_tcp_opts_ctxt *const opts_ctxt,
-                                struct c_tcp_opts_ctxt_tmp *const tmp)
+                                struct c_tcp_opts_ctxt_tmp *const tmp,
+                                const bool tcp_ack_num_changed)
 	__attribute__((nonnull(1, 2, 3, 4)));
 
 int c_tcp_code_tcp_opts_list_item(const struct rohc_comp_ctxt *const context,

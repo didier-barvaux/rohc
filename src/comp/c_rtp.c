@@ -67,6 +67,10 @@ static void rtp_decide_state(struct rohc_comp_ctxt *const context);
 
 static rohc_packet_t c_rtp_decide_FO_packet(const struct rohc_comp_ctxt *const context);
 static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const context);
+static rohc_packet_t c_rtp_decide_UOR2_pkt(const struct rohc_comp_ctxt *const ctxt,
+                                           const size_t nr_ipv4_non_rnd,
+                                           const size_t nr_ipv4_non_rnd_with_bits)
+	__attribute__((warn_unused_result, nonnull(1)));
 static rohc_ext_t c_rtp_decide_extension(const struct rohc_comp_ctxt *const context,
                                          const rohc_packet_t packet_type)
 	__attribute__((warn_unused_result, nonnull(1)));
@@ -251,7 +255,6 @@ static rohc_packet_t c_rtp_decide_FO_packet(const struct rohc_comp_ctxt *const c
 	const struct sc_rtp_context *const rtp_context =
 		(struct sc_rtp_context *) rfc3095_ctxt->specific;
 	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
-	const size_t nr_of_ip_hdr = rfc3095_ctxt->ip_hdr_nr;
 	rohc_packet_t packet;
 
 	if(rtp_context->udp_checksum_change_count < oa_repetitions_nr)
@@ -272,67 +275,31 @@ static rohc_packet_t c_rtp_decide_FO_packet(const struct rohc_comp_ctxt *const c
 		rohc_comp_debug(context, "choose packet IR-DYN because at least one "
 		                "SID flag changed");
 	}
-	else if(nr_of_ip_hdr == 1 && rfc3095_ctxt->tmp.send_dynamic > 2)
+	else if(!rfc3095_ctxt->tmp.sn_6bits_possible &&
+	        !rfc3095_ctxt->tmp.sn_9bits_possible &&
+	        !rfc3095_ctxt->tmp.sn_14bits_possible)
 	{
+		/* UOR-2* packet cannot be used if SN does not stand on 6, 9, or 14 bits
+		 *  - 6 bits in base header
+		 *  - 3 bits in extension 0
+		 *  - 3 bits in extension 1
+		 *  - 3 bits in extension 2
+		 *  - 8 bits in extension 3
+		 */
 		packet = ROHC_PACKET_IR_DYN;
-		rohc_comp_debug(context, "choose packet IR-DYN because %d > 2 dynamic "
-		                "fields changed with a single IP header",
-		                rfc3095_ctxt->tmp.send_dynamic);
+		rohc_comp_debug(context, "choose packet IR-DYN because SN cannot be "
+		                "transmitted on 6, 9 or 14 bits");
 	}
-	else if(nr_of_ip_hdr > 1 && rfc3095_ctxt->tmp.send_dynamic > 4)
+	else /* determine which UOR-2* packet to choose */
 	{
-		packet = ROHC_PACKET_IR_DYN;
-		rohc_comp_debug(context, "choose packet IR-DYN because %d > 4 dynamic "
-		                "fields changed with double IP headers",
-		                rfc3095_ctxt->tmp.send_dynamic);
-	}
-	else if(rfc3095_ctxt->tmp.sn_6bits_possible || rfc3095_ctxt->tmp.sn_14bits_possible)
-	{
-		/* UOR-2* packets can be used only if SN stand on <= 14 bits (6 bits
-		 * in base header + 8 bits in extension 3): determine which UOR-2*
-		 * packet to choose */
-
 		/* how many IP headers are IPv4 headers with non-random IP-IDs */
 		const size_t nr_ipv4_non_rnd = get_nr_ipv4_non_rnd(rfc3095_ctxt);
 		const size_t nr_ipv4_non_rnd_with_bits = get_nr_ipv4_non_rnd_with_bits(rfc3095_ctxt);
 
 		rohc_comp_debug(context, "choose one UOR-2-* packet because less than 14 "
 		                "SN bits must be transmitted");
-
-		/* what UOR-2* packet do we choose? */
-		/* TODO: the 3 next if/else could be merged with the ones from
-		 * c_rtp_decide_SO_packet */
-		if(nr_ipv4_non_rnd == 0)
-		{
-			packet = ROHC_PACKET_UOR_2_RTP;
-			rohc_comp_debug(context, "choose packet UOR-2-RTP because neither "
-			                "of the %zd IP header(s) are IPv4 with non-random "
-			                "IP-ID", nr_of_ip_hdr);
-		}
-		else if(nr_ipv4_non_rnd_with_bits >= 1 &&
-		        sdvl_can_length_be_encoded(rtp_context->tmp.nr_ts_bits))
-		{
-			packet = ROHC_PACKET_UOR_2_ID;
-			rohc_comp_debug(context, "choose packet UOR-2-ID because at least "
-			                "one of the %zd IP header(s) is IPv4 with "
-			                "non-random IP-ID with at least 1 bit of IP-ID to "
-			                "transmit, and ( TS bits are deducible from SN, or "
-			                "TS bits can be SDVL-encoded", nr_of_ip_hdr);
-		}
-		else
-		{
-			packet = ROHC_PACKET_UOR_2_TS;
-			rohc_comp_debug(context, "choose packet UOR-2-TS because at least "
-			                "one of the %zd IP header(s) is IPv4 with non-random "
-			                "IP-ID", nr_of_ip_hdr);
-		}
-	}
-	else
-	{
-		/* UOR-2* packets can not be used, use IR-DYN instead */
-		packet = ROHC_PACKET_IR_DYN;
-		rohc_comp_debug(context, "choose packet IR-DYN because more than 14 SN "
-		                "bits must be transmitted");
+		packet = c_rtp_decide_UOR2_pkt(context, nr_ipv4_non_rnd,
+		                               nr_ipv4_non_rnd_with_bits);
 	}
 
 	return packet;
@@ -366,9 +333,11 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 		(struct sc_rtp_context *) rfc3095_ctxt->specific;
 	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	const size_t nr_of_ip_hdr = rfc3095_ctxt->ip_hdr_nr;
+	const bool rnd_changed =
+		does_at_least_one_rnd_change(rfc3095_ctxt, oa_repetitions_nr);
 	rohc_packet_t packet;
-	unsigned int nr_ipv4_non_rnd;
-	unsigned int nr_ipv4_non_rnd_with_bits;
+	size_t nr_ipv4_non_rnd;
+	size_t nr_ipv4_non_rnd_with_bits;
 	bool innermost_ip_id_changed;
 	bool innermost_ip_id_3bits_possible;
 	bool innermost_ip_id_5bits_possible;
@@ -376,9 +345,10 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 	bool innermost_ip_id_11bits_possible;
 	bool outermost_ip_id_changed;
 	bool outermost_ip_id_11bits_possible;
+	const struct rfc3095_ip_hdr_changes *inner_ip_changes;
+	const struct rfc3095_ip_hdr_changes *outer_ip_changes;
 	bool is_ts_deducible;
 	bool is_ts_scaled;
-	size_t ip_hdr_pos;
 
 	is_ts_deducible = rohc_ts_sc_is_deducible(&rtp_context->ts_sc);
 	is_ts_scaled = (rtp_context->ts_sc.state == SEND_SCALED);
@@ -389,20 +359,6 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 	                !!rtp_context->tmp.is_marker_bit_set, nr_of_ip_hdr);
 
 	/* sanity check */
-	for(ip_hdr_pos = 0; ip_hdr_pos < rfc3095_ctxt->ip_hdr_nr; ip_hdr_pos++)
-	{
-		const struct ip_header_info *const ip_ctxt =
-			&(rfc3095_ctxt->ip_ctxts[ip_hdr_pos]);
-
-		/* SID, RND and NBO flags shall be established for all IPv4 headers */
-		if(ip_ctxt->version == IPV4)
-		{
-			assert(ip_ctxt->info.v4.sid_count >= oa_repetitions_nr);
-			assert(ip_ctxt->info.v4.rnd_count >= oa_repetitions_nr);
-			assert(ip_ctxt->info.v4.nbo_count >= oa_repetitions_nr);
-		}
-	}
-	assert(rfc3095_ctxt->tmp.send_dynamic == 0);
 	assert(rtp_context->tmp.send_rtp_dynamic == 0);
 	/* RTP Padding bit is a STATIC field, not allowed to change in SO state */
 	assert(!rtp_context->tmp.padding_bit_changed);
@@ -412,7 +368,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 	/* find out how many IP headers are IPv4 headers with non-random IP-IDs */
 	nr_ipv4_non_rnd = get_nr_ipv4_non_rnd(rfc3095_ctxt);
 	nr_ipv4_non_rnd_with_bits = get_nr_ipv4_non_rnd_with_bits(rfc3095_ctxt);
-	rohc_comp_debug(context, "nr_ipv4_non_rnd = %u, nr_ipv4_non_rnd_with_bits = %u",
+	rohc_comp_debug(context, "nr_ipv4_non_rnd = %zu, nr_ipv4_non_rnd_with_bits = %zu",
 	                nr_ipv4_non_rnd, nr_ipv4_non_rnd_with_bits);
 
 	/* determine the number of IP-ID bits and the IP-ID offset of the
@@ -425,6 +381,17 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 	                   &innermost_ip_id_11bits_possible,
 	                   &outermost_ip_id_changed,
 	                   &outermost_ip_id_11bits_possible);
+
+	if(rfc3095_ctxt->ip_hdr_nr == 1)
+	{
+		inner_ip_changes = &rfc3095_ctxt->tmp.ip_hdr_changes[0];
+		outer_ip_changes = NULL;
+	}
+	else
+	{
+		inner_ip_changes = &rfc3095_ctxt->tmp.ip_hdr_changes[1];
+		outer_ip_changes = &rfc3095_ctxt->tmp.ip_hdr_changes[0];
+	}
 
 	/* what packet type do we choose? */
 	if(rtp_context->udp_checksum_change_count < oa_repetitions_nr)
@@ -439,7 +406,60 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 		rohc_comp_debug(context, "choose packet IR-DYN because RTP Version "
 		                "changed");
 	}
-	else if(rfc3095_ctxt->tmp.sn_4bits_possible &&
+	else if(does_at_least_one_sid_change(rfc3095_ctxt, oa_repetitions_nr))
+	{
+		packet = ROHC_PACKET_IR_DYN;
+		rohc_comp_debug(context, "choose packet IR-DYN because at least one "
+		                "SID flag changed");
+	}
+	else if(!rfc3095_ctxt->tmp.sn_6bits_possible &&
+	        !rfc3095_ctxt->tmp.sn_9bits_possible &&
+	        !rfc3095_ctxt->tmp.sn_14bits_possible)
+	{
+		/* UOR-2* packet cannot be used if SN does not stand on 6, 9, or 14 bits
+		 *  - 6 bits in base header
+		 *  - 3 bits in extension 0
+		 *  - 3 bits in extension 1
+		 *  - 3 bits in extension 2
+		 *  - 8 bits in extension 3
+		 */
+		packet = ROHC_PACKET_IR_DYN;
+		rohc_comp_debug(context, "choose packet IR-DYN because SN cannot be "
+		                "transmitted on 6, 9 or 14 bits");
+	}
+	else if(inner_ip_changes->tos_tc_changed ||
+	        inner_ip_changes->ttl_hl_changed ||
+	        inner_ip_changes->df_changed ||
+	        /* Protocol/Next Header never changes within a context */
+	        inner_ip_changes->ext_list_struct_changed ||
+	        inner_ip_changes->ext_list_content_changed ||
+	        inner_ip_changes->nbo_changed ||
+	        inner_ip_changes->rnd_changed)
+	{
+		rohc_comp_debug(context, "choose packet UOR-2* because at least one of the "
+		                "TOS/TC, TTL/HL, DF, IP ext list, NBO, RND fields changed "
+		                "for inner IP header");
+		packet = c_rtp_decide_UOR2_pkt(context, nr_ipv4_non_rnd,
+		                               nr_ipv4_non_rnd_with_bits);
+	}
+	else if(outer_ip_changes != NULL &&
+	        (outer_ip_changes->tos_tc_changed ||
+	         outer_ip_changes->ttl_hl_changed ||
+	         outer_ip_changes->df_changed ||
+	         /* Protocol/Next Header never changes within a context */
+	         outer_ip_changes->ext_list_struct_changed ||
+	         outer_ip_changes->ext_list_content_changed ||
+	         outer_ip_changes->nbo_changed ||
+	         outer_ip_changes->rnd_changed))
+	{
+		rohc_comp_debug(context, "choose packet UOR-2* because at least one of the "
+		                "TOS/TC, TTL/HL, DF, IP ext list, NBO, RND fields changed "
+		                "for outer IP header");
+		packet = c_rtp_decide_UOR2_pkt(context, nr_ipv4_non_rnd,
+		                               nr_ipv4_non_rnd_with_bits);
+	}
+	else if(!rnd_changed &&
+	        rfc3095_ctxt->tmp.sn_4bits_possible &&
 	        nr_ipv4_non_rnd_with_bits == 0 &&
 	        is_ts_scaled &&
 	        (is_ts_deducible || rtp_context->tmp.nr_ts_bits == 0) &&
@@ -453,7 +473,8 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 		                "or TS bits are deducible from SN ), and RTP M bit is "
 		                "not set", nr_of_ip_hdr);
 	}
-	else if(rfc3095_ctxt->tmp.sn_4bits_possible &&
+	else if(!rnd_changed &&
+	        rfc3095_ctxt->tmp.sn_4bits_possible &&
 	        nr_ipv4_non_rnd == 0 &&
 	        is_ts_scaled && rtp_context->tmp.nr_ts_bits <= 6)
 	{
@@ -464,7 +485,8 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 		                "%u <= 6 TS bits must be transmitted", nr_of_ip_hdr,
 		                rtp_context->tmp.nr_ts_bits);
 	}
-	else if(rfc3095_ctxt->tmp.sn_4bits_possible &&
+	else if(!rnd_changed &&
+	        rfc3095_ctxt->tmp.sn_4bits_possible &&
 	        nr_ipv4_non_rnd_with_bits == 1 && innermost_ip_id_5bits_possible &&
 	        is_ts_scaled &&
 	        (is_ts_deducible || rtp_context->tmp.nr_ts_bits == 0) &&
@@ -479,7 +501,8 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 		                "or TS bits are deducible from SN ), and RTP M bit is not "
 		                "set", nr_of_ip_hdr);
 	}
-	else if(rfc3095_ctxt->tmp.sn_4bits_possible &&
+	else if(!rnd_changed &&
+	        rfc3095_ctxt->tmp.sn_4bits_possible &&
 	        nr_ipv4_non_rnd_with_bits == 0 &&
 	        is_ts_scaled && rtp_context->tmp.nr_ts_bits <= 5)
 	{
@@ -491,7 +514,9 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 		                "%u <= 6 TS bits must be transmitted", nr_of_ip_hdr,
 		                rtp_context->tmp.nr_ts_bits);
 	}
-	else if((rfc3095_ctxt->tmp.sn_4bits_possible || rfc3095_ctxt->tmp.sn_12bits_possible) &&
+	else if(!rnd_changed &&
+	        (rfc3095_ctxt->tmp.sn_4bits_possible ||
+	         rfc3095_ctxt->tmp.sn_12bits_possible) &&
 	        nr_ipv4_non_rnd_with_bits >= 1 &&
 	        sdvl_can_length_be_encoded(rtp_context->tmp.nr_ts_bits))
 	{
@@ -506,46 +531,63 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 		                "and %u TS bits can be SDVL-encoded", nr_of_ip_hdr,
 		                rtp_context->tmp.nr_ts_bits);
 	}
-	else if(rfc3095_ctxt->tmp.sn_6bits_possible || rfc3095_ctxt->tmp.sn_14bits_possible)
+	else /* determine which UOR-2* packet to choose */
 	{
-		/* UOR-2* packets can be used only if SN stand on <= 14 bits (6 bits
-		 * in base header + 8 bits in extension 3): determine which UOR-2*
-		 * packet to choose */
+		packet = c_rtp_decide_UOR2_pkt(context, nr_ipv4_non_rnd,
+		                               nr_ipv4_non_rnd_with_bits);
+	}
 
-		/* what UOR-2* packet do we choose? */
-		/* TODO: the 3 next if/else could be merged with the ones from
-		 * c_rtp_decide_FO_packet */
-		if(nr_ipv4_non_rnd == 0)
-		{
-			packet = ROHC_PACKET_UOR_2_RTP;
-			rohc_comp_debug(context, "choose packet UOR-2-RTP because neither "
-			                "of the %zu IP header(s) are IPv4 with non-random "
-			                "IP-ID", nr_of_ip_hdr);
-		}
-		else if(nr_ipv4_non_rnd_with_bits >= 1 &&
-		        sdvl_can_length_be_encoded(rtp_context->tmp.nr_ts_bits))
-		{
-			packet = ROHC_PACKET_UOR_2_ID;
-			rohc_comp_debug(context, "choose packet UOR-2-ID because at least "
-			                "one of the %zu IP header(s) is IPv4 with non-random "
-			                "IP-ID with at least 1 bit of IP-ID to transmit, "
-			                "and %u TS bits can be SDVL-encoded", nr_of_ip_hdr,
-			                rtp_context->tmp.nr_ts_bits);
-		}
-		else
-		{
-			packet = ROHC_PACKET_UOR_2_TS;
-			rohc_comp_debug(context, "choose packet UOR-2-TS because at least "
-			                "one of the %zu IP header(s) is IPv4 with "
-			                "non-random IP-ID", nr_of_ip_hdr);
-		}
+	return packet;
+}
+
+
+/**
+ * @brief Decide which UOR2* packet to send
+ *
+ * @see decide_packet
+ *
+ * @param ctxt                       The compression context
+ * @param nr_ipv4_non_rnd            The nr of IPv4 headers with non-random IP-ID
+ * @param nr_ipv4_non_rnd_with_bits  The nr of IPv4 headers with non-random IP-ID
+ *                                   and some IP-ID bits to transmit
+ * @return                           The packet type among:
+ *                                    - ROHC_PACKET_UOR_2_RTP
+ *                                    - ROHC_PACKET_UOR_2_TS
+ *                                    - ROHC_PACKET_UOR_2_ID
+ */
+static rohc_packet_t c_rtp_decide_UOR2_pkt(const struct rohc_comp_ctxt *const ctxt,
+                                           const size_t nr_ipv4_non_rnd,
+                                           const size_t nr_ipv4_non_rnd_with_bits)
+{
+	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
+		(struct rohc_comp_rfc3095_ctxt *) ctxt->specific;
+	const struct sc_rtp_context *const rtp_context =
+		(struct sc_rtp_context *) rfc3095_ctxt->specific;
+	rohc_packet_t packet;
+
+	if(nr_ipv4_non_rnd == 0)
+	{
+		packet = ROHC_PACKET_UOR_2_RTP;
+		rohc_comp_debug(ctxt, "choose packet UOR-2-RTP because neither "
+		                "of the %zu IP header(s) are IPv4 with non-random "
+		                "IP-ID", rfc3095_ctxt->ip_hdr_nr);
+	}
+	else if(nr_ipv4_non_rnd_with_bits >= 1 &&
+	        sdvl_can_length_be_encoded(rtp_context->tmp.nr_ts_bits))
+	{
+		packet = ROHC_PACKET_UOR_2_ID;
+		rohc_comp_debug(ctxt, "choose packet UOR-2-ID because at least "
+		                "one of the %zu IP header(s) is IPv4 with non-random "
+		                "IP-ID with at least 1 bit of IP-ID to transmit, "
+		                "and %u TS bits can be SDVL-encoded",
+	                  rfc3095_ctxt->ip_hdr_nr, rtp_context->tmp.nr_ts_bits);
 	}
 	else
 	{
-		/* UOR-2* packets can not be used, use IR-DYN instead */
-		packet = ROHC_PACKET_IR_DYN;
-		rohc_comp_debug(context, "choose packet IR-DYN because more than 14 SN "
-		                "bits must be transmitted");
+		packet = ROHC_PACKET_UOR_2_TS;
+		rohc_comp_debug(ctxt, "choose packet UOR-2-TS because at least "
+		                "one of the %zu IP header(s) is IPv4 with "
+		                "non-random IP-ID", rfc3095_ctxt->ip_hdr_nr);
 	}
 
 	return packet;

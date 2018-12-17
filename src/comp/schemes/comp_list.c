@@ -36,10 +36,10 @@
 
 
 
-static bool build_ipv6_ext_pkt_list(struct list_comp *const comp,
+static void build_ipv6_ext_pkt_list(struct list_comp *const comp,
                                     const struct rohc_pkt_ip_hdr *const ip,
                                     struct rohc_list *const pkt_list)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+	__attribute__((nonnull(1, 2, 3)));
 
 static unsigned int rohc_list_get_nearest_list(const struct list_comp *const comp,
                                                const struct rohc_list *const pkt_list,
@@ -125,10 +125,8 @@ static int rohc_list_build_XIs_4(const struct list_comp *const comp,
  * @param ip                         The IP packet to compress
  * @param[out] list_struct_changed   Whether the structure of the list changed
  * @param[out] list_content_changed  Whether the content of the list changed
- * @return                           true if no error occurred,
- *                                   false if one error occurred
  */
-bool detect_ipv6_ext_changes(struct list_comp *const comp,
+void detect_ipv6_ext_changes(struct list_comp *const comp,
                              const struct rohc_pkt_ip_hdr *const ip,
                              bool *const list_struct_changed,
                              bool *const list_content_changed)
@@ -140,12 +138,7 @@ bool detect_ipv6_ext_changes(struct list_comp *const comp,
 	/* parse all extension headers:
 	 *  - update the related entries in the translation table,
 	 *  - create the list for the packet */
-	if(!build_ipv6_ext_pkt_list(comp, ip, &pkt_list))
-	{
-		rohc_comp_list_warn(comp, "failed to build the list of extension headers "
-		                    "for the current packet");
-		goto error;
-	}
+	build_ipv6_ext_pkt_list(comp, ip, &pkt_list);
 
 	/* now that translation table is updated and packet list is generated,
 	 * search for a context list with the same structure or use an anonymous
@@ -203,11 +196,6 @@ bool detect_ipv6_ext_changes(struct list_comp *const comp,
 
 	/* TODO: should not be overwritten until compression is fully OK */
 	comp->cur_id = new_cur_id;
-
-	return true;
-
-error:
-	return false;
 }
 
 
@@ -221,10 +209,8 @@ error:
  * @param comp           The list compressor
  * @param ip             The IP packet to compress
  * @param[out] pkt_list  The list of extension headers for the current packet
- * @return               true if no error occurred,
- *                       false if one error occurred
  */
-static bool build_ipv6_ext_pkt_list(struct list_comp *const comp,
+static void build_ipv6_ext_pkt_list(struct list_comp *const comp,
                                     const struct rohc_pkt_ip_hdr *const ip,
                                     struct rohc_list *const pkt_list)
 {
@@ -245,22 +231,12 @@ static bool build_ipv6_ext_pkt_list(struct list_comp *const comp,
 		int ret;
 
 		/* one more occurrence of this item */
-		if(ext_types_count[ext->type] >= 255)
-		{
-			rohc_comp_list_warn(comp, "too many IPv6 extension header of type 0x%02x",
-			                    ext->type);
-			goto error;
-		}
+		assert(ext_types_count[ext->type] < 255);
 		ext_types_count[ext->type]++;
 
 		/* find the best item to encode the extension in translation table */
 		index_table = comp->get_index_table(ext->type, ext_types_count[ext->type]);
-		if(index_table < 0 || ((size_t) index_table) >= ROHC_LIST_MAX_ITEM)
-		{
-			rohc_comp_list_warn(comp, "failed to handle unknown IPv6 "
-			                    "extension header of type 0x%02x", ext->type);
-			goto error;
-		}
+		assert(index_table >= 0 && ((size_t) index_table) < ROHC_LIST_MAX_ITEM);
 
 		/* update item in translation table if it changed */
 		/* TODO: context should not be overwritten until compression is fully OK */
@@ -268,13 +244,8 @@ static bool build_ipv6_ext_pkt_list(struct list_comp *const comp,
 		ret = rohc_list_item_update_if_changed(comp->cmp_item,
 		                                       &(comp->trans_table[index_table]),
 		                                       ext->type, ext->data, ext->len);
-		if(ret < 0)
-		{
-			rohc_comp_list_warn(comp, "failed to update entry #%d in translation "
-			                    "table with %u-byte extension", index_table, ext->len);
-			goto error;
-		}
-		else if(ret == 1)
+		assert(ret >= 0);
+		if(ret == 1)
 		{
 			rc_list_debug(comp, "  entry #%d updated in translation table",
 			              index_table);
@@ -293,11 +264,6 @@ static bool build_ipv6_ext_pkt_list(struct list_comp *const comp,
 		              comp->trans_table[index_table].known ? "known" : "not-yet-known",
 		              comp->trans_table[index_table].counter, comp->oa_repetitions_nr);
 	}
-
-	return true;
-
-error:
-	return false;
 }
 
 
