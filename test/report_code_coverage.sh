@@ -31,9 +31,9 @@
 #       MAKELEVEL makes the non-regression script to mis-compute paths
 #
 
-coverage_lines_min_req=89
-coverage_functions_min_req=98
-coverage_branches_min_req=58
+coverage_lines_min_req=88
+coverage_functions_min_req=97
+coverage_branches_min_req=62
 
 LCOV_BIN="lcov --rc lcov_function_coverage=1 --rc lcov_branch_coverage=1"
 LCOV_FILE="coverage.info"

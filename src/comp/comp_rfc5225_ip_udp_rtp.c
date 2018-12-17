@@ -494,7 +494,9 @@ static bool rohc_comp_rfc5225_ip_udp_rtp_create(struct rohc_comp_ctxt *const con
 		rfc5225_ctxt->udp_dport = rohc_ntoh16(udp->dest);
 
 		remain_data += sizeof(struct udphdr);
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		remain_len -= sizeof(struct udphdr);
+#endif
 	}
 
 	/* initialize the RTP part of the profile context */
@@ -1656,6 +1658,7 @@ static rohc_packet_t rohc_comp_rfc5225_ip_udp_rtp_decide_pkt(struct rohc_comp_ct
 {
 	rohc_packet_t packet_type;
 
+#ifndef __clang_analyzer__ /* TODO: silent warning since packet_type forced to IR */
 	switch(context->state)
 	{
 		case ROHC_COMP_STATE_IR: /* The Initialization and Refresh (IR) state */
@@ -1676,6 +1679,7 @@ static rohc_packet_t rohc_comp_rfc5225_ip_udp_rtp_decide_pkt(struct rohc_comp_ct
 			assert(0); /* should not happen */
 			break;
 	}
+#endif
 
 	/* TODO: handle non-IR packets */
 	rohc_comp_debug(context, "force IR packet");
@@ -2285,7 +2289,9 @@ static int rohc_comp_rfc5225_ip_udp_rtp_code_CO_pkt(const struct rohc_comp_ctxt 
 	uint8_t crc_computed;
 	uint8_t save_first_byte;
 	size_t pos_1st_byte;
+#ifndef __clang_analyzer__ /* TODO: silent warning caused by missing packet types */
 	size_t pos_2nd_byte;
+#endif
 	int ret;
 
 	/* let's compute the CRC on uncompressed headers */
@@ -2320,7 +2326,9 @@ static int rohc_comp_rfc5225_ip_udp_rtp_code_CO_pkt(const struct rohc_comp_ctxt 
 		               "small" : "large", context->cid, rohc_remain_len);
 		goto error;
 	}
+#ifndef __clang_analyzer__ /* TODO: silent warning caused by missing packet types */
 	pos_2nd_byte = ret;
+#endif
 	rohc_remain_data += ret;
 	rohc_remain_len -= ret;
 	rohc_comp_debug(context, "%s CID %u encoded on %d byte(s)",
@@ -2333,7 +2341,9 @@ static int rohc_comp_rfc5225_ip_udp_rtp_code_CO_pkt(const struct rohc_comp_ctxt 
 	 * CID octet(s) and the remaining CO octets are located after the CID octet(s).
 	 * To workaround that situation, the last CID octet is saved before writing
 	 * the CO header and restored afterwards */
+#ifndef __clang_analyzer__ /* TODO: silent warning caused by missing packet types */
 	save_first_byte = rohc_remain_data[-1];
+#endif
 	rohc_remain_data--;
 	rohc_remain_len++;
 
@@ -2363,12 +2373,14 @@ static int rohc_comp_rfc5225_ip_udp_rtp_code_CO_pkt(const struct rohc_comp_ctxt 
 #endif
 	rohc_remain_len -= ret;
 
+#ifndef __clang_analyzer__ /* TODO: silent warning caused by missing packet types */
 	/* end of workaround: restore the saved octet */
 	if(context->compressor->medium.cid_type != ROHC_SMALL_CID)
 	{
 		rohc_pkt[pos_1st_byte] = rohc_pkt[pos_2nd_byte - 1];
 		rohc_pkt[pos_2nd_byte - 1] = save_first_byte;
 	}
+#endif
 
 	rohc_comp_dump_buf(context, "CO packet", rohc_pkt,
 	                   rohc_pkt_max_len - rohc_remain_len);

@@ -106,6 +106,7 @@ ALL_PROFILES_V1 = [ROHC_PROFILE_UNCOMPRESSED, \
 ALL_PROFILES_V2 = [ROHC_PROFILE_UNCOMPRESSED, \
                    ROHCv2_PROFILE_IP, \
                    ROHCv2_PROFILE_IP_UDP, \
+                   ROHCv2_PROFILE_IP_UDP_RTP, \
                    ROHCv2_PROFILE_IP_ESP, \
                    ROHC_PROFILE_TCP, \
                   ]
@@ -291,19 +292,31 @@ def do_packet_match(buf1_descr, buf1, buf2_descr, buf2):
         for i in range(0, min_len, 8):
             for j in range(i, i + 8):
                 if j < len(buf1):
-                    if j < len(buf2) and buf1[j] != buf2[j]:
-                        print("%02x*" % buf1[j], end='')
+                    if isinstance(buf1, str) is True:
+                        byte = ord(buf1[j])
+                    elif isinstance(buf1, bytes) is True:
+                        byte = buf1[j]
                     else:
-                        print("%02x " % buf1[j], end='')
+                        raise NotImplementedError()
+                    if j < len(buf2) and buf1[j] != buf2[j]:
+                        print("%02x*" % byte, end='')
+                    else:
+                        print("%02x " % byte, end='')
                 else:
                     print("   ", end='')
             print("| ", end='')
             for j in range(i, i + 8):
                 if j < len(buf2):
-                    if j < len(buf1) and buf1[j] != buf2[j]:
-                        print("%02x*" % buf2[j], end='')
+                    if isinstance(buf2, str) is True:
+                        byte = ord(buf2[j])
+                    elif isinstance(buf2, bytes) is True:
+                        byte = buf2[j]
                     else:
-                        print("%02x " % buf2[j], end='')
+                        raise NotImplementedError()
+                    if j < len(buf1) and buf1[j] != buf2[j]:
+                        print("%02x*" % byte, end='')
+                    else:
+                        print("%02x " % byte, end='')
                 else:
                     print("   ", end='')
             print()
