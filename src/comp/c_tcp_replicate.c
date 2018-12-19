@@ -35,9 +35,10 @@ static int tcp_code_replicate_ipv4_part(const struct rohc_comp_ctxt *const conte
                                         ip_context_t *const ip_context,
                                         const struct ipv4_hdr *const ipv4,
                                         const bool is_innermost,
+                                        const bool ttl_changed,
                                         uint8_t *const rohc_data,
                                         const size_t rohc_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 6)));
 
 static int tcp_code_replicate_ipv6_part(const struct rohc_comp_ctxt *const context,
                                         ip_context_t *const ip_context,
@@ -96,8 +97,10 @@ int tcp_code_replicate_chain(struct rohc_comp_ctxt *const context,
 		if(ip->version == IPV4)
 		{
 			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) ip;
+			const bool ttl_hopl_changed = tmp->ttl_hopl_changed[ip_hdr_pos];
 
-			ret = tcp_code_replicate_ipv4_part(context, ip_context, ipv4, is_inner,
+			ret = tcp_code_replicate_ipv4_part(context, ip_context, ipv4,
+			                                   is_inner, ttl_hopl_changed,
 			                                   rohc_remain_data, rohc_remain_len);
 			if(ret < 0)
 			{
@@ -184,6 +187,7 @@ error:
  * @param ipv4            The IPv4 header
  * @param is_innermost    true if the IP header is the innermost of the packet,
  *                        false otherwise
+ * @param ttl_changed     Whether the IP TTL changed
  * @param[out] rohc_data  The ROHC packet being built
  * @param rohc_max_len    The max remaining length in the ROHC buffer
  * @return                The length appended in the ROHC buffer if positive,
@@ -193,6 +197,7 @@ static int tcp_code_replicate_ipv4_part(const struct rohc_comp_ctxt *const conte
                                         ip_context_t *const ip_context,
                                         const struct ipv4_hdr *const ipv4,
                                         const bool is_innermost,
+                                        const bool ttl_changed,
                                         uint8_t *const rohc_data,
                                         const size_t rohc_max_len)
 {
@@ -264,24 +269,18 @@ static int tcp_code_replicate_ipv4_part(const struct rohc_comp_ctxt *const conte
 	}
 
 	/* ttl_hopl */
+	ret = c_static_or_irreg8(ipv4->ttl, !ttl_changed,
+	                         rohc_data + ipv4_replicate_len,
+	                         rohc_max_len - ipv4_replicate_len, &ttl_hopl_indicator);
+	if(ret < 0)
 	{
-		const bool is_ttl_hopl_static = (ip_context->ttl_hopl == ipv4->ttl);
-		const bool cr_ttl_hopl_needed =
-			(!is_ttl_hopl_static || ip_context->cr_ttl_hopl_present);
-		ret = c_static_or_irreg8(ipv4->ttl, !cr_ttl_hopl_needed,
-		                         rohc_data + ipv4_replicate_len,
-		                         rohc_max_len - ipv4_replicate_len, &ttl_hopl_indicator);
-		if(ret < 0)
-		{
-			rohc_comp_warn(context, "failed to encode static_or_irreg(ttl_hopl)");
-			goto error;
-		}
-		ipv4_replicate_len += ret;
-		rohc_comp_debug(context, "TTL = 0x%02x -> 0x%02x",
-		                ip_context->ttl_hopl, ipv4->ttl);
-		ipv4_replicate->ttl_flag = ttl_hopl_indicator;
-		ip_context->cr_ttl_hopl_present = !!ttl_hopl_indicator;
+		rohc_comp_warn(context, "failed to encode static_or_irreg(ttl_hopl)");
+		goto error;
 	}
+	ipv4_replicate_len += ret;
+	rohc_comp_debug(context, "TTL = 0x%02x -> 0x%02x",
+	                ip_context->ttl_hopl, ipv4->ttl);
+	ipv4_replicate->ttl_flag = ttl_hopl_indicator;
 
 	/* TODO: should not update context there */
 	ip_context->dscp = ipv4->dscp;

@@ -102,10 +102,7 @@ typedef struct
 	uint8_t ip_id_behavior:2;
 	uint8_t last_ip_id_behavior:2;
 
-	/* Context Replication */
-	bool cr_ttl_hopl_present;
-
-	uint8_t unused2[5];
+	uint8_t unused2[6];
 
 } ip_context_t;
 

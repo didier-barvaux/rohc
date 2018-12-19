@@ -625,7 +625,6 @@ static bool c_tcp_create_from_pkt(struct rohc_comp_ctxt *const context,
 
 
 	/* create context for TCP header */
-	tcp_context->ttl_hopl_change_count = 0;
 	tcp_context->tcp_window_change_count = 0;
 	tcp_context->ecn_used = false;
 	tcp_context->ecn_used_change_count = comp->oa_repetitions_nr;
@@ -873,6 +872,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	ip_context_t *const ip_inner_context =
 		&(tcp_context->ip_contexts[uncomp_pkt_hdrs->ip_hdrs_nr - 1]);
 	struct tcp_tmp_variables tmp;
+	size_t ip_hdr_pos;
 	int counter;
 
 	*packet_type = ROHC_PACKET_UNKNOWN;
@@ -943,20 +943,6 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 
 	rohc_comp_debug(context, "update context:");
 
-	/* update the context with the new numbers of IP extension headers */
-	{
-		size_t ip_hdr_pos;
-		for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)
-		{
-			rohc_comp_debug(context, "  update context of IP header #%zu:",
-			                ip_hdr_pos + 1);
-			tcp_context->ip_contexts[ip_hdr_pos].opts_nr =
-				uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos].exts_nr;
-			rohc_comp_debug(context, "    %u extension headers",
-			                tcp_context->ip_contexts[ip_hdr_pos].opts_nr);
-		}
-	}
-
 	/* update the context with the new TCP header */
 	tcp_context->seq_num = tmp.seq_num;
 	tcp_context->ack_num = tmp.ack_num;
@@ -969,9 +955,21 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	/* add the new MSN to the W-LSB encoding object */
 	c_add_wlsb(&tcp_context->msn_wlsb, tcp_context->msn, tcp_context->msn);
 
+	/* update the context for all IP headers */
+	for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)
+	{
+		const struct rohc_pkt_ip_hdr *const ip_hdr =
+			&(uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos]);
+		ip_context_t *const ip_ctxt = &(tcp_context->ip_contexts[ip_hdr_pos]);
+
+		tcp_context->ip_contexts[ip_hdr_pos].opts_nr =
+			uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos].exts_nr;
+
+		ip_ctxt->ttl_hopl = ip_hdr->ttl_hl;
+	}
+	/* add the new innermost IP-ID / SN delta to the W-LSB encoding object */
 	if(uncomp_pkt_hdrs->innermost_ip_hdr->version == IPV4)
 	{
-		/* add the new innermost IP-ID / SN delta to the W-LSB encoding object */
 		c_add_wlsb(&tcp_context->ip_id_wlsb, tcp_context->msn, tmp.ip_id_delta);
 	}
 	/* add the new innermost TTL/Hop Limit to the W-LSB encoding object */
@@ -1042,9 +1040,16 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	{
 		tcp_context->tcp_urg_ptr_trans_nr++;
 	}
-	if(tcp_context->ttl_hopl_change_count < oa_repetitions_nr)
+	for(ip_hdr_pos = 0; ip_hdr_pos < uncomp_pkt_hdrs->ip_hdrs_nr; ip_hdr_pos++)
 	{
-		tcp_context->ttl_hopl_change_count++;
+		if(tcp_context->ttl_hopl_change_count[ip_hdr_pos] < oa_repetitions_nr)
+		{
+			tcp_context->ttl_hopl_change_count[ip_hdr_pos]++;
+		}
+	}
+	if(tcp_context->innermost_ttl_hopl_change_count < oa_repetitions_nr)
+	{
+		tcp_context->innermost_ttl_hopl_change_count++;
 	}
 	if(tcp_context->innermost_ip_id_behavior_trans_nr < oa_repetitions_nr)
 	{
@@ -2896,7 +2901,7 @@ static int c_tcp_build_co_common(const struct rohc_comp_ctxt *const context,
 
 	/* ttl_hopl */
 	ret = c_static_or_irreg8(uncomp_pkt_hdrs->innermost_ip_hdr->ttl_hl,
-	                         !tmp->ttl_hopl_changed,
+	                         !tmp->innermost_ttl_hopl_changed,
 	                         co_common_opt, rohc_remain_len, &indicator);
 	if(ret < 0)
 	{
@@ -3020,11 +3025,41 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 		pkt_ecn_vals |= ecn;
 
 		/* IP TTL/HL */
-		if(!is_innermost && ttl_hl != ip_context->ttl_hopl)
+		if(ttl_hl != ip_context->ttl_hopl)
 		{
-			tmp->ttl_irreg_chain_flag |= 1;
 			rohc_comp_debug(context, "  TTL/HL did change: 0x%02x -> 0x%02x",
 			                ip_context->ttl_hopl, ttl_hl);
+			tmp->ttl_hopl_changed[ip_hdr_pos] = true;
+		}
+		else
+		{
+			rohc_comp_debug(context, "  TTL/HL didn't change: 0x%02x -> 0x%02x",
+			                ip_context->ttl_hopl, ttl_hl);
+			tmp->ttl_hopl_changed[ip_hdr_pos] = false;
+		}
+		if(tmp->ttl_hopl_changed[ip_hdr_pos])
+		{
+			rohc_comp_debug(context, "  TTL/HL changed (%u -> %u) in current "
+			                "packet, it shall be transmitted %u times",
+			                ip_context->ttl_hopl, ttl_hl, oa_repetitions_nr);
+			tcp_context->ttl_hopl_change_count[ip_hdr_pos] = 0;
+		}
+		else if(tcp_context->ttl_hopl_change_count[ip_hdr_pos] < oa_repetitions_nr)
+		{
+			rohc_comp_debug(context, "  TTL/HL changed in last packets, it shall "
+			                "be transmitted %u times more", oa_repetitions_nr -
+			                tcp_context->ttl_hopl_change_count[ip_hdr_pos]);
+			tmp->ttl_hopl_changed[ip_hdr_pos] = true;
+		}
+		if(is_innermost)
+		{
+			tmp->innermost_ttl_hopl_changed = tmp->ttl_hopl_changed[ip_hdr_pos];
+			tcp_context->innermost_ttl_hopl_change_count =
+				tcp_context->ttl_hopl_change_count[ip_hdr_pos];
+		}
+		else if(tmp->ttl_hopl_changed[ip_hdr_pos])
+		{
+			tmp->ttl_irreg_chain_flag |= 1;
 		}
 
 		/* IPv6 extension headers */
@@ -3142,28 +3177,6 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 		                "it shall be transmitted %u times more", oa_repetitions_nr -
 		                tcp_context->innermost_dscp_trans_nr);
 		tmp->dscp_changed = true;
-	}
-
-	/* encode innermost IPv4 TTL or IPv6 Hop Limit */
-	if(uncomp_pkt_hdrs->innermost_ip_hdr->ttl_hl != inner_ip_ctxt->ttl_hopl)
-	{
-		rohc_comp_debug(context, "innermost IP TTL/HL changed (%u -> %u) "
-		                "in current packet, it shall be transmitted %u times",
-		                inner_ip_ctxt->ttl_hopl,
-		                uncomp_pkt_hdrs->innermost_ip_hdr->ttl_hl, oa_repetitions_nr);
-		tmp->ttl_hopl_changed = true;
-		tcp_context->ttl_hopl_change_count = 0;
-	}
-	else if(tcp_context->ttl_hopl_change_count < oa_repetitions_nr)
-	{
-		rohc_comp_debug(context, "innermost IP TTL/HL changed in last packets, "
-		                "it shall be transmitted %u times more", oa_repetitions_nr -
-		                tcp_context->ttl_hopl_change_count);
-		tmp->ttl_hopl_changed = true;
-	}
-	else
-	{
-		tmp->ttl_hopl_changed = false;
 	}
 
 	/* compute how many bits are needed to send header fields */
@@ -3869,7 +3882,7 @@ static rohc_packet_t tcp_decide_FO_SO_packet(const struct rohc_comp_ctxt *const 
 		packet_type = ROHC_PACKET_TCP_CO_COMMON;
 	}
 	else if(tmp->ecn_used_changed ||
-	        tmp->ttl_hopl_changed)
+	        tmp->innermost_ttl_hopl_changed)
 	{
 		/* use compressed header with a 7-bit CRC (rnd_8, seq_8 or common):
 		 *  - use common if too many LSB of sequence number are required
