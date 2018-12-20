@@ -42,6 +42,7 @@ rohc_comp_enable_profiles
 rohc_comp_disable_profile
 rohc_comp_disable_profiles
 rohc_compress4
+rohc_comp_create_context
 rohc_comp_pad
 rohc_comp_deliver_feedback2
 rohc_comp_get_segment2

@@ -142,7 +142,8 @@ static struct rohc_comp_ctxt *
 	                 const struct net_pkt *const packet,
 	                 const struct rohc_ts arrival_time,
 	                 const bool do_ctxt_replication,
-	                 const rohc_cid_t cid_for_replication)
+	                 const rohc_cid_t cid_for_replication,
+	                 const rohc_cid_t cid_hint)
 	__attribute__((nonnull(1, 2, 3), warn_unused_result));
 static struct rohc_comp_ctxt *
 	rohc_comp_find_ctxt(struct rohc_comp *const comp,
@@ -808,6 +809,90 @@ error_free_new_context:
 error:
 	return ROHC_STATUS_ERROR;
 }
+
+/**
+ * @brief Create context for given context id
+ *
+ * Create context for given context id and uncompressed packet, recycle context if
+ * it is already used.
+ *
+ * @param comp              The ROHC compressor
+ * @param uncomp_packet     The uncompressed packet for which context is created
+ * @param cid_to_use        The context id to use for context creation
+ * @return                  Possible return values:
+ *                          \li \ref ROHC_STATUS_OK if a context was created
+ *                          \li \ref ROHC_STATUS_ERROR if an error occurred
+ *
+ * @ingroup rohc_comp
+ *
+ */
+rohc_status_t rohc_comp_create_context(struct rohc_comp *const comp,
+                             const struct rohc_buf uncomp_packet,
+                             const rohc_cid_t cid_to_use)
+{
+	struct net_pkt ip_pkt;
+	bool do_ctxt_replication = false;
+	rohc_cid_t best_ctxt_for_replication = ROHC_LARGE_CID_MAX + 1;
+	const struct rohc_comp_profile *profile;
+	struct rohc_comp_ctxt *context;
+
+	/* check inputs validity */
+	if(comp == NULL)
+	{
+		goto error;
+	}
+	if(rohc_buf_is_malformed(uncomp_packet))
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				"given uncomp_packet is malformed");
+		goto error;
+	}
+	if(rohc_buf_is_empty(uncomp_packet))
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				"given uncomp_packet is empty");
+		goto error;
+	}
+
+	/* print uncompressed bytes */
+	if((comp->features & ROHC_COMP_FEATURE_DUMP_PACKETS) != 0)
+	{
+		rohc_dump_packet(comp->trace_callback, comp->trace_callback_priv,
+				ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
+				"uncompressed data, max 100 bytes", uncomp_packet);
+	}
+
+	/* parse the uncompressed packet */
+	net_pkt_parse(&ip_pkt, uncomp_packet, comp->trace_callback,
+			comp->trace_callback_priv, ROHC_TRACE_COMP);
+
+	/* find the best profile for the packet */
+	profile = c_get_profile_from_packet(comp, &ip_pkt);
+	if(profile == NULL)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				"no profile found for packet, giving up");
+		goto error;
+	}
+
+	/* create a new context */
+	context = c_create_context(comp, profile, &ip_pkt, uncomp_packet.time,
+			do_ctxt_replication, best_ctxt_for_replication, cid_to_use);
+	if(context == NULL)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				"failed to create a new context");
+		goto error;
+	}
+
+	/* compression is successful */
+	return ROHC_STATUS_OK;
+
+error:
+	return ROHC_STATUS_ERROR;
+}
+
+
 
 
 /**
@@ -2538,6 +2623,8 @@ static const struct rohc_comp_profile *
  *                      or to disable time-related features in ROHC protocol)
  * @param do_ctxt_replication  Are we able to replicate an existing context?
  * @param cid_for_replication  The context to replicate if any
+ * @param cid_hint      The context id to use for context creation, -1 to use the
+ *                      first one free or the oldest
  * @return              The compression context if successful, NULL otherwise
  */
 static struct rohc_comp_ctxt *
@@ -2546,19 +2633,36 @@ static struct rohc_comp_ctxt *
 	                 const struct net_pkt *const packet,
 	                 const struct rohc_ts arrival_time,
 	                 const bool do_ctxt_replication,
-	                 const rohc_cid_t cid_for_replication)
+	                 const rohc_cid_t cid_for_replication,
+	                 const rohc_cid_t cid_hint)
 {
 	struct rohc_comp_ctxt *c;
 	rohc_cid_t cid_to_use;
 
 	cid_to_use = 0;
 
+	if(cid_hint != (rohc_cid_t)-1)
+	{
+		cid_to_use = cid_hint;
+
+		if(comp->contexts[cid_to_use].used)
+		{
+			/* destroy the context before replacing it with a new one */
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+					"recycle oldest context (CID = %zu)", cid_to_use);
+			comp->contexts[cid_to_use].profile->destroy(&comp->contexts[cid_to_use]);
+			comp->contexts[cid_to_use].used = 0;
+			assert(comp->num_contexts_used > 0);
+			comp->num_contexts_used--;
+			return NULL;
+		}
+	}
 	/* if all the contexts in the array are used:
 	 *   => recycle the oldest context to make room
 	 * if at least one context in the array is not used:
 	 *   => pick the first unused context
 	 */
-	if(comp->num_contexts_used > comp->medium.max_cid)
+	else if(comp->num_contexts_used > comp->medium.max_cid)
 	{
 		/* all the contexts in the array were used, recycle the oldest context
 		 * to make some room */
@@ -2849,7 +2953,7 @@ static struct rohc_comp_ctxt *
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "no existing context found for packet, create a new one");
 		context = c_create_context(comp, profile, packet, arrival_time,
-		                           do_ctxt_replication, best_ctxt_for_replication);
+		                           do_ctxt_replication, best_ctxt_for_replication, -1);
 		if(context == NULL)
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,

@@ -436,9 +436,6 @@ static void ip_header_info_new(struct ip_header_info *const header_info,
 	header_info->version = ip_get_version(ip);
 	header_info->static_chain_end = false;
 
-	/* we haven't seen any header so far */
-	header_info->is_first_header = true;
-
 	/* version specific initialization */
 	if(header_info->version == IPV4)
 	{
@@ -462,6 +459,12 @@ static void ip_header_info_new(struct ip_header_info *const header_info,
 		rohc_comp_list_ipv6_new(&header_info->info.v6.ext_comp, list_trans_nr,
 		                        trace_cb, trace_cb_priv, profile_id);
 	}
+
+	/* init the IP information with the IP header */
+	update_context_ip_hdr(header_info, ip);
+
+	/* we haven't seen any header so far */
+	header_info->is_first_header = true;
 }
 
 

@@ -313,6 +313,11 @@ rohc_status_t ROHC_EXPORT rohc_compress4(struct rohc_comp *const comp,
                                          struct rohc_buf *const rohc_packet)
 	__attribute__((warn_unused_result));
 
+rohc_status_t ROHC_EXPORT rohc_comp_create_context(struct rohc_comp *const comp,
+                             const struct rohc_buf uncomp_packet,
+                             const rohc_cid_t cid_to_use)
+	__attribute__((warn_unused_result));
+
 rohc_status_t ROHC_EXPORT rohc_comp_pad(struct rohc_comp *const comp,
                                         struct rohc_buf *const rohc_packet,
                                         const size_t min_pkt_len)
