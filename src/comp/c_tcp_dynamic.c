@@ -38,7 +38,7 @@
 static int tcp_code_dynamic_ipv4_part(const struct rohc_comp_ctxt *const context,
                                       ip_context_t *const ip_context,
                                       const struct ipv4_hdr *const ipv4,
-                                      const bool is_innermost,
+                                      const rohc_ip_id_behavior_t ip_id_behavior,
                                       uint8_t *const rohc_data,
                                       const size_t rohc_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
@@ -99,13 +99,14 @@ int tcp_code_dyn_part(struct rohc_comp_ctxt *const context,
 	{
 		const struct ip_hdr *const ip = uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos].ip;
 		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
-		const bool is_inner = !!(ip_hdr_pos + 1 == tcp_context->ip_contexts_nr);
 
 		if(ip->version == IPV4)
 		{
 			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) ip;
+			const rohc_ip_id_behavior_t ip_id_behavior =
+				tmp->ip_id_behaviors[ip_hdr_pos];
 
-			ret = tcp_code_dynamic_ipv4_part(context, ip_context, ipv4, is_inner,
+			ret = tcp_code_dynamic_ipv4_part(context, ip_context, ipv4, ip_id_behavior,
 			                                 rohc_remain_data, rohc_remain_len);
 			if(ret < 0)
 			{
@@ -213,8 +214,7 @@ error:
  * @param context         The compression context
  * @param ip_context      The specific IP compression context
  * @param ipv4            The IPv4 header
- * @param is_innermost    true if the IP header is the innermost of the packet,
- *                        false otherwise
+ * @param ip_id_behavior  The IP-ID behavior of the IPv4 header
  * @param[out] rohc_data  The ROHC packet being built
  * @param rohc_max_len    The max remaining length in the ROHC buffer
  * @return                The length appended in the ROHC buffer if positive,
@@ -223,7 +223,7 @@ error:
 static int tcp_code_dynamic_ipv4_part(const struct rohc_comp_ctxt *const context,
                                       ip_context_t *const ip_context,
                                       const struct ipv4_hdr *const ipv4,
-                                      const bool is_innermost,
+                                      const rohc_ip_id_behavior_t ip_id_behavior,
                                       uint8_t *const rohc_data,
                                       const size_t rohc_max_len)
 {
@@ -244,36 +244,14 @@ static int tcp_code_dynamic_ipv4_part(const struct rohc_comp_ctxt *const context
 	/* IP-ID */
 	ip_id = rohc_ntoh16(ipv4->id);
 	rohc_comp_debug(context, "ip_id_behavior = %d, last IP-ID = 0x%04x, "
-	                "IP-ID = 0x%04x", ip_context->ip_id_behavior,
-	                ip_context->last_ip_id, ip_id);
+	                "IP-ID = 0x%04x", ip_id_behavior, ip_context->last_ip_id, ip_id);
 
 	ipv4_dynamic1->reserved = 0;
 	ipv4_dynamic1->df = ipv4->df;
 
 	/* IP-ID behavior
 	 * cf. RFC4996 page 60/61 ip_id_behavior_choice() and ip_id_enc_dyn() */
-	if(is_innermost)
-	{
-		/* all behavior values possible */
-		ipv4_dynamic1->ip_id_behavior = ip_context->ip_id_behavior;
-	}
-	else
-	{
-		/* only ROHC_IP_ID_BEHAVIOR_RAND or ROHC_IP_ID_BEHAVIOR_ZERO */
-		if(ipv4->id == 0)
-		{
-			ipv4_dynamic1->ip_id_behavior = ROHC_IP_ID_BEHAVIOR_ZERO;
-		}
-		else
-		{
-			ipv4_dynamic1->ip_id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
-		}
-		/* TODO: should not update context there */
-		ip_context->ip_id_behavior = ipv4_dynamic1->ip_id_behavior;
-	}
-	/* TODO: should not update context there */
-	ip_context->last_ip_id_behavior = ip_context->ip_id_behavior;
-
+	ipv4_dynamic1->ip_id_behavior = ip_id_behavior;
 	ipv4_dynamic1->dscp = ipv4->dscp;
 	ipv4_dynamic1->ip_ecn_flags = ipv4->ecn;
 	ipv4_dynamic1->ttl_hopl = ipv4->ttl;

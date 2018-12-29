@@ -37,12 +37,13 @@
 static int tcp_code_irregular_ipv4_part(const struct rohc_comp_ctxt *const context,
                                         const ip_context_t *const ip_context,
                                         const struct ipv4_hdr *const ipv4,
+                                        const rohc_ip_id_behavior_t ip_id_behavior,
                                         const bool is_innermost,
                                         const bool ecn_used,
                                         const bool ttl_irreg_chain_flag,
                                         uint8_t *const rohc_data,
                                         const size_t rohc_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 7)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 8)));
 
 static int tcp_code_irregular_ipv6_part(const struct rohc_comp_ctxt *const context,
                                         const ip_context_t *const ip_context,
@@ -105,8 +106,11 @@ int tcp_code_irreg_chain(struct rohc_comp_ctxt *const context,
 		if(ip->version == IPV4)
 		{
 			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) ip;
+			const rohc_ip_id_behavior_t ip_id_behavior =
+				tmp->ip_id_behaviors[ip_hdr_pos];
 
-			ret = tcp_code_irregular_ipv4_part(context, ip_context, ipv4, is_innermost,
+			ret = tcp_code_irregular_ipv4_part(context, ip_context, ipv4,
+			                                   ip_id_behavior, is_innermost,
 			                                   tcp_context->ecn_used,
 			                                   tmp->ttl_irreg_chain_flag,
 			                                   rohc_remain_data, rohc_remain_len);
@@ -212,6 +216,7 @@ error:
  * @param context               The compression context
  * @param ip_context            The specific IP compression context
  * @param ipv4                  The IPv4 header
+ * @param ip_id_behavior        The IP-ID behavior of the IPv4 header
  * @param is_innermost          True if IP header is the innermost of the packet
  * @param ecn_used              The indicator of ECN usage
  * @param ttl_irreg_chain_flag  Whether the TTL of an outer header changed
@@ -223,6 +228,7 @@ error:
 static int tcp_code_irregular_ipv4_part(const struct rohc_comp_ctxt *const context,
                                         const ip_context_t *const ip_context,
                                         const struct ipv4_hdr *const ipv4,
+                                        const rohc_ip_id_behavior_t ip_id_behavior,
                                         const bool is_innermost,
                                         const bool ecn_used,
                                         const bool ttl_irreg_chain_flag,
@@ -237,11 +243,10 @@ static int tcp_code_irregular_ipv4_part(const struct rohc_comp_ctxt *const conte
 	rohc_comp_debug(context, "ecn_used = %d, is_innermost = %d, "
 	                "ttl_irreg_chain_flag = %d",
 	                ecn_used, is_innermost, ttl_irreg_chain_flag);
-	rohc_comp_debug(context, "IP version = 4, ip_id_behavior = %d",
-	                ip_context->ip_id_behavior);
+	rohc_comp_debug(context, "IP version = 4, ip_id_behavior = %d", ip_id_behavior);
 
 	/* ip_id =:= ip_id_enc_irreg( ip_id_behavior.UVALUE ) */
-	if(ip_context->ip_id_behavior == ROHC_IP_ID_BEHAVIOR_RAND)
+	if(ip_id_behavior == ROHC_IP_ID_BEHAVIOR_RAND)
 	{
 		if(rohc_remain_len < sizeof(uint16_t))
 		{

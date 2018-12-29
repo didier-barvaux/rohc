@@ -34,7 +34,7 @@
 static int tcp_code_replicate_ipv4_part(const struct rohc_comp_ctxt *const context,
                                         ip_context_t *const ip_context,
                                         const struct ipv4_hdr *const ipv4,
-                                        const bool is_innermost,
+                                        const rohc_ip_id_behavior_t ip_id_behavior,
                                         const bool ttl_changed,
                                         uint8_t *const rohc_data,
                                         const size_t rohc_max_len)
@@ -92,15 +92,16 @@ int tcp_code_replicate_chain(struct rohc_comp_ctxt *const context,
 	{
 		const struct ip_hdr *const ip = uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos].ip;
 		ip_context_t *const ip_context = &(tcp_context->ip_contexts[ip_hdr_pos]);
-		const bool is_inner = !!(ip_hdr_pos + 1 == tcp_context->ip_contexts_nr);
 
 		if(ip->version == IPV4)
 		{
 			const struct ipv4_hdr *const ipv4 = (struct ipv4_hdr *) ip;
+			const rohc_ip_id_behavior_t ip_id_behavior =
+				tmp->ip_id_behaviors[ip_hdr_pos];
 			const bool ttl_hopl_changed = tmp->ttl_hopl_changed[ip_hdr_pos];
 
 			ret = tcp_code_replicate_ipv4_part(context, ip_context, ipv4,
-			                                   is_inner, ttl_hopl_changed,
+			                                   ip_id_behavior, ttl_hopl_changed,
 			                                   rohc_remain_data, rohc_remain_len);
 			if(ret < 0)
 			{
@@ -185,8 +186,7 @@ error:
  * @param context         The compression context
  * @param ip_context      The specific IP compression context
  * @param ipv4            The IPv4 header
- * @param is_innermost    true if the IP header is the innermost of the packet,
- *                        false otherwise
+ * @param ip_id_behavior  The IP-ID behavior of the IPv4 header
  * @param ttl_changed     Whether the IP TTL changed
  * @param[out] rohc_data  The ROHC packet being built
  * @param rohc_max_len    The max remaining length in the ROHC buffer
@@ -196,7 +196,7 @@ error:
 static int tcp_code_replicate_ipv4_part(const struct rohc_comp_ctxt *const context,
                                         ip_context_t *const ip_context,
                                         const struct ipv4_hdr *const ipv4,
-                                        const bool is_innermost,
+                                        const rohc_ip_id_behavior_t ip_id_behavior,
                                         const bool ttl_changed,
                                         uint8_t *const rohc_data,
                                         const size_t rohc_max_len)
@@ -219,28 +219,7 @@ static int tcp_code_replicate_ipv4_part(const struct rohc_comp_ctxt *const conte
 	ipv4_replicate->reserved = 0;
 
 	/* IP-ID behavior: cf. RFC6846 §6.1.2 and ip_id_enc_dyn() */
-	if(is_innermost)
-	{
-		/* all behavior values possible */
-		ipv4_replicate->ip_id_behavior = ip_context->ip_id_behavior;
-	}
-	else
-	{
-		/* only ROHC_IP_ID_BEHAVIOR_RAND or ROHC_IP_ID_BEHAVIOR_ZERO */
-		if(ipv4->id == 0)
-		{
-			ipv4_replicate->ip_id_behavior = ROHC_IP_ID_BEHAVIOR_ZERO;
-		}
-		else
-		{
-			ipv4_replicate->ip_id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
-		}
-		/* TODO: should not update context there */
-		ip_context->ip_id_behavior = ipv4_replicate->ip_id_behavior;
-	}
-	/* TODO: should not update context there */
-	ip_context->last_ip_id_behavior = ip_context->ip_id_behavior;
-
+	ipv4_replicate->ip_id_behavior = ip_id_behavior;
 	ipv4_replicate->df = ipv4->df;
 	ipv4_replicate->dscp = ipv4->dscp;
 	ipv4_replicate->ip_ecn_flags = ipv4->ecn;

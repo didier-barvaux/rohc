@@ -49,9 +49,13 @@ struct tcp_tmp_variables
 	uint32_t seq_num;
 	uint32_t ack_num;
 
+	/** The new innermost IP-ID behavior */
+	rohc_ip_id_behavior_t innermost_ip_id_behavior;
 	/** The IP-ID / SN delta (with bits swapped if necessary) */
 	uint16_t ip_id_delta;
 
+	/** The new IP-ID behaviors per IP header */
+	rohc_ip_id_behavior_t ip_id_behaviors[ROHC_MAX_IP_HDRS];
 	/** Whether the TTL/HL changed per IP header */
 	bool ttl_hopl_changed[ROHC_MAX_IP_HDRS];
 
@@ -68,7 +72,7 @@ struct tcp_tmp_variables
 	/** Whether the ACK number changed or not */
 	uint16_t tcp_ack_num_unchanged:1;
 	/** Whether the behavior of the IP-ID field changed with current packet */
-	uint16_t ip_id_behavior_changed:1;
+	uint16_t innermost_ip_id_behavior_changed:1;
 	uint16_t innermost_ttl_hopl_changed:1;
 	uint16_t ttl_irreg_chain_flag:1; /* outer IPv4 TTLs or IPv6 Hop Limits */
 	uint16_t outer_ip_ttl_changed:1;
@@ -79,6 +83,9 @@ struct tcp_tmp_variables
 	uint16_t tcp_urg_flag_changed:1;
 	uint16_t tcp_urg_ptr_changed:1;
 	uint16_t ecn_used_changed:1; /**< Whether the ecn_used flag changed or not */
+
+	/** Whether the behavior of at least one of the outer IP-ID fields changed */
+	bool outer_ip_id_behavior_changed;
 
 	/** The temporary part of the context for TCP options */
 	struct c_tcp_opts_ctxt_tmp tcp_opts;
@@ -118,6 +125,8 @@ struct sc_tcp_context
 	/** The number of times the ECN fields were not needed */
 	uint8_t ecn_used_zero_count:4;
 	uint8_t innermost_ttl_hopl_change_count:4;
+	/** The number of outer IP-ID behaviors transmissions since last change */
+	uint8_t outer_ip_id_behavior_trans_nr;
 	/** The number of innermost IP-ID behavior transmissions since last change */
 	uint8_t innermost_ip_id_behavior_trans_nr;
 	/** The number of innermost DSCP transmissions since last change */
