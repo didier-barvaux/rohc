@@ -55,58 +55,10 @@ struct comp_rfc5225_tmp_variables
 
 	/** The new IP-ID behaviors for all IP headers */
 	rohc_ip_id_behavior_t ip_id_behaviors[ROHC_MAX_IP_HDRS];
-
-	/** Whether at least one of the DF fields changed in current packet */
-	bool at_least_one_df_just_changed;
-	/** Whether at least one of the DF fields changed in last few packets */
-	bool at_least_one_df_changed;
-	/** Whether the behavior of at least one of the IP-ID fields changed */
-	bool at_least_one_ip_id_behavior_just_changed;
-	/** Whether the behavior of at least one of the IP-ID fields changed */
-	bool at_least_one_ip_id_behavior_changed;
-
-	/** Whether at least one of the DF fields changed in all outer IP headers */
-	bool outer_df_just_changed;
-	/** Whether at least one of the DF fields changed in all outer IP headers */
-	bool outer_df_changed;
-	/** Whether the behavior of at least one of the outer IP-ID fields changed */
-	bool outer_ip_id_behavior_just_changed;
-	/** Whether the behavior of at least one of the outer IP-ID fields changed */
-	bool outer_ip_id_behavior_changed;
-	/* Whether at least one TOS/TC or TTL/HL changed in all outer IP headers */
-	bool outer_ip_flag_just;
-	/* Whether at least one TOS/TC or TTL/HL changed in all outer IP headers */
-	bool outer_ip_flag;
-
-	/** Whether the innermost DF field changed in last current packet */
-	bool innermost_df_just_changed;
-	/** Whether the innermost DF field changed in last few packets */
-	bool innermost_df_changed;
-	/** Whether the behavior of the innermost IP-ID field changed */
-	bool innermost_ip_id_behavior_just_changed;
-	/** Whether the behavior of the innermost IP-ID field changed */
-	bool innermost_ip_id_behavior_changed;
-	/** Whether the innermost IP-ID offset changed */
-	bool innermost_ip_id_offset_just_changed;
-	/** Whether the innermost IP-ID offset changed */
-	bool innermost_ip_id_offset_changed;
-	/** Whether the innermost TOS/TC changed in the innermost IP header */
-	bool innermost_tos_tc_just_changed;
-	/** Whether the innermost TOS/TC changed in the innermost IP header */
-	bool innermost_tos_tc_changed;
-	/** Whether the innermost TTL/HL changed in the innermost IP header */
-	bool innermost_ttl_hopl_just_changed;
-	/** Whether the innermost TTL/HL changed in the innermost IP header */
-	bool innermost_ttl_hopl_changed;
-	/** Whether the innermost TOS/TC or TTL/HL changed in the innermost IP header */
-	bool innermost_ip_flag_just;
-	/** Whether the innermost TOS/TC or TTL/HL changed in the innermost IP header */
-	bool innermost_ip_flag;
-
-	/** The new innermost IP-ID value */
-	uint16_t innermost_ip_id;
 	/** The new innermost IP-ID behavior */
 	rohc_ip_id_behavior_t innermost_ip_id_behavior;
+	/** The new innermost IP-ID value */
+	uint16_t innermost_ip_id;
 	/** The new innermost IP-ID / SN delta (with bits swapped if necessary) */
 	uint16_t innermost_ip_id_offset;
 
@@ -116,6 +68,54 @@ struct comp_rfc5225_tmp_variables
 	uint8_t innermost_ttl_hopl;
 	/** The new innermost TOS/TC value */
 	uint8_t innermost_tos_tc;
+
+	/** Whether at least one of the DF fields changed in current packet */
+	uint16_t at_least_one_df_just_changed:1;
+	/** Whether at least one of the DF fields changed in last few packets */
+	uint16_t at_least_one_df_changed:1;
+	/** Whether the behavior of at least one of the IP-ID fields changed */
+	uint16_t at_least_one_ip_id_behavior_just_changed:1;
+	/** Whether the behavior of at least one of the IP-ID fields changed */
+	uint16_t at_least_one_ip_id_behavior_changed:1;
+
+	/** Whether at least one of the DF fields changed in all outer IP headers */
+	uint16_t outer_df_just_changed:1;
+	/** Whether at least one of the DF fields changed in all outer IP headers */
+	uint16_t outer_df_changed:1;
+	/** Whether the behavior of at least one of the outer IP-ID fields changed */
+	uint16_t outer_ip_id_behavior_just_changed:1;
+	/** Whether the behavior of at least one of the outer IP-ID fields changed */
+	uint16_t outer_ip_id_behavior_changed:1;
+	/* Whether at least one TOS/TC or TTL/HL changed in all outer IP headers */
+	uint16_t outer_ip_flag_just:1;
+	/* Whether at least one TOS/TC or TTL/HL changed in all outer IP headers */
+	uint16_t outer_ip_flag:1;
+
+	/** Whether the innermost DF field changed in last current packet */
+	uint16_t innermost_df_just_changed:1;
+	/** Whether the innermost DF field changed in last few packets */
+	uint16_t innermost_df_changed:1;
+	/** Whether the behavior of the innermost IP-ID field changed */
+	uint16_t innermost_ip_id_behavior_just_changed:1;
+	/** Whether the behavior of the innermost IP-ID field changed */
+	uint16_t innermost_ip_id_behavior_changed:1;
+	/** Whether the innermost IP-ID offset changed */
+	uint16_t innermost_ip_id_offset_just_changed:1;
+	/** Whether the innermost IP-ID offset changed */
+	uint16_t innermost_ip_id_offset_changed:1;
+	/** Whether the innermost TOS/TC changed in the innermost IP header */
+	uint8_t innermost_tos_tc_just_changed:1;
+	/** Whether the innermost TOS/TC changed in the innermost IP header */
+	uint8_t innermost_tos_tc_changed:1;
+	/** Whether the innermost TTL/HL changed in the innermost IP header */
+	uint8_t innermost_ttl_hopl_just_changed:1;
+	/** Whether the innermost TTL/HL changed in the innermost IP header */
+	uint8_t innermost_ttl_hopl_changed:1;
+	/** Whether the innermost TOS/TC or TTL/HL changed in the innermost IP header */
+	uint8_t innermost_ip_flag_just:1;
+	/** Whether the innermost TOS/TC or TTL/HL changed in the innermost IP header */
+	uint8_t innermost_ip_flag:1;
+	uint8_t unused:2;
 };
 
 
