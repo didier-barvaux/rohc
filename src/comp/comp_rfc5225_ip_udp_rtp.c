@@ -1933,7 +1933,7 @@ static int rohc_comp_rfc5225_ip_udp_rtp_code_co_repair_pkt(const struct rohc_com
 		co_repair_crc->header_crc =
 			crc_calculate(ROHC_CRC_TYPE_7, uncomp_pkt_hdrs->all_hdrs,
 			              uncomp_pkt_hdrs->all_hdrs_len, CRC_INIT_7);
-		rohc_comp_debug(context, "CRC-7 on %zu-byte uncompressed header = 0x%x",
+		rohc_comp_debug(context, "CRC-7 on %u-byte uncompressed header = 0x%x",
 		                uncomp_pkt_hdrs->all_hdrs_len, co_repair_crc->header_crc);
 
 		/* reserved field must be 0 */
@@ -2033,7 +2033,7 @@ static int rohc_comp_rfc5225_ip_udp_rtp_code_CO_pkt(const struct rohc_comp_ctxt 
 		crc_computed =
 			crc_calculate(ROHC_CRC_TYPE_3, uncomp_pkt_hdrs->all_hdrs,
 			              uncomp_pkt_hdrs->all_hdrs_len, CRC_INIT_3);
-		rohc_comp_debug(context, "CRC-3 on %zu-byte uncompressed header = 0x%x",
+		rohc_comp_debug(context, "CRC-3 on %u-byte uncompressed header = 0x%x",
 		                uncomp_pkt_hdrs->all_hdrs_len, crc_computed);
 	}
 	else
@@ -2041,7 +2041,7 @@ static int rohc_comp_rfc5225_ip_udp_rtp_code_CO_pkt(const struct rohc_comp_ctxt 
 		crc_computed =
 			crc_calculate(ROHC_CRC_TYPE_7, uncomp_pkt_hdrs->all_hdrs,
 			              uncomp_pkt_hdrs->all_hdrs_len, CRC_INIT_7);
-		rohc_comp_debug(context, "CRC-7 on %zu-byte uncompressed header = 0x%x",
+		rohc_comp_debug(context, "CRC-7 on %u-byte uncompressed header = 0x%x",
 		                uncomp_pkt_hdrs->all_hdrs_len, crc_computed);
 	}
 

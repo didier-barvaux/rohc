@@ -128,9 +128,9 @@ struct rohc_pkt_hdrs
 
 	const struct rtphdr *rtp;          /**< The RTP header (if any) */
 
-	size_t all_hdrs_len;               /**< The cumulated length of all headers */
+	uint16_t all_hdrs_len;             /**< The cumulated length of all headers */
 	const uint8_t *all_hdrs;           /**< All raw headers */
-	size_t payload_len;                /**< The length of the packet payload */
+	uint16_t payload_len;              /**< The length of the packet payload */
 	const uint8_t *payload;            /**< The packet payload */
 };
 

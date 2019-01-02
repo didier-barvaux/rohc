@@ -1239,7 +1239,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 			              (const uint8_t *const) uncomp_pkt_hdrs->ip_hdrs[0].ip,
 			              uncomp_pkt_hdrs->all_hdrs_len, CRC_INIT_7);
 		rohc_remain_data[0] = (B ? 0x80 : 0x00) | (ir_cr_crc7 & 0x7f);
-		rohc_comp_debug(context, "B (%d) + CRC7 (0x%x on %zu bytes) = 0x%02x",
+		rohc_comp_debug(context, "B (%d) + CRC7 (0x%x on %u bytes) = 0x%02x",
 		                GET_REAL(B), ir_cr_crc7, uncomp_pkt_hdrs->all_hdrs_len,
 		                rohc_remain_data[0]);
 		rohc_remain_data++;
@@ -1394,7 +1394,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 		crc_computed =
 			crc_calculate(ROHC_CRC_TYPE_7, uncomp_data, uncomp_pkt_hdrs->all_hdrs_len,
 			              CRC_INIT_7);
-		rohc_comp_debug(context, "CRC-7 on %zu-byte uncompressed header = 0x%x",
+		rohc_comp_debug(context, "CRC-7 on %u-byte uncompressed header = 0x%x",
 		                uncomp_pkt_hdrs->all_hdrs_len, crc_computed);
 	}
 	else
@@ -1402,7 +1402,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 		crc_computed =
 			crc_calculate(ROHC_CRC_TYPE_3, uncomp_data, uncomp_pkt_hdrs->all_hdrs_len,
 			              CRC_INIT_3);
-		rohc_comp_debug(context, "CRC-3 on %zu-byte uncompressed header = 0x%x",
+		rohc_comp_debug(context, "CRC-3 on %u-byte uncompressed header = 0x%x",
 		                uncomp_pkt_hdrs->all_hdrs_len, crc_computed);
 	}
 

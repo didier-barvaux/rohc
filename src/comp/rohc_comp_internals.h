@@ -94,7 +94,6 @@
  */
 
 struct rohc_comp_ctxt;
-struct rohc_pkt_hdrs;
 
 
 /*

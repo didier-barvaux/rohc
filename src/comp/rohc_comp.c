@@ -612,6 +612,15 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 	/* remember the beginning of all headers */
 	pkt_hdrs->all_hdrs = remain_data;
 
+	/* only the ROHCv1 Uncompressed profile can support network packets larger
+	 * than 65535 bytes, but the library implementation does not support it */
+	if(packet->len > UINT16_MAX)
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "unsupported packet larger than 65535 bytes");
+		goto unsupported_net_pkt;
+	}
+
 	/* ROHCv1 Uncompressed profile is possible if it is enabled */
 	if(rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_UNCOMPRESSED))
 	{
@@ -678,6 +687,7 @@ static rohc_profile_t rohc_comp_get_profile(const struct rohc_comp *const comp,
 
 too_many_ip_hdrs:
 unsupported_ip_hdr:
+unsupported_net_pkt:
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	           "profile '%s' (0x%04x) will be used to compress the packet",
 	           rohc_get_profile_descr(profile), profile);
@@ -1502,7 +1512,7 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 		rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		          "%s ROHC packet is too large for the given output buffer, "
 		          "try to segment it (input size = %zd, maximum output "
-		          "size = %zd, required output size = %d + %zd = %zd, "
+		          "size = %zd, required output size = %d + %u = %u, "
 		          "MRRU = %zd)", rohc_get_packet_descr(packet_type),
 		          uncomp_packet.len, max_rohc_buf_len, rohc_hdr_size,
 		          pkt_hdrs.payload_len, rohc_hdr_size + pkt_hdrs.payload_len,
@@ -1514,7 +1524,7 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			             "%s ROHC packet cannot be segmented: too large (%d + "
-			             "%zu + %u = %zu bytes) for MRRU (%zu bytes)",
+			             "%u + %u = %u bytes) for MRRU (%zu bytes)",
 			             rohc_get_packet_descr(packet_type), rohc_hdr_size,
 			             pkt_hdrs.payload_len, CRC_FCS32_LEN, rohc_hdr_size +
 			             pkt_hdrs.payload_len + CRC_FCS32_LEN, comp->mrru);
@@ -1570,7 +1580,7 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 	{
 		/* copy full payload after ROHC header */
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "copy full %zd-byte payload", pkt_hdrs.payload_len);
+		           "copy full %u-byte payload", pkt_hdrs.payload_len);
 		rohc_buf_append(rohc_packet,
 		                rohc_buf_data_at(uncomp_packet, pkt_hdrs.all_hdrs_len),
 		                pkt_hdrs.payload_len);
@@ -1578,7 +1588,7 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 		/* unhide the ROHC header */
 		rohc_buf_push(rohc_packet, rohc_hdr_size);
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "ROHC size = %zd bytes (header = %d, payload = %zu), output "
+		           "ROHC size = %zd bytes (header = %d, payload = %u), output "
 		           "buffer size = %zu", rohc_packet->len, rohc_hdr_size,
 		           pkt_hdrs.payload_len, rohc_buf_avail_len(*rohc_packet));
 

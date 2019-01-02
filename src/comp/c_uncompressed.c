@@ -462,7 +462,7 @@ static int uncompressed_code_normal_packet(const struct rohc_comp_ctxt *context,
 	assert(uncomp_pkt_hdrs->payload_len > 0);
 	rohc_pkt[first_position] = uncomp_pkt_hdrs->payload[0];
 
-	rohc_comp_debug(context, "header length = %zu, payload length = %zu",
+	rohc_comp_debug(context, "header length = %zu, payload length = %u",
 	                counter - 1, uncomp_pkt_hdrs->payload_len);
 
 	return counter;
