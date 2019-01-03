@@ -3636,85 +3636,112 @@ static bool tcp_detect_changes_tcp_hdr(struct rohc_comp_ctxt *const context,
 	}
 
 	/* compute new scaled TCP acknowledgment number */
+	/* TODO: test with large delta (> uint16_t) */
 	{
-		const uint32_t ack_delta = tmp->ack_num - tcp_context->ack_num;
-		uint16_t ack_stride = 0;
+		const uint16_t new_ack_delta = tmp->ack_num - tcp_context->ack_num;
+		const uint16_t oldest_ack_delta =
+			tcp_context->ack_deltas_width[tcp_context->ack_deltas_next];
+		uint16_t new_ack_stride;
 		uint32_t ack_num_scaled;
 		uint32_t ack_num_residue;
 
+		rohc_comp_debug(context, "ACK delta with previous packet = 0x%04x",
+		                new_ack_delta);
+
 		/* change ack_stride only if the ACK delta that was most used over the
 		 * sliding window changed */
-		rohc_comp_debug(context, "ACK delta with previous packet = 0x%04x", ack_delta);
-		if(ack_delta == 0)
+		if(new_ack_delta == 0)
 		{
-			ack_stride = tcp_context->ack_stride;
+			/* new ACK delta cannot be used, so keep current ACK stride */
+			new_ack_stride = tcp_context->ack_stride;
+			rohc_comp_debug(context, "new ACK delta cannot be used, so keep current "
+			                "ACK stride");
+		}
+		else if(new_ack_delta == oldest_ack_delta)
+		{
+			/* no change in last N ACK deltas, so keep current ACK stride */
+			new_ack_stride = tcp_context->ack_stride;
+			rohc_comp_debug(context, "new ACK delta is the same as oldest ACK delta, "
+			                "so keep current ACK stride");
+		}
+		else if(new_ack_delta == tcp_context->ack_stride)
+		{
+			/* new ACK delta is already current ACK stride, so keep current ACK stride */
+			new_ack_stride = tcp_context->ack_stride;
+			rohc_comp_debug(context, "new ACK delta is the same as current ACK stride, "
+			                "so keep current ACK stride");
 		}
 		else
 		{
-			size_t ack_stride_count = 0;
+			size_t nr_new_ack_delta = 1;
 			size_t i;
-			size_t j;
 
-			/* TODO: should update context at the very end only */
-			tcp_context->ack_deltas_width[tcp_context->ack_deltas_next] = ack_delta;
-			tcp_context->ack_deltas_next = (tcp_context->ack_deltas_next + 1) % 20;
-
-			for(i = 0; i < 20; i++)
+			for(i = 1; i < 20; i++)
 			{
 				const uint16_t val =
 					tcp_context->ack_deltas_width[(tcp_context->ack_deltas_next + i) % 20];
-				size_t val_count = 1;
 
-				for(j = i + 1; j < 20; j++)
+				if(val == new_ack_delta)
 				{
-					if(val == tcp_context->ack_deltas_width[(tcp_context->ack_deltas_next + j) % 20])
-					{
-						val_count++;
-					}
-				}
-
-				if(val_count > ack_stride_count)
-				{
-					ack_stride = val;
-					ack_stride_count = val_count;
-					if(ack_stride_count > (20/2))
-					{
-						break;
-					}
+					nr_new_ack_delta++;
 				}
 			}
-			rohc_comp_debug(context, "ack_stride 0x%04x was used %zu times in the "
-			                "last 20 packets", ack_stride, ack_stride_count);
+			if(nr_new_ack_delta >= 10)
+			{
+				new_ack_stride = new_ack_delta;
+				rohc_comp_debug(context, "new ACK delta 0x%04x was used %zu times in last "
+				                "20 packets, so start using it as ACK stride",
+				                new_ack_delta, nr_new_ack_delta);
+			}
+			else
+			{
+				new_ack_stride = tcp_context->ack_stride;
+				rohc_comp_debug(context, "new ACK delta 0x%04x was used %zu times in last "
+				                "20 packets, so keep current ACK stride",
+				                new_ack_delta, nr_new_ack_delta);
+			}
 		}
 
 		/* compute new scaled ACK number & residue */
-		c_field_scaling(&ack_num_scaled, &ack_num_residue, ack_stride, tmp->ack_num);
+		c_field_scaling(&ack_num_scaled, &ack_num_residue, new_ack_stride, tmp->ack_num);
 		rohc_comp_debug(context, "ack_number = 0x%x, scaled = 0x%x, factor = %u, "
 		                "residue = 0x%x", tmp->ack_num, ack_num_scaled,
-		                ack_stride, ack_num_residue);
+		                new_ack_stride, ack_num_residue);
 
-		if(context->num_sent_packets == 0)
+		if(new_ack_stride == 0)
 		{
-			/* no need to transmit the ack_stride until it becomes non-zero */
-			tcp_context->ack_num_scaling_nr = oa_repetitions_nr;
+			rohc_comp_debug(context, "parameters for scaled TCP ACK number "
+			                "cannot be computed for now (ack_stride = 0)");
+		}
+		else if(new_ack_stride != tcp_context->ack_stride ||
+		        ack_num_residue != tcp_context->ack_num_residue)
+		{
+			/* ACK number is not scalable with same parameters any more */
+			rohc_comp_debug(context, "parameters for scaled TCP ACK number changed "
+			                "in current packet, it shall be transmitted %u times",
+			                oa_repetitions_nr);
+			tcp_context->ack_num_scaling_nr = 0;
+		}
+		else if(tcp_context->ack_num_scaling_nr < oa_repetitions_nr)
+		{
+			rohc_comp_debug(context, "parameters for scaled TCP ACK number changed "
+			                "in last few packets, it shall be transmitted %u times more",
+			                oa_repetitions_nr - tcp_context->ack_num_scaling_nr);
 		}
 		else
 		{
-			if(ack_stride != tcp_context->ack_stride ||
-			   ack_num_residue != tcp_context->ack_num_residue)
-			{
-				/* ACK number is not scalable with same parameters any more */
-				tcp_context->ack_num_scaling_nr = 0;
-			}
-			rohc_comp_debug(context, "unscaled ACK number was transmitted at least "
-			                "%u / %u times since the scaling factor or residue changed",
-			                tcp_context->ack_num_scaling_nr, oa_repetitions_nr);
+			rohc_comp_debug(context, "TCP ACK number may be transmitted scaled");
 		}
 
 		/* TODO: should update context at the very end only */
+		if(new_ack_delta != 0)
+		{
+			tcp_context->ack_deltas_width[tcp_context->ack_deltas_next] = new_ack_delta;
+			tcp_context->ack_deltas_next = (tcp_context->ack_deltas_next + 1) % 20;
+		}
 		tcp_context->ack_num_scaled = ack_num_scaled;
 		tcp_context->ack_num_residue = ack_num_residue;
-		tcp_context->ack_stride = ack_stride;
+		tcp_context->ack_stride = new_ack_stride;
 	}
 
 	/* how many bits are required to encode the new ACK number? */
