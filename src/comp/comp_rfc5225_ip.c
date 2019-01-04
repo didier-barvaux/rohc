@@ -52,6 +52,9 @@ struct comp_rfc5225_tmp_variables
 	/** The offset between two consecutive MSN */
 	int16_t msn_offset;
 
+	/** The new IP-ID behaviors for all IP headers */
+	rohc_ip_id_behavior_t ip_id_behaviors[ROHC_MAX_IP_HDRS];
+
 	/** Whether at least one of the DF fields changed */
 	bool at_least_one_df_changed;
 	/** Whether the behavior of at least one of the IP-ID fields changed */
@@ -79,6 +82,8 @@ struct comp_rfc5225_tmp_variables
 
 	/** The new innermost IP-ID value */
 	uint16_t innermost_ip_id;
+	/** The new innermost IP-ID behavior */
+	rohc_ip_id_behavior_t innermost_ip_id_behavior;
 	/** The new innermost IP-ID / SN delta (with bits swapped if necessary) */
 	uint16_t innermost_ip_id_offset;
 
@@ -158,28 +163,31 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
                                        rohc_packet_t *const packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
-static void rohc_comp_rfc5225_ip_detect_changes(struct rohc_comp_ctxt *const context,
+static void rohc_comp_rfc5225_ip_detect_changes(const struct rohc_comp_ctxt *const context,
                                                 const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                                 struct comp_rfc5225_tmp_variables *const tmp)
 	__attribute__((nonnull(1, 2, 3)));
-static void rohc_comp_rfc5225_ip_detect_changes_ipv4(struct rohc_comp_ctxt *const ctxt,
-                                                     ip_context_t *const ip_ctxt,
+static void rohc_comp_rfc5225_ip_detect_changes_ipv4(const struct rohc_comp_ctxt *const ctxt,
+                                                     const ip_context_t *const ip_ctxt,
                                                      struct comp_rfc5225_tmp_variables *const tmp,
+                                                     rohc_ip_id_behavior_t *const new_ip_id_behavior,
                                                      const struct ipv4_hdr *const ipv4,
                                                      const bool is_innermost)
-	__attribute__((nonnull(1, 2, 3, 4)));
+	__attribute__((nonnull(1, 2, 3, 4, 5)));
 
 static int rohc_comp_rfc5225_ip_code_IR_pkt(const struct rohc_comp_ctxt *const ctxt,
                                             const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                                            const struct comp_rfc5225_tmp_variables *const tmp,
                                             uint8_t *const rohc_pkt,
                                             const size_t rohc_pkt_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 
 static int rohc_comp_rfc5225_ip_code_co_repair_pkt(const struct rohc_comp_ctxt *const ctxt,
                                                    const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                                                   const struct comp_rfc5225_tmp_variables *const tmp,
                                                    uint8_t *const rohc_pkt,
                                                    const size_t rohc_pkt_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 
 static int rohc_comp_rfc5225_ip_code_CO_pkt(const struct rohc_comp_ctxt *const context,
                                             const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
@@ -244,16 +252,18 @@ static int rohc_comp_rfc5225_ip_static_ipv6_part(const struct rohc_comp_ctxt *co
 /* dynamic chain */
 static int rohc_comp_rfc5225_ip_dyn_chain(const struct rohc_comp_ctxt *const ctxt,
                                           const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                                          const struct comp_rfc5225_tmp_variables *const tmp,
                                           uint8_t *const rohc_pkt,
                                           const size_t rohc_pkt_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 static int rohc_comp_rfc5225_ip_dyn_ipv4_part(const struct rohc_comp_ctxt *const ctxt,
                                               const ip_context_t *const ip_ctxt,
+                                              const rohc_ip_id_behavior_t ip_id_behavior,
                                               const struct ipv4_hdr *const ipv4,
                                               const bool is_innermost,
                                               uint8_t *const rohc_data,
                                               const size_t rohc_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 6)));
 static int rohc_comp_rfc5225_ip_dyn_ipv6_part(const struct rohc_comp_ctxt *const ctxt,
                                               const ip_context_t *const ip_ctxt,
                                               const struct ipv6_hdr *const ipv6,
@@ -265,18 +275,19 @@ static int rohc_comp_rfc5225_ip_dyn_ipv6_part(const struct rohc_comp_ctxt *const
 /* irregular chain */
 static int rohc_comp_rfc5225_ip_irreg_chain(const struct rohc_comp_ctxt *const ctxt,
                                             const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                                            const bool outer_ip_flag,  
+                                            const struct comp_rfc5225_tmp_variables *const tmp,
                                             uint8_t *const rohc_pkt,
                                             const size_t rohc_pkt_max_len)
-        __attribute__((warn_unused_result, nonnull(1, 2, 4)));
+        __attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 static int rohc_comp_rfc5225_ip_irreg_ipv4_part(const struct rohc_comp_ctxt *const ctxt,
                                                 const ip_context_t *const ip_ctxt,
+                                                const rohc_ip_id_behavior_t ip_id_behavior,
                                                 const struct ipv4_hdr *const ipv4,
                                                 const bool is_innermost,
                                                 const bool outer_ip_flag,  
                                                 uint8_t *const rohc_data,
                                                 const size_t rohc_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 6)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 7)));
 static int rohc_comp_rfc5225_ip_irreg_ipv6_part(const struct rohc_comp_ctxt *const ctxt,
                                                 const ip_context_t *const ip_ctxt,
                                                 const struct ipv6_hdr *const ipv6,
@@ -336,6 +347,7 @@ static bool rohc_comp_rfc5225_is_ipid_sequential(const rohc_ip_id_behavior_t beh
 static bool rohc_comp_rfc5225_is_seq_ipid_inferred(const ip_context_t *const ip_ctxt,
                                                    const uint8_t ip_id_offset_trans_nr,
                                                    const uint8_t oa_repetitions_nr,
+                                                   const rohc_ip_id_behavior_t new_ip_id_behavior,
                                                    const uint16_t new_ip_id)
 	__attribute__((warn_unused_result, nonnull(1)));
 
@@ -525,7 +537,7 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 	/* STEP 2: code packet */
 	if((*packet_type) == ROHC_PACKET_IR)
 	{
-		ret = rohc_comp_rfc5225_ip_code_IR_pkt(context, uncomp_pkt_hdrs,
+		ret = rohc_comp_rfc5225_ip_code_IR_pkt(context, uncomp_pkt_hdrs, &tmp,
 		                                       rohc_remain_data, rohc_remain_len);
 		if(ret < 0)
 		{
@@ -536,7 +548,7 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 	}
 	else if((*packet_type) == ROHC_PACKET_CO_REPAIR)
 	{
-		ret = rohc_comp_rfc5225_ip_code_co_repair_pkt(context, uncomp_pkt_hdrs,
+		ret = rohc_comp_rfc5225_ip_code_co_repair_pkt(context, uncomp_pkt_hdrs, &tmp,
 		                                              rohc_remain_data, rohc_remain_len);
 		if(ret < 0)
 		{
@@ -577,7 +589,7 @@ static int rohc_comp_rfc5225_ip_encode(struct rohc_comp_ctxt *const context,
 
 		if(ip_hdr->version == IPV4)
 		{
-			ip_ctxt->last_ip_id_behavior = ip_ctxt->ip_id_behavior;
+			ip_ctxt->ip_id_behavior = tmp.ip_id_behaviors[ip_hdr_pos];
 			ip_ctxt->last_ip_id = rohc_ntoh16(ip_hdr->ipv4->id);
 			/* add the new IP-ID offset to the W-LSB encoding object */
 			if((ip_hdr_pos + 1) == rfc5225_ctxt->ip_contexts_nr)
@@ -651,13 +663,13 @@ error:
  * @param uncomp_pkt_hdrs  The uncompressed headers to compare
  * @param tmp              The temporary state for the compressed packet
  */
-static void rohc_comp_rfc5225_ip_detect_changes(struct rohc_comp_ctxt *const context,
+static void rohc_comp_rfc5225_ip_detect_changes(const struct rohc_comp_ctxt *const context,
                                                 const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                                 struct comp_rfc5225_tmp_variables *const tmp)
 {
 	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = context->specific;
-	ip_context_t *innermost_ip_ctxt = NULL;
+	const ip_context_t *innermost_ip_ctxt = NULL;
 	size_t ip_hdr_pos;
 
 	/* detect changes in all the IP headers */
@@ -677,7 +689,7 @@ static void rohc_comp_rfc5225_ip_detect_changes(struct rohc_comp_ctxt *const con
 	tmp->at_least_one_ip_id_behavior_changed = false;
 	for(ip_hdr_pos = 0; ip_hdr_pos < rfc5225_ctxt->ip_contexts_nr; ip_hdr_pos++)
 	{
-		ip_context_t *const ip_ctxt = &(rfc5225_ctxt->ip_contexts[ip_hdr_pos]);
+		const ip_context_t *const ip_ctxt = &(rfc5225_ctxt->ip_contexts[ip_hdr_pos]);
 		const bool is_innermost = !!(ip_hdr_pos == (rfc5225_ctxt->ip_contexts_nr - 1));
 		const struct rohc_pkt_ip_hdr *const ip_hdr =
 			&(uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos]);
@@ -725,6 +737,7 @@ static void rohc_comp_rfc5225_ip_detect_changes(struct rohc_comp_ctxt *const con
 		{
 			/* detect changes in the IPv4 header */
 			rohc_comp_rfc5225_ip_detect_changes_ipv4(context, ip_ctxt, tmp,
+			                                         &tmp->ip_id_behaviors[ip_hdr_pos],
 			                                         ip_hdr->ipv4, is_innermost);
 		}
 		else /* IPv6 */
@@ -775,8 +788,8 @@ static void rohc_comp_rfc5225_ip_detect_changes(struct rohc_comp_ctxt *const con
 				rohc_comp_detect_ip_id_behavior(last_ip_id, ip_id,
 				                                tmp->msn_offset, 19);
 		}
-		/* TODO: avoid changing context here */
-		innermost_ip_ctxt->ip_id_behavior = ip_id_behavior;
+		tmp->ip_id_behaviors[rfc5225_ctxt->ip_contexts_nr - 1] = ip_id_behavior;
+		tmp->innermost_ip_id_behavior = ip_id_behavior;
 		rohc_comp_debug(context, "IP-ID now behaves as %s",
 		                rohc_ip_id_behavior_get_descr(ip_id_behavior));
 		if(last_ip_id_behavior != ip_id_behavior)
@@ -785,7 +798,7 @@ static void rohc_comp_rfc5225_ip_detect_changes(struct rohc_comp_ctxt *const con
 			tmp->innermost_ip_id_behavior_changed = true;
 		}
 
-		if(innermost_ip_ctxt->ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
+		if(ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
 		{
 			/* specific case of IP-ID delta for sequential swapped behavior */
 			tmp->innermost_ip_id_offset =
@@ -805,6 +818,12 @@ static void rohc_comp_rfc5225_ip_detect_changes(struct rohc_comp_ctxt *const con
 
 		tmp->innermost_ip_id_offset_changed =
 			!!(rfc5225_ctxt->innermost_ip_id_offset != tmp->innermost_ip_id_offset);
+	}
+	else /* behavior of innermost IPv6 IP-ID never changes */
+	{
+		tmp->ip_id_behaviors[rfc5225_ctxt->ip_contexts_nr - 1] =
+			innermost_ip_ctxt->ip_id_behavior;
+		tmp->innermost_ip_id_behavior = innermost_ip_ctxt->ip_id_behavior;
 	}
 
 	/* any DF that changes shall be transmitted several times */
@@ -976,12 +995,14 @@ static void rohc_comp_rfc5225_ip_detect_changes(struct rohc_comp_ctxt *const con
  * @param ctxt          The compression context
  * @param ip_ctxt       The IPv4 context to compare
  * @param tmp           The temporary state for the compressed packet
+ * @param[out] new_ip_id_behavior  The new behavior of the IPv4 IP-ID
  * @param ipv4          The IPv4 header to compare
  * @param is_innermost  Whether the IPv4 header is the innermost of all IP headers
  */
-static void rohc_comp_rfc5225_ip_detect_changes_ipv4(struct rohc_comp_ctxt *const ctxt,
-                                                     ip_context_t *const ip_ctxt,
+static void rohc_comp_rfc5225_ip_detect_changes_ipv4(const struct rohc_comp_ctxt *const ctxt,
+                                                     const ip_context_t *const ip_ctxt,
                                                      struct comp_rfc5225_tmp_variables *const tmp,
+                                                     rohc_ip_id_behavior_t *const new_ip_id_behavior,
                                                      const struct ipv4_hdr *const ipv4,
                                                      const bool is_innermost)
 {
@@ -1012,7 +1033,6 @@ static void rohc_comp_rfc5225_ip_detect_changes_ipv4(struct rohc_comp_ctxt *cons
 		const uint16_t ip_id = rohc_ntoh16(ipv4->id);
 		const uint16_t last_ip_id = ip_ctxt->last_ip_id;
 		const rohc_ip_id_behavior_t last_ip_id_behavior = ip_ctxt->ip_id_behavior;
-		rohc_ip_id_behavior_t ip_id_behavior;
 
 		rohc_comp_debug(ctxt, "IP-ID behaved as %s",
 		                rohc_ip_id_behavior_get_descr(last_ip_id_behavior));
@@ -1030,17 +1050,15 @@ static void rohc_comp_rfc5225_ip_detect_changes_ipv4(struct rohc_comp_ctxt *cons
 		 */
 		if(ip_id == 0)
 		{
-			ip_id_behavior = ROHC_IP_ID_BEHAVIOR_ZERO;
+			*new_ip_id_behavior = ROHC_IP_ID_BEHAVIOR_ZERO;
 		}
 		else
 		{
-			ip_id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
+			*new_ip_id_behavior = ROHC_IP_ID_BEHAVIOR_RAND;
 		}
-		/* TODO: avoid changing context here */
-		ip_ctxt->ip_id_behavior = ip_id_behavior;
 		rohc_comp_debug(ctxt, "IP-ID now behaves as %s",
-		                rohc_ip_id_behavior_get_descr(ip_id_behavior));
-		if(last_ip_id_behavior != ip_id_behavior)
+		                rohc_ip_id_behavior_get_descr(*new_ip_id_behavior));
+		if(last_ip_id_behavior != (*new_ip_id_behavior))
 		{
 			tmp->at_least_one_ip_id_behavior_changed = true;
 			tmp->outer_ip_id_behavior_changed = true;
@@ -1450,7 +1468,7 @@ static rohc_packet_t rohc_comp_rfc5225_ip_decide_FO_SO_pkt(const struct rohc_com
 	const uint8_t innermost_ip_id_offset_trans_nr =
 		rfc5225_ctxt->innermost_ip_id_offset_trans_nr;
 	const rohc_ip_id_behavior_t innermost_ip_id_behavior =
-		innermost_ip_ctxt->ip_id_behavior;
+		tmp->innermost_ip_id_behavior;
 	rohc_packet_t packet_type;
 
 	/* use pt_0_crc3 only if:
@@ -1470,6 +1488,7 @@ static rohc_packet_t rohc_comp_rfc5225_ip_decide_FO_SO_pkt(const struct rohc_com
 	    rohc_comp_rfc5225_is_seq_ipid_inferred(innermost_ip_ctxt,
 	                                           innermost_ip_id_offset_trans_nr,
 	                                           oa_repetitions_nr,
+	                                           innermost_ip_id_behavior,
 	                                           innermost_ip_id)) &&
 	   !tmp->outer_ip_flag &&
 	   !tmp->innermost_ip_flag &&
@@ -1495,6 +1514,7 @@ static rohc_packet_t rohc_comp_rfc5225_ip_decide_FO_SO_pkt(const struct rohc_com
 	         rohc_comp_rfc5225_is_seq_ipid_inferred(innermost_ip_ctxt,
 	                                                innermost_ip_id_offset_trans_nr,
 	                                                oa_repetitions_nr,
+	                                                innermost_ip_id_behavior,
 	                                                innermost_ip_id)) &&
 	        !tmp->outer_ip_flag &&
 	        !tmp->innermost_ip_flag &&
@@ -1629,6 +1649,7 @@ static bool rohc_comp_rfc5225_is_ipid_sequential(const rohc_ip_id_behavior_t beh
  * @param ip_ctxt                The context for the given IP header
  * @param ip_id_offset_trans_nr  The number of IP-ID offset transmissions
  * @param oa_repetitions_nr      The number of repetitions for Optimistic Approach
+ * @param new_ip_id_behavior     The new behavior of the IP-ID
  * @param new_ip_id              The new value of the IP-ID
  * @return                       true if the given IP-ID is sequential and
  *                               inferred from MSN, false otherwise
@@ -1636,6 +1657,7 @@ static bool rohc_comp_rfc5225_is_ipid_sequential(const rohc_ip_id_behavior_t beh
 static bool rohc_comp_rfc5225_is_seq_ipid_inferred(const ip_context_t *const ip_ctxt,
                                                    const uint8_t ip_id_offset_trans_nr,
                                                    const uint8_t oa_repetitions_nr,
+                                                   const rohc_ip_id_behavior_t new_ip_id_behavior,
                                                    const uint16_t new_ip_id)
 {
 	bool is_inferred;
@@ -1648,11 +1670,11 @@ static bool rohc_comp_rfc5225_is_seq_ipid_inferred(const ip_context_t *const ip_
 	{
 		is_inferred = false;
 	}
-	else if(ip_ctxt->ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ)
+	else if(new_ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ)
 	{
 		is_inferred = (new_ip_id == (ip_ctxt->last_ip_id + 1));
 	}
-	else if(ip_ctxt->ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
+	else if(new_ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
 	{
 		is_inferred = (swab16(new_ip_id) == (swab16(ip_ctxt->last_ip_id) + 1));
 	}
@@ -1670,6 +1692,7 @@ static bool rohc_comp_rfc5225_is_seq_ipid_inferred(const ip_context_t *const ip_
  *
  * @param context           The compression context
  * @param uncomp_pkt_hdrs   The uncompressed headers to encode
+ * @param tmp               The temporary state for the compressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @return                  The length of the ROHC packet if successful,
@@ -1677,6 +1700,7 @@ static bool rohc_comp_rfc5225_is_seq_ipid_inferred(const ip_context_t *const ip_
  */
 static int rohc_comp_rfc5225_ip_code_IR_pkt(const struct rohc_comp_ctxt *context,
                                             const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                                            const struct comp_rfc5225_tmp_variables *const tmp,
                                             uint8_t *const rohc_pkt,
                                             const size_t rohc_pkt_max_len)
 {
@@ -1753,7 +1777,7 @@ static int rohc_comp_rfc5225_ip_code_IR_pkt(const struct rohc_comp_ctxt *context
 	                   rohc_pkt, rohc_hdr_len);
 
 	/* add dynamic chain */
-	ret = rohc_comp_rfc5225_ip_dyn_chain(context, uncomp_pkt_hdrs,
+	ret = rohc_comp_rfc5225_ip_dyn_chain(context, uncomp_pkt_hdrs, tmp,
 	                                     rohc_remain_data, rohc_remain_len);
 	if(ret < 0)
 	{
@@ -1812,6 +1836,7 @@ error:
  *
  * @param context           The compression context
  * @param uncomp_pkt_hdrs   The uncompressed headers to encode
+ * @param tmp               The temporary state for the compressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @return                  The length of the ROHC packet if successful,
@@ -1819,6 +1844,7 @@ error:
  */
 static int rohc_comp_rfc5225_ip_code_co_repair_pkt(const struct rohc_comp_ctxt *context,
                                                    const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                                                   const struct comp_rfc5225_tmp_variables *const tmp,
                                                    uint8_t *const rohc_pkt,
                                                    const size_t rohc_pkt_max_len)
 {
@@ -1891,8 +1917,7 @@ static int rohc_comp_rfc5225_ip_code_co_repair_pkt(const struct rohc_comp_ctxt *
 			 * https://www.rfc-editor.org/errata_search.php?rfc=5225&eid=2703 */
 			if(rfc5225_ctxt->ip_contexts[ip_hdr_pos].version == IPV4)
 			{
-				ip_id_behaviors[ip_id_behaviors_nr] =
-					rfc5225_ctxt->ip_contexts[ip_hdr_pos].ip_id_behavior;
+				ip_id_behaviors[ip_id_behaviors_nr] = tmp->ip_id_behaviors[ip_hdr_pos];
 				rohc_comp_debug(context, "IP-ID behavior #%zu of IPv4 header #%zu "
 				                "= 0x%02x", ip_id_behaviors_nr + 1, ip_hdr_pos + 1,
 				                ip_id_behaviors[ip_id_behaviors_nr]);
@@ -1916,7 +1941,7 @@ static int rohc_comp_rfc5225_ip_code_co_repair_pkt(const struct rohc_comp_ctxt *
 	}
 
 	/* add dynamic chain */
-	ret = rohc_comp_rfc5225_ip_dyn_chain(context, uncomp_pkt_hdrs,
+	ret = rohc_comp_rfc5225_ip_dyn_chain(context, uncomp_pkt_hdrs, tmp,
 	                                     rohc_remain_data, rohc_remain_len);
 	if(ret < 0)
 	{
@@ -2108,8 +2133,7 @@ static int rohc_comp_rfc5225_ip_code_CO_pkt(const struct rohc_comp_ctxt *const c
 	}
 
 	/* add the irregular chain at the very end of the CO header */
-	ret = rohc_comp_rfc5225_ip_irreg_chain(context, uncomp_pkt_hdrs,
-	                                       tmp->outer_ip_flag,
+	ret = rohc_comp_rfc5225_ip_irreg_chain(context, uncomp_pkt_hdrs, tmp,
 	                                       rohc_remain_data, rohc_remain_len);
 	if(ret < 0)
 	{
@@ -2332,6 +2356,7 @@ error:
  *
  * @param ctxt              The compression context
  * @param uncomp_pkt_hdrs   The uncompressed headers to encode
+ * @param tmp               The temporary state for the compressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @return                  The length of the ROHC packet if successful,
@@ -2339,6 +2364,7 @@ error:
  */
 static int rohc_comp_rfc5225_ip_dyn_chain(const struct rohc_comp_ctxt *const ctxt,
                                           const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                                          const struct comp_rfc5225_tmp_variables *const tmp,
                                           uint8_t *const rohc_pkt,
                                           const size_t rohc_pkt_max_len)
 {
@@ -2357,6 +2383,7 @@ static int rohc_comp_rfc5225_ip_dyn_chain(const struct rohc_comp_ctxt *const ctx
 	for(ip_hdr_pos = 0; ip_hdr_pos < rfc5225_ctxt->ip_contexts_nr; ip_hdr_pos++)
 	{
 		const ip_context_t *const ip_ctxt = &(rfc5225_ctxt->ip_contexts[ip_hdr_pos]);
+		const rohc_ip_id_behavior_t ip_id_behavior = tmp->ip_id_behaviors[ip_hdr_pos];
 		const bool is_innermost = !!(ip_hdr_pos + 1 == rfc5225_ctxt->ip_contexts_nr);
 		const struct rohc_pkt_ip_hdr *const ip_hdr =
 			&(uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos]);
@@ -2365,7 +2392,8 @@ static int rohc_comp_rfc5225_ip_dyn_chain(const struct rohc_comp_ctxt *const ctx
 
 		if(ip_hdr->version == IPV4)
 		{
-			ret = rohc_comp_rfc5225_ip_dyn_ipv4_part(ctxt, ip_ctxt, ip_hdr->ipv4, is_innermost,
+			ret = rohc_comp_rfc5225_ip_dyn_ipv4_part(ctxt, ip_ctxt, ip_id_behavior,
+			                                         ip_hdr->ipv4, is_innermost,
 			                                         rohc_remain_data, rohc_remain_len);
 			if(ret < 0)
 			{
@@ -2405,6 +2433,7 @@ error:
  *
  * @param ctxt            The compression context
  * @param ip_ctxt         The specific IP compression context
+ * @param ip_id_behavior  The new IP-ID behavior
  * @param ipv4            The IPv4 header
  * @param is_innermost    true if the IP header is the innermost of the packet,
  *                        false otherwise
@@ -2415,6 +2444,7 @@ error:
  */
 static int rohc_comp_rfc5225_ip_dyn_ipv4_part(const struct rohc_comp_ctxt *const ctxt,
                                               const ip_context_t *const ip_ctxt,
+                                              const rohc_ip_id_behavior_t ip_id_behavior,
                                               const struct ipv4_hdr *const ipv4,
                                               const bool is_innermost,
                                               uint8_t *const rohc_data,
@@ -2442,7 +2472,7 @@ static int rohc_comp_rfc5225_ip_dyn_ipv4_part(const struct rohc_comp_ctxt *const
 		ipv4_dynamic->reserved = 0;
 		ipv4_dynamic->reorder_ratio = ctxt->compressor->reorder_ratio;
 		ipv4_dynamic->df = ipv4->df;
-		ipv4_dynamic->ip_id_behavior_innermost = ip_ctxt->ip_id_behavior;
+		ipv4_dynamic->ip_id_behavior_innermost = ip_id_behavior;
 		ipv4_dynamic->tos_tc = ipv4->tos;
 		ipv4_dynamic->ttl_hopl = ipv4->ttl;
 
@@ -2494,7 +2524,7 @@ static int rohc_comp_rfc5225_ip_dyn_ipv4_part(const struct rohc_comp_ctxt *const
 
 		ipv4_dynamic->reserved = 0;
 		ipv4_dynamic->df = ipv4->df;
-		ipv4_dynamic->ip_id_behavior = ip_ctxt->ip_id_behavior;
+		ipv4_dynamic->ip_id_behavior = ip_id_behavior;
 		ipv4_dynamic->tos_tc = ipv4->tos;
 		ipv4_dynamic->ttl_hopl = ipv4->ttl;
 
@@ -2607,8 +2637,7 @@ error:
  *
  * @param ctxt              The compression context
  * @param uncomp_pkt_hdrs   The uncompressed headers to encode
- * @param outer_ip_flag     Whether at least one TOS/TC or TTL/HL changed in all
- *                          outer IP headers
+ * @param tmp               The temporary state for the compressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @return                  The length of the ROHC packet if successful,
@@ -2616,11 +2645,12 @@ error:
  */
 static int rohc_comp_rfc5225_ip_irreg_chain(const struct rohc_comp_ctxt *const ctxt,
                                             const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                                            const bool outer_ip_flag,  
+                                            const struct comp_rfc5225_tmp_variables *const tmp,
                                             uint8_t *const rohc_pkt,
                                             const size_t rohc_pkt_max_len)
 {
 	const struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = ctxt->specific;
+	const bool outer_ip_flag = tmp->outer_ip_flag;
 
 	uint8_t *rohc_remain_data = rohc_pkt;
 	size_t rohc_remain_len = rohc_pkt_max_len;
@@ -2643,8 +2673,11 @@ static int rohc_comp_rfc5225_ip_irreg_chain(const struct rohc_comp_ctxt *const c
 
 		if(ip_hdr->version == IPV4)
 		{
-			ret = rohc_comp_rfc5225_ip_irreg_ipv4_part(ctxt, ip_ctxt, ip_hdr->ipv4,
-			                                           is_innermost, outer_ip_flag,
+			const rohc_ip_id_behavior_t ip_id_behavior = tmp->ip_id_behaviors[ip_hdr_pos];
+
+			ret = rohc_comp_rfc5225_ip_irreg_ipv4_part(ctxt, ip_ctxt, ip_id_behavior,
+			                                           ip_hdr->ipv4, is_innermost,
+			                                           outer_ip_flag,
 			                                           rohc_remain_data, rohc_remain_len);
 			if(ret < 0)
 			{
@@ -2685,6 +2718,7 @@ error:
  *
  * @param ctxt            The compression context
  * @param ip_ctxt         The specific IP compression context
+ * @param ip_id_behavior  The new IP-ID behavior
  * @param ipv4            The IPv4 header
  * @param is_innermost    true if the IP header is the innermost of the packet,
  *                        false otherwise
@@ -2697,6 +2731,7 @@ error:
  */
 static int rohc_comp_rfc5225_ip_irreg_ipv4_part(const struct rohc_comp_ctxt *const ctxt,
                                                 const ip_context_t *const ip_ctxt,
+                                                const rohc_ip_id_behavior_t ip_id_behavior,
                                                 const struct ipv4_hdr *const ipv4,
                                                 const bool is_innermost,
                                                 const bool outer_ip_flag,  
@@ -2710,7 +2745,7 @@ static int rohc_comp_rfc5225_ip_irreg_ipv4_part(const struct rohc_comp_ctxt *con
 	assert(ip_ctxt->version == IPV4);
 
 	/* IP ID if random */
-	if(ip_ctxt->ip_id_behavior == ROHC_IP_ID_BEHAVIOR_RAND)
+	if(ip_id_behavior == ROHC_IP_ID_BEHAVIOR_RAND)
 	{
 		if(rohc_remain_len < sizeof(uint16_t))
 		{
@@ -2993,9 +3028,7 @@ static int rohc_comp_rfc5225_ip_build_co_common_pkt(const struct rohc_comp_ctxt 
                                                     const size_t rohc_max_len)
 {
 	struct rohc_comp_rfc5225_ip_ctxt *const rfc5225_ctxt = context->specific;
-	const ip_context_t *const innermost_ip_ctxt =
-		&(rfc5225_ctxt->ip_contexts[rfc5225_ctxt->ip_contexts_nr - 1]);
-	const uint8_t innermost_ip_id_behavior = innermost_ip_ctxt->ip_id_behavior;
+	const uint8_t innermost_ip_id_behavior = tmp->innermost_ip_id_behavior;
 	uint8_t *rohc_remain_data = rohc_data;
 	size_t rohc_remain_len = rohc_max_len;
 	co_common_base_t *const co_common = (co_common_base_t *) rohc_remain_data;
@@ -3040,8 +3073,7 @@ static int rohc_comp_rfc5225_ip_build_co_common_pkt(const struct rohc_comp_ctxt 
 			 * https://www.rfc-editor.org/errata_search.php?rfc=5225&eid=2703 */
 			if(rfc5225_ctxt->ip_contexts[ip_hdr_pos].version == IPV4)
 			{
-				ip_id_behaviors[ip_id_behaviors_nr] =
-					rfc5225_ctxt->ip_contexts[ip_hdr_pos].ip_id_behavior;
+				ip_id_behaviors[ip_id_behaviors_nr] = tmp->ip_id_behaviors[ip_hdr_pos];
 				rohc_comp_debug(context, "IP-ID behavior #%zu of IPv4 header #%zu "
 				                "= 0x%02x", ip_id_behaviors_nr + 1, ip_hdr_pos + 1,
 				                ip_id_behaviors[ip_id_behaviors_nr]);
