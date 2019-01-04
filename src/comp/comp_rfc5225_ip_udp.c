@@ -141,8 +141,6 @@ struct rohc_comp_rfc5225_ip_udp_ctxt
 	/** The number of innermost TTL/HL transmissions since last change */
 	uint8_t innermost_ttl_hopl_trans_nr;
 
-	struct comp_rfc5225_tmp_variables tmp;
-
 	/** The UDP Source port */
 	uint16_t udp_sport;
 	/** The UDP Destination port */
@@ -174,13 +172,15 @@ static int rohc_comp_rfc5225_ip_udp_encode(struct rohc_comp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
 static void rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const context,
-                                                    const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
-	__attribute__((nonnull(1, 2)));
+                                                    const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                                                    struct comp_rfc5225_tmp_variables *const tmp)
+	__attribute__((nonnull(1, 2, 3)));
 static void rohc_comp_rfc5225_ip_udp_detect_changes_ipv4(struct rohc_comp_ctxt *const ctxt,
                                                          ip_context_t *const ip_ctxt,
+                                                         struct comp_rfc5225_tmp_variables *const tmp,
                                                          const struct ipv4_hdr *const ipv4,
                                                          const bool is_innermost)
-	__attribute__((nonnull(1, 2, 3)));
+	__attribute__((nonnull(1, 2, 3, 4)));
 
 static int rohc_comp_rfc5225_ip_udp_code_IR_pkt(const struct rohc_comp_ctxt *const ctxt,
                                                 const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
@@ -196,10 +196,11 @@ static int rohc_comp_rfc5225_ip_udp_code_co_repair_pkt(const struct rohc_comp_ct
 
 static int rohc_comp_rfc5225_ip_udp_code_CO_pkt(const struct rohc_comp_ctxt *const context,
                                                 const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                                                const struct comp_rfc5225_tmp_variables *const tmp,
                                                 uint8_t *const rohc_pkt,
                                                 const size_t rohc_pkt_max_len,
                                                 const rohc_packet_t packet_type)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 
 static int rohc_comp_rfc5225_ip_udp_build_pt_0_crc3_pkt(const struct rohc_comp_ctxt *const context,
                                                         const uint8_t crc,
@@ -214,22 +215,25 @@ static int rohc_comp_rfc5225_ip_udp_build_pt_0_crc7_pkt(const struct rohc_comp_c
 	__attribute__((nonnull(1, 3), warn_unused_result));
 
 static int rohc_comp_rfc5225_ip_udp_build_pt_1_seq_id_pkt(const struct rohc_comp_ctxt *const context,
+                                                          const uint16_t innermost_ip_id_offset,
                                                           const uint8_t crc,
                                                           uint8_t *const rohc_data,
                                                           const size_t rohc_max_len)
-	__attribute__((nonnull(1, 3), warn_unused_result));
+	__attribute__((nonnull(1, 4), warn_unused_result));
 
 static int rohc_comp_rfc5225_ip_udp_build_pt_2_seq_id_pkt(const struct rohc_comp_ctxt *const context,
+                                                          const uint16_t innermost_ip_id_offset,
                                                           const uint8_t crc,
                                                           uint8_t *const rohc_data,
                                                           const size_t rohc_max_len)
-	__attribute__((nonnull(1, 3), warn_unused_result));
+	__attribute__((nonnull(1, 4), warn_unused_result));
 
 static int rohc_comp_rfc5225_ip_udp_build_co_common_pkt(const struct rohc_comp_ctxt *const context,
+                                                        const struct comp_rfc5225_tmp_variables *const tmp,
                                                         const uint8_t crc,
                                                         uint8_t *const rohc_data,
                                                         const size_t rohc_max_len)
-	__attribute__((nonnull(1, 3), warn_unused_result));
+	__attribute__((nonnull(1, 2, 4), warn_unused_result));
 
 /* static chain */
 static int rohc_comp_rfc5225_ip_udp_static_chain(const struct rohc_comp_ctxt *const ctxt,
@@ -282,23 +286,26 @@ static int rohc_comp_rfc5225_ip_udp_dyn_udp_part(const struct rohc_comp_ctxt *co
 /* irregular chain */
 static int rohc_comp_rfc5225_ip_udp_irreg_chain(const struct rohc_comp_ctxt *const ctxt,
                                                 const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                                                const bool outer_ip_flag,  
                                                 uint8_t *const rohc_pkt,
                                                 const size_t rohc_pkt_max_len)
-        __attribute__((warn_unused_result, nonnull(1, 2, 3)));
+        __attribute__((warn_unused_result, nonnull(1, 2, 4)));
 static int rohc_comp_rfc5225_ip_udp_irreg_ipv4_part(const struct rohc_comp_ctxt *const ctxt,
                                                     const ip_context_t *const ip_ctxt,
                                                     const struct ipv4_hdr *const ipv4,
                                                     const bool is_innermost,
+                                                    const bool outer_ip_flag,  
                                                     uint8_t *const rohc_data,
                                                     const size_t rohc_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 6)));
 static int rohc_comp_rfc5225_ip_udp_irreg_ipv6_part(const struct rohc_comp_ctxt *const ctxt,
                                                     const ip_context_t *const ip_ctxt,
                                                     const struct ipv6_hdr *const ipv6,
                                                     const bool is_innermost,
+                                                    const bool outer_ip_flag,  
                                                     uint8_t *const rohc_data,
                                                     const size_t rohc_max_len)
-        __attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 6)));
 static int rohc_comp_rfc5225_ip_udp_irreg_udp_part(const struct rohc_comp_ctxt *const ctxt,
                                                    const struct udphdr *const udp,
                                                    uint8_t *const rohc_data,
@@ -326,18 +333,22 @@ static void rohc_comp_rfc5225_ip_udp_feedback_ack(struct rohc_comp_ctxt *const c
 	__attribute__((nonnull(1)));
 
 /* decide packet */
-static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_pkt(const struct rohc_comp_ctxt *const context)
-	__attribute__((warn_unused_result, nonnull(1)));
+static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_pkt(const struct rohc_comp_ctxt *const context,
+                                                         const struct comp_rfc5225_tmp_variables *const tmp)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_FO_pkt(const struct rohc_comp_ctxt *const ctxt)
-	__attribute__((warn_unused_result, nonnull(1)));
+static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_FO_pkt(const struct rohc_comp_ctxt *const ctxt,
+                                                            const struct comp_rfc5225_tmp_variables *const tmp)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_SO_pkt(const struct rohc_comp_ctxt *const ctxt)
-	__attribute__((warn_unused_result, nonnull(1)));
+static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_SO_pkt(const struct rohc_comp_ctxt *const ctxt,
+                                                            const struct comp_rfc5225_tmp_variables *const tmp)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_FO_SO_pkt(const struct rohc_comp_ctxt *const ctxt,
+                                                               const struct comp_rfc5225_tmp_variables *const tmp,
                                                                const bool crc7_at_least)
-	__attribute__((warn_unused_result, nonnull(1)));
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static bool rohc_comp_rfc5225_is_msn_lsb_possible(const struct c_wlsb *const wlsb,
                                                   const uint16_t value,
@@ -521,6 +532,7 @@ static int rohc_comp_rfc5225_ip_udp_encode(struct rohc_comp_ctxt *const context,
 	uint8_t *rohc_remain_data = rohc_pkt;
 	size_t rohc_remain_len = rohc_pkt_max_len;
 
+	struct comp_rfc5225_tmp_variables tmp;
 	size_t ip_hdr_pos;
 	size_t rohc_len;
 	int ret;
@@ -528,15 +540,15 @@ static int rohc_comp_rfc5225_ip_udp_encode(struct rohc_comp_ctxt *const context,
 	*packet_type = ROHC_PACKET_UNKNOWN;
 
 	/* STEP 0: detect changes between new uncompressed packet and context */
-	rohc_comp_rfc5225_ip_udp_detect_changes(context, uncomp_pkt_hdrs);
+	rohc_comp_rfc5225_ip_udp_detect_changes(context, uncomp_pkt_hdrs, &tmp);
 
 	/* STEP 1: decide packet type */
-	*packet_type = rohc_comp_rfc5225_ip_udp_decide_pkt(context);
+	*packet_type = rohc_comp_rfc5225_ip_udp_decide_pkt(context, &tmp);
 
 	/* the outer_ip_flag may be set to 1 only for co_common */
-	if(rfc5225_ctxt->tmp.outer_ip_flag && (*packet_type) != ROHC_PACKET_CO_COMMON)
+	if(tmp.outer_ip_flag && (*packet_type) != ROHC_PACKET_CO_COMMON)
 	{
-		rfc5225_ctxt->tmp.outer_ip_flag = false;
+		tmp.outer_ip_flag = false;
 	}
 
 	/* does the packet update the decompressor context? */
@@ -570,7 +582,7 @@ static int rohc_comp_rfc5225_ip_udp_encode(struct rohc_comp_ctxt *const context,
 	}
 	else /* other CO packets */
 	{
-		ret = rohc_comp_rfc5225_ip_udp_code_CO_pkt(context, uncomp_pkt_hdrs,
+		ret = rohc_comp_rfc5225_ip_udp_code_CO_pkt(context, uncomp_pkt_hdrs, &tmp,
 		                                           rohc_remain_data, rohc_remain_len,
 		                                           *packet_type);
 		if(ret < 0)
@@ -606,8 +618,8 @@ static int rohc_comp_rfc5225_ip_udp_encode(struct rohc_comp_ctxt *const context,
 			if((ip_hdr_pos + 1) == rfc5225_ctxt->ip_contexts_nr)
 			{
 				c_add_wlsb(&rfc5225_ctxt->innermost_ip_id_offset_wlsb, rfc5225_ctxt->msn,
-				           rfc5225_ctxt->tmp.innermost_ip_id_offset);
-				rfc5225_ctxt->innermost_ip_id_offset = rfc5225_ctxt->tmp.innermost_ip_id_offset;
+				           tmp.innermost_ip_id_offset);
+				rfc5225_ctxt->innermost_ip_id_offset = tmp.innermost_ip_id_offset;
 			}
 			ip_ctxt->df = ip_hdr->ipv4->df;
 		}
@@ -615,7 +627,7 @@ static int rohc_comp_rfc5225_ip_udp_encode(struct rohc_comp_ctxt *const context,
 		/* TODO: handle IPv6 extension headers */
 	}
 	/* update context for the UDP header */
-	rfc5225_ctxt->udp_checksum_used = rfc5225_ctxt->tmp.new_udp_checksum_used;
+	rfc5225_ctxt->udp_checksum_used = tmp.new_udp_checksum_used;
 	/* update transmission counters */
 	if(rfc5225_ctxt->all_df_trans_nr < oa_repetitions_nr)
 	{
@@ -678,11 +690,11 @@ error:
  *
  * @param context          The compression context to compare
  * @param uncomp_pkt_hdrs  The uncompressed headers to compare
- * @return                 true if changes were successfully detected,
- *                         false if a problem occurred
+ * @param tmp              The temporary state for the compressed packet
  */
 static void rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const context,
-                                                    const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
+                                                    const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                                                    struct comp_rfc5225_tmp_variables *const tmp)
 {
 	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	struct rohc_comp_rfc5225_ip_udp_ctxt *const rfc5225_ctxt = context->specific;
@@ -692,17 +704,18 @@ static void rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const
 	/* detect changes in all the IP headers */
 	rohc_comp_debug(context, "detect changes the IP packet");
 	assert(rfc5225_ctxt->ip_contexts_nr > 0);
-	rfc5225_ctxt->tmp.outer_df_changed = false;
-	rfc5225_ctxt->tmp.outer_ip_id_behavior_changed = false;
-	rfc5225_ctxt->tmp.outer_ip_flag = false;
-	rfc5225_ctxt->tmp.innermost_df_changed = false;
-	rfc5225_ctxt->tmp.innermost_ip_id_behavior_changed = false;
-	rfc5225_ctxt->tmp.innermost_ip_id_offset_changed = false;
-	rfc5225_ctxt->tmp.innermost_tos_tc_changed = false;
-	rfc5225_ctxt->tmp.innermost_ttl_hopl_changed = false;
-	rfc5225_ctxt->tmp.innermost_ip_flag = false;
-	rfc5225_ctxt->tmp.at_least_one_df_changed = false;
-	rfc5225_ctxt->tmp.at_least_one_ip_id_behavior_changed = false;
+	tmp->outer_df_changed = false;
+	tmp->outer_ip_id_behavior_changed = false;
+	tmp->outer_ip_flag = false;
+	tmp->innermost_df_changed = false;
+	tmp->innermost_ip_id_behavior_changed = false;
+	tmp->innermost_ip_id_offset_changed = false;
+	tmp->innermost_tos_tc_changed = false;
+	tmp->innermost_ttl_hopl_changed = false;
+	tmp->innermost_ip_flag = false;
+	tmp->innermost_ip_id = 0;
+	tmp->at_least_one_df_changed = false;
+	tmp->at_least_one_ip_id_behavior_changed = false;
 	for(ip_hdr_pos = 0; ip_hdr_pos < rfc5225_ctxt->ip_contexts_nr; ip_hdr_pos++)
 	{
 		ip_context_t *const ip_ctxt = &(rfc5225_ctxt->ip_contexts[ip_hdr_pos]);
@@ -721,21 +734,21 @@ static void rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const
 			{
 				rohc_comp_debug(context, "    TOS/HL (0x%02x -> 0x%02x) changed",
 				                ip_ctxt->tos_tc, ip_hdr->tos_tc);
-				rfc5225_ctxt->tmp.innermost_tos_tc_changed = true;
-				rfc5225_ctxt->tmp.innermost_ip_flag = true;
+				tmp->innermost_tos_tc_changed = true;
+				tmp->innermost_ip_flag = true;
 			}
 			/* innermost TTL/HL changed? */
 			if(ip_ctxt->ttl_hopl != ip_hdr->ttl_hl)
 			{
 				rohc_comp_debug(context, "    TTL/HL (%u -> %u) changed",
 				                ip_ctxt->ttl_hopl, ip_hdr->ttl_hl);
-				rfc5225_ctxt->tmp.innermost_ttl_hopl_changed = true;
-				rfc5225_ctxt->tmp.innermost_ip_flag = true;
+				tmp->innermost_ttl_hopl_changed = true;
+				tmp->innermost_ip_flag = true;
 			}
 			/* save the new values of innermost TOS/HL and TTL/HL to easily retrieve them
 			 * during packet creation */
-			rfc5225_ctxt->tmp.innermost_tos_tc = ip_hdr->tos_tc;
-			rfc5225_ctxt->tmp.innermost_ttl_hopl = ip_hdr->ttl_hl;
+			tmp->innermost_tos_tc = ip_hdr->tos_tc;
+			tmp->innermost_ttl_hopl = ip_hdr->ttl_hl;
 		}
 		else
 		{
@@ -745,14 +758,14 @@ static void rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const
 				rohc_comp_debug(context, "    TOS/HL (%02x -> %02x) or TTL/HL (%u -> %u) "
 				                "changed", ip_ctxt->tos_tc, ip_hdr->tos_tc,
 				                ip_ctxt->ttl_hopl, ip_hdr->ttl_hl);
-				rfc5225_ctxt->tmp.outer_ip_flag = true;
+				tmp->outer_ip_flag = true;
 			}
 		}
 
 		if(ip_hdr->version == IPV4)
 		{
 			/* detect changes in the IPv4 header */
-			rohc_comp_rfc5225_ip_udp_detect_changes_ipv4(context, ip_ctxt,
+			rohc_comp_rfc5225_ip_udp_detect_changes_ipv4(context, ip_ctxt, tmp,
 			                                             ip_hdr->ipv4, is_innermost);
 		}
 		else /* IPv6 */
@@ -761,7 +774,7 @@ static void rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const
 			 * packet creation */
 			if(is_innermost)
 			{
-				rfc5225_ctxt->tmp.innermost_df = 0; /* no DF, dont_fragment() uses 0 */
+				tmp->innermost_df = 0; /* no DF, dont_fragment() uses 0 */
 			}
 
 			/* TODO: handle IPv6 extension headers */
@@ -772,31 +785,30 @@ static void rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const
 	}
 
 	/* detect changes in UDP header */
-	rfc5225_ctxt->tmp.new_udp_checksum_used = !!(uncomp_pkt_hdrs->udp->check != 0);
-	if(rfc5225_ctxt->tmp.new_udp_checksum_used != rfc5225_ctxt->udp_checksum_used)
+	tmp->new_udp_checksum_used = !!(uncomp_pkt_hdrs->udp->check != 0);
+	if(tmp->new_udp_checksum_used != rfc5225_ctxt->udp_checksum_used)
 	{
 		rohc_comp_debug(context, "UDP checksum used changed (%d -> %d)",
-		                rfc5225_ctxt->udp_checksum_used,
-		                rfc5225_ctxt->tmp.new_udp_checksum_used);
-		rfc5225_ctxt->tmp.udp_checksum_used_changed = true;
+		                rfc5225_ctxt->udp_checksum_used, tmp->new_udp_checksum_used);
+		tmp->udp_checksum_used_changed = true;
 	}
 	else
 	{
-		rfc5225_ctxt->tmp.udp_checksum_used_changed = false;
+		tmp->udp_checksum_used_changed = false;
 	}
 
 	/* compute or find the new SN */
 	rfc5225_ctxt->msn++; /* wraparound on overflow is expected */
 	rohc_comp_debug(context, "MSN = 0x%04x / %u", rfc5225_ctxt->msn, rfc5225_ctxt->msn);
 	/* MSN offset is always 1 */
-	rfc5225_ctxt->tmp.msn_offset = 1;
-	rohc_comp_debug(context, "MSN offset = %d", rfc5225_ctxt->tmp.msn_offset);
+	tmp->msn_offset = 1;
+	rohc_comp_debug(context, "MSN offset = %d", tmp->msn_offset);
 
 	/* now that the MSN was updated with the new received IP/UDP packet,
 	 * compute the new IP-ID / MSN offset for the innermost IP header */
 	if(innermost_ip_ctxt->version == IPV4)
 	{
-		const uint16_t ip_id = rfc5225_ctxt->tmp.innermost_ip_id;
+		const uint16_t ip_id = tmp->innermost_ip_id;
 		const uint16_t last_ip_id = innermost_ip_ctxt->last_ip_id;
 		const rohc_ip_id_behavior_t last_ip_id_behavior =
 			innermost_ip_ctxt->ip_id_behavior;
@@ -815,7 +827,7 @@ static void rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const
 		{
 			ip_id_behavior =
 				rohc_comp_detect_ip_id_behavior(last_ip_id, ip_id,
-				                                rfc5225_ctxt->tmp.msn_offset, 19);
+				                                tmp->msn_offset, 19);
 		}
 		/* TODO: avoid changing context here */
 		innermost_ip_ctxt->ip_id_behavior = ip_id_behavior;
@@ -823,34 +835,34 @@ static void rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const
 		                rohc_ip_id_behavior_get_descr(ip_id_behavior));
 		if(last_ip_id_behavior != ip_id_behavior)
 		{
-			rfc5225_ctxt->tmp.at_least_one_ip_id_behavior_changed = true;
-			rfc5225_ctxt->tmp.innermost_ip_id_behavior_changed = true;
+			tmp->at_least_one_ip_id_behavior_changed = true;
+			tmp->innermost_ip_id_behavior_changed = true;
 		}
 
 		if(innermost_ip_ctxt->ip_id_behavior == ROHC_IP_ID_BEHAVIOR_SEQ_SWAP)
 		{
 			/* specific case of IP-ID delta for sequential swapped behavior */
-			rfc5225_ctxt->tmp.innermost_ip_id_offset =
-				swab16(rfc5225_ctxt->tmp.innermost_ip_id) - rfc5225_ctxt->msn;
+			tmp->innermost_ip_id_offset =
+				swab16(tmp->innermost_ip_id) - rfc5225_ctxt->msn;
 		}
 		else
 		{
 			/* compute delta the same way for sequential, zero or random: it is
 			 * important to always compute the IP-ID delta and record it in W-LSB,
 			 * so that the IP-ID deltas of next packets may be correctly encoded */
-			rfc5225_ctxt->tmp.innermost_ip_id_offset =
-				rfc5225_ctxt->tmp.innermost_ip_id - rfc5225_ctxt->msn;
+			tmp->innermost_ip_id_offset =
+				tmp->innermost_ip_id - rfc5225_ctxt->msn;
 		}
 		rohc_comp_debug(context, "new IP-ID offset = 0x%x / %u",
-		                rfc5225_ctxt->tmp.innermost_ip_id_offset,
-		                rfc5225_ctxt->tmp.innermost_ip_id_offset);
+		                tmp->innermost_ip_id_offset,
+		                tmp->innermost_ip_id_offset);
 
-		rfc5225_ctxt->tmp.innermost_ip_id_offset_changed =
-			!!(rfc5225_ctxt->innermost_ip_id_offset != rfc5225_ctxt->tmp.innermost_ip_id_offset);
+		tmp->innermost_ip_id_offset_changed =
+			!!(rfc5225_ctxt->innermost_ip_id_offset != tmp->innermost_ip_id_offset);
 	}
 
 	/* any DF that changes shall be transmitted several times */
-	if(rfc5225_ctxt->tmp.at_least_one_df_changed)
+	if(tmp->at_least_one_df_changed)
 	{
 		rohc_comp_debug(context, "at least one DF changed in current packet, "
 		                "it shall be transmitted %u times", oa_repetitions_nr);
@@ -861,10 +873,10 @@ static void rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const
 		rohc_comp_debug(context, "at least one DF changed in last packets, "
 		                "it shall be transmitted %u times more",
 		                oa_repetitions_nr - rfc5225_ctxt->all_df_trans_nr);
-		rfc5225_ctxt->tmp.at_least_one_df_changed = true;
+		tmp->at_least_one_df_changed = true;
 	}
 	/* the innermost DF that changes shall be transmitted several times */
-	if(rfc5225_ctxt->tmp.innermost_df_changed)
+	if(tmp->innermost_df_changed)
 	{
 		rohc_comp_debug(context, "innermost DF changed in current packet, "
 		                "it shall be transmitted %u times", oa_repetitions_nr);
@@ -875,10 +887,10 @@ static void rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const
 		rohc_comp_debug(context, "innermost DF changed in last packets, "
 		                "it shall be transmitted %u times more",
 		                oa_repetitions_nr - rfc5225_ctxt->innermost_df_trans_nr);
-		rfc5225_ctxt->tmp.innermost_df_changed = true;
+		tmp->innermost_df_changed = true;
 	}
 	/* any outer DF that changes shall be transmitted several times */
-	if(rfc5225_ctxt->tmp.outer_df_changed)
+	if(tmp->outer_df_changed)
 	{
 		rohc_comp_debug(context, "at least one outer DF changed in current packet, "
 		                "it shall be transmitted %u times", oa_repetitions_nr);
@@ -889,11 +901,11 @@ static void rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const
 		rohc_comp_debug(context, "at least one outer DF changed in last packets, "
 		                "it shall be transmitted %u times more",
 		                oa_repetitions_nr - rfc5225_ctxt->outer_df_trans_nr);
-		rfc5225_ctxt->tmp.outer_df_changed = true;
+		tmp->outer_df_changed = true;
 	}
 
 	/* any IP-ID behavior that changes shall be transmitted several times */
-	if(rfc5225_ctxt->tmp.at_least_one_ip_id_behavior_changed)
+	if(tmp->at_least_one_ip_id_behavior_changed)
 	{
 		rohc_comp_debug(context, "at least one IP-ID behavior changed in current "
 		                "packet, it shall be transmitted %u times", oa_repetitions_nr);
@@ -904,10 +916,10 @@ static void rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const
 		rohc_comp_debug(context, "at least one IP-ID behavior changed in last "
 		                "packets, it shall be transmitted %u times more",
 		                oa_repetitions_nr - rfc5225_ctxt->all_ip_id_behavior_trans_nr);
-		rfc5225_ctxt->tmp.at_least_one_ip_id_behavior_changed = true;
+		tmp->at_least_one_ip_id_behavior_changed = true;
 	}
 	/* innermost IP-ID behavior that changes shall be transmitted several times */
-	if(rfc5225_ctxt->tmp.innermost_ip_id_behavior_changed)
+	if(tmp->innermost_ip_id_behavior_changed)
 	{
 		rohc_comp_debug(context, "innermost IP-ID behavior changed in current "
 		                "packet, it shall be transmitted %u times", oa_repetitions_nr);
@@ -918,11 +930,11 @@ static void rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const
 		rohc_comp_debug(context, "innermost IP-ID behavior changed in last packets, "
 		                "it shall be transmitted %u times more", oa_repetitions_nr -
 		                rfc5225_ctxt->innermost_ip_id_behavior_trans_nr);
-		rfc5225_ctxt->tmp.innermost_ip_id_behavior_changed = true;
+		tmp->innermost_ip_id_behavior_changed = true;
 	}
 	/* innermost IP-ID offset that changes shall be transmitted several times
 	 * before being inferred */
-	if(rfc5225_ctxt->tmp.innermost_ip_id_offset_changed)
+	if(tmp->innermost_ip_id_offset_changed)
 	{
 		rohc_comp_debug(context, "innermost IP-ID offset changed in current "
 		                "packet, it shall be transmitted %u times", oa_repetitions_nr);
@@ -933,10 +945,10 @@ static void rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const
 		rohc_comp_debug(context, "innermost IP-ID offset changed in last packets, "
 		                "it shall be transmitted %u times more", oa_repetitions_nr -
 		                rfc5225_ctxt->innermost_ip_id_offset_trans_nr);
-		rfc5225_ctxt->tmp.innermost_ip_id_offset_changed = true;
+		tmp->innermost_ip_id_offset_changed = true;
 	}
 	/* any outer IP-ID behavior that changes shall be transmitted several times */
-	if(rfc5225_ctxt->tmp.outer_ip_id_behavior_changed)
+	if(tmp->outer_ip_id_behavior_changed)
 	{
 		rohc_comp_debug(context, "at least one outer IP-ID behavior changed in "
 		                "current packet, it shall be transmitted %u times",
@@ -948,11 +960,11 @@ static void rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const
 		rohc_comp_debug(context, "at least one outer IP-ID behavior changed in "
 		                "last packets, it shall be transmitted %u times more",
 		                oa_repetitions_nr - rfc5225_ctxt->outer_ip_id_behavior_trans_nr);
-		rfc5225_ctxt->tmp.outer_ip_id_behavior_changed = true;
+		tmp->outer_ip_id_behavior_changed = true;
 	}
 
 	/* innermost IP flag that changes shall be transmitted several times */
-	if(rfc5225_ctxt->tmp.innermost_ip_flag)
+	if(tmp->innermost_ip_flag)
 	{
 		rohc_comp_debug(context, "innermost IP flag changed in current packet, "
 		                "it shall be transmitted %u times", oa_repetitions_nr);
@@ -963,10 +975,10 @@ static void rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const
 		rohc_comp_debug(context, "innermost IP flag changed in last packets, "
 		                "it shall be transmitted %u times more",
 		                oa_repetitions_nr - rfc5225_ctxt->innermost_ip_flag_trans_nr);
-		rfc5225_ctxt->tmp.innermost_ip_flag = true;
+		tmp->innermost_ip_flag = true;
 	}
 	/* any outer IP-ID behavior that changes shall be transmitted several times */
-	if(rfc5225_ctxt->tmp.outer_ip_flag)
+	if(tmp->outer_ip_flag)
 	{
 		rohc_comp_debug(context, "at least one outer IP flag changed in current "
 		                "packet, it shall be transmitted %u times", oa_repetitions_nr);
@@ -977,11 +989,11 @@ static void rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const
 		rohc_comp_debug(context, "at least one outer IP flag changed in last "
 		                "packets, it shall be transmitted %u times more",
 		                oa_repetitions_nr - rfc5225_ctxt->outer_ip_flag_trans_nr);
-		rfc5225_ctxt->tmp.outer_ip_flag = true;
+		tmp->outer_ip_flag = true;
 	}
 
 	/* innermost TOS/TC that changes shall be transmitted several times */
-	if(rfc5225_ctxt->tmp.innermost_tos_tc_changed)
+	if(tmp->innermost_tos_tc_changed)
 	{
 		rohc_comp_debug(context, "innermost TOS/TC changed in current packet, "
 		                "it shall be transmitted %u times", oa_repetitions_nr);
@@ -992,11 +1004,11 @@ static void rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const
 		rohc_comp_debug(context, "innermost TOS/TC changed in last packets, "
 		                "it shall be transmitted %u times more",
 		                oa_repetitions_nr - rfc5225_ctxt->innermost_tos_tc_trans_nr);
-		rfc5225_ctxt->tmp.innermost_tos_tc_changed = true;
+		tmp->innermost_tos_tc_changed = true;
 	}
 
 	/* innermost TTL/HL that changes shall be transmitted several times */
-	if(rfc5225_ctxt->tmp.innermost_ttl_hopl_changed)
+	if(tmp->innermost_ttl_hopl_changed)
 	{
 		rohc_comp_debug(context, "innermost TTL/HL changed in current packet, "
 		                "it shall be transmitted %u times", oa_repetitions_nr);
@@ -1007,11 +1019,11 @@ static void rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const
 		rohc_comp_debug(context, "innermost TTL/HL changed in last packets, "
 		                "it shall be transmitted %u times more",
 		                oa_repetitions_nr - rfc5225_ctxt->innermost_ttl_hopl_trans_nr);
-		rfc5225_ctxt->tmp.innermost_ttl_hopl_changed = true;
+		tmp->innermost_ttl_hopl_changed = true;
 	}
 
 	/* 'UDP checksum used' that changes shall be transmitted several times */
-	if(rfc5225_ctxt->tmp.udp_checksum_used_changed)
+	if(tmp->udp_checksum_used_changed)
 	{
 		rohc_comp_debug(context, "'UDP checksum used' changed in current packet, "
 		                "it shall be transmitted %u times", oa_repetitions_nr);
@@ -1022,7 +1034,7 @@ static void rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const
 		rohc_comp_debug(context, "'UDP checksum used' changed in last packets, "
 		                "it shall be transmitted %u times more",
 		                oa_repetitions_nr - rfc5225_ctxt->udp_checksum_used_trans_nr);
-		rfc5225_ctxt->tmp.udp_checksum_used_changed = true;
+		tmp->udp_checksum_used_changed = true;
 	}
 }
 
@@ -1032,36 +1044,35 @@ static void rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const
  *
  * @param ctxt          The compression context
  * @param ip_ctxt       The IPv4 context to compare
+ * @param tmp           The temporary state for the compressed packet
  * @param ipv4          The IPv4 header to compare
  * @param is_innermost  Whether the IPv4 header is the innermost of all IP headers
  */
 static void rohc_comp_rfc5225_ip_udp_detect_changes_ipv4(struct rohc_comp_ctxt *const ctxt,
                                                          ip_context_t *const ip_ctxt,
+                                                         struct comp_rfc5225_tmp_variables *const tmp,
                                                          const struct ipv4_hdr *const ipv4,
                                                          const bool is_innermost)
 {
-	/* TODO: parameter ip_ctxt should be const */
-	struct rohc_comp_rfc5225_ip_udp_ctxt *const rfc5225_ctxt = ctxt->specific;
-
 	/* IPv4 DF changed? */
 	if(ip_ctxt->df != ipv4->df)
 	{
 		rohc_comp_debug(ctxt, "    DF (%u -> %u) changed", ip_ctxt->df, ipv4->df);
-		rfc5225_ctxt->tmp.at_least_one_df_changed = true;
+		tmp->at_least_one_df_changed = true;
 		if(is_innermost)
 		{
-			rfc5225_ctxt->tmp.innermost_df_changed = true;
+			tmp->innermost_df_changed = true;
 		}
 		else
 		{
-			rfc5225_ctxt->tmp.outer_df_changed = true;
+			tmp->outer_df_changed = true;
 		}
 	}
 	/* save the new value of the innermost DF to easily retrieve them during
 	 * packet creation */
 	if(is_innermost)
 	{
-		rfc5225_ctxt->tmp.innermost_df = ipv4->df;
+		tmp->innermost_df = ipv4->df;
 	}
 
 	/* determine the IP-ID behavior of the IPv4 header */
@@ -1100,13 +1111,13 @@ static void rohc_comp_rfc5225_ip_udp_detect_changes_ipv4(struct rohc_comp_ctxt *
 		                rohc_ip_id_behavior_get_descr(ip_id_behavior));
 		if(last_ip_id_behavior != ip_id_behavior)
 		{
-			rfc5225_ctxt->tmp.at_least_one_ip_id_behavior_changed = true;
-			rfc5225_ctxt->tmp.outer_ip_id_behavior_changed = true;
+			tmp->at_least_one_ip_id_behavior_changed = true;
+			tmp->outer_ip_id_behavior_changed = true;
 		}
 	}
 	else
 	{
-		rfc5225_ctxt->tmp.innermost_ip_id = rohc_ntoh16(ipv4->id);
+		tmp->innermost_ip_id = rohc_ntoh16(ipv4->id);
 	}
 }
 
@@ -1390,6 +1401,7 @@ static void rohc_comp_rfc5225_ip_udp_feedback_ack(struct rohc_comp_ctxt *const c
  * @brief Decide which packet to send when in the different states
  *
  * @param context           The compression context
+ * @param tmp               The temporary state for the compressed packet
  * @return                  \li The packet type among ROHC_PACKET_IR,
  *                              ROHC_PACKET_PT_0_CRC3,
  *                              ROHC_PACKET_NORTP_PT_0_CRC7,
@@ -1398,7 +1410,8 @@ static void rohc_comp_rfc5225_ip_udp_feedback_ack(struct rohc_comp_ctxt *const c
  *                              in case of success
  *                          \li ROHC_PACKET_UNKNOWN in case of failure
  */
-static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_pkt(const struct rohc_comp_ctxt *const context)
+static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_pkt(const struct rohc_comp_ctxt *const context,
+                                                         const struct comp_rfc5225_tmp_variables *const tmp)
 {
 	rohc_packet_t packet_type;
 
@@ -1409,10 +1422,10 @@ static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_pkt(const struct rohc_comp_
 			packet_type = ROHC_PACKET_IR;
 			break;
 		case ROHC_COMP_STATE_FO:
-			packet_type = rohc_comp_rfc5225_ip_udp_decide_FO_pkt(context);
+			packet_type = rohc_comp_rfc5225_ip_udp_decide_FO_pkt(context, tmp);
 			break;
 		case ROHC_COMP_STATE_SO:
-			packet_type = rohc_comp_rfc5225_ip_udp_decide_SO_pkt(context);
+			packet_type = rohc_comp_rfc5225_ip_udp_decide_SO_pkt(context, tmp);
 			break;
 		case ROHC_COMP_STATE_UNKNOWN:
 		default:
@@ -1431,6 +1444,7 @@ static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_pkt(const struct rohc_comp_
  * @brief Decide which packet to send when in FO state
  *
  * @param ctxt  The compression context
+ * @param tmp   The temporary state for the compressed packet
  * @return      \li The packet type among ROHC_PACKET_IR,
  *                  ROHC_PACKET_CO_REPAIR,
  *                  ROHC_PACKET_CO_COMMON,
@@ -1439,11 +1453,12 @@ static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_pkt(const struct rohc_comp_
  *                  in case of success
  *              \li ROHC_PACKET_UNKNOWN in case of failure
  */
-static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_FO_pkt(const struct rohc_comp_ctxt *const ctxt)
+static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_FO_pkt(const struct rohc_comp_ctxt *const ctxt,
+                                                            const struct comp_rfc5225_tmp_variables *const tmp)
 {
 	const bool crc7_at_least = true;
 	const rohc_packet_t packet_type =
-		rohc_comp_rfc5225_ip_udp_decide_FO_SO_pkt(ctxt, crc7_at_least);
+		rohc_comp_rfc5225_ip_udp_decide_FO_SO_pkt(ctxt, tmp, crc7_at_least);
 
 	assert(packet_type != ROHC_PACKET_PT_0_CRC3);
 	assert(packet_type != ROHC_PACKET_NORTP_PT_1_SEQ_ID);
@@ -1456,6 +1471,7 @@ static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_FO_pkt(const struct rohc_co
  * @brief Decide which packet to send when in SO state
  *
  * @param ctxt  The compression context
+ * @param tmp   The temporary state for the compressed packet
  * @return      \li The packet type among ROHC_PACKET_IR,
  *                  ROHC_PACKET_CO_REPAIR,
  *                  ROHC_PACKET_CO_COMMON,
@@ -1466,10 +1482,11 @@ static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_FO_pkt(const struct rohc_co
  *                  in case of success
  *              \li ROHC_PACKET_UNKNOWN in case of failure
  */
-static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_SO_pkt(const struct rohc_comp_ctxt *const ctxt)
+static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_SO_pkt(const struct rohc_comp_ctxt *const ctxt,
+                                                            const struct comp_rfc5225_tmp_variables *const tmp)
 {
 	const bool crc7_at_least = false;
-	return rohc_comp_rfc5225_ip_udp_decide_FO_SO_pkt(ctxt, crc7_at_least);
+	return rohc_comp_rfc5225_ip_udp_decide_FO_SO_pkt(ctxt, tmp, crc7_at_least);
 }
 
 
@@ -1477,6 +1494,7 @@ static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_SO_pkt(const struct rohc_co
  * @brief Decide which packet to send when in FO or SO state
  *
  * @param ctxt           The compression context
+ * @param tmp            The temporary state for the compressed packet
  * @param crc7_at_least  Whether packet types with CRC strictly smaller
  *                       than 7 bits are allowed or not
  * @return               \li The packet type among ROHC_PACKET_IR,
@@ -1490,15 +1508,16 @@ static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_SO_pkt(const struct rohc_co
  *                       \li ROHC_PACKET_UNKNOWN in case of failure
  */
 static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_FO_SO_pkt(const struct rohc_comp_ctxt *const ctxt,
+                                                               const struct comp_rfc5225_tmp_variables *const tmp,
                                                                const bool crc7_at_least)
 {
 	struct rohc_comp_rfc5225_ip_udp_ctxt *const rfc5225_ctxt = ctxt->specific;
-	const int16_t msn_offset = rfc5225_ctxt->tmp.msn_offset;
+	const int16_t msn_offset = tmp->msn_offset;
 	const uint8_t oa_repetitions_nr = ctxt->compressor->oa_repetitions_nr;
 	const rohc_reordering_offset_t reorder_ratio = ctxt->compressor->reorder_ratio;
 	const ip_context_t *const innermost_ip_ctxt =
 		&(rfc5225_ctxt->ip_contexts[rfc5225_ctxt->ip_contexts_nr - 1]);
-	const uint16_t innermost_ip_id = rfc5225_ctxt->tmp.innermost_ip_id;
+	const uint16_t innermost_ip_id = tmp->innermost_ip_id;
 	const uint8_t innermost_ip_id_offset_trans_nr =
 		rfc5225_ctxt->innermost_ip_id_offset_trans_nr;
 	const rohc_ip_id_behavior_t innermost_ip_id_behavior =
@@ -1506,7 +1525,7 @@ static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_FO_SO_pkt(const struct rohc
 	rohc_packet_t packet_type;
 
 	/* use co_repair if 'UDP checksum used' changed */
-	if(rfc5225_ctxt->tmp.udp_checksum_used_changed)
+	if(tmp->udp_checksum_used_changed)
 	{
 		rohc_comp_debug(ctxt, "code co_repair packet because 'UDP checksum used' "
 		                "changed");
@@ -1530,10 +1549,10 @@ static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_FO_SO_pkt(const struct rohc
 	                                                innermost_ip_id_offset_trans_nr,
 	                                                oa_repetitions_nr,
 	                                                innermost_ip_id, msn_offset)) &&
-	        !rfc5225_ctxt->tmp.outer_ip_flag &&
-	        !rfc5225_ctxt->tmp.innermost_ip_flag &&
-	        !rfc5225_ctxt->tmp.at_least_one_df_changed &&
-	        !rfc5225_ctxt->tmp.at_least_one_ip_id_behavior_changed)
+	        !tmp->outer_ip_flag &&
+	        !tmp->innermost_ip_flag &&
+	        !tmp->at_least_one_df_changed &&
+	        !tmp->at_least_one_ip_id_behavior_changed)
 	{
 		rohc_comp_debug(ctxt, "code pt_0_crc3 packet");
 		packet_type = ROHC_PACKET_PT_0_CRC3;
@@ -1555,10 +1574,10 @@ static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_FO_SO_pkt(const struct rohc
 	                                                innermost_ip_id_offset_trans_nr,
 	                                                oa_repetitions_nr,
 	                                                innermost_ip_id, msn_offset)) &&
-	        !rfc5225_ctxt->tmp.outer_ip_flag &&
-	        !rfc5225_ctxt->tmp.innermost_ip_flag &&
-	        !rfc5225_ctxt->tmp.at_least_one_df_changed &&
-	        !rfc5225_ctxt->tmp.at_least_one_ip_id_behavior_changed)
+	        !tmp->outer_ip_flag &&
+	        !tmp->innermost_ip_flag &&
+	        !tmp->at_least_one_df_changed &&
+	        !tmp->at_least_one_ip_id_behavior_changed)
 	{
 		rohc_comp_debug(ctxt, "code pt_0_crc7 packet");
 		packet_type = ROHC_PACKET_NORTP_PT_0_CRC7;
@@ -1577,12 +1596,12 @@ static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_FO_SO_pkt(const struct rohc
 	                                              reorder_ratio, 6) &&
 	        rohc_comp_rfc5225_is_ipid_sequential(innermost_ip_id_behavior) &&
 	        wlsb_is_kp_possible_16bits(&rfc5225_ctxt->innermost_ip_id_offset_wlsb,
-	                                   rfc5225_ctxt->tmp.innermost_ip_id_offset, 4,
+	                                   tmp->innermost_ip_id_offset, 4,
 	                                   rohc_interval_get_rfc5225_id_id_p(4)) &&
-	        !rfc5225_ctxt->tmp.outer_ip_flag &&
-	        !rfc5225_ctxt->tmp.innermost_ip_flag &&
-	        !rfc5225_ctxt->tmp.at_least_one_df_changed &&
-	        !rfc5225_ctxt->tmp.at_least_one_ip_id_behavior_changed)
+	        !tmp->outer_ip_flag &&
+	        !tmp->innermost_ip_flag &&
+	        !tmp->at_least_one_df_changed &&
+	        !tmp->at_least_one_ip_id_behavior_changed)
 	{
 		assert(innermost_ip_ctxt->version == IPV4);
 		rohc_comp_debug(ctxt, "code pt_1_seq_id packet");
@@ -1597,15 +1616,15 @@ static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_FO_SO_pkt(const struct rohc
 	 */
 	else if(rohc_comp_rfc5225_is_ipid_sequential(innermost_ip_id_behavior) &&
 	        wlsb_is_kp_possible_16bits(&rfc5225_ctxt->innermost_ip_id_offset_wlsb,
-	                                   rfc5225_ctxt->tmp.innermost_ip_id_offset, 6,
+	                                   tmp->innermost_ip_id_offset, 6,
 	                                   rohc_interval_get_rfc5225_id_id_p(6)) &&
 	        rohc_comp_rfc5225_is_msn_lsb_possible(&rfc5225_ctxt->msn_wlsb,
 	                                              rfc5225_ctxt->msn,
 	                                              reorder_ratio, 8) &&
-	        !rfc5225_ctxt->tmp.outer_ip_flag &&
-	        !rfc5225_ctxt->tmp.innermost_ip_flag &&
-	        !rfc5225_ctxt->tmp.at_least_one_df_changed &&
-	        !rfc5225_ctxt->tmp.at_least_one_ip_id_behavior_changed)
+	        !tmp->outer_ip_flag &&
+	        !tmp->innermost_ip_flag &&
+	        !tmp->at_least_one_df_changed &&
+	        !tmp->at_least_one_ip_id_behavior_changed)
 	{
 		rohc_comp_debug(ctxt, "code pt_2_seq_id packet");
 		packet_type = ROHC_PACKET_NORTP_PT_2_SEQ_ID;
@@ -1618,8 +1637,8 @@ static rohc_packet_t rohc_comp_rfc5225_ip_udp_decide_FO_SO_pkt(const struct rohc
 	else if(rohc_comp_rfc5225_is_msn_lsb_possible(&rfc5225_ctxt->msn_wlsb,
 	                                              rfc5225_ctxt->msn,
 	                                              reorder_ratio, 8) &&
-	        !rfc5225_ctxt->tmp.outer_df_changed &&
-	        !rfc5225_ctxt->tmp.outer_ip_id_behavior_changed)
+	        !tmp->outer_df_changed &&
+	        !tmp->outer_ip_id_behavior_changed)
 	{
 		rohc_comp_debug(ctxt, "code co_common packet");
 		packet_type = ROHC_PACKET_CO_COMMON;
@@ -2007,6 +2026,7 @@ error:
  *
  * @param context           The compression context
  * @param uncomp_pkt_hdrs   The uncompressed headers to encode
+ * @param tmp               The temporary state for the compressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       The type of ROHC packet to create
@@ -2015,6 +2035,7 @@ error:
  */
 static int rohc_comp_rfc5225_ip_udp_code_CO_pkt(const struct rohc_comp_ctxt *const context,
                                                 const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                                                const struct comp_rfc5225_tmp_variables *const tmp,
                                                 uint8_t *const rohc_pkt,
                                                 const size_t rohc_pkt_max_len,
                                                 const rohc_packet_t packet_type)
@@ -2108,7 +2129,9 @@ static int rohc_comp_rfc5225_ip_udp_code_CO_pkt(const struct rohc_comp_ctxt *con
 	else if(packet_type == ROHC_PACKET_NORTP_PT_1_SEQ_ID)
 	{
 		/* build the pt_1_seq_id ROHC header */
-		ret = rohc_comp_rfc5225_ip_udp_build_pt_1_seq_id_pkt(context, crc_computed,
+		ret = rohc_comp_rfc5225_ip_udp_build_pt_1_seq_id_pkt(context,
+		                                                     tmp->innermost_ip_id_offset,
+		                                                     crc_computed,
 		                                                     rohc_remain_data,
 		                                                     rohc_remain_len);
 		if(ret < 0)
@@ -2122,7 +2145,9 @@ static int rohc_comp_rfc5225_ip_udp_code_CO_pkt(const struct rohc_comp_ctxt *con
 	else if(packet_type == ROHC_PACKET_NORTP_PT_2_SEQ_ID)
 	{
 		/* build the pt_2_seq_id ROHC header */
-		ret = rohc_comp_rfc5225_ip_udp_build_pt_2_seq_id_pkt(context, crc_computed,
+		ret = rohc_comp_rfc5225_ip_udp_build_pt_2_seq_id_pkt(context,
+		                                                     tmp->innermost_ip_id_offset,
+		                                                     crc_computed,
 		                                                     rohc_remain_data,
 		                                                     rohc_remain_len);
 		if(ret < 0)
@@ -2136,7 +2161,7 @@ static int rohc_comp_rfc5225_ip_udp_code_CO_pkt(const struct rohc_comp_ctxt *con
 	else if(packet_type == ROHC_PACKET_CO_COMMON)
 	{
 		/* build the co_common ROHC header */
-		ret = rohc_comp_rfc5225_ip_udp_build_co_common_pkt(context, crc_computed,
+		ret = rohc_comp_rfc5225_ip_udp_build_co_common_pkt(context, tmp, crc_computed,
 		                                                   rohc_remain_data,
 		                                                   rohc_remain_len);
 		if(ret < 0)
@@ -2162,6 +2187,7 @@ static int rohc_comp_rfc5225_ip_udp_code_CO_pkt(const struct rohc_comp_ctxt *con
 
 	/* add the irregular chain at the very end of the CO header */
 	ret = rohc_comp_rfc5225_ip_udp_irreg_chain(context, uncomp_pkt_hdrs,
+	                                           tmp->outer_ip_flag,
 	                                           rohc_remain_data, rohc_remain_len);
 	if(ret < 0)
 	{
@@ -2445,7 +2471,7 @@ static int rohc_comp_rfc5225_ip_udp_dyn_chain(const struct rohc_comp_ctxt *const
                                               uint8_t *const rohc_pkt,
                                               const size_t rohc_pkt_max_len)
 {
-	struct rohc_comp_rfc5225_ip_udp_ctxt *const rfc5225_ctxt = ctxt->specific;
+	const struct rohc_comp_rfc5225_ip_udp_ctxt *const rfc5225_ctxt = ctxt->specific;
 
 	uint8_t *rohc_remain_data = rohc_pkt;
 	size_t rohc_remain_len = rohc_pkt_max_len;
@@ -2675,6 +2701,8 @@ error:
  *
  * @param ctxt              The compression context
  * @param uncomp_pkt_hdrs   The uncompressed headers to encode
+ * @param outer_ip_flag     Whether at least one TOS/TC or TTL/HL changed in all
+ *                          outer IP headers
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @return                  The length of the ROHC packet if successful,
@@ -2682,6 +2710,7 @@ error:
  */
 static int rohc_comp_rfc5225_ip_udp_irreg_chain(const struct rohc_comp_ctxt *const ctxt,
                                                 const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                                                const bool outer_ip_flag,  
                                                 uint8_t *const rohc_pkt,
                                                 const size_t rohc_pkt_max_len)
 {
@@ -2708,7 +2737,8 @@ static int rohc_comp_rfc5225_ip_udp_irreg_chain(const struct rohc_comp_ctxt *con
 
 		if(ip_hdr->version == IPV4)
 		{
-			ret = rohc_comp_rfc5225_ip_udp_irreg_ipv4_part(ctxt, ip_ctxt, ip_hdr->ipv4, is_innermost,
+			ret = rohc_comp_rfc5225_ip_udp_irreg_ipv4_part(ctxt, ip_ctxt, ip_hdr->ipv4,
+			                                               is_innermost, outer_ip_flag,
 			                                               rohc_remain_data, rohc_remain_len);
 			if(ret < 0)
 			{
@@ -2721,7 +2751,8 @@ static int rohc_comp_rfc5225_ip_udp_irreg_chain(const struct rohc_comp_ctxt *con
 		}
 		else /* IPv6 */
 		{
-			ret = rohc_comp_rfc5225_ip_udp_irreg_ipv6_part(ctxt, ip_ctxt, ip_hdr->ipv6, is_innermost,
+			ret = rohc_comp_rfc5225_ip_udp_irreg_ipv6_part(ctxt, ip_ctxt, ip_hdr->ipv6,
+			                                               is_innermost, outer_ip_flag,
 			                                               rohc_remain_data, rohc_remain_len);
 			if(ret < 0)
 			{
@@ -2764,6 +2795,8 @@ error:
  * @param ipv4            The IPv4 header
  * @param is_innermost    true if the IP header is the innermost of the packet,
  *                        false otherwise
+ * @param outer_ip_flag   Whether at least one TOS/TC or TTL/HL changed in all
+ *                        outer IP headers
  * @param[out] rohc_data  The ROHC packet being built
  * @param rohc_max_len    The max remaining length in the ROHC buffer
  * @return                The length appended in the ROHC buffer if positive,
@@ -2773,10 +2806,10 @@ static int rohc_comp_rfc5225_ip_udp_irreg_ipv4_part(const struct rohc_comp_ctxt 
                                                     const ip_context_t *const ip_ctxt,
                                                     const struct ipv4_hdr *const ipv4,
                                                     const bool is_innermost,
+                                                    const bool outer_ip_flag,  
                                                     uint8_t *const rohc_data,
                                                     const size_t rohc_max_len)
 {
-	const struct rohc_comp_rfc5225_ip_udp_ctxt *const rfc5225_ctxt = ctxt->specific;
 	uint8_t *rohc_remain_data = rohc_data;
 	size_t rohc_remain_len = rohc_max_len;
 	size_t ipv4_irreg_len = 0;
@@ -2802,7 +2835,7 @@ static int rohc_comp_rfc5225_ip_udp_irreg_ipv4_part(const struct rohc_comp_ctxt 
 	}
 
 	/* TOS and TTL for outer IP headers */
-	if(!is_innermost && rfc5225_ctxt->tmp.outer_ip_flag)
+	if(!is_innermost && outer_ip_flag)
 	{
 		const size_t tos_ttl_req_len = 2;
 
@@ -2840,6 +2873,8 @@ error:
  * @param ipv6            The IPv6 header
  * @param is_innermost    true if the IP header is the innermost of the packet,
  *                        false otherwise
+ * @param outer_ip_flag   Whether at least one TOS/TC or TTL/HL changed in all
+ *                        outer IP headers
  * @param[out] rohc_data  The ROHC packet being built
  * @param rohc_max_len    The max remaining length in the ROHC buffer
  * @return                The length appended in the ROHC buffer if positive,
@@ -2849,10 +2884,10 @@ static int rohc_comp_rfc5225_ip_udp_irreg_ipv6_part(const struct rohc_comp_ctxt 
                                                     const ip_context_t *const ip_ctxt,
                                                     const struct ipv6_hdr *const ipv6,
                                                     const bool is_innermost,
+                                                    const bool outer_ip_flag,  
                                                     uint8_t *const rohc_data,
                                                     const size_t rohc_max_len)
 {
-	const struct rohc_comp_rfc5225_ip_udp_ctxt *const rfc5225_ctxt = ctxt->specific;
 	uint8_t *rohc_remain_data = rohc_data;
 	size_t rohc_remain_len = rohc_max_len;
 	size_t ipv6_irreg_len = 0;
@@ -2860,7 +2895,7 @@ static int rohc_comp_rfc5225_ip_udp_irreg_ipv6_part(const struct rohc_comp_ctxt 
 	assert(ip_ctxt->version == IPV6);
 
 	/* TC and HL for outer IP headers */
-	if(!is_innermost && rfc5225_ctxt->tmp.outer_ip_flag)
+	if(!is_innermost && outer_ip_flag)
 	{
 		const size_t tc_hl_req_len = 2;
 
@@ -3016,6 +3051,7 @@ error:
  * @brief Build a ROHCv2 pt_1_seq_id packet
  *
  * @param context         The compression context
+ * @param innermost_ip_id_offset  The new innermost IP-ID / SN delta
  * @param crc             The CRC on the uncompressed headers
  * @param[out] rohc_data  The ROHC packet being built
  * @param rohc_max_len    The max remaining length in the ROHC buffer
@@ -3023,6 +3059,7 @@ error:
  *                        -1 in case of error
  */
 static int rohc_comp_rfc5225_ip_udp_build_pt_1_seq_id_pkt(const struct rohc_comp_ctxt *const context,
+                                                          const uint16_t innermost_ip_id_offset,
                                                           const uint8_t crc,
                                                           uint8_t *const rohc_data,
                                                           const size_t rohc_max_len)
@@ -3042,7 +3079,7 @@ static int rohc_comp_rfc5225_ip_udp_build_pt_1_seq_id_pkt(const struct rohc_comp
 	pt_1_seq_id->header_crc = crc;
 	pt_1_seq_id->msn_1 = (rfc5225_ctxt->msn >> 4) & 0x03;
 	pt_1_seq_id->msn_2 = rfc5225_ctxt->msn & 0x0f;
-	pt_1_seq_id->ip_id = rfc5225_ctxt->tmp.innermost_ip_id_offset & 0x0f;
+	pt_1_seq_id->ip_id = innermost_ip_id_offset & 0x0f;
 
 	return sizeof(pt_1_seq_id_t);
 
@@ -3055,6 +3092,7 @@ error:
  * @brief Build a ROHCv2 pt_2_seq_id packet
  *
  * @param context         The compression context
+ * @param innermost_ip_id_offset  The new innermost IP-ID / SN delta
  * @param crc             The CRC on the uncompressed headers
  * @param[out] rohc_data  The ROHC packet being built
  * @param rohc_max_len    The max remaining length in the ROHC buffer
@@ -3062,6 +3100,7 @@ error:
  *                        -1 in case of error
  */
 static int rohc_comp_rfc5225_ip_udp_build_pt_2_seq_id_pkt(const struct rohc_comp_ctxt *const context,
+                                                          const uint16_t innermost_ip_id_offset,
                                                           const uint8_t crc,
                                                           uint8_t *const rohc_data,
                                                           const size_t rohc_max_len)
@@ -3078,8 +3117,8 @@ static int rohc_comp_rfc5225_ip_udp_build_pt_2_seq_id_pkt(const struct rohc_comp
 	}
 
 	pt_2_seq_id->discriminator = 0x6;
-	pt_2_seq_id->ip_id_1 = (rfc5225_ctxt->tmp.innermost_ip_id_offset >> 1) & 0x1f;
-	pt_2_seq_id->ip_id_2 = rfc5225_ctxt->tmp.innermost_ip_id_offset & 0x01;
+	pt_2_seq_id->ip_id_1 = (innermost_ip_id_offset >> 1) & 0x1f;
+	pt_2_seq_id->ip_id_2 = innermost_ip_id_offset & 0x01;
 	pt_2_seq_id->header_crc = crc;
 	pt_2_seq_id->msn = rfc5225_ctxt->msn & 0xff;
 
@@ -3094,6 +3133,7 @@ error:
  * @brief Build a ROHCv2 co_common packet
  *
  * @param context         The compression context
+ * @param tmp             The temporary state for the compressed packet
  * @param crc             The CRC on the uncompressed headers
  * @param[out] rohc_data  The ROHC packet being built
  * @param rohc_max_len    The max remaining length in the ROHC buffer
@@ -3101,6 +3141,7 @@ error:
  *                        -1 in case of error
  */
 static int rohc_comp_rfc5225_ip_udp_build_co_common_pkt(const struct rohc_comp_ctxt *const context,
+                                                        const struct comp_rfc5225_tmp_variables *const tmp,
                                                         const uint8_t crc,
                                                         uint8_t *const rohc_data,
                                                         const size_t rohc_max_len)
@@ -3125,9 +3166,9 @@ static int rohc_comp_rfc5225_ip_udp_build_co_common_pkt(const struct rohc_comp_c
 	co_common->discriminator = 0xfa; /* '11111010' */
 	/* ip_id_indicator is set later in the function */
 	co_common->header_crc = crc;
-	if(rfc5225_ctxt->tmp.innermost_df_changed ||
-		rfc5225_ctxt->tmp.outer_ip_flag ||
-		rfc5225_ctxt->tmp.innermost_ip_id_behavior_changed)
+	if(tmp->innermost_df_changed ||
+		tmp->outer_ip_flag ||
+		tmp->innermost_ip_id_behavior_changed)
 	{
 		co_common->flags_ind = 1;
 	}
@@ -3135,8 +3176,8 @@ static int rohc_comp_rfc5225_ip_udp_build_co_common_pkt(const struct rohc_comp_c
 	{
 		co_common->flags_ind = 0;
 	}
-	co_common->ttl_hopl_ind = rfc5225_ctxt->tmp.innermost_ttl_hopl_changed;
-	co_common->tos_tc_ind = rfc5225_ctxt->tmp.innermost_tos_tc_changed;
+	co_common->ttl_hopl_ind = tmp->innermost_ttl_hopl_changed;
+	co_common->tos_tc_ind = tmp->innermost_tos_tc_changed;
 	co_common->reorder_ratio = context->compressor->reorder_ratio;
 
 	/* CRC-3 over control fields */
@@ -3195,8 +3236,8 @@ static int rohc_comp_rfc5225_ip_udp_build_co_common_pkt(const struct rohc_comp_c
 			goto error;
 		}
 
-		profile_2_3_4_flags->ip_outer_indicator = rfc5225_ctxt->tmp.outer_ip_flag;
-		profile_2_3_4_flags->df = rfc5225_ctxt->tmp.innermost_df;
+		profile_2_3_4_flags->ip_outer_indicator = tmp->outer_ip_flag;
+		profile_2_3_4_flags->df = tmp->innermost_df;
 		assert(innermost_ip_id_behavior == (innermost_ip_id_behavior & 0x03));
 		profile_2_3_4_flags->ip_id_behavior = innermost_ip_id_behavior;
 		profile_2_3_4_flags->reserved = 0;
@@ -3217,7 +3258,7 @@ static int rohc_comp_rfc5225_ip_udp_build_co_common_pkt(const struct rohc_comp_c
 			               "%zu bytes available", rohc_remain_len);
 			goto error;
 		}
-		rohc_remain_data[0] = rfc5225_ctxt->tmp.innermost_tos_tc;
+		rohc_remain_data[0] = tmp->innermost_tos_tc;
 		rohc_remain_data++;
 		rohc_remain_len--;
 		co_common_hdr_len++;
@@ -3234,7 +3275,7 @@ static int rohc_comp_rfc5225_ip_udp_build_co_common_pkt(const struct rohc_comp_c
 			               "%zu bytes available", rohc_remain_len);
 			goto error;
 		}
-		rohc_remain_data[0] = rfc5225_ctxt->tmp.innermost_ttl_hopl;
+		rohc_remain_data[0] = tmp->innermost_ttl_hopl;
 		rohc_remain_data++;
 		rohc_remain_len--;
 		co_common_hdr_len++;
@@ -3260,8 +3301,8 @@ static int rohc_comp_rfc5225_ip_udp_build_co_common_pkt(const struct rohc_comp_c
 		int ret;
 
 		ret = c_optional_ip_id_lsb(innermost_ip_id_behavior,
-		                           rohc_hton16(rfc5225_ctxt->tmp.innermost_ip_id),
-		                           rfc5225_ctxt->tmp.innermost_ip_id_offset,
+		                           rohc_hton16(tmp->innermost_ip_id),
+		                           tmp->innermost_ip_id_offset,
 		                           &rfc5225_ctxt->innermost_ip_id_offset_wlsb,
 		                           rohc_interval_get_rfc5225_id_id_p(8),
 		                           rohc_remain_data, rohc_remain_len, &indicator);
