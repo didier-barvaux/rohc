@@ -39,19 +39,14 @@
 #include <assert.h>
 
 
-/**
- * @brief Define the UDP-specific temporary variables in the profile
- *        compression context.
- *
- * This object must be used by the UDP-specific decompression context
- * sc_udp_context.
- *
- * @see sc_udp_context
- */
+/** The UDP-specific temporary variables */
 struct udp_tmp_vars
 {
-	/** The number of UDP fields that changed in the UDP header */
-	int send_udp_dynamic;
+	/** Whether the UDP checksum changed of behavior with the current packet */
+	uint8_t udp_check_behavior_just_changed:1;
+	/** Whether the UDP checksum changed of behavior with the last few packets */
+	uint8_t udp_check_behavior_changed:1;
+	uint8_t unused:6;
 };
 
 
@@ -65,9 +60,8 @@ struct udp_tmp_vars
  */
 struct sc_udp_context
 {
-	/** @brief The number of times the checksum field was added to the
-	 *         compressed header */
-	size_t udp_checksum_change_count;
+	/** The number of times the checksum field was transmitted since last change */
+	uint8_t udp_checksum_trans_nr;
 
 	/** The previous UDP header */
 	struct udphdr old_udp;
@@ -86,7 +80,11 @@ static bool c_udp_create(struct rohc_comp_ctxt *const context,
                          const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static void udp_decide_state(struct rohc_comp_ctxt *const context);
+static rohc_packet_t c_udp_decide_FO_packet(const struct rohc_comp_ctxt *const context)
+	__attribute__((warn_unused_result, nonnull(1)));
+
+static rohc_packet_t c_udp_decide_SO_packet(const struct rohc_comp_ctxt *const context)
+	__attribute__((warn_unused_result, nonnull(1)));
 
 static int c_udp_encode(struct rohc_comp_ctxt *const context,
                         const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
@@ -102,8 +100,10 @@ static size_t udp_code_dynamic_udp_part(const struct rohc_comp_ctxt *const conte
                                         const size_t counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static int udp_changed_udp_dynamic(const struct rohc_comp_ctxt *context,
-                                   const struct udphdr *udp);
+static void udp_detect_udp_changes(const struct rohc_comp_ctxt *const context,
+                                   const struct udphdr *const udp,
+                                   struct udp_tmp_vars *const tmp)
+	__attribute__((nonnull(1, 2, 3)));
 
 
 /**
@@ -151,17 +151,14 @@ static bool c_udp_create(struct rohc_comp_ctxt *const context,
 	rfc3095_ctxt->specific = udp_context;
 
 	/* initialize the UDP part of the profile context */
-	udp_context->udp_checksum_change_count = 0;
+	udp_context->udp_checksum_trans_nr = 0;
 	memcpy(&udp_context->old_udp, uncomp_pkt_hdrs->udp, sizeof(struct udphdr));
-
-	/* init the UDP-specific temporary variables */
-	udp_context->tmp.send_udp_dynamic = -1;
 
 	/* init the UDP-specific variables and functions */
 	rfc3095_ctxt->next_header_len = sizeof(struct udphdr);
-	rfc3095_ctxt->decide_state = udp_decide_state;
-	rfc3095_ctxt->decide_FO_packet = c_ip_decide_FO_packet;
-	rfc3095_ctxt->decide_SO_packet = c_ip_decide_SO_packet;
+	rfc3095_ctxt->decide_state = rohc_comp_rfc3095_decide_state;
+	rfc3095_ctxt->decide_FO_packet = c_udp_decide_FO_packet;
+	rfc3095_ctxt->decide_SO_packet = c_udp_decide_SO_packet;
 	rfc3095_ctxt->decide_extension = decide_extension;
 	rfc3095_ctxt->init_at_IR = NULL;
 	rfc3095_ctxt->get_next_sn = c_ip_get_next_sn;
@@ -209,9 +206,8 @@ static int c_udp_encode(struct rohc_comp_ctxt *const context,
 	assert(uncomp_pkt_hdrs->innermost_ip_hdr->next_proto == ROHC_IPPROTO_UDP);
 	assert(uncomp_pkt_hdrs->udp != NULL);
 
-	/* how many UDP fields changed? */
-	udp_context->tmp.send_udp_dynamic =
-		udp_changed_udp_dynamic(context, uncomp_pkt_hdrs->udp);
+	/* detect changes in uncompressed headers */
+	udp_detect_udp_changes(context, uncomp_pkt_hdrs->udp, &udp_context->tmp);
 
 	/* encode the IP packet */
 	size = rohc_comp_rfc3095_encode(context, uncomp_pkt_hdrs, uncomp_pkt_time,
@@ -225,6 +221,14 @@ static int c_udp_encode(struct rohc_comp_ctxt *const context,
 	if((*packet_type) == ROHC_PACKET_IR ||
 	   (*packet_type) == ROHC_PACKET_IR_DYN)
 	{
+		if(udp_context->tmp.udp_check_behavior_just_changed)
+		{
+			udp_context->udp_checksum_trans_nr = 0;
+		}
+		if(udp_context->udp_checksum_trans_nr < context->compressor->oa_repetitions_nr)
+		{
+			udp_context->udp_checksum_trans_nr++;
+		}
 		memcpy(&udp_context->old_udp, uncomp_pkt_hdrs->udp, sizeof(struct udphdr));
 	}
 
@@ -234,35 +238,64 @@ quit:
 
 
 /**
- * @brief Decide the state that should be used for the next packet compressed
- *        with the ROHC UDP profile.
+ * @brief Decide which packet to send when in First Order (FO) state
  *
- * The three states are:
- *  - Initialization and Refresh (IR),
- *  - First Order (FO),
- *  - Second Order (SO).
+ * Packets that can be used are the IR-DYN and UO-2 packets.
+ *
+ * @see decide_packet
  *
  * @param context The compression context
+ * @return        The packet type among ROHC_PACKET_IR_DYN and ROHC_PACKET_UOR_2
  */
-static void udp_decide_state(struct rohc_comp_ctxt *const context)
+static rohc_packet_t c_udp_decide_FO_packet(const struct rohc_comp_ctxt *const context)
 {
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	struct sc_udp_context *udp_context;
+	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
+		(const struct rohc_comp_rfc3095_ctxt *const) context->specific;
+	const struct sc_udp_context *const udp_context = rfc3095_ctxt->specific;
+	rohc_packet_t packet;
 
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-	udp_context = (struct sc_udp_context *) rfc3095_ctxt->specific;
-
-	if(udp_context->tmp.send_udp_dynamic)
+	if(udp_context->tmp.udp_check_behavior_changed)
 	{
-		rohc_comp_debug(context, "go back to IR state because UDP checksum "
-		                "behaviour changed in the last few packets");
-		rohc_comp_change_state(context, ROHC_COMP_STATE_IR);
+		packet = ROHC_PACKET_IR;
 	}
 	else
 	{
-		/* generic function used by the IP-only, UDP and UDP-Lite profiles */
-		rohc_comp_rfc3095_decide_state(context);
+		packet = c_ip_decide_FO_packet(context);
 	}
+
+	return packet;
+}
+
+
+/**
+ * @brief Decide which packet to send when in Second Order (SO) state
+ *
+ * Packets that can be used are the UO-0, UO-1 and UO-2 (with or without
+ * extensions) packets.
+ *
+ * @see decide_packet
+ *
+ * @param context The compression context
+ * @return        The packet type among ROHC_PACKET_UO_0, ROHC_PACKET_UO_1 and
+ *                ROHC_PACKET_UOR_2
+ */
+static rohc_packet_t c_udp_decide_SO_packet(const struct rohc_comp_ctxt *const context)
+{
+	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
+		(struct rohc_comp_rfc3095_ctxt *) context->specific;
+	const struct sc_udp_context *const udp_context = rfc3095_ctxt->specific;
+	rohc_packet_t packet;
+
+	if(udp_context->tmp.udp_check_behavior_changed)
+	{
+		packet = ROHC_PACKET_IR;
+	}
+	else
+	{
+		packet = c_ip_decide_SO_packet(context);
+	}
+
+	return packet;
 }
 
 
@@ -372,57 +405,56 @@ static size_t udp_code_dynamic_udp_part(const struct rohc_comp_ctxt *const conte
                                         uint8_t *const dest,
                                         const size_t counter)
 {
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	struct sc_udp_context *udp_context;
-	const struct udphdr *udp;
+	const struct udphdr *const udp = (struct udphdr *) next_header;
 	size_t nr_written = 0;
-
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-	udp_context = (struct sc_udp_context *) rfc3095_ctxt->specific;
-
-	udp = (struct udphdr *) next_header;
 
 	/* part 1 */
 	rohc_comp_debug(context, "UDP checksum = 0x%x", udp->check);
 	memcpy(&dest[counter + nr_written], &udp->check, 2);
 	nr_written += 2;
-	udp_context->udp_checksum_change_count++;
 
 	return counter + nr_written;
 }
 
 
 /**
- * @brief Check if the dynamic part of the UDP header changed.
+ * @brief Detect changes in the UDP header
  *
- * @param context The compression context
- * @param udp     The UDP header
- * @return        The number of UDP fields that changed
+ * @param context   The compression context
+ * @param udp       The UDP header
+ * @param[out] tmp  The changes detected in the UDP header
  */
-static int udp_changed_udp_dynamic(const struct rohc_comp_ctxt *context,
-                                   const struct udphdr *udp)
+static void udp_detect_udp_changes(const struct rohc_comp_ctxt *const context,
+                                   const struct udphdr *const udp,
+                                   struct udp_tmp_vars *const tmp)
 {
 	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
-	const struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	struct sc_udp_context *udp_context;
+	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
+		(struct rohc_comp_rfc3095_ctxt *) context->specific;
+	const struct sc_udp_context *const udp_ctxt =
+		(struct sc_udp_context *) rfc3095_ctxt->specific;
 
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-	udp_context = (struct sc_udp_context *) rfc3095_ctxt->specific;
+	tmp->udp_check_behavior_just_changed =
+		((udp->check != 0 && udp_ctxt->old_udp.check == 0) ||
+		 (udp->check == 0 && udp_ctxt->old_udp.check != 0));
 
-	if((udp->check != 0 && udp_context->old_udp.check == 0) ||
-	   (udp->check == 0 && udp_context->old_udp.check != 0) ||
-	   (udp_context->udp_checksum_change_count < oa_repetitions_nr))
+	if(tmp->udp_check_behavior_just_changed)
 	{
-		if((udp->check != 0 && udp_context->old_udp.check == 0) ||
-		   (udp->check == 0 && udp_context->old_udp.check != 0))
-		{
-			udp_context->udp_checksum_change_count = 0;
-		}
-		return 1;
+		rohc_comp_debug(context, "UDP checksum behavior changed in current packet, "
+		                "it shall be transmitted %u times", oa_repetitions_nr);
+		tmp->udp_check_behavior_changed = true;
+	}
+	else if(udp_ctxt->udp_checksum_trans_nr < oa_repetitions_nr)
+	{
+		rohc_comp_debug(context, "UDP checksum behavior changed in last packets, "
+		                "it shall be transmitted %u times more",
+		                oa_repetitions_nr - udp_ctxt->udp_checksum_trans_nr);
+		tmp->udp_check_behavior_changed = true;
 	}
 	else
 	{
-		return 0;
+		rohc_comp_debug(context, "UDP checksum behavior is unchanged");
+		tmp->udp_check_behavior_changed = false;
 	}
 }
 

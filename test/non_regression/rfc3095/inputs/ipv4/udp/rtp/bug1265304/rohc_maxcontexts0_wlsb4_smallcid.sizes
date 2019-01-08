@@ -16,8 +16,8 @@ compressor_num = 1	packet_num = 8	rohc_size = 321	packet_type = 0
 compressor_num = 2	packet_num = 8	rohc_size = 321	packet_type = 0
 compressor_num = 1	packet_num = 9	rohc_size = 461	packet_type = 0
 compressor_num = 2	packet_num = 9	rohc_size = 461	packet_type = 0
-compressor_num = 1	packet_num = 10	rohc_size = 60	packet_type = 0
-compressor_num = 2	packet_num = 10	rohc_size = 60	packet_type = 0
+compressor_num = 1	packet_num = 10	rohc_size = 37	packet_type = 3
+compressor_num = 2	packet_num = 10	rohc_size = 37	packet_type = 3
 compressor_num = 1	packet_num = 11	rohc_size = 864	packet_type = 0
 compressor_num = 2	packet_num = 11	rohc_size = 864	packet_type = 0
 compressor_num = 1	packet_num = 12	rohc_size = 496	packet_type = 0
@@ -58,10 +58,10 @@ compressor_num = 1	packet_num = 29	rohc_size = 200	packet_type = 0
 compressor_num = 2	packet_num = 29	rohc_size = 200	packet_type = 0
 compressor_num = 1	packet_num = 30	rohc_size = 200	packet_type = 0
 compressor_num = 2	packet_num = 30	rohc_size = 200	packet_type = 0
-compressor_num = 1	packet_num = 31	rohc_size = 200	packet_type = 0
-compressor_num = 2	packet_num = 31	rohc_size = 200	packet_type = 0
-compressor_num = 1	packet_num = 32	rohc_size = 200	packet_type = 0
-compressor_num = 2	packet_num = 32	rohc_size = 200	packet_type = 0
+compressor_num = 1	packet_num = 31	rohc_size = 177	packet_type = 3
+compressor_num = 2	packet_num = 31	rohc_size = 177	packet_type = 3
+compressor_num = 1	packet_num = 32	rohc_size = 176	packet_type = 2
+compressor_num = 2	packet_num = 32	rohc_size = 176	packet_type = 2
 compressor_num = 1	packet_num = 33	rohc_size = 177	packet_type = 3
 compressor_num = 2	packet_num = 33	rohc_size = 177	packet_type = 3
 compressor_num = 1	packet_num = 34	rohc_size = 176	packet_type = 2
@@ -1974,8 +1974,8 @@ compressor_num = 1	packet_num = 987	rohc_size = 177	packet_type = 3
 compressor_num = 2	packet_num = 987	rohc_size = 177	packet_type = 3
 compressor_num = 1	packet_num = 988	rohc_size = 490	packet_type = 0
 compressor_num = 2	packet_num = 988	rohc_size = 490	packet_type = 0
-compressor_num = 1	packet_num = 989	rohc_size = 353	packet_type = 0
-compressor_num = 2	packet_num = 989	rohc_size = 353	packet_type = 0
+compressor_num = 1	packet_num = 989	rohc_size = 334	packet_type = 53
+compressor_num = 2	packet_num = 989	rohc_size = 334	packet_type = 53
 compressor_num = 1	packet_num = 990	rohc_size = 959	packet_type = 49
 compressor_num = 2	packet_num = 990	rohc_size = 959	packet_type = 49
 compressor_num = 1	packet_num = 991	rohc_size = 177	packet_type = 3
