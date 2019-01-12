@@ -994,7 +994,6 @@ static void rohc_comp_rfc3095_feedback_ack(struct rohc_comp_ctxt *const context,
 		                "IR refreshes are unchanged");
 	}
 	else if(context->mode == ROHC_O_MODE &&
-	        context->state != ROHC_COMP_STATE_SO &&
 	        !sn_not_valid)
 	{
 		uint32_t sn_mask;
