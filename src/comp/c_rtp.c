@@ -63,8 +63,6 @@ static int c_rtp_encode(struct rohc_comp_ctxt *const context,
                         rohc_packet_t *const packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 6)));
 
-static void rtp_decide_state(struct rohc_comp_ctxt *const context);
-
 static rohc_packet_t c_rtp_decide_FO_packet(const struct rohc_comp_ctxt *const context);
 static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const context);
 static rohc_packet_t c_rtp_decide_UOR2_pkt(const struct rohc_comp_ctxt *const ctxt,
@@ -175,7 +173,7 @@ static bool c_rtp_create(struct rohc_comp_ctxt *const context,
 	/* init the RTP-specific variables and functions */
 	rfc3095_ctxt->next_header_len = sizeof(struct udphdr) + sizeof(struct rtphdr);
 	rfc3095_ctxt->encode_uncomp_fields = rtp_encode_uncomp_fields;
-	rfc3095_ctxt->decide_state = rtp_decide_state;
+	rfc3095_ctxt->decide_state = rohc_comp_rfc3095_decide_state;
 	rfc3095_ctxt->decide_FO_packet = c_rtp_decide_FO_packet;
 	rfc3095_ctxt->decide_SO_packet = c_rtp_decide_SO_packet;
 	rfc3095_ctxt->decide_extension = c_rtp_decide_extension;
@@ -761,37 +759,6 @@ quit:
 
 
 /**
- * @brief Decide the state that should be used for the next packet compressed
- *        with the ROHC RTP profile.
- *
- * The three states are:
- *  - Initialization and Refresh (IR),
- *  - First Order (FO),
- *  - Second Order (SO).
- *
- * @param context The compression context
- */
-static void rtp_decide_state(struct rohc_comp_ctxt *const context)
-{
-	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
-		(struct rohc_comp_rfc3095_ctxt *) context->specific;
-	struct sc_rtp_context *const rtp_context =
-		(struct sc_rtp_context *) rfc3095_ctxt->specific;
-
-	rohc_comp_rfc3095_decide_state(context);
-
-	/* force initializing TS, TS_STRIDE and TS_SCALED again after
-	 * transition back to IR */
-	if(context->state == ROHC_COMP_STATE_IR &&
-	   rtp_context->ts_sc.state > INIT_STRIDE)
-	{
-		rtp_context->ts_sc.state = INIT_STRIDE;
-		rtp_context->ts_sc.nr_init_stride_packets = 0;
-	}
-}
-
-
-/**
  * @brief Determine the SN value for the next packet
  *
  * Profile SN is the 16-bit RTP SN.
@@ -823,6 +790,15 @@ static bool rtp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 {
 	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 	struct sc_rtp_context *const rtp_context = rfc3095_ctxt->specific;
+
+	/* force initializing TS, TS_STRIDE and TS_SCALED again after
+	 * transition back to IR */
+	if(context->state == ROHC_COMP_STATE_IR &&
+	   rtp_context->ts_sc.state > INIT_STRIDE)
+	{
+		rtp_context->ts_sc.state = INIT_STRIDE;
+		rtp_context->ts_sc.nr_init_stride_packets = 0;
+	}
 
 	/* add new TS value to context */
 	assert(rfc3095_ctxt->sn <= 0xffff);
