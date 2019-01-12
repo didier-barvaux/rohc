@@ -256,7 +256,7 @@ static rohc_packet_t c_udp_decide_FO_packet(const struct rohc_comp_ctxt *const c
 
 	if(udp_context->tmp.udp_check_behavior_changed)
 	{
-		packet = ROHC_PACKET_IR;
+		packet = ROHC_PACKET_IR_DYN;
 	}
 	else
 	{
@@ -288,7 +288,7 @@ static rohc_packet_t c_udp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 
 	if(udp_context->tmp.udp_check_behavior_changed)
 	{
-		packet = ROHC_PACKET_IR;
+		packet = ROHC_PACKET_IR_DYN;
 	}
 	else
 	{
