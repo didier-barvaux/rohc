@@ -331,6 +331,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 	const struct rfc3095_ip_hdr_changes *outer_ip_changes;
 	bool is_ts_deducible;
 	bool is_ts_scaled;
+	bool is_ext3_required;
 
 	is_ts_deducible = rohc_ts_sc_is_deducible(&rtp_context->ts_sc);
 	is_ts_scaled = (rtp_context->ts_sc.state == SEND_SCALED);
@@ -368,6 +369,34 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 		outer_ip_changes = &rfc3095_ctxt->tmp.ip_hdr_changes[0];
 	}
 
+	if(inner_ip_changes->tos_tc_changed ||
+	   inner_ip_changes->ttl_hl_changed ||
+	   inner_ip_changes->df_changed ||
+	   /* Protocol/Next Header never changes within a context */
+	   inner_ip_changes->ext_list_struct_changed ||
+	   inner_ip_changes->ext_list_content_changed ||
+	   inner_ip_changes->nbo_changed ||
+	   inner_ip_changes->rnd_changed)
+	{
+		is_ext3_required = true;
+	}
+	else if(outer_ip_changes != NULL &&
+	        (outer_ip_changes->tos_tc_changed ||
+	         outer_ip_changes->ttl_hl_changed ||
+	         outer_ip_changes->df_changed ||
+	         /* Protocol/Next Header never changes within a context */
+	         outer_ip_changes->ext_list_struct_changed ||
+	         outer_ip_changes->ext_list_content_changed ||
+	         outer_ip_changes->nbo_changed ||
+	         outer_ip_changes->rnd_changed))
+	{
+		is_ext3_required = true;
+	}
+	else
+	{
+		is_ext3_required = false;
+	}
+
 	/* what packet type do we choose? */
 	if(rtp_context->tmp.udp_check_behavior_changed)
 	{
@@ -402,37 +431,6 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 		rohc_comp_debug(context, "choose packet IR-DYN because SN cannot be "
 		                "transmitted on 6, 9 or 14 bits");
 	}
-	else if(inner_ip_changes->tos_tc_changed ||
-	        inner_ip_changes->ttl_hl_changed ||
-	        inner_ip_changes->df_changed ||
-	        /* Protocol/Next Header never changes within a context */
-	        inner_ip_changes->ext_list_struct_changed ||
-	        inner_ip_changes->ext_list_content_changed ||
-	        inner_ip_changes->nbo_changed ||
-	        inner_ip_changes->rnd_changed)
-	{
-		rohc_comp_debug(context, "choose packet UOR-2* because at least one of the "
-		                "TOS/TC, TTL/HL, DF, IP ext list, NBO, RND fields changed "
-		                "for inner IP header");
-		packet = c_rtp_decide_UOR2_pkt(context, nr_ipv4_non_rnd,
-		                               nr_ipv4_non_rnd_with_bits);
-	}
-	else if(outer_ip_changes != NULL &&
-	        (outer_ip_changes->tos_tc_changed ||
-	         outer_ip_changes->ttl_hl_changed ||
-	         outer_ip_changes->df_changed ||
-	         /* Protocol/Next Header never changes within a context */
-	         outer_ip_changes->ext_list_struct_changed ||
-	         outer_ip_changes->ext_list_content_changed ||
-	         outer_ip_changes->nbo_changed ||
-	         outer_ip_changes->rnd_changed))
-	{
-		rohc_comp_debug(context, "choose packet UOR-2* because at least one of the "
-		                "TOS/TC, TTL/HL, DF, IP ext list, NBO, RND fields changed "
-		                "for outer IP header");
-		packet = c_rtp_decide_UOR2_pkt(context, nr_ipv4_non_rnd,
-		                               nr_ipv4_non_rnd_with_bits);
-	}
 	else if(!rnd_changed &&
 	        rfc3095_ctxt->tmp.sn_4bits_possible &&
 	        nr_ipv4_non_rnd_with_bits == 0 &&
@@ -441,15 +439,17 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 	        !rtp_context->tmp.rtp_padding_changed &&
 	        !rtp_context->tmp.rtp_ext_changed &&
 	        !rtp_context->tmp.is_marker_bit_set &&
-	        !rtp_context->tmp.rtp_pt_changed)
+	        !rtp_context->tmp.rtp_pt_changed &&
+	        !is_ext3_required)
 	{
 		packet = ROHC_PACKET_UO_0;
 		rohc_comp_debug(context, "choose packet UO-0 because less than 4 SN bits "
 		                "must be transmitted, neither of the %zu IP header(s) "
 		                "are IPv4 with non-random IP-ID with some IP-ID bits "
 		                "to transmit, ( no TS bit must be transmitted, "
-		                "or TS bits are deducible from SN ), and RTP M bit is "
-		                "not set", nr_of_ip_hdr);
+		                "or TS bits are deducible from SN ), RTP M bit is not set, "
+		                "and no TOS/TC, TTL/HL, DF, IP ext list, NBO, RND fields "
+		                "changed for %zu IP header(s)", nr_of_ip_hdr, nr_of_ip_hdr);
 	}
 	else if(!rnd_changed &&
 	        rfc3095_ctxt->tmp.sn_4bits_possible &&
@@ -457,14 +457,17 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 	        is_ts_scaled && rtp_context->tmp.nr_ts_bits <= 6 &&
 	        !rtp_context->tmp.rtp_padding_changed &&
 	        !rtp_context->tmp.rtp_ext_changed &&
-	        !rtp_context->tmp.rtp_pt_changed)
+	        !rtp_context->tmp.rtp_pt_changed &&
+	        !is_ext3_required)
 	{
 		packet = ROHC_PACKET_UO_1_RTP;
 		rohc_comp_debug(context, "choose packet UO-1-RTP because neither of "
 		                "the %zu IP header(s) are 'IPv4 with non-random IP-ID', "
-		                "less than 4 SN bits must be transmitted, and "
-		                "%u <= 6 TS bits must be transmitted", nr_of_ip_hdr,
-		                rtp_context->tmp.nr_ts_bits);
+		                "less than 4 SN bits must be transmitted, "
+		                "%u <= 6 TS bits must be transmitted, and "
+		                "no TOS/TC, TTL/HL, DF, IP ext list, NBO, RND fields "
+		                "changed for %zu IP header(s)",
+		                nr_of_ip_hdr, rtp_context->tmp.nr_ts_bits, nr_of_ip_hdr);
 	}
 	else if(!rnd_changed &&
 	        rfc3095_ctxt->tmp.sn_4bits_possible &&
@@ -474,7 +477,8 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 	        !rtp_context->tmp.rtp_padding_changed &&
 	        !rtp_context->tmp.rtp_ext_changed &&
 	        !rtp_context->tmp.is_marker_bit_set &&
-	        !rtp_context->tmp.rtp_pt_changed)
+	        !rtp_context->tmp.rtp_pt_changed &&
+	        !is_ext3_required)
 	{
 		/* UO-1-ID without extension */
 		packet = ROHC_PACKET_UO_1_ID;
@@ -482,8 +486,11 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 		                "%zu IP header(s) is IPv4 with non-random IP-ID with "
 		                "<= 5 IP-ID bits to transmit, less than 4 SN bits "
 		                "must be transmitted, ( no TS bit must be transmitted, "
-		                "or TS bits are deducible from SN ), and RTP M bit is not "
-		                "set", nr_of_ip_hdr);
+		                "or TS bits are deducible from SN ), "
+		                "RTP M bit is not set, and "
+		                "no TOS/TC, TTL/HL, DF, IP ext list, NBO, RND fields "
+		                "changed for %zu IP header(s)",
+		                nr_of_ip_hdr, nr_of_ip_hdr);
 	}
 	else if(!rnd_changed &&
 	        rfc3095_ctxt->tmp.sn_4bits_possible &&
@@ -491,15 +498,18 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 	        is_ts_scaled && rtp_context->tmp.nr_ts_bits <= 5 &&
 	        !rtp_context->tmp.rtp_padding_changed &&
 	        !rtp_context->tmp.rtp_ext_changed &&
-	        !rtp_context->tmp.rtp_pt_changed)
+	        !rtp_context->tmp.rtp_pt_changed &&
+	        !is_ext3_required)
 	{
 		packet = ROHC_PACKET_UO_1_TS;
 		rohc_comp_debug(context, "choose packet UO-1-TS because neither of the "
 		                "%zu IP header(s) are IPv4 with non-random IP-ID with "
 		                "some IP-ID bits to to transmit for that IP header, "
-		                "less than 4 SN bits must be transmitted, and "
-		                "%u <= 6 TS bits must be transmitted", nr_of_ip_hdr,
-		                rtp_context->tmp.nr_ts_bits);
+		                "less than 4 SN bits must be transmitted, "
+		                "%u <= 6 TS bits must be transmitted, and "
+		                "no TOS/TC, TTL/HL, DF, IP ext list, NBO, RND fields "
+		                "changed for %zu IP header(s)",
+		                nr_of_ip_hdr, rtp_context->tmp.nr_ts_bits, nr_of_ip_hdr);
 	}
 	else if(!rnd_changed &&
 	        (rfc3095_ctxt->tmp.sn_4bits_possible ||
