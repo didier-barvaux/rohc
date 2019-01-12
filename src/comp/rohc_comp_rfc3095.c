@@ -1042,11 +1042,11 @@ static void rohc_comp_rfc3095_feedback_ack(struct rohc_comp_ctxt *const context,
 			if(context->profile->id == ROHC_PROFILE_RTP)
 			{
 				struct sc_rtp_context *const rtp_context = rfc3095_ctxt->specific;
-				rtp_context->udp_checksum_change_count = oa_repetitions_nr;
-				rtp_context->rtp_version_change_count = oa_repetitions_nr;
-				rtp_context->rtp_padding_change_count = oa_repetitions_nr;
-				rtp_context->rtp_extension_change_count = oa_repetitions_nr;
-				rtp_context->rtp_pt_change_count = oa_repetitions_nr;
+				rtp_context->udp_checksum_trans_nr = oa_repetitions_nr;
+				rtp_context->rtp_version_trans_nr = oa_repetitions_nr;
+				rtp_context->rtp_padding_trans_nr = oa_repetitions_nr;
+				rtp_context->rtp_ext_trans_nr = oa_repetitions_nr;
+				rtp_context->rtp_pt_trans_nr = oa_repetitions_nr;
 				if(rtp_context->ts_sc.nr_init_stride_packets > 0)
 				{
 					rtp_context->ts_sc.nr_init_stride_packets = oa_repetitions_nr;
@@ -4938,7 +4938,6 @@ static int code_EXT3_rtp_packet(struct rohc_comp_ctxt *const context,
                                 int counter,
                                 const rohc_packet_t packet_type)
 {
-	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = /* TODO: const */
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
 	const bool is_rtp = (context->profile->id == ROHC_PROFILE_RTP);
@@ -5059,12 +5058,9 @@ static int code_EXT3_rtp_packet(struct rohc_comp_ctxt *const context,
 	 *  - RTP TS and TS_STRIDE must be initialized.
 	 */
 	rtp = (rtp_context->tmp.rtp_pt_changed ||
-	       rtp_context->rtp_pt_change_count < oa_repetitions_nr ||
-	       rtp_context->tmp.padding_bit_changed ||
-	       rtp_context->rtp_padding_change_count < oa_repetitions_nr ||
+	       rtp_context->tmp.rtp_padding_changed ||
 	       (packet_type == ROHC_PACKET_UO_1_ID_EXT3 && rtp_context->tmp.is_marker_bit_set) ||
-	       rtp_context->tmp.ext_bit_changed ||
-	       rtp_context->rtp_extension_change_count < oa_repetitions_nr ||
+	       rtp_context->tmp.rtp_ext_changed ||
 	       (rtp_context->ts_sc.state == INIT_STRIDE));
 
 	/* ip2 bit (force ip2=1 if I2=1, otherwise I2 is not sent) */
@@ -5491,9 +5487,7 @@ static int rtp_header_flags_and_fields(const struct rohc_comp_ctxt *const contex
 
 	/* part 1 */
 	rpt = (rtp_context->tmp.rtp_pt_changed ||
-	       rtp_context->rtp_pt_change_count < oa_repetitions_nr ||
-	       rtp_context->tmp.padding_bit_changed ||
-	       rtp_context->rtp_padding_change_count < oa_repetitions_nr);
+	       rtp_context->tmp.rtp_padding_changed);
 	tss = (rtp_context->ts_sc.state == INIT_STRIDE);
 	byte = 0;
 	byte |= (context->mode & 0x03) << 6;
@@ -5504,10 +5498,6 @@ static int rtp_header_flags_and_fields(const struct rohc_comp_ctxt *const contex
 	rohc_comp_debug(context, "RTP flags = 0x%x", byte);
 	dest[counter] = byte;
 	counter++;
-	if(rtp_context->rtp_extension_change_count < oa_repetitions_nr)
-	{
-		rtp_context->rtp_extension_change_count++;
-	}
 
 	/* part 2 */
 	if(rpt)
@@ -5518,14 +5508,6 @@ static int rtp_header_flags_and_fields(const struct rohc_comp_ctxt *const contex
 		rohc_comp_debug(context, "part 2 = 0x%x", byte);
 		dest[counter] = byte;
 		counter++;
-		if(rtp_context->rtp_padding_change_count < oa_repetitions_nr)
-		{
-			rtp_context->rtp_padding_change_count++;
-		}
-		if(rtp_context->rtp_pt_change_count < oa_repetitions_nr)
-		{
-			rtp_context->rtp_pt_change_count++;
-		}
 	}
 
 	/* part 3: not supported yet */
