@@ -246,7 +246,6 @@ struct rohc_comp_profile
 	 *
 	 * @param context            The compression context
 	 * @param uncomp_pkt_hdrs    The uncompressed headers to encode
-	 * @param uncomp_pkt_time    The arrival time of the uncompressed packet
 	 * @param rohc_pkt           OUT: The ROHC packet
 	 * @param rohc_pkt_max_len   The maximum length of the ROHC packet
 	 * @param packet_type        OUT: The type of ROHC packet that is created
@@ -255,11 +254,10 @@ struct rohc_comp_profile
 	 */
 	int (*encode)(struct rohc_comp_ctxt *const context,
 	              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-	              const struct rohc_ts uncomp_pkt_time,
 	              uint8_t *const rohc_pkt,
 	              const size_t rohc_pkt_max_len,
 	              rohc_packet_t *const packet_type)
-		__attribute__((warn_unused_result, nonnull(1, 2, 4, 6)));
+		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
 	/**
 	 * @brief The handler used to warn the profile-specific part of the
@@ -379,10 +377,6 @@ void rohc_comp_change_mode(struct rohc_comp_ctxt *const context,
 
 void rohc_comp_change_state(struct rohc_comp_ctxt *const context,
                             const rohc_comp_state_t new_state)
-	__attribute__((nonnull(1)));
-
-void rohc_comp_periodic_down_transition(struct rohc_comp_ctxt *const context,
-                                        const struct rohc_ts pkt_time)
 	__attribute__((nonnull(1)));
 
 bool rohc_comp_reinit_context(struct rohc_comp_ctxt *const context)

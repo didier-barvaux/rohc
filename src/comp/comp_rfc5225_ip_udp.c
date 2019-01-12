@@ -168,11 +168,10 @@ static void rohc_comp_rfc5225_ip_udp_destroy(struct rohc_comp_ctxt *const contex
 /* encode ROHCv2 IP/UDP packets */
 static int rohc_comp_rfc5225_ip_udp_encode(struct rohc_comp_ctxt *const context,
                                            const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                                           const struct rohc_ts uncomp_pkt_time,
                                            uint8_t *const rohc_pkt,
                                            const size_t rohc_pkt_max_len,
                                            rohc_packet_t *const packet_type)
-	__attribute__((warn_unused_result, nonnull(1, 2, 4, 6)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
 static void rohc_comp_rfc5225_ip_udp_detect_changes(struct rohc_comp_ctxt *const context,
                                                     const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
@@ -324,11 +323,6 @@ static void rohc_comp_rfc5225_ip_udp_feedback_ack(struct rohc_comp_ctxt *const c
                                                   const uint32_t sn_bits,
                                                   const size_t sn_bits_nr,
                                                   const bool sn_not_valid)
-	__attribute__((nonnull(1)));
-
-/* mode and state transitions */
-static void rohc_comp_rfc5225_ip_udp_decide_state(struct rohc_comp_ctxt *const context,
-                                                  const struct rohc_ts pkt_time)
 	__attribute__((nonnull(1)));
 
 /* decide packet */
@@ -500,17 +494,15 @@ static void rohc_comp_rfc5225_ip_udp_destroy(struct rohc_comp_ctxt *const contex
  * @brief Encode an uncompressed packet according to a pattern decided by
  *        several different factors
  *
- * 1. Decide state\n
- * 2. Decide which packet type to send.\n
- * 3. Code packet\n
- * 4. Update context\n
+ * 1. Decide which packet type to send.\n
+ * 2. Code packet\n
+ * 3. Update context\n
  * \n
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
  * @param context           The compression context
  * @param uncomp_pkt_hdrs   The uncompressed headers to encode
- * @param uncomp_pkt_time   The arrival time of the uncompressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       OUT: The type of ROHC packet that is created
@@ -519,7 +511,6 @@ static void rohc_comp_rfc5225_ip_udp_destroy(struct rohc_comp_ctxt *const contex
  */
 static int rohc_comp_rfc5225_ip_udp_encode(struct rohc_comp_ctxt *const context,
                                            const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                                           const struct rohc_ts uncomp_pkt_time,
                                            uint8_t *const rohc_pkt,
                                            const size_t rohc_pkt_max_len,
                                            rohc_packet_t *const packet_type)
@@ -539,10 +530,7 @@ static int rohc_comp_rfc5225_ip_udp_encode(struct rohc_comp_ctxt *const context,
 	/* STEP 0: detect changes between new uncompressed packet and context */
 	rohc_comp_rfc5225_ip_udp_detect_changes(context, uncomp_pkt_hdrs);
 
-	/* STEP 1: decide state */
-	rohc_comp_rfc5225_ip_udp_decide_state(context, uncomp_pkt_time);
-
-	/* STEP 2: decide packet type */
+	/* STEP 1: decide packet type */
 	*packet_type = rohc_comp_rfc5225_ip_udp_decide_pkt(context);
 
 	/* the outer_ip_flag may be set to 1 only for co_common */
@@ -557,7 +545,7 @@ static int rohc_comp_rfc5225_ip_udp_encode(struct rohc_comp_ctxt *const context,
 		rfc5225_ctxt->msn_of_last_ctxt_updating_pkt = rfc5225_ctxt->msn;
 	}
 
-	/* STEP 3: code packet */
+	/* STEP 2: code packet */
 	if((*packet_type) == ROHC_PACKET_IR)
 	{
 		ret = rohc_comp_rfc5225_ip_udp_code_IR_pkt(context, uncomp_pkt_hdrs,
@@ -595,7 +583,7 @@ static int rohc_comp_rfc5225_ip_udp_encode(struct rohc_comp_ctxt *const context,
 
 	rohc_comp_dump_buf(context, "current ROHC packet", rohc_pkt, rohc_len);
 
-	/* STEP 4: update context with new values (done at the very end to avoid
+	/* STEP 3: update context with new values (done at the very end to avoid
 	 * wrongly updating the context in case of compression failure) */
 	rohc_comp_debug(context, "update context:");
 	/* add the new MSN to the W-LSB encoding object */
@@ -1394,54 +1382,6 @@ static void rohc_comp_rfc5225_ip_udp_feedback_ack(struct rohc_comp_ctxt *const c
 			                "YET by decompressor)",
 			                rfc5225_ctxt->msn_of_last_ctxt_updating_pkt);
 		}
-	}
-}
-
-
-/**
- * @brief Decide the state that should be used for the next packet
- *
- * @param context  The compression context
- * @param pkt_time The time of packet arrival
- */
-static void rohc_comp_rfc5225_ip_udp_decide_state(struct rohc_comp_ctxt *const context,
-                                                  const struct rohc_ts pkt_time)
-{
-	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
-	const rohc_comp_state_t curr_state = context->state;
-	rohc_comp_state_t next_state;
-
-	assert(curr_state != ROHC_COMP_STATE_UNKNOWN);
-	assert(curr_state != ROHC_COMP_STATE_CR);
-
-	if(curr_state == ROHC_COMP_STATE_SO)
-	{
-		/* do not change state */
-		rohc_comp_debug(context, "stay in SO state");
-		next_state = ROHC_COMP_STATE_SO;
-		/* TODO: handle NACK and STATIC-NACK */
-	}
-	else if(context->state_oa_repeat_nr < oa_repetitions_nr)
-	{
-		rohc_comp_debug(context, "not enough packets transmitted in current state "
-		                "for the moment (%u/%u), so stay in current state",
-		                context->state_oa_repeat_nr, oa_repetitions_nr);
-		next_state = curr_state;
-	}
-	else
-	{
-		rohc_comp_debug(context, "enough packets transmitted in current state "
-		                "(%u/%u), go to upper state", context->state_oa_repeat_nr,
-		                oa_repetitions_nr);
-		next_state = ROHC_COMP_STATE_SO;
-	}
-
-	rohc_comp_change_state(context, next_state);
-
-	/* periodic refreshes in U-mode only */
-	if(context->mode == ROHC_U_MODE)
-	{
-		rohc_comp_periodic_down_transition(context, pkt_time);
 	}
 }
 

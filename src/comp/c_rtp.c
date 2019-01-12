@@ -57,11 +57,10 @@ static void c_rtp_destroy(struct rohc_comp_ctxt *const context)
 
 static int c_rtp_encode(struct rohc_comp_ctxt *const context,
                         const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                        const struct rohc_ts uncomp_pkt_time,
                         uint8_t *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
                         rohc_packet_t *const packet_type)
-	__attribute__((warn_unused_result, nonnull(1, 2, 4, 6)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
 static rohc_packet_t c_rtp_decide_FO_packet(const struct rohc_comp_ctxt *const context);
 static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const context);
@@ -173,7 +172,6 @@ static bool c_rtp_create(struct rohc_comp_ctxt *const context,
 	/* init the RTP-specific variables and functions */
 	rfc3095_ctxt->next_header_len = sizeof(struct udphdr) + sizeof(struct rtphdr);
 	rfc3095_ctxt->encode_uncomp_fields = rtp_encode_uncomp_fields;
-	rfc3095_ctxt->decide_state = rohc_comp_rfc3095_decide_state;
 	rfc3095_ctxt->decide_FO_packet = c_rtp_decide_FO_packet;
 	rfc3095_ctxt->decide_SO_packet = c_rtp_decide_SO_packet;
 	rfc3095_ctxt->decide_extension = c_rtp_decide_extension;
@@ -651,7 +649,6 @@ static rohc_ext_t c_rtp_decide_extension(const struct rohc_comp_ctxt *const cont
  *
  * @param context           The compression context
  * @param uncomp_pkt_hdrs   The uncompressed headers to encode
- * @param uncomp_pkt_time   The arrival time of the uncompressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       OUT: The type of ROHC packet that is created
@@ -660,7 +657,6 @@ static rohc_ext_t c_rtp_decide_extension(const struct rohc_comp_ctxt *const cont
  */
 static int c_rtp_encode(struct rohc_comp_ctxt *const context,
                         const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                        const struct rohc_ts uncomp_pkt_time,
                         uint8_t *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
                         rohc_packet_t *const packet_type)
@@ -679,7 +675,7 @@ static int c_rtp_encode(struct rohc_comp_ctxt *const context,
 	rtp_changed_rtp_dynamic(context, udp, rtp);
 
 	/* encode the IP packet */
-	size = rohc_comp_rfc3095_encode(context, uncomp_pkt_hdrs, uncomp_pkt_time,
+	size = rohc_comp_rfc3095_encode(context, uncomp_pkt_hdrs,
 	                                rohc_pkt, rohc_pkt_max_len, packet_type);
 	if(size < 0)
 	{

@@ -209,6 +209,19 @@ static rohc_ctxt_affinity_t
 
 
 /*
+ * Prototypes of private functions related to context state
+ */
+
+static void rohc_comp_decide_state(struct rohc_comp_ctxt *const context,
+                                   struct rohc_ts pkt_time)
+	__attribute__((nonnull(1)));
+
+static void rohc_comp_periodic_down_transition(struct rohc_comp_ctxt *const context,
+                                               const struct rohc_ts pkt_time)
+	__attribute__((nonnull(1)));
+
+
+/*
  * Prototypes of private functions related to ROHC feedback
  */
 
@@ -1494,14 +1507,16 @@ rohc_status_t rohc_compress4(struct rohc_comp *const comp,
 		goto error;
 	}
 
+	/* decide the next state to go */
+	rohc_comp_decide_state(c, uncomp_packet.time);
+
 	/* create the ROHC packet: */
 	rohc_packet->len = 0;
 
 	/* use profile to compress packet */
 	rohc_comp_debug(c, "compress the packet #%d", comp->num_packets + 1);
 	rohc_hdr_size =
-		c->profile->encode(c, &pkt_hdrs, uncomp_packet.time,
-		                   rohc_buf_data(*rohc_packet),
+		c->profile->encode(c, &pkt_hdrs, rohc_buf_data(*rohc_packet),
 		                   rohc_buf_avail_len(*rohc_packet),
 		                   &packet_type);
 	if(rohc_hdr_size < 0)
@@ -4012,14 +4027,66 @@ void rohc_comp_change_state(struct rohc_comp_ctxt *const context,
 
 
 /**
+ * @brief Decide the state that should be used for the next packet
+ *
+ * The three states are:\n
+ *  - Initialization and Refresh (IR),\n
+ *  - First Order (FO),\n
+ *  - Second Order (SO).
+ *
+ * @param context   The compression context
+ * @param pkt_time  The time of packet arrival
+ */
+static void rohc_comp_decide_state(struct rohc_comp_ctxt *const context,
+                                   struct rohc_ts pkt_time)
+{
+	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
+	const rohc_comp_state_t curr_state = context->state;
+	rohc_comp_state_t next_state;
+
+	assert(curr_state != ROHC_COMP_STATE_UNKNOWN);
+
+	if(curr_state == ROHC_COMP_STATE_SO)
+	{
+		/* do not change state */
+		rohc_comp_debug(context, "stay in SO state");
+		next_state = ROHC_COMP_STATE_SO;
+		/* TODO: handle NACK and STATIC-NACK */
+	}
+	else if(context->state_oa_repeat_nr < oa_repetitions_nr)
+	{
+		rohc_comp_debug(context, "not enough packets transmitted in current state "
+		                "for the moment (%u/%u), so stay in current state",
+		                context->state_oa_repeat_nr, oa_repetitions_nr);
+		next_state = curr_state;
+	}
+	else
+	{
+		rohc_comp_debug(context, "enough packets transmitted in current state "
+		                "(%u/%u), go to upper state", context->state_oa_repeat_nr,
+		                oa_repetitions_nr);
+		next_state = ROHC_COMP_STATE_SO;
+	}
+
+	rohc_comp_change_state(context, next_state);
+
+	/* periodic context refreshes (RFC6846, §5.2.1.2) */
+	if(context->mode == ROHC_U_MODE)
+	{
+		rohc_comp_periodic_down_transition(context, pkt_time);
+	}
+}
+
+
+/**
  * @brief Periodically change the context state after a certain number
  *        of packets.
  *
  * @param context   The compression context
  * @param pkt_time  The time of packet arrival
  */
-void rohc_comp_periodic_down_transition(struct rohc_comp_ctxt *const context,
-                                        const struct rohc_ts pkt_time)
+static void rohc_comp_periodic_down_transition(struct rohc_comp_ctxt *const context,
+                                               const struct rohc_ts pkt_time)
 {
 	rohc_comp_state_t next_state;
 

@@ -86,11 +86,10 @@ static bool c_tcp_is_cr_possible(const struct rohc_comp_ctxt *const ctxt,
 
 static int c_tcp_encode(struct rohc_comp_ctxt *const context,
                         const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                        const struct rohc_ts uncomp_pkt_time,
                         uint8_t *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
                         rohc_packet_t *const packet_type)
-	__attribute__((warn_unused_result, nonnull(1, 2, 4, 6)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
 static uint16_t c_tcp_get_next_msn(const struct rohc_comp_ctxt *const context)
 	__attribute__((warn_unused_result, nonnull(1)));
@@ -111,11 +110,6 @@ static bool tcp_detect_changes_tcp_hdr(struct rohc_comp_ctxt *const context,
                                        const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                        struct tcp_tmp_variables *const tmp)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
-
-
-static void tcp_decide_state(struct rohc_comp_ctxt *const context,
-                             struct rohc_ts pkt_time)
-	__attribute__((nonnull(1)));
 
 static rohc_packet_t tcp_decide_packet(const struct rohc_comp_ctxt *const context,
                                        const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
@@ -867,7 +861,6 @@ static bool c_tcp_is_cr_possible(const struct rohc_comp_ctxt *const ctxt,
  *
  * @param context           The compression context
  * @param uncomp_pkt_hdrs   The uncompressed headers to encode
- * @param uncomp_pkt_time   The arrival time of the uncompressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       OUT: The type of ROHC packet that is created
@@ -879,7 +872,6 @@ static bool c_tcp_is_cr_possible(const struct rohc_comp_ctxt *const ctxt,
  */
 static int c_tcp_encode(struct rohc_comp_ctxt *const context,
                         const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                        const struct rohc_ts uncomp_pkt_time,
                         uint8_t *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
                         rohc_packet_t *const packet_type)
@@ -912,9 +904,6 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		                "few packets");
 		tmp.tcp_opts.do_list_static_changed = true;
 	}
-
-	/* decide in which state to go */
-	tcp_decide_state(context, uncomp_pkt_time);
 
 	/* decide which packet to send */
 	*packet_type = tcp_decide_packet(context, uncomp_pkt_hdrs, &tmp);
@@ -3478,58 +3467,6 @@ static uint16_t c_tcp_get_next_msn(const struct rohc_comp_ctxt *const context)
 	struct sc_tcp_context *const tcp_context = context->specific;
 
 	return (tcp_context->msn + 1); /* wraparound on overflow is expected */
-}
-
-
-/**
- * @brief Decide the state that should be used for the next packet.
- *
- * The three states are:\n
- *  - Initialization and Refresh (IR),\n
- *  - First Order (FO),\n
- *  - Second Order (SO).
- *
- * @param context   The compression context
- * @param pkt_time  The time of packet arrival
- */
-static void tcp_decide_state(struct rohc_comp_ctxt *const context,
-                             struct rohc_ts pkt_time)
-{
-	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
-	const rohc_comp_state_t curr_state = context->state;
-	rohc_comp_state_t next_state;
-
-	assert(curr_state != ROHC_COMP_STATE_UNKNOWN);
-
-	if(curr_state == ROHC_COMP_STATE_SO)
-	{
-		/* do not change state */
-		rohc_comp_debug(context, "stay in SO state");
-		next_state = ROHC_COMP_STATE_SO;
-		/* TODO: handle NACK and STATIC-NACK */
-	}
-	else if(context->state_oa_repeat_nr < oa_repetitions_nr)
-	{
-		rohc_comp_debug(context, "not enough packets transmitted in current state "
-		                "for the moment (%u/%u), so stay in current state",
-		                context->state_oa_repeat_nr, oa_repetitions_nr);
-		next_state = curr_state;
-	}
-	else
-	{
-		rohc_comp_debug(context, "enough packets transmitted in current state "
-		                "(%u/%u), go to upper state", context->state_oa_repeat_nr,
-		                oa_repetitions_nr);
-		next_state = ROHC_COMP_STATE_SO;
-	}
-
-	rohc_comp_change_state(context, next_state);
-
-	/* periodic context refreshes (RFC6846, §5.2.1.2) */
-	if(context->mode == ROHC_U_MODE)
-	{
-		rohc_comp_periodic_down_transition(context, pkt_time);
-	}
 }
 
 

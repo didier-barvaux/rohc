@@ -603,7 +603,6 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 	rfc3095_ctxt->specific = NULL;
 	rfc3095_ctxt->next_header_proto = uncomp_pkt_hdrs->ip_hdrs[1].next_proto;
 	rfc3095_ctxt->next_header_len = 0;
-	rfc3095_ctxt->decide_state = rohc_comp_rfc3095_decide_state;
 	rfc3095_ctxt->decide_FO_packet = NULL;
 	rfc3095_ctxt->decide_SO_packet = NULL;
 	rfc3095_ctxt->decide_extension = NULL;
@@ -685,7 +684,6 @@ void rohc_comp_rfc3095_destroy(struct rohc_comp_ctxt *const context)
  *
  * @param context           The compression context
  * @param uncomp_pkt_hdrs   The uncompressed headers to encode
- * @param uncomp_pkt_time   The arrival time of the uncompressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       OUT: The type of ROHC packet that is created
@@ -694,7 +692,6 @@ void rohc_comp_rfc3095_destroy(struct rohc_comp_ctxt *const context)
  */
 int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                             const struct rohc_ts uncomp_pkt_time,
                              uint8_t *const rohc_pkt,
                              const size_t rohc_pkt_max_len,
                              rohc_packet_t *const packet_type)
@@ -706,13 +703,6 @@ int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
 
 	/* detect changes between new uncompressed packet and context */
 	rohc_comp_rfc3095_detect_changes(context, uncomp_pkt_hdrs);
-
-	/* decide in which state to go */
-	rfc3095_ctxt->decide_state(context);
-	if(context->mode == ROHC_U_MODE)
-	{
-		rohc_comp_periodic_down_transition(context, uncomp_pkt_time);
-	}
 
 	/* compute how many bits are needed to send header fields */
 	if(!encode_uncomp_fields(context, uncomp_pkt_hdrs))
@@ -1206,51 +1196,6 @@ static void rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const contex
 			}
 		}
 	}
-}
-
-
-/**
- * @brief Decide the state that should be used for the next packet.
- *
- * The three states are:\n
- *  - Initialization and Refresh (IR),\n
- *  - First Order (FO),\n
- *  - Second Order (SO).
- *
- * @param context The compression context
- */
-void rohc_comp_rfc3095_decide_state(struct rohc_comp_ctxt *const context)
-{
-	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
-	const rohc_comp_state_t curr_state = context->state;
-	rohc_comp_state_t next_state;
-
-	assert(curr_state != ROHC_COMP_STATE_UNKNOWN);
-	assert(curr_state != ROHC_COMP_STATE_CR);
-
-	if(curr_state == ROHC_COMP_STATE_SO)
-	{
-		/* do not change state */
-		rohc_comp_debug(context, "stay in SO state");
-		next_state = ROHC_COMP_STATE_SO;
-		/* TODO: handle NACK and STATIC-NACK */
-	}
-	else if(context->state_oa_repeat_nr < oa_repetitions_nr)
-	{
-		rohc_comp_debug(context, "not enough packets transmitted in current state "
-		                "for the moment (%u/%u), so stay in current state",
-		                context->state_oa_repeat_nr, oa_repetitions_nr);
-		next_state = curr_state;
-	}
-	else
-	{
-		rohc_comp_debug(context, "enough packets transmitted in current state "
-		                "(%u/%u), go to upper state", context->state_oa_repeat_nr,
-		                oa_repetitions_nr);
-		next_state = ROHC_COMP_STATE_SO;
-	}
-
-	rohc_comp_change_state(context, next_state);
 }
 
 

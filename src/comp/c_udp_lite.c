@@ -112,11 +112,10 @@ static bool c_udp_lite_create(struct rohc_comp_ctxt *const context,
 
 static int c_udp_lite_encode(struct rohc_comp_ctxt *const context,
                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                             const struct rohc_ts uncomp_pkt_time,
                              uint8_t *const rohc_pkt,
                              const size_t rohc_pkt_max_len,
                              rohc_packet_t *const packet_type)
-	__attribute__((warn_unused_result, nonnull(1, 2, 4, 6)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
 static size_t udp_lite_code_dynamic_udplite_part(const struct rohc_comp_ctxt *const context,
                                                  const uint8_t *const next_header,
@@ -208,7 +207,6 @@ static bool c_udp_lite_create(struct rohc_comp_ctxt *const context,
 
 	/* init the UDP-Lite-specific variables and functions */
 	rfc3095_ctxt->next_header_len = sizeof(struct udphdr);
-	rfc3095_ctxt->decide_state = rohc_comp_rfc3095_decide_state;
 	rfc3095_ctxt->decide_FO_packet = c_ip_decide_FO_packet;
 	rfc3095_ctxt->decide_SO_packet = c_ip_decide_SO_packet;
 	rfc3095_ctxt->decide_extension = decide_extension;
@@ -237,7 +235,6 @@ quit:
  *
  * @param context           The compression context
  * @param uncomp_pkt_hdrs   The uncompressed headers to encode
- * @param uncomp_pkt_time   The arrival time of the uncompressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       OUT: The type of ROHC packet that is created
@@ -246,7 +243,6 @@ quit:
  */
 static int c_udp_lite_encode(struct rohc_comp_ctxt *const context,
                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                             const struct rohc_ts uncomp_pkt_time,
                              uint8_t *const rohc_pkt,
                              const size_t rohc_pkt_max_len,
                              rohc_packet_t *const packet_type)
@@ -262,7 +258,7 @@ static int c_udp_lite_encode(struct rohc_comp_ctxt *const context,
 		sizeof(struct udphdr) + uncomp_pkt_hdrs->payload_len;
 
 	/* encode the IP packet */
-	size = rohc_comp_rfc3095_encode(context, uncomp_pkt_hdrs, uncomp_pkt_time,
+	size = rohc_comp_rfc3095_encode(context, uncomp_pkt_hdrs,
 	                                rohc_pkt, rohc_pkt_max_len, packet_type);
 	if(size < 0)
 	{

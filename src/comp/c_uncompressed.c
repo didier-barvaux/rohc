@@ -48,11 +48,10 @@ static void c_uncompressed_destroy(struct rohc_comp_ctxt *const context)
 /* encode uncompressed packets */
 static int c_uncompressed_encode(struct rohc_comp_ctxt *const context,
                                  const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                                 const struct rohc_ts uncomp_pkt_time,
                                  uint8_t *const rohc_pkt,
                                  const size_t rohc_pkt_max_len,
                                  rohc_packet_t *const packet_type)
-	__attribute__((warn_unused_result, nonnull(1, 2, 4, 6)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 static int uncompressed_code_packet(struct rohc_comp_ctxt *const context,
                                     const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                     uint8_t *const rohc_pkt,
@@ -78,11 +77,6 @@ static bool uncomp_feedback(struct rohc_comp_ctxt *const context,
                             const uint8_t *const feedback_data,
                             const size_t feedback_data_len)
 	__attribute__((warn_unused_result, nonnull(1, 3, 5)));
-
-/* mode and state transitions */
-static void uncompressed_decide_state(struct rohc_comp_ctxt *const context,
-                                      const struct rohc_ts pkt_time)
-	__attribute__((nonnull(1)));
 
 
 
@@ -131,15 +125,11 @@ static void c_uncompressed_destroy(struct rohc_comp_ctxt *const context)
  * @brief Encode an IP packet according to a pattern decided by several
  *        different factors.
  *
- * 1. Decide state\n
- * 2. Code packet\n
- * \n
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
  * @param context           The compression context
  * @param uncomp_pkt_hdrs   The uncompressed headers to encode
- * @param uncomp_pkt_time   The arrival time of the uncompressed packet
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       OUT: The type of ROHC packet that is created
@@ -148,17 +138,13 @@ static void c_uncompressed_destroy(struct rohc_comp_ctxt *const context)
  */
 static int c_uncompressed_encode(struct rohc_comp_ctxt *const context,
                                  const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                                 const struct rohc_ts uncomp_pkt_time,
                                  uint8_t *const rohc_pkt,
                                  const size_t rohc_pkt_max_len,
                                  rohc_packet_t *const packet_type)
 {
 	int size;
 
-	/* STEP 1: decide state */
-	uncompressed_decide_state(context, uncomp_pkt_time);
-
-	/* STEP 2: Code packet */
+	/* code packet */
 	size = uncompressed_code_packet(context, uncomp_pkt_hdrs,
 	                                rohc_pkt, rohc_pkt_max_len,
 	                                packet_type);
@@ -226,33 +212,6 @@ static bool uncomp_feedback(struct rohc_comp_ctxt *const context,
 
 error:
 	return false;
-}
-
-
-/**
- * @brief Decide the state that should be used for the next packet.
- *
- * @param context  The compression context
- * @param pkt_time The time of packet arrival
- */
-static void uncompressed_decide_state(struct rohc_comp_ctxt *const context,
-                                      const struct rohc_ts pkt_time)
-{
-	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
-
-	if(context->state == ROHC_COMP_STATE_IR &&
-	   context->state_oa_repeat_nr >= oa_repetitions_nr)
-	{
-		/* the compressor got the confidence that the decompressor fully received
-		 * the context: enough IR packets transmitted or positive ACK received */
-		rohc_comp_change_state(context, ROHC_COMP_STATE_FO);
-	}
-
-	/* periodic refreshes in U-mode only */
-	if(context->mode == ROHC_U_MODE)
-	{
-		rohc_comp_periodic_down_transition(context, pkt_time);
-	}
 }
 
 
