@@ -76,9 +76,9 @@ static uint32_t c_rtp_get_next_sn(const struct rohc_comp_ctxt *const context,
                                   const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static bool rtp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
+static void rtp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
                                      const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+	__attribute__((nonnull(1, 2)));
 
 static size_t rtp_code_static_rtp_part(const struct rohc_comp_ctxt *const context,
                                        const uint8_t *const next_header,
@@ -777,9 +777,8 @@ static uint32_t c_rtp_get_next_sn(const struct rohc_comp_ctxt *const context __a
  *
  * @param context          The compression context
  * @param uncomp_pkt_hdrs  The uncompressed headers to encode
- * @return                 true in case of success, false otherwise
  */
-static bool rtp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
+static void rtp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
                                      const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 {
 	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
@@ -834,8 +833,6 @@ static bool rtp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	                (rohc_ts_sc_is_deducible(&rtp_context->ts_sc) ?
 	                 "0 (TS is deducible from SN bits) or " : ""),
 	                rtp_context->tmp.nr_ts_bits);
-
-	return true;
 }
 
 

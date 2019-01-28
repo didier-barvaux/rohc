@@ -338,9 +338,9 @@ static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
                                    const struct rohc_pkt_ip_hdr *const uncomp_pkt_ip_hdr)
 	__attribute__((nonnull(1, 2, 3)));
 
-static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
+static void encode_uncomp_fields(struct rohc_comp_ctxt *const context,
                                  const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+	__attribute__((nonnull(1, 2)));
 
 static void rohc_get_innermost_ipv4_non_rnd(const struct rohc_comp_ctxt *const context,
                                             ip_header_pos_t *const pos,
@@ -703,12 +703,7 @@ int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
 	rohc_comp_rfc3095_detect_changes(context, uncomp_pkt_hdrs);
 
 	/* compute how many bits are needed to send header fields */
-	if(!encode_uncomp_fields(context, uncomp_pkt_hdrs))
-	{
-		rohc_comp_warn(context, "failed to compute how many bits are needed "
-		               "to send header fields");
-		goto error;
-	}
+	encode_uncomp_fields(context, uncomp_pkt_hdrs);
 
 	/* decide which packet to send */
 	*packet_type = decide_packet(context);
@@ -6100,9 +6095,8 @@ error:
  *
  * @param context          The compression context
  * @param uncomp_pkt_hdrs  The uncompressed headers to encode
- * @return                 true in case of success, false otherwise
  */
-static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
+static void encode_uncomp_fields(struct rohc_comp_ctxt *const context,
                                  const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 {
 	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
@@ -6309,17 +6303,10 @@ static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	}
 
 	/* update info related to transport header */
-	if(rfc3095_ctxt->encode_uncomp_fields != NULL &&
-	   !rfc3095_ctxt->encode_uncomp_fields(context, uncomp_pkt_hdrs))
+	if(rfc3095_ctxt->encode_uncomp_fields != NULL)
 	{
-		rohc_comp_warn(context, "failed to encode uncompressed next header fields");
-		goto error;
+		rfc3095_ctxt->encode_uncomp_fields(context, uncomp_pkt_hdrs);
 	}
-
-	return true;
-
-error:
-	return false;
 }
 
 

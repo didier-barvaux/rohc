@@ -246,9 +246,9 @@ struct rohc_comp_rfc3095_ctxt
 	unsigned int next_header_len;
 
 	/** The handler for encoding profile-specific uncompressed header fields */
-	bool (*encode_uncomp_fields)(struct rohc_comp_ctxt *const context,
+	void (*encode_uncomp_fields)(struct rohc_comp_ctxt *const context,
 	                             const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
-		__attribute__((warn_unused_result, nonnull(1, 2)));
+		__attribute__((nonnull(1, 2)));
 
 	/** @brief The handler used to decide which packet to send in FO state */
 	rohc_packet_t (*decide_FO_packet)(const struct rohc_comp_ctxt *const context)
