@@ -38,38 +38,12 @@
 
 
 /*
- * Private structures and types
- */
-
-/**
- * @brief Define the ESP part of the profile decompression context
- *
- * This object must be used with the generic part of the decompression
- * context rohc_comp_rfc3095_ctxt.
- *
- * @see rohc_comp_rfc3095_ctxt
- */
-struct sc_esp_context
-{
-	/// The previous ESP header
-	struct esphdr old_esp;
-};
-
-
-/*
  * Private function prototypes
  */
 
 static bool c_esp_create(struct rohc_comp_ctxt *const context,
                          const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
-
-static int c_esp_encode(struct rohc_comp_ctxt *const context,
-                        const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                        uint8_t *const rohc_pkt,
-                        const size_t rohc_pkt_max_len,
-                        rohc_packet_t *const packet_type)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
 static uint32_t c_esp_get_next_sn(const struct rohc_comp_ctxt *const context,
                                   const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
@@ -107,7 +81,6 @@ static bool c_esp_create(struct rohc_comp_ctxt *const context,
                          const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 {
 	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	struct sc_esp_context *esp_context;
 
 	assert(uncomp_pkt_hdrs->innermost_ip_hdr->next_proto == ROHC_IPPROTO_ESP);
 	assert(uncomp_pkt_hdrs->esp != NULL);
@@ -125,20 +98,8 @@ static bool c_esp_create(struct rohc_comp_ctxt *const context,
 	rohc_comp_debug(context, "initialize context(SN) = hdr(SN) of first "
 	                "packet = %u", rfc3095_ctxt->sn);
 
-	/* create the ESP part of the profile context */
-	esp_context = malloc(sizeof(struct sc_esp_context));
-	if(esp_context == NULL)
-	{
-		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		           "no memory for the ESP part of the profile context");
-		goto clean;
-	}
-	rfc3095_ctxt->specific = esp_context;
-
-	/* initialize the ESP part of the profile context */
-	memcpy(&(esp_context->old_esp), uncomp_pkt_hdrs->esp, sizeof(struct esphdr));
-
 	/* init the ESP-specific variables and functions */
+	rfc3095_ctxt->specific = NULL;
 	rfc3095_ctxt->next_header_len = sizeof(struct esphdr);
 	rfc3095_ctxt->encode_uncomp_fields = NULL;
 	rfc3095_ctxt->decide_FO_packet = c_ip_decide_FO_packet;
@@ -154,55 +115,8 @@ static bool c_esp_create(struct rohc_comp_ctxt *const context,
 
 	return true;
 
-clean:
-	rohc_comp_rfc3095_destroy(context);
 quit:
 	return false;
-}
-
-
-/**
- * @brief Encode an IP/ESP packet according to a pattern decided by several
- *        different factors.
- *
- * @param context           The compression context
- * @param uncomp_pkt_hdrs   The uncompressed headers to encode
- * @param rohc_pkt          OUT: The ROHC packet
- * @param rohc_pkt_max_len  The maximum length of the ROHC packet
- * @param packet_type       OUT: The type of ROHC packet that is created
- * @return                  The length of the ROHC packet if successful,
- *                          -1 otherwise
- */
-static int c_esp_encode(struct rohc_comp_ctxt *const context,
-                        const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
-                        uint8_t *const rohc_pkt,
-                        const size_t rohc_pkt_max_len,
-                        rohc_packet_t *const packet_type)
-{
-	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
-	struct sc_esp_context *const esp_context = rfc3095_ctxt->specific;
-	int size;
-
-	assert(uncomp_pkt_hdrs->innermost_ip_hdr->next_proto == ROHC_IPPROTO_ESP);
-	assert(uncomp_pkt_hdrs->esp != NULL);
-
-	/* encode the IP packet */
-	size = rohc_comp_rfc3095_encode(context, uncomp_pkt_hdrs,
-	                                rohc_pkt, rohc_pkt_max_len, packet_type);
-	if(size < 0)
-	{
-		goto quit;
-	}
-
-	/* update the context with the new ESP header */
-	if((*packet_type) == ROHC_PACKET_IR ||
-	   (*packet_type) == ROHC_PACKET_IR_DYN)
-	{
-		memcpy(&(esp_context->old_esp), uncomp_pkt_hdrs->esp, sizeof(struct esphdr));
-	}
-
-quit:
-	return size;
 }
 
 
@@ -305,7 +219,7 @@ const struct rohc_comp_profile c_esp_profile =
 	.id             = ROHC_PROFILE_ESP, /* profile ID (see 8 in RFC 3095) */
 	.create         = c_esp_create,     /* profile handlers */
 	.destroy        = rohc_comp_rfc3095_destroy,
-	.encode         = c_esp_encode,
+	.encode         = rohc_comp_rfc3095_encode,
 	.feedback       = rohc_comp_rfc3095_feedback,
 };
 
