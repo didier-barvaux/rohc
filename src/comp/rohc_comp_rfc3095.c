@@ -338,10 +338,6 @@ static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
                                    const struct rohc_pkt_ip_hdr *const uncomp_pkt_ip_hdr)
 	__attribute__((nonnull(1, 2, 3)));
 
-static void encode_uncomp_fields(struct rohc_comp_ctxt *const context,
-                                 const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
-	__attribute__((nonnull(1, 2)));
-
 static void rohc_get_innermost_ipv4_non_rnd(const struct rohc_comp_ctxt *const context,
                                             ip_header_pos_t *const pos,
                                             bool *const is_5bits_possible,
@@ -701,9 +697,6 @@ int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
 
 	/* detect changes between new uncompressed packet and context */
 	rohc_comp_rfc3095_detect_changes(context, uncomp_pkt_hdrs);
-
-	/* compute how many bits are needed to send header fields */
-	encode_uncomp_fields(context, uncomp_pkt_hdrs);
 
 	/* decide which packet to send */
 	*packet_type = decide_packet(context);
@@ -1142,7 +1135,98 @@ static void rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const contex
 
 	/* compute or find the new SN */
 	rfc3095_ctxt->sn = rfc3095_ctxt->get_next_sn(context, uncomp_pkt_hdrs);
-	rohc_comp_debug(context, "SN = %u", rfc3095_ctxt->sn);
+	rohc_comp_debug(context, "new SN = %u / 0x%x", rfc3095_ctxt->sn,
+	                rfc3095_ctxt->sn);
+	if(context->profile->id == ROHC_PROFILE_RTP)
+	{
+		rfc3095_ctxt->tmp.sn_4bits_possible =
+			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+			                           4, rohc_interval_compute_p_rtp_sn(4));
+		rfc3095_ctxt->tmp.sn_7bits_possible =
+			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+			                           7, rohc_interval_compute_p_rtp_sn(7));
+		rfc3095_ctxt->tmp.sn_12bits_possible =
+			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+			                           12, rohc_interval_compute_p_rtp_sn(12));
+
+		rfc3095_ctxt->tmp.sn_6bits_possible =
+			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+			                           6, rohc_interval_compute_p_rtp_sn(6));
+		rfc3095_ctxt->tmp.sn_9bits_possible =
+			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+			                           9, rohc_interval_compute_p_rtp_sn(9));
+		rfc3095_ctxt->tmp.sn_14bits_possible =
+			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+			                           14, rohc_interval_compute_p_rtp_sn(14));
+	}
+	else if(context->profile->id == ROHC_PROFILE_ESP)
+	{
+		rfc3095_ctxt->tmp.sn_4bits_possible =
+			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+			                           4, rohc_interval_compute_p_esp_sn(4));
+
+		rfc3095_ctxt->tmp.sn_5bits_possible =
+			wlsb_is_kp_possible_32bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+			                           5, rohc_interval_compute_p_esp_sn(5));
+		rfc3095_ctxt->tmp.sn_8bits_possible =
+			wlsb_is_kp_possible_32bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+			                           8, rohc_interval_compute_p_esp_sn(8));
+		rfc3095_ctxt->tmp.sn_13bits_possible =
+			wlsb_is_kp_possible_32bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+			                           13, rohc_interval_compute_p_esp_sn(13));
+	}
+	else
+	{
+		rfc3095_ctxt->tmp.sn_4bits_possible =
+			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+			                           4, ROHC_LSB_SHIFT_SN);
+
+		rfc3095_ctxt->tmp.sn_5bits_possible =
+			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+			                           5, ROHC_LSB_SHIFT_SN);
+		rfc3095_ctxt->tmp.sn_8bits_possible =
+			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+			                           8, ROHC_LSB_SHIFT_SN);
+		rfc3095_ctxt->tmp.sn_13bits_possible =
+			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+			                           13, ROHC_LSB_SHIFT_SN);
+	}
+	if(rfc3095_ctxt->tmp.sn_4bits_possible)
+	{
+		rohc_comp_debug(context, "  4 bits may encode new SN");
+	}
+	if(rfc3095_ctxt->tmp.sn_5bits_possible)
+	{
+		rohc_comp_debug(context, "  5 bits may encode new SN");
+	}
+	if(rfc3095_ctxt->tmp.sn_6bits_possible)
+	{
+		rohc_comp_debug(context, "  6 bits may encode new SN");
+	}
+	if(rfc3095_ctxt->tmp.sn_7bits_possible)
+	{
+		rohc_comp_debug(context, "  7 bits may encode new SN");
+	}
+	if(rfc3095_ctxt->tmp.sn_8bits_possible)
+	{
+		rohc_comp_debug(context, "  8 bits may encode new SN");
+	}
+	if(rfc3095_ctxt->tmp.sn_9bits_possible)
+	{
+		rohc_comp_debug(context, "  9 bits may encode new SN");
+	}
+	if(rfc3095_ctxt->tmp.sn_12bits_possible)
+	{
+		rohc_comp_debug(context, "  12 bits may encode new SN");
+	}
+	if(rfc3095_ctxt->tmp.sn_13bits_possible)
+	{
+		rohc_comp_debug(context, "  13 bits may encode new SN");
+	}
+	if(rfc3095_ctxt->tmp.sn_14bits_possible)
+	{
+		rohc_comp_debug(context, "  14 bits may encode new SN");
+	}
 
 	/* check NBO and RND of the IP-ID of the IP headers (IPv4 only) */
 	detect_ip_id_behaviours(context, uncomp_pkt_hdrs);
@@ -1150,14 +1234,14 @@ static void rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const contex
 	/* find IP fields that changed */
 	for(ip_hdr_pos = 0; ip_hdr_pos < rfc3095_ctxt->ip_hdr_nr; ip_hdr_pos++)
 	{
-		const struct rohc_pkt_ip_hdr *const ip_hdr =
+		const struct rohc_pkt_ip_hdr *const pkt_ip_hdr =
 			&(uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos]);
 		/* TODO: const */ struct ip_header_info *const ip_ctxt =
 			&(rfc3095_ctxt->ip_ctxts[ip_hdr_pos]);
 		struct rfc3095_ip_hdr_changes *const ip_hdr_changes =
 			&(rfc3095_ctxt->tmp.ip_hdr_changes[ip_hdr_pos]);
 
-		detect_ip_changes(context, ip_ctxt, ip_hdr, ip_hdr_changes);
+		detect_ip_changes(context, ip_ctxt, pkt_ip_hdr, ip_hdr_changes);
 
 		if(ip_hdr_changes->tos_tc_just_changed)
 		{
@@ -1168,8 +1252,17 @@ static void rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const contex
 			ip_ctxt->ttl_count = 0;
 		}
 
-		/* IPv4 only checks */
-		if(ip_ctxt->version == IPV4)
+		if(ip_ctxt->version == IPV6)
+		{
+			/* no IP-ID in IPv6 */
+			ip_hdr_changes->ip_id_changed = false;
+			ip_hdr_changes->ip_id_3bits_possible = false;
+			ip_hdr_changes->ip_id_5bits_possible = false;
+			ip_hdr_changes->ip_id_6bits_possible = false;
+			ip_hdr_changes->ip_id_8bits_possible = false;
+			ip_hdr_changes->ip_id_11bits_possible = false;
+		}
+		else /* IPV4 */
 		{
 			if(ip_hdr_changes->df_just_changed)
 			{
@@ -1187,7 +1280,93 @@ static void rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const contex
 			{
 				ip_ctxt->info.v4.sid_count = 0;
 			}
+
+			/* compute the new IP-ID / SN delta */
+			{
+				const uint16_t id = pkt_ip_hdr->ipv4->id;
+				const bool is_little_endian =
+					(ip_ctxt->info.v4.rnd == 0 && ip_ctxt->info.v4.nbo == 0);
+				const uint16_t id_nbo = (is_little_endian ? swab16(id) : id);
+				const uint16_t id_nbo_h = rohc_ntoh16(id_nbo);
+				ip_ctxt->info.v4.id_delta = id_nbo_h - rfc3095_ctxt->sn;
+				rohc_comp_debug(context, "IP header #%zu: new IP-ID delta = "
+				                "0x%04x - 0x%04x = 0x%x / %u "
+				                "(NBO = %d, RND = %d, SID = %d)", ip_hdr_pos + 1,
+				                id_nbo_h, rfc3095_ctxt->sn,
+				                ip_ctxt->info.v4.id_delta, ip_ctxt->info.v4.id_delta,
+				                ip_ctxt->info.v4.nbo, ip_ctxt->info.v4.rnd,
+				                ip_ctxt->info.v4.sid);
+			}
+
+			/* how many bits are required to encode the new IP-ID / SN delta ? */
+			if(ip_ctxt->info.v4.sid)
+			{
+				/* IP-ID is constant, no IP-ID bit to transmit */
+				ip_hdr_changes->ip_id_changed = false;
+				ip_hdr_changes->ip_id_3bits_possible = true;
+				ip_hdr_changes->ip_id_5bits_possible = true;
+				ip_hdr_changes->ip_id_6bits_possible = true;
+				ip_hdr_changes->ip_id_8bits_possible = true;
+				ip_hdr_changes->ip_id_11bits_possible = true;
+				rohc_comp_debug(context, "  IP-ID is constant, no IP-ID bit to transmit");
+			}
+			else
+			{
+				/* send only required bits in FO or SO states */
+				ip_hdr_changes->ip_id_changed =
+					!wlsb_is_kp_possible_16bits(&ip_ctxt->info.v4.ip_id_window,
+					                            ip_ctxt->info.v4.id_delta,
+					                            0, ROHC_LSB_SHIFT_IP_ID);
+				ip_hdr_changes->ip_id_3bits_possible =
+					wlsb_is_kp_possible_16bits(&ip_ctxt->info.v4.ip_id_window,
+					                           ip_ctxt->info.v4.id_delta,
+					                           3, ROHC_LSB_SHIFT_IP_ID);
+				ip_hdr_changes->ip_id_5bits_possible =
+					wlsb_is_kp_possible_16bits(&ip_ctxt->info.v4.ip_id_window,
+					                           ip_ctxt->info.v4.id_delta,
+					                           5, ROHC_LSB_SHIFT_IP_ID);
+				ip_hdr_changes->ip_id_6bits_possible =
+					wlsb_is_kp_possible_16bits(&ip_ctxt->info.v4.ip_id_window,
+					                           ip_ctxt->info.v4.id_delta,
+					                           6, ROHC_LSB_SHIFT_IP_ID);
+				ip_hdr_changes->ip_id_8bits_possible =
+					wlsb_is_kp_possible_16bits(&ip_ctxt->info.v4.ip_id_window,
+					                           ip_ctxt->info.v4.id_delta,
+					                           8, ROHC_LSB_SHIFT_IP_ID);
+				ip_hdr_changes->ip_id_11bits_possible =
+					wlsb_is_kp_possible_16bits(&ip_ctxt->info.v4.ip_id_window,
+					                           ip_ctxt->info.v4.id_delta,
+					                           11, ROHC_LSB_SHIFT_IP_ID);
+			}
+			rohc_comp_debug(context, "  %s bits are required to encode new IP-ID delta",
+			                ip_hdr_changes->ip_id_changed ? "some" : "no");
+			if(ip_hdr_changes->ip_id_3bits_possible)
+			{
+				rohc_comp_debug(context, "  3 bits may encode new IP-ID delta");
+			}
+			if(ip_hdr_changes->ip_id_5bits_possible)
+			{
+				rohc_comp_debug(context, "  5 bits may encode new IP-ID delta");
+			}
+			if(ip_hdr_changes->ip_id_6bits_possible)
+			{
+				rohc_comp_debug(context, "  6 bits may encode new IP-ID delta");
+			}
+			if(ip_hdr_changes->ip_id_8bits_possible)
+			{
+				rohc_comp_debug(context, "  8 bits may encode new IP-ID delta");
+			}
+			if(ip_hdr_changes->ip_id_11bits_possible)
+			{
+				rohc_comp_debug(context, "  11 bits may encode new IP-ID delta");
+			}
 		}
+	}
+
+	/* update info related to transport header */
+	if(rfc3095_ctxt->encode_uncomp_fields != NULL)
+	{
+		rfc3095_ctxt->encode_uncomp_fields(context, uncomp_pkt_hdrs);
 	}
 }
 
@@ -6088,226 +6267,6 @@ error:
 /*
  * Definitions of main private functions
  */
-
-
-/**
- * @brief Encode uncompressed fields with the corresponding encoding scheme
- *
- * @param context          The compression context
- * @param uncomp_pkt_hdrs  The uncompressed headers to encode
- */
-static void encode_uncomp_fields(struct rohc_comp_ctxt *const context,
-                                 const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
-{
-	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
-	size_t ip_hdr_pos;
-
-	rohc_comp_debug(context, "compressor is in state %u", context->state);
-
-	/* always update the info related to the SN */
-	{
-
-		rohc_comp_debug(context, "new SN = %u / 0x%x", rfc3095_ctxt->sn,
-		                rfc3095_ctxt->sn);
-		if(context->profile->id == ROHC_PROFILE_RTP)
-		{
-			rfc3095_ctxt->tmp.sn_4bits_possible =
-				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
-				                           4, rohc_interval_compute_p_rtp_sn(4));
-			rfc3095_ctxt->tmp.sn_7bits_possible =
-				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
-				                           7, rohc_interval_compute_p_rtp_sn(7));
-			rfc3095_ctxt->tmp.sn_12bits_possible =
-				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
-				                           12, rohc_interval_compute_p_rtp_sn(12));
-
-			rfc3095_ctxt->tmp.sn_6bits_possible =
-				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
-				                           6, rohc_interval_compute_p_rtp_sn(6));
-			rfc3095_ctxt->tmp.sn_9bits_possible =
-				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
-				                           9, rohc_interval_compute_p_rtp_sn(9));
-			rfc3095_ctxt->tmp.sn_14bits_possible =
-				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
-				                           14, rohc_interval_compute_p_rtp_sn(14));
-		}
-		else if(context->profile->id == ROHC_PROFILE_ESP)
-		{
-			rfc3095_ctxt->tmp.sn_4bits_possible =
-				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
-				                           4, rohc_interval_compute_p_esp_sn(4));
-
-			rfc3095_ctxt->tmp.sn_5bits_possible =
-				wlsb_is_kp_possible_32bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
-				                           5, rohc_interval_compute_p_esp_sn(5));
-			rfc3095_ctxt->tmp.sn_8bits_possible =
-				wlsb_is_kp_possible_32bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
-				                           8, rohc_interval_compute_p_esp_sn(8));
-			rfc3095_ctxt->tmp.sn_13bits_possible =
-				wlsb_is_kp_possible_32bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
-				                           13, rohc_interval_compute_p_esp_sn(13));
-		}
-		else
-		{
-			rfc3095_ctxt->tmp.sn_4bits_possible =
-				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
-				                           4, ROHC_LSB_SHIFT_SN);
-
-			rfc3095_ctxt->tmp.sn_5bits_possible =
-				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
-				                           5, ROHC_LSB_SHIFT_SN);
-			rfc3095_ctxt->tmp.sn_8bits_possible =
-				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
-				                           8, ROHC_LSB_SHIFT_SN);
-			rfc3095_ctxt->tmp.sn_13bits_possible =
-				wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
-				                           13, ROHC_LSB_SHIFT_SN);
-		}
-		if(rfc3095_ctxt->tmp.sn_4bits_possible)
-		{
-			rohc_comp_debug(context, "  4 bits may encode new SN");
-		}
-		if(rfc3095_ctxt->tmp.sn_5bits_possible)
-		{
-			rohc_comp_debug(context, "  5 bits may encode new SN");
-		}
-		if(rfc3095_ctxt->tmp.sn_6bits_possible)
-		{
-			rohc_comp_debug(context, "  6 bits may encode new SN");
-		}
-		if(rfc3095_ctxt->tmp.sn_7bits_possible)
-		{
-			rohc_comp_debug(context, "  7 bits may encode new SN");
-		}
-		if(rfc3095_ctxt->tmp.sn_8bits_possible)
-		{
-			rohc_comp_debug(context, "  8 bits may encode new SN");
-		}
-		if(rfc3095_ctxt->tmp.sn_9bits_possible)
-		{
-			rohc_comp_debug(context, "  9 bits may encode new SN");
-		}
-		if(rfc3095_ctxt->tmp.sn_12bits_possible)
-		{
-			rohc_comp_debug(context, "  12 bits may encode new SN");
-		}
-		if(rfc3095_ctxt->tmp.sn_13bits_possible)
-		{
-			rohc_comp_debug(context, "  13 bits may encode new SN");
-		}
-		if(rfc3095_ctxt->tmp.sn_14bits_possible)
-		{
-			rohc_comp_debug(context, "  14 bits may encode new SN");
-		}
-	}
-
-	/* update info related to the IP-ID of the IPv4 headers */
-	for(ip_hdr_pos = 0; ip_hdr_pos < rfc3095_ctxt->ip_hdr_nr; ip_hdr_pos++)
-	{
-		struct ip_header_info *const ip_ctxt =
-			&(rfc3095_ctxt->ip_ctxts[ip_hdr_pos]);
-		const struct rohc_pkt_ip_hdr *const pkt_ip_hdr =
-			&(uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos]);
-		struct rfc3095_ip_hdr_changes *const ip_changes =
-			&(rfc3095_ctxt->tmp.ip_hdr_changes[ip_hdr_pos]);
-
-		if(ip_ctxt->version == IPV6)
-		{
-			/* no IP-ID in IPv6 */
-			ip_changes->ip_id_changed = false;
-			ip_changes->ip_id_3bits_possible = false;
-			ip_changes->ip_id_5bits_possible = false;
-			ip_changes->ip_id_6bits_possible = false;
-			ip_changes->ip_id_8bits_possible = false;
-			ip_changes->ip_id_11bits_possible = false;
-		}
-		else /* IPV4 */
-		{
-			/* compute the new IP-ID / SN delta */
-			const uint16_t id = pkt_ip_hdr->ipv4->id;
-			const bool is_little_endian =
-				(ip_ctxt->info.v4.rnd == 0 && ip_ctxt->info.v4.nbo == 0);
-			const uint16_t id_nbo = (is_little_endian ? swab16(id) : id);
-			const uint16_t id_nbo_h = rohc_ntoh16(id_nbo);
-			ip_ctxt->info.v4.id_delta = id_nbo_h - rfc3095_ctxt->sn;
-			rohc_comp_debug(context, "IP header #%zu: new IP-ID delta = 0x%04x - 0x%04x "
-			                "= 0x%x / %u (NBO = %d, RND = %d, SID = %d)", ip_hdr_pos + 1,
-			                id_nbo_h, rfc3095_ctxt->sn,
-			                ip_ctxt->info.v4.id_delta, ip_ctxt->info.v4.id_delta,
-			                ip_ctxt->info.v4.nbo, ip_ctxt->info.v4.rnd,
-			                ip_ctxt->info.v4.sid);
-
-			/* how many bits are required to encode the new IP-ID / SN delta ? */
-			if(ip_ctxt->info.v4.sid)
-			{
-				/* IP-ID is constant, no IP-ID bit to transmit */
-				ip_changes->ip_id_changed = false;
-				ip_changes->ip_id_3bits_possible = true;
-				ip_changes->ip_id_5bits_possible = true;
-				ip_changes->ip_id_6bits_possible = true;
-				ip_changes->ip_id_8bits_possible = true;
-				ip_changes->ip_id_11bits_possible = true;
-				rohc_comp_debug(context, "  IP-ID is constant, no IP-ID bit to transmit");
-			}
-			else
-			{
-				/* send only required bits in FO or SO states */
-				ip_changes->ip_id_changed =
-					!wlsb_is_kp_possible_16bits(&ip_ctxt->info.v4.ip_id_window,
-					                            ip_ctxt->info.v4.id_delta,
-					                            0, ROHC_LSB_SHIFT_IP_ID);
-				ip_changes->ip_id_3bits_possible =
-					wlsb_is_kp_possible_16bits(&ip_ctxt->info.v4.ip_id_window,
-					                           ip_ctxt->info.v4.id_delta,
-					                           3, ROHC_LSB_SHIFT_IP_ID);
-				ip_changes->ip_id_5bits_possible =
-					wlsb_is_kp_possible_16bits(&ip_ctxt->info.v4.ip_id_window,
-					                           ip_ctxt->info.v4.id_delta,
-					                           5, ROHC_LSB_SHIFT_IP_ID);
-				ip_changes->ip_id_6bits_possible =
-					wlsb_is_kp_possible_16bits(&ip_ctxt->info.v4.ip_id_window,
-					                           ip_ctxt->info.v4.id_delta,
-					                           6, ROHC_LSB_SHIFT_IP_ID);
-				ip_changes->ip_id_8bits_possible =
-					wlsb_is_kp_possible_16bits(&ip_ctxt->info.v4.ip_id_window,
-					                           ip_ctxt->info.v4.id_delta,
-					                           8, ROHC_LSB_SHIFT_IP_ID);
-				ip_changes->ip_id_11bits_possible =
-					wlsb_is_kp_possible_16bits(&ip_ctxt->info.v4.ip_id_window,
-					                           ip_ctxt->info.v4.id_delta,
-					                           11, ROHC_LSB_SHIFT_IP_ID);
-			}
-			rohc_comp_debug(context, "  %s bits are required to encode new IP-ID delta",
-			                ip_changes->ip_id_changed ? "some" : "no");
-			if(ip_changes->ip_id_3bits_possible)
-			{
-				rohc_comp_debug(context, "  3 bits may encode new IP-ID delta");
-			}
-			if(ip_changes->ip_id_5bits_possible)
-			{
-				rohc_comp_debug(context, "  5 bits may encode new IP-ID delta");
-			}
-			if(ip_changes->ip_id_6bits_possible)
-			{
-				rohc_comp_debug(context, "  6 bits may encode new IP-ID delta");
-			}
-			if(ip_changes->ip_id_8bits_possible)
-			{
-				rohc_comp_debug(context, "  8 bits may encode new IP-ID delta");
-			}
-			if(ip_changes->ip_id_11bits_possible)
-			{
-				rohc_comp_debug(context, "  11 bits may encode new IP-ID delta");
-			}
-		}
-	}
-
-	/* update info related to transport header */
-	if(rfc3095_ctxt->encode_uncomp_fields != NULL)
-	{
-		rfc3095_ctxt->encode_uncomp_fields(context, uncomp_pkt_hdrs);
-	}
-}
 
 
 /**
