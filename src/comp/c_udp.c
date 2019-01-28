@@ -62,9 +62,8 @@ struct sc_udp_context
 {
 	/** The number of times the checksum field was transmitted since last change */
 	uint8_t udp_checksum_trans_nr;
-
-	/** The previous UDP header */
-	struct udphdr old_udp;
+	/** The UDP checksum in previous UDP header */
+	uint16_t old_udp_check;
 
 	/** @brief UDP-specific temporary variables that are used during one single
 	 *         compression of packet */
@@ -151,7 +150,7 @@ static bool c_udp_create(struct rohc_comp_ctxt *const context,
 
 	/* initialize the UDP part of the profile context */
 	udp_context->udp_checksum_trans_nr = 0;
-	memcpy(&udp_context->old_udp, uncomp_pkt_hdrs->udp, sizeof(struct udphdr));
+	udp_context->old_udp_check = rohc_ntoh16(uncomp_pkt_hdrs->udp->check);
 
 	/* init the UDP-specific variables and functions */
 	rfc3095_ctxt->next_header_len = sizeof(struct udphdr);
@@ -223,7 +222,7 @@ static int c_udp_encode(struct rohc_comp_ctxt *const context,
 		{
 			udp_context->udp_checksum_trans_nr++;
 		}
-		memcpy(&udp_context->old_udp, uncomp_pkt_hdrs->udp, sizeof(struct udphdr));
+		udp_context->old_udp_check = rohc_ntoh16(uncomp_pkt_hdrs->udp->check);
 	}
 
 quit:
@@ -428,10 +427,10 @@ static void udp_detect_udp_changes(const struct rohc_comp_ctxt *const context,
 	const struct sc_udp_context *const udp_ctxt =
 		(struct sc_udp_context *) rfc3095_ctxt->specific;
 
+	/* check UDP checksum field */
 	tmp->udp_check_behavior_just_changed =
-		((udp->check != 0 && udp_ctxt->old_udp.check == 0) ||
-		 (udp->check == 0 && udp_ctxt->old_udp.check != 0));
-
+		((udp->check != 0 && udp_ctxt->old_udp_check == 0) ||
+		 (udp->check == 0 && udp_ctxt->old_udp_check != 0));
 	if(tmp->udp_check_behavior_just_changed)
 	{
 		rohc_comp_debug(context, "UDP checksum behavior changed in current packet, "
