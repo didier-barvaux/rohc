@@ -606,11 +606,9 @@ bool rohc_comp_rfc3095_create(struct rohc_comp_ctxt *const context,
 	rfc3095_ctxt->decide_FO_packet = NULL;
 	rfc3095_ctxt->decide_SO_packet = NULL;
 	rfc3095_ctxt->decide_extension = NULL;
-	rfc3095_ctxt->init_at_IR = NULL;
 	rfc3095_ctxt->get_next_sn = NULL;
 	rfc3095_ctxt->code_static_part = NULL;
 	rfc3095_ctxt->code_dynamic_part = NULL;
-	rfc3095_ctxt->code_UO_packet_head = NULL;
 	rfc3095_ctxt->code_uo_remainder = NULL;
 	rfc3095_ctxt->compute_crc_static = ip_compute_crc_static;
 	rfc3095_ctxt->compute_crc_dynamic = ip_compute_crc_dynamic;
@@ -1518,13 +1516,6 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 	                "small" : "large", context->cid, counter - 1);
 
-	/* initialize some profile-specific things when building an IR
-	 * or IR-DYN packet */
-	if(rfc3095_ctxt->init_at_IR != NULL)
-	{
-		rfc3095_ctxt->init_at_IR(context, uncomp_pkt_hdrs->transport);
-	}
-
 	/* part 2: type of packet and D flag if dynamic part is included */
 	type = 0xfc;
 	/* D flag is available for all RFC3095-based profiles, except the
@@ -1676,13 +1667,6 @@ static int code_IR_DYN_packet(struct rohc_comp_ctxt *const context,
 	rohc_comp_debug(context, "%s CID %u encoded on %zu byte(s)",
 	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 	                "small" : "large", context->cid, counter - 1);
-
-	/* initialize some profile-specific things when building an IR
-	 * or IR-DYN packet */
-	if(rfc3095_ctxt->init_at_IR != NULL)
-	{
-		rfc3095_ctxt->init_at_IR(context, uncomp_pkt_hdrs->transport);
-	}
 
 	/* part 2 */
 	rohc_pkt[first_position] = 0xf8;
@@ -2417,13 +2401,6 @@ static int code_UO0_packet(struct rohc_comp_ctxt *const context,
 	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 	                "small" : "large", context->cid, counter - 1);
 
-	/* build the UO head if necessary */
-	if(rfc3095_ctxt->code_UO_packet_head != NULL && uncomp_pkt_hdrs->transport != NULL)
-	{
-		counter = rfc3095_ctxt->code_UO_packet_head(context, uncomp_pkt_hdrs->transport,
-		                                            rohc_pkt, counter, &first_position);
-	}
-
 	/* part 2: SN + CRC
 	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
 	 * if the CRC-STATIC fields did not change */
@@ -2556,13 +2533,6 @@ static int rohc_comp_rfc3095_build_uo1_pkt(struct rohc_comp_ctxt *const context,
 	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 	                "small" : "large", context->cid, counter - 1);
 
-	/* build the UO head if necessary */
-	if(rfc3095_ctxt->code_UO_packet_head != NULL && uncomp_pkt_hdrs->transport != NULL)
-	{
-		counter = rfc3095_ctxt->code_UO_packet_head(context, uncomp_pkt_hdrs->transport,
-		                                            rohc_pkt, counter, &first_position);
-	}
-
 	/* part 2 */
 	rohc_pkt[first_position] = 0x80 | (innermost_ip_id_delta & 0x3f);
 	rohc_comp_debug(context, "1 0 + IP-ID = 0x%02x", rohc_pkt[first_position]);
@@ -2691,13 +2661,6 @@ static int rohc_comp_rfc3095_build_uo1rtp_pkt(struct rohc_comp_ctxt *const conte
 	rohc_comp_debug(context, "%s CID %u encoded on %zu byte(s)",
 	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 	                "small" : "large", context->cid, counter - 1);
-
-	/* build the UO head if necessary */
-	if(rfc3095_ctxt->code_UO_packet_head != NULL && uncomp_pkt_hdrs->transport != NULL)
-	{
-		counter = rfc3095_ctxt->code_UO_packet_head(context, uncomp_pkt_hdrs->transport,
-		                                            rohc_pkt, counter, &first_position);
-	}
 
 	/* part 2 */
 	rohc_pkt[first_position] = 0x80 | (rtp_context->tmp.ts_send & 0x3f);
@@ -2844,13 +2807,6 @@ static int rohc_comp_rfc3095_build_uo1ts_pkt(struct rohc_comp_ctxt *const contex
 	rohc_comp_debug(context, "%s CID %u encoded on %zu byte(s)",
 	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 	                "small" : "large", context->cid, counter - 1);
-
-	/* build the UO head if necessary */
-	if(rfc3095_ctxt->code_UO_packet_head != NULL && uncomp_pkt_hdrs->transport != NULL)
-	{
-		counter = rfc3095_ctxt->code_UO_packet_head(context, uncomp_pkt_hdrs->transport,
-		                                            rohc_pkt, counter, &first_position);
-	}
 
 	/* part 2 */
 	rohc_pkt[first_position] = 0x80 | 0x20 | (rtp_context->tmp.ts_send & 0x1f);
@@ -3017,13 +2973,6 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 	rohc_comp_debug(context, "%s CID %u encoded on %zu byte(s)",
 	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 	                "small" : "large", context->cid, counter - 1);
-
-	/* build the UO head if necessary */
-	if(rfc3095_ctxt->code_UO_packet_head != NULL && uncomp_pkt_hdrs->transport != NULL)
-	{
-		counter = rfc3095_ctxt->code_UO_packet_head(context, uncomp_pkt_hdrs->transport,
-		                                            rohc_pkt, counter, &first_position);
-	}
 
 	/* part 2 */
 	switch(packet_type)
@@ -3396,13 +3345,6 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 	rohc_comp_debug(context, "%s CID %u encoded on %zu byte(s)",
 	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 	                "small" : "large", context->cid, counter - 1);
-
-	/* build the UO head if necessary */
-	if(rfc3095_ctxt->code_UO_packet_head != NULL && uncomp_pkt_hdrs->transport != NULL)
-	{
-		counter = rfc3095_ctxt->code_UO_packet_head(context, uncomp_pkt_hdrs->transport,
-		                                            rohc_pkt, counter, &first_position);
-	}
 
 	/* part 2: to be continued, we need to add the 5 bits of SN */
 	f_byte = 0xc0; /* 1 1 0 x x x x x */

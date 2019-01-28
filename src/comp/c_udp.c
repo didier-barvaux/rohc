@@ -158,12 +158,10 @@ static bool c_udp_create(struct rohc_comp_ctxt *const context,
 	rfc3095_ctxt->decide_FO_packet = c_udp_decide_FO_packet;
 	rfc3095_ctxt->decide_SO_packet = c_udp_decide_SO_packet;
 	rfc3095_ctxt->decide_extension = decide_extension;
-	rfc3095_ctxt->init_at_IR = NULL;
 	rfc3095_ctxt->get_next_sn = c_ip_get_next_sn;
 	rfc3095_ctxt->code_static_part = udp_code_static_udp_part;
 	rfc3095_ctxt->code_dynamic_part = udp_code_dynamic_udp_part;
 	rfc3095_ctxt->code_ir_remainder = c_ip_code_ir_remainder;
-	rfc3095_ctxt->code_UO_packet_head = NULL;
 	rfc3095_ctxt->code_uo_remainder = udp_code_uo_remainder;
 	rfc3095_ctxt->compute_crc_static = udp_compute_crc_static;
 	rfc3095_ctxt->compute_crc_dynamic = udp_compute_crc_dynamic;

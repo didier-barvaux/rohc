@@ -322,7 +322,7 @@ static inline uint8_t crc_calc_3(const uint8_t *const buf,
 
 
 /**
- * @brief Compute the CRC-STATIC part of an UDP or UDP-Lite header
+ * @brief Compute the CRC-STATIC part of an UDP header
  *
  * Concerned fields are:
  *  all fields expect those for CRC-DYNAMIC
@@ -351,7 +351,7 @@ uint8_t udp_compute_crc_static(const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs
 
 
 /**
- * @brief Compute the CRC-DYNAMIC part of an UDP or UDP-Lite header
+ * @brief Compute the CRC-DYNAMIC part of an UDP header
  *
  * Concerned fields are:
  *   - bytes 5-6, 7-8 in original UDP header

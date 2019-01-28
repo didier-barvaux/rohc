@@ -46,7 +46,6 @@ rohc_comp_sources = \
 	../../src/comp/rohc_comp_rfc3095.c \
 	../../src/comp/c_ip.c \
 	../../src/comp/c_udp.c \
-	../../src/comp/c_udp_lite.c \
 	../../src/comp/c_rtp.c \
 	../../src/comp/c_esp.c \
 	../../src/comp/c_tcp_opts_list.c \
@@ -77,7 +76,6 @@ rohc_decomp_sources = \
 	../../src/decomp/rohc_decomp_rfc3095.c \
 	../../src/decomp/d_ip.c \
 	../../src/decomp/d_udp.c \
-	../../src/decomp/d_udp_lite.c \
 	../../src/decomp/d_rtp.c \
 	../../src/decomp/d_esp.c \
 	../../src/decomp/d_tcp_static.c \

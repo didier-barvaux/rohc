@@ -22,7 +22,6 @@ librohc_comp_la_SOURCES = \
 	rohc_comp_rfc3095.c \
 	c_ip.c \
 	c_udp.c \
-	c_udp_lite.c \
 	c_esp.c \
 	c_rtp.c \
 	c_tcp_opts_list.c \

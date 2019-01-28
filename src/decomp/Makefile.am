@@ -24,7 +24,6 @@ librohc_decomp_la_SOURCES = \
 	rohc_decomp_rfc3095.c \
 	d_ip.c \
 	d_udp.c \
-	d_udp_lite.c \
 	d_esp.c \
 	d_rtp.c \
 	d_tcp_opts_list.c \

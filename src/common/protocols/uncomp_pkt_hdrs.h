@@ -122,7 +122,6 @@ struct rohc_pkt_hdrs
 			} tcp_opts;
 		};
 		const struct udphdr *udp;       /**< The UDP header (if any) */
-		const struct udphdr *udp_lite;  /**< The UDP-Lite header (if any) */
 		const struct esphdr *esp;       /**< The ESP header (if any) */
 		const uint8_t *transport;       /**< The transport header (if any) */
 	};

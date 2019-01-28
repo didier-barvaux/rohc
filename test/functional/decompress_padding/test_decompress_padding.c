@@ -215,8 +215,7 @@ static int test_decomp(const struct rohc_buf rohc_pkt)
 	/* enable all profiles */
 	if(!rohc_decomp_enable_profiles(decomp, ROHC_PROFILE_UNCOMPRESSED,
 	                                ROHC_PROFILE_IP, ROHC_PROFILE_UDP,
-	                                ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
-	                                ROHC_PROFILE_TCP, -1))
+	                                ROHC_PROFILE_RTP, ROHC_PROFILE_TCP, -1))
 	{
 		fprintf(stderr, "cannot enable all decompression profiles\n");
 		goto destroy_decomp;

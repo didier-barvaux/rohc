@@ -322,7 +322,6 @@ int main(int argc, char *argv[])
 	enabled_profiles[ROHC_PROFILE_ESP] = 1;
 	enabled_profiles[ROHC_PROFILE_IP] = 1;
 	enabled_profiles[ROHC_PROFILE_TCP] = 1;
-	enabled_profiles[ROHC_PROFILE_UDPLITE] = 1;
 
 	/* no traces at the moment */
 	for(i = 0; i < MAX_LAST_TRACES; i++)
@@ -899,7 +898,6 @@ static void sniffer_print_stats(int signum __attribute__((unused)))
 	        sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDP] +
 	        sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_IP] +
 	        sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_TCP] +
-	        sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE] +
 	        sniffer_stats.comp_nr_pkts_per_profile[ROHCv2_PROFILE_IP_UDP] +
 	        sniffer_stats.comp_nr_pkts_per_profile[ROHCv2_PROFILE_IP_ESP] +
 	        sniffer_stats.comp_nr_pkts_per_profile[ROHCv2_PROFILE_IP];
@@ -920,9 +918,6 @@ static void sniffer_print_stats(int signum __attribute__((unused)))
 	SNIFFER_LOG(LOG_INFO, "  ROHCv1 IP/TCP profile: %lu packets (%llu%%)",
 	            sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_TCP],
 	            compute_percent(sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_TCP], total));
-	SNIFFER_LOG(LOG_INFO, "  ROHCv1 IP/UDP-Lite profile: %lu packets (%llu%%)",
-	            sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE],
-	            compute_percent(sniffer_stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE], total));
 	SNIFFER_LOG(LOG_INFO, "  ROHCv2 IP/UDP profile: %lu packets (%llu%%)",
 	            sniffer_stats.comp_nr_pkts_per_profile[ROHCv2_PROFILE_IP_UDP],
 	            compute_percent(sniffer_stats.comp_nr_pkts_per_profile[ROHCv2_PROFILE_IP_UDP], total));

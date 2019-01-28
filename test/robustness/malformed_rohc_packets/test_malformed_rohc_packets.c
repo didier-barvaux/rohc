@@ -391,7 +391,9 @@ static int test_decomp(const char *const filename,
 		                                ROHCv1_PROFILE_IP_ESP,
 		                                ROHCv1_PROFILE_IP,
 		                                ROHCv1_PROFILE_IP_TCP,
+#if 0
 		                                ROHCv1_PROFILE_IP_UDPLITE,
+#endif
 		                                -1))
 		{
 			fprintf(stderr, "failed to enable the decompression profiles\n");

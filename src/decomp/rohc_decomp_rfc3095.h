@@ -37,7 +37,6 @@
 #include "schemes/decomp_wlsb.h"
 #include "schemes/ip_id_offset.h"
 #include "schemes/decomp_list.h"
-#include "protocols/udp_lite.h"
 #include "ip.h"
 #include "crc.h"
 
@@ -157,18 +156,6 @@ struct rohc_extr_bits
 	size_t udp_check_nr;  /**< The number of UDP checksum bits */
 
 
-	/* bits below are for UDP-Lite-based profiles only
-	   @todo TODO should be moved in d_udp_lite.c */
-
-	rohc_packet_cce_t cce_pkt; /**< TODO */
-	rohc_tristate_t cfp;       /**< TODO */
-	rohc_tristate_t cfi;       /**< TODO */
-	uint16_t udp_lite_cc;      /**< The UDP-Lite CC bits found in dynamic
-	                                chain of IR/IR-DYN header or in remainder
-	                                of UO* header */
-	size_t udp_lite_cc_nr;     /**< The number of UDP-Lite CC bits */
-
-
 	/* bits below are for RTP profile only
 	   @todo TODO should be moved in d_rtp.c */
 
@@ -273,13 +260,6 @@ struct rohc_decoded_values
 	uint16_t udp_check; /**< The decoded UDP checksum */
 	rohc_tristate_t udp_check_present; /**< Whether the UDP checksum field is
 	                                        encoded in the ROHC packet or not */
-
-	/* bits below are for UDP-Lite-based profile only
-	   @todo TODO should be moved in d_udp_lite.c */
-	rohc_packet_cce_t cce_pkt; /**< TODO */
-	rohc_tristate_t cfp;       /**< TODO */
-	rohc_tristate_t cfi;       /**< TODO */
-	uint16_t udp_lite_cc;      /**< The decoded UDP-Lite CC */
 
 	/* bits below are for RTP profile only
 	   @todo TODO should be moved in d_rtp.c */

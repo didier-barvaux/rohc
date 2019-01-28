@@ -752,7 +752,6 @@ static bool show_rohc_comp_stats(const struct rohc_comp *const comp,
 	show_rohc_comp_profile(comp, ROHC_PROFILE_ESP);
 	show_rohc_comp_profile(comp, ROHC_PROFILE_IP);
 	show_rohc_comp_profile(comp, ROHC_PROFILE_TCP);
-	show_rohc_comp_profile(comp, ROHC_PROFILE_UDPLITE);
 
 	/* statistics */
 	trace("===\tstatistics:\n");
@@ -855,7 +854,6 @@ static bool show_rohc_decomp_stats(const struct rohc_decomp *const decomp,
 	show_rohc_decomp_profile(decomp, ROHC_PROFILE_ESP);
 	show_rohc_decomp_profile(decomp, ROHC_PROFILE_IP);
 	show_rohc_decomp_profile(decomp, ROHC_PROFILE_TCP);
-	show_rohc_decomp_profile(decomp, ROHC_PROFILE_UDPLITE);
 
 	/* statistics */
 	trace("===\tstatistics:\n");
@@ -1651,7 +1649,9 @@ static struct rohc_comp * create_compressor(const rohc_cid_type_t cid_type,
 		                              ROHCv1_PROFILE_IP_ESP,
 		                              ROHCv1_PROFILE_IP,
 		                              ROHCv1_PROFILE_IP_TCP,
+#if 0
 		                              ROHCv1_PROFILE_IP_UDPLITE,
+#endif
 		                              -1))
 		{
 			trace("failed to enable the compression profiles\n");
@@ -1753,7 +1753,9 @@ static struct rohc_decomp * create_decompressor(const rohc_cid_type_t cid_type,
 		                                ROHCv1_PROFILE_IP_ESP,
 		                                ROHCv1_PROFILE_IP,
 		                                ROHCv1_PROFILE_IP_TCP,
+#if 0
 		                                ROHCv1_PROFILE_IP_UDPLITE,
+#endif
 		                                -1))
 		{
 			trace("failed to enable the decompression profiles\n");

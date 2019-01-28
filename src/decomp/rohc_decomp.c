@@ -61,7 +61,6 @@
 extern const struct rohc_decomp_profile d_uncomp_profile;
 extern const struct rohc_decomp_profile d_udp_profile;
 extern const struct rohc_decomp_profile d_ip_profile;
-extern const struct rohc_decomp_profile d_udplite_profile;
 extern const struct rohc_decomp_profile d_esp_profile;
 extern const struct rohc_decomp_profile d_rtp_profile;
 extern const struct rohc_decomp_profile d_tcp_profile;
@@ -86,7 +85,7 @@ static const struct rohc_decomp_profile *const
 		[5] = NULL,
 		[6] = &d_tcp_profile,
 		[7] = NULL,
-		[8] = &d_udplite_profile,
+		[8] = NULL,
 	},
 	[1] = {
 		[0] = NULL,

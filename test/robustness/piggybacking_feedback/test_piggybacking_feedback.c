@@ -209,8 +209,8 @@ static int test_comp_and_decomp(void)
 	/* enable profiles for compressor A */
 	if(!rohc_comp_enable_profiles(compA, ROHC_PROFILE_UNCOMPRESSED,
 	                              ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
-	                              ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
-	                              ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
+	                              ROHC_PROFILE_RTP, ROHC_PROFILE_ESP,
+	                              ROHC_PROFILE_TCP, -1))
 	{
 		fprintf(stderr, "failed to enable the profiles on compressor A\n");
 		goto destroy_compA;
@@ -243,8 +243,8 @@ static int test_comp_and_decomp(void)
 	/* enable profiles for compressor B */
 	if(!rohc_comp_enable_profiles(compB, ROHC_PROFILE_UNCOMPRESSED,
 	                              ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
-	                              ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
-	                              ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
+	                              ROHC_PROFILE_RTP, ROHC_PROFILE_ESP,
+	                              ROHC_PROFILE_TCP, -1))
 	{
 		fprintf(stderr, "failed to enable the profiles on compressor B\n");
 		goto destroy_compB;
@@ -276,8 +276,8 @@ static int test_comp_and_decomp(void)
 	/* enable decompression profiles on decompressor A */
 	if(!rohc_decomp_enable_profiles(decompA, ROHC_PROFILE_UNCOMPRESSED,
 	                                ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
-	                                ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
-	                                ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
+	                                ROHC_PROFILE_RTP, ROHC_PROFILE_ESP,
+	                                ROHC_PROFILE_TCP, -1))
 	{
 		fprintf(stderr, "failed to enable the profiles on decompressor A\n");
 		goto destroy_decompA;
@@ -302,8 +302,8 @@ static int test_comp_and_decomp(void)
 	/* enable decompression profiles on decompressor B */
 	if(!rohc_decomp_enable_profiles(decompB, ROHC_PROFILE_UNCOMPRESSED,
 	                                ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
-	                                ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
-	                                ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
+	                                ROHC_PROFILE_RTP, ROHC_PROFILE_ESP,
+	                                ROHC_PROFILE_TCP, -1))
 	{
 		fprintf(stderr, "failed to enable the profiles on decompressor B\n");
 		goto destroy_decompB;

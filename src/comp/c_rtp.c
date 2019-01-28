@@ -175,12 +175,10 @@ static bool c_rtp_create(struct rohc_comp_ctxt *const context,
 	rfc3095_ctxt->decide_FO_packet = c_rtp_decide_FO_packet;
 	rfc3095_ctxt->decide_SO_packet = c_rtp_decide_SO_packet;
 	rfc3095_ctxt->decide_extension = c_rtp_decide_extension;
-	rfc3095_ctxt->init_at_IR = NULL;
 	rfc3095_ctxt->get_next_sn = c_rtp_get_next_sn;
 	rfc3095_ctxt->code_static_part = rtp_code_static_rtp_part;
 	rfc3095_ctxt->code_dynamic_part = rtp_code_dynamic_rtp_part;
 	rfc3095_ctxt->code_ir_remainder = NULL;
-	rfc3095_ctxt->code_UO_packet_head = NULL;
 	rfc3095_ctxt->code_uo_remainder = udp_code_uo_remainder;
 	rfc3095_ctxt->compute_crc_static = rtp_compute_crc_static;
 	rfc3095_ctxt->compute_crc_dynamic = rtp_compute_crc_dynamic;

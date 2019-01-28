@@ -176,10 +176,6 @@ int main(int argc, char *argv[])
 	{
 		profile_id = ROHC_PROFILE_UDP;
 	}
-	else if(strcmp(profile_name, "udpliteprofile") == 0)
-	{
-		profile_id = ROHC_PROFILE_UDPLITE;
-	}
 	else if(strcmp(profile_name, "rtpprofile") == 0)
 	{
 		profile_id = ROHC_PROFILE_RTP;
@@ -366,8 +362,8 @@ static int test_comp_and_decomp(const char *filename,
 		fprintf(stderr, "enable all compression profiles\n");
 		if(!rohc_comp_enable_profiles(comp, ROHC_PROFILE_UNCOMPRESSED,
 		                              ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
-		                              ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
-		                              ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
+		                              ROHC_PROFILE_RTP, ROHC_PROFILE_ESP,
+		                              ROHC_PROFILE_TCP, -1))
 		{
 			fprintf(stderr, "failed to enable the compression profiles\n");
 			goto destroy_comp;
@@ -399,8 +395,8 @@ static int test_comp_and_decomp(const char *filename,
 	/* enable decompression profiles */
 	if(!rohc_decomp_enable_profiles(decomp, ROHC_PROFILE_UNCOMPRESSED,
 	                                ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
-	                                ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
-	                                ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
+	                                ROHC_PROFILE_RTP, ROHC_PROFILE_ESP,
+	                                ROHC_PROFILE_TCP, -1))
 	{
 		fprintf(stderr, "failed to enable the decompression profiles\n");
 		goto destroy_decomp;

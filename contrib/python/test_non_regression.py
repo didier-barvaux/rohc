@@ -100,7 +100,6 @@ ALL_PROFILES_V1 = [ROHC_PROFILE_UNCOMPRESSED, \
                    ROHC_PROFILE_ESP, \
                    ROHC_PROFILE_IP, \
                    ROHC_PROFILE_TCP, \
-                   ROHC_PROFILE_UDPLITE, \
                   ]
 
 ALL_PROFILES_V2 = [ROHC_PROFILE_UNCOMPRESSED, \

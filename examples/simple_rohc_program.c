@@ -124,10 +124,9 @@ int main(int argc, char **argv)
 //! [enable ROHC compression profile]
 //! [enable ROHC compression profiles]
 	if(!rohc_comp_enable_profiles(compressor, ROHC_PROFILE_UDP,
-	                              ROHC_PROFILE_UDPLITE, -1))
+	                              ROHC_PROFILE_ESP, -1))
 	{
-		fprintf(stderr, "failed to enable the IP/UDP and IP/UDP-Lite "
-		        "profiles\n");
+		fprintf(stderr, "failed to enable the IP/UDP and IP/ESP profiles\n");
 		goto release_compressor;
 	}
 //! [enable ROHC compression profiles]

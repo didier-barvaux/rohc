@@ -755,8 +755,8 @@ static int generate_comp_stats_all(const rohc_cid_type_t cid_type,
 	/* enable profiles */
 	if(!rohc_comp_enable_profiles(comp, ROHC_PROFILE_UNCOMPRESSED,
 	                              ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
-	                              ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
-	                              ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
+	                              ROHC_PROFILE_RTP, ROHC_PROFILE_ESP,
+	                              ROHC_PROFILE_TCP, -1))
 	{
 		fprintf(stderr, "failed to enable the compression profiles\n");
 		goto destroy_comp;
@@ -1048,8 +1048,8 @@ static int generate_decomp_stats_all(const rohc_cid_type_t cid_type,
 	/* enable profiles */
 	if(!rohc_decomp_enable_profiles(decomp, ROHC_PROFILE_UNCOMPRESSED,
 	                                ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
-	                                ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
-	                                ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
+	                                ROHC_PROFILE_RTP, ROHC_PROFILE_ESP,
+	                                ROHC_PROFILE_TCP, -1))
 	{
 		fprintf(stderr, "failed to enable the decompression profiles\n");
 		goto destroy_decomp;

@@ -177,7 +177,7 @@ int main(int argc, char *argv[])
 	CHECK(rohc_comp_enable_profiles(NULL, ROHC_PROFILE_IP, -1) == false);
 	CHECK(rohc_comp_enable_profiles(comp, ROHC_PROFILE_GENERAL, -1) == false);
 	CHECK(rohc_comp_enable_profiles(comp, ROHC_PROFILE_IP, -1) == true);
-	CHECK(rohc_comp_enable_profiles(comp, ROHC_PROFILE_IP, ROHC_PROFILE_UDPLITE,
+	CHECK(rohc_comp_enable_profiles(comp, ROHC_PROFILE_IP,
 	                                ROHC_PROFILE_RTP, -1) == true);
 
 	/* ROHCv2 rohc_comp_enable_profiles() */
@@ -202,7 +202,7 @@ int main(int argc, char *argv[])
 	CHECK(rohc_comp_profile_enabled(comp, ROHC_PROFILE_ESP) == false);
 	CHECK(rohc_comp_profile_enabled(comp, ROHC_PROFILE_IP) == true);
 	CHECK(rohc_comp_profile_enabled(comp, ROHC_PROFILE_TCP) == false);
-	CHECK(rohc_comp_profile_enabled(comp, ROHC_PROFILE_UDPLITE) == true);
+	CHECK(rohc_comp_profile_enabled(comp, ROHC_PROFILE_UDPLITE) == false);
 
 	/* ROHCv2 rohc_comp_profile_enabled() */
 	CHECK(rohc_comp_profile_enabled(comp, ROHCv2_PROFILE_IP_ESP) == false);

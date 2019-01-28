@@ -84,7 +84,6 @@ typedef enum
 /* ROHCv1 profiles */
 extern const struct rohc_comp_profile c_rtp_profile;
 extern const struct rohc_comp_profile c_udp_profile;
-extern const struct rohc_comp_profile c_udp_lite_profile;
 extern const struct rohc_comp_profile c_esp_profile;
 extern const struct rohc_comp_profile c_tcp_profile;
 extern const struct rohc_comp_profile c_ip_profile;
@@ -109,7 +108,7 @@ static const struct rohc_comp_profile *const
 		[5] = NULL,
 		[6] = &c_tcp_profile,
 		[7] = NULL,
-		[8] = &c_udp_lite_profile,
+		[8] = NULL,
 	},
 	[1] = {
 		[0] = NULL,
@@ -931,63 +930,8 @@ static rohc_profile_t rohc_comp_get_profile_l4(const struct rohc_comp *const com
 			           "\tSPI = 0x%08x", fingerprint->esp_spi);
 		}
 	}
-	else if(l4_proto == ROHC_IPPROTO_UDPLITE)
-	{
-		const struct udphdr *udp_lite;
-
-		/* innermost IP payload shall be large enough for UDP-Lite header */
-		if(remain_len < sizeof(struct udphdr))
-		{
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "innermost IP payload too small for UDP-Lite header");
-			goto unsupported_udplite_hdr;
-		}
-		udp_lite = (const struct udphdr *) remain_data;
-		pkt_hdrs->udp_lite = udp_lite;
-		remain_data += sizeof(struct udphdr);
-		remain_len -= sizeof(struct udphdr);
-
-		/* ROHCv1/v2 IP/UDP-Lite profiles are possible if they are enabled */
-		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "IP/UDP-Lite packet detected");
-		if(pkt_hdrs->ip_hdrs_nr <= ROHC_MAX_IP_HDRS_RFC3095 &&
-		   rohc_comp_profile_enabled_nocheck(comp, ROHCv1_PROFILE_IP_UDPLITE))
-		{
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "ROHCv1 IP/UDP-Lite profile is possible");
-			profile = ROHCv1_PROFILE_IP_UDPLITE;
-			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
-			pkt_hdrs->payload_len = remain_len;
-			pkt_hdrs->payload = remain_data;
-			fingerprint->base.profile_id = profile;
-			fingerprint->src_port = rohc_ntoh16(udp_lite->source);
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "\tsource port = %u", fingerprint->src_port);
-			fingerprint->dst_port = rohc_ntoh16(udp_lite->dest);
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "\tdestination port = %u", fingerprint->dst_port);
-		}
-		else if(all_ipv6_exts_len == 0 && /* TODO: ROHCv2: add IPv6 ext hdrs support */
-		        rohc_comp_profile_enabled_nocheck(comp, ROHCv2_PROFILE_IP_UDPLITE))
-		{
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "ROHCv2 IP/ESP profile is possible");
-			profile = ROHCv2_PROFILE_IP_UDPLITE;
-			pkt_hdrs->all_hdrs_len = packet->len - remain_len;
-			pkt_hdrs->payload_len = remain_len;
-			pkt_hdrs->payload = remain_data;
-			fingerprint->base.profile_id = profile;
-			fingerprint->src_port = rohc_ntoh16(udp_lite->source);
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "\tsource port = %u", fingerprint->src_port);
-			fingerprint->dst_port = rohc_ntoh16(udp_lite->dest);
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "\tdestination port = %u", fingerprint->dst_port);
-		}
-	}
 
 unsupported_rtp_hdr:
-unsupported_udplite_hdr:
 unsupported_esp_hdr:
 unsupported_udp_hdr:
 unsupported_tcp_hdr:

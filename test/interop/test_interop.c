@@ -370,7 +370,6 @@ static bool show_rohc_decomp_stats(const struct rohc_decomp *const decomp)
 	show_rohc_decomp_profile(decomp, ROHC_PROFILE_ESP);
 	show_rohc_decomp_profile(decomp, ROHC_PROFILE_IP);
 	show_rohc_decomp_profile(decomp, ROHC_PROFILE_TCP);
-	show_rohc_decomp_profile(decomp, ROHC_PROFILE_UDPLITE);
 
 	/* statistics */
 	printf("===\tstatistics:\n");
@@ -766,8 +765,8 @@ static struct rohc_decomp * create_decompressor(const rohc_cid_type_t cid_type,
 	/* enable decompression profiles */
 	if(!rohc_decomp_enable_profiles(decomp, ROHC_PROFILE_UNCOMPRESSED,
 	                                ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
-	                                ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
-	                                ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
+	                                ROHC_PROFILE_RTP, ROHC_PROFILE_ESP,
+	                                ROHC_PROFILE_TCP, -1))
 	{
 		printf("failed to enable the profiles\n");
 		goto destroy_decomp;
