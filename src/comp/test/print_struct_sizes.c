@@ -62,7 +62,7 @@ int main(void)
 	printf("\n");
 	printf("sizeof(struct rohc_comp_rfc3095_ctxt) = %zu\n",
 	       sizeof(struct rohc_comp_rfc3095_ctxt));
-	printf("\tsizeof(struct generic_tmp_vars) = %zu\n", sizeof(struct generic_tmp_vars));
+	printf("\tsizeof(struct rfc3095_tmp_state) = %zu\n", sizeof(struct rfc3095_tmp_state));
 	printf("\tsizeof(struct ip_header_info) = %zu\n", sizeof(struct ip_header_info));
 	printf("\t\tsizeof(struct ipv4_header_info) = %zu\n", sizeof(struct ipv4_header_info));
 	printf("\t\tsizeof(struct ipv6_header_info) = %zu\n", sizeof(struct ipv6_header_info));

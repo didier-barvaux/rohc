@@ -39,17 +39,6 @@
 #include <assert.h>
 
 
-/** The UDP-specific temporary variables */
-struct udp_tmp_vars
-{
-	/** Whether the UDP checksum changed of behavior with the current packet */
-	uint8_t udp_check_behavior_just_changed:1;
-	/** Whether the UDP checksum changed of behavior with the last few packets */
-	uint8_t udp_check_behavior_changed:1;
-	uint8_t unused:6;
-};
-
-
 /**
  * @brief Define the UDP part of the profile decompression context.
  *
@@ -64,10 +53,6 @@ struct sc_udp_context
 	uint8_t udp_checksum_trans_nr;
 	/** The UDP checksum in previous UDP header */
 	uint16_t old_udp_check;
-
-	/** @brief UDP-specific temporary variables that are used during one single
-	 *         compression of packet */
-	struct udp_tmp_vars tmp;
 };
 
 
@@ -100,7 +85,7 @@ static size_t udp_code_dynamic_udp_part(const struct rohc_comp_ctxt *const conte
 
 static void udp_detect_udp_changes(const struct rohc_comp_ctxt *const context,
                                    const struct udphdr *const udp,
-                                   struct udp_tmp_vars *const tmp)
+                                   struct rfc3095_tmp_state *const tmp)
 	__attribute__((nonnull(1, 2, 3)));
 
 
@@ -200,7 +185,7 @@ static int c_udp_encode(struct rohc_comp_ctxt *const context,
 	assert(uncomp_pkt_hdrs->udp != NULL);
 
 	/* detect changes in uncompressed headers */
-	udp_detect_udp_changes(context, uncomp_pkt_hdrs->udp, &udp_context->tmp);
+	udp_detect_udp_changes(context, uncomp_pkt_hdrs->udp, &rfc3095_ctxt->tmp);
 
 	/* encode the IP packet */
 	size = rohc_comp_rfc3095_encode(context, uncomp_pkt_hdrs,
@@ -214,7 +199,7 @@ static int c_udp_encode(struct rohc_comp_ctxt *const context,
 	if((*packet_type) == ROHC_PACKET_IR ||
 	   (*packet_type) == ROHC_PACKET_IR_DYN)
 	{
-		if(udp_context->tmp.udp_check_behavior_just_changed)
+		if(rfc3095_ctxt->tmp.udp_check_behavior_just_changed)
 		{
 			udp_context->udp_checksum_trans_nr = 0;
 		}
@@ -244,10 +229,9 @@ static rohc_packet_t c_udp_decide_FO_packet(const struct rohc_comp_ctxt *const c
 {
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
 		(const struct rohc_comp_rfc3095_ctxt *const) context->specific;
-	const struct sc_udp_context *const udp_context = rfc3095_ctxt->specific;
 	rohc_packet_t packet;
 
-	if(udp_context->tmp.udp_check_behavior_changed)
+	if(rfc3095_ctxt->tmp.udp_check_behavior_changed)
 	{
 		packet = ROHC_PACKET_IR_DYN;
 	}
@@ -276,10 +260,9 @@ static rohc_packet_t c_udp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 {
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
-	const struct sc_udp_context *const udp_context = rfc3095_ctxt->specific;
 	rohc_packet_t packet;
 
-	if(udp_context->tmp.udp_check_behavior_changed)
+	if(rfc3095_ctxt->tmp.udp_check_behavior_changed)
 	{
 		packet = ROHC_PACKET_IR_DYN;
 	}
@@ -419,7 +402,7 @@ static size_t udp_code_dynamic_udp_part(const struct rohc_comp_ctxt *const conte
  */
 static void udp_detect_udp_changes(const struct rohc_comp_ctxt *const context,
                                    const struct udphdr *const udp,
-                                   struct udp_tmp_vars *const tmp)
+                                   struct rfc3095_tmp_state *const tmp)
 {
 	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =

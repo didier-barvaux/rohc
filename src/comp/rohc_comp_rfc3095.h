@@ -169,9 +169,7 @@ struct rfc3095_ip_hdr_changes
 };
 
 
-/**
- * @brief Structure that contains variables that are used during one single
- *        compression of packet.
+/** The temporary variables for RFC3095-based profiles
  *
  * Structure that contains variables that are temporary, i.e. variables that
  * will only be used for the compression of the current packet. These variables
@@ -179,7 +177,7 @@ struct rfc3095_ip_hdr_changes
  *
  * @see c_init_tmp_variables
  */
-struct generic_tmp_vars
+struct rfc3095_tmp_state
 {
 	/** The number of IP headers */
 	size_t ip_hdr_nr;
@@ -197,6 +195,36 @@ struct generic_tmp_vars
 	bool sn_6bits_possible;
 	bool sn_9bits_possible;
 	bool sn_14bits_possible;
+
+	/** Whether the UDP checksum changed of behavior with the current packet */
+	uint16_t udp_check_behavior_just_changed:1;
+	/** Whether the UDP checksum changed of behavior with the last few packets */
+	uint16_t udp_check_behavior_changed:1;
+	/** Whether the RTP Version changed with the current packet */
+	uint16_t rtp_version_just_changed:1;
+	/** Whether the RTP Version changed with the last few packets */
+	uint16_t rtp_version_changed:1;
+	/** Whether the RTP Padding (P) bit changed with the current packet */
+	uint16_t rtp_padding_just_changed:1;
+	/** Whether the RTP Padding (P) bit changed with the last few packets */
+	uint16_t rtp_padding_changed:1;
+	/** Whether the RTP eXtension (X) bit changed with the current packet */
+	uint16_t rtp_ext_just_changed:1;
+	/** Whether the RTP eXtension (X) bit changed with the last few packets */
+	uint16_t rtp_ext_changed:1;
+	uint16_t is_marker_bit_set:1;   /**< Whether RTP Marker (M) bit is set */
+	/** Whether the RTP Payload Type (PT) changed with the current packet */
+	uint16_t rtp_pt_just_changed:1;
+	/** Whether the RTP Payload Type (PT) changed with the last few packets */
+	uint16_t rtp_pt_changed:1;
+	uint16_t unused:5;
+
+	/** The TS field to send (ts_scaled or ts) */
+	uint32_t ts_send;
+	/** The number of bits needed to encode ts_send */
+	uint8_t nr_ts_bits;
+	/** The number of bits of TS to place in the extension 3 header */
+	uint8_t nr_ts_bits_ext3;
 };
 
 
@@ -235,7 +263,7 @@ struct rohc_comp_rfc3095_ctxt
 	uint8_t crc_static_7_cached;
 
 	/// Temporary variables that are used during one single compression of packet
-	struct generic_tmp_vars tmp;
+	struct rfc3095_tmp_state tmp;
 
 	/* below are some information and handlers to manage the next header
 	 * (if any) located just after the IP headers (1 or 2 IP headers) */
