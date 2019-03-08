@@ -421,7 +421,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 	        rfc3095_ctxt->tmp.sn_4bits_possible &&
 	        nr_ipv4_non_rnd_with_bits == 0 &&
 	        is_ts_scaled &&
-	        (is_ts_deducible || rfc3095_ctxt->tmp.nr_ts_bits == 0) &&
+	        (is_ts_deducible || rfc3095_ctxt->tmp.ts_bits_req_nr == 0) &&
 	        !rfc3095_ctxt->tmp.rtp_padding_changed &&
 	        !rfc3095_ctxt->tmp.rtp_ext_changed &&
 	        !rfc3095_ctxt->tmp.is_marker_bit_set &&
@@ -440,7 +440,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 	else if(!rnd_changed &&
 	        rfc3095_ctxt->tmp.sn_4bits_possible &&
 	        nr_ipv4_non_rnd == 0 &&
-	        is_ts_scaled && rfc3095_ctxt->tmp.nr_ts_bits <= 6 &&
+	        is_ts_scaled && rfc3095_ctxt->tmp.ts_bits_req_nr <= 6 &&
 	        !rfc3095_ctxt->tmp.rtp_padding_changed &&
 	        !rfc3095_ctxt->tmp.rtp_ext_changed &&
 	        !rfc3095_ctxt->tmp.rtp_pt_changed &&
@@ -453,13 +453,13 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 		                "%u <= 6 TS bits must be transmitted, and "
 		                "no TOS/TC, TTL/HL, DF, IP ext list, NBO, RND fields "
 		                "changed for %zu IP header(s)",
-		                nr_of_ip_hdr, rfc3095_ctxt->tmp.nr_ts_bits, nr_of_ip_hdr);
+		                nr_of_ip_hdr, rfc3095_ctxt->tmp.ts_bits_req_nr, nr_of_ip_hdr);
 	}
 	else if(!rnd_changed &&
 	        rfc3095_ctxt->tmp.sn_4bits_possible &&
 	        nr_ipv4_non_rnd_with_bits == 1 && innermost_ip_id_5bits_possible &&
 	        is_ts_scaled &&
-	        (is_ts_deducible || rfc3095_ctxt->tmp.nr_ts_bits == 0) &&
+	        (is_ts_deducible || rfc3095_ctxt->tmp.ts_bits_req_nr == 0) &&
 	        !rfc3095_ctxt->tmp.rtp_padding_changed &&
 	        !rfc3095_ctxt->tmp.rtp_ext_changed &&
 	        !rfc3095_ctxt->tmp.is_marker_bit_set &&
@@ -481,7 +481,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 	else if(!rnd_changed &&
 	        rfc3095_ctxt->tmp.sn_4bits_possible &&
 	        nr_ipv4_non_rnd_with_bits == 0 &&
-	        is_ts_scaled && rfc3095_ctxt->tmp.nr_ts_bits <= 5 &&
+	        is_ts_scaled && rfc3095_ctxt->tmp.ts_bits_req_nr <= 5 &&
 	        !rfc3095_ctxt->tmp.rtp_padding_changed &&
 	        !rfc3095_ctxt->tmp.rtp_ext_changed &&
 	        !rfc3095_ctxt->tmp.rtp_pt_changed &&
@@ -495,13 +495,13 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 		                "%u <= 6 TS bits must be transmitted, and "
 		                "no TOS/TC, TTL/HL, DF, IP ext list, NBO, RND fields "
 		                "changed for %zu IP header(s)",
-		                nr_of_ip_hdr, rfc3095_ctxt->tmp.nr_ts_bits, nr_of_ip_hdr);
+		                nr_of_ip_hdr, rfc3095_ctxt->tmp.ts_bits_req_nr, nr_of_ip_hdr);
 	}
 	else if(!rnd_changed &&
 	        (rfc3095_ctxt->tmp.sn_4bits_possible ||
 	         rfc3095_ctxt->tmp.sn_12bits_possible) &&
 	        nr_ipv4_non_rnd_with_bits >= 1 &&
-	        sdvl_can_length_be_encoded(rfc3095_ctxt->tmp.nr_ts_bits))
+	        sdvl_can_length_be_encoded(rfc3095_ctxt->tmp.ts_bits_req_nr))
 	{
 		/* UO-1-ID packet with extension can be used only if SN stand on
 		 * <= 12 bits (4 bits in base header + 8 bits in extension 3) */
@@ -512,7 +512,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 		                "non-random IP-ID with at least 1 bit of IP-ID to "
 		                "transmit, less than 12 SN bits must be transmitted, "
 		                "and %u TS bits can be SDVL-encoded", nr_of_ip_hdr,
-		                rfc3095_ctxt->tmp.nr_ts_bits);
+		                rfc3095_ctxt->tmp.ts_bits_req_nr);
 	}
 	else /* determine which UOR-2* packet to choose */
 	{
@@ -554,14 +554,14 @@ static rohc_packet_t c_rtp_decide_UOR2_pkt(const struct rohc_comp_ctxt *const ct
 		                "IP-ID", rfc3095_ctxt->ip_hdr_nr);
 	}
 	else if(nr_ipv4_non_rnd_with_bits >= 1 &&
-	        sdvl_can_length_be_encoded(rfc3095_ctxt->tmp.nr_ts_bits))
+	        sdvl_can_length_be_encoded(rfc3095_ctxt->tmp.ts_bits_req_nr))
 	{
 		packet = ROHC_PACKET_UOR_2_ID;
 		rohc_comp_debug(ctxt, "choose packet UOR-2-ID because at least "
 		                "one of the %zu IP header(s) is IPv4 with non-random "
 		                "IP-ID with at least 1 bit of IP-ID to transmit, "
 		                "and %u TS bits can be SDVL-encoded",
-	                  rfc3095_ctxt->ip_hdr_nr, rfc3095_ctxt->tmp.nr_ts_bits);
+	                  rfc3095_ctxt->ip_hdr_nr, rfc3095_ctxt->tmp.ts_bits_req_nr);
 	}
 	else
 	{
@@ -797,32 +797,32 @@ static void rtp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		 * state INIT_STRIDE: TS and TS_STRIDE will be send
 		 */
 		rfc3095_ctxt->tmp.ts_send = get_ts_unscaled(&rtp_context->ts_sc);
-		rfc3095_ctxt->tmp.nr_ts_bits = nb_bits_unscaled(&rtp_context->ts_sc);
+		rfc3095_ctxt->tmp.ts_bits_req_nr = nb_bits_unscaled(&rtp_context->ts_sc);
 
 		/* save the new unscaled value */
 		assert(rfc3095_ctxt->sn <= 0xffff);
 		add_unscaled(&rtp_context->ts_sc, rfc3095_ctxt->sn);
 		rohc_comp_debug(context, "unscaled TS = %u on %u bits",
-		                rfc3095_ctxt->tmp.ts_send, rfc3095_ctxt->tmp.nr_ts_bits);
+		                rfc3095_ctxt->tmp.ts_send, rfc3095_ctxt->tmp.ts_bits_req_nr);
 	}
 	else /* SEND_SCALED */
 	{
 		/* TS_SCALED value will be send */
 		rfc3095_ctxt->tmp.ts_send = get_ts_scaled(&rtp_context->ts_sc);
-		rfc3095_ctxt->tmp.nr_ts_bits = nb_bits_scaled(&rtp_context->ts_sc);
+		rfc3095_ctxt->tmp.ts_bits_req_nr = nb_bits_scaled(&rtp_context->ts_sc);
 
 		/* save the new unscaled and TS_SCALED values */
 		assert(rfc3095_ctxt->sn <= 0xffff);
 		add_unscaled(&rtp_context->ts_sc, rfc3095_ctxt->sn);
 		add_scaled(&rtp_context->ts_sc, rfc3095_ctxt->sn);
 		rohc_comp_debug(context, "TS_SCALED = %u on %u bits",
-		                rfc3095_ctxt->tmp.ts_send, rfc3095_ctxt->tmp.nr_ts_bits);
+		                rfc3095_ctxt->tmp.ts_send, rfc3095_ctxt->tmp.ts_bits_req_nr);
 	}
 
 	rohc_comp_debug(context, "%s%u bits are required to encode new TS",
 	                (rohc_ts_sc_is_deducible(&rtp_context->ts_sc) ?
 	                 "0 (TS is deducible from SN bits) or " : ""),
-	                rfc3095_ctxt->tmp.nr_ts_bits);
+	                rfc3095_ctxt->tmp.ts_bits_req_nr);
 }
 
 

@@ -219,12 +219,19 @@ struct rfc3095_tmp_state
 	uint16_t rtp_pt_changed:1;
 	uint16_t unused:5;
 
+	/** The number of bits of SN to transmit in the extension header */
+	uint8_t sn_bits_ext_nr;
+	/** The SN field to transmit in the extension header */
+	uint32_t sn_bits_ext;
+
+	/** The number of bits needed to encode ts_send */
+	uint8_t ts_bits_req_nr;
+	/** The number of bits of TS to transmit in the extension header */
+	uint8_t ts_bits_ext_nr;
 	/** The TS field to send (ts_scaled or ts) */
 	uint32_t ts_send;
-	/** The number of bits needed to encode ts_send */
-	uint8_t nr_ts_bits;
-	/** The number of bits of TS to place in the extension 3 header */
-	uint8_t nr_ts_bits_ext3;
+	/** The TS field to transmit in the extension header */
+	uint32_t ts_bits_ext;
 };
 
 

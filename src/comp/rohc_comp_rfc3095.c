@@ -352,6 +352,14 @@ static void rohc_comp_rfc3095_get_ext3_I_flags(const struct rohc_comp_ctxt *cons
                                                uint8_t *const I2)
 	__attribute__((nonnull(1, 2, 4, 5, 6)));
 
+static void rohc_comp_rfc3095_split_field(const uint32_t field_value,
+                                          const size_t max_bits_nr,
+                                          const size_t base_bits_nr,
+                                          const size_t ext_bits_nr,
+                                          uint32_t *const base_bits,
+                                          uint32_t *const ext_bits)
+	__attribute__((nonnull(5, 6)));
+
 static bool rohc_comp_rfc3095_feedback_2(struct rohc_comp_ctxt *const context,
                                          const uint8_t *const packet,
                                          const size_t packet_len,
@@ -520,8 +528,9 @@ static void c_init_tmp_variables(struct rfc3095_tmp_state *const tmp_vars)
 	tmp_vars->is_marker_bit_set = false;
 	tmp_vars->rtp_pt_just_changed = false;
 	tmp_vars->rtp_pt_changed = false;
-	tmp_vars->nr_ts_bits = 0;
-	tmp_vars->nr_ts_bits_ext3 = 0;
+	tmp_vars->sn_bits_ext_nr = 0;
+	tmp_vars->ts_bits_req_nr = 0;
+	tmp_vars->ts_bits_ext_nr = 0;
 }
 
 
@@ -3193,6 +3202,12 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 		{
 			const size_t innermost_ip_id_rnd_count =
 				rfc3095_ctxt->ip_ctxts[innermost_ip_hdr - 1].info.v4.rnd_count;
+			const uint8_t ts_bits_req_nr = rfc3095_ctxt->tmp.ts_bits_req_nr;
+			uint8_t ts_bits_base_nr;
+			uint8_t ts_bits_ext_nr;
+			uint8_t ts_bits_all_nr;
+			uint32_t ts_bits_ext_mask;
+			uint32_t ts_bits_ext;
 
 			rohc_comp_debug(context, "code UO-1-ID packet with extension 3");
 
@@ -3223,13 +3238,19 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(struct rohc_comp_ctxt *const contex
 			}
 
 			/* transmit all TS bits in extension 3 */
-			rfc3095_ctxt->tmp.nr_ts_bits_ext3 =
-				sdvl_get_min_len(rfc3095_ctxt->tmp.nr_ts_bits, 0);
-			assert(rfc3095_ctxt->tmp.nr_ts_bits_ext3 < 32);
-			rfc3095_ctxt->tmp.ts_send &= (1U << rfc3095_ctxt->tmp.nr_ts_bits_ext3) - 1;
-			rohc_comp_debug(context, "%u bits of TS (0 in header, %u in EXT3)",
-			                rfc3095_ctxt->tmp.nr_ts_bits,
-			                rfc3095_ctxt->tmp.nr_ts_bits_ext3);
+			ts_bits_base_nr = 0;
+			ts_bits_ext_nr = sdvl_get_min_len(ts_bits_req_nr, ts_bits_base_nr);
+			ts_bits_all_nr = ts_bits_base_nr + ts_bits_ext_nr;
+			ts_bits_ext_mask = (1U << ts_bits_ext_nr) - 1;
+			ts_bits_ext = rfc3095_ctxt->tmp.ts_send & ts_bits_ext_mask;
+			rohc_comp_debug(context, "TS: at least %u bits required, so transmit %u "
+			                "bits in total: %u in base header + %u in extension header",
+			                ts_bits_req_nr, ts_bits_all_nr, ts_bits_base_nr,
+			                ts_bits_ext_nr);
+			/* record TS to send in extension and its length */
+			assert(ts_bits_ext_nr < 32);
+			rfc3095_ctxt->tmp.ts_bits_ext = ts_bits_ext;
+			rfc3095_ctxt->tmp.ts_bits_ext_nr = ts_bits_ext_nr;
 
 			/* invalid CRC-STATIC cache since some STATIC fields may have changed */
 			rfc3095_ctxt->is_crc_static_3_cached_valid = false;
@@ -3800,8 +3821,21 @@ static int code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
 {
 	/* TODO: const */ struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
+
 	const uint32_t ts_send = rfc3095_ctxt->tmp.ts_send;
-	uint32_t ts_mask;
+	const uint8_t ts_bits_req_nr = rfc3095_ctxt->tmp.ts_bits_req_nr;
+	uint8_t ts_bits_base_nr;
+	uint8_t ts_bits_ext_nr;
+	uint32_t ts_bits_base;
+	uint32_t ts_bits_ext;
+
+	uint8_t sn_bits_base_nr;
+	uint8_t sn_bits_ext_nr;
+	uint32_t sn_bits_base;
+	uint32_t sn_bits_ext;
+
+	bool is_ext_present;
+
 	size_t ip_hdr_pos;
 
 	/* UOR-2-RTP cannot be used if the context contains at least one IPv4
@@ -3814,187 +3848,119 @@ static int code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
 		assert(ip_ctxt->version != IPV4 || ip_ctxt->info.v4.rnd == 1);
 	}
 
+	rohc_comp_debug(context, "code UOR-2-RTP packet");
+
 	/* which extension to code? */
 	switch(packet_type)
 	{
 		case ROHC_PACKET_UOR_2_RTP:
-		{
-			rohc_comp_debug(context, "code UOR-2-RTP packet with no extension");
-
-			/* part 2: 5 bits of 6-bit TS */
-			/* (be sure not to send bad TS bits because of the shift) */
-			ts_mask = 0x1f & (((uint32_t) (1U << (32 - 1))) - 1);
-			*f_byte |= (ts_send >> 1) & ts_mask;
-			rohc_comp_debug(context, "5 bits of 6-bit TS in 1st byte = 0x%x",
-			                (*f_byte) & 0x1f);
-
-			/* part 4: last TS bit + M flag + 6 bits of 6-bit SN */
-			*s_byte |= (ts_send & 0x01) << 7;
-			rohc_comp_debug(context, "1 bit of 6-bit TS in 2nd byte = 0x%x",
-			                ((*s_byte) >> 7) & 0x01);
-			*s_byte |= ((!!rfc3095_ctxt->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u",
-			                !!rfc3095_ctxt->tmp.is_marker_bit_set);
-			*s_byte |= rfc3095_ctxt->sn & 0x3f;
-			rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x",
-			                (*s_byte) & 0x3f);
-
-			/* part 5: set the X bit to 0 */
-			*t_byte &= ~0x80;
+			ts_bits_base_nr = 6;
+			ts_bits_ext_nr = 0;
+			sn_bits_base_nr = 6;
+			sn_bits_ext_nr = 0;
+			is_ext_present = false;
 			break;
-		}
 
 		case ROHC_PACKET_UOR_2_RTP_EXT0:
-		{
-			rohc_comp_debug(context, "code UOR-2-RTP packet with extension 0");
-
-			/* part 2: 5 bits of 9-bit TS */
-			/* (be sure not to send bad TS bits because of the shift) */
-			ts_mask = 0x1f & ((1U << (32 - 3 - 1)) - 1);
-			*f_byte |= (ts_send >> 4) & ts_mask;
-			rohc_comp_debug(context, "5 bits of 9-bit TS in 1st byte = 0x%x",
-			                (*f_byte) & 0x1f);
-
-			/* part 4: 1 more bit of TS + M flag + 6 bits of 9-bit SN */
-			*s_byte |= ((ts_send >> 3) & 0x01) << 7;
-			rohc_comp_debug(context, "1 bit of 9-bit TS in 2nd byte = 0x%x",
-			                ((*s_byte) >> 7) & 0x01);
-			*s_byte |= ((!!rfc3095_ctxt->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u",
-			                !!rfc3095_ctxt->tmp.is_marker_bit_set);
-			*s_byte |= (rfc3095_ctxt->sn >> 3) & 0x3f;
-			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x",
-			                (*s_byte) & 0x3f);
-
-			/* part 5: set the X bit to 1 */
-			*t_byte |= 0x80;
+			ts_bits_base_nr = 6;
+			ts_bits_ext_nr = 3;
+			sn_bits_base_nr = 6;
+			sn_bits_ext_nr = 3;
+			is_ext_present = true;
 			break;
-		}
 
 		case ROHC_PACKET_UOR_2_RTP_EXT1:
-		{
-			rohc_comp_debug(context, "code UOR-2-RTP packet with extension 1");
-
-			/* part 2: 5 bits of 17-bit TS */
-			/* (be sure not to send bad TS bits because of the shift) */
-			ts_mask = 0x1f & ((1U << (32 - 12 - 1)) - 1);
-			*f_byte |= (ts_send >> 12) & ts_mask;
-			rohc_comp_debug(context, "5 bits of 17-bit TS in 1st byte = 0x%x",
-			                (*f_byte) & 0x1f);
-
-			/* part 4: 1 more bit of TS + M flag + 6 bits of 9-bit SN */
-			*s_byte |= ((ts_send >> 11) & 0x01) << 7;
-			rohc_comp_debug(context, "1 bit of 17-bit TS in 2nd byte = 0x%x",
-			                ((*s_byte) >> 7) & 0x01);
-			*s_byte |= ((!!rfc3095_ctxt->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u",
-			                !!rfc3095_ctxt->tmp.is_marker_bit_set);
-			*s_byte |= (rfc3095_ctxt->sn >> 3) & 0x3f;
-			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x",
-			                (*s_byte) & 0x3f);
-
-			/* part 5: set the X bit to 1 */
-			*t_byte |= 0x80;
+			ts_bits_base_nr = 6;
+			ts_bits_ext_nr = 11;
+			sn_bits_base_nr = 6;
+			sn_bits_ext_nr = 3;
+			is_ext_present = true;
 			break;
-		}
 
 		case ROHC_PACKET_UOR_2_RTP_EXT2:
-		{
-			rohc_comp_debug(context, "code UOR-2-RTP packet with extension 2");
-
-			/* part 2: 5 bits of 25-bit TS */
-			/* (be sure not to send bad TS bits because of the shift) */
-			ts_mask = 0x1f & ((1U << (32 - 19 - 1)) - 1);
-			*f_byte |= (ts_send >> 20) & ts_mask;
-			rohc_comp_debug(context, "5 bits of 25-bit TS in 1st byte = 0x%x",
-			                (*f_byte) & 0x1f);
-
-			/* part 4: 1 more bit of TS + M flag + 6 bits of 9-bit SN */
-			*s_byte |= ((ts_send >> 19) & 0x01) << 7;
-			rohc_comp_debug(context, "1 bit of 25-bit TS in 2nd byte = 0x%x",
-			                ((*s_byte) >> 7) & 0x01);
-			*s_byte |= ((!!rfc3095_ctxt->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u",
-			                !!rfc3095_ctxt->tmp.is_marker_bit_set);
-			*s_byte |= (rfc3095_ctxt->sn >> 3) & 0x3f;
-			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x",
-			                (*s_byte) & 0x3f);
-
-			/* part 5: set the X bit to 1 */
-			*t_byte |= 0x80;
+			ts_bits_base_nr = 6;
+			ts_bits_ext_nr = 19;
+			sn_bits_base_nr = 6;
+			sn_bits_ext_nr = 3;
+			is_ext_present = true;
 			break;
-		}
 
 		case ROHC_PACKET_UOR_2_RTP_EXT3:
-		{
-			const uint8_t nr_ts_bits = rfc3095_ctxt->tmp.nr_ts_bits;
-			uint8_t nr_ts_bits_ext3; /* number of bits to send in EXT 3 */
-			uint8_t nr_ts_bits_base; /* number of bits to send in base header */
-			uint8_t ts_bits_for_f_byte;
-
-			rohc_comp_debug(context, "code UOR-2-RTP packet with extension 3");
-
-			/* part 2: 5 bits of TS */
-			rohc_comp_debug(context, "TS to send = 0x%x", ts_send);
-			nr_ts_bits_ext3 = sdvl_get_min_len(nr_ts_bits, 6);
-			if(nr_ts_bits_ext3 <= nr_ts_bits)
-			{
-				nr_ts_bits_base = nr_ts_bits - nr_ts_bits_ext3;
-			}
-			else
-			{
-				nr_ts_bits_base = 0;
-			}
-			rohc_comp_debug(context, "%u bits of TS (%u in header, %u in "
-			                "EXT3)", nr_ts_bits, nr_ts_bits_base,
-			                rohc_min(nr_ts_bits_ext3, nr_ts_bits));
-			/* be sure not to send bad TS bits because of the shift, apply the two masks:
-			 *  - the 5-bit mask (0x1f) for the 5-bit field
-			 *  - the variable-length mask (depending on the number of TS bits in UOR-2-RTP)
-			 *    to avoid sending more than 32 bits of TS in all TS fields */
-			ts_mask = 0x1f & ((1U << (32 - nr_ts_bits_ext3 - 1)) - 1);
-			ts_bits_for_f_byte = (ts_send >> (nr_ts_bits_ext3 + 1)) & ts_mask;
-			*f_byte |= ts_bits_for_f_byte;
-			rohc_comp_debug(context, "5 bits of %u-bit TS in 1st byte = 0x%x "
-			                "(mask = 0x%x)", nr_ts_bits_ext3 + 6U,
-			                ts_bits_for_f_byte, ts_mask);
-
-			/* part 4: 1 more bit of TS + M flag + 6 bits of SN */
-			*s_byte |= (ts_send >> nr_ts_bits_ext3 & 0x01) << 7;
-			rohc_comp_debug(context, "1 bit of %u-bit TS in 2nd byte = 0x%x",
-			                nr_ts_bits_ext3 + 6U, (*s_byte >> 7) & 0x01);
-			*s_byte |= ((!!rfc3095_ctxt->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u",
-			                !!rfc3095_ctxt->tmp.is_marker_bit_set);
+			/* how many bits shall be transmitted in the extension header 3 ?
+			 *  - it is the number of bits that are required to be transmitted,
+			 *    but that cannot be transmitted in base header
+			 *  - the field is encoded with SDVL in extension header, so that number
+			 *    of bits is then increased up to the next greater value among 7, 14,
+			 *    21, or 29.
+			 */
+			ts_bits_base_nr = 6;
+			ts_bits_ext_nr = sdvl_get_min_len(ts_bits_req_nr, ts_bits_base_nr);
 			if(rfc3095_ctxt->tmp.sn_6bits_possible)
 			{
-				*s_byte |= rfc3095_ctxt->sn & 0x3f;
-				rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x",
-				                (*s_byte) & 0x3f);
+				sn_bits_base_nr = 6;
+				sn_bits_ext_nr = 0;
 			}
 			else
 			{
-				*s_byte |= (rfc3095_ctxt->sn >> 8) & 0x3f;
-				rohc_comp_debug(context, "6 bits of 14-bit SN = 0x%x",
-				                (*s_byte) & 0x3f);
+				sn_bits_base_nr = 6;
+				sn_bits_ext_nr = 8;
 			}
-
-			/* part 5: set the X bit to 1 */
-			*t_byte |= 0x80;
-
-			/* compute TS to send in extension 3 and its length */
-			assert(nr_ts_bits_ext3 < 32);
-			rfc3095_ctxt->tmp.ts_send &= (1U << nr_ts_bits_ext3) - 1;
-			rfc3095_ctxt->tmp.nr_ts_bits_ext3 = nr_ts_bits_ext3;
-
+			is_ext_present = true;
 			break;
-		}
 
 		default:
-		{
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 			            false, error, "unknown packet type (%d)", packet_type);
-		}
+	}
+
+	/* compute TS bits for both base and extension headers */
+	rohc_comp_rfc3095_split_field(ts_send, 32, ts_bits_base_nr, ts_bits_ext_nr,
+	                              &ts_bits_base, &ts_bits_ext);
+	rohc_comp_debug(context, "TS: at least %u bits required, so transmit %u bits "
+	                "in total: %u in base header + %u in extension header",
+	                ts_bits_req_nr, ts_bits_base_nr + ts_bits_ext_nr,
+	                ts_bits_base_nr, ts_bits_ext_nr);
+	/* record TS to send in extension and its length */
+	assert(ts_bits_ext_nr < 32);
+	rfc3095_ctxt->tmp.ts_bits_ext = ts_bits_ext;
+	rfc3095_ctxt->tmp.ts_bits_ext_nr = ts_bits_ext_nr;
+
+	/* compute SN bits for both base and extension headers */
+	rohc_comp_rfc3095_split_field(rfc3095_ctxt->sn, 32,
+	                              sn_bits_base_nr, sn_bits_ext_nr,
+	                              &sn_bits_base, &sn_bits_ext);
+	rohc_comp_debug(context, "SN: transmit %u bits in total: %u in base header + "
+	                "%u in extension header", sn_bits_base_nr + sn_bits_ext_nr,
+	                sn_bits_base_nr, sn_bits_ext_nr);
+	/* record SN to send in extension and its length */
+	assert(sn_bits_ext_nr < 32);
+	rfc3095_ctxt->tmp.sn_bits_ext = sn_bits_ext;
+	rfc3095_ctxt->tmp.sn_bits_ext_nr = sn_bits_ext_nr;
+
+	/* part 2: 5 bits of TS */
+	*f_byte |= (ts_bits_base >> 1) & 0x1f;
+	rohc_comp_debug(context, "5 bits of %u-bit TS in 1st byte = 0x%x",
+	                ts_bits_base_nr + ts_bits_ext_nr, (*f_byte) & 0x1f);
+
+	/* part 4: last TS bit + M flag + 6 bits of 6-bit SN */
+	*s_byte |= (ts_bits_base & 0x01) << 7;
+	rohc_comp_debug(context, "1 more bit of %u-bit TS in 2nd byte = 0x%x",
+	                ts_bits_base_nr + ts_bits_ext_nr, ((*s_byte) >> 7) & 0x01);
+	*s_byte |= ((!!rfc3095_ctxt->tmp.is_marker_bit_set) & 0x01) << 6;
+	rohc_comp_debug(context, "1-bit M flag = %u",
+	                !!rfc3095_ctxt->tmp.is_marker_bit_set);
+	*s_byte |= sn_bits_base & 0x3f;
+	rohc_comp_debug(context, "6 bits of %u-bit SN = 0x%x",
+	                sn_bits_base_nr + sn_bits_ext_nr, (*s_byte) & 0x3f);
+
+	/* part 5: set the X bit if an extension is planned */
+	if(is_ext_present)
+	{
+		*t_byte |= 0x80;
+	}
+	else
+	{
+		*t_byte &= ~0x80;
 	}
 
 	return 1;
@@ -4042,7 +4008,21 @@ static int code_UOR2_TS_bytes(const struct rohc_comp_ctxt *const context,
 {
 	/* TODO: const */ struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
+
 	const uint32_t ts_send = rfc3095_ctxt->tmp.ts_send;
+	const uint8_t ts_bits_req_nr = rfc3095_ctxt->tmp.ts_bits_req_nr;
+	uint8_t ts_bits_base_nr;
+	uint8_t ts_bits_ext_nr;
+	uint32_t ts_bits_base;
+	uint32_t ts_bits_ext;
+
+	uint8_t sn_bits_base_nr;
+	uint8_t sn_bits_ext_nr;
+	uint32_t sn_bits_base;
+	uint32_t sn_bits_ext;
+
+	bool is_ext_present;
+
 	size_t nr_ipv4_hdrs = 0;
 	size_t nr_ipv4_id_rnd = 0;
 	size_t ip_hdr_pos;
@@ -4070,176 +4050,111 @@ static int code_UOR2_TS_bytes(const struct rohc_comp_ctxt *const context,
 	switch(packet_type)
 	{
 		case ROHC_PACKET_UOR_2_TS:
-		{
-			rohc_comp_debug(context, "code UOR-2-TS packet with no extension");
-
-			/* part 2: 5 bits of 5-bit TS */
-			*f_byte |= ts_send & 0x1f;
-			rohc_comp_debug(context, "5 bits of 5-bit TS in 1st byte = 0x%x",
-			                (*f_byte) & 0x1f);
-
-			/* part 4: T = 1 + M flag + 6 bits of 6-bit SN */
-			*s_byte |= 0x80;
-			*s_byte |= ((!!rfc3095_ctxt->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u",
-			                !!rfc3095_ctxt->tmp.is_marker_bit_set);
-			*s_byte |= rfc3095_ctxt->sn & 0x3f;
-			rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x",
-			                (*s_byte) & 0x3f);
-
-			/* part 5: set the X bit to 0 */
-			*t_byte &= ~0x80;
+			ts_bits_base_nr = 5;
+			ts_bits_ext_nr = 0;
+			sn_bits_base_nr = 6;
+			sn_bits_ext_nr = 0;
+			is_ext_present = false;
 			break;
-		}
 
 		case ROHC_PACKET_UOR_2_TS_EXT0:
-		{
-			rohc_comp_debug(context, "code UOR-2-TS packet with extension 0");
-
-			/* part 2: 5 bits of 8-bit TS */
-			*f_byte |= (ts_send >> 3) & 0x1f;
-			rohc_comp_debug(context, "5 bits of 8-bit TS in 1st byte = 0x%x",
-			                (*f_byte) & 0x1f);
-
-			/* part 4: T = 1 + M flag + 6 bits of 9-bit SN */
-			*s_byte |= 0x80;
-			*s_byte |= ((!!rfc3095_ctxt->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u",
-			                !!rfc3095_ctxt->tmp.is_marker_bit_set);
-			*s_byte |= (rfc3095_ctxt->sn >> 3) & 0x3f;
-			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x",
-			                (*s_byte) & 0x3f);
-
-			/* part 5: set the X bit to 1 */
-			*t_byte |= 0x80;
+			ts_bits_base_nr = 5;
+			ts_bits_ext_nr = 3;
+			sn_bits_base_nr = 6;
+			sn_bits_ext_nr = 3;
+			is_ext_present = true;
 			break;
-		}
 
 		case ROHC_PACKET_UOR_2_TS_EXT1:
-		{
-			rohc_comp_debug(context, "code UOR-2-TS packet with extension 1");
-
-			/* part 2: 5 bits of 8-bit TS */
-			*f_byte |= (ts_send >> 3) & 0x1f;
-			rohc_comp_debug(context, "5 bits of 8-bit TS in 1st byte = 0x%x",
-			                (*f_byte) & 0x1f);
-
-			/* part 4: T = 1 + M flag + 6 bits of 9-bit SN */
-			*s_byte |= 0x80;
-			*s_byte |= ((!!rfc3095_ctxt->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u",
-			                !!rfc3095_ctxt->tmp.is_marker_bit_set);
-			*s_byte |= (rfc3095_ctxt->sn >> 3) & 0x3f;
-			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x",
-			                (*s_byte) & 0x3f);
-
-			/* part 5: set the X bit to 1 */
-			*t_byte |= 0x80;
+			ts_bits_base_nr = 5;
+			ts_bits_ext_nr = 3;
+			sn_bits_base_nr = 6;
+			sn_bits_ext_nr = 3;
+			is_ext_present = true;
 			break;
-		}
 
 		case ROHC_PACKET_UOR_2_TS_EXT2:
-		{
-			rohc_comp_debug(context, "code UOR-2-TS packet with extension 2");
-
-			/* part 2: 5 bits of 16-bit TS */
-			*f_byte |= (ts_send >> 11) & 0x1f;
-			rohc_comp_debug(context, "5 bits of 16-bit TS in 1st byte = 0x%x",
-			                (*f_byte) & 0x1f);
-
-			/* part 4: T = 1 + M flag + 6 bits of 9-bit SN */
-			*s_byte |= 0x80;
-			*s_byte |= ((!!rfc3095_ctxt->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u",
-			                !!rfc3095_ctxt->tmp.is_marker_bit_set);
-			*s_byte |= (rfc3095_ctxt->sn >> 3) & 0x3f;
-			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x",
-			                (*s_byte) & 0x3f);
-
-			/* part 5: set the X bit to 1 */
-			*t_byte |= 0x80;
+			ts_bits_base_nr = 5;
+			ts_bits_ext_nr = 11;
+			sn_bits_base_nr = 6;
+			sn_bits_ext_nr = 3;
+			is_ext_present = true;
 			break;
-		}
 
 		case ROHC_PACKET_UOR_2_TS_EXT3:
-		{
-			const uint8_t nr_ts_bits = rfc3095_ctxt->tmp.nr_ts_bits;
-			uint8_t nr_ts_bits_ext3; /* number of bits to send in EXT 3 */
-			uint8_t nr_ts_bits_base; /* number of bits to send in base header */
-			uint32_t ts_mask;
-			uint8_t ts_bits_for_f_byte;
-
-			rohc_comp_debug(context, "code UOR-2-TS packet with extension 3");
-
-			/* part 2: 5 bits of TS */
-			rohc_comp_debug(context, "TS to send = 0x%x", ts_send);
-			nr_ts_bits_ext3 = sdvl_get_min_len(nr_ts_bits, 5);
-			if(nr_ts_bits_ext3 <= nr_ts_bits)
-			{
-				nr_ts_bits_base = nr_ts_bits - nr_ts_bits_ext3;
-			}
-			else
-			{
-				nr_ts_bits_base = 0;
-			}
-			rohc_comp_debug(context, "%u bits of TS (%u in header, %u in "
-			                "EXT3)", nr_ts_bits, nr_ts_bits_base,
-			                rohc_min(nr_ts_bits_ext3, nr_ts_bits));
-			/* compute the mask for the TS field in the 1st byte: this is the
-			 * smaller mask in:
-			 *  - the 5-bit mask (0x1f) for the 5-bit field
-			 *  - the variable-length mask (depending on the number of TS bits in
-			 *    UOR-2-RTP) to avoid sending more than 32 bits of TS in all TS
-			 *    fields */
-			if(nr_ts_bits_ext3 == 0)
-			{
-				ts_mask = 0x1f;
-			}
-			else
-			{
-				assert(nr_ts_bits_ext3 < 32);
-				ts_mask = 0x1f & ((1U << (32 - nr_ts_bits_ext3)) - 1);
-			}
-			ts_bits_for_f_byte = (ts_send >> nr_ts_bits_ext3) & ts_mask;
-			*f_byte |= ts_bits_for_f_byte;
-			rohc_comp_debug(context, "bits of TS in 1st byte = 0x%x "
-			                "(mask = 0x%x)", ts_bits_for_f_byte, ts_mask);
-
-			/* part 4: T = 1 + M flag + 6 bits of SN */
-			*s_byte |= 0x80;
-			*s_byte |= ((!!rfc3095_ctxt->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u",
-			                !!rfc3095_ctxt->tmp.is_marker_bit_set);
-			rohc_comp_debug(context, "SN to send = 0x%x", rfc3095_ctxt->sn);
+			/* how many bits shall be transmitted in the extension header 3 ?
+			 *  - it is the number of bits that are required to be transmitted,
+			 *    but that cannot be transmitted in base header
+			 *  - the field is encoded with SDVL in extension header, so that number
+			 *    of bits is then increased up to the next greater value among 7, 14,
+			 *    21, or 29.
+			 */
+			ts_bits_base_nr = 5;
+			ts_bits_ext_nr = sdvl_get_min_len(ts_bits_req_nr, ts_bits_base_nr);
 			if(rfc3095_ctxt->tmp.sn_6bits_possible)
 			{
-				*s_byte |= rfc3095_ctxt->sn & 0x3f;
-				rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x",
-				                (*s_byte) & 0x3f);
+				sn_bits_base_nr = 6;
+				sn_bits_ext_nr = 0;
 			}
 			else
 			{
-				*s_byte |= (rfc3095_ctxt->sn >> 8) & 0x3f;
-				rohc_comp_debug(context, "6 bits of 14-bit SN = 0x%x",
-				                (*s_byte) & 0x3f);
+				sn_bits_base_nr = 6;
+				sn_bits_ext_nr = 8;
 			}
-
-			/* part 5: set the X bit to 1 */
-			*t_byte |= 0x80;
-
-			/* compute TS to send in extension 3 and its length */
-			assert(nr_ts_bits_ext3 < 32);
-			rfc3095_ctxt->tmp.ts_send &= (1U << nr_ts_bits_ext3) - 1;
-			rfc3095_ctxt->tmp.nr_ts_bits_ext3 = rohc_min(nr_ts_bits_ext3, nr_ts_bits);
-
+			is_ext_present = true;
 			break;
-		}
 
 		default:
-		{
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 			            false, error, "unknown packet type (%d)", packet_type);
-		}
+	}
+
+	/* compute TS bits for both base and extension headers */
+	rohc_comp_rfc3095_split_field(ts_send, 32, ts_bits_base_nr, ts_bits_ext_nr,
+	                              &ts_bits_base, &ts_bits_ext);
+	rohc_comp_debug(context, "TS: at least %u bits required, so transmit %u bits "
+	                "in total: %u in base header + %u in extension header",
+	                ts_bits_req_nr, ts_bits_base_nr + ts_bits_ext_nr,
+	                ts_bits_base_nr, ts_bits_ext_nr);
+	/* record TS to send in extension and its length */
+	assert(ts_bits_ext_nr < 32);
+	rfc3095_ctxt->tmp.ts_bits_ext = ts_bits_ext;
+	rfc3095_ctxt->tmp.ts_bits_ext_nr = ts_bits_ext_nr;
+
+	/* compute SN bits for both base and extension headers */
+	rohc_comp_rfc3095_split_field(rfc3095_ctxt->sn, 32,
+	                              sn_bits_base_nr, sn_bits_ext_nr,
+	                              &sn_bits_base, &sn_bits_ext);
+	rohc_comp_debug(context, "SN: transmit %u bits in total: %u in base header + "
+	                "%u in extension header", sn_bits_base_nr + sn_bits_ext_nr,
+	                sn_bits_base_nr, sn_bits_ext_nr);
+	/* record SN to send in extension and its length */
+	assert(sn_bits_ext_nr < 32);
+	rfc3095_ctxt->tmp.sn_bits_ext = sn_bits_ext;
+	rfc3095_ctxt->tmp.sn_bits_ext_nr = sn_bits_ext_nr;
+
+	/* part 2: 5 bits TS */
+	*f_byte |= ts_bits_base & 0x1f;
+	rohc_comp_debug(context, "5 bits of %u-bit TS in 1st byte = 0x%x",
+	                ts_bits_base_nr + ts_bits_ext_nr, (*f_byte) & 0x1f);
+
+	/* part 4: T = 1 + M flag + 6 bits of 6-bit SN */
+	*s_byte |= 0x80;
+	*s_byte |= ((!!rfc3095_ctxt->tmp.is_marker_bit_set) & 0x01) << 6;
+	rohc_comp_debug(context, "1-bit M flag = %u",
+	                !!rfc3095_ctxt->tmp.is_marker_bit_set);
+	*s_byte |= sn_bits_base & 0x3f;
+	rohc_comp_debug(context, "6 bits of %u-bit SN = 0x%x",
+	                sn_bits_base_nr + sn_bits_ext_nr, (*s_byte) & 0x3f);
+
+	/* part 5: set the X bit if an extension is planned */
+	if(is_ext_present)
+	{
+		*t_byte |= 0x80;
+	}
+	else
+	{
+		*t_byte &= ~0x80;
 	}
 
 	return 1;
@@ -4292,6 +4207,17 @@ static int code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
 	ip_header_pos_t innermost_ip_hdr;
 	bool innermost_ip_id_5bits_possible;
 	uint16_t innermost_ip_id_delta;
+	uint8_t ipid_bits_base_nr;
+	uint8_t ipid_bits_ext_nr;
+	uint32_t ipid_bits_base;
+	uint32_t ipid_bits_ext;
+
+	uint8_t sn_bits_base_nr;
+	uint8_t sn_bits_ext_nr;
+	uint32_t sn_bits_base;
+	uint32_t sn_bits_ext;
+
+	bool is_ext_present;
 
 	/* determine the number of IP-ID bits and the IP-ID offset of the
 	 * innermost IPv4 header with non-random IP-ID */
@@ -4304,169 +4230,140 @@ static int code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
 	switch(packet_type)
 	{
 		case ROHC_PACKET_UOR_2_ID:
-		{
-			rohc_comp_debug(context, "code UOR-2-ID packet with no extension");
-
-			/* part 2: 5 bits of 5-bit innermost IP-ID with non-random IP-ID */
-			*f_byte |= innermost_ip_id_delta & 0x1f;
-			rohc_comp_debug(context, "5 bits of 5-bit innermost non-random "
-			                "IP-ID = 0x%x", (*f_byte) & 0x1f);
-
-			/* part 4: T = 0 + M flag + 6 bits of 6-bit SN */
-			*s_byte &= ~0x80;
-			*s_byte |= ((!!rfc3095_ctxt->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u",
-			                !!rfc3095_ctxt->tmp.is_marker_bit_set);
-			*s_byte |= rfc3095_ctxt->sn & 0x3f;
-			rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x", (*s_byte) & 0x3f);
-
-			/* part 5: set the X bit to 0 */
-			*t_byte &= ~0x80;
+			ipid_bits_base_nr = 5;
+			ipid_bits_ext_nr = 0;
+			sn_bits_base_nr = 6;
+			sn_bits_ext_nr = 0;
+			is_ext_present = false;
 			break;
-		}
 
 		case ROHC_PACKET_UOR_2_ID_EXT0:
-		{
-			rohc_comp_debug(context, "code UOR-2-ID packet with extension 0");
-
-			/* part 2: 5 bits of 8-bit innermost IP-ID with non-random IP-ID */
-			*f_byte |= (innermost_ip_id_delta >> 3) & 0x1f;
-			rohc_comp_debug(context, "5 bits of 8-bit innermost non-random "
-			                "IP-ID = 0x%x", (*f_byte) & 0x1f);
-
-			/* part 4: T = 0 + M flag + 6 bits of 9-bit SN */
-			*s_byte &= ~0x80;
-			*s_byte |= ((!!rfc3095_ctxt->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u",
-			                !!rfc3095_ctxt->tmp.is_marker_bit_set);
-			*s_byte |= (rfc3095_ctxt->sn >> 3) & 0x3f;
-			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x", (*s_byte) & 0x3f);
-
-			/* part 5: set the X bit to 1 */
-			*t_byte |= 0x80;
+			ipid_bits_base_nr = 5;
+			ipid_bits_ext_nr = 3;
+			sn_bits_base_nr = 6;
+			sn_bits_ext_nr = 3;
+			is_ext_present = true;
 			break;
-		}
 
 		case ROHC_PACKET_UOR_2_ID_EXT1:
-		{
-			rohc_comp_debug(context, "code UOR-2-ID packet with extension 1");
-
-			/* part 2: 5 bits of 8-bit innermost IP-ID with non-random IP-ID */
-			*f_byte |= (innermost_ip_id_delta >> 3) & 0x1f;
-			rohc_comp_debug(context, "5 bits of 8-bit innermost non-random "
-			                "IP-ID = 0x%x", (*f_byte) & 0x1f);
-
-			/* part 4: T = 0 + M flag + 6 bits of 9-bit SN */
-			*s_byte &= ~0x80;
-			*s_byte |= ((!!rfc3095_ctxt->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u",
-			                !!rfc3095_ctxt->tmp.is_marker_bit_set);
-			*s_byte |= (rfc3095_ctxt->sn >> 3) & 0x3f;
-			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x", (*s_byte) & 0x3f);
-
-			/* part 5: set the X bit to 1 */
-			*t_byte |= 0x80;
+			ipid_bits_base_nr = 5;
+			ipid_bits_ext_nr = 3;
+			sn_bits_base_nr = 6;
+			sn_bits_ext_nr = 3;
+			is_ext_present = true;
 			break;
-		}
 
 		case ROHC_PACKET_UOR_2_ID_EXT2:
-		{
-			rohc_comp_debug(context, "code UOR-2-ID packet with extension 2");
-
-			/* part 2: 5 bits of 16-bit innermost IP-ID with non-random IP-ID */
-			*f_byte |= (innermost_ip_id_delta >> 11) & 0x1f;
-			rohc_comp_debug(context, "5 bits of 16-bit innermost non-random "
-			                "IP-ID = 0x%x", (*f_byte) & 0x1f);
-
-			/* part 4: T = 0 + M flag + 6 bits of 9-bit SN */
-			*s_byte &= ~0x80;
-			*s_byte |= ((!!rfc3095_ctxt->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u",
-			                !!rfc3095_ctxt->tmp.is_marker_bit_set);
-			*s_byte |= (rfc3095_ctxt->sn >> 3) & 0x3f;
-			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x", (*s_byte) & 0x3f);
-
-			/* part 5: set the X bit to 1 */
-			*t_byte |= 0x80;
+			ipid_bits_base_nr = 5;
+			ipid_bits_ext_nr = 11;
+			sn_bits_base_nr = 6;
+			sn_bits_ext_nr = 3;
+			is_ext_present = true;
 			break;
-		}
 
 		case ROHC_PACKET_UOR_2_ID_EXT3:
 		{
-			/* number of TS bits to transmit overall and in extension 3 */
-			const uint8_t nr_ts_bits = rfc3095_ctxt->tmp.nr_ts_bits;
-			uint8_t nr_ts_bits_ext3;
 			const size_t innermost_ip_id_rnd_count =
 				rfc3095_ctxt->ip_ctxts[innermost_ip_hdr - 1].info.v4.rnd_count;
 
-			rohc_comp_debug(context, "code UOR-2-ID packet with extension 3");
+			is_ext_present = true;
 
-			/* part 2: 5 bits of innermost IP-ID with non-random IP-ID */
 			if(innermost_ip_id_rnd_count < oa_repetitions_nr)
 			{
 				/* RND changed in the last few packets, so use the 16-bit field
 				 * in the EXT3 header and fill the 5-bit field of UOR-2-ID with
 				 * zeroes */
-				*f_byte &= ~0x1f;
-				rohc_comp_debug(context, "5 zero bits of innermost non-random "
-				                "IP-ID with changed RND = 0x%x", (*f_byte) & 0x1f);
+				ipid_bits_base_nr = 5;
+				ipid_bits_ext_nr = 16;
 			}
 			else if(innermost_ip_id_5bits_possible)
 			{
 				/* transmit <= 5 bits of IP-ID, so use the 5-bit field in the
 				 * UOR-2-ID field and do not use the 16-bit field in the EXT3
 				 * header */
-				*f_byte |= innermost_ip_id_delta & 0x1f;
-				rohc_comp_debug(context, "5 bits of less-than-5-bit innermost "
-				                "non-random IP-ID = 0x%x", (*f_byte) & 0x1f);
+				ipid_bits_base_nr = 5;
+				ipid_bits_ext_nr = 0;
 			}
 			else
 			{
 				/* transmit > 5 bits of IP-ID, so use the 16-bit field in the EXT3
 				   header and fill the 5-bit field of UOR-2-ID with zeroes */
-				*f_byte &= ~0x1f;
-				rohc_comp_debug(context, "5 zero bits of more-than-5-bit "
-				                "innermost non-random IP-ID = 0x%x",
-				                (*f_byte) & 0x1f);
+				ipid_bits_base_nr = 5;
+				ipid_bits_ext_nr = 16;
 			}
 
-			/* part 4: T = 0 + M flag + 6 bits of SN */
-			*s_byte &= ~0x80;
-			*s_byte |= ((!!rfc3095_ctxt->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u",
-			                !!rfc3095_ctxt->tmp.is_marker_bit_set);
 			if(rfc3095_ctxt->tmp.sn_6bits_possible)
 			{
-				*s_byte |= rfc3095_ctxt->sn & 0x3f;
-				rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x",
-				                (*s_byte) & 0x3f);
+				sn_bits_base_nr = 6;
+				sn_bits_ext_nr = 0;
 			}
 			else
 			{
-				*s_byte |= (rfc3095_ctxt->sn >> 8) & 0x3f;
-				rohc_comp_debug(context, "6 bits of 14-bit SN = 0x%x",
-				                (*s_byte) & 0x3f);
+				sn_bits_base_nr = 6;
+				sn_bits_ext_nr = 8;
 			}
 
-			/* part 5: set the X bit to 1 */
-			*t_byte |= 0x80;
-
 			/* compute TS to send in extension 3 and its length */
-			nr_ts_bits_ext3 = sdvl_get_min_len(nr_ts_bits, 0);
-			assert(nr_ts_bits_ext3 < 32);
-			rfc3095_ctxt->tmp.ts_send &= (1U << nr_ts_bits_ext3) - 1;
-			rfc3095_ctxt->tmp.nr_ts_bits_ext3 = nr_ts_bits_ext3;
-			rohc_comp_debug(context, "will put %u bits of TS = 0x%x in EXT3",
-			                nr_ts_bits_ext3, rfc3095_ctxt->tmp.ts_send);
+			{
+				const uint8_t ts_bits_ext_nr =
+					sdvl_get_min_len(rfc3095_ctxt->tmp.ts_bits_req_nr, 0);
+				assert(ts_bits_ext_nr < 32);
+				rfc3095_ctxt->tmp.ts_bits_ext &= (1U << ts_bits_ext_nr) - 1;
+				rfc3095_ctxt->tmp.ts_bits_ext_nr = ts_bits_ext_nr;
+				rohc_comp_debug(context, "will put %u bits of TS = 0x%x in EXT3",
+				                ts_bits_ext_nr, rfc3095_ctxt->tmp.ts_send);
+			}
 
 			break;
 		}
 
 		default:
-		{
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 			            false, error, "unknown packet type (%d)", packet_type);
-		}
+	}
+
+	/* compute innermost IP-ID bits for both base and extension headers */
+	rohc_comp_rfc3095_split_field(innermost_ip_id_delta, 16,
+	                              ipid_bits_base_nr, ipid_bits_ext_nr,
+	                              &ipid_bits_base, &ipid_bits_ext);
+	rohc_comp_debug(context, "IP-ID: transmit %u bits in total: %u in base header + "
+	                "%u in extension header", ipid_bits_base_nr + ipid_bits_ext_nr,
+	                ipid_bits_base_nr, ipid_bits_ext_nr);
+
+	/* compute SN bits for both base and extension headers */
+	rohc_comp_rfc3095_split_field(rfc3095_ctxt->sn, 32,
+	                              sn_bits_base_nr, sn_bits_ext_nr,
+	                              &sn_bits_base, &sn_bits_ext);
+	rohc_comp_debug(context, "SN: transmit %u bits in total: %u in base header + "
+	                "%u in extension header", sn_bits_base_nr + sn_bits_ext_nr,
+	                sn_bits_base_nr, sn_bits_ext_nr);
+	/* record SN to send in extension and its length */
+	assert(sn_bits_ext_nr < 32);
+	rfc3095_ctxt->tmp.sn_bits_ext = sn_bits_ext;
+	rfc3095_ctxt->tmp.sn_bits_ext_nr = sn_bits_ext_nr;
+
+	/* part 2: 5 bits of innermost IP-ID with non-random IP-ID */
+	*f_byte |= ipid_bits_base & 0x1f;
+	rohc_comp_debug(context, "5 bits of %u-bit innermost non-random IP-ID = 0x%x",
+	                ipid_bits_base_nr + ipid_bits_ext_nr, (*f_byte) & 0x1f);
+
+	/* part 4: T = 0 + M flag + 6 bits of SN */
+	*s_byte &= ~0x80;
+	*s_byte |= ((!!rfc3095_ctxt->tmp.is_marker_bit_set) & 0x01) << 6;
+	rohc_comp_debug(context, "1-bit M flag = %u",
+	                !!rfc3095_ctxt->tmp.is_marker_bit_set);
+	*s_byte |= sn_bits_base & 0x3f;
+	rohc_comp_debug(context, "6 bits of %u-bit SN = 0x%x",
+	                sn_bits_base_nr + sn_bits_ext_nr, (*s_byte) & 0x3f);
+
+	/* part 5: set the X bit if an extension is planned */
+	if(is_ext_present)
+	{
+		*t_byte |= 0x80;
+	}
+	else
+	{
+		*t_byte &= ~0x80;
 	}
 
 	return 1;
@@ -5018,10 +4915,8 @@ static int code_EXT3_rtp_packet(struct rohc_comp_ctxt *const context,
 		(struct sc_rtp_context *) rfc3095_ctxt->specific;
 	/* TS to send */
 	uint32_t ts_send = rfc3095_ctxt->tmp.ts_send;
-	/* nr of TS bits needed */
-	const uint8_t nr_ts_bits = rfc3095_ctxt->tmp.nr_ts_bits;
 	/* nr of TS bits to place in the EXT3 header */
-	uint8_t nr_ts_bits_ext3 = rfc3095_ctxt->tmp.nr_ts_bits_ext3;
+	uint8_t nr_ts_bits_ext3 = rfc3095_ctxt->tmp.ts_bits_ext_nr;
 
 	assert(packet_type == ROHC_PACKET_UO_1_ID_EXT3 ||
 	       packet_type == ROHC_PACKET_UOR_2_RTP_EXT3 ||
@@ -5066,14 +4961,14 @@ static int code_EXT3_rtp_packet(struct rohc_comp_ctxt *const context,
 	switch(packet_type)
 	{
 		case ROHC_PACKET_UOR_2_RTP_EXT3:
-			rts = (nr_ts_bits > 6);
+			rts = (nr_ts_bits_ext3 > 0);
 			break;
 		case ROHC_PACKET_UOR_2_TS_EXT3:
-			rts = (nr_ts_bits > 5);
+			rts = (nr_ts_bits_ext3 > 0);
 			break;
 		case ROHC_PACKET_UOR_2_ID_EXT3:
 		case ROHC_PACKET_UO_1_ID_EXT3:
-			rts = (nr_ts_bits > 0);
+			rts = (nr_ts_bits_ext3 > 0);
 			/* force sending some TS bits in extension 3 if TS is not scaled
 			 * (Tsc = 0) and the base header contains zero bit */
 			if(!rts && rtp_context->ts_sc.state != SEND_SCALED)
@@ -6468,32 +6363,32 @@ static rohc_ext_t decide_extension_uor2rtp(const struct rohc_comp_ctxt *const co
                                            const bool outermost_ip_id_changed)
 {
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
-	const uint8_t nr_ts_bits = rfc3095_ctxt->tmp.nr_ts_bits;
+	const uint8_t ts_bits_req_nr = rfc3095_ctxt->tmp.ts_bits_req_nr;
 	rohc_ext_t ext;
 
 	if(rfc3095_ctxt->tmp.sn_6bits_possible &&
-	   nr_ts_bits <= 6 &&
+	   ts_bits_req_nr <= 6 &&
 	   !innermost_ip_id_changed &&
 	   !outermost_ip_id_changed)
 	{
 		ext = ROHC_EXT_NONE;
 	}
 	else if(rfc3095_ctxt->tmp.sn_9bits_possible &&
-	        nr_ts_bits <= 9 &&
+	        ts_bits_req_nr <= 9 &&
 	        !innermost_ip_id_changed &&
 	        !outermost_ip_id_changed)
 	{
 		ext = ROHC_EXT_0;
 	}
 	else if(rfc3095_ctxt->tmp.sn_9bits_possible &&
-	        nr_ts_bits <= 17 &&
+	        ts_bits_req_nr <= 17 &&
 	        !innermost_ip_id_changed &&
 	        !outermost_ip_id_changed)
 	{
 		ext = ROHC_EXT_1;
 	}
 	else if(rfc3095_ctxt->tmp.sn_9bits_possible &&
-	        nr_ts_bits <= 25 &&
+	        ts_bits_req_nr <= 25 &&
 	        !innermost_ip_id_changed &&
 	        !outermost_ip_id_changed)
 	{
@@ -6527,32 +6422,32 @@ static rohc_ext_t decide_extension_uor2ts(const struct rohc_comp_ctxt *const con
                                           const bool outermost_ip_id_changed)
 {
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
-	const uint8_t nr_ts_bits = rfc3095_ctxt->tmp.nr_ts_bits;
+	const uint8_t ts_bits_req_nr = rfc3095_ctxt->tmp.ts_bits_req_nr;
 	rohc_ext_t ext;
 
 	if(rfc3095_ctxt->tmp.sn_6bits_possible &&
-	   nr_ts_bits <= 5 &&
+	   ts_bits_req_nr <= 5 &&
 	   !innermost_ip_id_changed &&
 	   !outermost_ip_id_changed)
 	{
 		ext = ROHC_EXT_NONE;
 	}
 	else if(rfc3095_ctxt->tmp.sn_9bits_possible &&
-	        nr_ts_bits <= 8 &&
+	        ts_bits_req_nr <= 8 &&
 	        !innermost_ip_id_changed &&
 	        !outermost_ip_id_changed)
 	{
 		ext = ROHC_EXT_0;
 	}
 	else if(rfc3095_ctxt->tmp.sn_9bits_possible &&
-	        nr_ts_bits <= 8 &&
+	        ts_bits_req_nr <= 8 &&
 	        innermost_ip_id_8bits_possible &&
 	        !outermost_ip_id_changed)
 	{
 		ext = ROHC_EXT_1;
 	}
 	else if(rfc3095_ctxt->tmp.sn_9bits_possible &&
-	        nr_ts_bits <= 16 &&
+	        ts_bits_req_nr <= 16 &&
 	        innermost_ip_id_8bits_possible &&
 	        !outermost_ip_id_changed)
 	{
@@ -6588,32 +6483,32 @@ static rohc_ext_t decide_extension_uor2id(const struct rohc_comp_ctxt *const con
 {
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 	const struct sc_rtp_context *const rtp_context = rfc3095_ctxt->specific;
-	const uint8_t nr_ts_bits = rfc3095_ctxt->tmp.nr_ts_bits;
+	const uint8_t ts_bits_req_nr = rfc3095_ctxt->tmp.ts_bits_req_nr;
 	rohc_ext_t ext;
 
 	if(rfc3095_ctxt->tmp.sn_6bits_possible &&
-	   (nr_ts_bits == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
+	   (ts_bits_req_nr == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
 	   innermost_ip_id_5bits_possible &&
 	   !outermost_ip_id_changed)
 	{
 		ext = ROHC_EXT_NONE;
 	}
 	else if(rfc3095_ctxt->tmp.sn_9bits_possible &&
-	        (nr_ts_bits == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
+	        (ts_bits_req_nr == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
 	        innermost_ip_id_8bits_possible &&
 	        !outermost_ip_id_changed)
 	{
 		ext = ROHC_EXT_0;
 	}
 	else if(rfc3095_ctxt->tmp.sn_9bits_possible &&
-	        nr_ts_bits <= 8 &&
+	        ts_bits_req_nr <= 8 &&
 	        innermost_ip_id_8bits_possible &&
 	        !outermost_ip_id_changed)
 	{
 		ext = ROHC_EXT_1;
 	}
 	else if(rfc3095_ctxt->tmp.sn_9bits_possible &&
-	        nr_ts_bits <= 8 &&
+	        ts_bits_req_nr <= 8 &&
 //	        nr_innermost_ip_id_bits <= 16 &&
 	        !outermost_ip_id_changed)
 	{
@@ -6649,11 +6544,11 @@ static rohc_ext_t decide_extension_uo1id(const struct rohc_comp_ctxt *const cont
 {
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 	const struct sc_rtp_context *const rtp_context = rfc3095_ctxt->specific;
-	const uint8_t nr_ts_bits = rfc3095_ctxt->tmp.nr_ts_bits;
+	const uint8_t ts_bits_req_nr = rfc3095_ctxt->tmp.ts_bits_req_nr;
 	rohc_ext_t ext;
 
 	if(rfc3095_ctxt->tmp.sn_4bits_possible &&
-	   (nr_ts_bits == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
+	   (ts_bits_req_nr == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
 	   innermost_ip_id_5bits_possible &&
 	   !outermost_ip_id_changed &&
 	   !rfc3095_ctxt->tmp.is_marker_bit_set)
@@ -6661,7 +6556,7 @@ static rohc_ext_t decide_extension_uo1id(const struct rohc_comp_ctxt *const cont
 		ext = ROHC_EXT_NONE;
 	}
 	else if(rfc3095_ctxt->tmp.sn_7bits_possible &&
-	        (nr_ts_bits == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
+	        (ts_bits_req_nr == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
 	        innermost_ip_id_8bits_possible &&
 	        !outermost_ip_id_changed &&
 	        !rfc3095_ctxt->tmp.is_marker_bit_set)
@@ -6669,7 +6564,7 @@ static rohc_ext_t decide_extension_uo1id(const struct rohc_comp_ctxt *const cont
 		ext = ROHC_EXT_0;
 	}
 	else if(rfc3095_ctxt->tmp.sn_7bits_possible &&
-	        nr_ts_bits <= 8 &&
+	        ts_bits_req_nr <= 8 &&
 	        innermost_ip_id_8bits_possible &&
 	        !outermost_ip_id_changed &&
 	        !rfc3095_ctxt->tmp.is_marker_bit_set)
@@ -6677,7 +6572,7 @@ static rohc_ext_t decide_extension_uo1id(const struct rohc_comp_ctxt *const cont
 		ext = ROHC_EXT_1;
 	}
 	else if(rfc3095_ctxt->tmp.sn_7bits_possible &&
-	        nr_ts_bits <= 8 &&
+	        ts_bits_req_nr <= 8 &&
 //	        nr_innermost_ip_id_bits <= 16 &&
 	        !outermost_ip_id_changed &&
 	        !rfc3095_ctxt->tmp.is_marker_bit_set)
@@ -7005,6 +6900,48 @@ static void rohc_comp_rfc3095_get_ext3_I_flags(const struct rohc_comp_ctxt *cons
 			*I = 0;
 			*I2 = 0;
 		}
+	}
+}
+
+
+/**
+ * @brief Compute how many field bits are required in base and extension headers
+ */
+static void rohc_comp_rfc3095_split_field(const uint32_t field_value,
+                                          const size_t max_bits_nr,
+                                          const size_t base_bits_nr,
+                                          const size_t ext_bits_nr,
+                                          uint32_t *const base_bits,
+                                          uint32_t *const ext_bits)
+{
+	const size_t all_bits_nr = base_bits_nr + ext_bits_nr;
+	size_t base_used_bits_nr;
+
+	assert(max_bits_nr <= 32);
+
+	/* because of the SDVL encoding, the cumulated number of bits for both base
+	 * and extension headers may be greater than 32 bits: in such a case, padding
+	 * bits shall be added in the base header. So, let's compute how many bits
+	 * of base header are really used and how many are padding? */
+	if(all_bits_nr > max_bits_nr)
+	{
+		base_used_bits_nr = max_bits_nr - ext_bits_nr;
+	}
+	else
+	{
+		base_used_bits_nr = base_bits_nr;
+	}
+
+	/* compute the field value for base header */
+	{
+		const uint32_t base_bits_mask = (1U << base_used_bits_nr) - 1;
+		*base_bits = (field_value >> ext_bits_nr) & base_bits_mask;
+	}
+
+	/* compute the field value for extension header */
+	{
+		const uint32_t ext_bits_mask = (1U << ext_bits_nr) - 1;
+		*ext_bits = field_value & ext_bits_mask;
 	}
 }
 
