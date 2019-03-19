@@ -1689,7 +1689,7 @@ static bool rohc_comp_rfc5225_is_msn_lsb_possible(const struct c_wlsb *const wls
                                                   const size_t k)
 {
 	/* compute p according to reorder ratio  */
-	rohc_lsb_shift_t p_computed = rohc_interval_get_rfc5225_msn_p(k, reorder_ratio);
+	const int32_t p_computed = rohc_interval_get_rfc5225_msn_p(k, reorder_ratio);
 
 	return wlsb_is_kp_possible_16bits(wlsb, value, k, p_computed);
 }

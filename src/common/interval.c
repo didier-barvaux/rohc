@@ -47,11 +47,10 @@
  */
 struct rohc_interval32 rohc_f_32bits(const uint32_t v_ref,
                                      const size_t k,
-                                     const rohc_lsb_shift_t p)
+                                     const int32_t p)
 {
 	struct rohc_interval32 interval32;
 	uint32_t interval_width;
-	int32_t computed_p;
 
 	/* compute the interval width = 2^k - 1 */
 	if(k == 32)
@@ -63,17 +62,14 @@ struct rohc_interval32 rohc_f_32bits(const uint32_t v_ref,
 		interval_width = (1U << k) - 1; /* (1 << k) = 2^k */
 	}
 
-	/* determine the real p value to use */
-	computed_p = rohc_interval_compute_p(k, p);
-
 	/* compute the minimal and maximal values of the interval:
 	 *   min = v_ref - p
 	 *   max = v_ref + interval_with - p
 	 *
 	 * Straddling the lower and upper wraparound boundaries
 	 * is handled without additional operation */
-	interval32.min = v_ref - computed_p;
-	interval32.max = v_ref + interval_width - computed_p;
+	interval32.min = v_ref - p;
+	interval32.max = v_ref + interval_width - p;
 
 	return interval32;
 }
@@ -88,9 +84,9 @@ struct rohc_interval32 rohc_f_32bits(const uint32_t v_ref,
  * @return               The shift parameter p
  */
 int32_t rohc_interval_get_rfc5225_msn_p(const size_t k,
-                                        rohc_reordering_offset_t reorder_ratio)
+                                        const rohc_reordering_offset_t reorder_ratio)
 {
-	rohc_lsb_shift_t p;
+	int32_t p;
 
 	if(reorder_ratio == ROHC_REORDERING_NONE)
 	{

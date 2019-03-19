@@ -80,9 +80,9 @@ _Static_assert((sizeof(struct rohc_lsb_decode) % 8) == 0,
 /** The context to parse and decode one LSB-encoded 32-bit field */
 struct rohc_lsb_field32
 {
-	rohc_lsb_shift_t p;   /**< The LSB shift parameter to decode extracted bits */
-	uint32_t bits;        /**< The bits extracted from the ROHC packet */
-	bits_nr_t bits_nr;    /**< The number of bits extracted from the ROHC packet */
+	int32_t p;          /**< The LSB shift parameter to decode extracted bits */
+	uint32_t bits;      /**< The bits extracted from the ROHC packet */
+	bits_nr_t bits_nr;  /**< The number of bits extracted from the ROHC packet */
 	uint8_t unused[7];
 };
 
@@ -98,9 +98,9 @@ _Static_assert((sizeof(struct rohc_lsb_field32) % 8) == 0,
 /** The context to parse and decode one LSB-encoded 16-bit field */
 struct rohc_lsb_field16
 {
-	rohc_lsb_shift_t p;   /**< The LSB shift parameter to decode extracted bits */
-	uint16_t bits;        /**< The bits extracted from the ROHC packet */
-	bits_nr_t bits_nr;    /**< The number of bits extracted from the ROHC packet */
+	int32_t p;          /**< The LSB shift parameter to decode extracted bits */
+	uint16_t bits;      /**< The bits extracted from the ROHC packet */
+	bits_nr_t bits_nr;  /**< The number of bits extracted from the ROHC packet */
 	uint8_t unused[1];
 };
 
@@ -116,9 +116,9 @@ _Static_assert((sizeof(struct rohc_lsb_field16) % 8) == 0,
 /** The context to parse and decode one LSB-encoded 8-bit field */
 struct rohc_lsb_field8
 {
-	rohc_lsb_shift_t p;   /**< The LSB shift parameter to decode extracted bits */
-	uint8_t bits;         /**< The bits extracted from the ROHC packet */
-	bits_nr_t bits_nr;    /**< The number of bits extracted from the ROHC packet */
+	int32_t p;          /**< The LSB shift parameter to decode extracted bits */
+	uint8_t bits;       /**< The bits extracted from the ROHC packet */
+	bits_nr_t bits_nr;  /**< The number of bits extracted from the ROHC packet */
 	uint8_t unused[2];
 };
 
@@ -146,7 +146,7 @@ bool rohc_lsb_decode(const struct rohc_lsb_decode *const lsb,
                      const uint32_t v_ref_d_offset,
                      const uint32_t m,
                      const size_t k,
-                     const rohc_lsb_shift_t p,
+                     const int32_t p,
                      uint32_t *const decoded)
 	__attribute__((warn_unused_result, nonnull(1, 7)));
 

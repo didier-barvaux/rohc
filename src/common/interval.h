@@ -36,30 +36,23 @@
 
 
 /**
- * @brief the different values of the shift parameter of the LSB algorithm
+ * @brief The different values of the shift parameter of the LSB algorithm
  *
  * The shift parameter is also named 'p' in some RFCs.
- *
- * Some values are the real values to use directly. Some others are code
- * that means that the real value to use shall be computed from the number
- * of least significant bits that are transmitted.
  */
 typedef enum
 {
-	ROHC_LSB_SHIFT_SN         = -1,      /**< real value for non-RTP SN */
-#define ROHC_LSB_SHIFT_TCP_TS_1B  ROHC_LSB_SHIFT_SN /**< real value for TCP TS */
-#define ROHC_LSB_SHIFT_TCP_TS_2B  ROHC_LSB_SHIFT_SN /**< real value for TCP TS */
-	ROHC_LSB_SHIFT_IP_ID      =  0,      /**< real value for IP-ID */
-	ROHC_LSB_SHIFT_TCP_TTL    =  3,      /**< real value for TCP TTL/HL */
+	ROHC_LSB_SHIFT_SN             = -1,  /**< LSB shift for non-RTP SN */
+#define ROHC_LSB_SHIFT_TCP_TS_1B  ROHC_LSB_SHIFT_SN /**< LSB shift for TCP TS */
+#define ROHC_LSB_SHIFT_TCP_TS_2B  ROHC_LSB_SHIFT_SN /**< LSB shift for TCP TS */
+	ROHC_LSB_SHIFT_IP_ID          =  0,  /**< LSB shift for IP-ID */
+	ROHC_LSB_SHIFT_TCP_TTL        =  3,  /**< LSB shift for TCP TTL/HL */
 #define ROHC_LSB_SHIFT_TCP_ACK_SCALED  ROHC_LSB_SHIFT_TCP_TTL
-	ROHC_LSB_SHIFT_TCP_SN     =  4,      /**< real value for TCP MSN */
-	ROHC_LSB_SHIFT_TCP_SEQ_SCALED =  7,      /**< real value for TCP seq/ack scaled */
-	ROHC_LSB_SHIFT_RTP_TS     =  100,    /**< need to compute real value for RTP TS */
-	ROHC_LSB_SHIFT_RTP_SN     =  101,    /**< need to compute real value for RTP SN */
-	ROHC_LSB_SHIFT_ESP_SN     =  102,    /**< need to compute real value for ESP SN */
-	ROHC_LSB_SHIFT_TCP_WINDOW = 16383,   /**< real value for TCP window */
-	ROHC_LSB_SHIFT_TCP_TS_3B  = 0x00040000, /**< real value for TCP TS */
-	ROHC_LSB_SHIFT_TCP_TS_4B  = 0x04000000, /**< real value for TCP TS */
+	ROHC_LSB_SHIFT_TCP_SN         =  4,  /**< LSB shift for TCP MSN */
+	ROHC_LSB_SHIFT_TCP_SEQ_SCALED =  7,  /**< LSB shift for TCP seq scaled */
+	ROHC_LSB_SHIFT_TCP_WINDOW     = 16383,       /**< LSB shift for TCP window */
+	ROHC_LSB_SHIFT_TCP_TS_3B      = 0x00040000,  /**< LSB shift for TCP TS */
+	ROHC_LSB_SHIFT_TCP_TS_4B      = 0x04000000,  /**< LSB shift for TCP TS */
 } rohc_lsb_shift_t;
 
 
@@ -130,13 +123,9 @@ struct rohc_interval32
  * Public function prototypes:
  */
 
-static inline int32_t rohc_interval_compute_p(const size_t k,
-                                              const rohc_lsb_shift_t p)
-	__attribute__((warn_unused_result, const));
-
 struct rohc_interval32 rohc_f_32bits(const uint32_t v_ref,
                                      const size_t k,
-                                     const rohc_lsb_shift_t p)
+                                     const int32_t p)
 	__attribute__((warn_unused_result, const));
 
 static inline int32_t rohc_interval_compute_p_rtp_ts(const size_t k)
@@ -149,45 +138,11 @@ static inline int32_t rohc_interval_compute_p_esp_sn(const size_t k)
 	__attribute__((warn_unused_result, const));
 
 int32_t rohc_interval_get_rfc5225_msn_p(const size_t k,
-                                        rohc_reordering_offset_t reorder_ratio)
+                                        const rohc_reordering_offset_t reorder_ratio)
 	__attribute__((warn_unused_result, const));
 
 int32_t rohc_interval_get_rfc5225_id_id_p(const size_t k)
 	__attribute__((warn_unused_result, const));
-
-
-/**
- * @brief Compute the shift parameter p for the f function
- *
- * @param k  The number of least significant bits of the value that are
- *           transmitted
- * @param p  The shift parameter (may be negative)
- * @return   The computed shift parameter p
- */
-static inline int32_t rohc_interval_compute_p(const size_t k,
-                                              const rohc_lsb_shift_t p)
-{
-	int32_t computed_p;
-
-	/* determine the real p value to use */
-	if(p == ROHC_LSB_SHIFT_RTP_TS)
-	{
-		/* special computation for RTP TS encoding */
-		computed_p = (k <= 2 ? 0 : (1 << (k - 2)) - 1);
-	}
-	else if(p == ROHC_LSB_SHIFT_RTP_SN || p == ROHC_LSB_SHIFT_ESP_SN)
-	{
-		/* special computation for RTP and ESP SN encoding */
-		computed_p = (k <= 4 ? 1 : (1 << (k - 5)) - 1);
-	}
-	else
-	{
-		/* otherwise: use the p value given as parameter */
-		computed_p = p;
-	}
-
-	return computed_p;
-}
 
 
 /**

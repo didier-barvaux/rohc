@@ -68,12 +68,13 @@ static bool run_test32_with_shift_param(bool be_verbose,
 int main(int argc, char *argv[])
 {
 	/* the shift parameters to run test with */
-	const size_t p_nums = 4;
+	const size_t p_nums = 5;
 	const short p_params[] = {
+		ROHC_LSB_SHIFT_SN,
 		ROHC_LSB_SHIFT_IP_ID,
-		ROHC_LSB_SHIFT_RTP_TS,
-		ROHC_LSB_SHIFT_RTP_SN,
-		ROHC_LSB_SHIFT_SN
+		ROHC_LSB_SHIFT_TCP_TTL,
+		ROHC_LSB_SHIFT_TCP_SN,
+		ROHC_LSB_SHIFT_TCP_WINDOW,
 	};
 	size_t p_index;
 
