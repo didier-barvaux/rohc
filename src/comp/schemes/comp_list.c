@@ -46,25 +46,25 @@ static unsigned int rohc_list_get_nearest_list(const struct list_comp *const com
                                                bool *const is_new_list)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static int rohc_list_decide_type(struct list_comp *const comp)
+static int rohc_list_decide_type(const struct list_comp *const comp)
 	__attribute__((warn_unused_result, nonnull(1)));
 
-static int rohc_list_encode_type_0(struct list_comp *const comp,
+static int rohc_list_encode_type_0(const struct list_comp *const comp,
                                    uint8_t *const dest,
                                    int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static int rohc_list_encode_type_1(struct list_comp *const comp,
+static int rohc_list_encode_type_1(const struct list_comp *const comp,
                                    uint8_t *const dest,
                                    int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static int rohc_list_encode_type_2(struct list_comp *const comp,
+static int rohc_list_encode_type_2(const struct list_comp *const comp,
                                    uint8_t *const dest,
                                    int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static int rohc_list_encode_type_3(struct list_comp *const comp,
+static int rohc_list_encode_type_3(const struct list_comp *const comp,
                                    uint8_t *const dest,
                                    int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
@@ -276,7 +276,7 @@ static void build_ipv6_ext_pkt_list(struct list_comp *const comp,
  * @return         The new position in the rohc-packet-under-build buffer,
  *                 -1 in case of error
  */
-int rohc_list_encode(struct list_comp *const comp,
+int rohc_list_encode(const struct list_comp *const comp,
                      uint8_t *const dest,
                      int counter)
 {
@@ -538,7 +538,7 @@ static unsigned int rohc_list_get_nearest_list(const struct list_comp *const com
  * @param comp  The list compressor
  * @return      the encoding type among [0-3]
  */
-static int rohc_list_decide_type(struct list_comp *const comp)
+static int rohc_list_decide_type(const struct list_comp *const comp)
 {
 	int encoding_type;
 
@@ -705,7 +705,7 @@ static int rohc_list_decide_type(struct list_comp *const comp)
  * @return         The new position in the rohc-packet-under-build buffer,
  *                 -1 in case of error
  */
-static int rohc_list_encode_type_0(struct list_comp *const comp,
+static int rohc_list_encode_type_0(const struct list_comp *const comp,
                                    uint8_t *const dest,
                                    int counter)
 {
@@ -971,7 +971,7 @@ error:
  * @return         The new position in the rohc-packet-under-build buffer,
  *                 -1 in case of error
  */
-static int rohc_list_encode_type_1(struct list_comp *const comp,
+static int rohc_list_encode_type_1(const struct list_comp *const comp,
                                    uint8_t *const dest,
                                    int counter)
 {
@@ -1137,7 +1137,7 @@ error:
  * @return         The new position in the rohc-packet-under-build buffer,
  *                 -1 in case of error
  */
-static int rohc_list_encode_type_2(struct list_comp *const comp,
+static int rohc_list_encode_type_2(const struct list_comp *const comp,
                                    uint8_t *const dest,
                                    int counter)
 {
@@ -1290,7 +1290,7 @@ error:
  * @return         The new position in the rohc-packet-under-build buffer,
  *                 -1 in case of error
  */
-static int rohc_list_encode_type_3(struct list_comp *const comp,
+static int rohc_list_encode_type_3(const struct list_comp *const comp,
                                    uint8_t *const dest,
                                    int counter)
 {
