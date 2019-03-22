@@ -41,6 +41,11 @@ int main(void)
 	printf("sizeof(bits_nr_t) = %zu\n", sizeof(bits_nr_t));
 	printf("sizeof(c_wlsb) = %zu\n", sizeof(struct c_wlsb));
 	printf("sizeof(rohc_ip_id_behavior_t) = %zu\n", sizeof(rohc_ip_id_behavior_t));
+	printf("sizeof(struct hashtable) = %zu\n", sizeof(struct hashtable));
+
+	/* profile */
+	printf("\n");
+	printf("sizeof(struct rohc_comp_profile) = %zu\n", sizeof(struct rohc_comp_profile));
 
 	/* compressor */
 	printf("\n");
