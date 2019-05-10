@@ -47,6 +47,9 @@ static unsigned int rohc_list_get_nearest_list(const struct list_comp *const com
                                                bool *const is_new_list)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
+static unsigned int rohc_list_find_free_gen_id(const struct list_comp *const comp)
+	__attribute__((warn_unused_result, nonnull(1)));
+
 static int rohc_list_decide_type(const struct list_comp *const comp)
 	__attribute__((warn_unused_result, nonnull(1)));
 
@@ -511,9 +514,10 @@ static unsigned int rohc_list_get_nearest_list(const struct list_comp *const com
 	 * so still create a new identified list */
 	if(comp->ref_id == ROHC_LIST_GEN_ID_NONE)
 	{
-		rc_list_debug(comp, "no list was ever sent");
+		rc_list_debug(comp, "no reference list was ever established, so anonymous "
+		              "list is not allowed yet");
 		*is_new_list = true;
-		return 0;
+		return rohc_list_find_free_gen_id(comp);
 	}
 
 	/* try to use an anonymous list */
@@ -544,6 +548,31 @@ static unsigned int rohc_list_get_nearest_list(const struct list_comp *const com
 	 *  - search for the first unused list,
 	 *  - if no unused list was found, get the next free gen_id
 	 *  - in all cases, avoid re-using ref_id */
+	new_cur_id = rohc_list_find_free_gen_id(comp);
+	rc_list_debug(comp, "the anonymous list is going to be transmitted for the "
+	              "%u time, promote it to an identified list with gen_id = %u",
+	              comp->lists[ROHC_LIST_GEN_ID_ANON].counter + 1, new_cur_id);
+	*is_new_list = true;
+	return new_cur_id;
+}
+
+
+/**
+ * @brief Find the first unused gen_id
+ *
+ * - search for the first unused list,
+ * - if no unused list was found, get the next free gen_id
+ * - in all cases, avoid re-using ref_id
+ *
+ * @param comp   The list compressor
+ * @return       The gen_id to (re)use
+ */
+static unsigned int rohc_list_find_free_gen_id(const struct list_comp *const comp)
+{
+	unsigned int new_cur_id = ROHC_LIST_GEN_ID_NONE;
+	unsigned int gen_id;
+
+	/* find the first unused list (ie. counter == 0) */
 	for(gen_id = 0; new_cur_id == ROHC_LIST_GEN_ID_NONE &&
 	                gen_id <= ROHC_LIST_GEN_ID_MAX; gen_id++)
 	{
@@ -553,10 +582,14 @@ static unsigned int rohc_list_get_nearest_list(const struct list_comp *const com
 			new_cur_id = gen_id;
 		}
 	}
+
+	/* if no unused list was found, get the next free gen_id */
 	if(new_cur_id == ROHC_LIST_GEN_ID_NONE)
 	{
 		new_cur_id = gen_id % (ROHC_LIST_GEN_ID_MAX + 1);
 		rc_list_debug(comp, "no free gen_id found, re-use gen_id %u", new_cur_id);
+
+		/* in all cases, avoid re-using ref_id */
 		if(new_cur_id == comp->ref_id)
 		{
 			new_cur_id++;
@@ -565,10 +598,7 @@ static unsigned int rohc_list_get_nearest_list(const struct list_comp *const com
 			              "instead", comp->ref_id, new_cur_id);
 		}
 	}
-	rc_list_debug(comp, "the anonymous list is going to be transmitted for the "
-	              "%u time, promote it to an identified list with gen_id = %u",
-	              comp->lists[ROHC_LIST_GEN_ID_ANON].counter + 1, new_cur_id);
-	*is_new_list = true;
+
 	return new_cur_id;
 }
 
