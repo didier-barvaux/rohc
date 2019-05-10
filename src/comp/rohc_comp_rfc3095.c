@@ -162,11 +162,11 @@ static int rohc_code_dynamic_part(const struct rohc_comp_ctxt *const context,
 
 static int rohc_code_dynamic_ip_part(const struct rohc_comp_ctxt *const context,
                                      struct ip_header_info *const header_info,
-                                     const bool ext_list_changed,
+                                     const struct rfc3095_ip_hdr_changes *const ip_changes,
                                      const struct rohc_pkt_ip_hdr *const ip,
                                      uint8_t *const dest,
                                      int counter)
-	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 5)));
 
 static int code_ipv4_dynamic_part(const struct rohc_comp_ctxt *const context,
                                   struct ip_header_info *const header_info,
@@ -177,11 +177,11 @@ static int code_ipv4_dynamic_part(const struct rohc_comp_ctxt *const context,
 
 static int code_ipv6_dynamic_part(const struct rohc_comp_ctxt *const context,
                                   struct ip_header_info *const header_info,
-                                  const bool ext_list_changed,
+                                  const struct rfc3095_ip_hdr_changes *const ip_changes,
                                   const struct rohc_pkt_ip_hdr *const ip,
                                   uint8_t *const dest,
                                   int counter)
-	__attribute__((warn_unused_result, nonnull(1, 2, 4, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 5)));
 
 static int code_uo_remainder(struct rohc_comp_ctxt *const context,
                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
@@ -2331,10 +2331,8 @@ static int rohc_code_dynamic_part(const struct rohc_comp_ctxt *const context,
 			&(rfc3095_ctxt->ip_ctxts[ip_hdr_pos]);
 		const struct rfc3095_ip_hdr_changes *const ip_changes =
 			&(changes->ip_hdr_changes[ip_hdr_pos]);
-		const bool ext_list_changed = (ip_changes->ext_list_struct_changed ||
-		                               ip_changes->ext_list_content_changed);
 
-		ret = rohc_code_dynamic_ip_part(context, ip_ctxt, ext_list_changed, pkt_ip_hdr,
+		ret = rohc_code_dynamic_ip_part(context, ip_ctxt, ip_changes, pkt_ip_hdr,
 		                                rohc_pkt, counter);
 		if(ret < 0)
 		{
@@ -2365,18 +2363,18 @@ error:
 /**
  * @brief Build the dynamic part of one IP header for the IR/IR-DYN packets
  *
- * @param context           The compression context
- * @param header_info       The IP header info stored in the profile
- * @param ext_list_changed  Whether extension header list changed
- * @param ip                The IP header the dynamic part is built for
- * @param dest              The ROHC buffer
- * @param counter           The current position in the ROHC buffer
- * @return                  The new position in the ROHC buffer,
- *                          -1 in case of error
+ * @param context      The compression context
+ * @param header_info  The IP header info stored in the profile
+ * @param ip_changes   The IP header fields that changed wrt to context
+ * @param ip           The IP header the dynamic part is built for
+ * @param dest         The ROHC buffer
+ * @param counter      The current position in the ROHC buffer
+ * @return             The new position in the ROHC buffer,
+ *                     -1 in case of error
  */
 static int rohc_code_dynamic_ip_part(const struct rohc_comp_ctxt *const context,
                                      struct ip_header_info *const header_info,
-                                     const bool ext_list_changed,
+                                     const struct rfc3095_ip_hdr_changes *const ip_changes,
                                      const struct rohc_pkt_ip_hdr *const ip,
                                      uint8_t *const dest,
                                      int counter)
@@ -2388,7 +2386,7 @@ static int rohc_code_dynamic_ip_part(const struct rohc_comp_ctxt *const context,
 	}
 	else /* IPV6 */
 	{
-		counter = code_ipv6_dynamic_part(context, header_info, ext_list_changed,
+		counter = code_ipv6_dynamic_part(context, header_info, ip_changes,
 		                                 ip, dest, counter);
 	}
 
@@ -2505,18 +2503,18 @@ static int code_ipv4_dynamic_part(const struct rohc_comp_ctxt *const context,
 
 \endverbatim
  *
- * @param context           The compression context
- * @param header_info       The IP header info stored in the profile
- * @param ext_list_changed  Whether extension header list changed
- * @param ip                The IPv6 header the dynamic part is built for
- * @param dest              The ROHC buffer
- * @param counter           The current position in the ROHC buffer
- * @return                  The new position in the ROHC buffer,
- *                          -1 in case of error
+ * @param context      The compression context
+ * @param header_info  The IP header info stored in the profile
+ * @param ip_changes   The IP header fields that changed wrt to context
+ * @param ip           The IPv6 header the dynamic part is built for
+ * @param dest         The ROHC buffer
+ * @param counter      The current position in the ROHC buffer
+ * @return             The new position in the ROHC buffer,
+ *                     -1 in case of error
  */
 static int code_ipv6_dynamic_part(const struct rohc_comp_ctxt *const context,
                                   struct ip_header_info *const header_info,
-                                  const bool ext_list_changed,
+                                  const struct rfc3095_ip_hdr_changes *const ip_changes,
                                   const struct rohc_pkt_ip_hdr *const ip,
                                   uint8_t *const dest,
                                   int counter)
@@ -2534,10 +2532,11 @@ static int code_ipv6_dynamic_part(const struct rohc_comp_ctxt *const context,
 	rohc_comp_debug(context, "HL = 0x%02x", ip->ttl_hl);
 
 	/* part 3: Generic extension header list */
-	if(ext_list_changed)
+	if(ip_changes->ext_list_struct_changed || ip_changes->ext_list_content_changed)
 	{
 		rohc_comp_debug(context, "extension header list: send some bits");
-		counter = rohc_list_encode(&header_info->info.v6.ext_comp, dest, counter);
+		counter = rohc_list_encode(&header_info->info.v6.ext_comp,
+		                           &(ip_changes->exts.pkt_list), dest, counter);
 		if(counter < 0)
 		{
 			rohc_comp_warn(context, "failed to encode list");

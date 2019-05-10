@@ -84,10 +84,14 @@ struct rohc_list_changes
 {
 	/** The translation table for list compression of IP extensions */
 	struct rohc_list_item trans_table[ROHC_LIST_MAX_ITEM];
+	/** The new temporary list of extension headers */
+	struct rohc_list pkt_list;
+	/** Whether the temporary list of extension headers is a new list? */
+	bool is_new_list;
 };
 
 
-void detect_ipv6_ext_changes(/* TODO: const */ struct list_comp *const comp,
+void detect_ipv6_ext_changes(const struct list_comp *const comp,
                              const struct rohc_pkt_ip_hdr *const ip_hdr,
                              struct rohc_list_changes *const exts_changes,
                              bool *const list_struct_changed,
@@ -95,9 +99,10 @@ void detect_ipv6_ext_changes(/* TODO: const */ struct list_comp *const comp,
 	__attribute__((nonnull(1, 2, 3, 4, 5)));
 
 int rohc_list_encode(const struct list_comp *const comp,
+                     const struct rohc_list *const pkt_list,
                      uint8_t *const dest,
                      int counter)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 void rohc_list_update_context(struct list_comp *const comp,
                               const struct rohc_list_changes *const exts_changes)
