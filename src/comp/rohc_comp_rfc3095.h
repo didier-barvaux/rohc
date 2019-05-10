@@ -167,6 +167,9 @@ struct rfc3095_ip_hdr_changes
 	uint8_t ext_list_content_changed:1;
 	uint8_t unused:2;
 
+	/** The new IP-ID / SN delta */
+	uint16_t ip_id_delta;
+
 	/** changes for the IP extension headers */
 	struct rohc_list_changes exts;
 };
@@ -236,10 +239,18 @@ struct rfc3095_tmp_state
 	/** Whether the RTP Payload Type (PT) changed with the last few packets */
 	uint32_t rtp_pt_changed:1;
 
-	uint8_t innermost_ip_hdr_pos:2;
-	uint8_t innermost_ip_id_5bits_possible:1;
-	uint32_t unused:9;
+	/** Whether the RND flag of at least one IP header changed */
+	uint32_t at_least_one_rnd_changed:1;
+	/** Whether the SID flag of at least one IP header changed */
+	uint32_t at_least_one_sid_changed:1;
+
+	uint32_t innermost_ip_hdr_pos:2;
+	uint32_t innermost_ip_id_rnd_changed:1;
+	uint32_t innermost_ip_id_5bits_possible:1;
+	uint32_t unused:6;
+
 	uint16_t innermost_ip_id_delta;
+
 	uint16_t unused2;
 };
 
@@ -443,62 +454,6 @@ static inline size_t get_nr_ipv4_non_rnd(const struct rohc_comp_rfc3095_ctxt *co
 	}
 
 	return nr_ipv4_non_rnd;
-}
-
-
-/**
- * @brief at least one SID flag changed now or in the last few packets?
- *
- * @param ctxt               The generic compression context
- * @param oa_repetitions_nr  The number of Optimistic Approach repetitions
- * @return                   true if at least one SID flag changed now or in
- *                           last few packets, false otherwise
- */
-static inline bool does_at_least_one_sid_change(const struct rohc_comp_rfc3095_ctxt *const ctxt,
-                                                const uint8_t oa_repetitions_nr)
-{
-	bool at_least_one_sid_change = false;
-	size_t ip_hdr_pos;
-
-	for(ip_hdr_pos = 0; ip_hdr_pos < ctxt->ip_hdr_nr; ip_hdr_pos++)
-	{
-		const struct ip_header_info *const ip_ctxt = &(ctxt->ip_ctxts[ip_hdr_pos]);
-
-		if(ip_ctxt->version == IPV4 && ip_ctxt->info.v4.sid_count < oa_repetitions_nr)
-		{
-			at_least_one_sid_change = true;
-		}
-	}
-
-	return at_least_one_sid_change;
-}
-
-
-/**
- * @brief at least one RND flag changed now or in the last few packets?
- *
- * @param ctxt               The generic compression context
- * @param oa_repetitions_nr  The number of Optimistic Approach repetitions
- * @return                   true if at least one RND flag changed now or in
- *                           last few packets, false otherwise
- */
-static inline bool does_at_least_one_rnd_change(const struct rohc_comp_rfc3095_ctxt *const ctxt,
-                                                const uint8_t oa_repetitions_nr)
-{
-	bool at_least_one_rnd_change = false;
-	size_t ip_hdr_pos;
-
-	for(ip_hdr_pos = 0; ip_hdr_pos < ctxt->ip_hdr_nr; ip_hdr_pos++)
-	{
-		const struct ip_header_info *const ip_ctxt = &(ctxt->ip_ctxts[ip_hdr_pos]);
-
-		if(ip_ctxt->version == IPV4 && ip_ctxt->info.v4.rnd_count < oa_repetitions_nr)
-		{
-			at_least_one_rnd_change = true;
-		}
-	}
-
-	return at_least_one_rnd_change;
 }
 
 #endif

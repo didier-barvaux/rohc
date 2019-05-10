@@ -232,7 +232,6 @@ static rohc_packet_t c_rtp_decide_FO_packet(const struct rohc_comp_ctxt *const c
 {
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
-	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	rohc_packet_t packet;
 
 	if(changes->udp_check_behavior_changed)
@@ -247,7 +246,7 @@ static rohc_packet_t c_rtp_decide_FO_packet(const struct rohc_comp_ctxt *const c
 		rohc_comp_debug(context, "choose packet IR-DYN because RTP Version "
 		                "changed");
 	}
-	else if(does_at_least_one_sid_change(rfc3095_ctxt, oa_repetitions_nr))
+	else if(changes->at_least_one_sid_changed)
 	{
 		packet = ROHC_PACKET_IR_DYN;
 		rohc_comp_debug(context, "choose packet IR-DYN because at least one "
@@ -312,10 +311,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
 	const struct sc_rtp_context *const rtp_context =
 		(struct sc_rtp_context *) rfc3095_ctxt->specific;
-	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	const size_t nr_of_ip_hdr = rfc3095_ctxt->ip_hdr_nr;
-	const bool rnd_changed =
-		does_at_least_one_rnd_change(rfc3095_ctxt, oa_repetitions_nr);
 	rohc_packet_t packet;
 	size_t nr_ipv4_non_rnd;
 	size_t nr_ipv4_non_rnd_with_bits;
@@ -409,7 +405,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 		rohc_comp_debug(context, "choose packet IR-DYN because RTP Version "
 		                "changed");
 	}
-	else if(does_at_least_one_sid_change(rfc3095_ctxt, oa_repetitions_nr))
+	else if(changes->at_least_one_sid_changed)
 	{
 		packet = ROHC_PACKET_IR_DYN;
 		rohc_comp_debug(context, "choose packet IR-DYN because at least one "
@@ -430,7 +426,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 		rohc_comp_debug(context, "choose packet IR-DYN because SN cannot be "
 		                "transmitted on 6, 9 or 14 bits");
 	}
-	else if(!rnd_changed &&
+	else if(!changes->at_least_one_rnd_changed &&
 	        changes->sn_4bits_possible &&
 	        nr_ipv4_non_rnd_with_bits == 0 &&
 	        is_ts_scaled &&
@@ -450,7 +446,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 		                "and no TOS/TC, TTL/HL, DF, IP ext list, NBO, RND fields "
 		                "changed for %zu IP header(s)", nr_of_ip_hdr, nr_of_ip_hdr);
 	}
-	else if(!rnd_changed &&
+	else if(!changes->at_least_one_rnd_changed &&
 	        changes->sn_4bits_possible &&
 	        nr_ipv4_non_rnd == 0 &&
 	        is_ts_scaled && changes->ts_bits_req_nr <= 6 &&
@@ -468,7 +464,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 		                "changed for %zu IP header(s)",
 		                nr_of_ip_hdr, changes->ts_bits_req_nr, nr_of_ip_hdr);
 	}
-	else if(!rnd_changed &&
+	else if(!changes->at_least_one_rnd_changed &&
 	        changes->sn_4bits_possible &&
 	        nr_ipv4_non_rnd_with_bits == 1 && innermost_ip_id_5bits_possible &&
 	        is_ts_scaled &&
@@ -491,7 +487,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 		                "changed for %zu IP header(s)",
 		                nr_of_ip_hdr, nr_of_ip_hdr);
 	}
-	else if(!rnd_changed &&
+	else if(!changes->at_least_one_rnd_changed &&
 	        changes->sn_4bits_possible &&
 	        nr_ipv4_non_rnd_with_bits == 0 &&
 	        is_ts_scaled && changes->ts_bits_req_nr <= 5 &&
@@ -510,7 +506,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 		                "changed for %zu IP header(s)",
 		                nr_of_ip_hdr, changes->ts_bits_req_nr, nr_of_ip_hdr);
 	}
-	else if(!rnd_changed &&
+	else if(!changes->at_least_one_rnd_changed &&
 	        (changes->sn_4bits_possible ||
 	         changes->sn_12bits_possible) &&
 	        nr_ipv4_non_rnd_with_bits >= 1 &&

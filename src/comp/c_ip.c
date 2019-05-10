@@ -107,12 +107,9 @@ error:
 rohc_packet_t c_ip_decide_FO_packet(const struct rohc_comp_ctxt *const context,
                                     const struct rfc3095_tmp_state *const changes)
 {
-	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
-		(const struct rohc_comp_rfc3095_ctxt *const) context->specific;
-	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	rohc_packet_t packet;
 
-	if(does_at_least_one_sid_change(rfc3095_ctxt, oa_repetitions_nr))
+	if(changes->at_least_one_sid_changed)
 	{
 		packet = ROHC_PACKET_IR_DYN;
 		rohc_comp_debug(context, "choose packet IR-DYN because at least one "
@@ -161,7 +158,6 @@ rohc_packet_t c_ip_decide_FO_packet(const struct rohc_comp_ctxt *const context,
 rohc_packet_t c_ip_decide_SO_packet(const struct rohc_comp_ctxt *const context,
                                     const struct rfc3095_tmp_state *const changes)
 {
-	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
 	const struct rfc3095_ip_hdr_changes *inner_ip_changes;
@@ -198,7 +194,7 @@ rohc_packet_t c_ip_decide_SO_packet(const struct rohc_comp_ctxt *const context,
 	}
 
 	/* what is the smallest possible packet type? */
-	if(does_at_least_one_sid_change(rfc3095_ctxt, oa_repetitions_nr))
+	if(changes->at_least_one_sid_changed)
 	{
 		packet = ROHC_PACKET_IR_DYN;
 		rohc_comp_debug(context, "choose packet IR-DYN because at least one "
