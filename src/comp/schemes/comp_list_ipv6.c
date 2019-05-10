@@ -71,6 +71,7 @@ void rohc_comp_list_ipv6_new(struct list_comp *const comp,
 	for(i = 0; i < ROHC_LIST_MAX_ITEM; i++)
 	{
 		rohc_list_item_reset(&comp->trans_table[i]);
+		comp->trans_table[i].item_idx = i;
 	}
 
 	comp->oa_repetitions_nr = oa_repetitions_nr;

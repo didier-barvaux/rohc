@@ -166,6 +166,9 @@ struct rfc3095_ip_hdr_changes
 	/** Whether innermost IP extension list changed of content */
 	uint8_t ext_list_content_changed:1;
 	uint8_t unused:2;
+
+	/** changes for the IP extension headers */
+	struct rohc_list_changes exts;
 };
 
 

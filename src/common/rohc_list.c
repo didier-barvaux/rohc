@@ -66,9 +66,22 @@ void rohc_list_reset(struct rohc_list *const list)
 bool rohc_list_equal(const struct rohc_list *const list1,
                      const struct rohc_list *const list2)
 {
-	return (list1->items_nr == list2->items_nr &&
-	        memcmp(list1->items, list2->items,
-	               list1->items_nr * sizeof(struct rohc_list_item *)) == 0);
+	bool do_match = true;
+	uint8_t item_id;
+
+	if(list1->items_nr != list2->items_nr)
+	{
+		return false;
+	}
+
+	for(item_id = 0; item_id < list1->items_nr; item_id++)
+	{
+		do_match =
+			do_match &&
+			(list1->items[item_id]->item_idx == list2->items[item_id]->item_idx);
+	}
+
+	return do_match;
 }
 
 
@@ -98,7 +111,8 @@ bool rohc_list_supersede(const struct rohc_list *const large,
 	{
 		/* search for the item from the small list in the remaining items of
 		 * the large list */
-		while(i < large->items_nr && large->items[i] != small->items[j])
+		while(i < large->items_nr &&
+		      large->items[i]->item_idx != small->items[j]->item_idx)
 		{
 			i++;
 		}
@@ -115,7 +129,7 @@ bool rohc_list_supersede(const struct rohc_list *const large,
 /**
  * @brief Reset the given list item
  *
- * @param list_item  The item to reset
+ * @param list_item   The item to reset
  */
 void rohc_list_item_reset(struct rohc_list_item *const list_item)
 {

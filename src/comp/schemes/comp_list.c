@@ -36,10 +36,11 @@
 
 
 
-static void build_ipv6_ext_pkt_list(struct list_comp *const comp,
-                                    const struct rohc_pkt_ip_hdr *const ip,
+static void build_ipv6_ext_pkt_list(const struct list_comp *const comp,
+                                    const struct rohc_pkt_ip_hdr *const ip_hdr,
+                                    struct rohc_list_changes *const exts_changes,
                                     struct rohc_list *const pkt_list)
-	__attribute__((nonnull(1, 2, 3)));
+	__attribute__((nonnull(1, 2, 3, 4)));
 
 static unsigned int rohc_list_get_nearest_list(const struct list_comp *const comp,
                                                const struct rohc_list *const pkt_list,
@@ -86,11 +87,10 @@ static size_t rohc_list_compute_rem_mask(const struct list_comp *const comp,
                                          const size_t rohc_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
-static uint8_t rohc_list_compute_ps(const struct list_comp *const comp,
-                                    const struct rohc_list *const list,
+static uint8_t rohc_list_compute_ps(const struct rohc_list *const list,
                                     const uint8_t mask[ROHC_LIST_ITEMS_MAX],
                                     const size_t m)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+	__attribute__((warn_unused_result, nonnull(1)));
 
 static int rohc_list_build_XIs(const struct list_comp *const comp,
                                const struct rohc_list *const list,
@@ -121,13 +121,16 @@ static int rohc_list_build_XIs_4(const struct list_comp *const comp,
 /**
  * @brief Detect changes within the list of IPv6 extension headers
  *
- * @param comp                       The list compressor
- * @param ip                         The IP packet to compress
+ * @param comp           The list compressor
+ * @param ip_hdr         The IP header to compress
+ * @param exts_changes   The IPv6 ext headers fields that changed wrt to context
+ *
  * @param[out] list_struct_changed   Whether the structure of the list changed
  * @param[out] list_content_changed  Whether the content of the list changed
  */
-void detect_ipv6_ext_changes(struct list_comp *const comp,
-                             const struct rohc_pkt_ip_hdr *const ip,
+void detect_ipv6_ext_changes(/* TODO: const */ struct list_comp *const comp,
+                             const struct rohc_pkt_ip_hdr *const ip_hdr,
+                             struct rohc_list_changes *const exts_changes,
                              bool *const list_struct_changed,
                              bool *const list_content_changed)
 {
@@ -138,7 +141,7 @@ void detect_ipv6_ext_changes(struct list_comp *const comp,
 	/* parse all extension headers:
 	 *  - update the related entries in the translation table,
 	 *  - create the list for the packet */
-	build_ipv6_ext_pkt_list(comp, ip, &pkt_list);
+	build_ipv6_ext_pkt_list(comp, ip_hdr, exts_changes, &pkt_list);
 
 	/* now that translation table is updated and packet list is generated,
 	 * search for a context list with the same structure or use an anonymous
@@ -153,6 +156,11 @@ void detect_ipv6_ext_changes(struct list_comp *const comp,
 		comp->lists[new_cur_id].items_nr = pkt_list.items_nr;
 		comp->lists[new_cur_id].counter = 0;
 		comp->lists[ROHC_LIST_GEN_ID_ANON].counter = 0;
+	}
+	else if(new_cur_id != ROHC_LIST_GEN_ID_NONE)
+	{
+		memcpy(comp->lists[new_cur_id].items, pkt_list.items,
+		       ROHC_LIST_ITEMS_MAX * sizeof(struct rohc_list_item *));
 	}
 
 	/* do we need to send some bits of the compressed list? */
@@ -182,14 +190,21 @@ void detect_ipv6_ext_changes(struct list_comp *const comp,
 		{
 			if(!comp->lists[comp->cur_id].items[i]->known)
 			{
+				rc_list_debug(comp, "item #%zu (table index %u) is not known yet",
+				              i + 1, comp->lists[comp->cur_id].items[i]->item_idx);
 				*list_content_changed = true;
 				break;
+			}
+			else
+			{
+				rc_list_debug(comp, "item #%zu (table index %u) is known already",
+				              i + 1, comp->lists[comp->cur_id].items[i]->item_idx);
 			}
 		}
 		if((*list_content_changed))
 		{
 			rc_list_debug(comp, "send some bits for extension header list of "
-			              "the outer IPv6 header because some of its items were "
+			              "the IPv6 header because some of its items were "
 			              "not sent enough times");
 		}
 	}
@@ -207,11 +222,13 @@ void detect_ipv6_ext_changes(struct list_comp *const comp,
  *  \li create the list for the packet
  *
  * @param comp           The list compressor
- * @param ip             The IP packet to compress
+ * @param ip_hdr         The IP header to compress
+ * @param exts_changes   The IPv6 ext headers fields that changed wrt to context
  * @param[out] pkt_list  The list of extension headers for the current packet
  */
-static void build_ipv6_ext_pkt_list(struct list_comp *const comp,
-                                    const struct rohc_pkt_ip_hdr *const ip,
+static void build_ipv6_ext_pkt_list(const struct list_comp *const comp,
+                                    const struct rohc_pkt_ip_hdr *const ip_hdr,
+                                    struct rohc_list_changes *const exts_changes,
                                     struct rohc_list *const pkt_list)
 {
 	uint8_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
@@ -220,12 +237,17 @@ static void build_ipv6_ext_pkt_list(struct list_comp *const comp,
 	/* reset the list of the current packet */
 	rohc_list_reset(pkt_list);
 
+	/* copy the translation table in order to be able modify it without altering
+	 * the context one */
+	memcpy(exts_changes->trans_table, comp->trans_table,
+	       sizeof(struct rohc_list_item) * ROHC_LIST_MAX_ITEM);
+
 	/* parse all extension headers:
 	 *  - update the related entries in the translation table,
 	 *  - create the list for the packet */
-	for(ext_num = 0; ext_num < ip->exts_nr; ext_num++)
+	for(ext_num = 0; ext_num < ip_hdr->exts_nr; ext_num++)
 	{
-		const struct rohc_pkt_ip_ext_hdr *const ext = ip->exts + ext_num;
+		const struct rohc_pkt_ip_ext_hdr *const ext = ip_hdr->exts + ext_num;
 		bool entry_changed = false;
 		int index_table;
 		int ret;
@@ -242,7 +264,7 @@ static void build_ipv6_ext_pkt_list(struct list_comp *const comp,
 		/* TODO: context should not be overwritten until compression is fully OK */
 		/* TODO: put comp const in params once context is not overwritten any more */
 		ret = rohc_list_item_update_if_changed(comp->cmp_item,
-		                                       &(comp->trans_table[index_table]),
+		                                       &(exts_changes->trans_table[index_table]),
 		                                       ext->type, ext->data, ext->len);
 		assert(ret >= 0);
 		if(ret == 1)
@@ -252,8 +274,8 @@ static void build_ipv6_ext_pkt_list(struct list_comp *const comp,
 			entry_changed = true;
 		}
 
-		/* update current list in context */
-		pkt_list->items[pkt_list->items_nr] = &(comp->trans_table[index_table]);
+		/* update temporary current list */
+		pkt_list->items[pkt_list->items_nr] = &(exts_changes->trans_table[index_table]);
 		pkt_list->items_nr++;
 		assert(pkt_list->items_nr <= ROHC_LIST_ITEMS_MAX);
 
@@ -261,8 +283,8 @@ static void build_ipv6_ext_pkt_list(struct list_comp *const comp,
 		              "in translation table (%s entry sent %u/%u times)",
 		              pkt_list->items_nr, ext->type,
 		              (entry_changed ? "updated" : "existing"), index_table,
-		              comp->trans_table[index_table].known ? "known" : "not-yet-known",
-		              comp->trans_table[index_table].counter, comp->oa_repetitions_nr);
+		              exts_changes->trans_table[index_table].known ? "known" : "not-yet-known",
+		              exts_changes->trans_table[index_table].counter, comp->oa_repetitions_nr);
 	}
 }
 
@@ -338,11 +360,17 @@ error:
  * Update the counters of the items of the current list.
  * Update the reference list with the current list if possible.
  *
- * @param comp  The list compressor
+ * @param comp          The list compressor
+ * @param exts_changes  The changes related to the IP extension headers
  */
-void rohc_list_update_context(struct list_comp *const comp)
+void rohc_list_update_context(struct list_comp *const comp,
+                              const struct rohc_list_changes *const exts_changes)
 {
 	size_t i;
+
+	/* update the translation table in the compression context */
+	memcpy(comp->trans_table, exts_changes->trans_table,
+	       sizeof(struct rohc_list_item) * ROHC_LIST_MAX_ITEM);
 
 	/* nothing to do if there is no list */
 	if(comp->cur_id == ROHC_LIST_GEN_ID_NONE)
@@ -350,16 +378,29 @@ void rohc_list_update_context(struct list_comp *const comp)
 		return;
 	}
 
-	/* the items of the current list were sent once more, increment their
-	 * counters and check whether they are known or not */
+	/* update the current list */
 	for(i = 0; i < comp->lists[comp->cur_id].items_nr; i++)
 	{
-		if(!comp->lists[comp->cur_id].items[i]->known)
+		struct rohc_list *const cur_list = &(comp->lists[comp->cur_id]);
+		const uint8_t item_idx = cur_list->items[i]->item_idx;
+
+		/* replace references to the items of the temporary translation table
+		 * with references to the items of the context translation table */
+		cur_list->items[i] = &(comp->trans_table[item_idx]);
+
+		/* the items of the current list were sent once more, increment their
+		 * counters and check whether they are known or not */
+		if(!cur_list->items[i]->known)
 		{
-			comp->lists[comp->cur_id].items[i]->counter++;
-			if(comp->lists[comp->cur_id].items[i]->counter >= comp->oa_repetitions_nr)
+			cur_list->items[i]->counter++;
+			rc_list_debug(comp, "item with index %u in translation table was sent "
+			              "%u/%u times", item_idx, cur_list->items[i]->counter,
+			              comp->oa_repetitions_nr);
+			if(cur_list->items[i]->counter >= comp->oa_repetitions_nr)
 			{
-				comp->lists[comp->cur_id].items[i]->known = true;
+				rc_list_debug(comp, "item with index %u in translation table is now known",
+				              item_idx);
+				cur_list->items[i]->known = true;
 			}
 		}
 	}
@@ -709,7 +750,6 @@ static int rohc_list_encode_type_0(const struct list_comp *const comp,
                                    uint8_t *const dest,
                                    int counter)
 {
-	uint8_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
 	const uint8_t et = 0; /* list encoding type 0 */
 	uint8_t gp;
 	size_t m; /* the number of elements in current list = number of XIs */
@@ -726,11 +766,8 @@ static int rohc_list_encode_type_0(const struct list_comp *const comp,
 	{
 		uint8_t ins_mask[ROHC_LIST_ITEMS_MAX] = { 1 };
 
-		ps = rohc_list_compute_ps(comp, &(comp->lists[comp->cur_id]), ins_mask, m);
-		if(ps != 0 && ps != 1)
-		{
-			goto error;
-		}
+		ps = rohc_list_compute_ps(&(comp->lists[comp->cur_id]), ins_mask, m);
+		assert(ps == 0 || ps == 1);
 	}
 
 	/* part 1: ET, GP, PS, CC */
@@ -761,20 +798,7 @@ static int rohc_list_encode_type_0(const struct list_comp *const comp,
 		for(k = 0; k < m; k++, counter++)
 		{
 			const struct rohc_list_item *const item = comp->lists[comp->cur_id].items[k];
-			int index_table;
-
-			/* one more occurrence of this item */
-			if(ext_types_count[item->type] >= 255)
-			{
-				rohc_comp_list_warn(comp, "too many IPv6 extension header of type 0x%02x",
-				                    item->type);
-				goto error;
-			}
-			ext_types_count[item->type]++;
-
-			index_table = comp->get_index_table(item->type, ext_types_count[item->type]);
-			assert(index_table >= 0);
-			assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);
+			const uint8_t index_table = item->item_idx;
 
 			dest[counter] = 0;
 			/* set the X bit if item is not already known */
@@ -798,20 +822,7 @@ static int rohc_list_encode_type_0(const struct list_comp *const comp,
 		for(k = 0; k < m; k += 2, counter++)
 		{
 			const struct rohc_list_item *const item = comp->lists[comp->cur_id].items[k];
-			int index_table;
-
-			/* one more occurrence of this item */
-			if(ext_types_count[item->type] >= 255)
-			{
-				rohc_comp_list_warn(comp, "too many IPv6 extension header of type 0x%02x",
-				                    item->type);
-				goto error;
-			}
-			ext_types_count[item->type]++;
-
-			index_table = comp->get_index_table(item->type, ext_types_count[item->type]);
-			assert(index_table >= 0);
-			assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);
+			const uint8_t index_table = item->item_idx;
 
 			dest[counter] = 0;
 
@@ -833,21 +844,7 @@ static int rohc_list_encode_type_0(const struct list_comp *const comp,
 			{
 				const struct rohc_list_item *const item2 =
 					comp->lists[comp->cur_id].items[k + 1];
-				int index_table2;
-
-				/* one more occurrence of this item */
-				if(ext_types_count[item2->type] >= 255)
-				{
-					rohc_comp_list_warn(comp, "too many IPv6 extension header of type "
-					                    "0x%02x", item2->type);
-					goto error;
-				}
-				ext_types_count[item2->type]++;
-
-				index_table2 =
-					comp->get_index_table(item2->type, ext_types_count[item2->type]);
-				assert(index_table2 >= 0);
-				assert(((size_t) index_table2) < ROHC_LIST_MAX_ITEM);
+				const uint8_t index_table2 = item2->item_idx;
 
 				/* set the X bit if item is not already known */
 				if(!item2->known)
@@ -888,9 +885,6 @@ static int rohc_list_encode_type_0(const struct list_comp *const comp,
 	}
 
 	return counter;
-
-error:
-	return -1;
 }
 
 
@@ -1029,11 +1023,8 @@ static int rohc_list_encode_type_1(const struct list_comp *const comp,
 	counter += ins_mask_len;
 
 	/* determine whether we should use 4-bit or 8-bit indexes */
-	ps = rohc_list_compute_ps(comp, &(comp->lists[comp->cur_id]), ins_mask, m);
-	if(ps != 0 && ps != 1)
-	{
-		goto error;
-	}
+	ps = rohc_list_compute_ps(&(comp->lists[comp->cur_id]), ins_mask, m);
+	assert(ps == 0 || ps == 1);
 
 	/* part 5: k XI (= X + Indexes) */
 	{
@@ -1364,11 +1355,8 @@ static int rohc_list_encode_type_3(const struct list_comp *const comp,
 	counter += ins_mask_len;
 
 	/* determine whether we should use 4-bit or 8-bit indexes */
-	ps = rohc_list_compute_ps(comp, &(comp->lists[comp->cur_id]), ins_mask, m);
-	if(ps != 0 && ps != 1)
-	{
-		goto error;
-	}
+	ps = rohc_list_compute_ps(&(comp->lists[comp->cur_id]), ins_mask, m);
+	assert(ps == 0 || ps == 1);
 
 	/* part 6: k XI (= X + Indexes) */
 	{
@@ -1489,7 +1477,8 @@ static size_t rohc_list_compute_ins_mask(const struct list_comp *const comp,
 
 		/* set bit to 1 in the insertion mask if the list item is not present
 		   in the reference list */
-		if(ref_k >= ref_m || cur_list->items[k] != ref_list->items[ref_k])
+		if(ref_k >= ref_m ||
+		   cur_list->items[k]->item_idx != ref_list->items[ref_k]->item_idx)
 		{
 			/* item is new, so put 1 in mask */
 			rc_list_debug(comp, "insertion bit mask: insert new item of type %d "
@@ -1534,7 +1523,8 @@ static size_t rohc_list_compute_ins_mask(const struct list_comp *const comp,
 
 			/* set bit to 1 in the insertion mask if the list item is not present
 			   in the reference list */
-			if(ref_k >= ref_m || cur_list->items[k] != ref_list->items[ref_k])
+			if(ref_k >= ref_m ||
+			   cur_list->items[k]->item_idx != ref_list->items[ref_k]->item_idx)
 			{
 				/* item is new, so put 1 in mask */
 				bit = 1;
@@ -1614,7 +1604,7 @@ static size_t rohc_list_compute_rem_mask(const struct list_comp *const comp,
 	/* first byte of the removal mask */
 	for(k = 0, ref_k = 0; ref_k < ref_m && ref_k < 8; ref_k++)
 	{
-		if(k < m && ref_list->items[ref_k] == cur_list->items[k])
+		if(k < m && ref_list->items[ref_k]->item_idx == cur_list->items[k]->item_idx)
 		{
 			/* item shall not be removed, clear its corresponding bit in the
 			   removal bit mask */
@@ -1645,7 +1635,7 @@ static size_t rohc_list_compute_rem_mask(const struct list_comp *const comp,
 		rohc_data[1] = 0xff;
 		for(ref_k = 7; ref_k < ref_m && ref_k < 15; ref_k++)
 		{
-			if(k < m && ref_list->items[ref_k] == cur_list->items[k])
+			if(k < m && ref_list->items[ref_k]->item_idx == cur_list->items[k]->item_idx)
 			{
 				/* item shall not be removed, clear its corresponding bit in the
 				   removal bit mask */
@@ -1677,57 +1667,30 @@ error:
 /**
  * @brief Determine whether we should use 4-bit or 8-bit indexes
  *
- * @param comp  The list compressor
  * @param list  The list to get the indexes size for
  * @param mask  The insertion mask for the list
  * @param m     The number of elements in current list
  * @return      0 for 4-bit indexes,
- *              1 for 8-bit indexes,
- *              2 for error
+ *              1 for 8-bit indexes
  */
-static uint8_t rohc_list_compute_ps(const struct list_comp *const comp,
-                                    const struct rohc_list *const list,
+static uint8_t rohc_list_compute_ps(const struct rohc_list *const list,
                                     const uint8_t mask[ROHC_LIST_ITEMS_MAX],
                                     const size_t m)
 {
-	uint8_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
 	uint8_t ps = 0; /* 4-bit indexes by default */
 	size_t k;
 
 	for(k = 0; k < m && ps == 0; k++)
 	{
 		const struct rohc_list_item *const item = list->items[k];
-		int index_table;
 
-		/* one more occurrence of this item */
-		if(ext_types_count[item->type] >= 255)
-		{
-			rohc_comp_list_warn(comp, "too many IPv6 extension header of type 0x%02x",
-			                    item->type);
-			goto error;
-		}
-		ext_types_count[item->type]++;
-
-		/* get the index corresponding to the item type and the number of
-		 * occurrences */
-		index_table = comp->get_index_table(item->type, ext_types_count[item->type]);
-		if(index_table < 0 || ((size_t) index_table) >= ROHC_LIST_MAX_ITEM)
-		{
-			rohc_comp_list_warn(comp, "failed to handle unknown IPv6 extension "
-			                    "header of type 0x%02x", item->type);
-			goto error;
-		}
-
-		if((mask[k] != 0 || !item->known) && index_table > 0x07)
+		if((mask[k] != 0 || !item->known) && item->item_idx > 0x07)
 		{
 			ps = 1; /* 8-bit indexes are required */
 		}
 	}
 
 	return ps;
-
-error:
-	return 2;
 }
 
 
@@ -1781,7 +1744,6 @@ static int rohc_list_build_XIs_8(const struct list_comp *const comp,
                                  uint8_t *const rohc_data,
                                  const size_t rohc_max_len)
 {
-	uint8_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
 	const size_t m = list->items_nr;
 	size_t xi_len = 0;
 	size_t k;
@@ -1791,20 +1753,7 @@ static int rohc_list_build_XIs_8(const struct list_comp *const comp,
 	for(k = 0; k < m; k++)
 	{
 		const struct rohc_list_item *const item = list->items[k];
-		int index_table;
-
-		/* one more occurrence of this item */
-		if(ext_types_count[item->type] >= 255)
-		{
-			rohc_comp_list_warn(comp, "too many IPv6 extension header of type 0x%02x",
-			                    item->type);
-			goto error;
-		}
-		ext_types_count[item->type]++;
-
-		index_table = comp->get_index_table(item->type, ext_types_count[item->type]);
-		assert(index_table >= 0);
-		assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);
+		const uint8_t index_table = item->item_idx;
 
 		/* skip element if it present in the reference list and compressor
 		 * is confident that item is known by decompressor */
@@ -1864,7 +1813,6 @@ static int rohc_list_build_XIs_4(const struct list_comp *const comp,
                                  const size_t rohc_max_len,
                                  uint8_t *const first_4b_xi)
 {
-	uint8_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
 	const size_t m = list->items_nr;
 	size_t xi_index = 0;
 	size_t xi_len = 0;
@@ -1877,20 +1825,7 @@ static int rohc_list_build_XIs_4(const struct list_comp *const comp,
 	for(k = 0; k < m; k++)
 	{
 		const struct rohc_list_item *const item = list->items[k];
-		int index_table;
-
-		/* one more occurrence of this item */
-		if(ext_types_count[item->type] >= 255)
-		{
-			rohc_comp_list_warn(comp, "too many IPv6 extension header of type 0x%02x",
-			                    item->type);
-			goto error;
-		}
-		ext_types_count[item->type]++;
-
-		index_table = comp->get_index_table(item->type, ext_types_count[item->type]);
-		assert(index_table >= 0);
-		assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);
+		const uint8_t index_table = item->item_idx;
 
 		/* skip element if it present in the reference list and compressor
 		 * is confident that item is known by decompressor */

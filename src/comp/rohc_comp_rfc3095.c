@@ -352,8 +352,9 @@ static void update_context(struct rohc_comp_ctxt *const context,
 	__attribute__((nonnull(1, 2, 3)));
 static void update_context_ip_hdr(const struct rohc_comp_ctxt *const context,
 											            struct ip_header_info *const ip_flags,
-                                  const struct rohc_pkt_ip_hdr *const ip)
-	__attribute__((nonnull(1, 2, 3)));
+                                  const struct rohc_pkt_ip_hdr *const ip,
+                                  const struct rfc3095_ip_hdr_changes *const changes)
+	__attribute__((nonnull(1, 2, 3, 4)));
 
 static void rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const context,
                                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
@@ -745,16 +746,23 @@ int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
                              rohc_packet_t *const packet_type)
 {
 	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
-	struct rfc3095_tmp_state changes;
+	struct rfc3095_tmp_state *changes;
 	int size;
 
 	*packet_type = ROHC_PACKET_UNKNOWN;
 
+	changes = malloc(sizeof(struct rfc3095_tmp_state));
+	if(changes == NULL)
+	{
+		rohc_comp_warn(context, "failed to allocate memory for temporary state");
+		goto error;
+	}
+
 	/* detect changes between new uncompressed packet and context */
-	rohc_comp_rfc3095_detect_changes(context, uncomp_pkt_hdrs, &changes);
+	rohc_comp_rfc3095_detect_changes(context, uncomp_pkt_hdrs, changes);
 
 	/* decide which packet to send */
-	*packet_type = decide_packet(context, &changes);
+	*packet_type = decide_packet(context, changes);
 
 	/* does the packet update the decompressor context? */
 	if(rohc_packet_carry_crc_7_or_8(*packet_type))
@@ -777,42 +785,42 @@ int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
 		if((*packet_type) == ROHC_PACKET_UOR_2_EXT3)
 		{
 			sn_bits_base_nr = 5;
-			changes.sn_bits_ext_nr = (changes.sn_5bits_possible ? 0 : 8);
+			changes->sn_bits_ext_nr = (changes->sn_5bits_possible ? 0 : 8);
 			ts_bits_base_nr = 0;
 		}
 		else if((*packet_type) == ROHC_PACKET_UOR_2_RTP_EXT3)
 		{
 			sn_bits_base_nr = 6;
-			changes.sn_bits_ext_nr = (changes.sn_6bits_possible ? 0 : 8);
+			changes->sn_bits_ext_nr = (changes->sn_6bits_possible ? 0 : 8);
 			ts_bits_base_nr = 6;
 		}
 		else if((*packet_type) == ROHC_PACKET_UOR_2_ID_EXT3)
 		{
 			sn_bits_base_nr = 6;
-			changes.sn_bits_ext_nr = (changes.sn_6bits_possible ? 0 : 8);
+			changes->sn_bits_ext_nr = (changes->sn_6bits_possible ? 0 : 8);
 			ts_bits_base_nr = 0;
 		}
 		else if((*packet_type) == ROHC_PACKET_UOR_2_TS_EXT3)
 		{
 			sn_bits_base_nr = 6;
-			changes.sn_bits_ext_nr = (changes.sn_6bits_possible ? 0 : 8);
+			changes->sn_bits_ext_nr = (changes->sn_6bits_possible ? 0 : 8);
 			ts_bits_base_nr = 5;
 		}
 		else /* UO-1-ID-EXT3 */
 		{
 			sn_bits_base_nr = 4;
-			changes.sn_bits_ext_nr = (changes.sn_4bits_possible ? 0 : 8);
+			changes->sn_bits_ext_nr = (changes->sn_4bits_possible ? 0 : 8);
 			ts_bits_base_nr = 0;
 		}
 
 		/* how many SN bits shall be transmitted in the extension header 3 ? */
 		rohc_comp_rfc3095_split_field(rfc3095_ctxt->sn, 32,
-		                              sn_bits_base_nr, changes.sn_bits_ext_nr,
-		                              &sn_bits_base, &changes.sn_bits_ext);
+		                              sn_bits_base_nr, changes->sn_bits_ext_nr,
+		                              &sn_bits_base, &changes->sn_bits_ext);
 		rohc_comp_debug(context, "SN: transmit %u bits in total: %u in base header + "
 		                "%u in extension header",
-		                sn_bits_base_nr + changes.sn_bits_ext_nr,
-		                sn_bits_base_nr, changes.sn_bits_ext_nr);
+		                sn_bits_base_nr + changes->sn_bits_ext_nr,
+		                sn_bits_base_nr, changes->sn_bits_ext_nr);
 
 		/* how many TS bits shall be transmitted in the extension header 3 ?
 		 *  - it is the number of bits that are required to be transmitted,
@@ -821,42 +829,46 @@ int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
 		 *    of bits is then increased up to the next greater value among 7, 14,
 		 *    21, or 29.
 		 */
-		changes.ts_bits_ext_nr =
-			sdvl_get_min_len(changes.ts_bits_req_nr, ts_bits_base_nr);
-		assert(changes.ts_bits_ext_nr < 32);
+		changes->ts_bits_ext_nr =
+			sdvl_get_min_len(changes->ts_bits_req_nr, ts_bits_base_nr);
+		assert(changes->ts_bits_ext_nr < 32);
 
 		/* compute TS bits for both base and extension headers */
-		rohc_comp_rfc3095_split_field(changes.ts_send, 32,
-		                              ts_bits_base_nr, changes.ts_bits_ext_nr,
-		                              &ts_bits_base, &changes.ts_bits_ext);
+		rohc_comp_rfc3095_split_field(changes->ts_send, 32,
+		                              ts_bits_base_nr, changes->ts_bits_ext_nr,
+		                              &ts_bits_base, &changes->ts_bits_ext);
 		rohc_comp_debug(context, "TS: at least %u bits required, so transmit %u bits "
 		                "in total: %u in base header + %u in extension header",
-		                changes.ts_bits_req_nr,
-		                ts_bits_base_nr + changes.ts_bits_ext_nr,
-		                ts_bits_base_nr, changes.ts_bits_ext_nr);
+		                changes->ts_bits_req_nr,
+		                ts_bits_base_nr + changes->ts_bits_ext_nr,
+		                ts_bits_base_nr, changes->ts_bits_ext_nr);
 	}
 	else
 	{
-		changes.sn_bits_ext_nr = 0;
-		changes.sn_bits_ext = 0;
-		changes.ts_bits_ext_nr = 0;
-		changes.ts_bits_ext = 0;
+		changes->sn_bits_ext_nr = 0;
+		changes->sn_bits_ext = 0;
+		changes->ts_bits_ext_nr = 0;
+		changes->ts_bits_ext = 0;
 	}
 
 	/* code the ROHC header (and the extension if needed) */
-	size = code_packet(context, uncomp_pkt_hdrs, &changes,
+	size = code_packet(context, uncomp_pkt_hdrs, changes,
 	                   rohc_pkt, rohc_pkt_max_len, *packet_type);
 	if(size < 0)
 	{
-		goto error;
+		goto free_tmp_state;
 	}
 
 	/* update the context with the new headers */
-	update_context(context, uncomp_pkt_hdrs, &changes, *packet_type);
+	update_context(context, uncomp_pkt_hdrs, changes, *packet_type);
+
+	free(changes);
 
 	/* return the length of the ROHC packet */
 	return size;
 
+free_tmp_state:
+	free(changes);
 error:
 	return -1;
 }
@@ -1263,7 +1275,7 @@ static void rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const contex
                                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                              struct rfc3095_tmp_state *const changes)
 {
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt =
+	/* TODO: const */ struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt =
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
 	size_t ip_hdr_pos;
 
@@ -5534,8 +5546,10 @@ static void update_context(struct rohc_comp_ctxt *const context,
 		struct ip_header_info *const ip_ctxt = &(rfc3095_ctxt->ip_ctxts[ip_hdr_pos]);
 		const struct rohc_pkt_ip_hdr *const pkt_ip_hdr =
 			&(uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos]);
+		const struct rfc3095_ip_hdr_changes *const ip_hdr_changes =
+			&(changes->ip_hdr_changes[ip_hdr_pos]);
 
-		update_context_ip_hdr(context, ip_ctxt, pkt_ip_hdr);
+		update_context_ip_hdr(context, ip_ctxt, pkt_ip_hdr, ip_hdr_changes);
 	}
 
 	/* add the new SN to the W-LSB encoding object */
@@ -5555,10 +5569,12 @@ static void update_context(struct rohc_comp_ctxt *const context,
  * @param context   The compression context
  * @param ip_flags  The IP context to update
  * @param ip        The uncompressed IP header that updates the context
+ * @param changes   The changes related to the IP header
  */
 static void update_context_ip_hdr(const struct rohc_comp_ctxt *const context,
                                   struct ip_header_info *const ip_flags,
-                                  const struct rohc_pkt_ip_hdr *const ip)
+                                  const struct rohc_pkt_ip_hdr *const ip,
+                                  const struct rfc3095_ip_hdr_changes *const changes)
 {
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
 		(const struct rohc_comp_rfc3095_ctxt *const) context->specific;
@@ -5584,7 +5600,7 @@ static void update_context_ip_hdr(const struct rohc_comp_ctxt *const context,
 		/* replace Next Header by the one of the last extension header */
 		ip_flags->info.v6.old_ip.nh = ip->next_proto;
 		/* update compression list context */
-		rohc_list_update_context(&ip_flags->info.v6.ext_comp);
+		rohc_list_update_context(&ip_flags->info.v6.ext_comp, &(changes->exts));
 	}
 }
 
@@ -5752,7 +5768,7 @@ static void detect_ip_changes(const struct rohc_comp_ctxt *const context,
 		bool list_struct_changed;
 		bool list_content_changed;
 
-		detect_ipv6_ext_changes(&header_info->info.v6.ext_comp, ip,
+		detect_ipv6_ext_changes(&header_info->info.v6.ext_comp, ip, &changes->exts,
 		                        &list_struct_changed, &list_content_changed);
 
 		changes->ext_list_struct_changed = list_struct_changed;

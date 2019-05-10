@@ -39,17 +39,6 @@
 #endif
 
 
-/// Header version
-typedef enum
-{
-	HBH    = ROHC_IPPROTO_HOPOPTS,  /**< Hop by hop header */
-	RTHDR  = ROHC_IPPROTO_ROUTING,  /**< Routing header */
-	AH     = ROHC_IPPROTO_AH,       /**< AH header */
-	DEST   = ROHC_IPPROTO_DSTOPTS,  /**< Destination header */
-	/* CSRC lists not supported yet */
-} ext_header_version;
-
-
 /** The largest gen_id value */
 #define ROHC_LIST_GEN_ID_MAX   0xffU
 #define ROHC_LIST_GEN_ID_ANON  (ROHC_LIST_GEN_ID_MAX + 1)
@@ -71,6 +60,7 @@ struct rohc_list
 	uint8_t items_nr;
 	/** How many times the list was transmitted? */
 	uint8_t counter;
+	uint8_t unused2[4];
 };
 
 /* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
@@ -87,14 +77,6 @@ _Static_assert((sizeof(struct rohc_list) % 8) == 0,
  */
 struct rohc_list_item
 {
-	/** The type of the item */
-	ext_header_version type;
-
-	/** Is the compressor confident that the decompressor knows the item? */
-	bool known;
-	/** How many times the item was transmitted? */
-	uint8_t counter;
-
 /**
  * @brief The maximum length (in bytes) of item data
  *
@@ -103,18 +85,27 @@ struct rohc_list_item
  */
 #define ROHC_LIST_ITEM_DATA_MAX  IPV6_OPT_HDR_LEN_MAX
 
-	/** The length of the item data (in bytes) */
-	uint16_t length;
 	/** The item data */
 	uint8_t data[ROHC_LIST_ITEM_DATA_MAX];
+	/** The length of the item data (in bytes) */
+	uint16_t length;
+	/** The type of the item */
+	uint8_t type;
+
+	/** The index of the item in the translation table */
+	uint8_t item_idx;
+	/** Is the compressor confident that the decompressor knows the item? */
+	bool known;
+	/** How many times the item was transmitted? */
+	uint8_t counter;
+
+	uint8_t unused[2];
 };
 
 /* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
 #if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
      (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
       (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
-_Static_assert((offsetof(struct rohc_list_item, data) % 8) == 0,
-               "data in struct rohc_list_item should be aligned on 8 bytes");
 _Static_assert((sizeof(struct rohc_list_item) % 8) == 0,
                "struct rohc_list_item length should be multiple of 8 bytes");
 #endif
