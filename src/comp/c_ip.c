@@ -176,7 +176,7 @@ rohc_packet_t c_ip_decide_SO_packet(const struct rohc_comp_ctxt *const context,
 		if(ip_ctxt->version == IPV4)
 		{
 			/* are some IP-ID bits required for the IP header? */
-			if(ip_ctxt->info.v4.rnd == 0 && tmp_vars_ip->ip_id_changed)
+			if(tmp_vars_ip->rnd == 0 && tmp_vars_ip->ip_id_changed)
 			{
 				some_ip_id_bits_required = true;
 			}
@@ -366,20 +366,20 @@ static bool max_6_bits_of_innermost_nonrnd_ipv4_id_required(const struct rohc_co
 	if(ctxt->ip_hdr_nr == 1)
 	{
 		is_possible = (ctxt->ip_ctxts[0].version == IPV4 &&
-		               ctxt->ip_ctxts[0].info.v4.rnd != 1 &&
+		               changes->ip_hdr_changes[0].rnd != 1 &&
 		               changes->ip_hdr_changes[0].ip_id_6bits_possible);
 	}
 	else if(ctxt->ip_ctxts[1].version == IPV4 &&
-	        ctxt->ip_ctxts[1].info.v4.rnd != 1)
+	        changes->ip_hdr_changes[1].rnd != 1)
 	{
 		const bool no_1st_hdr_bits = (ctxt->ip_ctxts[0].version != IPV4 ||
-		                              ctxt->ip_ctxts[0].info.v4.rnd == 1 ||
+		                              changes->ip_hdr_changes[0].rnd == 1 ||
 		                              !changes->ip_hdr_changes[0].ip_id_changed);
 		is_possible = (changes->ip_hdr_changes[1].ip_id_6bits_possible &&
 		               no_1st_hdr_bits);
 	}
 	else if(ctxt->ip_ctxts[0].version == IPV4 &&
-	        ctxt->ip_ctxts[0].info.v4.rnd != 1)
+	        changes->ip_hdr_changes[0].rnd != 1)
 	{
 		is_possible = changes->ip_hdr_changes[1].ip_id_6bits_possible;
 	}

@@ -270,7 +270,7 @@ static rohc_packet_t c_rtp_decide_FO_packet(const struct rohc_comp_ctxt *const c
 	else /* determine which UOR-2* packet to choose */
 	{
 		/* how many IP headers are IPv4 headers with non-random IP-IDs */
-		const size_t nr_ipv4_non_rnd = get_nr_ipv4_non_rnd(rfc3095_ctxt);
+		const size_t nr_ipv4_non_rnd = get_nr_ipv4_non_rnd(rfc3095_ctxt, changes);
 		const size_t nr_ipv4_non_rnd_with_bits =
 			get_nr_ipv4_non_rnd_with_bits(rfc3095_ctxt, changes);
 
@@ -337,7 +337,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 	                !!changes->is_marker_bit_set, nr_of_ip_hdr);
 
 	/* find out how many IP headers are IPv4 headers with non-random IP-IDs */
-	nr_ipv4_non_rnd = get_nr_ipv4_non_rnd(rfc3095_ctxt);
+	nr_ipv4_non_rnd = get_nr_ipv4_non_rnd(rfc3095_ctxt, changes);
 	nr_ipv4_non_rnd_with_bits = get_nr_ipv4_non_rnd_with_bits(rfc3095_ctxt, changes);
 	rohc_comp_debug(context, "nr_ipv4_non_rnd = %zu, nr_ipv4_non_rnd_with_bits = %zu",
 	                nr_ipv4_non_rnd, nr_ipv4_non_rnd_with_bits);
@@ -1124,7 +1124,7 @@ static size_t get_nr_ipv4_non_rnd_with_bits(const struct rohc_comp_rfc3095_ctxt 
 			&(changes->ip_hdr_changes[ip_hdr_pos]);
 
 		if(ip_ctxt->version == IPV4 &&
-		   ip_ctxt->info.v4.rnd != 1 &&
+		   ip_changes->rnd != 1 &&
 		   ip_changes->ip_id_changed)
 		{
 			nr_ipv4_non_rnd_with_bits++;

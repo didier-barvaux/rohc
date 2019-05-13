@@ -169,7 +169,7 @@ static int rohc_code_dynamic_ip_part(const struct rohc_comp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 5)));
 
 static int code_ipv4_dynamic_part(const struct rohc_comp_ctxt *const context,
-                                  const struct ip_header_info *const header_info,
+                                  const struct rfc3095_ip_hdr_changes *const changes,
                                   const struct rohc_pkt_ip_hdr *const ip,
                                   uint8_t *const dest,
                                   int counter)
@@ -185,9 +185,10 @@ static int code_ipv6_dynamic_part(const struct rohc_comp_ctxt *const context,
 
 static int code_uo_remainder(const struct rohc_comp_ctxt *const context,
                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                             const struct rfc3095_tmp_state *const changes,
                              uint8_t *const dest,
                              int counter)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 
 static int code_UO0_packet(const struct rohc_comp_ctxt *const context,
                            const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
@@ -235,40 +236,40 @@ static int code_UO2_packet(const struct rohc_comp_ctxt *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 
 static void code_UOR2_bytes(const struct rohc_comp_ctxt *const context,
+                            const struct rfc3095_tmp_state *const changes,
                             const uint32_t sn_bits,
                             const uint32_t ts_bits,
                             const uint16_t ipid_bits,
-                            const bool is_marker_bit_set,
                             uint8_t *const f_byte,
                             uint8_t *const s_byte)
-	__attribute__((nonnull(1, 6, 7)));
+	__attribute__((nonnull(1, 2, 6, 7)));
 
 static void code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
+                                const struct rfc3095_tmp_state *const changes,
                                 const uint32_t sn_bits,
                                 const uint32_t ts_bits,
                                 const uint16_t ipid_bits,
-                                const bool is_marker_bit_set,
                                 uint8_t *const f_byte,
                                 uint8_t *const s_byte)
-	__attribute__((nonnull(1, 6, 7)));
+	__attribute__((nonnull(1, 2, 6, 7)));
 
 static void code_UOR2_TS_bytes(const struct rohc_comp_ctxt *const context,
+                               const struct rfc3095_tmp_state *const changes,
                                const uint32_t sn_bits,
                                const uint32_t ts_bits,
                                const uint16_t ipid_bits,
-                               const bool is_marker_bit_set,
                                uint8_t *const f_byte,
                                uint8_t *const s_byte)
-	__attribute__((nonnull(1, 6, 7)));
+	__attribute__((nonnull(1, 2, 6, 7)));
 
 static void code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
+                               const struct rfc3095_tmp_state *const changes,
                                const uint32_t sn_bits,
                                const uint32_t ts_bits,
                                const uint16_t ipid_bits,
-                               const bool is_marker_bit_set,
                                uint8_t *const f_byte,
                                uint8_t *const s_byte)
-	__attribute__((nonnull(1, 6, 7)));
+	__attribute__((nonnull(1, 2, 6, 7)));
 
 static int code_EXT0_packet(const struct rohc_comp_ctxt *const context,
                             const struct rfc3095_tmp_state *const changes,
@@ -364,13 +365,15 @@ static void detect_ip_changes(const struct rohc_comp_ctxt *const context,
                               const struct rohc_pkt_ip_hdr *const ip,
                               struct rfc3095_ip_hdr_changes *const changes)
 	__attribute__((nonnull(1, 2, 3, 4)));
-static void detect_ip_id_behaviours(struct rohc_comp_ctxt *const context,
-                                    const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
-	__attribute__((nonnull(1, 2)));
-static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
-                                   struct ip_header_info *const header_info,
-                                   const struct rohc_pkt_ip_hdr *const uncomp_pkt_ip_hdr)
+static void detect_ip_id_behaviours(const struct rohc_comp_ctxt *const context,
+                                    const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                                    struct rfc3095_tmp_state *const changes)
 	__attribute__((nonnull(1, 2, 3)));
+static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
+                                   const struct ip_header_info *const header_info,
+                                   const struct rohc_pkt_ip_hdr *const uncomp_pkt_ip_hdr,
+                                   struct rfc3095_ip_hdr_changes *const changes)
+	__attribute__((nonnull(1, 2, 3, 4)));
 
 static void rohc_get_innermost_ipv4_non_rnd(const struct rohc_comp_ctxt *const context,
                                             struct rfc3095_tmp_state *const changes)
@@ -1386,7 +1389,7 @@ static void rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const contex
 	}
 
 	/* check NBO and RND of the IP-ID of the IP headers (IPv4 only) */
-	detect_ip_id_behaviours(context, uncomp_pkt_hdrs);
+	detect_ip_id_behaviours(context, uncomp_pkt_hdrs, changes);
 
 	/* find IP fields that changed */
 	changes->at_least_one_rnd_changed = 0;
@@ -1421,7 +1424,7 @@ static void rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const contex
 			{
 				const uint16_t id = pkt_ip_hdr->ipv4->id;
 				const bool is_little_endian =
-					(ip_ctxt->info.v4.rnd == 0 && ip_ctxt->info.v4.nbo == 0);
+					(ip_hdr_changes->rnd == 0 && ip_hdr_changes->nbo == 0);
 				const uint16_t id_nbo = (is_little_endian ? swab16(id) : id);
 				const uint16_t id_nbo_h = rohc_ntoh16(id_nbo);
 				ip_hdr_changes->ip_id_delta = id_nbo_h - rfc3095_ctxt->sn;
@@ -1430,12 +1433,12 @@ static void rohc_comp_rfc3095_detect_changes(struct rohc_comp_ctxt *const contex
 				                "(NBO = %d, RND = %d, SID = %d)", ip_hdr_pos + 1,
 				                id_nbo_h, rfc3095_ctxt->sn,
 				                ip_hdr_changes->ip_id_delta, ip_hdr_changes->ip_id_delta,
-				                ip_ctxt->info.v4.nbo, ip_ctxt->info.v4.rnd,
-				                ip_ctxt->info.v4.sid);
+				                ip_hdr_changes->nbo, ip_hdr_changes->rnd,
+				                ip_hdr_changes->sid);
 			}
 
 			/* how many bits are required to encode the new IP-ID / SN delta ? */
-			if(ip_ctxt->info.v4.sid)
+			if(ip_hdr_changes->sid)
 			{
 				/* IP-ID is constant, no IP-ID bit to transmit */
 				ip_hdr_changes->ip_id_changed = false;
@@ -2354,8 +2357,7 @@ static int rohc_code_dynamic_ip_part(const struct rohc_comp_ctxt *const context,
 {
 	if(header_info->version == IPV4)
 	{
-		counter = code_ipv4_dynamic_part(context, header_info,
-		                                 ip, dest, counter);
+		counter = code_ipv4_dynamic_part(context, ip_changes, ip, dest, counter);
 	}
 	else /* IPV6 */
 	{
@@ -2388,15 +2390,15 @@ static int rohc_code_dynamic_ip_part(const struct rohc_comp_ctxt *const context,
 
 \endverbatim
  *
- * @param context     The compression context
- * @param header_info The IP header info stored in the profile
- * @param ip          The IPv4 header the dynamic part is built for
- * @param dest        The ROHC buffer
- * @param counter     The current position in the ROHC buffer
- * @return            The new position in the ROHC buffer
+ * @param context  The compression context
+ * @param changes  The IP header fields that changed wrt to context
+ * @param ip       The IPv4 header the dynamic part is built for
+ * @param dest     The ROHC buffer
+ * @param counter  The current position in the ROHC buffer
+ * @return         The new position in the ROHC buffer
  */
 static int code_ipv4_dynamic_part(const struct rohc_comp_ctxt *const context,
-                                  const struct ip_header_info *const header_info,
+                                  const struct rfc3095_ip_hdr_changes *const changes,
                                   const struct rohc_pkt_ip_hdr *const ip,
                                   uint8_t *const dest,
                                   int counter)
@@ -2423,22 +2425,22 @@ static int code_ipv4_dynamic_part(const struct rohc_comp_ctxt *const context,
 
 	/* part 4 */
 	df_rnd_nbo_sid = ip->ipv4->df << 7;
-	if(header_info->info.v4.rnd)
+	if(changes->rnd)
 	{
 		df_rnd_nbo_sid |= 0x40;
 	}
-	if(header_info->info.v4.nbo)
+	if(changes->nbo)
 	{
 		df_rnd_nbo_sid |= 0x20;
 	}
-	if(header_info->info.v4.sid)
+	if(changes->sid)
 	{
 		df_rnd_nbo_sid |= 0x10;
 	}
 	dest[counter] = df_rnd_nbo_sid;
 	rohc_comp_debug(context, "(DF = %u, RND = %u, NBO = %u, SID = %u) = 0x%02x",
-	                ip->ipv4->df, header_info->info.v4.rnd, header_info->info.v4.nbo,
-	                header_info->info.v4.sid, dest[counter]);
+	                ip->ipv4->df, changes->rnd, changes->nbo, changes->sid,
+	                dest[counter]);
 	counter++;
 
 	/* part 5 is not supported for the moment, but the field is mandatory,
@@ -2584,12 +2586,14 @@ error:
  *
  * @param context           The compression context
  * @param uncomp_pkt_hdrs   The uncompressed headers to encode
+ * @param changes           The header fields that changed wrt to context
  * @param dest              The ROHC buffer
  * @param counter           The current position in the ROHC buffer
  * @return                  The new position in the ROHC buffer
  */
 static int code_uo_remainder(const struct rohc_comp_ctxt *const context,
                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                             const struct rfc3095_tmp_state *const changes,
                              uint8_t *const dest,
                              int counter)
 {
@@ -2611,7 +2615,7 @@ static int code_uo_remainder(const struct rohc_comp_ctxt *const context,
 	/* parts 6: IP-ID of outer IPv4 header if RND2=1 */
 	if(rfc3095_ctxt->ip_hdr_nr > 1 &&
 	   rfc3095_ctxt->ip_ctxts[outer_ip_hdr_pos].version == IPV4 &&
-	   rfc3095_ctxt->ip_ctxts[outer_ip_hdr_pos].info.v4.rnd == 1)
+	   changes->ip_hdr_changes[outer_ip_hdr_pos].rnd == 1)
 	{
 		/* do not care of Network Byte Order because IP-ID is random */
 		const uint16_t outer_ipid = uncomp_pkt_hdrs->ip_hdrs[outer_ip_hdr_pos].ipv4->id;
@@ -2624,7 +2628,7 @@ static int code_uo_remainder(const struct rohc_comp_ctxt *const context,
 
 	/* parts 9: IP-ID of inner IPv4 header if RND=1 */
 	if(rfc3095_ctxt->ip_ctxts[inner_ip_hdr_pos].version == IPV4 &&
-	   rfc3095_ctxt->ip_ctxts[inner_ip_hdr_pos].info.v4.rnd == 1)
+	   changes->ip_hdr_changes[inner_ip_hdr_pos].rnd == 1)
 	{
 		/* do not care of Network Byte Order because IP-ID is random */
 		const uint16_t inner_ipid = uncomp_pkt_hdrs->ip_hdrs[inner_ip_hdr_pos].ipv4->id;
@@ -2730,7 +2734,7 @@ static int code_UO0_packet(const struct rohc_comp_ctxt *const context,
 	rohc_pkt[first_position] = f_byte;
 
 	/* build the UO tail */
-	counter = code_uo_remainder(context, uncomp_pkt_hdrs, rohc_pkt, counter);
+	counter = code_uo_remainder(context, uncomp_pkt_hdrs, changes, rohc_pkt, counter);
 
 	return counter;
 
@@ -2860,7 +2864,7 @@ static int rohc_comp_rfc3095_build_uo1_pkt(const struct rohc_comp_ctxt *const co
 	/* part 5: no extension */
 
 	/* build the UO tail */
-	counter = code_uo_remainder(context, uncomp_pkt_hdrs, rohc_pkt, counter);
+	counter = code_uo_remainder(context, uncomp_pkt_hdrs, changes, rohc_pkt, counter);
 
 	return counter;
 
@@ -2979,7 +2983,7 @@ static int rohc_comp_rfc3095_build_uo1rtp_pkt(const struct rohc_comp_ctxt *const
 	/* part 5: no extension */
 
 	/* build the UO tail */
-	counter = code_uo_remainder(context, uncomp_pkt_hdrs, rohc_pkt, counter);
+	counter = code_uo_remainder(context, uncomp_pkt_hdrs, changes, rohc_pkt, counter);
 
 	return counter;
 
@@ -3111,7 +3115,7 @@ static int rohc_comp_rfc3095_build_uo1ts_pkt(const struct rohc_comp_ctxt *const 
 	/* part 5: no extension */
 
 	/* build the UO tail */
-	counter = code_uo_remainder(context, uncomp_pkt_hdrs, rohc_pkt, counter);
+	counter = code_uo_remainder(context, uncomp_pkt_hdrs, changes, rohc_pkt, counter);
 
 	return counter;
 
@@ -3422,7 +3426,7 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(const struct rohc_comp_ctxt *const 
 	counter = ret;
 
 	/* build the UO tail */
-	counter = code_uo_remainder(context, uncomp_pkt_hdrs, rohc_pkt, counter);
+	counter = code_uo_remainder(context, uncomp_pkt_hdrs, changes, rohc_pkt, counter);
 
 	return counter;
 
@@ -3530,10 +3534,10 @@ static int code_UO2_packet(const struct rohc_comp_ctxt *const context,
 	size_t s_byte_position = 0;
 	size_t t_byte_position;
 	void (*code_bytes)(const struct rohc_comp_ctxt *_context,
+	                   const struct rfc3095_tmp_state *const _changes,
 	                   const uint32_t _sn_bits,
 	                   const uint32_t _ts_bits,
 	                   const uint16_t _ipid_bits,
-	                   const bool _is_marker_bit_set,
 	                   uint8_t *const _f_byte,
 	                   uint8_t *const _s_byte);
 	int ret;
@@ -3814,8 +3818,8 @@ static int code_UO2_packet(const struct rohc_comp_ctxt *const context,
 	counter++;
 
 	/* parts 2, 4: complete the 2 first bytes */
-	code_bytes(context, sn_bits_base, ts_bits_base, ipid_bits_base,
-	           changes->is_marker_bit_set, &f_byte, &s_byte);
+	code_bytes(context, changes, sn_bits_base, ts_bits_base, ipid_bits_base,
+	           &f_byte, &s_byte);
 
 	/* copy all bytes in the packet */
 	rohc_pkt[first_position] = f_byte;
@@ -3884,7 +3888,7 @@ static int code_UO2_packet(const struct rohc_comp_ctxt *const context,
 	counter = ret;
 
 	/* build the UO tail */
-	counter = code_uo_remainder(context, uncomp_pkt_hdrs, rohc_pkt, counter);
+	counter = code_uo_remainder(context, uncomp_pkt_hdrs, changes, rohc_pkt, counter);
 
 	return counter;
 
@@ -3915,18 +3919,18 @@ error:
 \endverbatim
  *
  * @param context            The compression context
+ * @param changes            The header fields that changed wrt to context
  * @param sn_bits            The bits of SN to transmit
  * @param ts_bits            Not used by the UOR-2 packet
  * @param ipid_bits          Not used by the UOR-2 packet
- * @param is_marker_bit_set  Not used by the UOR-2 packet
  * @param f_byte             IN/OUT: The first byte of the UOR-2 packet
  * @param s_byte             IN/OUT: Not used by the UOR-2 packet
  */
 static void code_UOR2_bytes(const struct rohc_comp_ctxt *const context,
+                            const struct rfc3095_tmp_state *const changes __attribute__((unused)),
                             const uint32_t sn_bits,
                             const uint32_t ts_bits __attribute__((unused)),
                             const uint16_t ipid_bits __attribute__((unused)),
-                            const bool is_marker_bit_set __attribute__((unused)),
                             uint8_t *const f_byte,
                             uint8_t *const s_byte __attribute__((unused)))
 {
@@ -3960,18 +3964,18 @@ static void code_UOR2_bytes(const struct rohc_comp_ctxt *const context,
 \endverbatim
  *
  * @param context            The compression context
+ * @param changes            The header fields that changed wrt to context
  * @param sn_bits            The bits of SN to transmit
  * @param ts_bits            The bits of RTP TS to transmit
  * @param ipid_bits          Not used by the UOR-2-RTP packet
- * @param is_marker_bit_set  Whether the RTP Marker bit is set or not
  * @param f_byte             IN/OUT: The first byte of the UOR-2-RTP packet
  * @param s_byte             IN/OUT: The second byte of the UOR-2-RTP packet
  */
 static void code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
+                                const struct rfc3095_tmp_state *const changes,
                                 const uint32_t sn_bits,
                                 const uint32_t ts_bits,
                                 const uint16_t ipid_bits __attribute__((unused)),
-                                const bool is_marker_bit_set,
                                 uint8_t *const f_byte,
                                 uint8_t *const s_byte)
 {
@@ -3983,10 +3987,8 @@ static void code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
 	 * header with value(RND) = 0. */
 	for(ip_hdr_pos = 0; ip_hdr_pos < rfc3095_ctxt->ip_hdr_nr; ip_hdr_pos++)
 	{
-		const struct ip_header_info *const ip_ctxt =
-			&(rfc3095_ctxt->ip_ctxts[ip_hdr_pos]);
-
-		assert(ip_ctxt->version != IPV4 || ip_ctxt->info.v4.rnd == 1);
+		assert(rfc3095_ctxt->ip_ctxts[ip_hdr_pos].version != IPV4 ||
+		       changes->ip_hdr_changes[ip_hdr_pos].rnd == 1);
 	}
 
 	rohc_comp_debug(context, "code UOR-2-RTP packet");
@@ -3999,8 +4001,8 @@ static void code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
 	*s_byte |= (ts_bits & 0x01) << 7;
 	rohc_comp_debug(context, "1 more bit of TS in 2nd byte = 0x%x",
 	                ((*s_byte) >> 7) & 0x01);
-	*s_byte |= ((!!is_marker_bit_set) & 0x01) << 6;
-	rohc_comp_debug(context, "1-bit M flag = %u", !!is_marker_bit_set);
+	*s_byte |= ((!!changes->is_marker_bit_set) & 0x01) << 6;
+	rohc_comp_debug(context, "1-bit M flag = %u", !!changes->is_marker_bit_set);
 	*s_byte |= sn_bits & 0x3f;
 	rohc_comp_debug(context, "6 bits of SN = 0x%x", (*s_byte) & 0x3f);
 }
@@ -4030,18 +4032,18 @@ static void code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
 \endverbatim
  *
  * @param context            The compression context
+ * @param changes            The header fields that changed wrt to context
  * @param sn_bits            The bits of SN to transmit
  * @param ts_bits            The bits of RTP TS to transmit
  * @param ipid_bits          Not used by the UOR-2-TS packet
- * @param is_marker_bit_set  Whether the RTP Marker bit is set or not
  * @param f_byte             IN/OUT: The first byte of the UOR-2-TS packet
  * @param s_byte             IN/OUT: The second byte of the UOR-2-TS packet
  */
 static void code_UOR2_TS_bytes(const struct rohc_comp_ctxt *const context,
+                               const struct rfc3095_tmp_state *const changes,
                                const uint32_t sn_bits,
                                const uint32_t ts_bits,
                                const uint16_t ipid_bits __attribute__((unused)),
-                               const bool is_marker_bit_set,
                                uint8_t *const f_byte,
                                uint8_t *const s_byte)
 {
@@ -4055,14 +4057,14 @@ static void code_UOR2_TS_bytes(const struct rohc_comp_ctxt *const context,
 	 * if value(RND) and value(RND2) are both 1. */
 	for(ip_hdr_pos = 0; ip_hdr_pos < rfc3095_ctxt->ip_hdr_nr; ip_hdr_pos++)
 	{
-		const struct ip_header_info *const ip_ctxt =
-			&(rfc3095_ctxt->ip_ctxts[ip_hdr_pos]);
-
-		if(ip_ctxt->version == IPV4)
+		rohc_comp_debug(context, "check IP header #%zu", ip_hdr_pos + 1);
+		if(rfc3095_ctxt->ip_ctxts[ip_hdr_pos].version == IPV4)
 		{
+			rohc_comp_debug(context, "  IPv4");
 			nr_ipv4_hdrs++;
-			if(ip_ctxt->info.v4.rnd == 1)
+			if(changes->ip_hdr_changes[ip_hdr_pos].rnd == 1)
 			{
+				rohc_comp_debug(context, "  RND=1");
 				nr_ipv4_id_rnd++;
 			}
 		}
@@ -4076,8 +4078,8 @@ static void code_UOR2_TS_bytes(const struct rohc_comp_ctxt *const context,
 
 	/* part 4: T = 1 + M flag + 6 bits of 6-bit SN */
 	*s_byte |= 0x80;
-	*s_byte |= ((!!is_marker_bit_set) & 0x01) << 6;
-	rohc_comp_debug(context, "1-bit M flag = %u", !!is_marker_bit_set);
+	*s_byte |= ((!!changes->is_marker_bit_set) & 0x01) << 6;
+	rohc_comp_debug(context, "1-bit M flag = %u", !!changes->is_marker_bit_set);
 	*s_byte |= sn_bits & 0x3f;
 	rohc_comp_debug(context, "6 bits of SN = 0x%x", (*s_byte) & 0x3f);
 }
@@ -4107,18 +4109,18 @@ static void code_UOR2_TS_bytes(const struct rohc_comp_ctxt *const context,
 \endverbatim
  *
  * @param context            The compression context
+ * @param changes            The header fields that changed wrt to context
  * @param sn_bits            The bits of SN to transmit
  * @param ts_bits            Not used by the UOR-2-ID packet
  * @param ipid_bits          The bits of innermost IP-ID to transmit
- * @param is_marker_bit_set  Whether the RTP Marker bit is set or not
  * @param f_byte             IN/OUT: The first byte of the UOR-2-ID packet
  * @param s_byte             IN/OUT: The second byte of the UOR-2-ID packet
  */
 static void code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
+                               const struct rfc3095_tmp_state *const changes,
                                const uint32_t sn_bits,
                                const uint32_t ts_bits __attribute__((unused)),
                                const uint16_t ipid_bits,
-                               const bool is_marker_bit_set,
                                uint8_t *const f_byte,
                                uint8_t *const s_byte)
 {
@@ -4129,8 +4131,8 @@ static void code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
 
 	/* part 4: T = 0 + M flag + 6 bits of SN */
 	*s_byte &= ~0x80;
-	*s_byte |= ((!!is_marker_bit_set) & 0x01) << 6;
-	rohc_comp_debug(context, "1-bit M flag = %u", !!is_marker_bit_set);
+	*s_byte |= ((!!changes->is_marker_bit_set) & 0x01) << 6;
+	rohc_comp_debug(context, "1-bit M flag = %u", !!changes->is_marker_bit_set);
 	*s_byte |= sn_bits & 0x3f;
 	rohc_comp_debug(context, "6 bits of SN = 0x%x", (*s_byte) & 0x3f);
 }
@@ -4420,10 +4422,8 @@ static int code_EXT2_packet(const struct rohc_comp_ctxt *const context,
 			assert(rfc3095_ctxt->ip_hdr_nr == 2);
 			for(ip_hdr_pos = 0; ip_hdr_pos < rfc3095_ctxt->ip_hdr_nr; ip_hdr_pos++)
 			{
-				const struct ip_header_info *const ip_ctxt =
-					&(rfc3095_ctxt->ip_ctxts[ip_hdr_pos]);
-
-				assert(ip_ctxt->version == IPV4 && ip_ctxt->info.v4.rnd == 0);
+				assert(rfc3095_ctxt->ip_ctxts[ip_hdr_pos].version == IPV4 &&
+				       changes->ip_hdr_changes[ip_hdr_pos].rnd == 0);
 			}
 
 			f_byte |= (changes->ip_hdr_changes[0].ip_id_delta >> 8) & 0x07;
@@ -5287,8 +5287,8 @@ static int header_flags(const struct rohc_comp_ctxt *const context,
 	if(header_info->version == IPV4)
 	{
 		flags |= ip->ipv4->df << 5;
-		flags |= header_info->info.v4.nbo << 2;
-		flags |= header_info->info.v4.rnd << 1;
+		flags |= changes->nbo << 2;
+		flags |= changes->rnd << 1;
 	}
 
 	/* the ip2 flag for inner IP flags if non-RTP profile,
@@ -5555,6 +5555,8 @@ static void update_context_ip_hdr(const struct rohc_comp_ctxt *const context,
 		}
 
 		/* RND */
+		ip_flags->info.v4.old_rnd = ip_flags->info.v4.rnd;
+		ip_flags->info.v4.rnd = changes->rnd;
 		if(changes->rnd_just_changed)
 		{
 			ip_flags->info.v4.rnd_count = 0;
@@ -5567,6 +5569,8 @@ static void update_context_ip_hdr(const struct rohc_comp_ctxt *const context,
 		}
 
 		/* NBO */
+		ip_flags->info.v4.old_nbo = ip_flags->info.v4.nbo;
+		ip_flags->info.v4.nbo = changes->nbo;
 		if(changes->nbo_just_changed)
 		{
 			ip_flags->info.v4.nbo_count = 0;
@@ -5579,6 +5583,8 @@ static void update_context_ip_hdr(const struct rohc_comp_ctxt *const context,
 		}
 
 		/* SID */
+		ip_flags->info.v4.old_sid = ip_flags->info.v4.sid;
+		ip_flags->info.v4.sid = changes->sid;
 		if(changes->sid_just_changed)
 		{
 			ip_flags->info.v4.sid_count = 0;
@@ -5589,10 +5595,6 @@ static void update_context_ip_hdr(const struct rohc_comp_ctxt *const context,
 			rohc_comp_debug(context, "SID was transmitted %u / %u times",
 			                ip_flags->info.v4.sid_count, oa_repetitions_nr);
 		}
-
-		ip_flags->info.v4.old_rnd = ip_flags->info.v4.rnd;
-		ip_flags->info.v4.old_nbo = ip_flags->info.v4.nbo;
-		ip_flags->info.v4.old_sid = ip_flags->info.v4.sid;
 
 		/* add the new IP-ID / SN delta to the W-LSB encoding object */
 		ip_flags->info.v4.id_delta = changes->ip_id_delta;
@@ -5710,12 +5712,11 @@ static void detect_ip_changes(const struct rohc_comp_ctxt *const context,
 		}
 
 		/* check the RND flag for change (IPv4 only) */
-		changes->rnd_just_changed =
-			!!(header_info->info.v4.rnd != header_info->info.v4.old_rnd);
+		changes->rnd_just_changed = !!(changes->rnd != header_info->info.v4.rnd);
 		if(changes->rnd_just_changed)
 		{
 			rohc_comp_debug(context, "RND changed from %u to %u",
-			                header_info->info.v4.old_rnd, header_info->info.v4.rnd);
+			                header_info->info.v4.rnd, changes->rnd);
 			changes->rnd_changed = true;
 		}
 		else if(header_info->info.v4.rnd_count < oa_repetitions_nr)
@@ -5729,12 +5730,11 @@ static void detect_ip_changes(const struct rohc_comp_ctxt *const context,
 		}
 
 		/*  check the NBO flag for change (IPv4 only) */
-		changes->nbo_just_changed =
-			!!(header_info->info.v4.nbo != header_info->info.v4.old_nbo);
+		changes->nbo_just_changed = !!(changes->nbo != header_info->info.v4.nbo);
 		if(changes->nbo_just_changed)
 		{
 			rohc_comp_debug(context, "NBO changed from %u to %u",
-			                header_info->info.v4.old_nbo, header_info->info.v4.nbo);
+			                header_info->info.v4.nbo, changes->nbo);
 			changes->nbo_changed = true;
 		}
 		else if(header_info->info.v4.nbo_count < oa_repetitions_nr)
@@ -5748,12 +5748,11 @@ static void detect_ip_changes(const struct rohc_comp_ctxt *const context,
 		}
 
 		/*  check the SID flag for change (IPv4 only) */
-		changes->sid_just_changed =
-			!!(header_info->info.v4.sid != header_info->info.v4.old_sid);
+		changes->sid_just_changed = !!(changes->sid != header_info->info.v4.sid);
 		if(changes->sid_just_changed)
 		{
 			rohc_comp_debug(context, "SID changed from %u to %u",
-			                header_info->info.v4.old_sid, header_info->info.v4.sid);
+			                header_info->info.v4.sid, changes->sid);
 			changes->sid_changed = true;
 		}
 		else if(header_info->info.v4.sid_count < oa_repetitions_nr)
@@ -5814,11 +5813,13 @@ static void detect_ip_changes(const struct rohc_comp_ctxt *const context,
  *
  * @param context          The compression context
  * @param uncomp_pkt_hdrs  The uncompressed headers to encode
+ * @param changes          The IP header fields that changed wrt to context
  */
-static void detect_ip_id_behaviours(struct rohc_comp_ctxt *const context,
-                                    const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
+static void detect_ip_id_behaviours(const struct rohc_comp_ctxt *const context,
+                                    const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                                    struct rfc3095_tmp_state *const changes)
 {
-	/* TODO: const */ struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
+	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 	size_t ip_hdr_pos;
 
 	/* detect IP-ID behaviour for the IPv4 headers */
@@ -5826,14 +5827,16 @@ static void detect_ip_id_behaviours(struct rohc_comp_ctxt *const context,
 	{
 		const struct rohc_pkt_ip_hdr *const pkt_ip_hdr =
 			&(uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos]);
-		/* TODO: const */ struct ip_header_info *const ip_ctxt =
+		const struct ip_header_info *const ip_ctxt =
 			&(rfc3095_ctxt->ip_ctxts[ip_hdr_pos]);
+		struct rfc3095_ip_hdr_changes *const ip_hdr_changes =
+			&(changes->ip_hdr_changes[ip_hdr_pos]);
 
 		if(ip_ctxt->version == IPV4)
 		{
 			rohc_comp_debug(context, "detect IP-ID behaviour for IP header #%zu",
 			                ip_hdr_pos + 1);
-			detect_ip_id_behaviour(context, ip_ctxt, pkt_ip_hdr);
+			detect_ip_id_behaviour(context, ip_ctxt, pkt_ip_hdr, ip_hdr_changes);
 		}
 	}
 }
@@ -5851,10 +5854,12 @@ static void detect_ip_id_behaviours(struct rohc_comp_ctxt *const context,
  * @param context            The compression context
  * @param header_info        The header info stored in the profile
  * @param uncomp_pkt_ip_hdr  The uncompressed IP header to encode
+ * @param changes            The IP header fields that changed wrt to context
  */
 static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
-                                   struct ip_header_info *const header_info,
-                                   const struct rohc_pkt_ip_hdr *const uncomp_pkt_ip_hdr)
+                                   const struct ip_header_info *const header_info,
+                                   const struct rohc_pkt_ip_hdr *const uncomp_pkt_ip_hdr,
+                                   struct rfc3095_ip_hdr_changes *const changes)
 {
 	rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 	            header_info->version == IPV4, error,
@@ -5866,9 +5871,9 @@ static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
 		 * needed), so consider that IP-ID is not random/static and in NBO. */
 		rohc_comp_debug(context, "  no previous IP-ID, consider non-random/static "
 		                "and NBO");
-		header_info->info.v4.rnd = 0;
-		header_info->info.v4.nbo = 1;
-		header_info->info.v4.sid = 0;
+		changes->rnd = 0;
+		changes->nbo = 1;
+		changes->sid = 0;
 	}
 	else
 	{
@@ -5886,17 +5891,17 @@ static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
 			/* previous and current IP-ID values are equal: IP-ID is constant
 			 * (do not change NBO value if RND, decompressor shall ignore it) */
 			rohc_comp_debug(context, "  IP-ID is constant (SID detected)");
-			header_info->info.v4.rnd = 0;
-			header_info->info.v4.nbo = header_info->info.v4.old_nbo;
-			header_info->info.v4.sid = 1;
+			changes->rnd = 0;
+			changes->nbo = header_info->info.v4.nbo;
+			changes->sid = 1;
 		}
 		else if(is_ip_id_increasing(old_id, new_id, 19))
 		{
 			/* IP-ID is increasing in NBO */
 			rohc_comp_debug(context, "  IP-ID is increasing in NBO");
-			header_info->info.v4.rnd = 0;
-			header_info->info.v4.nbo = 1;
-			header_info->info.v4.sid = 0;
+			changes->rnd = 0;
+			changes->nbo = 1;
+			changes->sid = 0;
 		}
 		else
 		{
@@ -5911,9 +5916,9 @@ static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
 			{
 				/* IP-ID is increasing in Little Endian */
 				rohc_comp_debug(context, "  IP-ID is increasing in Little Endian");
-				header_info->info.v4.rnd = 0;
-				header_info->info.v4.nbo = 0;
-				header_info->info.v4.sid = 0;
+				changes->rnd = 0;
+				changes->nbo = 0;
+				changes->sid = 0;
 			}
 			else
 			{
@@ -5921,16 +5926,15 @@ static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
 				 * it seems to behave randomly
 				 * (do not change NBO value if RND, decompressor shall ignore it) */
 				rohc_comp_debug(context, "  IP-ID is random (RND detected)");
-				header_info->info.v4.rnd = 1;
-				header_info->info.v4.nbo = header_info->info.v4.old_nbo;
-				header_info->info.v4.sid = 0;
+				changes->rnd = 1;
+				changes->nbo = header_info->info.v4.nbo;
+				changes->sid = 0;
 			}
 		}
 	}
 
 	rohc_comp_debug(context, "NBO = %d, RND = %d, SID = %d",
-	                header_info->info.v4.nbo, header_info->info.v4.rnd,
-	                header_info->info.v4.sid);
+	                changes->nbo, changes->rnd, changes->sid);
 
 error:
 	;
@@ -6396,7 +6400,7 @@ static void rohc_get_innermost_ipv4_non_rnd(const struct rohc_comp_ctxt *const c
 
 	if(rfc3095_ctxt->ip_hdr_nr > 1 &&
 	   rfc3095_ctxt->ip_ctxts[1].version == IPV4 &&
-	   rfc3095_ctxt->ip_ctxts[1].info.v4.rnd == 0)
+	   changes->ip_hdr_changes[1].rnd == 0)
 	{
 		/* inner IP header exists and is IPv4 with a non-random IP-ID */
 		changes->innermost_ip_hdr_pos = ROHC_IP_HDR_SECOND;
@@ -6406,7 +6410,7 @@ static void rohc_get_innermost_ipv4_non_rnd(const struct rohc_comp_ctxt *const c
 		changes->innermost_ip_id_delta = changes->ip_hdr_changes[1].ip_id_delta;
 	}
 	else if(rfc3095_ctxt->ip_ctxts[0].version == IPV4 &&
-	        rfc3095_ctxt->ip_ctxts[0].info.v4.rnd == 0)
+	        changes->ip_hdr_changes[0].rnd == 0)
 	{
 		/* outer IP header is IPv4 with a non-random IP-ID */
 		changes->innermost_ip_hdr_pos = ROHC_IP_HDR_FIRST;
@@ -6462,7 +6466,7 @@ void rohc_get_ipid_bits(const struct rohc_comp_ctxt *const context,
 
 	if(rfc3095_ctxt->ip_hdr_nr > 1 &&
 	   rfc3095_ctxt->ip_ctxts[1].version == IPV4 &&
-	   rfc3095_ctxt->ip_ctxts[1].info.v4.rnd == 0)
+	   changes->ip_hdr_changes[1].rnd == 0)
 	{
 		/* inner IP header exists and is IPv4 with a non-random IP-ID */
 		const struct rfc3095_ip_hdr_changes *const innermost_ip_tmp =
@@ -6475,7 +6479,7 @@ void rohc_get_ipid_bits(const struct rohc_comp_ctxt *const context,
 
 		/* how many bits for the outer IP-ID? */
 		if(rfc3095_ctxt->ip_ctxts[0].version == IPV4 &&
-		   rfc3095_ctxt->ip_ctxts[0].info.v4.rnd == 0)
+		   changes->ip_hdr_changes[0].rnd == 0)
 		{
 			const struct rfc3095_ip_hdr_changes *const outer_ip_tmp =
 				&(changes->ip_hdr_changes[0]);
@@ -6489,7 +6493,7 @@ void rohc_get_ipid_bits(const struct rohc_comp_ctxt *const context,
 		}
 	}
 	else if(rfc3095_ctxt->ip_ctxts[0].version == IPV4 &&
-	        rfc3095_ctxt->ip_ctxts[0].info.v4.rnd == 0)
+	        changes->ip_hdr_changes[0].rnd == 0)
 	{
 		/* outer IP header is the innermost IPv4 with a non-random IP-ID */
 		const struct rfc3095_ip_hdr_changes *const innermost_ip_tmp =
@@ -6547,14 +6551,14 @@ static void rohc_comp_rfc3095_get_ext3_I_flags(const struct rohc_comp_ctxt *cons
 	if(uncomp_pkt_hdrs->ip_hdrs_nr == 1)
 	{
 		const struct ip_header_info *const inner_ip_flags = &rfc3095_ctxt->ip_ctxts[0];
+		const struct rfc3095_ip_hdr_changes *const innermost_ip_tmp =
+			&(changes->ip_hdr_changes[0]);
 
 		/* if the innermost IP header is IPv4 with non-random IP-ID, check if
 		 * the I bit must be set */
-		if(inner_ip_flags->version == IPV4 && inner_ip_flags->info.v4.rnd == 0)
+		if(inner_ip_flags->version == IPV4 && innermost_ip_tmp->rnd == 0)
 		{
 			/* inner IP header is IPv4 with non-random IP-ID */
-			const struct rfc3095_ip_hdr_changes *const innermost_ip_tmp =
-				&(changes->ip_hdr_changes[0]);
 
 			*innermost_ipv4_non_rnd = ROHC_IP_HDR_FIRST;
 			rohc_comp_debug(context, "IP header #%u is the innermost IPv4 header "
@@ -6595,15 +6599,17 @@ static void rohc_comp_rfc3095_get_ext3_I_flags(const struct rohc_comp_ctxt *cons
 	else /* double IP headers */
 	{
 		const struct ip_header_info *const outer_ip_flags = &rfc3095_ctxt->ip_ctxts[0];
+		const struct rfc3095_ip_hdr_changes *const outer_ip_tmp =
+			&(changes->ip_hdr_changes[0]);
 		const struct ip_header_info *const inner_ip_flags = &rfc3095_ctxt->ip_ctxts[1];
+		const struct rfc3095_ip_hdr_changes *const innermost_ip_tmp =
+			&(changes->ip_hdr_changes[1]);
 
 		/* set the I bit if some bits (depends on packet type) of the innermost
 		 * IPv4 header with non-random IP-ID must be transmitted */
-		if(inner_ip_flags->version == IPV4 && inner_ip_flags->info.v4.rnd == 0)
+		if(inner_ip_flags->version == IPV4 && innermost_ip_tmp->rnd == 0)
 		{
 			/* inner IP header is IPv4 with non-random IP-ID */
-			const struct rfc3095_ip_hdr_changes *const innermost_ip_tmp =
-				&(changes->ip_hdr_changes[1]);
 
 			*innermost_ipv4_non_rnd = ROHC_IP_HDR_SECOND;
 			rohc_comp_debug(context, "IP header #%u is the innermost IPv4 header "
@@ -6633,11 +6639,8 @@ static void rohc_comp_rfc3095_get_ext3_I_flags(const struct rohc_comp_ctxt *cons
 			/* the innermost IPv4 header with non-random IP-ID is the inner IP
 			 * header, maybe there is a need for a second IP-ID for the outer
 			 * IP header */
-			if(outer_ip_flags->version == IPV4 && outer_ip_flags->info.v4.rnd == 0)
+			if(outer_ip_flags->version == IPV4 && outer_ip_tmp->rnd == 0)
 			{
-				const struct rfc3095_ip_hdr_changes *const outer_ip_tmp =
-					&(changes->ip_hdr_changes[0]);
-
 				/* outer IP header is also IPv4 with non-random IP-ID */
 				if(outer_ip_tmp->ip_id_changed)
 				{
@@ -6657,13 +6660,10 @@ static void rohc_comp_rfc3095_get_ext3_I_flags(const struct rohc_comp_ctxt *cons
 				*I2 = 0;
 			}
 		}
-		else if(outer_ip_flags->version == IPV4 && outer_ip_flags->info.v4.rnd == 0)
+		else if(outer_ip_flags->version == IPV4 && outer_ip_tmp->rnd == 0)
 		{
 			/* inner IP header is not 'IPv4 with non-random IP-ID', but outer
 			 * IP header is */
-			const struct rfc3095_ip_hdr_changes *const outer_ip_tmp =
-				&(changes->ip_hdr_changes[0]);
-
 			*innermost_ipv4_non_rnd = ROHC_IP_HDR_FIRST;
 			rohc_comp_debug(context, "IP header #%u is the innermost IPv4 header "
 			                "with non-random IP-ID", *innermost_ipv4_non_rnd);

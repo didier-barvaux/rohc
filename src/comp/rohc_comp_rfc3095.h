@@ -165,10 +165,15 @@ struct rfc3095_ip_hdr_changes
 	uint8_t ext_list_content_just_changed:1;
 	/** Whether innermost IP extension list changed of content */
 	uint8_t ext_list_content_changed:1;
-	uint8_t unused:2;
+	uint8_t rnd:1;
+	uint8_t nbo:1;
+
+	uint8_t sid:1;
+	uint8_t unused:7;
 
 	/** The new IP-ID / SN delta */
 	uint16_t ip_id_delta;
+	uint8_t unused2[2];
 
 	/** changes for the IP extension headers */
 	struct rohc_list_changes exts;
@@ -435,19 +440,20 @@ void rohc_get_ipid_bits(const struct rohc_comp_ctxt *const context,
 /**
  * @brief How many IP headers are IPv4 headers with non-random IP-IDs ?
  *
- * @param ctxt  The generic decompression context
- * @return      The number of IPv4 headers with non-random IP-ID fields
+ * @param ctxt     The generic decompression context
+ * @param changes  The header fields that changed wrt to context
+ * @return         The number of IPv4 headers with non-random IP-ID fields
  */
-static inline size_t get_nr_ipv4_non_rnd(const struct rohc_comp_rfc3095_ctxt *const ctxt)
+static inline size_t get_nr_ipv4_non_rnd(const struct rohc_comp_rfc3095_ctxt *const ctxt,
+                                         const struct rfc3095_tmp_state *const changes)
 {
 	size_t nr_ipv4_non_rnd = 0;
 	size_t ip_hdr_pos;
 
 	for(ip_hdr_pos = 0; ip_hdr_pos < ctxt->ip_hdr_nr; ip_hdr_pos++)
 	{
-		const struct ip_header_info *const ip_ctxt = &(ctxt->ip_ctxts[ip_hdr_pos]);
-
-		if(ip_ctxt->version == IPV4 && ip_ctxt->info.v4.rnd != 1)
+		if(ctxt->ip_ctxts[ip_hdr_pos].version == IPV4 &&
+		   changes->ip_hdr_changes[ip_hdr_pos].rnd != 1)
 		{
 			nr_ipv4_non_rnd++;
 		}
