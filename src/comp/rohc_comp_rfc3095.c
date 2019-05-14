@@ -4623,7 +4623,7 @@ static int code_EXT3_rtp_packet(const struct rohc_comp_ctxt *const context,
                                 int counter,
                                 const rohc_packet_t packet_type)
 {
-	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = /* TODO: const */
+	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
 	const bool is_rtp = !!(context->profile->id == ROHC_PROFILE_RTP);
 	ip_header_pos_t innermost_ipv4_non_rnd;
@@ -4639,11 +4639,11 @@ static int code_EXT3_rtp_packet(const struct rohc_comp_ctxt *const context,
 	int rtp;     /* RTP bit */
 
 	const struct rohc_pkt_ip_hdr *inner_ip;
-	struct ip_header_info *inner_ip_ctxt; /* TODO: const */
+	const struct ip_header_info *inner_ip_ctxt;
 	const struct rfc3095_ip_hdr_changes *inner_ip_changes;
 
 	const struct rohc_pkt_ip_hdr *outer_ip;
-	struct ip_header_info *outer_ip_ctxt; /* TODO: const */
+	const struct ip_header_info *outer_ip_ctxt;
 	const struct rfc3095_ip_hdr_changes *outer_ip_changes;
 
 	const struct sc_rtp_context *const rtp_context =
@@ -5164,15 +5164,13 @@ static int rtp_header_flags_and_fields(const struct rohc_comp_ctxt *const contex
                                        uint8_t *const dest,
                                        int counter)
 {
-	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
-	struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt;
-	struct sc_rtp_context *rtp_context;
+	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
+		(struct rohc_comp_rfc3095_ctxt *) context->specific;
+	const struct sc_rtp_context *const rtp_context =
+		(struct sc_rtp_context *) rfc3095_ctxt->specific;
 	int tss;
 	int rpt;
 	uint8_t byte;
-
-	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
-	rtp_context = (struct sc_rtp_context *) rfc3095_ctxt->specific;
 
 	/* part 1 */
 	rpt = (changes->rtp_pt_changed ||
@@ -5224,27 +5222,6 @@ static int rtp_header_flags_and_fields(const struct rohc_comp_ctxt *const contex
 
 		rohc_comp_debug(context, "TS_STRIDE %u (0x%x) is SDVL-encoded on %zd "
 		                "bit(s)", ts_stride, ts_stride, sdvl_size);
-
-		/* do we transmit the scaled RTP Timestamp (TS) in the next packet ? */
-		if(rtp_context->ts_sc.nr_init_stride_packets < oa_repetitions_nr)
-		{
-			rtp_context->ts_sc.nr_init_stride_packets++;
-		}
-		if(rtp_context->ts_sc.nr_init_stride_packets >= oa_repetitions_nr)
-		{
-			rohc_comp_debug(context, "TS_STRIDE transmitted at least %u times, so "
-			                "change from state INIT_STRIDE to SEND_SCALED",
-			                oa_repetitions_nr);
-			rtp_context->ts_sc.state = SEND_SCALED;
-		}
-		else
-		{
-			rohc_comp_debug(context, "TS_STRIDE transmitted only %zd times, so stay "
-			                "in state INIT_STRIDE (at least %u times are required to "
-			                "change to state SEND_SCALED)",
-			                rtp_context->ts_sc.nr_init_stride_packets,
-			                oa_repetitions_nr);
-		}
 	}
 
 	/* part 5: not supported yet */
