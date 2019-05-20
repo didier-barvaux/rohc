@@ -52,7 +52,7 @@ static int c_uncompressed_encode(struct rohc_comp_ctxt *const context,
                                  const size_t rohc_pkt_max_len,
                                  rohc_packet_t *const packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
-static int uncompressed_code_packet(struct rohc_comp_ctxt *const context,
+static int uncompressed_code_packet(const struct rohc_comp_ctxt *const context,
                                     const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                     uint8_t *const rohc_pkt,
                                     const size_t rohc_pkt_max_len,
@@ -226,7 +226,7 @@ error:
  * @return                  The length of the ROHC packet if successful,
  *                         -1 otherwise
  */
-static int uncompressed_code_packet(struct rohc_comp_ctxt *const context,
+static int uncompressed_code_packet(const struct rohc_comp_ctxt *const context,
                                     const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                     uint8_t *const rohc_pkt,
                                     const size_t rohc_pkt_max_len,
