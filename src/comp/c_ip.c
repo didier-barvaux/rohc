@@ -326,7 +326,7 @@ int c_ip_code_ir_remainder(const struct rohc_comp_ctxt *const context,
                            const size_t dest_max_len,
                            const size_t counter)
 {
-	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
+	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 	uint16_t sn;
 
 	/* part 1 */
