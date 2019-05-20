@@ -252,11 +252,14 @@ struct rfc3095_tmp_state
 	uint32_t innermost_ip_hdr_pos:2;
 	uint32_t innermost_ip_id_rnd_changed:1;
 	uint32_t innermost_ip_id_5bits_possible:1;
-	uint32_t unused:6;
+	uint32_t is_crc_static_3_cached_valid:1;
+	uint32_t is_crc_static_7_cached_valid:1;
+	uint32_t uo_crc_type:4;
 
 	uint16_t innermost_ip_id_delta;
 
-	uint16_t unused2;
+	uint8_t uo_crc_static;
+	uint8_t uo_crc;
 };
 
 /* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
