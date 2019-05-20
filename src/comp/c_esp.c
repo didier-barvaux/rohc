@@ -95,9 +95,9 @@ static bool c_esp_create(struct rohc_comp_ctxt *const context,
 	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
 
 	/* initialize SN with the SN found in the ESP header */
-	rfc3095_ctxt->sn = rohc_ntoh32(uncomp_pkt_hdrs->esp->sn);
+	rfc3095_ctxt->last_sn = rohc_ntoh32(uncomp_pkt_hdrs->esp->sn);
 	rohc_comp_debug(context, "initialize context(SN) = hdr(SN) of first "
-	                "packet = %u", rfc3095_ctxt->sn);
+	                "packet = %u", rfc3095_ctxt->last_sn);
 
 	/* init the ESP-specific variables and functions */
 	rfc3095_ctxt->specific = NULL;

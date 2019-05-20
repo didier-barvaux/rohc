@@ -121,9 +121,9 @@ static bool c_udp_create(struct rohc_comp_ctxt *const context,
 	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
 
 	/* initialize SN to a random value (RFC 3095, 5.11.1) */
-	rfc3095_ctxt->sn = comp->random_cb(comp, comp->random_cb_ctxt) & 0xffff;
+	rfc3095_ctxt->last_sn = comp->random_cb(comp, comp->random_cb_ctxt) & 0xffff;
 	rohc_comp_debug(context, "initialize context(SN) = random() = %u",
-	                rfc3095_ctxt->sn);
+	                rfc3095_ctxt->last_sn);
 
 	/* create the UDP part of the profile context */
 	udp_context = malloc(sizeof(struct sc_udp_context));

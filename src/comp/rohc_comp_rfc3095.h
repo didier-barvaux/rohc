@@ -191,6 +191,9 @@ struct rfc3095_ip_hdr_changes
  */
 struct rfc3095_tmp_state
 {
+	/** The new Sequence Number (SN) */
+	uint32_t new_sn;
+
 	/** The SN field to transmit in the extension header */
 	uint32_t sn_bits_ext;
 	/** The TS field to send (ts_scaled or ts) */
@@ -282,8 +285,8 @@ _Static_assert((sizeof(struct rfc3095_tmp_state) % 8) == 0,
  */
 struct rohc_comp_rfc3095_ctxt
 {
-	/// The Sequence Number (SN), may be 16-bit or 32-bit long
-	uint32_t sn;
+	/** The Sequence Number (SN) of the last compressed packet, 16- or 32-bit long */
+	uint32_t last_sn;
 	/// A window used to encode the SN
 	struct c_wlsb sn_window;
 
@@ -360,10 +363,11 @@ struct rohc_comp_rfc3095_ctxt
 	/// @brief The handler used to add the IR/IR-DYN remainder header to the
 	///        ROHC pachet
 	int (*code_ir_remainder)(const struct rohc_comp_ctxt *const context,
+	                         const struct rfc3095_tmp_state *const changes,
 	                         uint8_t *const dest,
 	                         const size_t dest_max_len,
 	                         const size_t counter)
-		__attribute__((warn_unused_result, nonnull(1, 2)));
+		__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 	/// @brief The handler used to add an additional header in the tail of the
 	///        UO-0, UO-1 and UO-2 packets

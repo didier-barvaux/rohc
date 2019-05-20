@@ -135,10 +135,10 @@ static bool c_rtp_create(struct rohc_comp_ctxt *const context,
 	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
 
 	/* initialize SN with the SN found in the RTP header */
-	rfc3095_ctxt->sn = (uint32_t) rohc_ntoh16(uncomp_pkt_hdrs->rtp->sn);
-	assert(rfc3095_ctxt->sn <= 0xffff);
+	rfc3095_ctxt->last_sn = (uint32_t) rohc_ntoh16(uncomp_pkt_hdrs->rtp->sn);
+	assert(rfc3095_ctxt->last_sn <= 0xffff);
 	rohc_comp_debug(context, "initialize context(SN) = hdr(SN) of first "
-	                "packet = %u", rfc3095_ctxt->sn);
+	                "packet = %u", rfc3095_ctxt->last_sn);
 
 	/* create the RTP part of the profile context */
 	rtp_context = malloc(sizeof(struct sc_rtp_context));
@@ -819,9 +819,9 @@ static void rtp_encode_uncomp_fields(const struct rohc_comp_ctxt *const context,
 	}
 
 	/* add new TS value to context */
-	assert(rfc3095_ctxt->sn <= 0xffff);
+	assert(changes->new_sn <= 0xffff);
 	c_add_ts(&rtp_context->ts_sc, rohc_ntoh32(uncomp_pkt_hdrs->rtp->timestamp),
-	         rfc3095_ctxt->sn);
+	         changes->new_sn);
 
 	/* determine the number of TS bits to send wrt compression state */
 	if(rtp_context->ts_sc.state == INIT_TS ||
@@ -835,8 +835,8 @@ static void rtp_encode_uncomp_fields(const struct rohc_comp_ctxt *const context,
 		changes->ts_bits_req_nr = nb_bits_unscaled(&rtp_context->ts_sc);
 
 		/* save the new unscaled value */
-		assert(rfc3095_ctxt->sn <= 0xffff);
-		add_unscaled(&rtp_context->ts_sc, rfc3095_ctxt->sn);
+		assert(changes->new_sn <= 0xffff);
+		add_unscaled(&rtp_context->ts_sc, changes->new_sn);
 		rohc_comp_debug(context, "unscaled TS = %u on %u bits",
 		                changes->ts_send, changes->ts_bits_req_nr);
 	}
@@ -847,9 +847,9 @@ static void rtp_encode_uncomp_fields(const struct rohc_comp_ctxt *const context,
 		changes->ts_bits_req_nr = nb_bits_scaled(&rtp_context->ts_sc);
 
 		/* save the new unscaled and TS_SCALED values */
-		assert(rfc3095_ctxt->sn <= 0xffff);
-		add_unscaled(&rtp_context->ts_sc, rfc3095_ctxt->sn);
-		add_scaled(&rtp_context->ts_sc, rfc3095_ctxt->sn);
+		assert(changes->new_sn <= 0xffff);
+		add_unscaled(&rtp_context->ts_sc, changes->new_sn);
+		add_scaled(&rtp_context->ts_sc, changes->new_sn);
 		rohc_comp_debug(context, "TS_SCALED = %u on %u bits",
 		                changes->ts_send, changes->ts_bits_req_nr);
 	}

@@ -354,10 +354,11 @@ static void update_context(struct rohc_comp_ctxt *const context,
 static void update_context_ip_hdr(const struct rohc_comp_ctxt *const context,
 											            struct ip_header_info *const ip_flags,
                                   const struct rohc_pkt_ip_hdr *const ip,
-                                  const struct rfc3095_ip_hdr_changes *const changes)
+                                  const struct rfc3095_ip_hdr_changes *const changes,
+                                  const uint32_t new_sn)
 	__attribute__((nonnull(1, 2, 3, 4)));
 
-static void rohc_comp_rfc3095_detect_changes(/* TODO:const */ struct rohc_comp_ctxt *const context,
+static void rohc_comp_rfc3095_detect_changes(const struct rohc_comp_ctxt *const context,
                                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                              struct rfc3095_tmp_state *const changes)
 	__attribute__((nonnull(1, 2, 3)));
@@ -773,7 +774,7 @@ int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
 	/* does the packet update the decompressor context? */
 	if(rohc_packet_carry_crc_7_or_8(*packet_type))
 	{
-		rfc3095_ctxt->msn_of_last_ctxt_updating_pkt = rfc3095_ctxt->sn;
+		rfc3095_ctxt->msn_of_last_ctxt_updating_pkt = changes->new_sn;
 	}
 
 	if((*packet_type) == ROHC_PACKET_UO_1_ID_EXT3 ||
@@ -820,7 +821,7 @@ int rohc_comp_rfc3095_encode(struct rohc_comp_ctxt *const context,
 		}
 
 		/* how many SN bits shall be transmitted in the extension header 3 ? */
-		rohc_comp_rfc3095_split_field(rfc3095_ctxt->sn, 32,
+		rohc_comp_rfc3095_split_field(changes->new_sn, 32,
 		                              sn_bits_base_nr, changes->sn_bits_ext_nr,
 		                              &sn_bits_base, &changes->sn_bits_ext);
 		rohc_comp_debug(context, "SN: transmit %u bits in total: %u in base header + "
@@ -1340,11 +1341,11 @@ static void rohc_comp_rfc3095_feedback_ack(struct rohc_comp_ctxt *const context,
  * @param uncomp_pkt_hdrs  The uncompressed headers to encode
  * @param changes          The header fields that changed wrt to context
  */
-static void rohc_comp_rfc3095_detect_changes(/* TODO:const */ struct rohc_comp_ctxt *const context,
+static void rohc_comp_rfc3095_detect_changes(const struct rohc_comp_ctxt *const context,
                                              const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                                              struct rfc3095_tmp_state *const changes)
 {
-	/* TODO: const */ struct rohc_comp_rfc3095_ctxt *rfc3095_ctxt =
+	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
 	size_t ip_hdr_pos;
 
@@ -1358,61 +1359,60 @@ static void rohc_comp_rfc3095_detect_changes(/* TODO:const */ struct rohc_comp_c
 	changes->ip_hdr_nr = rfc3095_ctxt->ip_hdr_nr;
 
 	/* compute or find the new SN */
-	rfc3095_ctxt->sn = rfc3095_ctxt->get_next_sn(context, uncomp_pkt_hdrs);
-	rohc_comp_debug(context, "new SN = %u / 0x%x", rfc3095_ctxt->sn,
-	                rfc3095_ctxt->sn);
+	changes->new_sn = rfc3095_ctxt->get_next_sn(context, uncomp_pkt_hdrs);
+	rohc_comp_debug(context, "new SN = %u / 0x%x", changes->new_sn, changes->new_sn);
 	if(context->profile->id == ROHC_PROFILE_RTP)
 	{
 		changes->sn_4bits_possible =
-			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, changes->new_sn,
 			                           4, rohc_interval_compute_p_rtp_sn(4));
 		changes->sn_7bits_possible =
-			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, changes->new_sn,
 			                           7, rohc_interval_compute_p_rtp_sn(7));
 		changes->sn_12bits_possible =
-			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, changes->new_sn,
 			                           12, rohc_interval_compute_p_rtp_sn(12));
 
 		changes->sn_6bits_possible =
-			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, changes->new_sn,
 			                           6, rohc_interval_compute_p_rtp_sn(6));
 		changes->sn_9bits_possible =
-			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, changes->new_sn,
 			                           9, rohc_interval_compute_p_rtp_sn(9));
 		changes->sn_14bits_possible =
-			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, changes->new_sn,
 			                           14, rohc_interval_compute_p_rtp_sn(14));
 	}
 	else if(context->profile->id == ROHC_PROFILE_ESP)
 	{
 		changes->sn_4bits_possible =
-			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, changes->new_sn,
 			                           4, rohc_interval_compute_p_esp_sn(4));
 
 		changes->sn_5bits_possible =
-			wlsb_is_kp_possible_32bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+			wlsb_is_kp_possible_32bits(&rfc3095_ctxt->sn_window, changes->new_sn,
 			                           5, rohc_interval_compute_p_esp_sn(5));
 		changes->sn_8bits_possible =
-			wlsb_is_kp_possible_32bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+			wlsb_is_kp_possible_32bits(&rfc3095_ctxt->sn_window, changes->new_sn,
 			                           8, rohc_interval_compute_p_esp_sn(8));
 		changes->sn_13bits_possible =
-			wlsb_is_kp_possible_32bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+			wlsb_is_kp_possible_32bits(&rfc3095_ctxt->sn_window, changes->new_sn,
 			                           13, rohc_interval_compute_p_esp_sn(13));
 	}
 	else
 	{
 		changes->sn_4bits_possible =
-			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, changes->new_sn,
 			                           4, ROHC_LSB_SHIFT_SN);
 
 		changes->sn_5bits_possible =
-			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, changes->new_sn,
 			                           5, ROHC_LSB_SHIFT_SN);
 		changes->sn_8bits_possible =
-			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, changes->new_sn,
 			                           8, ROHC_LSB_SHIFT_SN);
 		changes->sn_13bits_possible =
-			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn,
+			wlsb_is_kp_possible_16bits(&rfc3095_ctxt->sn_window, changes->new_sn,
 			                           13, ROHC_LSB_SHIFT_SN);
 	}
 	if(changes->sn_4bits_possible)
@@ -1491,11 +1491,11 @@ static void rohc_comp_rfc3095_detect_changes(/* TODO:const */ struct rohc_comp_c
 					(ip_hdr_changes->rnd == 0 && ip_hdr_changes->nbo == 0);
 				const uint16_t id_nbo = (is_little_endian ? swab16(id) : id);
 				const uint16_t id_nbo_h = rohc_ntoh16(id_nbo);
-				ip_hdr_changes->ip_id_delta = id_nbo_h - rfc3095_ctxt->sn;
+				ip_hdr_changes->ip_id_delta = id_nbo_h - changes->new_sn;
 				rohc_comp_debug(context, "IP header #%zu: new IP-ID delta = "
 				                "0x%04x - 0x%04x = 0x%x / %u "
 				                "(NBO = %d, RND = %d, SID = %d)", ip_hdr_pos + 1,
-				                id_nbo_h, rfc3095_ctxt->sn,
+				                id_nbo_h, changes->new_sn,
 				                ip_hdr_changes->ip_id_delta, ip_hdr_changes->ip_id_delta,
 				                ip_hdr_changes->nbo, ip_hdr_changes->rnd,
 				                ip_hdr_changes->sid);
@@ -1953,8 +1953,8 @@ static int code_IR_packet(const struct rohc_comp_ctxt *const context,
 	/* part 8: IR remainder header */
 	if(rfc3095_ctxt->code_ir_remainder != NULL)
 	{
-		ret = rfc3095_ctxt->code_ir_remainder(context, rohc_pkt, rohc_pkt_max_len,
-		                                      counter);
+		ret = rfc3095_ctxt->code_ir_remainder(context, changes,
+		                                      rohc_pkt, rohc_pkt_max_len, counter);
 		if(ret < 0)
 		{
 			rohc_comp_warn(context, "failed to code IR remainder");
@@ -2089,8 +2089,8 @@ static int code_IR_DYN_packet(const struct rohc_comp_ctxt *const context,
 	/* part 7: IR-DYN remainder header */
 	if(rfc3095_ctxt->code_ir_remainder != NULL)
 	{
-		ret = rfc3095_ctxt->code_ir_remainder(context, rohc_pkt, rohc_pkt_max_len,
-		                                      counter);
+		ret = rfc3095_ctxt->code_ir_remainder(context, changes,
+		                                      rohc_pkt, rohc_pkt_max_len, counter);
 		if(ret < 0)
 		{
 			rohc_comp_warn(context, "failed to code IR remainder");
@@ -2748,8 +2748,6 @@ static int code_UO0_packet(const struct rohc_comp_ctxt *const context,
                            const size_t rohc_pkt_max_len,
                            const rohc_packet_t packet_type)
 {
-	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
-		(struct rohc_comp_rfc3095_ctxt *) context->specific;
 	size_t counter;
 	size_t first_position;
 	uint8_t f_byte;
@@ -2781,7 +2779,7 @@ static int code_UO0_packet(const struct rohc_comp_ctxt *const context,
 	/* part 2: SN + CRC
 	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
 	 * if the CRC-STATIC fields did not change */
-	f_byte = (rfc3095_ctxt->sn & 0x0f) << 3;
+	f_byte = (changes->new_sn & 0x0f) << 3;
 	assert(changes->uo_crc_type == ROHC_CRC_TYPE_3);
 	f_byte |= changes->uo_crc;
 	rohc_comp_debug(context, "first byte = 0x%02x (CRC = 0x%x)",
@@ -2910,9 +2908,9 @@ static int rohc_comp_rfc3095_build_uo1_pkt(const struct rohc_comp_ctxt *const co
 		goto error;
 	}
 	assert(changes->uo_crc_type == ROHC_CRC_TYPE_3);
-	rohc_pkt[counter] = ((rfc3095_ctxt->sn & 0x1f) << 3) | (changes->uo_crc & 0x07);
+	rohc_pkt[counter] = ((changes->new_sn & 0x1f) << 3) | (changes->uo_crc & 0x07);
 	rohc_comp_debug(context, "SN (%d) + CRC (%x) = 0x%02x",
-	                rfc3095_ctxt->sn, changes->uo_crc, rohc_pkt[counter]);
+	                changes->new_sn, changes->uo_crc, rohc_pkt[counter]);
 	counter++;
 
 	/* part 5: no extension */
@@ -2973,8 +2971,6 @@ static int rohc_comp_rfc3095_build_uo1rtp_pkt(const struct rohc_comp_ctxt *const
                                               const size_t rohc_pkt_max_len,
                                               const rohc_packet_t packet_type)
 {
-	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
-		(struct rohc_comp_rfc3095_ctxt *) context->specific;
 	const bool is_rtp = !!(context->profile->id == ROHC_PROFILE_RTP);
 	size_t counter;
 	size_t first_position;
@@ -3025,12 +3021,12 @@ static int rohc_comp_rfc3095_build_uo1rtp_pkt(const struct rohc_comp_ctxt *const
 		goto error;
 	}
 	rohc_pkt[counter] = ((!!changes->is_marker_bit_set) & 0x01) << 7;
-	rohc_pkt[counter] |= (rfc3095_ctxt->sn & 0x0f) << 3;
+	rohc_pkt[counter] |= (changes->new_sn & 0x0f) << 3;
 	assert(changes->uo_crc_type == ROHC_CRC_TYPE_3);
 	rohc_pkt[counter] |= changes->uo_crc & 0x07;
 	rohc_comp_debug(context, "M (%d) + SN (%d) + CRC (%x) = 0x%02x",
 	                !!changes->is_marker_bit_set,
-	                rfc3095_ctxt->sn & 0x0f, changes->uo_crc, rohc_pkt[counter]);
+	                changes->new_sn & 0x0f, changes->uo_crc, rohc_pkt[counter]);
 	counter++;
 
 	/* part 5: no extension */
@@ -3156,12 +3152,12 @@ static int rohc_comp_rfc3095_build_uo1ts_pkt(const struct rohc_comp_ctxt *const 
 		goto error;
 	}
 	rohc_pkt[counter] = ((!!changes->is_marker_bit_set) & 0x01) << 7;
-	rohc_pkt[counter] |= (rfc3095_ctxt->sn & 0x0f) << 3;
+	rohc_pkt[counter] |= (changes->new_sn & 0x0f) << 3;
 	assert(changes->uo_crc_type == ROHC_CRC_TYPE_3);
 	rohc_pkt[counter] |= changes->uo_crc & 0x07;
 	rohc_comp_debug(context, "M (%d) + SN (%d) + CRC (%x) = 0x%02x",
 	                !!changes->is_marker_bit_set,
-	                rfc3095_ctxt->sn & 0x0f, changes->uo_crc, rohc_pkt[counter]);
+	                changes->new_sn & 0x0f, changes->uo_crc, rohc_pkt[counter]);
 	counter++;
 
 	/* part 5: no extension */
@@ -3383,7 +3379,7 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(const struct rohc_comp_ctxt *const 
 		case ROHC_PACKET_UO_1_ID:
 		{
 			s_byte &= ~0x80;
-			s_byte |= (rfc3095_ctxt->sn & 0x0f) << 3;
+			s_byte |= (changes->new_sn & 0x0f) << 3;
 			rohc_comp_debug(context, "4 bits of 4-bit SN = 0x%x",
 			                (s_byte >> 3) & 0x0f);
 			break;
@@ -3391,7 +3387,7 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(const struct rohc_comp_ctxt *const 
 		case ROHC_PACKET_UO_1_ID_EXT0:
 		{
 			s_byte |= 0x80;
-			s_byte |= ((rfc3095_ctxt->sn >> 3) & 0x0f) << 3;
+			s_byte |= ((changes->new_sn >> 3) & 0x0f) << 3;
 			rohc_comp_debug(context, "4 bits of 7-bit SN = 0x%x",
 			                (s_byte >> 3) & 0x0f);
 			break;
@@ -3399,7 +3395,7 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(const struct rohc_comp_ctxt *const 
 		case ROHC_PACKET_UO_1_ID_EXT1:
 		{
 			s_byte |= 0x80;
-			s_byte |= ((rfc3095_ctxt->sn >> 3) & 0x0f) << 3;
+			s_byte |= ((changes->new_sn >> 3) & 0x0f) << 3;
 			rohc_comp_debug(context, "4 bits of 7-bit SN = 0x%x",
 			                (s_byte >> 3) & 0x0f);
 			break;
@@ -3407,7 +3403,7 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(const struct rohc_comp_ctxt *const 
 		case ROHC_PACKET_UO_1_ID_EXT2:
 		{
 			s_byte |= 0x80;
-			s_byte |= ((rfc3095_ctxt->sn >> 3) & 0x0f) << 3;
+			s_byte |= ((changes->new_sn >> 3) & 0x0f) << 3;
 			rohc_comp_debug(context, "4 bits of 7-bit SN = 0x%x",
 			                (s_byte >> 3) & 0x0f);
 			break;
@@ -3417,13 +3413,13 @@ static int rohc_comp_rfc3095_build_uo1id_pkt(const struct rohc_comp_ctxt *const 
 			s_byte |= 0x80;
 			if(changes->sn_4bits_possible)
 			{
-				s_byte |= (rfc3095_ctxt->sn & 0x0f) << 3;
+				s_byte |= (changes->new_sn & 0x0f) << 3;
 				rohc_comp_debug(context, "4 bits of 4-bit SN = 0x%x",
 				                (s_byte >> 3) & 0x0f);
 			}
 			else
 			{
-				s_byte |= ((rfc3095_ctxt->sn >> 8) & 0x0f) << 3;
+				s_byte |= ((changes->new_sn >> 8) & 0x0f) << 3;
 				rohc_comp_debug(context, "4 bits of 12-bit SN = 0x%x",
 				                (s_byte >> 3) & 0x0f);
 			}
@@ -3569,8 +3565,6 @@ static int code_UO2_packet(const struct rohc_comp_ctxt *const context,
                            const size_t rohc_pkt_max_len,
                            const rohc_packet_t packet_type)
 {
-	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
-		(struct rohc_comp_rfc3095_ctxt *) context->specific;
 	const bool is_rtp = !!(context->profile->id == ROHC_PROFILE_RTP);
 	uint8_t f_byte;     /* part 2 */
 	uint8_t s_byte = 0; /* part 4 */
@@ -3778,7 +3772,7 @@ static int code_UO2_packet(const struct rohc_comp_ctxt *const context,
 	}
 
 	/* compute SN bits for both base and extension headers */
-	rohc_comp_rfc3095_split_field(rfc3095_ctxt->sn, 32,
+	rohc_comp_rfc3095_split_field(changes->new_sn, 32,
 	                              sn_bits_base_nr, sn_bits_ext_nr,
 	                              &sn_bits_base, &sn_bits_ext);
 	rohc_comp_debug(context, "SN: transmit %u bits in total: %u in base header + "
@@ -4216,13 +4210,11 @@ static int code_EXT0_packet(const struct rohc_comp_ctxt *const context,
                             int counter,
                             const rohc_packet_t packet_type)
 {
-	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
-		(struct rohc_comp_rfc3095_ctxt *) context->specific;
 	uint8_t f_byte;
 
 	/* part 1: extension type + SN */
 	f_byte = 0;
-	f_byte |= (rfc3095_ctxt->sn & 0x07) << 3;
+	f_byte |= (changes->new_sn & 0x07) << 3;
 
 	/* part 1: IP-ID or TS ? */
 	switch(packet_type)
@@ -4306,13 +4298,11 @@ static int code_EXT1_packet(const struct rohc_comp_ctxt *const context,
                             int counter,
                             const rohc_packet_t packet_type)
 {
-	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
-		(struct rohc_comp_rfc3095_ctxt *) context->specific;
 	uint8_t f_byte;
 	uint8_t s_byte;
 
 	/* part 1: extension type + SN */
-	f_byte = (rfc3095_ctxt->sn & 0x07) << 3;
+	f_byte = (changes->new_sn & 0x07) << 3;
 	f_byte |= 0x40;
 
 	/* parts 1 & 2: IP-ID or TS ? */
@@ -4434,9 +4424,9 @@ static int code_EXT2_packet(const struct rohc_comp_ctxt *const context,
 	uint8_t t_byte;
 
 	/* part 1: extension type + SN */
-	f_byte = (rfc3095_ctxt->sn & 0x07) << 3;
+	f_byte = (changes->new_sn & 0x07) << 3;
 	f_byte |= 0x80;
-	rohc_comp_debug(context, "3 bits of SN = 0x%x", rfc3095_ctxt->sn & 0x07);
+	rohc_comp_debug(context, "3 bits of SN = 0x%x", changes->new_sn & 0x07);
 
 	/* parts 1, 2 & 3: IP-ID or TS ? */
 	switch(packet_type)
@@ -4823,7 +4813,7 @@ static int code_EXT3_rtp_packet(const struct rohc_comp_ctxt *const context,
 	/* part 4 */
 	if(S)
 	{
-		dest[counter] = rfc3095_ctxt->sn & 0xff;
+		dest[counter] = changes->new_sn & 0xff;
 		counter++;
 	}
 
@@ -5071,7 +5061,7 @@ static int code_EXT3_nortp_packet(const struct rohc_comp_ctxt *const context,
 	/* part 4 */
 	if(S)
 	{
-		dest[counter] = rfc3095_ctxt->sn & 0xff;
+		dest[counter] = changes->new_sn & 0xff;
 		counter++;
 	}
 
@@ -5487,6 +5477,10 @@ static void update_context(struct rohc_comp_ctxt *const context,
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
 	size_t ip_hdr_pos;
 
+	/* add the new SN to the W-LSB encoding object */
+	c_add_wlsb(&rfc3095_ctxt->sn_window, changes->new_sn, changes->new_sn);
+	rfc3095_ctxt->last_sn = changes->new_sn;
+
 	/* update CRC-STATIC cache */
 	rfc3095_ctxt->is_crc_static_3_cached_valid =
 		changes->is_crc_static_3_cached_valid;
@@ -5510,11 +5504,9 @@ static void update_context(struct rohc_comp_ctxt *const context,
 		const struct rfc3095_ip_hdr_changes *const ip_hdr_changes =
 			&(changes->ip_hdr_changes[ip_hdr_pos]);
 
-		update_context_ip_hdr(context, ip_ctxt, pkt_ip_hdr, ip_hdr_changes);
+		update_context_ip_hdr(context, ip_ctxt, pkt_ip_hdr, ip_hdr_changes,
+		                      changes->new_sn);
 	}
-
-	/* add the new SN to the W-LSB encoding object */
-	c_add_wlsb(&rfc3095_ctxt->sn_window, rfc3095_ctxt->sn, rfc3095_ctxt->sn);
 
 	/* update context with new transport header */
 	if(rfc3095_ctxt->update_context != NULL)
@@ -5530,16 +5522,16 @@ static void update_context(struct rohc_comp_ctxt *const context,
  * @param context   The compression context
  * @param ip_flags  The IP context to update
  * @param ip        The uncompressed IP header that updates the context
- * @param changes   The changes related to the IP header
+ * @param changes   The IP header fields that changed wrt to context
+ * @param new_sn    The new SN to update context with
  */
 static void update_context_ip_hdr(const struct rohc_comp_ctxt *const context,
                                   struct ip_header_info *const ip_flags,
                                   const struct rohc_pkt_ip_hdr *const ip,
-                                  const struct rfc3095_ip_hdr_changes *const changes)
+                                  const struct rfc3095_ip_hdr_changes *const changes,
+                                  const uint32_t new_sn)
 {
 	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
-	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
-		(const struct rohc_comp_rfc3095_ctxt *const) context->specific;
 
 	ip_flags->is_first_header = false;
 
@@ -5627,7 +5619,7 @@ static void update_context_ip_hdr(const struct rohc_comp_ctxt *const context,
 
 		/* add the new IP-ID / SN delta to the W-LSB encoding object */
 		ip_flags->info.v4.id_delta = changes->ip_id_delta;
-		c_add_wlsb(&ip_flags->info.v4.ip_id_window, rfc3095_ctxt->sn,
+		c_add_wlsb(&ip_flags->info.v4.ip_id_window, new_sn,
 		           ip_flags->info.v4.id_delta);
 		rohc_comp_debug(context, "update context with IP-ID delta 0x%04x",
 		                ip_flags->info.v4.id_delta);

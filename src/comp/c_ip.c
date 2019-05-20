@@ -75,9 +75,9 @@ static bool rohc_ip_ctxt_create(struct rohc_comp_ctxt *const context,
 	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
 
 	/* initialize SN to a random value (RFC 3095, 5.11.1) */
-	rfc3095_ctxt->sn = comp->random_cb(comp, comp->random_cb_ctxt) & 0xffff;
+	rfc3095_ctxt->last_sn = comp->random_cb(comp, comp->random_cb_ctxt) & 0xffff;
 	rohc_comp_debug(context, "initialize context(SN) = random() = %u",
-	                rfc3095_ctxt->sn);
+	                rfc3095_ctxt->last_sn);
 
 	/* init the IP-only-specific variables and functions */
 	rfc3095_ctxt->decide_FO_packet = c_ip_decide_FO_packet;
@@ -286,13 +286,13 @@ uint32_t c_ip_get_next_sn(const struct rohc_comp_ctxt *const context,
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
 	uint32_t next_sn;
 
-	if(rfc3095_ctxt->sn == 0xffff)
+	if(rfc3095_ctxt->last_sn == 0xffff)
 	{
 		next_sn = 0;
 	}
 	else
 	{
-		next_sn = rfc3095_ctxt->sn + 1;
+		next_sn = rfc3095_ctxt->last_sn + 1;
 	}
 
 	assert(next_sn <= 0xffff);
@@ -315,6 +315,7 @@ uint32_t c_ip_get_next_sn(const struct rohc_comp_ctxt *const context,
 \endverbatim
  *
  * @param context       The compression context
+ * @param changes       The header fields that changed wrt to context
  * @param dest          The ROHC packet being coded
  * @param dest_max_len  The maximum length (in bytes) of the ROHC packet
  * @param counter       The current position in the ROHC buffer
@@ -322,11 +323,11 @@ uint32_t c_ip_get_next_sn(const struct rohc_comp_ctxt *const context,
  *                      -1 in case of failure
  */
 int c_ip_code_ir_remainder(const struct rohc_comp_ctxt *const context,
+                           const struct rfc3095_tmp_state *const changes,
                            uint8_t *const dest,
                            const size_t dest_max_len,
                            const size_t counter)
 {
-	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 	uint16_t sn;
 
 	/* part 1 */
@@ -337,10 +338,10 @@ int c_ip_code_ir_remainder(const struct rohc_comp_ctxt *const context,
 		               "beginning of the packet", dest_max_len, counter);
 		goto error;
 	}
-	sn = rfc3095_ctxt->sn & 0xffff;
+	sn = changes->new_sn & 0xffff;
 	sn = rohc_hton16(sn);
 	memcpy(&dest[counter], &sn, sizeof(uint16_t));
-	rohc_comp_debug(context, "SN = %u -> 0x%02x%02x", rfc3095_ctxt->sn,
+	rohc_comp_debug(context, "SN = %u -> 0x%02x%02x", changes->new_sn,
 	                dest[counter], dest[counter + 1]);
 
 	return counter + 2;
