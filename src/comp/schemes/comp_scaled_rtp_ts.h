@@ -120,12 +120,15 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
               const uint16_t sn)
 	__attribute__((nonnull(1)));
 
-size_t nb_bits_unscaled(const struct ts_sc_comp *const ts_sc)
+size_t nb_bits_unscaled(const struct c_wlsb *const ts_unscaled_wlsb,
+                        const uint32_t new_ts_unscaled)
 	__attribute__((nonnull(1), warn_unused_result));
 void add_unscaled(struct ts_sc_comp *const ts_sc, const uint16_t sn)
 	__attribute__((nonnull(1)));
 
-size_t nb_bits_scaled(const struct ts_sc_comp *const ts_sc)
+size_t nb_bits_scaled(const struct c_wlsb *const ts_scaled_wlsb,
+                      const uint32_t new_ts_scaled,
+                      const bool is_ts_scaled_deducible)
 	__attribute__((nonnull(1), warn_unused_result));
 void add_scaled(struct ts_sc_comp *const ts_sc, const uint16_t sn)
 	__attribute__((nonnull(1)));

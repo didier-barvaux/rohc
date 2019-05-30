@@ -367,99 +367,101 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
 /**
  * @brief Return the number of bits needed to encode unscaled TS
  *
- * @param ts_sc  The ts_sc_comp object
- * @return       The number of bits needed to encode the unscaled TS
+ * @param ts_unscaled_wlsb  The W-LSB window of unscaled TS
+ * @param new_ts_unscaled   The new unscaled TS value to encode
+ * @return                  The number of bits needed to encode the unscaled TS
  */
-size_t nb_bits_unscaled(const struct ts_sc_comp *const ts_sc)
+size_t nb_bits_unscaled(const struct c_wlsb *const ts_unscaled_wlsb,
+                        const uint32_t new_ts_unscaled)
 {
 	size_t nr_ts_bits;
 
-	if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	if(wlsb_is_kp_possible_32bits(ts_unscaled_wlsb, new_ts_unscaled,
 	                              0, rohc_interval_compute_p_rtp_ts(0)))
 	{
 		nr_ts_bits = 0;
 	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	else if(wlsb_is_kp_possible_32bits(ts_unscaled_wlsb, new_ts_unscaled,
 	                                   5, rohc_interval_compute_p_rtp_ts(5)))
 	{
 		nr_ts_bits = 5;
 	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	else if(wlsb_is_kp_possible_32bits(ts_unscaled_wlsb, new_ts_unscaled,
 	                                   6, rohc_interval_compute_p_rtp_ts(6)))
 	{
 		nr_ts_bits = 6;
 	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	else if(wlsb_is_kp_possible_32bits(ts_unscaled_wlsb, new_ts_unscaled,
 	                                   7, rohc_interval_compute_p_rtp_ts(7)))
 	{
 		nr_ts_bits = 7;
 	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	else if(wlsb_is_kp_possible_32bits(ts_unscaled_wlsb, new_ts_unscaled,
 	                                   8, rohc_interval_compute_p_rtp_ts(8)))
 	{
 		nr_ts_bits = 8;
 	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	else if(wlsb_is_kp_possible_32bits(ts_unscaled_wlsb, new_ts_unscaled,
 	                                   9, rohc_interval_compute_p_rtp_ts(9)))
 	{
 		nr_ts_bits = 9;
 	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	else if(wlsb_is_kp_possible_32bits(ts_unscaled_wlsb, new_ts_unscaled,
 	                                   12, rohc_interval_compute_p_rtp_ts(12)))
 	{
 		nr_ts_bits = 12;
 	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	else if(wlsb_is_kp_possible_32bits(ts_unscaled_wlsb, new_ts_unscaled,
 	                                   13, rohc_interval_compute_p_rtp_ts(13)))
 	{
 		nr_ts_bits = 13;
 	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	else if(wlsb_is_kp_possible_32bits(ts_unscaled_wlsb, new_ts_unscaled,
 	                                   14, rohc_interval_compute_p_rtp_ts(14)))
 	{
 		nr_ts_bits = 14;
 	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	else if(wlsb_is_kp_possible_32bits(ts_unscaled_wlsb, new_ts_unscaled,
 	                                   16, rohc_interval_compute_p_rtp_ts(16)))
 	{
 		nr_ts_bits = 16;
 	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	else if(wlsb_is_kp_possible_32bits(ts_unscaled_wlsb, new_ts_unscaled,
 	                                   17, rohc_interval_compute_p_rtp_ts(17)))
 	{
 		nr_ts_bits = 17;
 	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	else if(wlsb_is_kp_possible_32bits(ts_unscaled_wlsb, new_ts_unscaled,
 	                                   19, rohc_interval_compute_p_rtp_ts(19)))
 	{
 		nr_ts_bits = 19;
 	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	else if(wlsb_is_kp_possible_32bits(ts_unscaled_wlsb, new_ts_unscaled,
 	                                   20, rohc_interval_compute_p_rtp_ts(20)))
 	{
 		nr_ts_bits = 20;
 	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	else if(wlsb_is_kp_possible_32bits(ts_unscaled_wlsb, new_ts_unscaled,
 	                                   21, rohc_interval_compute_p_rtp_ts(21)))
 	{
 		nr_ts_bits = 21;
 	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	else if(wlsb_is_kp_possible_32bits(ts_unscaled_wlsb, new_ts_unscaled,
 	                                   25, rohc_interval_compute_p_rtp_ts(25)))
 	{
 		nr_ts_bits = 25;
 	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	else if(wlsb_is_kp_possible_32bits(ts_unscaled_wlsb, new_ts_unscaled,
 	                                   26, rohc_interval_compute_p_rtp_ts(26)))
 	{
 		nr_ts_bits = 26;
 	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	else if(wlsb_is_kp_possible_32bits(ts_unscaled_wlsb, new_ts_unscaled,
 	                                   27, rohc_interval_compute_p_rtp_ts(27)))
 	{
 		nr_ts_bits = 27;
 	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_unscaled_wlsb, ts_sc->ts,
+	else if(wlsb_is_kp_possible_32bits(ts_unscaled_wlsb, new_ts_unscaled,
 	                                   29, rohc_interval_compute_p_rtp_ts(29)))
 	{
 		nr_ts_bits = 29;
@@ -488,113 +490,26 @@ void add_unscaled(struct ts_sc_comp *const ts_sc, const uint16_t sn)
 /**
  * @brief Return the number of bits needed to encode TS_SCALED
  *
- * @param ts_sc  The ts_sc_comp object
- * @return       The number of bits needed to encode TS_SCALED
+ * @param ts_scaled_wlsb          The W-LSB window of TS_SCALED
+ * @param new_ts_scaled           The new TS_SCALED value to encode
+ * @param is_ts_scaled_deducible  Whether TS_SCALED is deducible from SN or not
+ * @return                        The number of bits needed to encode TS_SCALED
  */
-size_t nb_bits_scaled(const struct ts_sc_comp *const ts_sc)
+size_t nb_bits_scaled(const struct c_wlsb *const ts_scaled_wlsb,
+                      const uint32_t new_ts_scaled,
+                      const bool is_ts_scaled_deducible)
 {
 	size_t nr_ts_bits;
 
-	if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
-	                              0, rohc_interval_compute_p_rtp_ts(0)))
+	/* do not send 0 bit of TS if TS is not deducible, because decompressor
+	 * will interprets a 0-bit value as deducible */
+	if(!is_ts_scaled_deducible)
 	{
-		nr_ts_bits = 0;
-	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
-	                                   5, rohc_interval_compute_p_rtp_ts(5)))
-	{
-		nr_ts_bits = 5;
-	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
-	                                   6, rohc_interval_compute_p_rtp_ts(6)))
-	{
-		nr_ts_bits = 6;
-	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
-	                                   7, rohc_interval_compute_p_rtp_ts(7)))
-	{
-		nr_ts_bits = 7;
-	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
-	                                   8, rohc_interval_compute_p_rtp_ts(8)))
-	{
-		nr_ts_bits = 8;
-	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
-	                                   9, rohc_interval_compute_p_rtp_ts(9)))
-	{
-		nr_ts_bits = 9;
-	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
-	                                   12, rohc_interval_compute_p_rtp_ts(12)))
-	{
-		nr_ts_bits = 12;
-	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
-	                                   13, rohc_interval_compute_p_rtp_ts(13)))
-	{
-		nr_ts_bits = 13;
-	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
-	                                   14, rohc_interval_compute_p_rtp_ts(14)))
-	{
-		nr_ts_bits = 14;
-	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
-	                                   16, rohc_interval_compute_p_rtp_ts(16)))
-	{
-		nr_ts_bits = 16;
-	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
-	                                   17, rohc_interval_compute_p_rtp_ts(17)))
-	{
-		nr_ts_bits = 17;
-	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
-	                                   19, rohc_interval_compute_p_rtp_ts(19)))
-	{
-		nr_ts_bits = 19;
-	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
-	                                   20, rohc_interval_compute_p_rtp_ts(20)))
-	{
-		nr_ts_bits = 20;
-	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
-	                                   21, rohc_interval_compute_p_rtp_ts(21)))
-	{
-		nr_ts_bits = 21;
-	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
-	                                   25, rohc_interval_compute_p_rtp_ts(25)))
-	{
-		nr_ts_bits = 25;
-	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
-	                                   26, rohc_interval_compute_p_rtp_ts(26)))
-	{
-		nr_ts_bits = 26;
-	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
-	                                   27, rohc_interval_compute_p_rtp_ts(27)))
-	{
-		nr_ts_bits = 27;
-	}
-	else if(wlsb_is_kp_possible_32bits(&ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled,
-	                                   29, rohc_interval_compute_p_rtp_ts(29)))
-	{
-		nr_ts_bits = 29;
+		nr_ts_bits = 1;
 	}
 	else
 	{
-		nr_ts_bits = 32;
-	}
-
-	/* do not send 0 bit of TS if TS is not deducible, because decompressor
-	 * will interprets a 0-bit value as deducible */
-	if(!ts_sc->is_deducible)
-	{
-		nr_ts_bits = 1;
+		nr_ts_bits = nb_bits_unscaled(ts_scaled_wlsb, new_ts_scaled);
 	}
 
 	return nr_ts_bits;

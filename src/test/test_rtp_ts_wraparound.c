@@ -249,7 +249,8 @@ bool run_test(bool be_verbose, const unsigned int incr)
 				/* get TS_SCALED */
 				value_encoded = get_ts_scaled(&ts_sc_comp);
 				/* determine how many bits of TS_SCALED we need to send */
-				required_bits = nb_bits_scaled(&ts_sc_comp);
+				required_bits = nb_bits_scaled(&ts_sc_comp.ts_scaled_wlsb, value_encoded,
+				                               ts_sc_comp.is_deducible);
 				assert(required_bits <= 32);
 				/* truncate the encoded TS_SCALED to the number of bits we send */
 				if(required_bits == 32)

@@ -832,7 +832,8 @@ static void rtp_encode_uncomp_fields(const struct rohc_comp_ctxt *const context,
 		 * state INIT_STRIDE: TS and TS_STRIDE will be send
 		 */
 		changes->ts_send = get_ts_unscaled(&rtp_context->ts_sc);
-		changes->ts_bits_req_nr = nb_bits_unscaled(&rtp_context->ts_sc);
+		changes->ts_bits_req_nr =
+			nb_bits_unscaled(&rtp_context->ts_sc.ts_unscaled_wlsb, changes->ts_send);
 
 		/* save the new unscaled value */
 		assert(changes->new_sn <= 0xffff);
@@ -844,7 +845,9 @@ static void rtp_encode_uncomp_fields(const struct rohc_comp_ctxt *const context,
 	{
 		/* TS_SCALED value will be send */
 		changes->ts_send = get_ts_scaled(&rtp_context->ts_sc);
-		changes->ts_bits_req_nr = nb_bits_scaled(&rtp_context->ts_sc);
+		changes->ts_bits_req_nr =
+			nb_bits_scaled(&rtp_context->ts_sc.ts_scaled_wlsb, changes->ts_send,
+			               rtp_context->ts_sc.is_deducible);
 
 		/* save the new unscaled and TS_SCALED values */
 		assert(changes->new_sn <= 0xffff);
