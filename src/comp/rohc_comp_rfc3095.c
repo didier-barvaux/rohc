@@ -4708,7 +4708,7 @@ static int code_EXT3_rtp_packet(const struct rohc_comp_ctxt *const context,
 				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_1_BYTE;
 				/* retrieve unscaled TS because we lost it when the UO* base
 				 * header was built */
-				ts_send = get_ts_unscaled(&rtp_context->ts_sc);
+				ts_send = rtp_context->ts_sc.ts;
 				ts_send &= (1U << nr_ts_bits_ext3) - 1;
 			}
 			break;
@@ -5197,7 +5197,7 @@ static int rtp_header_flags_and_fields(const struct rohc_comp_ctxt *const contex
 		int success;
 
 		/* determine the TS_STRIDE to transmit */
-		ts_stride = get_ts_stride(&rtp_context->ts_sc);
+		ts_stride = rtp_context->ts_sc.ts_stride;
 
 		/* SDVL-encode the TS_STRIDE value */
 		success = sdvl_encode_full(dest + counter, 4U /* TODO */, &sdvl_size,
@@ -6304,14 +6304,14 @@ static rohc_ext_t decide_extension_uor2id(const struct rohc_comp_ctxt *const con
 	rohc_ext_t ext;
 
 	if(changes->sn_6bits_possible &&
-	   (ts_bits_req_nr == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
+	   (ts_bits_req_nr == 0 || rtp_context->ts_sc.is_deducible) &&
 	   innermost_ip_id_5bits_possible &&
 	   !outermost_ip_id_changed)
 	{
 		ext = ROHC_EXT_NONE;
 	}
 	else if(changes->sn_9bits_possible &&
-	        (ts_bits_req_nr == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
+	        (ts_bits_req_nr == 0 || rtp_context->ts_sc.is_deducible) &&
 	        innermost_ip_id_8bits_possible &&
 	        !outermost_ip_id_changed)
 	{
@@ -6367,7 +6367,7 @@ static rohc_ext_t decide_extension_uo1id(const struct rohc_comp_ctxt *const cont
 	rohc_ext_t ext;
 
 	if(changes->sn_4bits_possible &&
-	   (ts_bits_req_nr == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
+	   (ts_bits_req_nr == 0 || rtp_context->ts_sc.is_deducible) &&
 	   innermost_ip_id_5bits_possible &&
 	   !outermost_ip_id_changed &&
 	   !changes->is_marker_bit_set)
@@ -6375,7 +6375,7 @@ static rohc_ext_t decide_extension_uo1id(const struct rohc_comp_ctxt *const cont
 		ext = ROHC_EXT_NONE;
 	}
 	else if(changes->sn_7bits_possible &&
-	        (ts_bits_req_nr == 0 || rohc_ts_sc_is_deducible(&rtp_context->ts_sc)) &&
+	        (ts_bits_req_nr == 0 || rtp_context->ts_sc.is_deducible) &&
 	        innermost_ip_id_8bits_possible &&
 	        !outermost_ip_id_changed &&
 	        !changes->is_marker_bit_set)

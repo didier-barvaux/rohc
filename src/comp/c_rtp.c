@@ -324,12 +324,9 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 	bool outermost_ip_id_11bits_possible;
 	const struct rfc3095_ip_hdr_changes *inner_ip_changes;
 	const struct rfc3095_ip_hdr_changes *outer_ip_changes;
-	bool is_ts_deducible;
-	bool is_ts_scaled;
+	const bool is_ts_deducible = rtp_context->ts_sc.is_deducible;
+	const bool is_ts_scaled = !!(rtp_context->ts_sc.state == SEND_SCALED);
 	bool is_ext3_required;
-
-	is_ts_deducible = rohc_ts_sc_is_deducible(&rtp_context->ts_sc);
-	is_ts_scaled = (rtp_context->ts_sc.state == SEND_SCALED);
 
 	rohc_comp_debug(context, "is_ts_deducible = %d, is_ts_scaled = %d, "
 	                "Marker bit = %d, nr_of_ip_hdr = %zu",
@@ -831,7 +828,7 @@ static void rtp_encode_uncomp_fields(const struct rohc_comp_ctxt *const context,
 		 *                is constant), so send TS only
 		 * state INIT_STRIDE: TS and TS_STRIDE will be send
 		 */
-		changes->ts_send = get_ts_unscaled(&rtp_context->ts_sc);
+		changes->ts_send = rtp_context->ts_sc.ts;
 		changes->ts_bits_req_nr =
 			nb_bits_unscaled(&rtp_context->ts_sc.ts_unscaled_wlsb, changes->ts_send);
 
@@ -844,7 +841,7 @@ static void rtp_encode_uncomp_fields(const struct rohc_comp_ctxt *const context,
 	else /* SEND_SCALED */
 	{
 		/* TS_SCALED value will be send */
-		changes->ts_send = get_ts_scaled(&rtp_context->ts_sc);
+		changes->ts_send = rtp_context->ts_sc.ts_scaled;
 		changes->ts_bits_req_nr =
 			nb_bits_scaled(&rtp_context->ts_sc.ts_scaled_wlsb, changes->ts_send,
 			               rtp_context->ts_sc.is_deducible);
@@ -858,7 +855,7 @@ static void rtp_encode_uncomp_fields(const struct rohc_comp_ctxt *const context,
 	}
 
 	rohc_comp_debug(context, "%s%u bits are required to encode new TS",
-	                (rohc_ts_sc_is_deducible(&rtp_context->ts_sc) ?
+	                (rtp_context->ts_sc.is_deducible ?
 	                 "0 (TS is deducible from SN bits) or " : ""),
 	                changes->ts_bits_req_nr);
 }
@@ -1054,11 +1051,9 @@ static size_t rtp_code_dynamic_rtp_part(const struct rohc_comp_ctxt *const conte
 		/* part 8 */
 		if(tss)
 		{
-			uint32_t ts_stride;
-			size_t ts_stride_sdvl_len;
-
 			/* get the TS_STRIDE to send in packet */
-			ts_stride = get_ts_stride(&rtp_context->ts_sc);
+			const uint32_t ts_stride = rtp_context->ts_sc.ts_stride;
+			size_t ts_stride_sdvl_len;
 
 			/* encode TS_STRIDE in SDVL and write it to packet */
 			if(!sdvl_encode_full(dest + counter + nr_written, 4U /* TODO */,

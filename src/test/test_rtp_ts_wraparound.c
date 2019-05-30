@@ -224,7 +224,7 @@ bool run_test(bool be_verbose, const unsigned int incr)
 				trace(be_verbose, "\t\ttransmit all bits without encoding "
 				      "and TS_STRIDE\n");
 				value_encoded = value;
-				ts_stride = get_ts_stride(&ts_sc_comp);
+				ts_stride = ts_sc_comp.ts_stride;
 				required_bits = 32;
 				/* change for INIT_STRIDE state? */
 				ts_sc_comp.nr_init_stride_packets++;
@@ -247,7 +247,7 @@ bool run_test(bool be_verbose, const unsigned int incr)
 				/* transmit TS_SCALED */
 				trace(be_verbose, "\t\ttransmit some bits of TS_SCALED\n");
 				/* get TS_SCALED */
-				value_encoded = get_ts_scaled(&ts_sc_comp);
+				value_encoded = ts_sc_comp.ts_scaled;
 				/* determine how many bits of TS_SCALED we need to send */
 				required_bits = nb_bits_scaled(&ts_sc_comp.ts_scaled_wlsb, value_encoded,
 				                               ts_sc_comp.is_deducible);

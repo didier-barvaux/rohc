@@ -133,15 +133,5 @@ size_t nb_bits_scaled(const struct c_wlsb *const ts_scaled_wlsb,
 void add_scaled(struct ts_sc_comp *const ts_sc, const uint16_t sn)
 	__attribute__((nonnull(1)));
 
-uint32_t get_ts_stride(const struct ts_sc_comp *const ts_sc)
-	__attribute__((nonnull(1), warn_unused_result, pure));
-uint32_t get_ts_scaled(const struct ts_sc_comp *const ts_sc)
-	__attribute__((nonnull(1), warn_unused_result, pure));
-uint32_t get_ts_unscaled(const struct ts_sc_comp *const ts_sc)
-	__attribute__((nonnull(1), warn_unused_result, pure));
-
-bool rohc_ts_sc_is_deducible(const struct ts_sc_comp *const ts_sc)
-	__attribute__((nonnull(1), warn_unused_result, pure));
-
 #endif
 
