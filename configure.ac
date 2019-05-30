@@ -252,6 +252,19 @@ else
 fi
 CFLAGS="$old_CFLAGS"
 
+#### -Wimplicit-fallthrough
+AC_MSG_CHECKING([whether compiler understands -Wimplicit-fallthrough])
+old_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS -Werror $unknown_warning_option -Wimplicit-fallthrough"
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])],
+                  [implicit_fallthrough=yes], [implicit_fallthrough=no])
+if test "x${implicit_fallthrough}" = "xyes" ; then
+	AC_MSG_RESULT(yes)
+	configure_cflags="${configure_cflags} -Wimplicit-fallthrough"
+else
+	AC_MSG_RESULT(no)
+fi
+CFLAGS="$old_CFLAGS"
 
 # Checks for header files.
 AC_CHECK_HEADERS([stdio.h stdlib.h string.h strings.h])
