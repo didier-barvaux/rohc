@@ -95,9 +95,6 @@ struct ts_sc_comp
 	/// The number of packets sent in state INIT_STRIDE
 	size_t nr_init_stride_packets;
 
-	/// The difference between old and current TS
-	uint32_t ts_delta;
-
 	/** The callback function used to manage traces */
 	rohc_trace_callback2_t trace_callback;
 	/** The private context of the callback function used to manage traces */

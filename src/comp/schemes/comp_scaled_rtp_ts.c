@@ -63,7 +63,6 @@ bool c_create_sc(struct ts_sc_comp *const ts_sc,
 	ts_sc->ts_offset = 0;
 	ts_sc->old_ts = 0;
 	ts_sc->ts = 0;
-	ts_sc->ts_delta = 0;
 	ts_sc->old_sn = 0;
 	ts_sc->sn = 0;
 	ts_sc->is_deducible = false;
@@ -125,6 +124,7 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
               const uint16_t sn)
 {
 	uint16_t sn_delta;
+	uint32_t ts_delta;
 
 	ts_debug(ts_sc, "Timestamp = %u", ts);
 
@@ -164,16 +164,16 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
 	/* abs() on unsigned 32-bit values seems to be a problem sometimes */
 	if(ts_sc->ts >= ts_sc->old_ts)
 	{
-		ts_sc->ts_delta = ts_sc->ts - ts_sc->old_ts;
+		ts_delta = ts_sc->ts - ts_sc->old_ts;
 	}
 	else
 	{
-		ts_sc->ts_delta = ts_sc->old_ts - ts_sc->ts;
+		ts_delta = ts_sc->old_ts - ts_sc->ts;
 	}
-	ts_debug(ts_sc, "TS delta = %u", ts_sc->ts_delta);
+	ts_debug(ts_sc, "TS delta = %u", ts_delta);
 
 	/* go back to INIT_TS state if TS is constant */
-	if(ts_sc->ts_delta == 0)
+	if(ts_delta == 0)
 	{
 		ts_debug(ts_sc, "TS is constant, go in INIT_TS state");
 		ts_sc->state = INIT_TS;
@@ -181,7 +181,7 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
 	}
 
 	/* go back to INIT_TS state if TS_STRIDE cannot be SDVL-encoded */
-	if(!sdvl_can_value_be_encoded(ts_sc->ts_delta))
+	if(!sdvl_can_value_be_encoded(ts_delta))
 	{
 		/* TS_STRIDE is too large for SDVL encoding */
 		ts_debug(ts_sc, "TS_STRIDE is too large for SDVL encoding, "
@@ -205,15 +205,15 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
 		ts_debug(ts_sc, "state INIT_STRIDE");
 
 		/* reset INIT_STRIDE counter if TS_STRIDE/TS_OFFSET changed */
-		if(ts_sc->ts_delta != ts_sc->ts_stride ||
-		   (ts_sc->ts % ts_sc->ts_delta) != ts_sc->ts_offset)
+		if(ts_delta != ts_sc->ts_stride ||
+		   (ts_sc->ts % ts_delta) != ts_sc->ts_offset)
 		{
 			ts_debug(ts_sc, "TS_STRIDE and/or TS_OFFSET changed");
 			ts_sc->nr_init_stride_packets = 0;
 		}
 
 		/* compute TS_STRIDE, TS_OFFSET and TS_SCALED */
-		ts_sc->ts_stride = ts_sc->ts_delta;
+		ts_sc->ts_stride = ts_delta;
 		ts_debug(ts_sc, "TS_STRIDE = %u", ts_sc->ts_stride);
 		assert(ts_sc->ts_stride != 0);
 		ts_sc->ts_offset = ts_sc->ts % ts_sc->ts_stride;
@@ -234,12 +234,12 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
 		ts_debug(ts_sc, "state SEND_SCALED");
 
 		/* does TS_STRIDE changed? */
-		ts_debug(ts_sc, "TS_STRIDE calculated = %u", ts_sc->ts_delta);
+		ts_debug(ts_sc, "TS_STRIDE calculated = %u", ts_delta);
 		ts_debug(ts_sc, "previous TS_STRIDE = %u", ts_sc->ts_stride);
-		if(ts_sc->ts_delta != ts_sc->ts_stride)
+		if(ts_delta != ts_sc->ts_stride)
 		{
 			assert(ts_sc->ts_stride != 0);
-			if((ts_sc->ts_delta % ts_sc->ts_stride) != 0)
+			if((ts_delta % ts_sc->ts_stride) != 0)
 			{
 				/* TS delta changed and is not a multiple of previous TS_STRIDE:
 				 * record the new value as TS_STRIDE and transmit it several
@@ -251,9 +251,9 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
 				ts_sc->state = INIT_STRIDE;
 				ts_sc->nr_init_stride_packets = 0;
 				ts_debug(ts_sc, "state -> INIT_STRIDE");
-				ts_sc->ts_stride = ts_sc->ts_delta;
+				ts_sc->ts_stride = ts_delta;
 			}
-			else if((ts_sc->ts_delta / ts_sc->ts_stride) != sn_delta)
+			else if((ts_delta / ts_sc->ts_stride) != sn_delta)
 			{
 				/* TS delta changed but is a multiple of previous TS_STRIDE:
 				 * do not change TS_STRIDE, but transmit all TS bits several
