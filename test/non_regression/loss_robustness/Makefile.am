@@ -4,6 +4,9 @@
 # Description: create and run the ROHC loss robustness tests
 ################################################################################
 
+XFAIL_TESTS = \
+	test_loss_robustness_rfc6846_keep_2_on_4.sh
+
 TESTS = \
 	test_loss_robustness_rfc3095_keep_1_on_4.sh \
 	test_loss_robustness_rfc3095_keep_2_on_4.sh \
