@@ -3460,7 +3460,6 @@ static struct rohc_comp_ctxt *
 
 		/* copy the base context, then reset some parts of it */
 		memcpy(c, base_ctxt, sizeof(struct rohc_comp_ctxt));
-		c->do_ctxt_replication = true;
 		c->cr_base_cid = base_ctxt->cid;
 		c->state = ROHC_COMP_STATE_CR;
 	}
@@ -3468,7 +3467,6 @@ static struct rohc_comp_ctxt *
 	{
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "create context with CID %u without replication", cid_to_use);
-		c->do_ctxt_replication = false;
 		c->state = ROHC_COMP_STATE_IR;
 	}
 
@@ -3500,7 +3498,7 @@ static struct rohc_comp_ctxt *
 	c->compressor = comp;
 
 	/* create profile-specific context */
-	if(c->do_ctxt_replication)
+	if(c->state == ROHC_COMP_STATE_CR)
 	{
 		if(!profile->clone(c, base_ctxt))
 		{
@@ -3755,7 +3753,6 @@ static struct rohc_comp_ctxt *
 		 * is in action, check that the base context didn't change too much */
 		if(context != NULL &&
 		   profile->id == ROHCv1_PROFILE_IP_TCP && /* TODO: replace TCP by CR capacity */
-		   context->do_ctxt_replication &&
 		   context->state == ROHC_COMP_STATE_CR &&
 		   context->state_oa_repeat_nr < comp->oa_repetitions_nr)
 		{

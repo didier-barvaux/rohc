@@ -738,7 +738,7 @@ void tcp_detect_options_changes(const struct rohc_comp_ctxt *const context,
  *  - the replicate chain of the IR-CR packets,
  *  - at the end of the rnd_8, seq_8, and co_common packets.
  *
- * @param context            The compression context
+ * @param context            The real compression context for traces and update
  * @param uncomp_pkt_hdrs    The uncompressed headers to encode
  * @param tmp                The temporary state for compressed TCP options
  * @param items_needed       Whether items shall be transmitted or not
