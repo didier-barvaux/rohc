@@ -336,7 +336,7 @@ static int rohc_comp_rfc5225_ip_udp_irreg_ipv4_part(const struct rohc_comp_ctxt 
 																									  const rohc_ip_id_behavior_t ip_id_behavior,
                                                     const struct ipv4_hdr *const ipv4,
                                                     const bool is_innermost,
-                                                    const bool outer_ip_flag,  
+                                                    const bool outer_ip_flag,
                                                     uint8_t *const rohc_data,
                                                     const size_t rohc_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 7)));
@@ -2595,7 +2595,6 @@ static int rohc_comp_rfc5225_ip_udp_dyn_chain(const struct rohc_comp_ctxt *const
 	for(ip_hdr_pos = 0; ip_hdr_pos < rfc5225_ctxt->ip_contexts_nr; ip_hdr_pos++)
 	{
 		const ip_context_t *const ip_ctxt = &(rfc5225_ctxt->ip_contexts[ip_hdr_pos]);
-		const rohc_ip_id_behavior_t ip_id_behavior = tmp->ip_id_behaviors[ip_hdr_pos];
 		const struct rohc_pkt_ip_hdr *const ip_hdr =
 			&(uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos]);
 
@@ -2603,6 +2602,8 @@ static int rohc_comp_rfc5225_ip_udp_dyn_chain(const struct rohc_comp_ctxt *const
 
 		if(ip_hdr->version == IPV4)
 		{
+			const rohc_ip_id_behavior_t ip_id_behavior = tmp->ip_id_behaviors[ip_hdr_pos];
+
 			ret = rohc_comp_rfc5225_ip_udp_dyn_ipv4_part(ctxt, ip_ctxt, ip_id_behavior,
 			                                             ip_hdr->ipv4,
 			                                             rohc_remain_data, rohc_remain_len);
@@ -3004,7 +3005,7 @@ static int rohc_comp_rfc5225_ip_udp_irreg_ipv6_part(const struct rohc_comp_ctxt 
                                                     const ip_context_t *const ip_ctxt,
                                                     const struct ipv6_hdr *const ipv6,
                                                     const bool is_innermost,
-                                                    const bool outer_ip_flag,  
+                                                    const bool outer_ip_flag,
                                                     uint8_t *const rohc_data,
                                                     const size_t rohc_max_len)
 {
