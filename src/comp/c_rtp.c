@@ -309,8 +309,6 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 {
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
-	const struct sc_rtp_context *const rtp_context =
-		(struct sc_rtp_context *) rfc3095_ctxt->specific;
 	const size_t nr_of_ip_hdr = rfc3095_ctxt->ip_hdr_nr;
 	rohc_packet_t packet;
 	size_t nr_ipv4_non_rnd;
@@ -324,8 +322,8 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct rohc_comp_ctxt *const c
 	bool outermost_ip_id_11bits_possible;
 	const struct rfc3095_ip_hdr_changes *inner_ip_changes;
 	const struct rfc3095_ip_hdr_changes *outer_ip_changes;
-	const bool is_ts_deducible = rtp_context->ts_sc.is_deducible;
-	const bool is_ts_scaled = !!(rtp_context->ts_sc.state == SEND_SCALED);
+	const bool is_ts_deducible = changes->ts_sc.is_ts_scaled_deducible;
+	const bool is_ts_scaled = !!(changes->ts_sc.state == SEND_SCALED);
 	bool is_ext3_required;
 
 	rohc_comp_debug(context, "is_ts_deducible = %d, is_ts_scaled = %d, "
@@ -599,10 +597,6 @@ static rohc_ext_t c_rtp_decide_extension(const struct rohc_comp_ctxt *const cont
                                          const struct rfc3095_tmp_state *const changes,
                                          const rohc_packet_t packet_type)
 {
-	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
-		(struct rohc_comp_rfc3095_ctxt *) context->specific;
-	const struct sc_rtp_context *const rtp_context =
-		(struct sc_rtp_context *) rfc3095_ctxt->specific;
 	rohc_ext_t ext;
 
 	/* force extension type 3 if at least one RTP dynamic field changed
@@ -625,7 +619,7 @@ static rohc_ext_t c_rtp_decide_extension(const struct rohc_comp_ctxt *const cont
 		                "be transmitted");
 		ext = ROHC_EXT_3;
 	}
-	else if(rtp_context->ts_sc.state != SEND_SCALED)
+	else if(changes->ts_sc.state != SEND_SCALED)
 	{
 		rohc_comp_debug(context, "force EXT-3 because TS cannot be transmitted "
 		                "scaled");
@@ -674,7 +668,7 @@ static void rtp_encode_uncomp_fields(const struct rohc_comp_ctxt *const context,
 {
 	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
-	/* TODO: const */ struct sc_rtp_context *const rtp_context = rfc3095_ctxt->specific;
+	const struct sc_rtp_context *const rtp_context = rfc3095_ctxt->specific;
 	const struct udphdr *const udp = uncomp_pkt_hdrs->udp;
 	const struct rtphdr *const rtp = uncomp_pkt_hdrs->rtp;
 
@@ -806,56 +800,44 @@ static void rtp_encode_uncomp_fields(const struct rohc_comp_ctxt *const context,
 		changes->rtp_pt_changed = false;
 	}
 
-	/* force initializing TS, TS_STRIDE and TS_SCALED again after
-	 * transition back to IR */
-	if(context->state == ROHC_COMP_STATE_IR &&
-	   rtp_context->ts_sc.state > INIT_STRIDE)
+	/* detect changes with new TS and SN values */
 	{
-		rtp_context->ts_sc.state = INIT_STRIDE;
-		rtp_context->ts_sc.nr_init_stride_packets = 0;
+		/* extract RTP TS from RTP header */
+		const uint32_t new_rtp_ts = rohc_ntoh32(uncomp_pkt_hdrs->rtp->timestamp);
+		/* force TS_STRIDE retransmission while in IR state */
+		const bool do_refresh_ts_stride = !!(context->state == ROHC_COMP_STATE_IR);
+
+		assert(changes->new_sn <= 0xffff);
+		ts_detect_changes(&rtp_context->ts_sc, new_rtp_ts, changes->new_sn,
+		                  do_refresh_ts_stride, &changes->ts_sc);
 	}
 
-	/* add new TS value to context */
-	assert(changes->new_sn <= 0xffff);
-	c_add_ts(&rtp_context->ts_sc, rohc_ntoh32(uncomp_pkt_hdrs->rtp->timestamp),
-	         changes->new_sn);
-
 	/* determine the number of TS bits to send wrt compression state */
-	if(rtp_context->ts_sc.state == INIT_TS ||
-	   rtp_context->ts_sc.state == INIT_STRIDE)
+	if(changes->ts_sc.state != SEND_SCALED)
 	{
 		/* state INIT_TS: TS_STRIDE cannot be computed yet (first packet or TS
 		 *                is constant), so send TS only
 		 * state INIT_STRIDE: TS and TS_STRIDE will be send
 		 */
-		changes->ts_send = rtp_context->ts_sc.ts;
+		changes->ts_send = changes->ts_sc.ts;
 		changes->ts_bits_req_nr =
 			nb_bits_unscaled(&rtp_context->ts_sc.ts_unscaled_wlsb, changes->ts_send);
-
-		/* save the new unscaled value */
-		assert(changes->new_sn <= 0xffff);
-		add_unscaled(&rtp_context->ts_sc, changes->new_sn);
 		rohc_comp_debug(context, "unscaled TS = %u on %u bits",
 		                changes->ts_send, changes->ts_bits_req_nr);
 	}
 	else /* SEND_SCALED */
 	{
 		/* TS_SCALED value will be send */
-		changes->ts_send = rtp_context->ts_sc.ts_scaled;
+		changes->ts_send = changes->ts_sc.ts_scaled;
 		changes->ts_bits_req_nr =
 			nb_bits_scaled(&rtp_context->ts_sc.ts_scaled_wlsb, changes->ts_send,
-			               rtp_context->ts_sc.is_deducible);
-
-		/* save the new unscaled and TS_SCALED values */
-		assert(changes->new_sn <= 0xffff);
-		add_unscaled(&rtp_context->ts_sc, changes->new_sn);
-		add_scaled(&rtp_context->ts_sc, changes->new_sn);
+			               changes->ts_sc.is_ts_scaled_deducible);
 		rohc_comp_debug(context, "TS_SCALED = %u on %u bits",
 		                changes->ts_send, changes->ts_bits_req_nr);
 	}
 
 	rohc_comp_debug(context, "%s%u bits are required to encode new TS",
-	                (rtp_context->ts_sc.is_deducible ?
+	                (changes->ts_sc.is_ts_scaled_deducible ?
 	                 "0 (TS is deducible from SN bits) or " : ""),
 	                changes->ts_bits_req_nr);
 }
@@ -963,10 +945,6 @@ static size_t rtp_code_dynamic_rtp_part(const struct rohc_comp_ctxt *const conte
                                         uint8_t *const dest,
                                         const size_t counter)
 {
-	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
-		(struct rohc_comp_rfc3095_ctxt *) context->specific;
-	const struct sc_rtp_context *const rtp_context =
-		(struct sc_rtp_context *) rfc3095_ctxt->specific;
 	const struct udphdr *const udp = (struct udphdr *) next_header;
 	const struct rtphdr *const rtp = (struct rtphdr *) (udp + 1);
 	uint8_t byte;
@@ -980,7 +958,7 @@ static size_t rtp_code_dynamic_rtp_part(const struct rohc_comp_ctxt *const conte
 
 	/* part 2 */
 	byte = 0;
-	if(rtp_context->ts_sc.state == INIT_STRIDE ||
+	if(changes->ts_sc.state == INIT_STRIDE ||
 	   changes->rtp_ext_changed)
 	{
 		/* send TS_STRIDE and/or the eXtension (X) bit */
@@ -1033,7 +1011,7 @@ static size_t rtp_code_dynamic_rtp_part(const struct rohc_comp_ctxt *const conte
 
 		/* part 7 */
 		tis = 0; /* TIS flag not supported yet */
-		tss = (rtp_context->ts_sc.state == INIT_STRIDE);
+		tss = (changes->ts_sc.state == INIT_STRIDE);
 
 		byte = 0;
 		byte |= (rtp->extension & 0x01) << 4;
@@ -1052,7 +1030,7 @@ static size_t rtp_code_dynamic_rtp_part(const struct rohc_comp_ctxt *const conte
 		if(tss)
 		{
 			/* get the TS_STRIDE to send in packet */
-			const uint32_t ts_stride = rtp_context->ts_sc.ts_stride;
+			const uint32_t ts_stride = changes->ts_sc.ts_stride;
 			size_t ts_stride_sdvl_len;
 
 			/* encode TS_STRIDE in SDVL and write it to packet */
@@ -1197,8 +1175,11 @@ static void rtp_update_context(struct rohc_comp_ctxt *const context,
 		rtp_context->rtp_pt_trans_nr++;
 	}
 
+	/* update context with new values related to TS scaling encoding */
+	ts_sc_update(&rtp_context->ts_sc, &changes->ts_sc);
+
 	/* do we transmit the scaled RTP Timestamp (TS) in the next packet? */
-	if(rtp_context->ts_sc.state == INIT_STRIDE)
+	if(changes->ts_sc.state == INIT_STRIDE)
 	{
 		if(rtp_context->ts_sc.nr_init_stride_packets < oa_repetitions_nr)
 		{
@@ -1209,7 +1190,7 @@ static void rtp_update_context(struct rohc_comp_ctxt *const context,
 			rohc_comp_debug(context, "TS_STRIDE transmitted at least %u times, "
 			                "so change from state INIT_STRIDE to SEND_SCALED",
 			                oa_repetitions_nr);
-			rtp_context->ts_sc.state = SEND_SCALED;
+			rtp_context->ts_sc.old.state = SEND_SCALED;
 		}
 		else
 		{

@@ -128,6 +128,8 @@ error:
  */
 bool run_test(bool be_verbose, const unsigned int incr)
 {
+	const bool do_refresh_ts_stride = false;
+
 	struct ts_sc_comp ts_sc_comp;      /* the RTP TS encoding context */
 	struct ts_sc_decomp ts_sc_decomp; /* the RTP TS decoding context */
 
@@ -168,6 +170,7 @@ bool run_test(bool be_verbose, const unsigned int incr)
 	 * and [0, 49 * incr] */
 	for(i = 1; i < 100; i++)
 	{
+		struct ts_sc_changes ts_changes;
 		size_t required_bits;
 		uint32_t required_bits_mask;
 		uint32_t ts_stride;
@@ -197,18 +200,20 @@ bool run_test(bool be_verbose, const unsigned int incr)
 		      i, value, real_incr);
 
 		/* update encoding context */
-		c_add_ts(&ts_sc_comp, value, i);
+		ts_detect_changes(&ts_sc_comp, value, i, do_refresh_ts_stride, &ts_changes);
 
 		/* transmit the required bits wrt to encoding state */
-		switch(ts_sc_comp.state)
+		switch(ts_changes.state)
 		{
 			case INIT_TS:
 				/* transmit all bits without encoding */
 				trace(be_verbose, "\t\ttransmit all bits without encoding\n");
 				value_encoded = value;
 				required_bits = 32;
+				/* update context */
+				ts_sc_update(&ts_sc_comp, &ts_changes);
 				/* change for INIT_STRIDE state */
-				ts_sc_comp.state = INIT_STRIDE;
+				ts_changes.state = INIT_STRIDE;
 				/* simulate transmission */
 				/* decode received unscaled TS */
 				if(!ts_decode_unscaled_bits(&ts_sc_decomp, value_encoded,
@@ -224,13 +229,15 @@ bool run_test(bool be_verbose, const unsigned int incr)
 				trace(be_verbose, "\t\ttransmit all bits without encoding "
 				      "and TS_STRIDE\n");
 				value_encoded = value;
-				ts_stride = ts_sc_comp.ts_stride;
+				ts_stride = ts_changes.ts_stride;
 				required_bits = 32;
+				/* update context */
+				ts_sc_update(&ts_sc_comp, &ts_changes);
 				/* change for INIT_STRIDE state? */
 				ts_sc_comp.nr_init_stride_packets++;
 				if(ts_sc_comp.nr_init_stride_packets >= ROHC_INIT_TS_STRIDE_MIN)
 				{
-					ts_sc_comp.state = SEND_SCALED;
+					ts_changes.state = SEND_SCALED;
 				}
 				/* simulate transmission */
 				/* decode received unscaled TS */
@@ -247,10 +254,10 @@ bool run_test(bool be_verbose, const unsigned int incr)
 				/* transmit TS_SCALED */
 				trace(be_verbose, "\t\ttransmit some bits of TS_SCALED\n");
 				/* get TS_SCALED */
-				value_encoded = ts_sc_comp.ts_scaled;
+				value_encoded = ts_changes.ts_scaled;
 				/* determine how many bits of TS_SCALED we need to send */
 				required_bits = nb_bits_scaled(&ts_sc_comp.ts_scaled_wlsb, value_encoded,
-				                               ts_sc_comp.is_deducible);
+				                               ts_changes.is_ts_scaled_deducible);
 				assert(required_bits <= 32);
 				/* truncate the encoded TS_SCALED to the number of bits we send */
 				if(required_bits == 32)
@@ -262,8 +269,8 @@ bool run_test(bool be_verbose, const unsigned int incr)
 					required_bits_mask = (1 << required_bits) - 1;
 				}
 				value_encoded = value_encoded & required_bits_mask;
-				/* save the new TS_SCALED value */
-				add_scaled(&ts_sc_comp, i);
+				/* update context */
+				ts_sc_update(&ts_sc_comp, &ts_changes);
 				/* simulate transmission */
 				/* decode TS */
 				if(required_bits > 0)

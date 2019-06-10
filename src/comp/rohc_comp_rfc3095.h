@@ -33,6 +33,7 @@
 #include "rohc_packets.h"
 #include "protocols/uncomp_pkt_hdrs.h"
 #include "schemes/comp_list.h"
+#include "schemes/comp_scaled_rtp_ts.h"
 #include "ip.h"
 #include "crc.h"
 
@@ -263,6 +264,8 @@ struct rfc3095_tmp_state
 
 	uint8_t uo_crc_static;
 	uint8_t uo_crc;
+
+	struct ts_sc_changes ts_sc;
 };
 
 /* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
