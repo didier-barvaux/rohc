@@ -592,11 +592,9 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
 		                tmp->ack_stride);
 	}
 
-	/* the structure of the list of TCP options changed or at least one of
-	 * the option changed, compress them */
-	if(tmp->tcp_opts.is_list_needed)
+	/* RFC6846 section 6.3.7: The entire table of TCP options items is always
+	 * replicated when using the IR-CR packet */
 	{
-		/* TODO: do not transmit unchanged TCP options in IR-CR */
 		bool all_items_needed[MAX_TCP_OPTION_INDEX + 1] =
 			{ true, true, true, true, true, true, true, true,
 			  true, true, true, true, true, true, true, true };
@@ -615,11 +613,6 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
 		rohc_remain_data += ret;
 #endif
 		rohc_remain_len -= ret;
-	}
-	else
-	{
-		rohc_comp_debug(context, "compressed list of TCP options: list not present");
-		tcp_replicate->list_present = 0;
 	}
 
 	rohc_comp_dump_buf(context, "TCP replicate part", rohc_data,
