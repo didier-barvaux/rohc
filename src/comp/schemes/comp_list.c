@@ -256,8 +256,6 @@ static void build_ipv6_ext_pkt_list(const struct list_comp *const comp,
 		assert(index_table >= 0 && ((size_t) index_table) < ROHC_LIST_MAX_ITEM);
 
 		/* update item in translation table if it changed */
-		/* TODO: context should not be overwritten until compression is fully OK */
-		/* TODO: put comp const in params once context is not overwritten any more */
 		ret = rohc_list_item_update_if_changed(comp->cmp_item,
 		                                       &(exts_changes->trans_table[index_table]),
 		                                       ext->type, ext->data, ext->len);
