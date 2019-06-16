@@ -1756,6 +1756,9 @@ static void rohc_decomp_update_context(struct rohc_decomp_ctxt *const context,
 		(crc_corr->arrival_times_index + 1) % ROHC_MAX_ARRIVAL_TIMES;
 	crc_corr->arrival_times_nr =
 		rohc_min(crc_corr->arrival_times_nr + 1, ROHC_MAX_ARRIVAL_TIMES);
+
+	/* remember the time at which the context was last used */
+	context->latest_used = pkt_arrival_time.sec;
 }
 
 
