@@ -284,11 +284,6 @@ struct rohc_decomp_ctxt
 	/** The operation state in which the context operates */
 	rohc_decomp_state_t state;
 
-	/** Usage timestamp */
-	unsigned int latest_used;
-	/** Usage timestamp */
-	unsigned int first_used;
-
 	/** Whether the last decompressed packets failed or not */
 	uint32_t last_pkts_errors;
 	/** The information for feedback rate-limiting */

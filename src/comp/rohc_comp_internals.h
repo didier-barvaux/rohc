@@ -288,10 +288,8 @@ struct rohc_comp_ctxt
 
 	/** Whether the context is in use or not */
 	int used;
-	/** The time when the context was created (in seconds) */
-	uint64_t latest_used;
 	/** The time when the context was last used (in seconds) */
-	uint64_t first_used;
+	uint64_t latest_used;
 
 	/** The context unique ID (CID) */
 	rohc_cid_t cid;

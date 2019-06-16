@@ -159,8 +159,7 @@ static bool rohc_decomp_profile_enabled_nocheck(const struct rohc_decomp *const 
 
 static struct rohc_decomp_ctxt * context_create(struct rohc_decomp *decomp,
                                                 const rohc_cid_t cid,
-                                                const struct rohc_decomp_profile *const profile,
-                                                const struct rohc_ts arrival_time)
+                                                const struct rohc_decomp_profile *const profile)
 	__attribute__((warn_unused_result, nonnull(1, 3)));
 static struct rohc_decomp_ctxt * find_context(const struct rohc_decomp *const decomp,
                                               const rohc_cid_t cid)
@@ -192,11 +191,10 @@ static rohc_status_t rohc_decomp_find_context(struct rohc_decomp *const decomp,
                                               const size_t packet_len,
                                               const rohc_cid_type_t cid,
                                               const size_t large_cid_len,
-                                              const struct rohc_ts arrival_time,
                                               rohc_profile_t *const profile_id,
                                               struct rohc_decomp_ctxt **const context,
                                               bool *const context_created)
-	__attribute__((warn_unused_result, nonnull(1, 2, 7, 8, 9)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 6, 7, 8)));
 
 static rohc_status_t rohc_decomp_decode_pkt(struct rohc_decomp *const decomp,
                                             struct rohc_decomp_ctxt *const context,
@@ -292,14 +290,11 @@ static struct rohc_decomp_ctxt * find_context(const struct rohc_decomp *const de
  * @param decomp        The ROHC decompressor
  * @param cid           The CID of the new context
  * @param profile       The profile to be assigned with the new context
- * @param arrival_time  The time at which packet was received (0 if unknown,
- *                      or to disable time-related features in ROHC protocol)
  * @return              The new context if successful, NULL otherwise
  */
 static struct rohc_decomp_ctxt * context_create(struct rohc_decomp *decomp,
                                                 const rohc_cid_t cid,
-                                                const struct rohc_decomp_profile *const profile,
-                                                const struct rohc_ts arrival_time)
+                                                const struct rohc_decomp_profile *const profile)
 {
 	struct rohc_decomp_ctxt *context;
 
@@ -362,9 +357,6 @@ static struct rohc_decomp_ctxt * context_create(struct rohc_decomp *decomp,
 	context->nr_lost_packets = 0;
 	context->nr_misordered_packets = 0;
 	context->is_duplicated = 0;
-
-	context->first_used = arrival_time.sec;
-	context->latest_used = arrival_time.sec;
 
 	/* create the profile-specific parts of the decompression context (performed
 	 * at the every end so that everything is initialized in context first) */
@@ -1174,9 +1166,8 @@ static rohc_status_t d_decode_header(struct rohc_decomp *decomp,
 	/* find the context according to the CID found in CID,
 	 * create it if needed (and possible) */
 	status = rohc_decomp_find_context(decomp, walk, remain_len, stream->cid,
-	                                  large_cid_len, rohc_packet.time,
-	                                  &stream->profile_id, &stream->context,
-	                                  &is_new_context);
+	                                  large_cid_len, &stream->profile_id,
+	                                  &stream->context, &is_new_context);
 	if(status == ROHC_STATUS_MALFORMED)
 	{
 		/* no additional feedback information to collect */
@@ -3949,7 +3940,6 @@ static void rohc_decomp_parse_padding(const struct rohc_decomp *const decomp,
  * @param cid                   The CID that was parsed from ROHC packet
  * @param large_cid_len         The length (in bytes) of the Large CID that was
  *                              parsed from ROHC packet
- * @param arrival_time          The time at which the ROHC packet was received
  * @param[out] profile_id       The profile ID parsed from the ROHC packet
  * @param[out] context          The decompression context for the given ROHC packet
  * @param[out] context_created  Whether the packet has just been created or not
@@ -3966,7 +3956,6 @@ static rohc_status_t rohc_decomp_find_context(struct rohc_decomp *const decomp,
                                               const size_t packet_len,
                                               const rohc_cid_type_t cid,
                                               const size_t large_cid_len,
-                                              const struct rohc_ts arrival_time,
                                               rohc_profile_t *const profile_id,
                                               struct rohc_decomp_ctxt **const context,
                                               bool *const context_created)
@@ -4117,7 +4106,7 @@ static rohc_status_t rohc_decomp_find_context(struct rohc_decomp *const decomp,
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		           "create new context with CID %u and profile '%s' (0x%04x)",
 		           cid, rohc_get_profile_descr(*profile_id), *profile_id);
-		*context = context_create(decomp, cid, profile, arrival_time);
+		*context = context_create(decomp, cid, profile);
 		if((*context) == NULL)
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,

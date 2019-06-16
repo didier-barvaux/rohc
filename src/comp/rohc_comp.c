@@ -3629,7 +3629,6 @@ static struct rohc_comp_ctxt *
 
 	/* if creation is successful, mark the context as used */
 	c->used = 1;
-	c->first_used = pkt_time.sec;
 	c->latest_used = pkt_time.sec;
 	assert(comp->num_contexts_used <= comp->medium.max_cid);
 	comp->num_contexts_used++;
