@@ -168,6 +168,7 @@ elif [ ${ret} -eq 77 ] ; then
 	fi
 else
 	print_red "FAIL (${ret})"
+	logger -t rohc_non_reg "test '${capture}' failed (${ret})"
 	test_status=${ret}
 fi
 print_processing_time ${processing_time}

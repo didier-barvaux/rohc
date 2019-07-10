@@ -73,6 +73,7 @@ nr_captures=$( echo -e "${captures}" | wc -l )
 
 
 # run 10 tests in parallel
+logger -t rohc_non_reg "start non-regression tests"
 time_start=$( date +%s )
 find -L ${test_dirs}/ -type f -or -type l 2>/dev/null | \
 	sort | \
@@ -81,6 +82,7 @@ find -L ${test_dirs}/ -type f -or -type l 2>/dev/null | \
 nr_fail=$?
 time_end=$(date +%s)
 processing_time=$(( ${time_end} - ${time_start} ))
+logger -t rohc_non_reg "non-regression tests ended (${nr_fail} failures)"
 
 
 # print summary of results
