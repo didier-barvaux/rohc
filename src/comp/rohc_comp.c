@@ -3504,16 +3504,22 @@ static struct rohc_comp_ctxt *
 				rohc_ctxt_affinity_t ctxt_affinity = ROHC_AFFINITY_LOW;
 				if(candidate->fingerprint.src_port == fingerprint->src_port)
 				{
+					rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+					           "CR: context CID %u uses same source port %u",
+					           candidate->cid, fingerprint->src_port);
 					ctxt_affinity++;
 				}
 				if(candidate->fingerprint.dst_port == fingerprint->dst_port)
 				{
+					rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+					           "CR: context CID %u uses same destination port %u",
+					           candidate->cid, fingerprint->dst_port);
 					ctxt_affinity++;
 				}
-				assert(ctxt_affinity != ROHC_AFFINITY_HIGH);
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 				           "CR: context CID %u scores %u as base context",
 				           candidate->cid, ctxt_affinity);
+				assert(ctxt_affinity != ROHC_AFFINITY_HIGH);
 				if(ctxt_affinity > best_ctxt_affinity)
 				{
 					base_ctxt = candidate;
@@ -3648,10 +3654,13 @@ static rohc_ctxt_affinity_t
 
 	/* TODO: replace TCP by CR capacity */
 	assert(pkt_fingerprint->base.profile_id == ROHCv1_PROFILE_IP_TCP);
-	assert(ctxt->profile->id == ROHCv1_PROFILE_IP_TCP);
 
-	if(memcmp(&ctxt->fingerprint.base, &pkt_fingerprint->base,
-	          sizeof(struct rohc_fingerprint_base)) == 0)
+	if(ctxt->profile->id != pkt_fingerprint->base.profile_id)
+	{
+		affinity = ROHC_AFFINITY_NONE;
+	}
+	else if(memcmp(&ctxt->fingerprint.base, &pkt_fingerprint->base,
+	               sizeof(struct rohc_fingerprint_base)) == 0)
 	{
 		/* the TCP context partially matches, it might be used as a base for Context
 		 * Replication (CR) */
@@ -3754,8 +3763,17 @@ static struct rohc_comp_ctxt *
 				           "cannot re-use context CID %u as replication of context "
 				           "CID %u, the base context changed too much", context->cid,
 				           base_ctxt->cid);
+
+				/* destroy that half-opened context */
+				hashtable_del(&comp->contexts_by_fingerprint, &context->fingerprint);
+				hashtable_cr_del(&comp->contexts_cr, &context->fingerprint);
+				profile->destroy(context);
+				context->used = 0;
+				assert(comp->num_contexts_used > 0);
+				comp->num_contexts_used--;
+
+				/* no context found */
 				context = NULL;
-				/* TODO: destroy that half-opened context */
 			}
 		}
 	}
@@ -3772,7 +3790,6 @@ static struct rohc_comp_ctxt *
 	}
 	else /* context not found, create a new one */
 	{
-
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "no existing context found for packet, create it");
 
