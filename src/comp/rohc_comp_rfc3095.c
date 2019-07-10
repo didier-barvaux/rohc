@@ -6366,9 +6366,11 @@ static bool encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 			const bool is_little_endian =
 				(ip_ctxt->info.v4.rnd == 0 && ip_ctxt->info.v4.nbo == 0);
 			const uint16_t id_nbo = (is_little_endian ? swab16(id) : id);
-			ip_ctxt->info.v4.id_delta = rohc_ntoh16(id_nbo) - rfc3095_ctxt->sn;
-			rohc_comp_debug(context, "IP header #%zu: new IP-ID delta = 0x%x / %u "
-			                "(NBO = %d, RND = %d, SID = %d)", ip_hdr_pos + 1,
+			const uint16_t id_nbo_h = rohc_ntoh16(id_nbo);
+			ip_ctxt->info.v4.id_delta = id_nbo_h - rfc3095_ctxt->sn;
+			rohc_comp_debug(context, "IP header #%zu: new IP-ID delta = 0x%04x - 0x%04x "
+			                "= 0x%x / %u (NBO = %d, RND = %d, SID = %d)", ip_hdr_pos + 1,
+			                id_nbo_h, rfc3095_ctxt->sn,
 			                ip_ctxt->info.v4.id_delta, ip_ctxt->info.v4.id_delta,
 			                ip_ctxt->info.v4.nbo, ip_ctxt->info.v4.rnd,
 			                ip_ctxt->info.v4.sid);

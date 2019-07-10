@@ -6593,12 +6593,17 @@ void rfc3095_decomp_update_ctxt(struct rohc_decomp_ctxt *const context,
 	ip_set_daddr(&rfc3095_ctxt->outer_ip_changes->ip, decoded->outer_ip.daddr);
 	if(decoded->outer_ip.version == IPV4)
 	{
+		uint16_t id_local = decoded->outer_ip.id;
+		if(decoded->outer_ip.nbo == 0)
+		{
+			id_local = swab16(id_local);
+		}
 		rfc3095_ctxt->outer_ip_changes->ip.header.v4.id = decoded->outer_ip.id;
 		ip_id_offset_set_ref(&rfc3095_ctxt->outer_ip_id_offset_ctxt,
-		                     decoded->outer_ip.id, decoded->sn, keep_ref_minus_1);
+		                     id_local, decoded->sn, keep_ref_minus_1);
 		rohc_decomp_debug(context, "outer IP-ID delta 0x%04x - 0x%04x = 0x%04x "
-		                  "is the new reference", decoded->outer_ip.id, decoded->sn,
-		                  decoded->outer_ip.id - decoded->sn);
+		                  "is the new reference", id_local, decoded->sn,
+		                  id_local - decoded->sn);
 		rfc3095_ctxt->outer_ip_changes->ip.header.v4.df = decoded->outer_ip.df;
 		rfc3095_ctxt->outer_ip_changes->nbo = decoded->outer_ip.nbo;
 		rfc3095_ctxt->outer_ip_changes->rnd = decoded->outer_ip.rnd;
@@ -6621,12 +6626,17 @@ void rfc3095_decomp_update_ctxt(struct rohc_decomp_ctxt *const context,
 		ip_set_daddr(&rfc3095_ctxt->inner_ip_changes->ip, decoded->inner_ip.daddr);
 		if(decoded->inner_ip.version == IPV4)
 		{
+			uint16_t id_local = decoded->inner_ip.id;
+			if(decoded->inner_ip.nbo == 0)
+			{
+				id_local = swab16(id_local);
+			}
 			rfc3095_ctxt->inner_ip_changes->ip.header.v4.id = decoded->inner_ip.id;
 			ip_id_offset_set_ref(&rfc3095_ctxt->inner_ip_id_offset_ctxt,
-			                     decoded->inner_ip.id, decoded->sn, keep_ref_minus_1);
+			                     id_local, decoded->sn, keep_ref_minus_1);
 			rohc_decomp_debug(context, "inner IP-ID delta 0x%04x - 0x%04x = 0x%04x "
-			                  "is the new reference", decoded->inner_ip.id, decoded->sn,
-			                  decoded->inner_ip.id - decoded->sn);
+			                  "is the new reference", id_local, decoded->sn,
+			                  id_local - decoded->sn);
 			rfc3095_ctxt->inner_ip_changes->ip.header.v4.df = decoded->inner_ip.df;
 			rfc3095_ctxt->inner_ip_changes->nbo = decoded->inner_ip.nbo;
 			rfc3095_ctxt->inner_ip_changes->rnd = decoded->inner_ip.rnd;
