@@ -41,7 +41,7 @@ typedef enum
 	ROHC_IP_HDR_NONE   = 0,  /**< No IP header selected */
 	ROHC_IP_HDR_FIRST  = 1,  /**< The first IP header is selected */
 	ROHC_IP_HDR_SECOND = 2,  /**< The second IP header is selected */
-	/* max 2 IP headers hanlded at the moment */
+	/* max 2 IP headers handled at the moment */
 } ip_header_pos_t;
 
 

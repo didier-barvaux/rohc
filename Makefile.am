@@ -176,7 +176,7 @@ checkpatch:
 # https://github.com/lucasdemarchi/codespell
 codespell:
 	$(AM_V_GEN)codespell \
-		--ignore-words-list=uint \
+		--ignore-words-list=uint,fo \
 		`find . -name \*.md -or -name \*.7.in -or -name ChangeLog -or -name README` \
 		`find . -name configure.ac -or -name Makefile.am` \
 		`find . -name \*.c -and -not -name rohc_wrap.c` \

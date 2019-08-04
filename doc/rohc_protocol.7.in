@@ -66,7 +66,7 @@ addresses).
 .RE
 .PP
 Redundant information is transmitted in first packets only. Next packets
-contain variable information only, eg. identifiers or sequence numbers. Theses
+contain variable information only, eg. identifiers or sequence numbers. These
 fields are furthermore transmitted in a adequate compressed form to save some
 more bits.
 .PP

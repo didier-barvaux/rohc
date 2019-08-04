@@ -5856,7 +5856,7 @@ skip:
  * The 'width of the positive part of the interpretation interval' (2^k - p) is
  * used instead of the 'width of the full interpretation interval' (2^k).
  *
- * A -10% marge is taken to handle problems due to clock precision.
+ * A -10% margin is taken to handle problems due to clock precision.
  *
  * @param cur_arrival_time     The arrival time of the current packet
  * @param arrival_times        The arrival times for the last packets
@@ -5879,7 +5879,7 @@ static bool is_sn_wraparound(const struct rohc_ts cur_arrival_time,
 	uint64_t cur_interval; /* in microseconds */
 	uint64_t avg_interval; /* in microseconds */
 	uint64_t min_interval; /* in microseconds */
-	uint64_t marge; /* in microseconds */
+	uint64_t margin; /* in microseconds */
 
 	/* cannot use correction for SN wraparound if no arrival time was given
 	 * for the current packet, or if too few packets were received yet */
@@ -5911,13 +5911,13 @@ static bool is_sn_wraparound(const struct rohc_ts cur_arrival_time,
 	min_interval = ((1 << k) - rohc_interval_compute_p(k, p)) * avg_interval;
 
 	/* subtract 10% to handle problems related to clock precision */
-	marge = min_interval * 10;
+	margin = min_interval * 10;
 #ifndef __KERNEL__
-	marge /= 100;
+	margin /= 100;
 #else
-	do_div(marge, 100);
+	do_div(margin, 100);
 #endif
-	min_interval -= marge;
+	min_interval -= margin;
 
 	/* enough time elapsed for SN wraparound? */
 	return (cur_interval >= min_interval);

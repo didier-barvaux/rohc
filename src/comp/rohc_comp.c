@@ -4255,7 +4255,7 @@ bool rohc_comp_feedback_parse_opts(const struct rohc_comp_ctxt *const context,
 		if(remain_len < opt_len)
 		{
 			rohc_comp_warn(context, "malformed FEEDBACK-2: packet too short for "
-			               "%u-byte option %u, only %zu bytes remaning", opt_len,
+			               "%u-byte option %u, only %zu bytes remaining", opt_len,
 			               opt_type, remain_len);
 			goto error;
 		}
