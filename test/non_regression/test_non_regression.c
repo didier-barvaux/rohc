@@ -121,7 +121,7 @@ for ./configure ? If yes, check configure output and config.log"
 #include <rohc_decomp.h>
 
 /** The maximum number of source PCAP dump files */
-#define SRC_FILENAMES_MAX_NR  2U
+#define SRC_FILENAMES_MAX_NR  20U
 
 /** The Ethertype for the 802.1q protocol (VLAN) */
 #define ETHERTYPE_8021Q   0x8100U
@@ -473,14 +473,7 @@ int main(int argc, char *argv[])
 			/* get the type of CID to use within the ROHC library */
 			cid_type_name = argv[0];
 		}
-		else if(src_filenames[0] == NULL)
-		{
-			/* get the name of the file that contains the packets to
-			 * compress/decompress */
-			src_filenames[src_filenames_nr] = argv[0];
-			src_filenames_nr++;
-		}
-		else if(src_filenames[1] == NULL)
+		else if(src_filenames_nr < SRC_FILENAMES_MAX_NR)
 		{
 			/* get the name of the file that contains the packets to
 			 * compress/decompress */
