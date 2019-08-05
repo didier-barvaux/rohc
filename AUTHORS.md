@@ -60,6 +60,7 @@ The following people are/were involved in the project:
   [crcany](https://github.com/madler/crcany)
 * [Marek Majkowski](mailto:marek@popcount.org): SipHash implementation in C
   imported from [csiphash](https://github.com/majek/csiphash).
+* [Mehmet Sulak](mehmet.sulak@gmail.com): increase max W-LSB window width up to 256
 
 
 ## History

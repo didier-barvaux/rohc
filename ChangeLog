@@ -1,3 +1,85 @@
+04 August 2019 - release 2.3.0
+  Compatibility:
+    - Version 2.3.0 is not guaranteed to be 100% compatible with previous versions
+      with respect to TCP Context Replication: the CRC-7 field of the IR-CR packet
+      type is now computed.
+    - The library API is compatible with versions 2.0.x and 2.1.x. The
+      function rohc_comp_set_optimistic_approach() was added.
+
+  License/Authors:
+    - Developing Solutions helped Viveris Technologies to implement the partial
+      ROHCv2 RTP profile.
+    - Mehmet Sulak helped to increase max W-LSB window width up to 256
+
+  General behaviour:
+    - compression: do not fallback on the Uncompressed profile by default anymore
+    - robustness: W-LSB: increase max window width up to 256
+
+  Compression standards (be more conform):
+	  - Uncompressed profile:
+       - correctly detect need for IR instead of Normal packet
+    - RFC3095 profiles:
+       - handle random IP-ID with NBO=0
+    - TCP profile:
+       - correctly handle changing IPv6 DSCP and ECN fields
+       - IR-CR: implement CRC-7 over uncompressed headers
+    - ROHCv2:
+       - add partial support for ROHCv2 IP/UDP/RTP profile
+       - allow context re-use for streams with max IP headers
+       - IP-Only: do not use sequential behavior for outer IP-IDs
+
+  Compression efficiency (save more bits):
+    - Uncompressed: do not transit to IR state if not IP version is not 4 or 6
+    - RFC3095: avoid Optimistic Approach transmissions if ACK was received
+    - RFC3095: improve packet decision for efficiency and robustness
+    - ROHCv1/RTP: UO-1-ID-EXT3 is possible if some IP fields changed
+    - ROHCv1/RTP: do not transit to FO state if RTP fields changed
+    - ROHCv1/UDP: use IR-DYN instead of IR if UDP checksum behavior changed
+    - ROHCv1/UDP: do not transit to IR state if UDP checksum behavior changed
+    - TCP: IPv6 extension headers: do not forget to reset detected changes
+    - TCP: do not transmit option items more than required
+    - TCP: do not transmit TS option in full when not required
+    - TCP: do not transmit options list more than required
+    - TCP: seq_8, rnd_8 and co_common may be used for large TS options
+    - ROHCv2: correctly detect innermost IP-ID/MSN offset changes
+
+  Compression robustness (be more robust to packet loss):
+    - introduce rohc_comp_set_optimistic_approach() to better configure the
+      Optimistic Approach mechanism defined in the ROHC standards
+    - add loss robustness test
+    - TCP: SACK option changed if ACK changed
+    - TCP: transmit TS option in full several times after a change
+    - TCP: repeat outer IP-ID changes several times
+    - TCP: repeat outer IP TTL/HL changes several times
+
+  Compression CPU performances:
+    - improve tools to help increasing CPU performances
+    - improve cache footprint
+    - improve CPU perfs of the the W-LSB algorithm
+    - improve the profile detection
+    - improve the context detection
+    - avoid parsing headers several times
+    - improve TCP profile CPU performances
+    - improve CRC-3 implementation
+    - use a hash table for efficiently searching contexts by fingerprint
+    - detect and remove Variable-Length Arrays (VLA)
+
+  Linux kernel module:
+    - fix the test script for the kernel mode
+    - fix checkpatch warnings
+
+  Tools:
+    - add loss robustness test
+    - improve tools to help increasing CPU performances
+    - non-regression: add option to change initial MSN
+    - non-regression: handle up to 20 network captures
+    - non-regression: add syslog traces for external non-regression tests
+
+  Q&A:
+    - fix some spelling mistakes detected by codespell
+    - enable compiler warning -Wimplicit-fallthrough if supported
+    - remove some dead code
+
 24 April 2018 - release 2.2.0
   Compatibility:
     - Version 2.2.0 is not guaranteed to be 100% compatible with previous versions
