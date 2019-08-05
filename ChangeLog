@@ -16,7 +16,7 @@
     - robustness: W-LSB: increase max window width up to 256
 
   Compression standards (be more conform):
-	  - Uncompressed profile:
+    - Uncompressed profile:
        - correctly detect need for IR instead of Normal packet
     - RFC3095 profiles:
        - handle random IP-ID with NBO=0
