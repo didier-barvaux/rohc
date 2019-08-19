@@ -153,6 +153,7 @@ void detect_ipv6_ext_changes(const struct list_comp *const comp,
 	 * search for a context list with the same structure or use an anonymous
 	 * list */
 	new_cur_id = rohc_list_get_nearest_list(comp, &exts_changes->pkt_list, &is_new_list);
+	assert(new_cur_id != ROHC_LIST_GEN_ID_NONE);
 	exts_changes->is_new_list = is_new_list;
 	exts_changes->pkt_list.id = new_cur_id;
 	exts_changes->pkt_list.counter = comp->lists[new_cur_id].counter;
@@ -170,8 +171,7 @@ void detect_ipv6_ext_changes(const struct list_comp *const comp,
 		*list_content_changed = true;
 		exts_changes->pkt_list.counter = 0;
 	}
-	else if(new_cur_id != ROHC_LIST_GEN_ID_NONE &&
-	        exts_changes->pkt_list.counter < comp->oa_repetitions_nr)
+	else if(exts_changes->pkt_list.counter < comp->oa_repetitions_nr)
 	{
 		rc_list_debug(comp, "send some bits for extension header list of the "
 		              "IPv6 header because it was not sent enough times");
@@ -612,6 +612,7 @@ static unsigned int rohc_list_find_free_gen_id(const struct list_comp *const com
 		}
 	}
 
+	assert(new_cur_id != ROHC_LIST_GEN_ID_NONE);
 	return new_cur_id;
 }
 
