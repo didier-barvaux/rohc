@@ -122,6 +122,8 @@ endif
 TESTS = $(TESTS_CODE_COVERAGE)
 
 distclean-local:
+	$(RM) ltmain.sh missing test-driver config.guess
+	$(RM) depcomp compile install-sh config.sub
 	$(RM) output.zcov
 	$(RM) -r coverage-report/
 

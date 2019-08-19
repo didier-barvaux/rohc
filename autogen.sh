@@ -58,7 +58,7 @@ run aclocal
 run libtoolize --force
 run autoconf
 run autoheader
-run automake --add-missing
+run automake --add-missing --force-missing
 
 cd "${OLD_PWD}" >/dev/null
 
