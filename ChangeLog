@@ -1,3 +1,18 @@
+20 August 2019 - release 2.3.1
+  Compatibility:
+    - Version 2.3.1 is guaranteed to be 100% compatible with version 2.3.0.
+    - Version 2.3.1 is not guaranteed to be 100% compatible with versions
+      2.0.x, 2.1.x and 2.2.x with respect to TCP Context Replication: the
+      CRC-7 field of the IR-CR packet type is now computed.
+    - The library API is compatible with versions 2.3.x.
+    - The library API is compatible with versions 2.0.x and 2.1.x. The
+      function rohc_comp_set_optimistic_approach() was added.
+
+  Bugfixes:
+    - configure: create missing scripts for better compatibility.
+      Reported by Ole Gabriel Stein <olegstein@gmail.com>
+    - Q&A: tell Git to ignore GPG signatures of release tarballs
+
 04 August 2019 - release 2.3.0
   Compatibility:
     - Version 2.3.0 is not guaranteed to be 100% compatible with previous versions
@@ -16,7 +31,7 @@
     - robustness: W-LSB: increase max window width up to 256
 
   Compression standards (be more conform):
-	  - Uncompressed profile:
+    - Uncompressed profile:
        - correctly detect need for IR instead of Normal packet
     - RFC3095 profiles:
        - handle random IP-ID with NBO=0

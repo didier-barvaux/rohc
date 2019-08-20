@@ -21,7 +21,7 @@
 #          Mikhail Gruzdev <michail.gruzdev@gmail.com>
 #
 
-AC_INIT([ROHC library], 2.3.0, [https://rohc-lib.org/],
+AC_INIT([ROHC library], 2.3.1, [https://rohc-lib.org/],
         [rohc], [https://rohc-lib.org/])
 AC_CONFIG_SRCDIR([src])
 AM_CONFIG_HEADER([config.h])
