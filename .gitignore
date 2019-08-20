@@ -18,6 +18,7 @@ rohc-*.tar.gz
 rohc-*.tar.bz2
 rohc-*.tar.xz
 rohc-*.tar.xz.sha256
+rohc-*.tar.xz.asc
 cscope.out
 aclocal.m4
 autom4te.cache
