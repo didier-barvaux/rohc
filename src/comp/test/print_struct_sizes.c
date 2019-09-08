@@ -39,9 +39,13 @@ int main(void)
 	printf("sizeof(size_t) = %zu\n", sizeof(size_t));
 	printf("sizeof(bool) = %zu\n", sizeof(bool));
 	printf("sizeof(bits_nr_t) = %zu\n", sizeof(bits_nr_t));
-	printf("sizeof(rohc_lsb_shift_t) = %zu\n", sizeof(rohc_lsb_shift_t));
 	printf("sizeof(c_wlsb) = %zu\n", sizeof(struct c_wlsb));
 	printf("sizeof(rohc_ip_id_behavior_t) = %zu\n", sizeof(rohc_ip_id_behavior_t));
+	printf("sizeof(struct hashtable) = %zu\n", sizeof(struct hashtable));
+
+	/* profile */
+	printf("\n");
+	printf("sizeof(struct rohc_comp_profile) = %zu\n", sizeof(struct rohc_comp_profile));
 
 	/* compressor */
 	printf("\n");
@@ -62,7 +66,10 @@ int main(void)
 	printf("\n");
 	printf("sizeof(struct rohc_comp_rfc3095_ctxt) = %zu\n",
 	       sizeof(struct rohc_comp_rfc3095_ctxt));
-	printf("\tsizeof(struct generic_tmp_vars) = %zu\n", sizeof(struct generic_tmp_vars));
+	printf("\tsizeof(struct rfc3095_tmp_state) = %zu\n", sizeof(struct rfc3095_tmp_state));
+	printf("\t\tsizeof(struct rfc3095_ip_hdr_changes) = %zu\n", sizeof(struct rfc3095_ip_hdr_changes));
+	printf("\t\t\tsizeof(struct rohc_list_changes) = %zu\n", sizeof(struct rohc_list_changes));
+	printf("\t\t\t\tsizeof(struct rohc_list_item) = %zu\n", sizeof(struct rohc_list_item));
 	printf("\tsizeof(struct ip_header_info) = %zu\n", sizeof(struct ip_header_info));
 	printf("\t\tsizeof(struct ipv4_header_info) = %zu\n", sizeof(struct ipv4_header_info));
 	printf("\t\tsizeof(struct ipv6_header_info) = %zu\n", sizeof(struct ipv6_header_info));

@@ -36,9 +36,9 @@
 
 
 
-static void build_ipv6_ext_pkt_list(struct list_comp *const comp,
-                                    const struct rohc_pkt_ip_hdr *const ip,
-                                    struct rohc_list *const pkt_list)
+static void build_ipv6_ext_pkt_list(const struct list_comp *const comp,
+                                    const struct rohc_pkt_ip_hdr *const ip_hdr,
+                                    struct rohc_list_changes *const exts_changes)
 	__attribute__((nonnull(1, 2, 3)));
 
 static unsigned int rohc_list_get_nearest_list(const struct list_comp *const comp,
@@ -46,28 +46,36 @@ static unsigned int rohc_list_get_nearest_list(const struct list_comp *const com
                                                bool *const is_new_list)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static int rohc_list_decide_type(struct list_comp *const comp)
+static unsigned int rohc_list_find_free_gen_id(const struct list_comp *const comp)
 	__attribute__((warn_unused_result, nonnull(1)));
 
-static int rohc_list_encode_type_0(struct list_comp *const comp,
-                                   uint8_t *const dest,
-                                   int counter)
+static int rohc_list_decide_type(const struct list_comp *const comp,
+                                 const struct rohc_list *const pkt_list)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static int rohc_list_encode_type_1(struct list_comp *const comp,
+static int rohc_list_encode_type_0(const struct list_comp *const comp,
+                                   const struct rohc_list *const pkt_list,
                                    uint8_t *const dest,
                                    int counter)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static int rohc_list_encode_type_2(struct list_comp *const comp,
+static int rohc_list_encode_type_1(const struct list_comp *const comp,
+                                   const struct rohc_list *const pkt_list,
                                    uint8_t *const dest,
                                    int counter)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static int rohc_list_encode_type_3(struct list_comp *const comp,
+static int rohc_list_encode_type_2(const struct list_comp *const comp,
+                                   const struct rohc_list *const pkt_list,
                                    uint8_t *const dest,
                                    int counter)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+
+static int rohc_list_encode_type_3(const struct list_comp *const comp,
+                                   const struct rohc_list *const pkt_list,
+                                   uint8_t *const dest,
+                                   int counter)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static size_t rohc_list_compute_ins_mask(const struct list_comp *const comp,
                                          const struct rohc_list *const ref_list,
@@ -86,11 +94,10 @@ static size_t rohc_list_compute_rem_mask(const struct list_comp *const comp,
                                          const size_t rohc_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
-static uint8_t rohc_list_compute_ps(const struct list_comp *const comp,
-                                    const struct rohc_list *const list,
+static uint8_t rohc_list_compute_ps(const struct rohc_list *const list,
                                     const uint8_t mask[ROHC_LIST_ITEMS_MAX],
                                     const size_t m)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+	__attribute__((warn_unused_result, nonnull(1)));
 
 static int rohc_list_build_XIs(const struct list_comp *const comp,
                                const struct rohc_list *const list,
@@ -121,38 +128,37 @@ static int rohc_list_build_XIs_4(const struct list_comp *const comp,
 /**
  * @brief Detect changes within the list of IPv6 extension headers
  *
- * @param comp                       The list compressor
- * @param ip                         The IP packet to compress
+ * @param comp           The list compressor
+ * @param ip_hdr         The IP header to compress
+ * @param exts_changes   The IPv6 ext headers fields that changed wrt to context
+ *
  * @param[out] list_struct_changed   Whether the structure of the list changed
  * @param[out] list_content_changed  Whether the content of the list changed
  */
-void detect_ipv6_ext_changes(struct list_comp *const comp,
-                             const struct rohc_pkt_ip_hdr *const ip,
+void detect_ipv6_ext_changes(const struct list_comp *const comp,
+                             const struct rohc_pkt_ip_hdr *const ip_hdr,
+                             struct rohc_list_changes *const exts_changes,
                              bool *const list_struct_changed,
                              bool *const list_content_changed)
 {
 	unsigned int new_cur_id = ROHC_LIST_GEN_ID_NONE;
-	struct rohc_list pkt_list;
 	bool is_new_list = false;
 
 	/* parse all extension headers:
 	 *  - update the related entries in the translation table,
 	 *  - create the list for the packet */
-	build_ipv6_ext_pkt_list(comp, ip, &pkt_list);
+	build_ipv6_ext_pkt_list(comp, ip_hdr, exts_changes);
 
 	/* now that translation table is updated and packet list is generated,
 	 * search for a context list with the same structure or use an anonymous
 	 * list */
-	new_cur_id = rohc_list_get_nearest_list(comp, &pkt_list, &is_new_list);
-	if(is_new_list)
+	new_cur_id = rohc_list_get_nearest_list(comp, &exts_changes->pkt_list, &is_new_list);
+	exts_changes->is_new_list = is_new_list;
+	exts_changes->pkt_list.id = new_cur_id;
+	exts_changes->pkt_list.counter = comp->lists[new_cur_id].counter;
+	if(new_cur_id == ROHC_LIST_GEN_ID_ANON && exts_changes->is_new_list)
 	{
-		/* TODO: context should not be overwritten until compression is fully OK */
-		assert(comp->lists[new_cur_id].id == new_cur_id);
-		memcpy(comp->lists[new_cur_id].items, pkt_list.items,
-		       ROHC_LIST_ITEMS_MAX * sizeof(struct rohc_list_item *));
-		comp->lists[new_cur_id].items_nr = pkt_list.items_nr;
-		comp->lists[new_cur_id].counter = 0;
-		comp->lists[ROHC_LIST_GEN_ID_ANON].counter = 0;
+		exts_changes->pkt_list.counter = 0;
 	}
 
 	/* do we need to send some bits of the compressed list? */
@@ -162,10 +168,10 @@ void detect_ipv6_ext_changes(struct list_comp *const comp,
 		              "IPv6 header because it changed");
 		*list_struct_changed = true;
 		*list_content_changed = true;
-		comp->lists[new_cur_id].counter = 0;
+		exts_changes->pkt_list.counter = 0;
 	}
 	else if(new_cur_id != ROHC_LIST_GEN_ID_NONE &&
-	        comp->lists[new_cur_id].counter < comp->oa_repetitions_nr)
+	        exts_changes->pkt_list.counter < comp->oa_repetitions_nr)
 	{
 		rc_list_debug(comp, "send some bits for extension header list of the "
 		              "IPv6 header because it was not sent enough times");
@@ -178,24 +184,28 @@ void detect_ipv6_ext_changes(struct list_comp *const comp,
 
 		*list_struct_changed = false;
 		*list_content_changed = false;
-		for(i = 0; i < comp->lists[comp->cur_id].items_nr; i++)
+		for(i = 0; i < exts_changes->pkt_list.items_nr; i++)
 		{
-			if(!comp->lists[comp->cur_id].items[i]->known)
+			if(!exts_changes->pkt_list.items[i]->known)
 			{
+				rc_list_debug(comp, "item #%zu (table index %u) is not known yet",
+				              i + 1, exts_changes->pkt_list.items[i]->item_idx);
 				*list_content_changed = true;
 				break;
+			}
+			else
+			{
+				rc_list_debug(comp, "item #%zu (table index %u) is known already",
+				              i + 1, exts_changes->pkt_list.items[i]->item_idx);
 			}
 		}
 		if((*list_content_changed))
 		{
 			rc_list_debug(comp, "send some bits for extension header list of "
-			              "the outer IPv6 header because some of its items were "
+			              "the IPv6 header because some of its items were "
 			              "not sent enough times");
 		}
 	}
-
-	/* TODO: should not be overwritten until compression is fully OK */
-	comp->cur_id = new_cur_id;
 }
 
 
@@ -207,25 +217,32 @@ void detect_ipv6_ext_changes(struct list_comp *const comp,
  *  \li create the list for the packet
  *
  * @param comp           The list compressor
- * @param ip             The IP packet to compress
- * @param[out] pkt_list  The list of extension headers for the current packet
+ * @param ip_hdr         The IP header to compress
+ * @param exts_changes   The IPv6 ext headers fields that changed wrt to context
  */
-static void build_ipv6_ext_pkt_list(struct list_comp *const comp,
-                                    const struct rohc_pkt_ip_hdr *const ip,
-                                    struct rohc_list *const pkt_list)
+static void build_ipv6_ext_pkt_list(const struct list_comp *const comp,
+                                    const struct rohc_pkt_ip_hdr *const ip_hdr,
+                                    struct rohc_list_changes *const exts_changes)
 {
 	uint8_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
+	struct rohc_list *const pkt_list = &(exts_changes->pkt_list);
 	uint8_t ext_num;
 
 	/* reset the list of the current packet */
 	rohc_list_reset(pkt_list);
+	exts_changes->is_new_list = false;
+
+	/* copy the translation table in order to be able modify it without altering
+	 * the context one */
+	memcpy(exts_changes->trans_table, comp->trans_table,
+	       sizeof(struct rohc_list_item) * ROHC_LIST_MAX_ITEM);
 
 	/* parse all extension headers:
 	 *  - update the related entries in the translation table,
 	 *  - create the list for the packet */
-	for(ext_num = 0; ext_num < ip->exts_nr; ext_num++)
+	for(ext_num = 0; ext_num < ip_hdr->exts_nr; ext_num++)
 	{
-		const struct rohc_pkt_ip_ext_hdr *const ext = ip->exts + ext_num;
+		const struct rohc_pkt_ip_ext_hdr *const ext = ip_hdr->exts + ext_num;
 		bool entry_changed = false;
 		int index_table;
 		int ret;
@@ -239,10 +256,8 @@ static void build_ipv6_ext_pkt_list(struct list_comp *const comp,
 		assert(index_table >= 0 && ((size_t) index_table) < ROHC_LIST_MAX_ITEM);
 
 		/* update item in translation table if it changed */
-		/* TODO: context should not be overwritten until compression is fully OK */
-		/* TODO: put comp const in params once context is not overwritten any more */
 		ret = rohc_list_item_update_if_changed(comp->cmp_item,
-		                                       &(comp->trans_table[index_table]),
+		                                       &(exts_changes->trans_table[index_table]),
 		                                       ext->type, ext->data, ext->len);
 		assert(ret >= 0);
 		if(ret == 1)
@@ -252,8 +267,8 @@ static void build_ipv6_ext_pkt_list(struct list_comp *const comp,
 			entry_changed = true;
 		}
 
-		/* update current list in context */
-		pkt_list->items[pkt_list->items_nr] = &(comp->trans_table[index_table]);
+		/* update temporary current list */
+		pkt_list->items[pkt_list->items_nr] = &(exts_changes->trans_table[index_table]);
 		pkt_list->items_nr++;
 		assert(pkt_list->items_nr <= ROHC_LIST_ITEMS_MAX);
 
@@ -261,8 +276,8 @@ static void build_ipv6_ext_pkt_list(struct list_comp *const comp,
 		              "in translation table (%s entry sent %u/%u times)",
 		              pkt_list->items_nr, ext->type,
 		              (entry_changed ? "updated" : "existing"), index_table,
-		              comp->trans_table[index_table].known ? "known" : "not-yet-known",
-		              comp->trans_table[index_table].counter, comp->oa_repetitions_nr);
+		              exts_changes->trans_table[index_table].known ? "known" : "not-yet-known",
+		              exts_changes->trans_table[index_table].counter, comp->oa_repetitions_nr);
 	}
 }
 
@@ -271,19 +286,23 @@ static void build_ipv6_ext_pkt_list(struct list_comp *const comp,
  * @brief Generic encoding of compressed list
  *
  * @param comp     The list compressor
+ * @param pkt_list The list parsed from the uncompressed packet
  * @param dest     The ROHC packet under build
  * @param counter  The current position in the rohc-packet-under-build buffer
  * @return         The new position in the rohc-packet-under-build buffer,
  *                 -1 in case of error
  */
-int rohc_list_encode(struct list_comp *const comp,
+int rohc_list_encode(const struct list_comp *const comp,
+                     const struct rohc_list *const pkt_list,
                      uint8_t *const dest,
                      int counter)
 {
 	int encoding_type;
 
+	assert(pkt_list->items_nr <= ROHC_LIST_ITEMS_MAX);
+
 	/* determine which encoding type is required for the current list ? */
-	encoding_type = rohc_list_decide_type(comp);
+	encoding_type = rohc_list_decide_type(comp, pkt_list);
 	assert(encoding_type >= 0 && encoding_type <= 3);
 	rc_list_debug(comp, "use list encoding type %d", encoding_type);
 
@@ -291,16 +310,25 @@ int rohc_list_encode(struct list_comp *const comp,
 	switch(encoding_type)
 	{
 		case 0: /* Encoding type 0 (generic scheme) */
-			counter = rohc_list_encode_type_0(comp, dest, counter);
+			assert(pkt_list->id != ROHC_LIST_GEN_ID_NONE);
+			counter = rohc_list_encode_type_0(comp, pkt_list, dest, counter);
 			break;
 		case 1: /* Encoding type 1 (insertion only scheme) */
-			counter = rohc_list_encode_type_1(comp, dest, counter);
+			assert(comp->ref_id != ROHC_LIST_GEN_ID_NONE);
+			assert(pkt_list->id != ROHC_LIST_GEN_ID_NONE);
+			counter = rohc_list_encode_type_1(comp, pkt_list, dest, counter);
 			break;
 		case 2: /* Encoding type 2 (removal only scheme) */
-			counter = rohc_list_encode_type_2(comp, dest, counter);
+			assert(comp->ref_id != ROHC_LIST_GEN_ID_NONE);
+			assert(pkt_list->id != ROHC_LIST_GEN_ID_NONE);
+			assert(comp->lists[comp->ref_id].items_nr <= ROHC_LIST_ITEMS_MAX);
+			counter = rohc_list_encode_type_2(comp, pkt_list, dest, counter);
 			break;
 		case 3: /* encoding type 3 (remove then insert scheme) */
-			counter = rohc_list_encode_type_3(comp, dest, counter);
+			assert(comp->ref_id != ROHC_LIST_GEN_ID_NONE);
+			assert(pkt_list->id != ROHC_LIST_GEN_ID_NONE);
+			assert(comp->lists[comp->ref_id].items_nr <= ROHC_LIST_ITEMS_MAX);
+			counter = rohc_list_encode_type_3(comp, pkt_list, dest, counter);
 			break;
 		default:
 			rohc_assert(comp, ROHC_TRACE_COMP, comp->profile_id,
@@ -313,15 +341,15 @@ int rohc_list_encode(struct list_comp *const comp,
 		goto error;
 	}
 
-	if(comp->cur_id == ROHC_LIST_GEN_ID_ANON)
+	if(pkt_list->id == ROHC_LIST_GEN_ID_ANON)
 	{
 		rc_list_debug(comp, "send anonymous list for the #%u time",
-		              comp->lists[comp->cur_id].counter + 1);
+		              pkt_list->counter + 1);
 	}
 	else
 	{
 		rc_list_debug(comp, "send list with generation ID %u for the #%u time",
-		              comp->cur_id, comp->lists[comp->cur_id].counter + 1);
+		              pkt_list->id, pkt_list->counter + 1);
 	}
 
 	return counter;
@@ -338,30 +366,59 @@ error:
  * Update the counters of the items of the current list.
  * Update the reference list with the current list if possible.
  *
- * @param comp  The list compressor
+ * @param comp          The list compressor
+ * @param exts_changes  The changes related to the IP extension headers
  */
-void rohc_list_update_context(struct list_comp *const comp)
+void rohc_list_update_context(struct list_comp *const comp,
+                              const struct rohc_list_changes *const exts_changes)
 {
+	const uint16_t new_cur_id = exts_changes->pkt_list.id;
 	size_t i;
 
+	/* update the translation table in the compression context */
+	memcpy(comp->trans_table, exts_changes->trans_table,
+	       sizeof(struct rohc_list_item) * ROHC_LIST_MAX_ITEM);
+
 	/* nothing to do if there is no list */
-	if(comp->cur_id == ROHC_LIST_GEN_ID_NONE)
+	if(new_cur_id == ROHC_LIST_GEN_ID_NONE)
 	{
 		return;
 	}
 
-	/* the items of the current list were sent once more, increment their
-	 * counters and check whether they are known or not */
-	for(i = 0; i < comp->lists[comp->cur_id].items_nr; i++)
+	/* update the current list */
+	assert(comp->lists[new_cur_id].id == exts_changes->pkt_list.id);
+	comp->lists[new_cur_id].counter = exts_changes->pkt_list.counter;
+	comp->lists[new_cur_id].items_nr = exts_changes->pkt_list.items_nr;
+	for(i = 0; i < exts_changes->pkt_list.items_nr; i++)
 	{
-		if(!comp->lists[comp->cur_id].items[i]->known)
+		struct rohc_list *const cur_list = &(comp->lists[new_cur_id]);
+		const uint8_t new_item_idx = exts_changes->pkt_list.items[i]->item_idx;
+
+		/* use references to the items of the context translation table */
+		cur_list->items[i] = &(comp->trans_table[new_item_idx]);
+
+		/* the items of the current list were sent once more, increment their
+		 * counters and check whether they are known or not */
+		if(!cur_list->items[i]->known)
 		{
-			comp->lists[comp->cur_id].items[i]->counter++;
-			if(comp->lists[comp->cur_id].items[i]->counter >= comp->oa_repetitions_nr)
+			cur_list->items[i]->counter++;
+			rc_list_debug(comp, "item with index %u in translation table was sent "
+			              "%u/%u times", new_item_idx, cur_list->items[i]->counter,
+			              comp->oa_repetitions_nr);
+			if(cur_list->items[i]->counter >= comp->oa_repetitions_nr)
 			{
-				comp->lists[comp->cur_id].items[i]->known = true;
+				rc_list_debug(comp, "item with index %u in translation table is now known",
+				              new_item_idx);
+				cur_list->items[i]->known = true;
 			}
 		}
+	}
+	comp->cur_id = new_cur_id;
+
+	/* reset the anonymous list whenever a new identified list is transmitted */
+	if(new_cur_id != ROHC_LIST_GEN_ID_ANON && exts_changes->is_new_list)
+	{
+		comp->lists[ROHC_LIST_GEN_ID_ANON].counter = 0;
 	}
 
 	/* current list was sent once more, do we update the reference list? */
@@ -470,9 +527,10 @@ static unsigned int rohc_list_get_nearest_list(const struct list_comp *const com
 	 * so still create a new identified list */
 	if(comp->ref_id == ROHC_LIST_GEN_ID_NONE)
 	{
-		rc_list_debug(comp, "no list was ever sent");
+		rc_list_debug(comp, "no reference list was ever established, so anonymous "
+		              "list is not allowed yet");
 		*is_new_list = true;
-		return 0;
+		return rohc_list_find_free_gen_id(comp);
 	}
 
 	/* try to use an anonymous list */
@@ -503,27 +561,7 @@ static unsigned int rohc_list_get_nearest_list(const struct list_comp *const com
 	 *  - search for the first unused list,
 	 *  - if no unused list was found, get the next free gen_id
 	 *  - in all cases, avoid re-using ref_id */
-	for(gen_id = 0; new_cur_id == ROHC_LIST_GEN_ID_NONE &&
-	                gen_id <= ROHC_LIST_GEN_ID_MAX; gen_id++)
-	{
-		if(gen_id != comp->ref_id && comp->lists[gen_id].counter == 0)
-		{
-			rc_list_debug(comp, "gen_id %u is free, use it", gen_id);
-			new_cur_id = gen_id;
-		}
-	}
-	if(new_cur_id == ROHC_LIST_GEN_ID_NONE)
-	{
-		new_cur_id = gen_id % (ROHC_LIST_GEN_ID_MAX + 1);
-		rc_list_debug(comp, "no free gen_id found, re-use gen_id %u", new_cur_id);
-		if(new_cur_id == comp->ref_id)
-		{
-			new_cur_id++;
-			new_cur_id %= (ROHC_LIST_GEN_ID_MAX + 1);
-			rc_list_debug(comp, "gen_id %u is the reference list, re-use gen_id %u "
-			              "instead", comp->ref_id, new_cur_id);
-		}
-	}
+	new_cur_id = rohc_list_find_free_gen_id(comp);
 	rc_list_debug(comp, "the anonymous list is going to be transmitted for the "
 	              "%u time, promote it to an identified list with gen_id = %u",
 	              comp->lists[ROHC_LIST_GEN_ID_ANON].counter + 1, new_cur_id);
@@ -533,17 +571,65 @@ static unsigned int rohc_list_get_nearest_list(const struct list_comp *const com
 
 
 /**
+ * @brief Find the first unused gen_id
+ *
+ * - search for the first unused list,
+ * - if no unused list was found, get the next free gen_id
+ * - in all cases, avoid re-using ref_id
+ *
+ * @param comp   The list compressor
+ * @return       The gen_id to (re)use
+ */
+static unsigned int rohc_list_find_free_gen_id(const struct list_comp *const comp)
+{
+	unsigned int new_cur_id = ROHC_LIST_GEN_ID_NONE;
+	unsigned int gen_id;
+
+	/* find the first unused list (ie. counter == 0) */
+	for(gen_id = 0; new_cur_id == ROHC_LIST_GEN_ID_NONE &&
+	                gen_id <= ROHC_LIST_GEN_ID_MAX; gen_id++)
+	{
+		if(gen_id != comp->ref_id && comp->lists[gen_id].counter == 0)
+		{
+			rc_list_debug(comp, "gen_id %u is free, use it", gen_id);
+			new_cur_id = gen_id;
+		}
+	}
+
+	/* if no unused list was found, get the next free gen_id */
+	if(new_cur_id == ROHC_LIST_GEN_ID_NONE)
+	{
+		new_cur_id = gen_id % (ROHC_LIST_GEN_ID_MAX + 1);
+		rc_list_debug(comp, "no free gen_id found, re-use gen_id %u", new_cur_id);
+
+		/* in all cases, avoid re-using ref_id */
+		if(new_cur_id == comp->ref_id)
+		{
+			new_cur_id++;
+			new_cur_id %= (ROHC_LIST_GEN_ID_MAX + 1);
+			rc_list_debug(comp, "gen_id %u is the reference list, re-use gen_id %u "
+			              "instead", comp->ref_id, new_cur_id);
+		}
+	}
+
+	return new_cur_id;
+}
+
+
+/**
  * @brief Decide the encoding type for compression list
  *
- * @param comp  The list compressor
- * @return      the encoding type among [0-3]
+ * @param comp      The list compressor
+ * @param pkt_list  The list parsed from the uncompressed packet
+ * @return          The encoding type among [0-3]
  */
-static int rohc_list_decide_type(struct list_comp *const comp)
+static int rohc_list_decide_type(const struct list_comp *const comp,
+                                 const struct rohc_list *const pkt_list)
 {
 	int encoding_type;
 
 	/* sanity checks */
-	assert(comp->cur_id != ROHC_LIST_GEN_ID_NONE);
+	assert(pkt_list->id != ROHC_LIST_GEN_ID_NONE);
 
 	if(comp->ref_id == ROHC_LIST_GEN_ID_NONE)
 	{
@@ -561,8 +647,7 @@ static int rohc_list_decide_type(struct list_comp *const comp)
 		              "is the empty list");
 		encoding_type = 0;
 	}
-	else if(comp->cur_id == comp->ref_id ||
-	        comp->lists[comp->cur_id].counter > 0)
+	else if(pkt_list->id == comp->ref_id || pkt_list->counter > 0)
 	{
 		/* the structure of the list did not change, so use encoding type 0 */
 		rc_list_debug(comp, "use list encoding type 0 because the structure of "
@@ -570,14 +655,12 @@ static int rohc_list_decide_type(struct list_comp *const comp)
 		              "changed)");
 		encoding_type = 0;
 	}
-	else if(comp->lists[comp->cur_id].items_nr <=
-	        comp->lists[comp->ref_id].items_nr)
+	else if(pkt_list->items_nr <= comp->lists[comp->ref_id].items_nr)
 	{
 		/* the structure of the list changed, there are fewer items in the
 		 * current list than in the reference list: are all the items of the
 		 * current list in the reference list? */
-		if(!rohc_list_supersede(&comp->lists[comp->ref_id],
-		                        &comp->lists[comp->cur_id]))
+		if(!rohc_list_supersede(&comp->lists[comp->ref_id], pkt_list))
 		{
 			/* some items of the current list are not present in the reference
 			 * list, so the 'Remove Then Insert scheme' (type 3) is required
@@ -593,9 +676,9 @@ static int rohc_list_decide_type(struct list_comp *const comp)
 			 * items */
 			size_t k;
 			encoding_type = 2;
-			for(k = 0; k < comp->lists[comp->cur_id].items_nr; k++)
+			for(k = 0; k < pkt_list->items_nr; k++)
 			{
-				if(!comp->lists[comp->cur_id].items[k]->known)
+				if(!pkt_list->items[k]->known)
 				{
 					encoding_type = 0;
 					break;
@@ -608,8 +691,7 @@ static int rohc_list_decide_type(struct list_comp *const comp)
 		/* the structure of the list changed, there are more items in the
 		 * current list than in the reference list: are all the items of the
 		 * reference list in the current list? */
-		if(rohc_list_supersede(&comp->lists[comp->cur_id],
-		                       &comp->lists[comp->ref_id]))
+		if(rohc_list_supersede(pkt_list, &comp->lists[comp->ref_id]))
 		{
 			/* all the items of the reference list are present in the current
 			 * list, so the 'Insertion Only scheme' (type 1) may be used to
@@ -700,41 +782,33 @@ static int rohc_list_decide_type(struct list_comp *const comp)
 \endverbatim
  *
  * @param comp     The list compressor
+ * @param pkt_list The list parsed from the uncompressed packet
  * @param dest     The ROHC packet under build
  * @param counter  The current position in the rohc-packet-under-build buffer
  * @return         The new position in the rohc-packet-under-build buffer,
  *                 -1 in case of error
  */
-static int rohc_list_encode_type_0(struct list_comp *const comp,
+static int rohc_list_encode_type_0(const struct list_comp *const comp,
+                                   const struct rohc_list *const pkt_list,
                                    uint8_t *const dest,
                                    int counter)
 {
-	uint8_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
 	const uint8_t et = 0; /* list encoding type 0 */
+	const size_t m = pkt_list->items_nr; /* nr of elements in list = nr of XIs */
 	uint8_t gp;
-	size_t m; /* the number of elements in current list = number of XIs */
 	size_t k; /* the index of the current element in list */
 	size_t ps; /* indicate the size of the indexes */
-
-	assert(comp->cur_id != ROHC_LIST_GEN_ID_NONE);
-
-	/* retrieve the number of items in the current list */
-	m = comp->lists[comp->cur_id].items_nr;
-	assert(m <= ROHC_LIST_ITEMS_MAX);
 
 	/* determine whether we should use 4-bit or 8-bit indexes */
 	{
 		uint8_t ins_mask[ROHC_LIST_ITEMS_MAX] = { 1 };
 
-		ps = rohc_list_compute_ps(comp, &(comp->lists[comp->cur_id]), ins_mask, m);
-		if(ps != 0 && ps != 1)
-		{
-			goto error;
-		}
+		ps = rohc_list_compute_ps(pkt_list, ins_mask, m);
+		assert(ps == 0 || ps == 1);
 	}
 
 	/* part 1: ET, GP, PS, CC */
-	gp = (comp->cur_id != ROHC_LIST_GEN_ID_ANON);
+	gp = (pkt_list->id != ROHC_LIST_GEN_ID_ANON);
 	rc_list_debug(comp, "ET = %d, GP = %d, PS = %zu, CC = m = %zu",
 	              et, gp, ps, m);
 	dest[counter] = (et & 0x03) << 6;
@@ -746,7 +820,7 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 	/* part 2: gen_id (if not anonymous list) */
 	if(gp)
 	{
-		dest[counter] = comp->cur_id;
+		dest[counter] = pkt_list->id;
 		rc_list_debug(comp, "gen_id = 0x%02x", dest[counter]);
 		counter++;
 	}
@@ -760,21 +834,8 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 		/* write all XIs in packet */
 		for(k = 0; k < m; k++, counter++)
 		{
-			const struct rohc_list_item *const item = comp->lists[comp->cur_id].items[k];
-			int index_table;
-
-			/* one more occurrence of this item */
-			if(ext_types_count[item->type] >= 255)
-			{
-				rohc_comp_list_warn(comp, "too many IPv6 extension header of type 0x%02x",
-				                    item->type);
-				goto error;
-			}
-			ext_types_count[item->type]++;
-
-			index_table = comp->get_index_table(item->type, ext_types_count[item->type]);
-			assert(index_table >= 0);
-			assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);
+			const struct rohc_list_item *const item = pkt_list->items[k];
+			const uint8_t index_table = item->item_idx;
 
 			dest[counter] = 0;
 			/* set the X bit if item is not already known */
@@ -797,21 +858,8 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 		/* write all XIs in packet 2 by 2 */
 		for(k = 0; k < m; k += 2, counter++)
 		{
-			const struct rohc_list_item *const item = comp->lists[comp->cur_id].items[k];
-			int index_table;
-
-			/* one more occurrence of this item */
-			if(ext_types_count[item->type] >= 255)
-			{
-				rohc_comp_list_warn(comp, "too many IPv6 extension header of type 0x%02x",
-				                    item->type);
-				goto error;
-			}
-			ext_types_count[item->type]++;
-
-			index_table = comp->get_index_table(item->type, ext_types_count[item->type]);
-			assert(index_table >= 0);
-			assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);
+			const struct rohc_list_item *const item = pkt_list->items[k];
+			const uint8_t index_table = item->item_idx;
 
 			dest[counter] = 0;
 
@@ -832,22 +880,8 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 			if((k + 1) < m)
 			{
 				const struct rohc_list_item *const item2 =
-					comp->lists[comp->cur_id].items[k + 1];
-				int index_table2;
-
-				/* one more occurrence of this item */
-				if(ext_types_count[item2->type] >= 255)
-				{
-					rohc_comp_list_warn(comp, "too many IPv6 extension header of type "
-					                    "0x%02x", item2->type);
-					goto error;
-				}
-				ext_types_count[item2->type]++;
-
-				index_table2 =
-					comp->get_index_table(item2->type, ext_types_count[item2->type]);
-				assert(index_table2 >= 0);
-				assert(((size_t) index_table2) < ROHC_LIST_MAX_ITEM);
+					pkt_list->items[k + 1];
+				const uint8_t index_table2 = item2->item_idx;
 
 				/* set the X bit if item is not already known */
 				if(!item2->known)
@@ -873,7 +907,7 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 	/* part 4: n items (only unknown items) */
 	for(k = 0; k < m; k++)
 	{
-		const struct rohc_list_item *const item = comp->lists[comp->cur_id].items[k];
+		const struct rohc_list_item *const item = pkt_list->items[k];
 
 		/* copy the list element if not known yet */
 		if(!item->known)
@@ -888,9 +922,6 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 	}
 
 	return counter;
-
-error:
-	return -1;
 }
 
 
@@ -966,35 +997,31 @@ error:
 \endverbatim
  *
  * @param comp     The list compressor
+ * @param pkt_list The list parsed from the uncompressed packet
  * @param dest     The ROHC packet under build
  * @param counter  The current position in the rohc-packet-under-build buffer
  * @return         The new position in the rohc-packet-under-build buffer,
  *                 -1 in case of error
  */
-static int rohc_list_encode_type_1(struct list_comp *const comp,
+static int rohc_list_encode_type_1(const struct list_comp *const comp,
+                                   const struct rohc_list *const pkt_list,
                                    uint8_t *const dest,
                                    int counter)
 {
 	const uint8_t et = 1; /* list encoding type 1 */
+	const struct rohc_list *const ref_list = &(comp->lists[comp->ref_id]);
+	const size_t m = pkt_list->items_nr; /* nr of elements in list = nr of XIs */
 	uint8_t gp;
 	const uint8_t rem_mask[ROHC_LIST_ITEMS_MAX] = { 0 }; /* empty removal mask */
 	uint8_t ins_mask[ROHC_LIST_ITEMS_MAX] = { 0 };
 	size_t ins_mask_len;
-	size_t m; /* the number of elements in current list = number of XIs */
 	size_t k; /* the index of the current element in current list */
 	size_t ps; /* indicate the size of the indexes */
 	size_t ps_pos; /* the position of the byte that contains the PS bit */
 	int ret;
 
-	assert(comp->ref_id != ROHC_LIST_GEN_ID_NONE);
-	assert(comp->cur_id != ROHC_LIST_GEN_ID_NONE);
-
-	/* retrieve the number of items in the current list */
-	m = comp->lists[comp->cur_id].items_nr;
-	assert(m <= ROHC_LIST_ITEMS_MAX);
-
 	/* part 1: ET, GP (PS will be set later) */
-	gp = (comp->cur_id != ROHC_LIST_GEN_ID_ANON);
+	gp = (pkt_list->id != ROHC_LIST_GEN_ID_ANON);
 	rc_list_debug(comp, "ET = %d, GP = %d", et, gp);
 	dest[counter] = (et & 0x03) << 6;
 	dest[counter] |= (gp & 0x01) << 5;
@@ -1005,7 +1032,7 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 	/* part 2: gen_id (if not anonymous list) */
 	if(gp)
 	{
-		dest[counter] = comp->cur_id;
+		dest[counter] = pkt_list->id;
 		rc_list_debug(comp, "gen_id = 0x%02x", dest[counter]);
 		counter++;
 	}
@@ -1017,9 +1044,7 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 
 	/* part 4: insertion mask */
 	ins_mask_len =
-		rohc_list_compute_ins_mask(comp, &(comp->lists[comp->ref_id]),
-		                           &(comp->lists[comp->cur_id]),
-		                           rem_mask, ins_mask,
+		rohc_list_compute_ins_mask(comp, ref_list, pkt_list, rem_mask, ins_mask,
 		                           dest + counter, 2 /* TODO */);
 	if(ins_mask_len != 1 && ins_mask_len != 2)
 	{
@@ -1029,17 +1054,14 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 	counter += ins_mask_len;
 
 	/* determine whether we should use 4-bit or 8-bit indexes */
-	ps = rohc_list_compute_ps(comp, &(comp->lists[comp->cur_id]), ins_mask, m);
-	if(ps != 0 && ps != 1)
-	{
-		goto error;
-	}
+	ps = rohc_list_compute_ps(pkt_list, ins_mask, m);
+	assert(ps == 0 || ps == 1);
 
 	/* part 5: k XI (= X + Indexes) */
 	{
 		uint8_t first_4b_xi;
 
-		ret = rohc_list_build_XIs(comp, &(comp->lists[comp->cur_id]), ins_mask, ps,
+		ret = rohc_list_build_XIs(comp, pkt_list, ins_mask, ps,
 		                          dest + counter, m /* TODO */, &first_4b_xi);
 		if(ret < 0)
 		{
@@ -1057,7 +1079,7 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 	/* part 6: n items (only unknown items) */
 	for(k = 0; k < m; k++)
 	{
-		const struct rohc_list_item *const item = comp->lists[comp->cur_id].items[k];
+		const struct rohc_list_item *const item = pkt_list->items[k];
 
 		/* skip element if it present in the reference list */
 		if(ins_mask[k] == 0 && item->known)
@@ -1132,30 +1154,26 @@ error:
 \endverbatim
  *
  * @param comp     The list compressor
+ * @param pkt_list The list parsed from the uncompressed packet
  * @param dest     The ROHC packet under build
  * @param counter  The current position in the rohc-packet-under-build buffer
  * @return         The new position in the rohc-packet-under-build buffer,
  *                 -1 in case of error
  */
-static int rohc_list_encode_type_2(struct list_comp *const comp,
+static int rohc_list_encode_type_2(const struct list_comp *const comp,
+                                   const struct rohc_list *const pkt_list,
                                    uint8_t *const dest,
                                    int counter)
 {
 	const uint8_t et = 2; /* list encoding type 2 */
+	const struct rohc_list *const ref_list = &(comp->lists[comp->ref_id]);
+	const size_t count = comp->lists[comp->ref_id].items_nr; /* size of ref list */
 	uint8_t gp;
 	uint8_t rem_mask[ROHC_LIST_ITEMS_MAX] = { 0 };
 	size_t rem_mask_len;
-	size_t count; /* size of reference list */
-
-	assert(comp->ref_id != ROHC_LIST_GEN_ID_NONE);
-	assert(comp->cur_id != ROHC_LIST_GEN_ID_NONE);
-
-	/* retrieve the number of items in the reference list */
-	count = comp->lists[comp->ref_id].items_nr;
-	assert(count <= ROHC_LIST_ITEMS_MAX);
 
 	/* part 1: ET, GP, res and Count */
-	gp = (comp->cur_id != ROHC_LIST_GEN_ID_ANON);
+	gp = (pkt_list->id != ROHC_LIST_GEN_ID_ANON);
 	rc_list_debug(comp, "ET = %d, GP = %d, Count = %zu", et, gp, count);
 	dest[counter] = (et & 0x03) << 6;
 	dest[counter] |= (gp & 0x01) << 5;
@@ -1166,7 +1184,7 @@ static int rohc_list_encode_type_2(struct list_comp *const comp,
 	/* part 2: gen_id (if not anonymous list) */
 	if(gp)
 	{
-		dest[counter] = comp->cur_id;
+		dest[counter] = pkt_list->id;
 		rc_list_debug(comp, "gen_id = 0x%02x", dest[counter]);
 		counter++;
 	}
@@ -1177,10 +1195,8 @@ static int rohc_list_encode_type_2(struct list_comp *const comp,
 	counter++;
 
 	/* part 4: removal mask */
-	rem_mask_len =
-		rohc_list_compute_rem_mask(comp, &(comp->lists[comp->ref_id]),
-		                           &(comp->lists[comp->cur_id]),
-		                           rem_mask, dest + counter, 2 /* TODO */);
+	rem_mask_len = rohc_list_compute_rem_mask(comp, ref_list, pkt_list, rem_mask,
+	                                          dest + counter, 2 /* TODO */);
 	if(rem_mask_len != 1 && rem_mask_len != 2)
 	{
 		rohc_comp_list_warn(comp, "ROHC buffer is too short for the removal mask");
@@ -1285,39 +1301,32 @@ error:
 \endverbatim
  *
  * @param comp     The list compressor
+ * @param pkt_list The list parsed from the uncompressed packet
  * @param dest     The ROHC packet under build
  * @param counter  The current position in the rohc-packet-under-build buffer
  * @return         The new position in the rohc-packet-under-build buffer,
  *                 -1 in case of error
  */
-static int rohc_list_encode_type_3(struct list_comp *const comp,
+static int rohc_list_encode_type_3(const struct list_comp *const comp,
+                                   const struct rohc_list *const pkt_list,
                                    uint8_t *const dest,
                                    int counter)
 {
 	const uint8_t et = 3; /* list encoding type 3 */
+	const struct rohc_list *const ref_list = &(comp->lists[comp->ref_id]);
+	const size_t m = pkt_list->items_nr; /* nr of elements in list = nr of XIs */
 	uint8_t gp;
 	uint8_t rem_mask[ROHC_LIST_ITEMS_MAX] = { 0 };
 	uint8_t ins_mask[ROHC_LIST_ITEMS_MAX] = { 0 };
 	size_t rem_mask_len;
 	size_t ins_mask_len;
-	size_t m; /* the number of elements in current list = number of XIs */
 	size_t k; /* the index of the current element in current list */
 	size_t ps; /* indicate the size of the indexes */
 	size_t ps_pos; /* the position of the byte that contains the PS bit */
 	int ret;
 
-	assert(comp->ref_id != ROHC_LIST_GEN_ID_NONE);
-	assert(comp->cur_id != ROHC_LIST_GEN_ID_NONE);
-
-	/* retrieve the number of items in the reference list */
-	assert(comp->lists[comp->ref_id].items_nr <= ROHC_LIST_ITEMS_MAX);
-
-	/* retrieve the number of items in the current list */
-	m = comp->lists[comp->cur_id].items_nr;
-	assert(m <= ROHC_LIST_ITEMS_MAX);
-
 	/* part 1: ET, GP (PS will be set later) */
-	gp = (comp->cur_id != ROHC_LIST_GEN_ID_ANON);
+	gp = (pkt_list->id != ROHC_LIST_GEN_ID_ANON);
 	rc_list_debug(comp, "ET = %d, GP = %d", et, gp);
 	dest[counter] = (et & 0x03) << 6;
 	dest[counter] |= (gp & 0x01) << 5;
@@ -1328,7 +1337,7 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 	/* part 2: gen_id (if not anonymous list) */
 	if(gp)
 	{
-		dest[counter] = comp->cur_id;
+		dest[counter] = pkt_list->id;
 		rc_list_debug(comp, "gen_id = 0x%02x", dest[counter]);
 		counter++;
 	}
@@ -1339,10 +1348,8 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 	counter++;
 
 	/* part 4: removal mask */
-	rem_mask_len =
-		rohc_list_compute_rem_mask(comp, &(comp->lists[comp->ref_id]),
-		                           &(comp->lists[comp->cur_id]),
-		                           rem_mask, dest + counter, 2 /* TODO */);
+	rem_mask_len = rohc_list_compute_rem_mask(comp, ref_list, pkt_list, rem_mask,
+	                                          dest + counter, 2 /* TODO */);
 	if(rem_mask_len != 1 && rem_mask_len != 2)
 	{
 		rohc_comp_list_warn(comp, "ROHC buffer is too short for the removal mask");
@@ -1351,11 +1358,8 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 	counter += rem_mask_len;
 
 	/* part 5: insertion mask */
-	ins_mask_len =
-		rohc_list_compute_ins_mask(comp, &(comp->lists[comp->ref_id]),
-		                           &(comp->lists[comp->cur_id]),
-		                           rem_mask, ins_mask,
-		                           dest + counter, 2 /* TODO */);
+	ins_mask_len = rohc_list_compute_ins_mask(comp, ref_list, pkt_list, rem_mask,
+	                                          ins_mask, dest + counter, 2 /* TODO */);
 	if(ins_mask_len != 1 && ins_mask_len != 2)
 	{
 		rohc_comp_list_warn(comp, "ROHC buffer is too short for the insertion mask");
@@ -1364,17 +1368,14 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 	counter += ins_mask_len;
 
 	/* determine whether we should use 4-bit or 8-bit indexes */
-	ps = rohc_list_compute_ps(comp, &(comp->lists[comp->cur_id]), ins_mask, m);
-	if(ps != 0 && ps != 1)
-	{
-		goto error;
-	}
+	ps = rohc_list_compute_ps(pkt_list, ins_mask, m);
+	assert(ps == 0 || ps == 1);
 
 	/* part 6: k XI (= X + Indexes) */
 	{
 		uint8_t first_4b_xi;
 
-		ret = rohc_list_build_XIs(comp, &(comp->lists[comp->cur_id]), ins_mask, ps,
+		ret = rohc_list_build_XIs(comp, pkt_list, ins_mask, ps,
 		                          dest + counter, m /* TODO */, &first_4b_xi);
 		if(ret < 0)
 		{
@@ -1392,7 +1393,7 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 	/* part 7: n items (only unknown items) */
 	for(k = 0; k < m; k++)
 	{
-		const struct rohc_list_item *const item = comp->lists[comp->cur_id].items[k];
+		const struct rohc_list_item *const item = pkt_list->items[k];
 
 		/* skip element if it present in the reference list */
 		if(ins_mask[k] == 0 && item->known)
@@ -1489,7 +1490,8 @@ static size_t rohc_list_compute_ins_mask(const struct list_comp *const comp,
 
 		/* set bit to 1 in the insertion mask if the list item is not present
 		   in the reference list */
-		if(ref_k >= ref_m || cur_list->items[k] != ref_list->items[ref_k])
+		if(ref_k >= ref_m ||
+		   cur_list->items[k]->item_idx != ref_list->items[ref_k]->item_idx)
 		{
 			/* item is new, so put 1 in mask */
 			rc_list_debug(comp, "insertion bit mask: insert new item of type %d "
@@ -1534,7 +1536,8 @@ static size_t rohc_list_compute_ins_mask(const struct list_comp *const comp,
 
 			/* set bit to 1 in the insertion mask if the list item is not present
 			   in the reference list */
-			if(ref_k >= ref_m || cur_list->items[k] != ref_list->items[ref_k])
+			if(ref_k >= ref_m ||
+			   cur_list->items[k]->item_idx != ref_list->items[ref_k]->item_idx)
 			{
 				/* item is new, so put 1 in mask */
 				bit = 1;
@@ -1614,7 +1617,7 @@ static size_t rohc_list_compute_rem_mask(const struct list_comp *const comp,
 	/* first byte of the removal mask */
 	for(k = 0, ref_k = 0; ref_k < ref_m && ref_k < 8; ref_k++)
 	{
-		if(k < m && ref_list->items[ref_k] == cur_list->items[k])
+		if(k < m && ref_list->items[ref_k]->item_idx == cur_list->items[k]->item_idx)
 		{
 			/* item shall not be removed, clear its corresponding bit in the
 			   removal bit mask */
@@ -1645,7 +1648,7 @@ static size_t rohc_list_compute_rem_mask(const struct list_comp *const comp,
 		rohc_data[1] = 0xff;
 		for(ref_k = 7; ref_k < ref_m && ref_k < 15; ref_k++)
 		{
-			if(k < m && ref_list->items[ref_k] == cur_list->items[k])
+			if(k < m && ref_list->items[ref_k]->item_idx == cur_list->items[k]->item_idx)
 			{
 				/* item shall not be removed, clear its corresponding bit in the
 				   removal bit mask */
@@ -1677,57 +1680,30 @@ error:
 /**
  * @brief Determine whether we should use 4-bit or 8-bit indexes
  *
- * @param comp  The list compressor
  * @param list  The list to get the indexes size for
  * @param mask  The insertion mask for the list
  * @param m     The number of elements in current list
  * @return      0 for 4-bit indexes,
- *              1 for 8-bit indexes,
- *              2 for error
+ *              1 for 8-bit indexes
  */
-static uint8_t rohc_list_compute_ps(const struct list_comp *const comp,
-                                    const struct rohc_list *const list,
+static uint8_t rohc_list_compute_ps(const struct rohc_list *const list,
                                     const uint8_t mask[ROHC_LIST_ITEMS_MAX],
                                     const size_t m)
 {
-	uint8_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
 	uint8_t ps = 0; /* 4-bit indexes by default */
 	size_t k;
 
 	for(k = 0; k < m && ps == 0; k++)
 	{
 		const struct rohc_list_item *const item = list->items[k];
-		int index_table;
 
-		/* one more occurrence of this item */
-		if(ext_types_count[item->type] >= 255)
-		{
-			rohc_comp_list_warn(comp, "too many IPv6 extension header of type 0x%02x",
-			                    item->type);
-			goto error;
-		}
-		ext_types_count[item->type]++;
-
-		/* get the index corresponding to the item type and the number of
-		 * occurrences */
-		index_table = comp->get_index_table(item->type, ext_types_count[item->type]);
-		if(index_table < 0 || ((size_t) index_table) >= ROHC_LIST_MAX_ITEM)
-		{
-			rohc_comp_list_warn(comp, "failed to handle unknown IPv6 extension "
-			                    "header of type 0x%02x", item->type);
-			goto error;
-		}
-
-		if((mask[k] != 0 || !item->known) && index_table > 0x07)
+		if((mask[k] != 0 || !item->known) && item->item_idx > 0x07)
 		{
 			ps = 1; /* 8-bit indexes are required */
 		}
 	}
 
 	return ps;
-
-error:
-	return 2;
 }
 
 
@@ -1781,7 +1757,6 @@ static int rohc_list_build_XIs_8(const struct list_comp *const comp,
                                  uint8_t *const rohc_data,
                                  const size_t rohc_max_len)
 {
-	uint8_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
 	const size_t m = list->items_nr;
 	size_t xi_len = 0;
 	size_t k;
@@ -1791,20 +1766,7 @@ static int rohc_list_build_XIs_8(const struct list_comp *const comp,
 	for(k = 0; k < m; k++)
 	{
 		const struct rohc_list_item *const item = list->items[k];
-		int index_table;
-
-		/* one more occurrence of this item */
-		if(ext_types_count[item->type] >= 255)
-		{
-			rohc_comp_list_warn(comp, "too many IPv6 extension header of type 0x%02x",
-			                    item->type);
-			goto error;
-		}
-		ext_types_count[item->type]++;
-
-		index_table = comp->get_index_table(item->type, ext_types_count[item->type]);
-		assert(index_table >= 0);
-		assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);
+		const uint8_t index_table = item->item_idx;
 
 		/* skip element if it present in the reference list and compressor
 		 * is confident that item is known by decompressor */
@@ -1864,7 +1826,6 @@ static int rohc_list_build_XIs_4(const struct list_comp *const comp,
                                  const size_t rohc_max_len,
                                  uint8_t *const first_4b_xi)
 {
-	uint8_t ext_types_count[ROHC_IPPROTO_MAX + 1] = { 0 };
 	const size_t m = list->items_nr;
 	size_t xi_index = 0;
 	size_t xi_len = 0;
@@ -1877,20 +1838,7 @@ static int rohc_list_build_XIs_4(const struct list_comp *const comp,
 	for(k = 0; k < m; k++)
 	{
 		const struct rohc_list_item *const item = list->items[k];
-		int index_table;
-
-		/* one more occurrence of this item */
-		if(ext_types_count[item->type] >= 255)
-		{
-			rohc_comp_list_warn(comp, "too many IPv6 extension header of type 0x%02x",
-			                    item->type);
-			goto error;
-		}
-		ext_types_count[item->type]++;
-
-		index_table = comp->get_index_table(item->type, ext_types_count[item->type]);
-		assert(index_table >= 0);
-		assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);
+		const uint8_t index_table = item->item_idx;
 
 		/* skip element if it present in the reference list and compressor
 		 * is confident that item is known by decompressor */

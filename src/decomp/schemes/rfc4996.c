@@ -283,7 +283,7 @@ bool d_ip_id_lsb(const struct rohc_decomp_ctxt *const context,
                  const uint16_t msn,
                  const uint32_t ip_id_bits,
                  const size_t ip_id_bits_nr,
-                 const rohc_lsb_shift_t p,
+                 const int32_t p,
                  uint16_t *const ip_id)
 {
 	bool decode_ok;

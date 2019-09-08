@@ -57,9 +57,10 @@ static size_t esp_code_static_esp_part(const struct rohc_comp_ctxt *const contex
 
 static size_t esp_code_dynamic_esp_part(const struct rohc_comp_ctxt *const context,
                                         const uint8_t *const next_header,
+                                        const struct rfc3095_tmp_state *const changes,
                                         uint8_t *const dest,
                                         const size_t counter)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 
 
 /*
@@ -94,9 +95,9 @@ static bool c_esp_create(struct rohc_comp_ctxt *const context,
 	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
 
 	/* initialize SN with the SN found in the ESP header */
-	rfc3095_ctxt->sn = rohc_ntoh32(uncomp_pkt_hdrs->esp->sn);
+	rfc3095_ctxt->last_sn = rohc_ntoh32(uncomp_pkt_hdrs->esp->sn);
 	rohc_comp_debug(context, "initialize context(SN) = hdr(SN) of first "
-	                "packet = %u", rfc3095_ctxt->sn);
+	                "packet = %u", rfc3095_ctxt->last_sn);
 
 	/* init the ESP-specific variables and functions */
 	rfc3095_ctxt->specific = NULL;
@@ -189,12 +190,14 @@ static size_t esp_code_static_esp_part(const struct rohc_comp_ctxt *const contex
  *
  * @param context     The compression context
  * @param next_header The ESP header
+ * @param changes     The header fields that changed wrt to context
  * @param dest        The rohc-packet-under-build buffer
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer
  */
 static size_t esp_code_dynamic_esp_part(const struct rohc_comp_ctxt *const context,
                                         const uint8_t *const next_header,
+                                        const struct rfc3095_tmp_state *const changes __attribute__((unused)),
                                         uint8_t *const dest,
                                         const size_t counter)
 {

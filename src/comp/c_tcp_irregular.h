@@ -37,7 +37,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-int tcp_code_irreg_chain(struct rohc_comp_ctxt *const context,
+int tcp_code_irreg_chain(const struct rohc_comp_ctxt *const context,
                          const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                          const struct tcp_tmp_variables *const tmp,
                          uint8_t *const rohc_pkt,

@@ -327,7 +327,7 @@ static bool is_sn_wraparound(const struct rohc_ts cur_arrival_time,
                              const size_t arrival_times_nr,
                              const size_t arrival_times_index,
                              const size_t k,
-                             const rohc_lsb_shift_t p)
+                             const int32_t p)
 	__attribute__((warn_unused_result, pure));
 
 static void reset_extr_bits(const struct rohc_decomp_rfc3095_ctxt *const rfc3095_ctxt,
@@ -5736,7 +5736,7 @@ bool rfc3095_decomp_attempt_repair(const struct rohc_decomp *const decomp,
 	                                           ROHC_LSB_REF_0);
 	const uint32_t sn_ref_minus_1 = rohc_lsb_get_ref(&rfc3095_ctxt->sn_lsb_ctxt,
 	                                                 ROHC_LSB_REF_MINUS_1);
-	rohc_lsb_shift_t p;
+	int32_t sn_lsb_p;
 	bool verdict = false;
 
 	/* do not try to repair packet/context if feature is disabled */
@@ -5764,15 +5764,15 @@ bool rfc3095_decomp_attempt_repair(const struct rohc_decomp *const decomp,
 
 	if(context->profile->id == ROHCv1_PROFILE_IP_UDP_RTP)
 	{
-		p = rohc_interval_compute_p_rtp_sn(extr_bits->sn_nr);
+		sn_lsb_p = rohc_interval_compute_p_rtp_sn(extr_bits->sn_nr);
 	}
 	else if(context->profile->id == ROHCv1_PROFILE_IP_ESP)
 	{
-		p = rohc_interval_compute_p_esp_sn(extr_bits->sn_nr);
+		sn_lsb_p = rohc_interval_compute_p_esp_sn(extr_bits->sn_nr);
 	}
 	else
 	{
-		p = ROHC_LSB_SHIFT_SN;
+		sn_lsb_p = ROHC_LSB_SHIFT_SN;
 	}
 
 	/* step b of RFC3095, §5.3.2.2.4. Correction of SN LSB wraparound:
@@ -5786,7 +5786,7 @@ bool rfc3095_decomp_attempt_repair(const struct rohc_decomp *const decomp,
 	 *   current header. */
 	if(is_sn_wraparound(pkt_arrival_time, crc_corr->arrival_times,
 	                    crc_corr->arrival_times_nr, crc_corr->arrival_times_index,
-	                    extr_bits->sn_nr, p))
+	                    extr_bits->sn_nr, sn_lsb_p))
 	{
 		rohc_decomp_warn(context, "CID %u: CRC repair: CRC failure seems to "
 		                 "be caused by a sequence number LSB wraparound",
@@ -5872,7 +5872,7 @@ static bool is_sn_wraparound(const struct rohc_ts cur_arrival_time,
                              const size_t arrival_times_nr,
                              const size_t arrival_times_index,
                              const size_t k,
-                             const rohc_lsb_shift_t p)
+                             const int32_t p)
 {
 	const size_t arrival_times_index_last =
 		(arrival_times_index + ROHC_MAX_ARRIVAL_TIMES - 1) % ROHC_MAX_ARRIVAL_TIMES;
@@ -5904,11 +5904,11 @@ static bool is_sn_wraparound(const struct rohc_ts cur_arrival_time,
 
 	/* compute the minimum inter-packet interval that the current interval
 	 * shall exceed so that SN wraparound is detected */
-	if(rohc_interval_compute_p(k, p) >= (1 << k))
+	if(p >= (1 << k))
 	{
 		goto error;
 	}
-	min_interval = ((1 << k) - rohc_interval_compute_p(k, p)) * avg_interval;
+	min_interval = ((1 << k) - p) * avg_interval;
 
 	/* subtract 10% to handle problems related to clock precision */
 	margin = min_interval * 10;
@@ -5993,22 +5993,22 @@ rohc_status_t rfc3095_decomp_decode_bits(const struct rohc_decomp_ctxt *const co
 	else
 	{
 		/* decode SN from packet bits and context */
-		rohc_lsb_shift_t p;
+		int32_t sn_lsb_p;
 		if(context->profile->id == ROHCv1_PROFILE_IP_UDP_RTP)
 		{
-			p = rohc_interval_compute_p_rtp_sn(bits->sn_nr);
+			sn_lsb_p = rohc_interval_compute_p_rtp_sn(bits->sn_nr);
 		}
 		else if(context->profile->id == ROHCv1_PROFILE_IP_ESP)
 		{
-			p = rohc_interval_compute_p_esp_sn(bits->sn_nr);
+			sn_lsb_p = rohc_interval_compute_p_esp_sn(bits->sn_nr);
 		}
 		else
 		{
-			p = ROHC_LSB_SHIFT_SN;
+			sn_lsb_p = ROHC_LSB_SHIFT_SN;
 		}
 		decode_ok = rohc_lsb_decode(&rfc3095_ctxt->sn_lsb_ctxt, bits->lsb_ref_type,
 		                            bits->sn_ref_offset, bits->sn, bits->sn_nr,
-		                            p, &decoded->sn);
+		                            sn_lsb_p, &decoded->sn);
 		if(!decode_ok)
 		{
 			rohc_decomp_warn(context, "failed to decode %zu SN bits 0x%x",

@@ -81,9 +81,12 @@ int variable_length_32_enc(const bool is_unchanged,
 /* RFC4996 page 49 */
 void c_field_scaling(uint32_t *const scaled_value,
                      uint32_t *const residue_field,
-                     const uint32_t scaling_factor,
+                     const uint16_t scaling_factor,
                      const uint32_t unscaled_value)
 	__attribute__((nonnull(1, 2)));
+
+bool is_field_scaling_possible(const uint16_t factor, const bool params_changed)
+	__attribute__((warn_unused_result, const));
 
 // RFC4996 page 71
 bool rsf_index_enc_possible(const uint8_t rsf_flags)
@@ -96,7 +99,7 @@ int c_optional_ip_id_lsb(const int behavior,
                          const uint16_t ip_id_nbo,
                          const uint16_t ip_id_offset,
                          const struct c_wlsb *const wlsb,
-                         const rohc_lsb_shift_t p,
+                         const int32_t p,
                          uint8_t *const rohc_data,
                          const size_t rohc_max_len,
                          int *const indicator)
@@ -109,16 +112,6 @@ int dscp_encode(const bool is_static,
                 const size_t rohc_max_len,
                 int *const indicator)
 	__attribute__((warn_unused_result, nonnull(3, 5)));
-
-/* helper functions related to Scaled ACK and ACK Stride */
-bool tcp_is_ack_scaled_possible(const uint16_t ack_stride,
-                                const uint8_t nr_trans,
-                                const uint8_t oa_repetitions_nr)
-	__attribute__((warn_unused_result, const));
-bool tcp_is_ack_stride_static(const uint16_t ack_stride,
-                              const uint8_t nr_trans,
-                              const uint8_t oa_repetitions_nr)
-	__attribute__((warn_unused_result, const));
 
 #endif /* ROHC_COMP_RFC4996_ENCODING_H */
 

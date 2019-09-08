@@ -114,19 +114,19 @@ void c_add_wlsb(struct c_wlsb *const wlsb,
 bool wlsb_is_kp_possible_8bits(const struct c_wlsb *const wlsb,
                                const uint8_t value,
                                const size_t k,
-                               const rohc_lsb_shift_t p)
+                               const int32_t p)
 	__attribute__((warn_unused_result, nonnull(1)));
 
 bool wlsb_is_kp_possible_16bits(const struct c_wlsb *const wlsb,
                                 const uint16_t value,
                                 const size_t k,
-                                const rohc_lsb_shift_t p)
+                                const int32_t p)
 	__attribute__((warn_unused_result, nonnull(1)));
 
 bool wlsb_is_kp_possible_32bits(const struct c_wlsb *const wlsb,
                                 const uint32_t value,
                                 const size_t k,
-                                const rohc_lsb_shift_t p)
+                                const int32_t p)
 	__attribute__((warn_unused_result, nonnull(1)));
 
 size_t wlsb_ack(struct c_wlsb *const wlsb,

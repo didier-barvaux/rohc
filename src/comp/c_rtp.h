@@ -35,41 +35,6 @@
 #include "protocols/rtp.h"
 
 
-/** The RTP-specific temporary variables */
-struct rtp_tmp_vars
-{
-	/** Whether the UDP checksum changed of behavior with the current packet */
-	uint16_t udp_check_behavior_just_changed:1;
-	/** Whether the UDP checksum changed of behavior with the last few packets */
-	uint16_t udp_check_behavior_changed:1;
-	/** Whether the RTP Version changed with the current packet */
-	uint16_t rtp_version_just_changed:1;
-	/** Whether the RTP Version changed with the last few packets */
-	uint16_t rtp_version_changed:1;
-	/** Whether the RTP Padding (P) bit changed with the current packet */
-	uint16_t rtp_padding_just_changed:1;
-	/** Whether the RTP Padding (P) bit changed with the last few packets */
-	uint16_t rtp_padding_changed:1;
-	/** Whether the RTP eXtension (X) bit changed with the current packet */
-	uint16_t rtp_ext_just_changed:1;
-	/** Whether the RTP eXtension (X) bit changed with the last few packets */
-	uint16_t rtp_ext_changed:1;
-	uint16_t is_marker_bit_set:1;   /**< Whether RTP Marker (M) bit is set */
-	/** Whether the RTP Payload Type (PT) changed with the current packet */
-	uint16_t rtp_pt_just_changed:1;
-	/** Whether the RTP Payload Type (PT) changed with the last few packets */
-	uint16_t rtp_pt_changed:1;
-	uint16_t unused:5;
-
-	/** The TS field to send (ts_scaled or ts) */
-	uint32_t ts_send;
-	/** The number of bits needed to encode ts_send */
-	uint8_t nr_ts_bits;
-	/** The number of bits of TS to place in the extension 3 header */
-	uint8_t nr_ts_bits_ext3;
-};
-
-
 /**
  * @brief Define the RTP part of the profile decompression context.
  *
@@ -100,10 +65,6 @@ struct sc_rtp_context
 	uint16_t old_rtp_extension:1; /**< The RTP Extension in previous RTP header */
 	uint16_t old_rtp_pt:7;        /**< The RTP Payload Type in previous RTP header */
 	uint16_t unused:5;
-
-	/// @brief RTP-specific temporary variables that are used during one single
-	///        compression of packet
-	struct rtp_tmp_vars tmp;
 };
 
 /* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */

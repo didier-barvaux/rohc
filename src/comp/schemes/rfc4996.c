@@ -341,7 +341,7 @@ error:
  */
 void c_field_scaling(uint32_t *const scaled_value,
                      uint32_t *const residue_field,
-                     const uint32_t scaling_factor,
+                     const uint16_t scaling_factor,
                      const uint32_t unscaled_value)
 {
 	if(scaling_factor == 0)
@@ -353,9 +353,16 @@ void c_field_scaling(uint32_t *const scaled_value,
 	{
 		*residue_field = unscaled_value % scaling_factor;
 		*scaled_value = unscaled_value / scaling_factor;
-		assert(unscaled_value ==
-		       (((*scaled_value) * scaling_factor) + (*residue_field)));
 	}
+	assert(unscaled_value ==
+	       (((*scaled_value) * scaling_factor) + (*residue_field)));
+}
+
+
+/* TODO */
+bool is_field_scaling_possible(const uint16_t factor, const bool params_changed)
+{
+  return (factor > 0 && !params_changed);
 }
 
 
@@ -422,7 +429,7 @@ int c_optional_ip_id_lsb(const int behavior,
                          const uint16_t ip_id_nbo,
                          const uint16_t ip_id_offset,
                          const struct c_wlsb *const wlsb,
-                         const rohc_lsb_shift_t p,
+                         const int32_t p,
                          uint8_t *const rohc_data,
                          const size_t rohc_max_len,
                          int *const indicator)
@@ -513,44 +520,5 @@ int dscp_encode(const bool is_static,
 
 error:
 	return -1;
-}
-
-
-/**
- * @brief Whether the ACK number may be transmitted scaled or not
- *
- * The ACK number may be transmitted scaled if:
- *  \li the \e ack_stride scaling factor is non-zero,
- *  \li both the \e ack_stride scaling factor and the scaling residue didn't
- *      change in the last few packets
- *
- * @param ack_stride         The \e ack_stride scaling factor
- * @param nr_trans           The number of transmissions since last change
- * @param oa_repetitions_nr  The number of repetitions for Optimistic Approach
- * @return                   true if the ACK number may be transmitted scaled,
- *                           false if the ACK number shall be transmitted unscaled
- */
-bool tcp_is_ack_scaled_possible(const uint16_t ack_stride,
-                                const uint8_t nr_trans,
-                                const uint8_t oa_repetitions_nr)
-{
-	return (ack_stride != 0 && nr_trans >= oa_repetitions_nr);
-}
-
-
-/**
- * @brief Whether the \e ack_stride scaling factor shall be transmitted or not
- *
- * @param ack_stride         The \e ack_stride scaling factor
- * @param nr_trans           The number of transmissions since last change
- * @param oa_repetitions_nr  The number of repetitions for Optimistic Approach
- * @return                   true if the ACK number may be transmitted scaled,
- *                           false if the ACK number shall be transmitted unscaled
- */
-bool tcp_is_ack_stride_static(const uint16_t ack_stride,
-                              const uint8_t nr_trans,
-                              const uint8_t oa_repetitions_nr)
-{
-	return (ack_stride == 0 || nr_trans >= oa_repetitions_nr);
 }
 

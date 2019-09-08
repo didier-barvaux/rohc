@@ -39,7 +39,6 @@ int main(void)
 	printf("sizeof(size_t) = %zu\n", sizeof(size_t));
 	printf("sizeof(bool) = %zu\n", sizeof(bool));
 	printf("sizeof(bits_nr_t) = %zu\n", sizeof(bits_nr_t));
-	printf("sizeof(rohc_lsb_shift_t) = %zu\n", sizeof(rohc_lsb_shift_t));
 	printf("sizeof(rohc_lsb_decode) = %zu\n", sizeof(struct rohc_lsb_decode));
 	printf("sizeof(rohc_ip_id_behavior_t) = %zu\n", sizeof(rohc_ip_id_behavior_t));
 

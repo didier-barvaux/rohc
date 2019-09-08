@@ -33,20 +33,23 @@
  * Public function prototypes.
  */
 
-rohc_packet_t c_ip_decide_FO_packet(const struct rohc_comp_ctxt *const context)
-	__attribute__((warn_unused_result, nonnull(1)));
-rohc_packet_t c_ip_decide_SO_packet(const struct rohc_comp_ctxt *const context)
-	__attribute__((warn_unused_result, nonnull(1)));
+rohc_packet_t c_ip_decide_FO_packet(const struct rohc_comp_ctxt *const context,
+                                    const struct rfc3095_tmp_state *const changes)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
+rohc_packet_t c_ip_decide_SO_packet(const struct rohc_comp_ctxt *const context,
+                                    const struct rfc3095_tmp_state *const changes)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 uint32_t c_ip_get_next_sn(const struct rohc_comp_ctxt *const context,
                           const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs __attribute__((unused)))
 	__attribute__((warn_unused_result, nonnull(1, 2), pure));
 
 int c_ip_code_ir_remainder(const struct rohc_comp_ctxt *const context,
+                           const struct rfc3095_tmp_state *const changes,
                            uint8_t *const dest,
                            const size_t dest_max_len,
                            const size_t counter)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 #endif
 

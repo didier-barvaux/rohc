@@ -41,8 +41,9 @@ static bool rohc_ip_ctxt_create(struct rohc_comp_ctxt *const context,
                                 const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static bool max_6_bits_of_innermost_nonrnd_ipv4_id_required(const struct rohc_comp_rfc3095_ctxt *const ctxt)
-	__attribute__((warn_unused_result, nonnull(1)));
+static bool max_6_bits_of_innermost_nonrnd_ipv4_id_required(const struct rohc_comp_rfc3095_ctxt *const ctxt,
+                                                            const struct rfc3095_tmp_state *const changes)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 
 /*
@@ -74,9 +75,9 @@ static bool rohc_ip_ctxt_create(struct rohc_comp_ctxt *const context,
 	rfc3095_ctxt = (struct rohc_comp_rfc3095_ctxt *) context->specific;
 
 	/* initialize SN to a random value (RFC 3095, 5.11.1) */
-	rfc3095_ctxt->sn = comp->random_cb(comp, comp->random_cb_ctxt) & 0xffff;
+	rfc3095_ctxt->last_sn = comp->random_cb(comp, comp->random_cb_ctxt) & 0xffff;
 	rohc_comp_debug(context, "initialize context(SN) = random() = %u",
-	                rfc3095_ctxt->sn);
+	                rfc3095_ctxt->last_sn);
 
 	/* init the IP-only-specific variables and functions */
 	rfc3095_ctxt->decide_FO_packet = c_ip_decide_FO_packet;
@@ -100,24 +101,23 @@ error:
  * @see decide_packet
  *
  * @param context The compression context
+ * @param changes The header fields that changed wrt to context
  * @return        The packet type among ROHC_PACKET_IR_DYN and ROHC_PACKET_UOR_2
  */
-rohc_packet_t c_ip_decide_FO_packet(const struct rohc_comp_ctxt *const context)
+rohc_packet_t c_ip_decide_FO_packet(const struct rohc_comp_ctxt *const context,
+                                    const struct rfc3095_tmp_state *const changes)
 {
-	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
-		(const struct rohc_comp_rfc3095_ctxt *const) context->specific;
-	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	rohc_packet_t packet;
 
-	if(does_at_least_one_sid_change(rfc3095_ctxt, oa_repetitions_nr))
+	if(changes->at_least_one_sid_changed)
 	{
 		packet = ROHC_PACKET_IR_DYN;
 		rohc_comp_debug(context, "choose packet IR-DYN because at least one "
 		                "SID flag changed");
 	}
-	else if(!rfc3095_ctxt->tmp.sn_5bits_possible &&
-	        !rfc3095_ctxt->tmp.sn_8bits_possible &&
-	        !rfc3095_ctxt->tmp.sn_13bits_possible)
+	else if(!changes->sn_5bits_possible &&
+	        !changes->sn_8bits_possible &&
+	        !changes->sn_13bits_possible)
 	{
 		/* UOR-2 packet cannot be used if SN does not stand on 5, 8, or 13 bits
 		 *  - 5 bits in base header
@@ -151,12 +151,13 @@ rohc_packet_t c_ip_decide_FO_packet(const struct rohc_comp_ctxt *const context)
  * @see decide_packet
  *
  * @param context The compression context
+ * @param changes The header fields that changed wrt to context
  * @return        The packet type among ROHC_PACKET_UO_0, ROHC_PACKET_UO_1 and
  *                ROHC_PACKET_UOR_2
  */
-rohc_packet_t c_ip_decide_SO_packet(const struct rohc_comp_ctxt *const context)
+rohc_packet_t c_ip_decide_SO_packet(const struct rohc_comp_ctxt *const context,
+                                    const struct rfc3095_tmp_state *const changes)
 {
-	const uint8_t oa_repetitions_nr = context->compressor->oa_repetitions_nr;
 	const struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt =
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
 	const struct rfc3095_ip_hdr_changes *inner_ip_changes;
@@ -170,12 +171,12 @@ rohc_packet_t c_ip_decide_SO_packet(const struct rohc_comp_ctxt *const context)
 		const struct ip_header_info *const ip_ctxt =
 			&(rfc3095_ctxt->ip_ctxts[ip_hdr_pos]);
 		const struct rfc3095_ip_hdr_changes *const tmp_vars_ip =
-			&(rfc3095_ctxt->tmp.ip_hdr_changes[ip_hdr_pos]);
+			&(changes->ip_hdr_changes[ip_hdr_pos]);
 
 		if(ip_ctxt->version == IPV4)
 		{
 			/* are some IP-ID bits required for the IP header? */
-			if(ip_ctxt->info.v4.rnd == 0 && tmp_vars_ip->ip_id_changed)
+			if(tmp_vars_ip->rnd == 0 && tmp_vars_ip->ip_id_changed)
 			{
 				some_ip_id_bits_required = true;
 			}
@@ -183,25 +184,25 @@ rohc_packet_t c_ip_decide_SO_packet(const struct rohc_comp_ctxt *const context)
 	}
 	if(rfc3095_ctxt->ip_hdr_nr == 1)
 	{
-		inner_ip_changes = &rfc3095_ctxt->tmp.ip_hdr_changes[0];
+		inner_ip_changes = &changes->ip_hdr_changes[0];
 		outer_ip_changes = NULL;
 	}
 	else
 	{
-		inner_ip_changes = &rfc3095_ctxt->tmp.ip_hdr_changes[1];
-		outer_ip_changes = &rfc3095_ctxt->tmp.ip_hdr_changes[0];
+		inner_ip_changes = &changes->ip_hdr_changes[1];
+		outer_ip_changes = &changes->ip_hdr_changes[0];
 	}
 
 	/* what is the smallest possible packet type? */
-	if(does_at_least_one_sid_change(rfc3095_ctxt, oa_repetitions_nr))
+	if(changes->at_least_one_sid_changed)
 	{
 		packet = ROHC_PACKET_IR_DYN;
 		rohc_comp_debug(context, "choose packet IR-DYN because at least one "
 		                "SID flag changed");
 	}
-	else if(!rfc3095_ctxt->tmp.sn_5bits_possible &&
-	        !rfc3095_ctxt->tmp.sn_8bits_possible &&
-	        !rfc3095_ctxt->tmp.sn_13bits_possible)
+	else if(!changes->sn_5bits_possible &&
+	        !changes->sn_8bits_possible &&
+	        !changes->sn_13bits_possible)
 	{
 		/* UOR-2 packet cannot be used if SN does not stand on 5, 8, or 13 bits
 		 *  - 5 bits in base header
@@ -243,14 +244,14 @@ rohc_packet_t c_ip_decide_SO_packet(const struct rohc_comp_ctxt *const context)
 		                "TOS/TC, TTL/HL, DF, IP ext list, NBO, RND fields changed "
 		                "for outer IP header");
 	}
-	else if(rfc3095_ctxt->tmp.sn_4bits_possible && !some_ip_id_bits_required)
+	else if(changes->sn_4bits_possible && !some_ip_id_bits_required)
 	{
 		packet = ROHC_PACKET_UO_0;
 		rohc_comp_debug(context, "choose packet UO-0 to transmit <= 4 SN bits, and "
 		                "no IP-ID bits");
 	}
-	else if(rfc3095_ctxt->tmp.sn_5bits_possible &&
-	        max_6_bits_of_innermost_nonrnd_ipv4_id_required(rfc3095_ctxt))
+	else if(changes->sn_5bits_possible &&
+	        max_6_bits_of_innermost_nonrnd_ipv4_id_required(rfc3095_ctxt, changes))
 	{
 		packet = ROHC_PACKET_UO_1; /* IPv4 only for outer header */
 		rohc_comp_debug(context, "choose packet UO-1 to transmit <= 5 SN bits, "
@@ -285,13 +286,13 @@ uint32_t c_ip_get_next_sn(const struct rohc_comp_ctxt *const context,
 		(struct rohc_comp_rfc3095_ctxt *) context->specific;
 	uint32_t next_sn;
 
-	if(rfc3095_ctxt->sn == 0xffff)
+	if(rfc3095_ctxt->last_sn == 0xffff)
 	{
 		next_sn = 0;
 	}
 	else
 	{
-		next_sn = rfc3095_ctxt->sn + 1;
+		next_sn = rfc3095_ctxt->last_sn + 1;
 	}
 
 	assert(next_sn <= 0xffff);
@@ -314,6 +315,7 @@ uint32_t c_ip_get_next_sn(const struct rohc_comp_ctxt *const context,
 \endverbatim
  *
  * @param context       The compression context
+ * @param changes       The header fields that changed wrt to context
  * @param dest          The ROHC packet being coded
  * @param dest_max_len  The maximum length (in bytes) of the ROHC packet
  * @param counter       The current position in the ROHC buffer
@@ -321,11 +323,11 @@ uint32_t c_ip_get_next_sn(const struct rohc_comp_ctxt *const context,
  *                      -1 in case of failure
  */
 int c_ip_code_ir_remainder(const struct rohc_comp_ctxt *const context,
+                           const struct rfc3095_tmp_state *const changes,
                            uint8_t *const dest,
                            const size_t dest_max_len,
                            const size_t counter)
 {
-	struct rohc_comp_rfc3095_ctxt *const rfc3095_ctxt = context->specific;
 	uint16_t sn;
 
 	/* part 1 */
@@ -336,10 +338,10 @@ int c_ip_code_ir_remainder(const struct rohc_comp_ctxt *const context,
 		               "beginning of the packet", dest_max_len, counter);
 		goto error;
 	}
-	sn = rfc3095_ctxt->sn & 0xffff;
+	sn = changes->new_sn & 0xffff;
 	sn = rohc_hton16(sn);
 	memcpy(&dest[counter], &sn, sizeof(uint16_t));
-	rohc_comp_debug(context, "SN = %u -> 0x%02x%02x", rfc3095_ctxt->sn,
+	rohc_comp_debug(context, "SN = %u -> 0x%02x%02x", changes->new_sn,
 	                dest[counter], dest[counter + 1]);
 
 	return counter + 2;
@@ -352,33 +354,35 @@ error:
 /**
  * @brief May the inner IP header transmit the required non-random IP-ID bits?
  *
- * @param ctxt  The generic decompression context
- * @return      true if the required IP-ID bits may be transmitted,
- *              false otherwise
+ * @param ctxt     The generic decompression context
+ * @param changes  The header fields that changed wrt to context
+ * @return         true if the required IP-ID bits may be transmitted,
+ *                 false otherwise
  */
-static bool max_6_bits_of_innermost_nonrnd_ipv4_id_required(const struct rohc_comp_rfc3095_ctxt *const ctxt)
+static bool max_6_bits_of_innermost_nonrnd_ipv4_id_required(const struct rohc_comp_rfc3095_ctxt *const ctxt,
+                                                            const struct rfc3095_tmp_state *const changes)
 {
 	bool is_possible;
 
 	if(ctxt->ip_hdr_nr == 1)
 	{
 		is_possible = (ctxt->ip_ctxts[0].version == IPV4 &&
-		               ctxt->ip_ctxts[0].info.v4.rnd != 1 &&
-		               ctxt->tmp.ip_hdr_changes[0].ip_id_6bits_possible);
+		               changes->ip_hdr_changes[0].rnd != 1 &&
+		               changes->ip_hdr_changes[0].ip_id_6bits_possible);
 	}
 	else if(ctxt->ip_ctxts[1].version == IPV4 &&
-	        ctxt->ip_ctxts[1].info.v4.rnd != 1)
+	        changes->ip_hdr_changes[1].rnd != 1)
 	{
 		const bool no_1st_hdr_bits = (ctxt->ip_ctxts[0].version != IPV4 ||
-		                              ctxt->ip_ctxts[0].info.v4.rnd == 1 ||
-		                              !ctxt->tmp.ip_hdr_changes[0].ip_id_changed);
-		is_possible =
-			(ctxt->tmp.ip_hdr_changes[1].ip_id_6bits_possible && no_1st_hdr_bits);
+		                              changes->ip_hdr_changes[0].rnd == 1 ||
+		                              !changes->ip_hdr_changes[0].ip_id_changed);
+		is_possible = (changes->ip_hdr_changes[1].ip_id_6bits_possible &&
+		               no_1st_hdr_bits);
 	}
 	else if(ctxt->ip_ctxts[0].version == IPV4 &&
-	        ctxt->ip_ctxts[0].info.v4.rnd != 1)
+	        changes->ip_hdr_changes[0].rnd != 1)
 	{
-		is_possible = ctxt->tmp.ip_hdr_changes[1].ip_id_6bits_possible;
+		is_possible = changes->ip_hdr_changes[1].ip_id_6bits_possible;
 	}
 	else
 	{

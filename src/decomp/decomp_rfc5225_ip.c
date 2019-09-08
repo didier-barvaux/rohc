@@ -2149,7 +2149,7 @@ static rohc_status_t decomp_rfc5225_ip_decode_bits(const struct rohc_decomp_ctxt
 	}
 	else
 	{
-		const rohc_lsb_shift_t p_computed =
+		const int32_t p_computed =
 			rohc_interval_get_rfc5225_msn_p(bits->msn.bits_nr, bits->reorder_ratio);
 		uint32_t msn_decoded32;
 

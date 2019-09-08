@@ -40,7 +40,7 @@ static bool rohc_lsb_decode32(const struct rohc_lsb_decode *const lsb,
                               const uint32_t v_ref_d_offset,
                               const uint32_t m,
                               const size_t k,
-                              const rohc_lsb_shift_t p,
+                              const int32_t p,
                               uint32_t *const decoded)
 	__attribute__((nonnull(1, 7), warn_unused_result));
 
@@ -49,7 +49,7 @@ static bool rohc_lsb_decode16(const struct rohc_lsb_decode *const lsb,
                               const uint16_t v_ref_d_offset,
                               const uint16_t m,
                               const size_t k,
-                              const rohc_lsb_shift_t p,
+                              const int32_t p,
                               uint16_t *const decoded)
 	__attribute__((nonnull(1, 7), warn_unused_result));
 
@@ -58,7 +58,7 @@ static bool rohc_lsb_decode8(const struct rohc_lsb_decode *const lsb,
                              const uint8_t v_ref_d_offset,
                              const uint8_t m,
                              const size_t k,
-                             const rohc_lsb_shift_t p,
+                             const int32_t p,
                              uint8_t *const decoded)
 	__attribute__((nonnull(1, 7), warn_unused_result));
 
@@ -118,7 +118,7 @@ bool rohc_lsb_decode(const struct rohc_lsb_decode *const lsb,
                      const uint32_t v_ref_d_offset,
                      const uint32_t m,
                      const size_t k,
-                     const rohc_lsb_shift_t p,
+                     const int32_t p,
                      uint32_t *const decoded)
 {
 	bool is_success;
@@ -189,7 +189,7 @@ static bool rohc_lsb_decode32(const struct rohc_lsb_decode *const lsb,
                               const uint32_t v_ref_d_offset,
                               const uint32_t m,
                               const size_t k,
-                              const rohc_lsb_shift_t p,
+                              const int32_t p,
                               uint32_t *const decoded)
 {
 	struct rohc_interval32 interval;
@@ -284,7 +284,7 @@ static bool rohc_lsb_decode16(const struct rohc_lsb_decode *const lsb,
                               const uint16_t v_ref_d_offset,
                               const uint16_t m,
                               const size_t k,
-                              const rohc_lsb_shift_t p,
+                              const int32_t p,
                               uint16_t *const decoded)
 {
 	uint32_t m32;
@@ -326,7 +326,7 @@ static bool rohc_lsb_decode8(const struct rohc_lsb_decode *const lsb,
                              const uint8_t v_ref_d_offset,
                              const uint8_t m,
                              const size_t k,
-                             const rohc_lsb_shift_t p,
+                             const int32_t p,
                              uint8_t *const decoded)
 {
 	uint32_t m32;

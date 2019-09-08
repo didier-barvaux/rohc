@@ -54,6 +54,23 @@ typedef enum
 } ts_sc_state;
 
 
+/** The changes detected in TS Scaling */
+struct ts_sc_changes
+{
+	uint32_t ts;        /**< The new TimeStamp (TS) value */
+	uint16_t sn;        /**< The new Sequence Number (SN) value */
+
+	ts_sc_state state;  /**< The new TS Scaling state */
+
+	uint32_t ts_stride; /**< The new TS_STRIDE value */
+	uint32_t ts_offset; /**< The new TS_OFFSET value */
+	uint32_t ts_scaled; /**< The new TS_SCALED value */
+
+	/** Whether the new TS_SCALED value is deducible from SN ? */
+	bool is_ts_scaled_deducible;
+};
+
+
 /**
  * @brief Scaled RTP Timestamp encoding object
  *
@@ -62,41 +79,19 @@ typedef enum
  */
 struct ts_sc_comp
 {
-	/// The TS_STRIDE value
-	uint32_t ts_stride;
+	/** The last changes detected in TS Scaling */
+	struct ts_sc_changes old;
 
-	/// The TS_SCALED value
-	uint32_t ts_scaled;
 	/** The W-LSB object used to encode the TS_SCALED value */
 	struct c_wlsb ts_scaled_wlsb;
 
-	/// The TS_OFFSET value
-	uint32_t ts_offset;
-
-	/// The timestamp (TS)
-	uint32_t ts;
 	/** The W-LSB object used to encode the TS value */
 	struct c_wlsb ts_unscaled_wlsb;
-	/// The previous timestamp
-	uint32_t old_ts;
 
-	/// The sequence number (SN)
-	uint16_t sn;
-	/// The previous sequence number
-	uint16_t old_sn;
-
-	/// Whether timestamp is deducible from SN or not
-	bool is_deducible;
-
-	/// The state of the scaled RTP Timestamp encoding object
-	ts_sc_state state;
 	/** Whether old SN/TS values are initialized or not */
 	bool are_old_val_init;
 	/// The number of packets sent in state INIT_STRIDE
 	size_t nr_init_stride_packets;
-
-	/// The difference between old and current TS
-	uint32_t ts_delta;
 
 	/** The callback function used to manage traces */
 	rohc_trace_callback2_t trace_callback;
@@ -118,30 +113,25 @@ bool c_create_sc(struct ts_sc_comp *const ts_sc,
 void c_destroy_sc(struct ts_sc_comp *const ts_sc)
 	__attribute__((nonnull(1)));
 
-void c_add_ts(struct ts_sc_comp *const ts_sc,
-              const uint32_t ts,
-              const uint16_t sn)
-	__attribute__((nonnull(1)));
+void ts_detect_changes(const struct ts_sc_comp *const ts_sc,
+                       const uint32_t new_ts,
+                       const uint16_t new_sn,
+                       const bool do_refresh_ts_stride,
+                       struct ts_sc_changes *const new)
+	__attribute__((nonnull(1, 5)));
 
-size_t nb_bits_unscaled(const struct ts_sc_comp *const ts_sc)
+size_t nb_bits_unscaled(const struct c_wlsb *const ts_unscaled_wlsb,
+                        const uint32_t new_ts_unscaled)
 	__attribute__((nonnull(1), warn_unused_result));
-void add_unscaled(struct ts_sc_comp *const ts_sc, const uint16_t sn)
-	__attribute__((nonnull(1)));
 
-size_t nb_bits_scaled(const struct ts_sc_comp *const ts_sc)
+size_t nb_bits_scaled(const struct c_wlsb *const ts_scaled_wlsb,
+                      const uint32_t new_ts_scaled,
+                      const bool is_ts_scaled_deducible)
 	__attribute__((nonnull(1), warn_unused_result));
-void add_scaled(struct ts_sc_comp *const ts_sc, const uint16_t sn)
-	__attribute__((nonnull(1)));
 
-uint32_t get_ts_stride(const struct ts_sc_comp *const ts_sc)
-	__attribute__((nonnull(1), warn_unused_result, pure));
-uint32_t get_ts_scaled(const struct ts_sc_comp *const ts_sc)
-	__attribute__((nonnull(1), warn_unused_result, pure));
-uint32_t get_ts_unscaled(const struct ts_sc_comp *const ts_sc)
-	__attribute__((nonnull(1), warn_unused_result, pure));
-
-bool rohc_ts_sc_is_deducible(const struct ts_sc_comp *const ts_sc)
-	__attribute__((nonnull(1), warn_unused_result, pure));
+void ts_sc_update(struct ts_sc_comp *const ts_sc,
+                  const struct ts_sc_changes *const changes)
+	__attribute__((nonnull(1, 2)));
 
 #endif
 
