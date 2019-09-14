@@ -48,6 +48,14 @@ static int tcp_parse_replicate_ipv6_option(const struct rohc_decomp_ctxt *const 
                                            const size_t rohc_length)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
+static bool tcp_parse_replicate_tcp_port(const struct rohc_decomp_ctxt *const context,
+                                         const rohc_tcp_port_type_t port_presence,
+                                         const uint8_t *const rohc_packet,
+                                         const size_t rohc_length,
+                                         uint16_t *const bits,
+                                         bits_nr_t *const bits_nr)
+	__attribute__((warn_unused_result, nonnull(1, 3, 5, 6)));
+
 static int tcp_parse_replicate_tcp(const struct rohc_decomp_ctxt *const context,
                                    const uint8_t *const rohc_packet,
                                    const size_t rohc_length,
@@ -455,6 +463,63 @@ error:
 
 
 /**
+ * @brief Decode the TCP port_replicate() encoding scheme of the ROHC packet
+ *
+ * @param context        The decompression context
+ * @param port_presence  The type of encoding used for the TCP port
+ * @param rohc_packet    The remaining part of the ROHC packet
+ * @param rohc_length    The remaining length (in bytes) of the ROHC packet
+ * @param[out] bits      The bits extracted for the TCP port
+ * @param[out] bits_nr   The number of bits extracted for the TCP port
+ * @return               true if parsing was successful, false if not
+ */
+static bool tcp_parse_replicate_tcp_port(const struct rohc_decomp_ctxt *const context,
+                                         const rohc_tcp_port_type_t port_presence,
+                                         const uint8_t *const rohc_packet,
+                                         const size_t rohc_length,
+                                         uint16_t *const bits,
+                                         bits_nr_t *const bits_nr)
+{
+	if(port_presence < ROHC_TCP_PORT_RESERVED && rohc_length < port_presence)
+	{
+		rohc_decomp_warn(context, "malformed TCP replicate part: only %zu bytes "
+		                 "available while at least %u bytes required for the "
+		                 "irregular TCP port", rohc_length, port_presence);
+		goto error;
+	}
+
+	if(port_presence == ROHC_TCP_PORT_IRREGULAR)
+	{
+		const uint16_t *const tcp_replicate_src_port = (uint16_t *) rohc_packet;
+		*bits = rohc_ntoh16(*tcp_replicate_src_port);
+		*bits_nr = 16;
+	}
+	else if(port_presence == ROHC_TCP_PORT_LSB8)
+	{
+		/* TODO: handle LSB8 encoding for port_replicate() */
+		rohc_decomp_warn(context, "LSB8 encoding is not supported yet for port_replicate()");
+		goto error;
+	}
+	else if(port_presence == ROHC_TCP_PORT_STATIC)
+	{
+		*bits = 0;
+		*bits_nr = 0;
+	}
+	else
+	{
+		rohc_decomp_warn(context, "port_presence is %u but only 0, 1 and 2 are "
+		                 "allowed for the flags of port_replicate()", port_presence);
+		goto error;
+	}
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
  * @brief Decode the TCP replicate part of the ROHC packet.
  *
  * @param context      The decompression context
@@ -531,69 +596,32 @@ static int tcp_parse_replicate_tcp(const struct rohc_decomp_ctxt *const context,
 	                  bits->seq.bits_nr, bits->seq.bits);
 
 	/* TCP source port */
-	if(tcp_replicate->src_port_presence == ROHC_TCP_PORT_IRREGULAR)
+	if(!tcp_parse_replicate_tcp_port(context, tcp_replicate->src_port_presence,
+	                                 remain_data, remain_len,
+	                                 &(bits->src_port), &(bits->src_port_nr)))
 	{
-		const uint16_t *const tcp_replicate_src_port = (uint16_t *) remain_data;
-
-		if(remain_len < sizeof(uint16_t))
-		{
-			rohc_decomp_warn(context, "malformed TCP replicate part: only %zu bytes "
-			                 "available while at least %zu bytes required for the "
-			                 "irregular TCP source port", remain_len, sizeof(uint16_t));
-			goto error;
-		}
-		bits->src_port = rohc_ntoh16(*tcp_replicate_src_port);
-		bits->src_port_nr = 16;
-		remain_data += sizeof(uint16_t);
-		remain_len -= sizeof(uint16_t);
-	}
-	else if(tcp_replicate->src_port_presence == ROHC_TCP_PORT_LSB8)
-	{
-		/* TODO: handle LSB8 encoding for port_replicate() */
-		rohc_decomp_warn(context, "LSB8 encoding is not supported yet for port_replicate()");
+		rohc_decomp_warn(context, "malformed TCP replicate part: malformed irregular "
+		                 "TCP source port");
 		goto error;
 	}
-	else if(tcp_replicate->src_port_presence != ROHC_TCP_PORT_STATIC)
-	{
-		rohc_decomp_warn(context, "src_port_presence is %u but only 0, 1 and 2 are "
-		                 "allowed for the flags of port_replicate()",
-		                 tcp_replicate->src_port_presence);
-		goto error;
-	}
-	rohc_decomp_debug(context, "TCP source port = %u", bits->src_port);
+	remain_data += tcp_replicate->src_port_presence;
+	remain_len -= tcp_replicate->src_port_presence;
+	rohc_decomp_debug(context, "%u-bit TCP source port = %u",
+	                  bits->src_port_nr, bits->src_port);
 
 	/* TCP destination port */
-	if(tcp_replicate->dst_port_presence == ROHC_TCP_PORT_IRREGULAR)
+	if(!tcp_parse_replicate_tcp_port(context, tcp_replicate->dst_port_presence,
+	                                 remain_data, remain_len,
+	                                 &(bits->dst_port), &(bits->dst_port_nr)))
 	{
-		const uint16_t *const tcp_replicate_dst_port = (uint16_t *) remain_data;
-
-		if(remain_len < sizeof(uint16_t))
-		{
-			rohc_decomp_warn(context, "malformed TCP replicate part: only %zu bytes "
-			                 "available while at least %zu bytes required for the "
-			                 "irregular TCP destination port", remain_len,
-			                 sizeof(uint16_t));
-			goto error;
-		}
-		bits->dst_port = rohc_ntoh16(*tcp_replicate_dst_port);
-		bits->dst_port_nr = 16;
-		remain_data += sizeof(uint16_t);
-		remain_len -= sizeof(uint16_t);
-	}
-	else if(tcp_replicate->dst_port_presence == ROHC_TCP_PORT_LSB8)
-	{
-		/* TODO: handle LSB8 encoding for port_replicate() */
-		rohc_decomp_warn(context, "LSB8 encoding is not supported yet for port_replicate()");
+		rohc_decomp_warn(context, "malformed TCP replicate part: malformed irregular "
+		                 "TCP destination port");
 		goto error;
 	}
-	else if(tcp_replicate->dst_port_presence != ROHC_TCP_PORT_STATIC)
-	{
-		rohc_decomp_warn(context, "dst_port_presence is %u but only 0, 1 and 2 are "
-		                 "allowed for the flags of port_replicate()",
-		                 tcp_replicate->dst_port_presence);
-		goto error;
-	}
-	rohc_decomp_debug(context, "TCP destination port = %u", bits->dst_port);
+	remain_data += tcp_replicate->dst_port_presence;
+	remain_len -= tcp_replicate->dst_port_presence;
+	rohc_decomp_debug(context, "%u-bit TCP destination port = %u",
+	                  bits->dst_port_nr, bits->dst_port);
 
 	/* window */
 	ret = d_static_or_irreg16(remain_data, remain_len, tcp_replicate->window_presence,
