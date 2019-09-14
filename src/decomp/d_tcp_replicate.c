@@ -496,9 +496,8 @@ static bool tcp_parse_replicate_tcp_port(const struct rohc_decomp_ctxt *const co
 	}
 	else if(port_presence == ROHC_TCP_PORT_LSB8)
 	{
-		/* TODO: handle LSB8 encoding for port_replicate() */
-		rohc_decomp_warn(context, "LSB8 encoding is not supported yet for port_replicate()");
-		goto error;
+		*bits = rohc_packet[0];
+		*bits_nr = 8;
 	}
 	else if(port_presence == ROHC_TCP_PORT_STATIC)
 	{

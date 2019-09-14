@@ -411,17 +411,27 @@ static rohc_tcp_port_type_t tcp_code_replicate_tcp_port(const uint16_t port_ctxt
                                                         uint8_t *const rohc_data,
                                                         const size_t rohc_max_len)
 {
+	const uint16_t port_pkt = rohc_ntoh16(port_pkt_nbo);
 	size_t encoding_type;
 
-	if(rohc_ntoh16(port_pkt_nbo) == port_ctxt)
+	if(port_pkt == port_ctxt)
 	{
-		/* port is static: no need to transmit it */
+		/* TCP port is static: no need to transmit it */
 		encoding_type = ROHC_TCP_PORT_STATIC;
+	}
+	else if((port_pkt & 0xff00) == (port_ctxt & 0xff00))
+	{
+		/* TCP port is not static: transmitting the 8 LSB is enough */
+		if(rohc_max_len < sizeof(uint8_t))
+		{
+			goto error;
+		}
+		encoding_type = ROHC_TCP_PORT_LSB8;
+		rohc_data[0] = (port_pkt & 0xff);
 	}
 	else
 	{
-		/* destination port is not static: transmit it in full */
-		/* TODO: handle ROHC_TCP_PORT_LSB8 compression form */
+		/* TCP port is not static: transmitting it in full is required */
 		if(rohc_max_len < sizeof(uint16_t))
 		{
 			goto error;
