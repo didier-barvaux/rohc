@@ -405,13 +405,13 @@ typedef struct
 /**
  * @brief The different presence flags for port_replicate() encoding scheme
  */
-enum
+typedef enum
 {
 	ROHC_TCP_PORT_STATIC    = 0, /**< port is static, so it is not transmitted */
 	ROHC_TCP_PORT_LSB8      = 1, /**< port is not static and it is compressible */
 	ROHC_TCP_PORT_IRREGULAR = 2, /**< port is not static and it is not compressible */
 	ROHC_TCP_PORT_RESERVED  = 3, /**< reserved value */
-};
+} rohc_tcp_port_type_t;
 
 
 /**
