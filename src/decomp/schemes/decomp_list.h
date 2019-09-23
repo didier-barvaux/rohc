@@ -28,6 +28,7 @@
 
 #include "rohc_list.h"
 #include "rohc_traces_internal.h"
+#include "protocols/uncomp_pkt_hdrs.h"
 
 
 /** Print a warning trace for the given decompression list */
@@ -81,7 +82,8 @@ struct list_decomp
 	/** The handler used to add the extension to IP packet */
 	size_t (*build_uncomp_item)(const struct list_decomp *const decomp,
 	                            const uint8_t ip_nh_type,
-	                            uint8_t *const dest);
+	                            uint8_t *const dest,
+	                            struct rohc_pkt_ip_hdr *const uncomp_pkt_ip_hdr);
 
 
 	/* Traces */

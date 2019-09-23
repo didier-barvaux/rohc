@@ -1,5 +1,5 @@
 /*
- * Copyright 2010,2011,2012,2013,2014 Didier Barvaux
+ * Copyright 2010,2011,2012,2013,2014,2019 Didier Barvaux
  * Copyright 2007,2008 Thales Alenia Space
  * Copyright 2007,2008,2009,2010,2012,2013,2014 Viveris Technologies
  *
@@ -274,27 +274,27 @@ static int parse_extension2(const struct rohc_decomp_ctxt *const context,
 
 static bool build_uncomp_ip(const struct rohc_decomp_ctxt *const context,
                             const struct rohc_decoded_ip_values decoded,
-                            uint8_t *const dest,
-                            const size_t uncomp_hdrs_max_len,
-                            size_t *const uncomp_hdrs_len,
                             const size_t payload_size,
-                            const struct list_decomp *const list_decomp)
-	__attribute__((warn_unused_result, nonnull(1, 3, 5)));
+                            const struct list_decomp *const list_decomp,
+                            uint8_t *const uncomp_hdrs_data,
+                            const size_t uncomp_hdrs_max_len,
+                            struct rohc_pkt_ip_hdr *const uncomp_pkt_ip_hdr)
+	__attribute__((warn_unused_result, nonnull(1, 5, 7)));
 static bool build_uncomp_ipv4(const struct rohc_decomp_ctxt *const context,
                               const struct rohc_decoded_ip_values decoded,
-                              uint8_t *const dest,
+                              const size_t payload_size,
+                              uint8_t *const uncomp_hdrs_data,
                               const size_t uncomp_hdrs_max_len,
-                              size_t *const uncomp_hdrs_len,
-                              const size_t payload_size)
-	__attribute__((warn_unused_result, nonnull(1, 3, 5)));
+                              struct rohc_pkt_ip_hdr *const uncomp_pkt_ip_hdr)
+	__attribute__((warn_unused_result, nonnull(1, 4, 6)));
 static bool build_uncomp_ipv6(const struct rohc_decomp_ctxt *const context,
                               const struct rohc_decoded_ip_values decoded,
-                              uint8_t *const dest,
-                              const size_t uncomp_hdrs_max_len,
-                              size_t *const uncomp_hdrs_len,
                               const size_t payload_size,
-                              const struct list_decomp *const list_decomp)
-	__attribute__((warn_unused_result, nonnull(1, 3, 5, 7)));
+                              const struct list_decomp *const list_decomp,
+                              uint8_t *const uncomp_hdrs_data,
+                              const size_t uncomp_hdrs_max_len,
+                              struct rohc_pkt_ip_hdr *const uncomp_pkt_ip_hdr)
+	__attribute__((warn_unused_result, nonnull(1, 4, 5, 7)));
 
 
 /*
@@ -5227,46 +5227,15 @@ rohc_status_t rfc3095_decomp_build_hdrs(const struct rohc_decomp *const decomp,
 		ip_payload_len += payload_len;
 
 		/* build the outer IP header */
-		if(!build_uncomp_ip(context, decoded->outer_ip, uncomp_hdrs_data,
-		                    uncomp_hdrs_max_len, &outer_ip_hdr_len,
-		                    ip_payload_len, &rfc3095_ctxt->list_decomp1))
+		if(!build_uncomp_ip(context, decoded->outer_ip, ip_payload_len,
+		                    &rfc3095_ctxt->list_decomp1,
+		                    uncomp_hdrs_data, uncomp_hdrs_max_len,
+		                    &(uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr])))
 		{
 			rohc_decomp_warn(context, "failed to build the outer IP header");
 			goto error_output_too_small;
 		}
-		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].data = uncomp_hdrs_data;
-		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].version = decoded->outer_ip.version;
-		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].next_proto = decoded->outer_ip.proto;
-		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].tot_len = outer_ip_hdr_len + ip_payload_len;
-		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].tos_tc = decoded->outer_ip.tos;
-		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].ttl_hl = decoded->outer_ip.ttl;
-		if(decoded->outer_ip.version == IPV4 ||
-		   outer_ip_hdr_len == sizeof(struct ipv6_hdr))
-		{
-			uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_len = 0;
-			uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_nr = 0;
-		}
-		else
-		{
-			size_t count = sizeof(struct ipv6_hdr);
-			size_t ext_pos;
-			uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_len =
-				outer_ip_hdr_len - sizeof(struct ipv6_hdr);
-			uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_nr =
-				rfc3095_ctxt->list_decomp1.pkt_list.items_nr;
-			for(ext_pos = 0;
-			    ext_pos < uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_nr;
-			    ext_pos++)
-			{
-				uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts[ext_pos].data =
-					uncomp_hdrs_data + count;
-				uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts[ext_pos].type =
-					rfc3095_ctxt->list_decomp1.pkt_list.items[ext_pos]->type;
-				uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts[ext_pos].len =
-					rfc3095_ctxt->list_decomp1.pkt_list.items[ext_pos]->length;
-				count += uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts[ext_pos].len;
-			}
-		}
+		outer_ip_hdr_len = uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].ip_hdr_len;
 		uncomp_pkt_hdrs.ip_hdrs_nr++;
 		uncomp_pkt_hdrs.all_hdrs_len += outer_ip_hdr_len;
 		uncomp_hdrs_data += outer_ip_hdr_len;
@@ -5276,46 +5245,15 @@ rohc_status_t rfc3095_decomp_build_hdrs(const struct rohc_decomp *const decomp,
 
 		/* build the inner IP header */
 		ip_payload_len -= inner_ip_hdr_len + inner_ip_ext_hdrs_len;
-		if(!build_uncomp_ip(context, decoded->inner_ip, uncomp_hdrs_data,
-		                    uncomp_hdrs_max_len, &inner_ip_hdr_len,
-		                    ip_payload_len, &rfc3095_ctxt->list_decomp2))
+		if(!build_uncomp_ip(context, decoded->inner_ip, ip_payload_len,
+		                    &rfc3095_ctxt->list_decomp2,
+		                    uncomp_hdrs_data, uncomp_hdrs_max_len,
+		                    &(uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr])))
 		{
 			rohc_decomp_warn(context, "failed to build the inner IP header");
 			goto error_output_too_small;
 		}
-		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].data = uncomp_hdrs_data;
-		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].version = decoded->inner_ip.version;
-		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].next_proto = decoded->inner_ip.proto;
-		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].tot_len = inner_ip_hdr_len + ip_payload_len;
-		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].tos_tc = decoded->inner_ip.tos;
-		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].ttl_hl = decoded->inner_ip.ttl;
-		if(decoded->inner_ip.version == IPV4 ||
-		   inner_ip_hdr_len == sizeof(struct ipv6_hdr))
-		{
-			uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_len = 0;
-			uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_nr = 0;
-		}
-		else
-		{
-			size_t count = sizeof(struct ipv6_hdr);
-			size_t ext_pos;
-			uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_len =
-				inner_ip_hdr_len - sizeof(struct ipv6_hdr);
-			uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_nr =
-				rfc3095_ctxt->list_decomp2.pkt_list.items_nr;
-			for(ext_pos = 0;
-			    ext_pos < uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_nr;
-			    ext_pos++)
-			{
-				uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts[ext_pos].data =
-					uncomp_hdrs_data + count;
-				uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts[ext_pos].type =
-					rfc3095_ctxt->list_decomp2.pkt_list.items[ext_pos]->type;
-				uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts[ext_pos].len =
-					rfc3095_ctxt->list_decomp2.pkt_list.items[ext_pos]->length;
-				count += uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts[ext_pos].len;
-			}
-		}
+		inner_ip_hdr_len = uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].ip_hdr_len;
 		uncomp_pkt_hdrs.ip_hdrs_nr++;
 		uncomp_pkt_hdrs.all_hdrs_len += inner_ip_hdr_len;
 		uncomp_hdrs_data += inner_ip_hdr_len;
@@ -5335,45 +5273,15 @@ rohc_status_t rfc3095_decomp_build_hdrs(const struct rohc_decomp *const decomp,
 		ip_payload_len += payload_len;
 
 		/* build the single IP header */
-		if(!build_uncomp_ip(context, decoded->outer_ip, uncomp_hdrs_data,
-		                    uncomp_hdrs_max_len, &ip_hdr_len, ip_payload_len,
-		                    &rfc3095_ctxt->list_decomp1))
+		if(!build_uncomp_ip(context, decoded->outer_ip, ip_payload_len,
+		                    &rfc3095_ctxt->list_decomp1,
+		                    uncomp_hdrs_data, uncomp_hdrs_max_len,
+		                    &(uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr])))
 		{
 			rohc_decomp_warn(context, "failed to build the IP header");
 			goto error_output_too_small;
 		}
-		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].data = uncomp_hdrs_data;
-		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].version = decoded->outer_ip.version;
-		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].next_proto = decoded->outer_ip.proto;
-		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].tot_len = ip_hdr_len + ip_payload_len;
-		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].tos_tc = decoded->outer_ip.tos;
-		uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].ttl_hl = decoded->outer_ip.ttl;
-		if(decoded->outer_ip.version == IPV4 || ip_hdr_len == sizeof(struct ipv6_hdr))
-		{
-			uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_len = 0;
-			uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_nr = 0;
-		}
-		else
-		{
-			size_t count = sizeof(struct ipv6_hdr);
-			size_t ext_pos;
-			uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_len =
-				ip_hdr_len - sizeof(struct ipv6_hdr);
-			uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_nr =
-				rfc3095_ctxt->list_decomp1.pkt_list.items_nr;
-			for(ext_pos = 0;
-			    ext_pos < uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts_nr;
-			    ext_pos++)
-			{
-				uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts[ext_pos].data =
-					uncomp_hdrs_data + count;
-				uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts[ext_pos].type =
-					rfc3095_ctxt->list_decomp1.pkt_list.items[ext_pos]->type;
-				uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts[ext_pos].len =
-					rfc3095_ctxt->list_decomp1.pkt_list.items[ext_pos]->length;
-				count += uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].exts[ext_pos].len;
-			}
-		}
+		ip_hdr_len = uncomp_pkt_hdrs.ip_hdrs[uncomp_pkt_hdrs.ip_hdrs_nr].ip_hdr_len;
 		uncomp_pkt_hdrs.ip_hdrs_nr++;
 		uncomp_pkt_hdrs.all_hdrs_len += ip_hdr_len;
 		uncomp_hdrs_data += ip_hdr_len;
@@ -5444,36 +5352,47 @@ error_output_too_small:
 /**
  * @brief Build an uncompressed IP header.
  *
- * @param context               The decompression context
- * @param decoded               The decoded IPv4 fields
- * @param dest                  The buffer to store the IP header
- * @param uncomp_hdrs_max_len   The max length of the IP header
- * @param[out] uncomp_hdrs_len  The length of the IPv4 header
- * @param payload_size          The length of the IP payload
- * @param list_decomp           The list decompressor (IPv6 only)
- * @return                      true if the IP header is successfully built,
- *                              false if an error occurs
+ * @param context                 The decompression context
+ * @param decoded                 The decoded IPv4 fields
+ * @param payload_size            The length of the IP payload
+ * @param list_decomp             The list decompressor (IPv6 only)
+ * @param uncomp_hdrs_data        The buffer to store the IP header
+ * @param uncomp_hdrs_max_len     The max length of the IP header
+ * @param[out] uncomp_pkt_ip_hdr  Information about IP header for CRC computation
+ * @return                        true if the IP header is successfully built,
+ *                                false if an error occurs
  */
 static bool build_uncomp_ip(const struct rohc_decomp_ctxt *const context,
                             const struct rohc_decoded_ip_values decoded,
-                            uint8_t *const dest,
-                            const size_t uncomp_hdrs_max_len,
-                            size_t *const uncomp_hdrs_len,
                             const size_t payload_size,
-                            const struct list_decomp *const list_decomp)
+                            const struct list_decomp *const list_decomp,
+                            uint8_t *const uncomp_hdrs_data,
+                            const size_t uncomp_hdrs_max_len,
+                            struct rohc_pkt_ip_hdr *const uncomp_pkt_ip_hdr)
 {
 	bool is_ok;
 
+	/* build the IPv4 or IPv6 header (and its extensions) */
 	if(decoded.version == IPV4)
 	{
-		is_ok = build_uncomp_ipv4(context, decoded, dest, uncomp_hdrs_max_len,
-		                          uncomp_hdrs_len, payload_size);
+		is_ok = build_uncomp_ipv4(context, decoded, payload_size,
+		                          uncomp_hdrs_data, uncomp_hdrs_max_len,
+		                          uncomp_pkt_ip_hdr);
 	}
 	else
 	{
-		is_ok = build_uncomp_ipv6(context, decoded, dest, uncomp_hdrs_max_len,
-		                          uncomp_hdrs_len, payload_size, list_decomp);
+		is_ok = build_uncomp_ipv6(context, decoded, payload_size, list_decomp,
+		                          uncomp_hdrs_data, uncomp_hdrs_max_len,
+		                          uncomp_pkt_ip_hdr);
 	}
+
+	/* collect information about the IP header in order to build CRC later on */
+	uncomp_pkt_ip_hdr->data = uncomp_hdrs_data;
+	uncomp_pkt_ip_hdr->version = decoded.version;
+	uncomp_pkt_ip_hdr->next_proto = decoded.proto;
+	uncomp_pkt_ip_hdr->tot_len = uncomp_pkt_ip_hdr->ip_hdr_len + payload_size;
+	uncomp_pkt_ip_hdr->tos_tc = decoded.tos;
+	uncomp_pkt_ip_hdr->ttl_hl = decoded.ttl;
 
 	return is_ok;
 }
@@ -5482,23 +5401,23 @@ static bool build_uncomp_ip(const struct rohc_decomp_ctxt *const context,
 /**
  * @brief Build an uncompressed IPv4 header.
  *
- * @param context               The decompression context
- * @param decoded               The decoded IPv4 fields
- * @param dest                  The buffer to store the IPv4 header
- * @param uncomp_hdrs_max_len   The max length of the IPv4 header
- * @param[out] uncomp_hdrs_len  The length of the IPv4 header
- * @param payload_size          The length of the IPv4 payload
- * @return                      true if the IPv4 header is successfully built,
- *                              false if an error occurs
+ * @param context                 The decompression context
+ * @param decoded                 The decoded IPv4 fields
+ * @param payload_size            The length of the IPv4 payload
+ * @param uncomp_hdrs_data        The buffer to store the IPv4 header
+ * @param uncomp_hdrs_max_len     The max length of the IPv4 header
+ * @param[out] uncomp_pkt_ip_hdr  Information about IPv4 header for CRC computation
+ * @return                        true if the IPv4 header is successfully built,
+ *                                false if an error occurs
  */
 static bool build_uncomp_ipv4(const struct rohc_decomp_ctxt *const context,
                               const struct rohc_decoded_ip_values decoded,
-                              uint8_t *const dest,
+                              const size_t payload_size,
+                              uint8_t *const uncomp_hdrs_data,
                               const size_t uncomp_hdrs_max_len,
-                              size_t *const uncomp_hdrs_len,
-                              const size_t payload_size)
+                              struct rohc_pkt_ip_hdr *const uncomp_pkt_ip_hdr)
 {
-	struct ipv4_hdr *const ip = (struct ipv4_hdr *) dest;
+	struct ipv4_hdr *const ip = (struct ipv4_hdr *) uncomp_hdrs_data;
 
 	if(uncomp_hdrs_max_len < sizeof(struct ipv4_hdr))
 	{
@@ -5528,11 +5447,15 @@ static bool build_uncomp_ipv4(const struct rohc_decomp_ctxt *const context,
 	rohc_decomp_debug(context, "Total Length = 0x%04x (IHL * 4 + %zu)",
 	                  rohc_ntoh16(ip->tot_len), payload_size);
 	ip->check = 0;
-	ip->check = ip_fast_csum(dest, ip->ihl);
+	ip->check = ip_fast_csum(uncomp_hdrs_data, ip->ihl);
 	rohc_decomp_debug(context, "IP checksum = 0x%04x",
 	                  rohc_ntoh16(ip->check));
 
-	*uncomp_hdrs_len = sizeof(struct ipv4_hdr);
+	/* collect information about the IPv4 header in order to build CRC later on */
+	uncomp_pkt_ip_hdr->ip_hdr_len = sizeof(struct ipv4_hdr);
+	uncomp_pkt_ip_hdr->exts_len = 0;
+	uncomp_pkt_ip_hdr->exts_nr = 0;
+
 	return true;
 
 error:
@@ -5543,25 +5466,25 @@ error:
 /**
  * @brief Build an uncompressed IPv6 header.
  *
- * @param context               The decompression context
- * @param decoded               The decoded IPv6 fields
- * @param dest                  The buffer to store the IPv6 header
- * @param uncomp_hdrs_max_len   The max length of the IPv6 header
- * @param[out] uncomp_hdrs_len  The length of the IPv6 header
- * @param payload_size          The length of the IPv6 payload
- * @param list_decomp           The list decompressor
- * @return                      true if the IPv6 header is successfully built,
- *                              false if an error occurs
+ * @param context                 The decompression context
+ * @param decoded                 The decoded IPv6 fields
+ * @param payload_size            The length of the IPv6 payload
+ * @param list_decomp             The list decompressor
+ * @param uncomp_hdrs_data        The buffer to store the IPv6 header
+ * @param uncomp_hdrs_max_len     The max length of the IPv6 header
+ * @param[out] uncomp_pkt_ip_hdr  Information about IPv6 header for CRC computation
+ * @return                        true if the IPv6 header is successfully built,
+ *                                false if an error occurs
  */
 static bool build_uncomp_ipv6(const struct rohc_decomp_ctxt *const context,
                               const struct rohc_decoded_ip_values decoded,
-                              uint8_t *const dest,
-                              const size_t uncomp_hdrs_max_len,
-                              size_t *const uncomp_hdrs_len,
                               const size_t payload_size,
-                              const struct list_decomp *const list_decomp)
+                              const struct list_decomp *const list_decomp,
+                              uint8_t *const uncomp_hdrs_data,
+                              const size_t uncomp_hdrs_max_len,
+                              struct rohc_pkt_ip_hdr *const uncomp_pkt_ip_hdr)
 {
-	struct ipv6_hdr *const ip = (struct ipv6_hdr *) dest;
+	struct ipv6_hdr *const ip = (struct ipv6_hdr *) uncomp_hdrs_data;
 	size_t ext_size;
 
 	if(uncomp_hdrs_max_len < sizeof(struct ipv6_hdr))
@@ -5596,8 +5519,10 @@ static bool build_uncomp_ipv6(const struct rohc_decomp_ctxt *const context,
 	if(list_decomp->pkt_list.id != ROHC_LIST_GEN_ID_NONE)
 	{
 		/* TODO: check dest max size */
-		ext_size = list_decomp->build_uncomp_item(list_decomp, decoded.proto,
-		                                          dest + sizeof(struct ipv6_hdr));
+		ext_size =
+			list_decomp->build_uncomp_item(list_decomp, decoded.proto,
+			                               uncomp_hdrs_data + sizeof(struct ipv6_hdr),
+			                               uncomp_pkt_ip_hdr);
 	}
 	else
 	{
@@ -5611,7 +5536,9 @@ static bool build_uncomp_ipv6(const struct rohc_decomp_ctxt *const context,
 	                  "bytes, payload = %zu bytes)",
 	                  rohc_ntoh16(ip->plen), ext_size, payload_size);
 
-	*uncomp_hdrs_len = sizeof(struct ipv6_hdr) + ext_size;
+	/* collect information about the IPv6 header in order to build CRC later on */
+	uncomp_pkt_ip_hdr->ip_hdr_len = sizeof(struct ipv6_hdr) + ext_size;
+
 	return true;
 
 error:

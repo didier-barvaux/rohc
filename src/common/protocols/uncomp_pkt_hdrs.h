@@ -67,6 +67,7 @@ struct rohc_pkt_ip_hdr
 	};
 	uint8_t version;
 	uint8_t next_proto;
+	uint16_t ip_hdr_len;
 	uint16_t tot_len;
 	union
 	{

@@ -50,10 +50,11 @@ static bool create_ip6_item(const uint8_t *const data,
                             struct list_decomp *const decomp)
 	__attribute__((warn_unused_result, nonnull(1, 4)));
 
-static size_t rohc_build_ip6_extension(const struct list_decomp *const decomp,
-                                       const uint8_t ip_nh_type,
-                                       uint8_t *const dest)
-	__attribute__((warn_unused_result, nonnull(1, 3)));
+static size_t rohc_build_ip6_exts(const struct list_decomp *const decomp,
+                                  const uint8_t ip_nh_type,
+                                  uint8_t *const uncomp_hdrs_data,
+                                  struct rohc_pkt_ip_hdr *const uncomp_pkt_ip_hdr)
+	__attribute__((warn_unused_result, nonnull(1, 3, 4)));
 
 
 
@@ -75,7 +76,7 @@ void rohc_decomp_list_ipv6_init(struct list_decomp *const decomp,
 	decomp->get_item_size = get_ip6_ext_size;
 	decomp->cmp_item = cmp_ipv6_ext;
 	decomp->create_item = create_ip6_item;
-	decomp->build_uncomp_item = rohc_build_ip6_extension;
+	decomp->build_uncomp_item = rohc_build_ip6_exts;
 
 	/* traces */
 	decomp->trace_callback = trace_cb;
@@ -212,50 +213,61 @@ error:
 /**
  * @brief Build an extension list in IPv6 header
  *
- * @param decomp      The list decompressor
- * @param ip_nh_type  The Next Header value of the base IPv6 header
- * @param dest        The buffer to store the IPv6 header
- * @return            The size of the list
+ * @param decomp                  The list decompressor
+ * @param ip_nh_type              The Next Header value of the base IPv6 header
+ * @param uncomp_hdrs_data        The buffer to store the IPv6 extension headers
+ * @param[out] uncomp_pkt_ip_hdr  Information about headers for CRC computation
+ * @return                        The length of all IPv6 extension headers
  */
-static size_t rohc_build_ip6_extension(const struct list_decomp *const decomp,
-                                       const uint8_t ip_nh_type,
-                                       uint8_t *const dest)
+static size_t rohc_build_ip6_exts(const struct list_decomp *const decomp,
+                                  const uint8_t ip_nh_type,
+                                  uint8_t *const uncomp_hdrs_data,
+                                  struct rohc_pkt_ip_hdr *const uncomp_pkt_ip_hdr)
 {
-	size_t size = 0;
-	size_t i;
+	size_t exts_len = 0;
+	size_t ext_pos;
 
 	/* copy IPv6 extension headers if any */
-	for(i = 0; i < decomp->pkt_list.items_nr; i++)
+	for(ext_pos = 0; ext_pos < decomp->pkt_list.items_nr; ext_pos++)
 	{
+		uint16_t ext_len = decomp->pkt_list.items[ext_pos]->length;
 		uint8_t nh_type;
-		size_t size_data; // size of one of the extension
+
+		/* collect information about IP extension header in order to build CRC later */
+		uncomp_pkt_ip_hdr->exts[ext_pos].data = uncomp_hdrs_data + exts_len;
+		uncomp_pkt_ip_hdr->exts[ext_pos].type = decomp->pkt_list.items[ext_pos]->type;
+		uncomp_pkt_ip_hdr->exts[ext_pos].len = ext_len;
 
 		/* next header type */
-		if((i + 1) < decomp->pkt_list.items_nr)
+		if((ext_pos + 1) < decomp->pkt_list.items_nr)
 		{
 			/* not last extension header, use next extension header type */
-			nh_type = decomp->pkt_list.items[i + 1]->type;
+			nh_type = decomp->pkt_list.items[ext_pos + 1]->type;
 		}
 		else
 		{
 			/* last extension header, use given IP next header type */
 			nh_type = ip_nh_type;
 		}
-		dest[size] = nh_type & 0xff;
+		uncomp_hdrs_data[exts_len] = nh_type & 0xff;
 
 		/* header length */
-		size_data = decomp->pkt_list.items[i]->length;
-		dest[size + 1] = ((size_data / 8) - 1) & 0xff;
+		uncomp_hdrs_data[exts_len + 1] = ((ext_len / 8) - 1) & 0xff;
 
 		/* header data */
-		memcpy(dest + size + 2, decomp->pkt_list.items[i]->data + 2,
-		       size_data - 2);
-		size += size_data;
+		memcpy(uncomp_hdrs_data + exts_len + 2,
+		       decomp->pkt_list.items[ext_pos]->data + 2,
+		       ext_len - 2);
+		exts_len += ext_len;
 
-		rd_list_debug(decomp, "build one %zu-byte IPv6 extension header with "
-		              "Next Header 0x%02x", size_data, nh_type);
+		rd_list_debug(decomp, "build one %u-byte IPv6 extension header with "
+		              "Next Header 0x%02x", ext_len, nh_type);
 	}
 
-	return size;
+	/* collect information about IP extension headers in order to build CRC later */
+	uncomp_pkt_ip_hdr->exts_len = exts_len;
+	uncomp_pkt_ip_hdr->exts_nr = decomp->pkt_list.items_nr;
+
+	return exts_len;
 }
 
