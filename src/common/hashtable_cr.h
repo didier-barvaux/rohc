@@ -51,7 +51,7 @@ void * hashtable_cr_get_first(const struct hashtable *const hashtable,
 
 void * hashtable_cr_get_next(const struct hashtable *const hashtable,
                              const void *const key,
-                             void *const pos)
+                             const void *const pos)
 	__attribute((warn_unused_result, nonnull(1, 2, 3)));
 
 void hashtable_cr_del(struct hashtable *const hashtable,

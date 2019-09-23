@@ -189,6 +189,19 @@ static struct rohc_comp_ctxt *
 	                 const struct rohc_pkt_hdrs *const pkt_hdrs,
 	                 const struct rohc_ts pkt_time)
 	__attribute__((nonnull(1, 2, 3, 4), warn_unused_result));
+static const struct rohc_comp_ctxt *
+	rohc_comp_search_base_ctxt(struct rohc_comp *const comp,
+	                           const struct rohc_comp_profile *const profile,
+	                           const struct rohc_fingerprint *const fingerprint,
+	                           const struct rohc_pkt_hdrs *const pkt_hdrs)
+	__attribute__((nonnull(1, 2, 3, 4), warn_unused_result));
+static rohc_ctxt_affinity_t
+	rohc_comp_get_cr_affinity(struct rohc_comp *const comp,
+	                          const struct rohc_comp_profile *const profile,
+		                        const struct rohc_fingerprint *const fingerprint,
+		                        const struct rohc_pkt_hdrs *const pkt_hdrs,
+	                          const struct rohc_comp_ctxt *const candidate)
+	__attribute__((nonnull(1, 2, 3, 4, 5), warn_unused_result));
 static struct rohc_comp_ctxt *
 	rohc_comp_find_ctxt(struct rohc_comp *const comp,
 	                    const struct rohc_comp_profile *const profile,
@@ -3362,7 +3375,7 @@ static struct rohc_comp_ctxt *
 	                 const struct rohc_pkt_hdrs *const pkt_hdrs,
 	                 const struct rohc_ts pkt_time)
 {
-	const struct rohc_comp_ctxt *base_ctxt = NULL;
+	const struct rohc_comp_ctxt *base_ctxt;
 	struct rohc_comp_ctxt *c;
 	rohc_cid_t cid_to_use;
 
@@ -3438,88 +3451,7 @@ static struct rohc_comp_ctxt *
 	}
 
 	/* search for a possible base context if Context Replication is possible */
-	/* TODO: replace TCP by CR capacity */
-	if(profile->id == ROHCv1_PROFILE_IP_TCP)
-	{
-		size_t best_ctxt_affinity = ROHC_AFFINITY_NONE;
-		struct rohc_comp_ctxt *candidate;
-
-		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "search a base context for Context Replication");
-
-		/* search for a base context that we may clone the new context from */
-		for(candidate = hashtable_cr_get_first(&comp->contexts_cr, fingerprint);
-		    candidate != NULL;
-		    candidate = hashtable_cr_get_next(&comp->contexts_cr, fingerprint,
-		                                      candidate))
-		{
-			/* context partially matches the fingerprint of the packet */
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "CR: context CID %u shares enough with packet for base context",
-			           candidate->cid);
-
-			/* check if context may be used as a base context */
-			if(!profile->is_cr_possible(candidate, pkt_hdrs))
-			{
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "CR: context CID %u cannot be used as base context: "
-				           "IR-CR packet cannot transmit some differences",
-				           candidate->cid);
-			}
-			else
-			{
-				/* context can be used base context for Context Replication (CR),
-				 * compute how much it shares with packet */
-				rohc_ctxt_affinity_t ctxt_affinity = ROHC_AFFINITY_LOW;
-				if(candidate->fingerprint.src_port == fingerprint->src_port)
-				{
-					rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-					           "CR: context CID %u uses same source port %u",
-					           candidate->cid, fingerprint->src_port);
-					ctxt_affinity++;
-				}
-				if(candidate->fingerprint.dst_port == fingerprint->dst_port)
-				{
-					rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-					           "CR: context CID %u uses same destination port %u",
-					           candidate->cid, fingerprint->dst_port);
-					ctxt_affinity++;
-				}
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "CR: context CID %u scores %u as base context",
-				           candidate->cid, ctxt_affinity);
-				assert(ctxt_affinity != ROHC_AFFINITY_HIGH);
-				if(ctxt_affinity > best_ctxt_affinity)
-				{
-					base_ctxt = candidate;
-					best_ctxt_affinity = ctxt_affinity;
-					rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-					           "CR: context CID %u is the best base context found yet",
-					           candidate->cid);
-					if(ctxt_affinity == ROHC_AFFINITY_MED)
-					{
-						rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-						           "CR: maximum affinity reached, stop search");
-						break;
-					}
-				}
-			}
-		}
-
-		if(base_ctxt != NULL)
-		{
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "CR: context CID %u is the best base context found",
-			           base_ctxt->cid);
-		}
-		else
-		{
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "CR: no context may be used as base context");
-		}
-	}
-
-	/* context replication? */
+	base_ctxt = rohc_comp_search_base_ctxt(comp, profile, fingerprint, pkt_hdrs);
 	if(base_ctxt != NULL)
 	{
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -3534,6 +3466,8 @@ static struct rohc_comp_ctxt *
 	}
 	else
 	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "create context with CID %u without replication", cid_to_use);
 		c->do_ctxt_replication = false;
 		c->state = ROHC_COMP_STATE_IR;
 	}
@@ -3602,6 +3536,131 @@ static struct rohc_comp_ctxt *
 	           "context (CID %u) created at %" PRIu64 " seconds (num_used = %u)",
 	           c->cid, c->latest_used, comp->num_contexts_used);
 	return c;
+}
+
+
+/**
+ * @brief Search for the best base context for Context Replication
+ *
+ * @param comp         The ROHC compressor
+ * @param profile      The profile to associate the context with
+ * @param fingerprint  The packet/context fingerprint
+ * @param pkt_hdrs     The information collected about packet headers
+ * @return             NULL if Context Replication (CR) is not possible,
+ *                     NULL if CR is possible but no base context was found,
+ *                     the best Base Context otherwise
+ */
+static const struct rohc_comp_ctxt *
+	rohc_comp_search_base_ctxt(struct rohc_comp *const comp,
+	                           const struct rohc_comp_profile *const profile,
+	                           const struct rohc_fingerprint *const fingerprint,
+	                           const struct rohc_pkt_hdrs *const pkt_hdrs)
+{
+	const struct rohc_comp_ctxt *base_ctxt = NULL;
+
+	/* TODO: replace TCP by CR capacity */
+	if(profile->id == ROHCv1_PROFILE_IP_TCP)
+	{
+		size_t best_ctxt_affinity = ROHC_AFFINITY_NONE;
+		const struct rohc_comp_ctxt *candidate;
+
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "search a base context for Context Replication");
+
+		/* search for a base context that we may clone the new context from */
+		for(candidate = hashtable_cr_get_first(&comp->contexts_cr, fingerprint);
+		    candidate != NULL;
+		    candidate = hashtable_cr_get_next(&comp->contexts_cr, fingerprint,
+		                                      candidate))
+		{
+			rohc_ctxt_affinity_t ctxt_affinity;
+
+			/* context partially matches the fingerprint of the packet */
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "CR: context CID %u shares enough with packet for base context",
+			           candidate->cid);
+
+			/* check if context may be used as a base context,
+			 * then compute how much it shares with packet */
+			ctxt_affinity = rohc_comp_get_cr_affinity(comp, profile, fingerprint,
+			                                          pkt_hdrs, candidate);
+			if(ctxt_affinity > best_ctxt_affinity)
+			{
+				base_ctxt = candidate;
+				best_ctxt_affinity = ctxt_affinity;
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "CR: context CID %u is the best base context found yet",
+				           candidate->cid);
+				if(ctxt_affinity == ROHC_AFFINITY_MED)
+				{
+					rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+					           "CR: maximum affinity reached, stop search");
+					break;
+				}
+			}
+		}
+	}
+
+	return base_ctxt;
+}
+
+
+/**
+ * @brief Get the affinity of the given context for Context Replication?
+ *
+ * @param comp         The ROHC compressor
+ * @param profile      The profile to associate the context with
+ * @param fingerprint  The packet/context fingerprint
+ * @param pkt_hdrs     The information collected about packet headers
+ * @param candidate    The candidate base context to test
+ * @return             The affinity of the context for Context Replication
+ */
+static rohc_ctxt_affinity_t
+	rohc_comp_get_cr_affinity(struct rohc_comp *const comp,
+	                          const struct rohc_comp_profile *const profile,
+		                        const struct rohc_fingerprint *const fingerprint,
+		                        const struct rohc_pkt_hdrs *const pkt_hdrs,
+	                          const struct rohc_comp_ctxt *const candidate)
+{
+	rohc_ctxt_affinity_t ctxt_affinity;
+
+	/* check if context may be used as a base context */
+	if(!profile->is_cr_possible(candidate, pkt_hdrs))
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "CR: context CID %u cannot be used as base context: IR-CR packet "
+		           "cannot transmit some differences", candidate->cid);
+		ctxt_affinity = ROHC_AFFINITY_NONE;
+	}
+	else
+	{
+		/* context can be used base context for Context Replication (CR),
+		 * compute how much it shares with packet */
+		ctxt_affinity = ROHC_AFFINITY_LOW;
+		if(candidate->fingerprint.src_port == fingerprint->src_port)
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "CR: context CID %u uses same source port %u",
+			           candidate->cid, fingerprint->src_port);
+			ctxt_affinity++;
+		}
+		if(candidate->fingerprint.dst_port == fingerprint->dst_port)
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "CR: context CID %u uses same destination port %u",
+			           candidate->cid, fingerprint->dst_port);
+			ctxt_affinity++;
+		}
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "CR: context CID %u scores %u as base context",
+		           candidate->cid, ctxt_affinity);
+
+		/* affinity cannot be high since new flow cannot share both source and
+		 * destination ports with base context (otherwise it won't be a new flow) */
+		assert(ctxt_affinity != ROHC_AFFINITY_HIGH);
+	}
+
+	return ctxt_affinity;
 }
 
 

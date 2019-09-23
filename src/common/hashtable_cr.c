@@ -104,9 +104,9 @@ void * hashtable_cr_get_first(const struct hashtable *const hashtable,
 
 void * hashtable_cr_get_next(const struct hashtable *const hashtable,
                              const void *const key,
-                             void *const pos)
+                             const void *const pos)
 {
-	struct hashlist *prev = pos;
+	const struct hashlist *prev = pos;
 	struct hashlist *entry;
 
 	for(entry = prev->next_cr; entry != NULL; entry = entry->next_cr)
