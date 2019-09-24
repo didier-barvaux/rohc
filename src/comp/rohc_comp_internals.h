@@ -301,8 +301,6 @@ struct rohc_comp_ctxt
 	/** Profile-specific data, defined by the profiles */
 	void *specific;
 
-	/** Whether Context Replication (CR) may be used */
-	bool do_ctxt_replication;
 	/** The base context for Context Replication (CR) */
 	rohc_cid_t cr_base_cid;
 

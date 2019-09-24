@@ -67,7 +67,8 @@ static int tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *const context,
 /**
  * @brief Code the dynamic part of an IR or IR-DYN packet
  *
- * @param context           The compression context
+ * @param context           The real compression context for traces and update
+ * @param ref_ctxt          The reference compression context to detect changes
  * @param uncomp_pkt_hdrs   The uncompressed headers to encode
  * @param tmp               The temporary state for compressed packet
  * @param rohc_pkt          OUT: The ROHC packet
@@ -76,12 +77,13 @@ static int tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *const context,
  *                          -1 otherwise
  */
 int tcp_code_dyn_part(const struct rohc_comp_ctxt *const context,
+                      const struct rohc_comp_ctxt *const ref_ctxt,
                       const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
                       const struct tcp_tmp_variables *const tmp,
                       uint8_t *const rohc_pkt,
                       const size_t rohc_pkt_max_len)
 {
-	const struct sc_tcp_context *const tcp_context = context->specific;
+	const struct sc_tcp_context *const tcp_context = ref_ctxt->specific;
 
 	uint8_t *rohc_remain_data = rohc_pkt;
 	size_t rohc_remain_len = rohc_pkt_max_len;
@@ -173,7 +175,7 @@ error:
 /**
  * @brief Build the dynamic part of the IPv4 header
  *
- * @param context         The compression context
+ * @param context         The real compression context for traces and update
  * @param ip_context      The specific IP compression context
  * @param ipv4            The IPv4 header
  * @param ip_id_behavior  The IP-ID behavior of the IPv4 header
@@ -254,7 +256,7 @@ error:
 /**
  * @brief Build the dynamic part of the IPv6 header
  *
- * @param context         The compression context
+ * @param context         The real compression context for traces and update
  * @param ip_context      The specific IP compression context
  * @param ipv6            The IPv6 header
  * @param[out] rohc_data  The ROHC packet being built
@@ -366,7 +368,7 @@ TODO
 
 \endverbatim
  *
- * @param context         The compression context
+ * @param context         The real compression context for traces and update
  * @param uncomp_pkt_hdrs The uncompressed headers to encode
  * @param tmp             The temporary state for compressed packet
  * @param[out] rohc_data  The ROHC packet being built

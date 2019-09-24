@@ -62,7 +62,7 @@ static int tcp_code_static_tcp_part(const struct rohc_comp_ctxt *const context,
 /**
  * @brief Code the static part of an IR packet
  *
- * @param context           The compression context
+ * @param context           The real compression context for traces and update
  * @param uncomp_pkt_hdrs   The uncompressed headers to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
@@ -158,7 +158,7 @@ error:
 /**
  * @brief Build the static part of the IPv4 header
  *
- * @param context         The compression context
+ * @param context         The real compression context for traces and update
  * @param ipv4            The IPv4 header
  * @param[out] rohc_data  The ROHC packet being built
  * @param rohc_max_len    The max remaining length in the ROHC buffer
@@ -200,7 +200,7 @@ error:
 /**
  * @brief Build the static part of the IPv6 header
  *
- * @param context         The compression context
+ * @param context         The real compression context for traces and update
  * @param ipv6            The IPv6 header
  * @param[out] rohc_data  The ROHC packet being built
  * @param rohc_max_len    The max remaining length in the ROHC buffer
@@ -271,7 +271,7 @@ error:
 /**
  * @brief Build the static part of the IPv6 option header
  *
- * @param context         The compression context
+ * @param context         The real compression context for traces and update
  * @param ext             The IPv6 extension header
  * @param[out] rohc_data  The ROHC packet being built
  * @param rohc_max_len    The max remaining length in the ROHC buffer
@@ -357,7 +357,7 @@ error:
 
 \endverbatim
  *
- * @param context         The compression context
+ * @param context         The real compression context for traces and update
  * @param tcp             The TCP header
  * @param[out] rohc_data  The ROHC packet being built
  * @param rohc_max_len    The max remaining length in the ROHC buffer
