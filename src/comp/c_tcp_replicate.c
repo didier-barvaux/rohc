@@ -53,6 +53,12 @@ static int tcp_code_replicate_ipv6_opt_part(const struct rohc_comp_ctxt *const c
                                             const size_t rohc_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
+static rohc_tcp_port_type_t tcp_code_replicate_tcp_port(const uint16_t port_ctxt,
+                                                        const uint16_t port_pkt_nbo,
+                                                        uint8_t *const rohc_data,
+                                                        const size_t rohc_max_len)
+	__attribute__((warn_unused_result, nonnull(3)));
+
 static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const context,
                                        const struct rohc_comp_ctxt *const ref_ctxt,
                                        const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
@@ -391,6 +397,57 @@ error:
 
 
 /**
+ * @brief Build the port_replicate() encoding scheme
+ *
+ * @param port_ctxt       The reference value of the TCP port in the context
+ * @param port_pkt_nbo    The value of the TCP port in the packet to compress
+ * @param[out] rohc_data  The ROHC packet being built
+ * @param rohc_max_len    The max remaining length in the ROHC buffer
+ * @return                The type of port_replicate() encoding,
+ *                        ROHC_TCP_PORT_RESERVED in case of problem
+ */
+static rohc_tcp_port_type_t tcp_code_replicate_tcp_port(const uint16_t port_ctxt,
+                                                        const uint16_t port_pkt_nbo,
+                                                        uint8_t *const rohc_data,
+                                                        const size_t rohc_max_len)
+{
+	const uint16_t port_pkt = rohc_ntoh16(port_pkt_nbo);
+	size_t encoding_type;
+
+	if(port_pkt == port_ctxt)
+	{
+		/* TCP port is static: no need to transmit it */
+		encoding_type = ROHC_TCP_PORT_STATIC;
+	}
+	else if((port_pkt & 0xff00) == (port_ctxt & 0xff00))
+	{
+		/* TCP port is not static: transmitting the 8 LSB is enough */
+		if(rohc_max_len < sizeof(uint8_t))
+		{
+			goto error;
+		}
+		encoding_type = ROHC_TCP_PORT_LSB8;
+		rohc_data[0] = (port_pkt & 0xff);
+	}
+	else
+	{
+		/* TCP port is not static: transmitting it in full is required */
+		if(rohc_max_len < sizeof(uint16_t))
+		{
+			goto error;
+		}
+		encoding_type = ROHC_TCP_PORT_IRREGULAR;
+		memcpy(rohc_data, &port_pkt_nbo, sizeof(uint16_t));
+	}
+
+	return encoding_type;
+
+error:
+	return ROHC_TCP_PORT_RESERVED;
+}
+
+
+/**
  * @brief Build the replicate part of the TCP header
  *
  * @param context         The real compression context for traces and update
@@ -452,37 +509,37 @@ static int tcp_code_replicate_tcp_part(const struct rohc_comp_ctxt *const contex
 	rohc_remain_data += sizeof(tcp_replicate_t);
 	rohc_remain_len -= sizeof(tcp_replicate_t);
 
-	/* source port */
-	/* TODO: better compression */
-	if(rohc_remain_len < sizeof(uint16_t))
+	/* TCP source port */
+	tcp_replicate->src_port_presence =
+		tcp_code_replicate_tcp_port(ref_ctxt->fingerprint.src_port, tcp->src_port,
+		                            rohc_remain_data, rohc_remain_len);
+	if(tcp_replicate->src_port_presence == ROHC_TCP_PORT_RESERVED)
 	{
-		rohc_comp_warn(context, "ROHC buffer too small for the TCP replicate part: "
-		               "%zu bytes required for TCP source port, but only %zu bytes available",
-		               sizeof(uint16_t), rohc_remain_len);
+		rohc_comp_warn(context, "ROHC buffer too small for the TCP replicate part: 1-2 "
+		               "bytes required for TCP source port, but only %zu bytes "
+		               "available", rohc_max_len);
 		goto error;
 	}
-	tcp_replicate->src_port_presence = ROHC_TCP_PORT_IRREGULAR; /* TODO */
-	memcpy(rohc_remain_data, &tcp->src_port, sizeof(uint16_t));
-	rohc_remain_data += sizeof(uint16_t);
-	rohc_remain_len -= sizeof(uint16_t);
-	rohc_comp_debug(context, "TCP source port %spresent",
-	                tcp_replicate->src_port_presence ? "" : "not ");
+	rohc_comp_debug(context, "transmit %u bytes of TCP source port",
+	                tcp_replicate->src_port_presence);
+	rohc_remain_data += tcp_replicate->src_port_presence;
+	rohc_remain_len -= tcp_replicate->src_port_presence;
 
-	/* destination port */
-	/* TODO: better compression */
-	if(rohc_remain_len < sizeof(uint16_t))
+	/* TCP destination port */
+	tcp_replicate->dst_port_presence =
+		tcp_code_replicate_tcp_port(ref_ctxt->fingerprint.dst_port, tcp->dst_port,
+		                            rohc_remain_data, rohc_remain_len);
+	if(tcp_replicate->dst_port_presence == ROHC_TCP_PORT_RESERVED)
 	{
-		rohc_comp_warn(context, "ROHC buffer too small for the TCP replicate part: "
-		               "%zu bytes required for TCP destination port, but only %zu bytes available",
-		               sizeof(uint16_t), rohc_remain_len);
+		rohc_comp_warn(context, "ROHC buffer too small for the TCP replicate part: 1-2 "
+		               "bytes required for TCP destination port, but only %zu bytes "
+		               "available", rohc_max_len);
 		goto error;
 	}
-	tcp_replicate->dst_port_presence = ROHC_TCP_PORT_IRREGULAR; /* TODO */
-	memcpy(rohc_remain_data, &tcp->dst_port, sizeof(uint16_t));
-	rohc_remain_data += sizeof(uint16_t);
-	rohc_remain_len -= sizeof(uint16_t);
-	rohc_comp_debug(context, "TCP destination port %spresent",
-	                tcp_replicate->dst_port_presence ? "" : "not ");
+	rohc_comp_debug(context, "transmit %u bytes of TCP destination port",
+	                tcp_replicate->dst_port_presence);
+	rohc_remain_data += tcp_replicate->dst_port_presence;
+	rohc_remain_len -= tcp_replicate->dst_port_presence;
 
 	/* window */
 	{

@@ -3168,27 +3168,40 @@ static bool d_tcp_decode_bits_tcp_hdr(const struct rohc_decomp_ctxt *const conte
 	rohc_decomp_debug(context, "decode fields of TCP header");
 
 	/* TCP source port */
-	if(bits->src_port_nr > 0)
+	if(bits->src_port_nr == 16)
 	{
 		decoded->src_port = bits->src_port;
 		rohc_decomp_debug(context, "  decoded source port %u", decoded->src_port);
 	}
+	else if(bits->src_port_nr == 8)
+	{
+		decoded->src_port =
+			(tcp_context->tcp_src_port & 0xff00) | (bits->src_port & 0x00ff);
+		rohc_decomp_debug(context, "  decoded source port %u", decoded->src_port);
+	}
 	else
 	{
+		assert(bits->src_port_nr == 0);
 		decoded->src_port = tcp_context->tcp_src_port;
 		rohc_decomp_debug(context, "  source port %u taken from context",
 		                  decoded->src_port);
 	}
 
 	/* TCP destination port */
-	if(bits->dst_port_nr > 0)
+	if(bits->dst_port_nr == 16)
 	{
 		decoded->dst_port = bits->dst_port;
-		rohc_decomp_debug(context, "  decoded destination port %u",
-		                  decoded->dst_port);
+		rohc_decomp_debug(context, "  decoded destination port %u", decoded->dst_port);
+	}
+	else if(bits->dst_port_nr == 8)
+	{
+		decoded->dst_port =
+			(tcp_context->tcp_dst_port & 0xff00) | (bits->dst_port & 0x00ff);
+		rohc_decomp_debug(context, "  decoded destination port %u", decoded->dst_port);
 	}
 	else
 	{
+		assert(bits->dst_port_nr == 0);
 		decoded->dst_port = tcp_context->tcp_dst_port;
 		rohc_decomp_debug(context, "  destination port %u taken from context",
 		                  decoded->dst_port);
