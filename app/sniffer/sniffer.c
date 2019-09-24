@@ -180,6 +180,15 @@ static void usage(void);
 static void sniffer_interrupt(int signum);
 static void sniffer_print_stats(int signum);
 
+static bool parse_args(int argc,
+                       char *argv[],
+                       const char **const pidfilename,
+                       int *const max_contexts,
+                       int enabled_profiles[ROHC_PROFILE_MAX],
+                       rohc_cid_type_t *const cid_type,
+                       const char **const device_name)
+	__attribute__((warn_unused_result, nonnull(2, 3, 4, 5, 6, 7)));
+
 static bool sniff(const rohc_cid_type_t cid_type,
                   const size_t max_contexts,
                   const int enabled_profiles[],
@@ -286,14 +295,11 @@ int main(int argc, char *argv[])
 	const int do_change_dir = 1;
 	const int do_close_fds = 1;
 	int enabled_profiles[ROHC_PROFILE_MAX];
-	char *pidfilename = NULL;
+	const char *pidfilename;
 	bool pidfile_created = false;
-	char *cid_type_name = NULL;
-	char *device_name = NULL;
-	int max_contexts = ROHC_SMALL_CID_MAX + 1;
-	int proto_version = 1; /* ROHC protocol version, v1 by default */
+	const char *device_name;
+	int max_contexts;
 	rohc_cid_type_t cid_type;
-	int args_used;
 	int ret;
 	int i;
 
@@ -311,18 +317,6 @@ int main(int argc, char *argv[])
 	/* disable daemon mode by default */
 	is_daemon = false;
 
-	/* enable all available ROHC profiles by default */
-	for(i = ROHC_PROFILE_UNCOMPRESSED; i < ROHC_PROFILE_MAX; i++)
-	{
-		enabled_profiles[i] = -1;
-	}
-	enabled_profiles[ROHC_PROFILE_UNCOMPRESSED] = 1;
-	enabled_profiles[ROHC_PROFILE_RTP] = 1;
-	enabled_profiles[ROHC_PROFILE_UDP] = 1;
-	enabled_profiles[ROHC_PROFILE_ESP] = 1;
-	enabled_profiles[ROHC_PROFILE_IP] = 1;
-	enabled_profiles[ROHC_PROFILE_TCP] = 1;
-
 	/* no traces at the moment */
 	for(i = 0; i < MAX_LAST_TRACES; i++)
 	{
@@ -335,233 +329,9 @@ int main(int argc, char *argv[])
 	openlog("rohc_sniffer", LOG_PID, LOG_USER);
 
 	/* parse program arguments, print the help message in case of failure */
-	if(argc <= 1)
+	if(!parse_args(argc, argv, &pidfilename, &max_contexts, enabled_profiles,
+	               &cid_type, &device_name))
 	{
-		usage();
-		goto error;
-	}
-
-	for(argc--, argv++; argc > 0; argc -= args_used, argv += args_used)
-	{
-		args_used = 1;
-
-		if(!strcmp(*argv, "-v") || !strcmp(*argv, "--version"))
-		{
-			/* print version */
-			printf("rohc_sniffer version %s\n", rohc_version());
-			goto error;
-		}
-		else if(!strcmp(*argv, "-h") || !strcmp(*argv, "--help"))
-		{
-			/* print help */
-			usage();
-			goto error;
-		}
-		else if(!strcmp(*argv, "--verbose"))
-		{
-			/* enable verbose mode */
-			is_verbose = true;
-		}
-		else if(!strcmp(*argv, "--stat"))
-		{
-			/* enable stat mode */
-			do_print_stat = true;
-		}
-		else if(!strcmp(*argv, "--daemon") || !strcmp(*argv, "-d"))
-		{
-			/* enable daemon mode */
-			is_daemon = true;
-		}
-		else if(!strcmp(*argv, "-p") || !strcmp(*argv, "--pidfile"))
-		{
-			/* get the name of the pidfile */
-			if(argc <= 1)
-			{
-				SNIFFER_LOG(LOG_WARNING, "missing mandatory -p/--pidfile parameter");
-				usage();
-				goto error;
-			}
-			pidfilename = argv[1];
-			args_used++;
-		}
-		else if(!strcmp(*argv, "-m") || !strcmp(*argv, "--max-contexts"))
-		{
-			/* get the maximum number of contexts the test should use */
-			if(argc <= 1)
-			{
-				SNIFFER_LOG(LOG_WARNING, "missing mandatory -m/--max-contexts parameter");
-				usage();
-				goto error;
-			}
-			max_contexts = atoi(argv[1]);
-			args_used++;
-		}
-		else if(!strcmp(*argv, "--rohc-version"))
-		{
-			/* get the ROHC version to use */
-			if(argc <= 1)
-			{
-				SNIFFER_LOG(LOG_WARNING, "option --rohc-version takes one argument");
-				usage();
-				goto error;
-			}
-			proto_version = atoi(argv[1]);
-			args_used++;
-		}
-		else if(!strcmp(*argv, "--disable"))
-		{
-			/* disable the given ROHC profile */
-			if(argc <= 1)
-			{
-				SNIFFER_LOG(LOG_WARNING, "missing mandatory --disable parameter");
-				usage();
-				goto error;
-			}
-			const int rohc_profile = atoi(argv[1]);
-			if(rohc_profile >= ROHC_PROFILE_UNCOMPRESSED &&
-			   rohc_profile < ROHC_PROFILE_MAX)
-			{
-				enabled_profiles[rohc_profile] = 0;
-				SNIFFER_LOG(LOG_INFO, "disable ROHC profile 0x%04x", rohc_profile);
-			}
-			args_used++;
-		}
-		else if(cid_type_name == NULL)
-		{
-			/* get the type of CID to use within the ROHC library */
-			cid_type_name = argv[0];
-		}
-		else if(device_name == NULL)
-		{
-			/* get the device on which we will capture packets to compress,
-			 * then decompress */
-			device_name = argv[0];
-		}
-		else
-		{
-			/* do not accept more than one filename without option name */
-			usage();
-			goto error;
-		}
-	}
-
-	/* check CID type */
-	if(cid_type_name == NULL)
-	{
-		SNIFFER_LOG(LOG_WARNING, "missing mandatory CID_TYPE parameter");
-		usage();
-		goto error;
-	}
-	else if(!strcmp(cid_type_name, "smallcid"))
-	{
-		cid_type = ROHC_SMALL_CID;
-
-		/* the maximum number of ROHC contexts should be valid */
-		if(max_contexts < 1 || (size_t) max_contexts > (ROHC_SMALL_CID_MAX + 1))
-		{
-			SNIFFER_LOG(LOG_WARNING, "the maximum number of ROHC contexts "
-			            "should be between 1 and %u", ROHC_SMALL_CID_MAX + 1);
-			usage();
-			goto error;
-		}
-	}
-	else if(!strcmp(cid_type_name, "largecid"))
-	{
-		cid_type = ROHC_LARGE_CID;
-
-		/* the maximum number of ROHC contexts should be valid */
-		if(max_contexts < 1 || (size_t) max_contexts > (ROHC_LARGE_CID_MAX + 1))
-		{
-			SNIFFER_LOG(LOG_WARNING, "the maximum number of ROHC contexts "
-			            "should be between 1 and %u", ROHC_LARGE_CID_MAX + 1);
-			usage();
-			goto error;
-		}
-	}
-	else if(strlen(cid_type_name) <= 100)
-	{
-		SNIFFER_LOG(LOG_WARNING, "invalid CID type '%s', only 'smallcid' and "
-		            "'largecid' expected", cid_type_name);
-		goto error;
-	}
-	else
-	{
-		SNIFFER_LOG(LOG_WARNING, "invalid CID type, only 'smallcid' and "
-		            "'largecid' expected");
-		goto error;
-	}
-
-	if(proto_version != 1 && proto_version != 2)
-	{
-		SNIFFER_LOG(LOG_WARNING, "invalid ROHC version '%d': specify 1 for ROHCv1 and "
-		            "2 for ROHCv2", proto_version);
-		usage();
-		goto error;
-	}
-	if(proto_version == 2)
-	{
-#if 0
-		enabled_profiles[ROHCv2_PROFILE_IP_UDP_RTP] =
-			enabled_profiles[ROHCv1_PROFILE_IP_UDP_RTP];
-#else
-		enabled_profiles[ROHCv2_PROFILE_IP_UDP_RTP] = -1;
-#endif
-		enabled_profiles[ROHCv1_PROFILE_IP_UDP_RTP] = 0;
-
-		enabled_profiles[ROHCv2_PROFILE_IP_UDP] =
-			enabled_profiles[ROHCv1_PROFILE_IP_UDP];
-		enabled_profiles[ROHCv1_PROFILE_IP_UDP] = 0;
-
-		enabled_profiles[ROHCv2_PROFILE_IP_ESP] =
-			enabled_profiles[ROHCv1_PROFILE_IP_ESP];
-		enabled_profiles[ROHCv1_PROFILE_IP_ESP] = 0;
-
-		enabled_profiles[ROHCv2_PROFILE_IP] =
-			enabled_profiles[ROHCv1_PROFILE_IP];
-		enabled_profiles[ROHCv1_PROFILE_IP] = 0;
-
-#if 0
-		enabled_profiles[ROHCv2_PROFILE_IP_UDPLITE_RTP] =
-			enabled_profiles[ROHCv1_PROFILE_IP_UDPLITE_RTP];
-#else
-		enabled_profiles[ROHCv2_PROFILE_IP_UDPLITE_RTP] = -1;
-#endif
-		enabled_profiles[ROHCv1_PROFILE_IP_UDPLITE_RTP] = -1;
-
-#if 0
-		enabled_profiles[ROHCv2_PROFILE_IP_UDPLITE] =
-			enabled_profiles[ROHCv1_PROFILE_IP_UDPLITE];
-#else
-		enabled_profiles[ROHCv2_PROFILE_IP_UDPLITE] = -1;
-#endif
-		enabled_profiles[ROHCv1_PROFILE_IP_UDPLITE] = 0;
-	}
-
-	/* the source filename is mandatory */
-	if(device_name == NULL)
-	{
-		SNIFFER_LOG(LOG_WARNING, "device name is mandatory");
-		usage();
-		goto error;
-	}
-	if(strlen(device_name) >= IFNAMSIZ)
-	{
-		SNIFFER_LOG(LOG_WARNING, "DEVICE name too long, should be strictly less "
-		            "than %zu characters", (size_t) IFNAMSIZ);
-		goto error;
-	}
-
-	/* --pidfile cannot be used in foreground mode */
-	if(pidfilename != NULL && !is_daemon)
-	{
-		SNIFFER_LOG(LOG_WARNING, "option --pidfile cannot be used without "
-		            "option --daemon");
-		usage();
-		goto error;
-	}
-	if(pidfilename != NULL && !is_path_correct(pidfilename))
-	{
-		SNIFFER_LOG(LOG_WARNING, "PID file path is not valid");
 		goto error;
 	}
 
@@ -654,6 +424,279 @@ error:
 	}
 	closelog();
 	return 1;
+}
+
+
+/**
+ * @brief Parse the command line arguments of the program
+ *
+ * @param argc  The number of program arguments
+ * @param argv  The program arguments
+ * @return      true of arguments are valid, false otherwise
+ */
+static bool parse_args(int argc,
+                       char *argv[],
+                       const char **const pidfilename,
+                       int *const max_contexts,
+                       int enabled_profiles[ROHC_PROFILE_MAX],
+                       rohc_cid_type_t *const cid_type,
+                       const char **const device_name)
+{
+	int proto_version = 1; /* ROHC protocol version, v1 by default */
+	char *cid_type_name = NULL;
+	int args_used;
+	int i;
+
+	*max_contexts = ROHC_SMALL_CID_MAX + 1;
+	*pidfilename = NULL;
+	*device_name = NULL;
+
+	/* enable all available ROHC profiles by default */
+	for(i = ROHC_PROFILE_UNCOMPRESSED; i < ROHC_PROFILE_MAX; i++)
+	{
+		enabled_profiles[i] = -1;
+	}
+	enabled_profiles[ROHC_PROFILE_UNCOMPRESSED] = 1;
+	enabled_profiles[ROHC_PROFILE_RTP] = 1;
+	enabled_profiles[ROHC_PROFILE_UDP] = 1;
+	enabled_profiles[ROHC_PROFILE_ESP] = 1;
+	enabled_profiles[ROHC_PROFILE_IP] = 1;
+	enabled_profiles[ROHC_PROFILE_TCP] = 1;
+
+	if(argc <= 1)
+	{
+		usage();
+		goto error;
+	}
+
+	for(argc--, argv++; argc > 0; argc -= args_used, argv += args_used)
+	{
+		args_used = 1;
+
+		if(!strcmp(*argv, "-v") || !strcmp(*argv, "--version"))
+		{
+			/* print version */
+			printf("rohc_sniffer version %s\n", rohc_version());
+			goto error;
+		}
+		else if(!strcmp(*argv, "-h") || !strcmp(*argv, "--help"))
+		{
+			/* print help */
+			usage();
+			goto error;
+		}
+		else if(!strcmp(*argv, "--verbose"))
+		{
+			/* enable verbose mode */
+			is_verbose = true;
+		}
+		else if(!strcmp(*argv, "--stat"))
+		{
+			/* enable stat mode */
+			do_print_stat = true;
+		}
+		else if(!strcmp(*argv, "--daemon") || !strcmp(*argv, "-d"))
+		{
+			/* enable daemon mode */
+			is_daemon = true;
+		}
+		else if(!strcmp(*argv, "-p") || !strcmp(*argv, "--pidfile"))
+		{
+			/* get the name of the pidfile */
+			if(argc <= 1)
+			{
+				SNIFFER_LOG(LOG_WARNING, "missing mandatory -p/--pidfile parameter");
+				usage();
+				goto error;
+			}
+			*pidfilename = argv[1];
+			args_used++;
+		}
+		else if(!strcmp(*argv, "-m") || !strcmp(*argv, "--max-contexts"))
+		{
+			/* get the maximum number of contexts the test should use */
+			if(argc <= 1)
+			{
+				SNIFFER_LOG(LOG_WARNING, "missing mandatory -m/--max-contexts parameter");
+				usage();
+				goto error;
+			}
+			*max_contexts = atoi(argv[1]);
+			args_used++;
+		}
+		else if(!strcmp(*argv, "--rohc-version"))
+		{
+			/* get the ROHC version to use */
+			if(argc <= 1)
+			{
+				SNIFFER_LOG(LOG_WARNING, "option --rohc-version takes one argument");
+				usage();
+				goto error;
+			}
+			proto_version = atoi(argv[1]);
+			args_used++;
+		}
+		else if(!strcmp(*argv, "--disable"))
+		{
+			/* disable the given ROHC profile */
+			if(argc <= 1)
+			{
+				SNIFFER_LOG(LOG_WARNING, "missing mandatory --disable parameter");
+				usage();
+				goto error;
+			}
+			const int rohc_profile = atoi(argv[1]);
+			if(rohc_profile >= ROHC_PROFILE_UNCOMPRESSED &&
+			   rohc_profile < ROHC_PROFILE_MAX)
+			{
+				enabled_profiles[rohc_profile] = 0;
+				SNIFFER_LOG(LOG_INFO, "disable ROHC profile 0x%04x", rohc_profile);
+			}
+			args_used++;
+		}
+		else if(cid_type_name == NULL)
+		{
+			/* get the type of CID to use within the ROHC library */
+			cid_type_name = argv[0];
+		}
+		else if((*device_name) == NULL)
+		{
+			/* get the device on which we will capture packets to compress,
+			 * then decompress */
+			*device_name = argv[0];
+		}
+		else
+		{
+			/* do not accept more than one filename without option name */
+			usage();
+			goto error;
+		}
+	}
+
+	/* check CID type */
+	if(cid_type_name == NULL)
+	{
+		SNIFFER_LOG(LOG_WARNING, "missing mandatory CID_TYPE parameter");
+		usage();
+		goto error;
+	}
+	else if(!strcmp(cid_type_name, "smallcid"))
+	{
+		*cid_type = ROHC_SMALL_CID;
+
+		/* the maximum number of ROHC contexts should be valid */
+		if((*max_contexts) < 1 || (size_t) (*max_contexts) > (ROHC_SMALL_CID_MAX + 1))
+		{
+			SNIFFER_LOG(LOG_WARNING, "the maximum number of ROHC contexts "
+			            "should be between 1 and %u", ROHC_SMALL_CID_MAX + 1);
+			usage();
+			goto error;
+		}
+	}
+	else if(!strcmp(cid_type_name, "largecid"))
+	{
+		*cid_type = ROHC_LARGE_CID;
+
+		/* the maximum number of ROHC contexts should be valid */
+		if((*max_contexts) < 1 || (size_t) (*max_contexts) > (ROHC_LARGE_CID_MAX + 1))
+		{
+			SNIFFER_LOG(LOG_WARNING, "the maximum number of ROHC contexts "
+			            "should be between 1 and %u", ROHC_LARGE_CID_MAX + 1);
+			usage();
+			goto error;
+		}
+	}
+	else if(strlen(cid_type_name) <= 100)
+	{
+		SNIFFER_LOG(LOG_WARNING, "invalid CID type '%s', only 'smallcid' and "
+		            "'largecid' expected", cid_type_name);
+		goto error;
+	}
+	else
+	{
+		SNIFFER_LOG(LOG_WARNING, "invalid CID type, only 'smallcid' and "
+		            "'largecid' expected");
+		goto error;
+	}
+
+	if(proto_version != 1 && proto_version != 2)
+	{
+		SNIFFER_LOG(LOG_WARNING, "invalid ROHC version '%d': specify 1 for ROHCv1 and "
+		            "2 for ROHCv2", proto_version);
+		usage();
+		goto error;
+	}
+	if(proto_version == 2)
+	{
+#if 0
+		enabled_profiles[ROHCv2_PROFILE_IP_UDP_RTP] =
+			enabled_profiles[ROHCv1_PROFILE_IP_UDP_RTP];
+#else
+		enabled_profiles[ROHCv2_PROFILE_IP_UDP_RTP] = -1;
+#endif
+		enabled_profiles[ROHCv1_PROFILE_IP_UDP_RTP] = 0;
+
+		enabled_profiles[ROHCv2_PROFILE_IP_UDP] =
+			enabled_profiles[ROHCv1_PROFILE_IP_UDP];
+		enabled_profiles[ROHCv1_PROFILE_IP_UDP] = 0;
+
+		enabled_profiles[ROHCv2_PROFILE_IP_ESP] =
+			enabled_profiles[ROHCv1_PROFILE_IP_ESP];
+		enabled_profiles[ROHCv1_PROFILE_IP_ESP] = 0;
+
+		enabled_profiles[ROHCv2_PROFILE_IP] =
+			enabled_profiles[ROHCv1_PROFILE_IP];
+		enabled_profiles[ROHCv1_PROFILE_IP] = 0;
+
+#if 0
+		enabled_profiles[ROHCv2_PROFILE_IP_UDPLITE_RTP] =
+			enabled_profiles[ROHCv1_PROFILE_IP_UDPLITE_RTP];
+#else
+		enabled_profiles[ROHCv2_PROFILE_IP_UDPLITE_RTP] = -1;
+#endif
+		enabled_profiles[ROHCv1_PROFILE_IP_UDPLITE_RTP] = -1;
+
+#if 0
+		enabled_profiles[ROHCv2_PROFILE_IP_UDPLITE] =
+			enabled_profiles[ROHCv1_PROFILE_IP_UDPLITE];
+#else
+		enabled_profiles[ROHCv2_PROFILE_IP_UDPLITE] = -1;
+#endif
+		enabled_profiles[ROHCv1_PROFILE_IP_UDPLITE] = -1;
+	}
+
+	/* the source filename is mandatory */
+	if((*device_name) == NULL)
+	{
+		SNIFFER_LOG(LOG_WARNING, "device name is mandatory");
+		usage();
+		goto error;
+	}
+	if(strlen(*device_name) >= IFNAMSIZ)
+	{
+		SNIFFER_LOG(LOG_WARNING, "DEVICE name too long, should be strictly less "
+		            "than %zu characters", (size_t) IFNAMSIZ);
+		goto error;
+	}
+
+	/* --pidfile cannot be used in foreground mode */
+	if((*pidfilename) != NULL && !is_daemon)
+	{
+		SNIFFER_LOG(LOG_WARNING, "option --pidfile cannot be used without "
+		            "option --daemon");
+		usage();
+		goto error;
+	}
+	if((*pidfilename) != NULL && !is_path_correct(*pidfilename))
+	{
+		SNIFFER_LOG(LOG_WARNING, "PID file path is not valid");
+		goto error;
+	}
+
+	return true;
+
+error:
+	return false;
 }
 
 
