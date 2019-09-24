@@ -91,6 +91,12 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
                         rohc_packet_t *const packet_type)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
+static void rohc_tcp_update_ctxt(struct rohc_comp_ctxt *const context,
+                                 const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                                 const rohc_packet_t packet_type,
+                                 const struct tcp_tmp_variables *const changes)
+	__attribute__((nonnull(1, 2, 4)));
+
 static uint16_t c_tcp_get_next_msn(const struct rohc_comp_ctxt *const context)
 	__attribute__((warn_unused_result, nonnull(1)));
 
@@ -890,9 +896,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 {
 	const struct rohc_comp *const comp = context->compressor;
 	const struct rohc_comp_ctxt *ref_ctxt = NULL;
-	const struct tcphdr *const tcp = uncomp_pkt_hdrs->tcp;
 	struct tcp_tmp_variables tmp;
-	size_t ip_hdr_pos;
 	int counter;
 
 	*packet_type = ROHC_PACKET_UNKNOWN;
@@ -956,361 +960,383 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	}
 
 	/* update context */
-	{
-		const uint8_t oa_repetitions_nr = comp->oa_repetitions_nr;
-		struct sc_tcp_context *const tcp_context = context->specific;
-
-		rohc_comp_debug(context, "update context:");
-
-		/* update the context with the new TCP header */
-		tcp_context->seq_num = tmp.seq_num;
-		tcp_context->ack_num = tmp.ack_num;
-		tcp_context->res_flags = tcp->res_flags;
-		tcp_context->urg_flag = tcp->urg_flag;
-		tcp_context->ack_flag = tcp->ack_flag;
-		tcp_context->urg_ptr_nbo = tcp->urg_ptr;
-		tcp_context->window_nbo = tcp->window;
-
-		/* add the new MSN to the W-LSB encoding object */
-		c_add_wlsb(&tcp_context->msn_wlsb, tmp.new_msn, tmp.new_msn);
-		tcp_context->last_msn = tmp.new_msn;
-
-		/* does the packet update the decompressor context? */
-		if(rohc_packet_carry_crc_7_or_8(*packet_type))
-		{
-			tcp_context->msn_of_last_ctxt_updating_pkt = tmp.new_msn;
-		}
-
-		/* update the context for all IP headers */
-		for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)
-		{
-			const struct rohc_pkt_ip_hdr *const ip_hdr =
-				&(uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos]);
-			ip_context_t *const ip_ctxt = &(tcp_context->ip_contexts[ip_hdr_pos]);
-
-			ip_ctxt->opts_nr = ip_hdr->exts_nr;
-			ip_ctxt->ip_id_behavior = tmp.changes[ip_hdr_pos].ip_id_behavior;
-			ip_ctxt->dscp = ip_hdr->dscp;
-			ip_ctxt->ttl_hopl = ip_hdr->ttl_hl;
-
-			if(ip_hdr->version == IPV4)
-			{
-				ip_ctxt->df = ip_hdr->ipv4->df;
-				ip_ctxt->last_ip_id = rohc_ntoh16(ip_hdr->ipv4->id);
-			}
-			/* record IPv6 extension headers in context if at least one of them
-			 * has just changed */
-			else if(tmp.is_ipv6_exts_list_static_just_changed ||
-			        tmp.is_ipv6_exts_list_dyn_just_changed)
-			{
-				uint8_t ext_pos;
-
-				for(ext_pos = 0; ext_pos < ip_hdr->exts_nr; ext_pos++)
-				{
-					const struct rohc_pkt_ip_ext_hdr *const ext = &(ip_hdr->exts[ext_pos]);
-					ip_option_context_t *const opt_ctxt = &(ip_ctxt->opts[ext_pos]);
-
-					opt_ctxt->generic.option_length = ext->len;
-					assert((ext->len - 2U) <= IPV6_OPT_CTXT_LEN_MAX);
-					memcpy(opt_ctxt->generic.data, ext->data + 2, ext->len - 2);
-				}
-			}
-		}
-
-		/* add the new innermost IP-ID / SN delta to the W-LSB encoding object */
-		if(uncomp_pkt_hdrs->innermost_ip_hdr->version == IPV4)
-		{
-			c_add_wlsb(&tcp_context->ip_id_wlsb, tmp.new_msn, tmp.ip_id_delta);
-		}
-
-		/* add the new innermost TTL/Hop Limit to the W-LSB encoding object */
-		c_add_wlsb(&tcp_context->ttl_hopl_wlsb, tmp.new_msn,
-		           uncomp_pkt_hdrs->innermost_ip_hdr->ttl_hl);
-
-		/* sequence number */
-		c_add_wlsb(&tcp_context->seq_wlsb, tmp.new_msn, tcp_context->seq_num);
-		tcp_context->seq_num_factor = uncomp_pkt_hdrs->payload_len;
-		tcp_context->seq_num_residue = tmp.seq_num_residue;
-		if(uncomp_pkt_hdrs->payload_len > 0)
-		{
-			c_add_wlsb(&tcp_context->seq_scaled_wlsb, tmp.new_msn, tmp.seq_num_scaled);
-
-			/* sequence number sent once more, count the number of transmissions to
-			 * know when scaled sequence number is possible */
-			if(tmp.seq_num_scaling_just_changed)
-			{
-				tcp_context->seq_num_scaling_nr = 0;
-			}
-			if(tcp_context->seq_num_scaling_nr < oa_repetitions_nr)
-			{
-				tcp_context->seq_num_scaling_nr++;
-				rohc_comp_debug(context, "unscaled sequence number was transmitted "
-				                "%u / %u times since the scaling residue changed",
-				                tcp_context->seq_num_scaling_nr, oa_repetitions_nr);
-			}
-		}
-
-		/* ACK number */
-		c_add_wlsb(&tcp_context->ack_wlsb, tmp.new_msn, tcp_context->ack_num);
-		if(tmp.new_ack_delta != 0)
-		{
-			tcp_context->ack_deltas_width[tcp_context->ack_deltas_next] =
-				tmp.new_ack_delta;
-			tcp_context->ack_deltas_next = (tcp_context->ack_deltas_next + 1) % 20;
-		}
-		tcp_context->old_ack_stride = tmp.ack_stride;
-		tcp_context->ack_num_residue = tmp.ack_num_residue;
-		if(tcp_context->old_ack_stride != 0)
-		{
-			c_add_wlsb(&tcp_context->ack_scaled_wlsb, tmp.new_msn, tmp.ack_num_scaled);
-
-			/* ACK number sent once more, count the number of transmissions to
-			 * know when scaled ACK number is possible */
-			if(tmp.ack_num_scaling_just_changed)
-			{
-				tcp_context->ack_num_scaling_nr = 0;
-			}
-			if(tcp_context->ack_num_scaling_nr < oa_repetitions_nr)
-			{
-				tcp_context->ack_num_scaling_nr++;
-				rohc_comp_debug(context, "unscaled ACK number was transmitted %u / %u "
-				                "times since the scaling factor or residue changed",
-				                tcp_context->ack_num_scaling_nr, oa_repetitions_nr);
-			}
-		}
-
-		/* TCP window */
-		c_add_wlsb(&tcp_context->window_wlsb, tmp.new_msn, rohc_ntoh16(tcp->window));
-
-		/* update transmission counters */
-		tcp_context->ecn_used = tmp.ecn_used;
-		if(tmp.ecn_used_just_changed)
-		{
-			if(!tmp.ecn_used_changed)
-			{
-			  tcp_context->ecn_used_zero_count++;
-			}
-			else
-			{
-			  tcp_context->ecn_used_zero_count = 0;
-			  tcp_context->ecn_used_change_count = 0;
-			}
-		}
-		else
-		{
-		  tcp_context->ecn_used_zero_count = 0;
-		}
-		if(tcp_context->ecn_used_change_count < oa_repetitions_nr)
-		{
-		  tcp_context->ecn_used_change_count++;
-		}
-		if(tmp.tcp_seq_num_just_changed)
-		{
-			tcp_context->tcp_seq_num_trans_nr = 0;
-		}
-		if(tcp_context->tcp_seq_num_trans_nr < oa_repetitions_nr)
-		{
-			tcp_context->tcp_seq_num_trans_nr++;
-		}
-		if(tmp.tcp_ack_num_just_changed)
-		{
-			tcp_context->tcp_ack_num_trans_nr = 0;
-		}
-		if(tcp_context->tcp_ack_num_trans_nr < oa_repetitions_nr)
-		{
-			tcp_context->tcp_ack_num_trans_nr++;
-		}
-		if(tmp.tcp_window_just_changed)
-		{
-			tcp_context->tcp_window_change_count = 0;
-		}
-		if(tcp_context->tcp_window_change_count < oa_repetitions_nr)
-		{
-			tcp_context->tcp_window_change_count++;
-		}
-		if(tmp.tcp_urg_ptr_just_changed)
-		{
-			tcp_context->tcp_urg_ptr_trans_nr = 0;
-		}
-		if(tcp_context->tcp_urg_ptr_trans_nr < oa_repetitions_nr)
-		{
-			tcp_context->tcp_urg_ptr_trans_nr++;
-		}
-		for(ip_hdr_pos = 0; ip_hdr_pos < uncomp_pkt_hdrs->ip_hdrs_nr; ip_hdr_pos++)
-		{
-			if(tmp.changes[ip_hdr_pos].ttl_hopl_just_changed)
-			{
-				tcp_context->ttl_hopl_change_count[ip_hdr_pos] = 0;
-			}
-			if(tcp_context->ttl_hopl_change_count[ip_hdr_pos] < oa_repetitions_nr)
-			{
-				tcp_context->ttl_hopl_change_count[ip_hdr_pos]++;
-			}
-		}
-		if(tmp.outer_ip_id_behavior_just_changed)
-		{
-			tcp_context->outer_ip_id_behavior_trans_nr = 0;
-		}
-		if(tcp_context->outer_ip_id_behavior_trans_nr < oa_repetitions_nr)
-		{
-			tcp_context->outer_ip_id_behavior_trans_nr++;
-		}
-		if(tmp.innermost_ip_id_behavior_just_changed)
-		{
-			tcp_context->innermost_ip_id_behavior_trans_nr = 0;
-		}
-		if(tcp_context->innermost_ip_id_behavior_trans_nr < oa_repetitions_nr)
-		{
-			tcp_context->innermost_ip_id_behavior_trans_nr++;
-		}
-		if(tmp.innermost_dscp_just_changed)
-		{
-			tcp_context->innermost_dscp_trans_nr = 0;
-		}
-		if(tcp_context->innermost_dscp_trans_nr < oa_repetitions_nr)
-		{
-			tcp_context->innermost_dscp_trans_nr++;
-		}
-		if(tmp.is_ipv6_exts_list_static_just_changed)
-		{
-			tcp_context->ipv6_exts_list_static_trans_nr = 0;
-		}
-		if(tcp_context->ipv6_exts_list_static_trans_nr < oa_repetitions_nr)
-		{
-			tcp_context->ipv6_exts_list_static_trans_nr++;
-		}
-		if(tmp.is_ipv6_exts_list_dyn_just_changed)
-		{
-			tcp_context->ipv6_exts_list_dyn_trans_nr = 0;
-		}
-		if(tcp_context->ipv6_exts_list_dyn_trans_nr < oa_repetitions_nr)
-		{
-			tcp_context->ipv6_exts_list_dyn_trans_nr++;
-		}
-
-		/* TCP options */
-		{
-			struct c_tcp_opts_ctxt *const tcp_opts = &(tcp_context->tcp_opts);
-			uint8_t opt_pos;
-
-			if(tmp.tcp_opts.do_list_struct_changed)
-			{
-				tcp_opts->structure_nr_trans = 0;
-				rohc_comp_debug(context, "some TCP options were not present at the very "
-				                "same location in the last packets");
-			}
-			if(tcp_opts->structure_nr_trans < oa_repetitions_nr)
-			{
-				rohc_comp_debug(context, "some TCP options were not present at the very "
-				                "same location in the last few packets");
-				tcp_opts->structure_nr_trans++;
-			}
-
-			/* grow old the generic TCP options that were not used in current packet */
-			{
-				uint8_t opt_idx;
-				for(opt_idx = TCP_INDEX_GENERIC7;
-				    opt_idx <= MAX_TCP_OPTION_INDEX;
-				    opt_idx++)
-				{
-					if(!tmp.tcp_opts.changes[opt_idx].used)
-					{
-						if(tcp_opts->list[opt_idx].age < UINT8_MAX)
-						{
-							tcp_opts->list[opt_idx].age++;
-						}
-					}
-					else if(tmp.tcp_opts.changes[opt_idx].is_index_recycled)
-					{
-					  tcp_opts->list[opt_idx].age = 0;
-					}
-				}
-			}
-
-			tcp_opts->old_structure_nr = uncomp_pkt_hdrs->tcp_opts.nr;
-			for(opt_pos = 0; opt_pos < uncomp_pkt_hdrs->tcp_opts.nr; opt_pos++)
-			{
-				const uint8_t opt_idx = tmp.tcp_opts.position2index[opt_pos];
-
-				rohc_comp_debug(context, "update context for TCP option #%u with index %u",
-				                opt_pos, opt_idx);
-
-				if(tmp.tcp_opts.changes[opt_idx].used)
-				{
-					tcp_opts->list[opt_idx].used = true;
-					tcp_opts->list[opt_idx].type = uncomp_pkt_hdrs->tcp_opts.types[opt_pos];
-					tcp_opts->old_structure[opt_pos] = uncomp_pkt_hdrs->tcp_opts.types[opt_pos];
-				}
-
-				if(opt_idx == TCP_INDEX_TS)
-				{
-					rohc_comp_debug(context, "update context for TCP option TS with request "
-					                "0x%08x and reply 0x%08x", tmp.tcp_opts.ts_req,
-					                tmp.tcp_opts.ts_reply);
-					c_add_wlsb(&tcp_opts->ts_req_wlsb, tmp.new_msn, tmp.tcp_opts.ts_req);
-					c_add_wlsb(&tcp_opts->ts_reply_wlsb, tmp.new_msn, tmp.tcp_opts.ts_reply);
-				}
-				else if(opt_idx == TCP_INDEX_EOL && tmp.tcp_opts.changes[opt_idx].static_changed)
-				{
-					const uint8_t eol_length = uncomp_pkt_hdrs->tcp_opts.lengths[opt_pos];
-					rohc_comp_debug(context, "update context for TCP option EOL with new "
-					                "length %u", eol_length);
-					tcp_opts->list[opt_idx].data_len = eol_length;
-				}
-				else if(opt_idx == TCP_INDEX_WS && tmp.tcp_opts.changes[opt_idx].static_changed)
-				{
-					const uint8_t ws_value = uncomp_pkt_hdrs->tcp_opts.data[opt_pos][2];
-					rohc_comp_debug(context, "update context for TCP option WS with value %u",
-					                ws_value);
-					tcp_opts->list[opt_idx].data_len = uncomp_pkt_hdrs->tcp_opts.lengths[opt_pos];
-					tcp_opts->list[opt_idx].payload[0] = ws_value;
-				}
-				else if(opt_idx == TCP_INDEX_MSS && tmp.tcp_opts.changes[opt_idx].static_changed)
-				{
-					const uint8_t mss_byte1 = uncomp_pkt_hdrs->tcp_opts.data[opt_pos][2];
-					const uint8_t mss_byte2 = uncomp_pkt_hdrs->tcp_opts.data[opt_pos][3];
-					rohc_comp_debug(context, "update context for TCP option MSS with value "
-					                "0x%02x%02x", mss_byte1, mss_byte2);
-					tcp_opts->list[opt_idx].data_len = uncomp_pkt_hdrs->tcp_opts.lengths[opt_pos];
-					tcp_opts->list[opt_idx].payload[0] = mss_byte1;
-					tcp_opts->list[opt_idx].payload[1] = mss_byte2;
-				}
-				else if((opt_idx == TCP_INDEX_SACK || opt_idx >= TCP_INDEX_GENERIC7) &&
-				        (tmp.tcp_opts.changes[opt_idx].static_changed || tmp.tcp_opts.changes[opt_idx].dyn_changed))
-				{
-					rohc_comp_debug(context, "update context for TCP option with index %u",
-					                opt_idx);
-					tcp_opts->list[opt_idx].data_len = uncomp_pkt_hdrs->tcp_opts.lengths[opt_pos];
-					memcpy(tcp_opts->list[opt_idx].payload,
-					       uncomp_pkt_hdrs->tcp_opts.data[opt_pos] + 2,
-					       tcp_opts->list[opt_idx].data_len - 2);
-				}
-
-				/* TCP option is transmitted towards decompressor once more */
-				if(tmp.tcp_opts.changes[opt_idx].static_changed)
-				{
-					tcp_opts->list[opt_idx].full_trans_nr = 0;
-				}
-				if(tcp_opts->list[opt_idx].full_trans_nr < oa_repetitions_nr)
-				{
-					tcp_opts->list[opt_idx].full_trans_nr++;
-				}
-				if(tmp.tcp_opts.changes[opt_idx].dyn_changed)
-				{
-					tcp_opts->list[opt_idx].dyn_trans_nr = 0;
-				}
-				if(tcp_opts->list[opt_idx].dyn_trans_nr < oa_repetitions_nr)
-				{
-					tcp_opts->list[opt_idx].dyn_trans_nr++;
-				}
-			}
-		}
-	}
+	rohc_tcp_update_ctxt(context, uncomp_pkt_hdrs, *packet_type, &tmp);
 
 	return counter;
 
 error:
 	return -1;
+}
+
+
+/**
+ * @brief Update context with changes of current packet
+ *
+ * @param context           The compression context
+ * @param uncomp_pkt_hdrs   The uncompressed headers that are encoded
+ * @param packet_type       The type of ROHC packet that is created
+ * @param changes           The changes detected in the uncompressed headers
+ */
+static void rohc_tcp_update_ctxt(struct rohc_comp_ctxt *const context,
+                                 const struct rohc_pkt_hdrs *const uncomp_pkt_hdrs,
+                                 const rohc_packet_t packet_type,
+                                 const struct tcp_tmp_variables *const changes)
+{
+	const struct rohc_comp *const comp = context->compressor;
+	const uint8_t oa_repetitions_nr = comp->oa_repetitions_nr;
+	const struct tcphdr *const tcp = uncomp_pkt_hdrs->tcp;
+	struct sc_tcp_context *const tcp_context = context->specific;
+	size_t ip_hdr_pos;
+
+	rohc_comp_debug(context, "update context:");
+
+	/* update the context with the new TCP header */
+	tcp_context->seq_num = changes->seq_num;
+	tcp_context->ack_num = changes->ack_num;
+	tcp_context->res_flags = tcp->res_flags;
+	tcp_context->urg_flag = tcp->urg_flag;
+	tcp_context->ack_flag = tcp->ack_flag;
+	tcp_context->urg_ptr_nbo = tcp->urg_ptr;
+	tcp_context->window_nbo = tcp->window;
+
+	/* add the new MSN to the W-LSB encoding object */
+	c_add_wlsb(&tcp_context->msn_wlsb, changes->new_msn, changes->new_msn);
+	tcp_context->last_msn = changes->new_msn;
+
+	/* does the packet update the decompressor context? */
+	if(rohc_packet_carry_crc_7_or_8(packet_type))
+	{
+		tcp_context->msn_of_last_ctxt_updating_pkt = changes->new_msn;
+	}
+
+	/* update the context for all IP headers */
+	for(ip_hdr_pos = 0; ip_hdr_pos < tcp_context->ip_contexts_nr; ip_hdr_pos++)
+	{
+		const struct rohc_pkt_ip_hdr *const ip_hdr =
+			&(uncomp_pkt_hdrs->ip_hdrs[ip_hdr_pos]);
+		ip_context_t *const ip_ctxt = &(tcp_context->ip_contexts[ip_hdr_pos]);
+
+		ip_ctxt->opts_nr = ip_hdr->exts_nr;
+		ip_ctxt->ip_id_behavior = changes->changes[ip_hdr_pos].ip_id_behavior;
+		ip_ctxt->dscp = ip_hdr->dscp;
+		ip_ctxt->ttl_hopl = ip_hdr->ttl_hl;
+
+		if(ip_hdr->version == IPV4)
+		{
+			ip_ctxt->df = ip_hdr->ipv4->df;
+			ip_ctxt->last_ip_id = rohc_ntoh16(ip_hdr->ipv4->id);
+		}
+		/* record IPv6 extension headers in context if at least one of them
+		 * has just changed */
+		else if(changes->is_ipv6_exts_list_static_just_changed ||
+		        changes->is_ipv6_exts_list_dyn_just_changed)
+		{
+			uint8_t ext_pos;
+
+			for(ext_pos = 0; ext_pos < ip_hdr->exts_nr; ext_pos++)
+			{
+				const struct rohc_pkt_ip_ext_hdr *const ext = &(ip_hdr->exts[ext_pos]);
+				ip_option_context_t *const opt_ctxt = &(ip_ctxt->opts[ext_pos]);
+
+				opt_ctxt->generic.option_length = ext->len;
+				assert((ext->len - 2U) <= IPV6_OPT_CTXT_LEN_MAX);
+				memcpy(opt_ctxt->generic.data, ext->data + 2, ext->len - 2);
+			}
+		}
+	}
+
+	/* add the new innermost IP-ID / SN delta to the W-LSB encoding object */
+	if(uncomp_pkt_hdrs->innermost_ip_hdr->version == IPV4)
+	{
+		c_add_wlsb(&tcp_context->ip_id_wlsb, changes->new_msn, changes->ip_id_delta);
+	}
+
+	/* add the new innermost TTL/Hop Limit to the W-LSB encoding object */
+	c_add_wlsb(&tcp_context->ttl_hopl_wlsb, changes->new_msn,
+	           uncomp_pkt_hdrs->innermost_ip_hdr->ttl_hl);
+
+	/* sequence number */
+	c_add_wlsb(&tcp_context->seq_wlsb, changes->new_msn, tcp_context->seq_num);
+	tcp_context->seq_num_factor = uncomp_pkt_hdrs->payload_len;
+	tcp_context->seq_num_residue = changes->seq_num_residue;
+	if(uncomp_pkt_hdrs->payload_len > 0)
+	{
+		c_add_wlsb(&tcp_context->seq_scaled_wlsb, changes->new_msn, changes->seq_num_scaled);
+
+		/* sequence number sent once more, count the number of transmissions to
+		 * know when scaled sequence number is possible */
+		if(changes->seq_num_scaling_just_changed)
+		{
+			tcp_context->seq_num_scaling_nr = 0;
+		}
+		if(tcp_context->seq_num_scaling_nr < oa_repetitions_nr)
+		{
+			tcp_context->seq_num_scaling_nr++;
+			rohc_comp_debug(context, "unscaled sequence number was transmitted "
+			                "%u / %u times since the scaling residue changed",
+			                tcp_context->seq_num_scaling_nr, oa_repetitions_nr);
+		}
+	}
+
+	/* ACK number */
+	c_add_wlsb(&tcp_context->ack_wlsb, changes->new_msn, tcp_context->ack_num);
+	if(changes->new_ack_delta != 0)
+	{
+		tcp_context->ack_deltas_width[tcp_context->ack_deltas_next] =
+			changes->new_ack_delta;
+		tcp_context->ack_deltas_next = (tcp_context->ack_deltas_next + 1) % 20;
+	}
+	tcp_context->old_ack_stride = changes->ack_stride;
+	tcp_context->ack_num_residue = changes->ack_num_residue;
+	if(tcp_context->old_ack_stride != 0)
+	{
+		c_add_wlsb(&tcp_context->ack_scaled_wlsb, changes->new_msn, changes->ack_num_scaled);
+
+		/* ACK number sent once more, count the number of transmissions to
+		 * know when scaled ACK number is possible */
+		if(changes->ack_num_scaling_just_changed)
+		{
+			tcp_context->ack_num_scaling_nr = 0;
+		}
+		if(tcp_context->ack_num_scaling_nr < oa_repetitions_nr)
+		{
+			tcp_context->ack_num_scaling_nr++;
+			rohc_comp_debug(context, "unscaled ACK number was transmitted %u / %u "
+			                "times since the scaling factor or residue changed",
+			                tcp_context->ack_num_scaling_nr, oa_repetitions_nr);
+		}
+	}
+
+	/* TCP window */
+	c_add_wlsb(&tcp_context->window_wlsb, changes->new_msn, rohc_ntoh16(tcp->window));
+
+	/* update transmission counters */
+	tcp_context->ecn_used = changes->ecn_used;
+	if(changes->ecn_used_just_changed)
+	{
+		if(!changes->ecn_used_changed)
+		{
+		  tcp_context->ecn_used_zero_count++;
+		}
+		else
+		{
+		  tcp_context->ecn_used_zero_count = 0;
+		  tcp_context->ecn_used_change_count = 0;
+		}
+	}
+	else
+	{
+	  tcp_context->ecn_used_zero_count = 0;
+	}
+	if(tcp_context->ecn_used_change_count < oa_repetitions_nr)
+	{
+	  tcp_context->ecn_used_change_count++;
+	}
+	if(changes->tcp_seq_num_just_changed)
+	{
+		tcp_context->tcp_seq_num_trans_nr = 0;
+	}
+	if(tcp_context->tcp_seq_num_trans_nr < oa_repetitions_nr)
+	{
+		tcp_context->tcp_seq_num_trans_nr++;
+	}
+	if(changes->tcp_ack_num_just_changed)
+	{
+		tcp_context->tcp_ack_num_trans_nr = 0;
+	}
+	if(tcp_context->tcp_ack_num_trans_nr < oa_repetitions_nr)
+	{
+		tcp_context->tcp_ack_num_trans_nr++;
+	}
+	if(changes->tcp_window_just_changed)
+	{
+		tcp_context->tcp_window_change_count = 0;
+	}
+	if(tcp_context->tcp_window_change_count < oa_repetitions_nr)
+	{
+		tcp_context->tcp_window_change_count++;
+	}
+	if(changes->tcp_urg_ptr_just_changed)
+	{
+		tcp_context->tcp_urg_ptr_trans_nr = 0;
+	}
+	if(tcp_context->tcp_urg_ptr_trans_nr < oa_repetitions_nr)
+	{
+		tcp_context->tcp_urg_ptr_trans_nr++;
+	}
+	for(ip_hdr_pos = 0; ip_hdr_pos < uncomp_pkt_hdrs->ip_hdrs_nr; ip_hdr_pos++)
+	{
+		if(changes->changes[ip_hdr_pos].ttl_hopl_just_changed)
+		{
+			tcp_context->ttl_hopl_change_count[ip_hdr_pos] = 0;
+		}
+		if(tcp_context->ttl_hopl_change_count[ip_hdr_pos] < oa_repetitions_nr)
+		{
+			tcp_context->ttl_hopl_change_count[ip_hdr_pos]++;
+		}
+	}
+	if(changes->outer_ip_id_behavior_just_changed)
+	{
+		tcp_context->outer_ip_id_behavior_trans_nr = 0;
+	}
+	if(tcp_context->outer_ip_id_behavior_trans_nr < oa_repetitions_nr)
+	{
+		tcp_context->outer_ip_id_behavior_trans_nr++;
+	}
+	if(changes->innermost_ip_id_behavior_just_changed)
+	{
+		tcp_context->innermost_ip_id_behavior_trans_nr = 0;
+	}
+	if(tcp_context->innermost_ip_id_behavior_trans_nr < oa_repetitions_nr)
+	{
+		tcp_context->innermost_ip_id_behavior_trans_nr++;
+	}
+	if(changes->innermost_dscp_just_changed)
+	{
+		tcp_context->innermost_dscp_trans_nr = 0;
+	}
+	if(tcp_context->innermost_dscp_trans_nr < oa_repetitions_nr)
+	{
+		tcp_context->innermost_dscp_trans_nr++;
+	}
+	if(changes->is_ipv6_exts_list_static_just_changed)
+	{
+		tcp_context->ipv6_exts_list_static_trans_nr = 0;
+	}
+	if(tcp_context->ipv6_exts_list_static_trans_nr < oa_repetitions_nr)
+	{
+		tcp_context->ipv6_exts_list_static_trans_nr++;
+	}
+	if(changes->is_ipv6_exts_list_dyn_just_changed)
+	{
+		tcp_context->ipv6_exts_list_dyn_trans_nr = 0;
+	}
+	if(tcp_context->ipv6_exts_list_dyn_trans_nr < oa_repetitions_nr)
+	{
+		tcp_context->ipv6_exts_list_dyn_trans_nr++;
+	}
+
+	/* TCP options */
+	{
+		struct c_tcp_opts_ctxt *const tcp_opts = &(tcp_context->tcp_opts);
+		uint8_t opt_pos;
+
+		if(changes->tcp_opts.do_list_struct_changed)
+		{
+			tcp_opts->structure_nr_trans = 0;
+			rohc_comp_debug(context, "some TCP options were not present at the very "
+			                "same location in the last packets");
+		}
+		if(tcp_opts->structure_nr_trans < oa_repetitions_nr)
+		{
+			rohc_comp_debug(context, "some TCP options were not present at the very "
+			                "same location in the last few packets");
+			tcp_opts->structure_nr_trans++;
+		}
+
+		/* grow old the generic TCP options that were not used in current packet */
+		{
+			uint8_t opt_idx;
+			for(opt_idx = TCP_INDEX_GENERIC7;
+			    opt_idx <= MAX_TCP_OPTION_INDEX;
+			    opt_idx++)
+			{
+				if(!changes->tcp_opts.changes[opt_idx].used)
+				{
+					if(tcp_opts->list[opt_idx].age < UINT8_MAX)
+					{
+						tcp_opts->list[opt_idx].age++;
+					}
+				}
+				else if(changes->tcp_opts.changes[opt_idx].is_index_recycled)
+				{
+				  tcp_opts->list[opt_idx].age = 0;
+				}
+			}
+		}
+
+		tcp_opts->old_structure_nr = uncomp_pkt_hdrs->tcp_opts.nr;
+		for(opt_pos = 0; opt_pos < uncomp_pkt_hdrs->tcp_opts.nr; opt_pos++)
+		{
+			const uint8_t opt_idx = changes->tcp_opts.position2index[opt_pos];
+
+			rohc_comp_debug(context, "update context for TCP option #%u with index %u",
+			                opt_pos, opt_idx);
+
+			if(changes->tcp_opts.changes[opt_idx].used)
+			{
+				tcp_opts->list[opt_idx].used = true;
+				tcp_opts->list[opt_idx].type = uncomp_pkt_hdrs->tcp_opts.types[opt_pos];
+				tcp_opts->old_structure[opt_pos] = uncomp_pkt_hdrs->tcp_opts.types[opt_pos];
+			}
+
+			if(opt_idx == TCP_INDEX_TS)
+			{
+				rohc_comp_debug(context, "update context for TCP option TS with request "
+				                "0x%08x and reply 0x%08x", changes->tcp_opts.ts_req,
+				                changes->tcp_opts.ts_reply);
+				c_add_wlsb(&tcp_opts->ts_req_wlsb, changes->new_msn, changes->tcp_opts.ts_req);
+				c_add_wlsb(&tcp_opts->ts_reply_wlsb, changes->new_msn, changes->tcp_opts.ts_reply);
+			}
+			else if(opt_idx == TCP_INDEX_EOL &&
+			        changes->tcp_opts.changes[opt_idx].static_changed)
+			{
+				const uint8_t eol_length = uncomp_pkt_hdrs->tcp_opts.lengths[opt_pos];
+				rohc_comp_debug(context, "update context for TCP option EOL with new "
+				                "length %u", eol_length);
+				tcp_opts->list[opt_idx].data_len = eol_length;
+			}
+			else if(opt_idx == TCP_INDEX_WS &&
+			        changes->tcp_opts.changes[opt_idx].static_changed)
+			{
+				const uint8_t ws_value = uncomp_pkt_hdrs->tcp_opts.data[opt_pos][2];
+				rohc_comp_debug(context, "update context for TCP option WS with value %u",
+				                ws_value);
+				tcp_opts->list[opt_idx].data_len = uncomp_pkt_hdrs->tcp_opts.lengths[opt_pos];
+				tcp_opts->list[opt_idx].payload[0] = ws_value;
+			}
+			else if(opt_idx == TCP_INDEX_MSS &&
+			        changes->tcp_opts.changes[opt_idx].static_changed)
+			{
+				const uint8_t mss_byte1 = uncomp_pkt_hdrs->tcp_opts.data[opt_pos][2];
+				const uint8_t mss_byte2 = uncomp_pkt_hdrs->tcp_opts.data[opt_pos][3];
+				rohc_comp_debug(context, "update context for TCP option MSS with value "
+				                "0x%02x%02x", mss_byte1, mss_byte2);
+				tcp_opts->list[opt_idx].data_len = uncomp_pkt_hdrs->tcp_opts.lengths[opt_pos];
+				tcp_opts->list[opt_idx].payload[0] = mss_byte1;
+				tcp_opts->list[opt_idx].payload[1] = mss_byte2;
+			}
+			else if((opt_idx == TCP_INDEX_SACK || opt_idx >= TCP_INDEX_GENERIC7) &&
+			        (changes->tcp_opts.changes[opt_idx].static_changed ||
+			         changes->tcp_opts.changes[opt_idx].dyn_changed))
+			{
+				rohc_comp_debug(context, "update context for TCP option with index %u",
+				                opt_idx);
+				tcp_opts->list[opt_idx].data_len = uncomp_pkt_hdrs->tcp_opts.lengths[opt_pos];
+				memcpy(tcp_opts->list[opt_idx].payload,
+				       uncomp_pkt_hdrs->tcp_opts.data[opt_pos] + 2,
+				       tcp_opts->list[opt_idx].data_len - 2);
+			}
+
+			/* TCP option is transmitted towards decompressor once more */
+			if(changes->tcp_opts.changes[opt_idx].static_changed)
+			{
+				tcp_opts->list[opt_idx].full_trans_nr = 0;
+			}
+			if(tcp_opts->list[opt_idx].full_trans_nr < oa_repetitions_nr)
+			{
+				tcp_opts->list[opt_idx].full_trans_nr++;
+			}
+			if(changes->tcp_opts.changes[opt_idx].dyn_changed)
+			{
+				tcp_opts->list[opt_idx].dyn_trans_nr = 0;
+			}
+			if(tcp_opts->list[opt_idx].dyn_trans_nr < oa_repetitions_nr)
+			{
+				tcp_opts->list[opt_idx].dyn_trans_nr++;
+			}
+		}
+	}
 }
 
 
