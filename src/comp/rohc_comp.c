@@ -186,13 +186,16 @@ static void rohc_comp_ctxt_destroy(struct rohc_comp *const comp,
                                    struct rohc_comp_ctxt *const context)
 	__attribute__((nonnull(1, 2)));
 
+static rohc_cid_t rohc_comp_get_next_ctxt(struct rohc_comp *const comp)
+	__attribute__((warn_unused_result, nonnull(1)));
 static struct rohc_comp_ctxt *
 	c_create_context(struct rohc_comp *const comp,
+	                 const rohc_cid_t cid,
 	                 const struct rohc_comp_profile *const profile,
 	                 const struct rohc_fingerprint *const fingerprint,
 	                 const struct rohc_pkt_hdrs *const pkt_hdrs,
 	                 const struct rohc_ts pkt_time)
-	__attribute__((nonnull(1, 2, 3, 4), warn_unused_result));
+	__attribute__((nonnull(1, 3, 4, 5), warn_unused_result));
 static const struct rohc_comp_ctxt *
 	rohc_comp_search_base_ctxt(struct rohc_comp *const comp,
 	                           const struct rohc_comp_profile *const profile,
@@ -3385,6 +3388,7 @@ const char * rohc_comp_get_state_descr(const rohc_comp_state_t state)
  * @brief Create a compression context
  *
  * @param comp         The ROHC compressor
+ * @param cid          The Context ID (CID) of the context to create
  * @param profile      The profile to associate the context with
  * @param fingerprint  The packet/context fingerprint
  * @param pkt_hdrs     The information collected about packet headers
@@ -3393,68 +3397,19 @@ const char * rohc_comp_get_state_descr(const rohc_comp_state_t state)
  */
 static struct rohc_comp_ctxt *
 	c_create_context(struct rohc_comp *const comp,
+	                 const rohc_cid_t cid,
 	                 const struct rohc_comp_profile *const profile,
 	                 const struct rohc_fingerprint *const fingerprint,
 	                 const struct rohc_pkt_hdrs *const pkt_hdrs,
 	                 const struct rohc_ts pkt_time)
 {
+	struct rohc_comp_ctxt *const ctxt = &comp->contexts[cid];
 	const struct rohc_comp_ctxt *base_ctxt;
-	struct rohc_comp_ctxt *c;
-	rohc_cid_t cid_to_use;
 
-	cid_to_use = 0;
-
-	/* if all the contexts in the array are used:
-	 *   => recycle the oldest context to make room
-	 * if at least one context in the array is not used:
-	 *   => pick the first unused context
-	 */
-	if(comp->num_contexts_used > comp->medium.max_cid)
+	/* destroy previous context if it was used */
+	if(ctxt->used == 1)
 	{
-		/* all the contexts in the array were used, recycle the oldest context
-		 * to make some room */
-
-		uint64_t oldest;
-		rohc_cid_t i;
-
-		/* find the oldest context */
-		oldest = 0xffffffff;
-		for(i = 0; i <= comp->medium.max_cid; i++)
-		{
-			if(comp->contexts[i].latest_used < oldest)
-			{
-				oldest = comp->contexts[i].latest_used;
-				cid_to_use = i;
-			}
-		}
-		c = &comp->contexts[cid_to_use];
-
-		/* destroy the oldest context before replacing it with a new one */
-		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "recycle oldest context (CID %u with profile 0x%04x)",
-		           cid_to_use, c->profile->id);
-		rohc_comp_ctxt_destroy(comp, c);
-	}
-	else
-	{
-		/* there was at least one unused context in the array, pick the first
-		 * unused context in the context array */
-
-		rohc_cid_t i;
-
-		/* find the first unused context */
-		for(i = 0; i <= comp->medium.max_cid; i++)
-		{
-			if(comp->contexts[i].used == 0)
-			{
-				cid_to_use = i;
-				break;
-			}
-		}
-		c = &comp->contexts[cid_to_use];
-
-		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "take the first unused context (CID %u)", cid_to_use);
+		rohc_comp_ctxt_destroy(comp, ctxt);
 	}
 
 	/* search for a possible base context if Context Replication is possible */
@@ -3463,66 +3418,66 @@ static struct rohc_comp_ctxt *
 	{
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "create context with CID %u as a replication of context "
-		           "with CID %u", cid_to_use, base_ctxt->cid);
+		           "with CID %u", cid, base_ctxt->cid);
 
 		/* copy the base context, then reset some parts of it */
-		memcpy(c, base_ctxt, sizeof(struct rohc_comp_ctxt));
-		c->cr_base_cid = base_ctxt->cid;
-		c->state = ROHC_COMP_STATE_CR;
+		memcpy(ctxt, base_ctxt, sizeof(struct rohc_comp_ctxt));
+		ctxt->cr_base_cid = base_ctxt->cid;
+		ctxt->state = ROHC_COMP_STATE_CR;
 	}
 	else
 	{
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "create context with CID %u without replication", cid_to_use);
-		c->state = ROHC_COMP_STATE_IR;
+		           "create context with CID %u without replication", cid);
+		ctxt->state = ROHC_COMP_STATE_IR;
 	}
 
-	memcpy(&c->fingerprint, fingerprint, sizeof(struct rohc_fingerprint));
+	memcpy(&ctxt->fingerprint, fingerprint, sizeof(struct rohc_fingerprint));
 
-	c->state_oa_repeat_nr = 0;
-	c->go_back_fo_count = 0;
-	c->go_back_fo_time = pkt_time;
-	c->go_back_ir_count = 0;
-	c->go_back_ir_time = pkt_time;
+	ctxt->state_oa_repeat_nr = 0;
+	ctxt->go_back_fo_count = 0;
+	ctxt->go_back_fo_time = pkt_time;
+	ctxt->go_back_ir_count = 0;
+	ctxt->go_back_ir_time = pkt_time;
 
-	c->total_uncompressed_size = 0;
-	c->total_compressed_size = 0;
-	c->header_uncompressed_size = 0;
-	c->header_compressed_size = 0;
+	ctxt->total_uncompressed_size = 0;
+	ctxt->total_compressed_size = 0;
+	ctxt->header_uncompressed_size = 0;
+	ctxt->header_compressed_size = 0;
 
-	c->total_last_uncompressed_size = 0;
-	c->total_last_compressed_size = 0;
-	c->header_last_uncompressed_size = 0;
-	c->header_last_compressed_size = 0;
+	ctxt->total_last_uncompressed_size = 0;
+	ctxt->total_last_compressed_size = 0;
+	ctxt->header_last_uncompressed_size = 0;
+	ctxt->header_last_compressed_size = 0;
 
-	c->num_sent_packets = 0;
+	ctxt->num_sent_packets = 0;
 
-	c->cid = cid_to_use;
-	c->profile = profile;
+	ctxt->cid = cid;
+	ctxt->profile = profile;
 
-	c->mode = ROHC_U_MODE;
+	ctxt->mode = ROHC_U_MODE;
 
-	c->compressor = comp;
+	ctxt->compressor = comp;
 
 	/* create profile-specific context */
-	if(c->state == ROHC_COMP_STATE_CR)
+	if(ctxt->state == ROHC_COMP_STATE_CR)
 	{
-		if(!profile->clone(c, base_ctxt))
+		if(!profile->clone(ctxt, base_ctxt))
 		{
 			return NULL;
 		}
 	}
 	else
 	{
-		if(!profile->create(c, pkt_hdrs))
+		if(!profile->create(ctxt, pkt_hdrs))
 		{
 			return NULL;
 		}
 	}
 
 	/* if creation is successful, mark the context as used */
-	c->used = 1;
-	c->latest_used = pkt_time.sec;
+	ctxt->used = 1;
+	ctxt->latest_used = pkt_time.sec;
 	assert(comp->num_contexts_used <= comp->medium.max_cid);
 	comp->num_contexts_used++;
 
@@ -3530,17 +3485,17 @@ static struct rohc_comp_ctxt *
 	 * again through its fingerprint */
 	if(profile->id == ROHCv1_PROFILE_UNCOMPRESSED)
 	{
-		comp->uncompressed_ctxt = c;
+		comp->uncompressed_ctxt = ctxt;
 	}
 	else
 	{
-		hashtable_add(&comp->contexts_by_fingerprint, &(c->fingerprint), c);
+		hashtable_add(&comp->contexts_by_fingerprint, &(ctxt->fingerprint), ctxt);
 	}
 
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	           "context (CID %u) created at %" PRIu64 " seconds (num_used = %u)",
-	           c->cid, c->latest_used, comp->num_contexts_used);
-	return c;
+	           ctxt->cid, ctxt->latest_used, comp->num_contexts_used);
+	return ctxt;
 }
 
 
@@ -3816,12 +3771,18 @@ static struct rohc_comp_ctxt *
 	}
 	else /* context not found, create a new one */
 	{
+		rohc_cid_t cid;
+
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "no existing context found for packet, create it");
 
+		/* get the first free context or recycle the oldest context */
+		cid = rohc_comp_get_next_ctxt(comp);
+
 		/* create the new context from packet (and from the base context if
 		 * Context Replication is possible) */
-		context = c_create_context(comp, profile, pkt_fingerprint, pkt_hdrs, packet->time);
+		context = c_create_context(comp, cid, profile, pkt_fingerprint,
+		                           pkt_hdrs, packet->time);
 		if(context == NULL)
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -3830,6 +3791,76 @@ static struct rohc_comp_ctxt *
 	}
 
 	return context;
+}
+
+
+/**
+ * @brief Get the next free compression context or recycle the oldest one
+ *
+ * if all the contexts in the array are used:
+ *   => recycle the oldest context to make room
+ * if at least one context in the array is not used:
+ *   => pick the first unused context
+ *
+ * @param comp  The ROHC compressor
+ * @return      The first free Context ID (CID) (recycled if needed)
+ */
+static rohc_cid_t rohc_comp_get_next_ctxt(struct rohc_comp *const comp)
+{
+	rohc_cid_t cid_to_use;
+
+	cid_to_use = 0;
+
+	/* if all the contexts in the array are used:
+	 *   => recycle the oldest context to make room
+	 * if at least one context in the array is not used:
+	 *   => pick the first unused context
+	 */
+	if(comp->num_contexts_used > comp->medium.max_cid)
+	{
+		/* all the contexts in the array were used, recycle the oldest context
+		 * to make some room */
+
+		uint64_t oldest;
+		rohc_cid_t i;
+
+		/* find the oldest context */
+		oldest = 0xffffffff;
+		for(i = 0; i <= comp->medium.max_cid; i++)
+		{
+			if(comp->contexts[i].latest_used < oldest)
+			{
+				oldest = comp->contexts[i].latest_used;
+				cid_to_use = i;
+			}
+		}
+
+		/* destroy the oldest context before replacing it with a new one */
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "recycle oldest context (CID %u with profile 0x%04x)",
+		           cid_to_use, comp->contexts[cid_to_use].profile->id);
+	}
+	else
+	{
+		/* there was at least one unused context in the array, pick the first
+		 * unused context in the context array */
+
+		rohc_cid_t i;
+
+		/* find the first unused context */
+		for(i = 0; i <= comp->medium.max_cid; i++)
+		{
+			if(comp->contexts[i].used == 0)
+			{
+				cid_to_use = i;
+				break;
+			}
+		}
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "take the first unused context (CID %u)", cid_to_use);
+	}
+
+	return cid_to_use;
 }
 
 
