@@ -224,6 +224,9 @@ static rohc_ctxt_affinity_t
  * Prototypes of private functions related to context state
  */
 
+static void rohc_comp_determine_established(struct rohc_comp_ctxt *const context)
+	__attribute__((nonnull(1)));
+
 static void rohc_comp_decide_state(struct rohc_comp_ctxt *const context,
                                    struct rohc_ts pkt_time)
 	__attribute__((nonnull(1)));
@@ -3963,25 +3966,7 @@ void rohc_comp_change_mode(struct rohc_comp_ctxt *const context,
 		 * established means that the static part of the context was explicitly
 		 * acknowledged by the decompressor through one ACK protected by a CRC
 		 */
-		if(context->profile->id == ROHCv1_PROFILE_IP_TCP) /* TODO: replace TCP by CR capacity */
-		{
-			if(context->mode > ROHC_U_MODE &&
-			   (context->state == ROHC_COMP_STATE_FO ||
-			    context->state == ROHC_COMP_STATE_SO))
-			{
-				rohc_comp_debug(context, "CR: context CID %u is considered as "
-				                "established", context->cid);
-				hashtable_cr_add(&context->compressor->contexts_cr,
-				                 &context->fingerprint, context);
-			}
-			else
-			{
-				rohc_comp_debug(context, "CR: context CID %u is not considered as "
-				                "established", context->cid);
-				hashtable_cr_del(&context->compressor->contexts_cr,
-				                 &context->fingerprint);
-			}
-		}
+		rohc_comp_determine_established(context);
 	}
 }
 
@@ -4012,24 +3997,41 @@ void rohc_comp_change_state(struct rohc_comp_ctxt *const context,
 		 * established means that the static part of the context was explicitly
 		 * acknowledged by the decompressor through one ACK protected by a CRC
 		 */
-		if(context->profile->id == ROHCv1_PROFILE_IP_TCP) /* TODO: replace TCP by CR capacity */
+		rohc_comp_determine_established(context);
+	}
+}
+
+
+/**
+ * @brief Determine whether the context is full established for Context Replication
+ *
+ * The context can be used as a base context for Context Replication if it is
+ * fully established with the remote decompressor: fully established means that
+ * the static part of the context was explicitly acknowledged by the decompressor
+ * through one ACK protected by a CRC.
+ *
+ * @param context   The compression context
+ */
+static void rohc_comp_determine_established(struct rohc_comp_ctxt *const context)
+{
+	/* TODO: replace TCP by CR capacity */
+	if(context->profile->id == ROHCv1_PROFILE_IP_TCP)
+	{
+		if(context->mode > ROHC_U_MODE &&
+		   (context->state == ROHC_COMP_STATE_FO ||
+		    context->state == ROHC_COMP_STATE_SO))
 		{
-			if(context->mode > ROHC_U_MODE &&
-			   (context->state == ROHC_COMP_STATE_FO ||
-			    context->state == ROHC_COMP_STATE_SO))
-			{
-				rohc_comp_debug(context, "CR: context CID %u is considered as "
-				                "established", context->cid);
-				hashtable_cr_add(&context->compressor->contexts_cr,
-				                 &context->fingerprint, context);
-			}
-			else
-			{
-				rohc_comp_debug(context, "CR: context CID %u is not considered as "
-				                "established", context->cid);
-				hashtable_cr_del(&context->compressor->contexts_cr,
-				                 &context->fingerprint);
-			}
+			rohc_comp_debug(context, "CR: context CID %u is considered as established",
+			                context->cid);
+			hashtable_cr_add(&context->compressor->contexts_cr,
+			                 &context->fingerprint, context);
+		}
+		else
+		{
+			rohc_comp_debug(context, "CR: context CID %u is not considered as "
+			                "established", context->cid);
+			hashtable_cr_del(&context->compressor->contexts_cr,
+			                 &context->fingerprint);
 		}
 	}
 }
