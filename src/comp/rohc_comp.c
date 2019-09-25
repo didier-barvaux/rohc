@@ -182,6 +182,10 @@ static bool c_create_contexts(struct rohc_comp *const comp)
 static void c_destroy_contexts(struct rohc_comp *const comp)
 	__attribute__((nonnull(1)));
 
+static void rohc_comp_ctxt_destroy(struct rohc_comp *const comp,
+                                   struct rohc_comp_ctxt *const context)
+	__attribute__((nonnull(1, 2)));
+
 static struct rohc_comp_ctxt *
 	c_create_context(struct rohc_comp *const comp,
 	                 const struct rohc_comp_profile *const profile,
@@ -507,9 +511,9 @@ void rohc_comp_free(struct rohc_comp *const comp)
 		           "free ROHC compressor");
 
 		/* free memory used by contexts */
+		c_destroy_contexts(comp);
 		hashtable_cr_free(&comp->contexts_cr);
 		hashtable_free(&comp->contexts_by_fingerprint);
-		c_destroy_contexts(comp);
 
 		/* free RRU buffer */
 		if(comp->rru != NULL)
@@ -1640,26 +1644,42 @@ error_free_new_context:
 	/* free context if it was just created */
 	if(c->num_sent_packets <= 1)
 	{
-		if(c->profile->id == ROHCv1_PROFILE_UNCOMPRESSED)
-		{
-			comp->uncompressed_ctxt = NULL;
-		}
-		else
-		{
-			hashtable_del(&comp->contexts_by_fingerprint, &c->fingerprint);
-			/* TODO: replace TCP by CR capacity */
-			if(c->profile->id == ROHCv1_PROFILE_IP_TCP)
-			{
-				hashtable_cr_del(&comp->contexts_cr, &c->fingerprint);
-			}
-		}
-		c->profile->destroy(c);
-		c->used = 0;
-		assert(comp->num_contexts_used > 0);
-		comp->num_contexts_used--;
+		rohc_comp_ctxt_destroy(comp, c);
 	}
 error:
 	return ROHC_STATUS_ERROR;
+}
+
+
+/**
+ * @brief Destroy a compression context
+ *
+ * @param comp     The ROHC compressor
+ * @param context  The compression context to destroy
+ */
+static void rohc_comp_ctxt_destroy(struct rohc_comp *const comp,
+                                   struct rohc_comp_ctxt *const context)
+{
+	assert(context->profile != NULL);
+
+	if(context->profile->id == ROHCv1_PROFILE_UNCOMPRESSED)
+	{
+		comp->uncompressed_ctxt = NULL;
+	}
+	else
+	{
+		hashtable_del(&comp->contexts_by_fingerprint, &context->fingerprint);
+
+		/* TODO: replace TCP by CR capacity */
+		if(context->profile->id == ROHCv1_PROFILE_IP_TCP)
+		{
+			hashtable_cr_del(&comp->contexts_cr, &context->fingerprint);
+		}
+	}
+	context->profile->destroy(context);
+	context->used = 0;
+	assert(comp->num_contexts_used > 0);
+	comp->num_contexts_used--;
 }
 
 
@@ -3413,23 +3433,7 @@ static struct rohc_comp_ctxt *
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "recycle oldest context (CID %u with profile 0x%04x)",
 		           cid_to_use, c->profile->id);
-		if(c->profile->id == ROHCv1_PROFILE_UNCOMPRESSED)
-		{
-			comp->uncompressed_ctxt = NULL;
-		}
-		else
-		{
-			hashtable_del(&comp->contexts_by_fingerprint, &c->fingerprint);
-			/* TODO: replace TCP by CR capacity */
-			if(c->profile->id == ROHCv1_PROFILE_IP_TCP)
-			{
-				hashtable_cr_del(&comp->contexts_cr, &c->fingerprint);
-			}
-		}
-		c->profile->destroy(&comp->contexts[cid_to_use]);
-		c->used = 0;
-		assert(comp->num_contexts_used > 0);
-		comp->num_contexts_used--;
+		rohc_comp_ctxt_destroy(comp, c);
 	}
 	else
 	{
@@ -3792,12 +3796,7 @@ static struct rohc_comp_ctxt *
 				           base_ctxt->cid);
 
 				/* destroy that half-opened context */
-				hashtable_del(&comp->contexts_by_fingerprint, &context->fingerprint);
-				hashtable_cr_del(&comp->contexts_cr, &context->fingerprint);
-				profile->destroy(context);
-				context->used = 0;
-				assert(comp->num_contexts_used > 0);
-				comp->num_contexts_used--;
+				rohc_comp_ctxt_destroy(comp, context);
 
 				/* no context found */
 				context = NULL;
@@ -3910,16 +3909,9 @@ static void c_destroy_contexts(struct rohc_comp *const comp)
 
 	for(i = 0; i <= comp->medium.max_cid; i++)
 	{
-		if(comp->contexts[i].used && comp->contexts[i].profile != NULL)
-		{
-			comp->contexts[i].profile->destroy(&comp->contexts[i]);
-		}
-
 		if(comp->contexts[i].used)
 		{
-			comp->contexts[i].used = 0;
-			assert(comp->num_contexts_used > 0);
-			comp->num_contexts_used--;
+			rohc_comp_ctxt_destroy(comp, &(comp->contexts[i]));
 		}
 	}
 	assert(comp->num_contexts_used == 0);
