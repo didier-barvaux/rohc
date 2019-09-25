@@ -1967,7 +1967,7 @@ bool rohc_comp_force_contexts_reinit(struct rohc_comp *const comp)
 
 	for(i = 0; i <= comp->medium.max_cid; i++)
 	{
-		if(comp->contexts[i].used)
+		if(comp->contexts[i].used > 0)
 		{
 			if(!rohc_comp_reinit_context(&(comp->contexts[i])))
 			{
@@ -3054,7 +3054,7 @@ static bool __rohc_comp_deliver_feedback(struct rohc_comp *const comp,
 		goto error;
 	}
 	assert(context->cid == cid);
-	assert(context->used == 1);
+	assert(context->used > 0);
 
 	/* FEEDBACK-1 or FEEDBACK-2 ? */
 	if(remain_len == 0)
@@ -3194,6 +3194,147 @@ error:
 
 
 /**
+ * @brief Reserve the given Context ID (CID) for the given network flow
+ *
+ * @param comp        The ROHC compressor to reserve the CID for
+ * @param cid         The CID to reserve for the network flow
+ * @param uncomp_pkt  The uncompressed packet to reserve the CID for
+ * @return            true in case of success, false otherwise
+ *
+ * @ingroup rohc_comp
+ *
+ * @see rohc_comp_unreserve_ctxt
+ */
+bool rohc_comp_reserve_ctxt(struct rohc_comp *const comp,
+                            const rohc_cid_t cid,
+                            const struct rohc_buf uncomp_pkt)
+{
+	const struct rohc_comp_profile *profile;
+	struct rohc_fingerprint fingerprint;
+	struct rohc_comp_ctxt *context;
+	struct rohc_pkt_hdrs pkt_hdrs;
+	rohc_profile_t profile_id;
+
+	/* sanity checks */
+	if(comp == NULL)
+	{
+		goto error;
+	}
+	if(cid > comp->medium.max_cid)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "failed to reserve context: CID is larger than MAX_CID = %u",
+		             comp->medium.max_cid);
+		goto error;
+	}
+	if(rohc_buf_is_malformed(uncomp_pkt))
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "failed to reserve context: uncomp_pkt is malformed");
+		goto error;
+	}
+
+	/* what ROHC profile fits the uncompressed packet best? */
+	profile_id = rohc_comp_get_profile(comp, &uncomp_pkt, &fingerprint, &pkt_hdrs);
+	if(profile_id == ROHC_PROFILE_MAX)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "failed to reserve context: failed to find a matching profile "
+		             "among the enabled profiles for the uncompressed packet");
+		goto error;
+	}
+
+	/* find the profile identified by the given profile ID */
+	{
+		const uint8_t profile_major = (profile_id >> 8) & 0xff;
+		const uint8_t profile_minor = profile_id & 0xff;
+		profile = rohc_comp_profiles[profile_major][profile_minor];
+		if(profile == NULL)
+		{
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "failed to reserve context: profile '%s' (0x%04x) is not "
+			             "implemented yet", rohc_get_profile_descr(profile_id),
+			             profile_id);
+			goto error;
+		}
+	}
+
+	/* create the new context from packet (and from the base context if
+	 * Context Replication is possible) */
+	context = c_create_context(comp, cid, profile, &fingerprint, &pkt_hdrs,
+	                           uncomp_pkt.time);
+	if(context == NULL)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "failed to create a new context");
+		goto error;
+	}
+
+	/* reserve the newly-created context */
+	context->used++;
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Unreserve the given Context ID (CID)
+ *
+ * @param comp        The ROHC compressor to unreserve the CID for
+ * @param cid         The CID to unreserve
+ * @return            true in case of success, false otherwise
+ *
+ * @ingroup rohc_comp
+ *
+ * @see rohc_comp_reserve_ctxt
+ */
+bool rohc_comp_unreserve_ctxt(struct rohc_comp *const comp,
+                              const rohc_cid_t cid)
+{
+	struct rohc_comp_ctxt *context;
+
+	/* sanity checks */
+	if(comp == NULL)
+	{
+		goto error;
+	}
+	if(cid > comp->medium.max_cid)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "failed to unreserve context: CID is larger than MAX_CID = %u",
+		             comp->medium.max_cid);
+		goto error;
+	}
+
+	/* the context can only be unreserved if used and reserved */
+	context = &comp->contexts[cid];
+	if(context->used == 0)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "failed to unreserve context: CID %u is not used", cid);
+		goto error;
+	}
+	else if(context->used == 1)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "failed to unreserve context: CID %u is not reserved", cid);
+		goto error;
+	}
+
+	/* unreserve the context */
+	context->used--;
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
  * @brief Get some information about the last compressed packet
  *
  * Get some information about the last compressed packet.
@@ -3244,7 +3385,7 @@ bool rohc_comp_get_last_packet_info2(const struct rohc_comp *const comp,
 		info->is_context_init = (comp->last_context->num_sent_packets == 1);
 		info->context_mode = comp->last_context->mode;
 		info->context_state = comp->last_context->state;
-		info->context_used = (comp->last_context->used ? true : false);
+		info->context_used = (comp->last_context->used > 0 ? true : false);
 		info->profile_id = comp->last_context->profile->id;
 		info->packet_type = comp->last_context->packet_type;
 		info->total_last_uncomp_size = comp->last_context->total_last_uncompressed_size;
@@ -3407,7 +3548,7 @@ static struct rohc_comp_ctxt *
 	const struct rohc_comp_ctxt *base_ctxt;
 
 	/* destroy previous context if it was used */
-	if(ctxt->used == 1)
+	if(ctxt->used > 0)	
 	{
 		rohc_comp_ctxt_destroy(comp, ctxt);
 	}
@@ -3828,7 +3969,8 @@ static rohc_cid_t rohc_comp_get_next_ctxt(struct rohc_comp *const comp)
 		oldest = 0xffffffff;
 		for(i = 0; i <= comp->medium.max_cid; i++)
 		{
-			if(comp->contexts[i].latest_used < oldest)
+			/* do not recycle the context if it is reserved */
+			if(comp->contexts[i].used != 2 && comp->contexts[i].latest_used < oldest)
 			{
 				oldest = comp->contexts[i].latest_used;
 				cid_to_use = i;
@@ -3940,7 +4082,7 @@ static void c_destroy_contexts(struct rohc_comp *const comp)
 
 	for(i = 0; i <= comp->medium.max_cid; i++)
 	{
-		if(comp->contexts[i].used)
+		if(comp->contexts[i].used > 0)
 		{
 			rohc_comp_ctxt_destroy(comp, &(comp->contexts[i]));
 		}
