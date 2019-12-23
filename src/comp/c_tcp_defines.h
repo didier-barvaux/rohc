@@ -127,6 +127,7 @@ struct sc_tcp_context
 	uint8_t innermost_ttl_hopl_change_count:4;
 	/** The number of outer IP-ID behaviors transmissions since last change */
 	uint8_t outer_ip_id_behavior_trans_nr;
+
 	/** The number of innermost IP-ID behavior transmissions since last change */
 	uint8_t innermost_ip_id_behavior_trans_nr;
 	/** The number of innermost DSCP transmissions since last change */
@@ -141,17 +142,6 @@ struct sc_tcp_context
 	uint8_t tcp_urg_ptr_trans_nr;
 	uint8_t ttl_hopl_change_count[ROHC_MAX_IP_HDRS];
 
-	uint8_t ecn_used:1; /**< Explicit Congestion Notification used */
-	/* Context Replication */
-	uint8_t cr_tcp_window_present:1;
-	uint8_t cr_tcp_urg_ptr_present:1;
-	uint8_t cr_tcp_ack_num_present:1;
-
-	uint8_t res_flags:4;
-	uint8_t urg_flag:1;
-	uint8_t ack_flag:1;
-	uint8_t unused2:6;
-
 	struct c_wlsb msn_wlsb;    /**< The W-LSB decoding context for MSN */
 	struct c_wlsb ttl_hopl_wlsb;
 	struct c_wlsb ip_id_wlsb;
@@ -164,11 +154,23 @@ struct sc_tcp_context
 	/** The compression context for TCP options */
 	struct c_tcp_opts_ctxt tcp_opts;
 
+	ip_context_t ip_contexts[ROHC_MAX_IP_HDRS];
+	uint8_t ip_contexts_nr;
+
 	uint16_t urg_ptr_nbo;
 	uint16_t window_nbo;
 
-	uint8_t ip_contexts_nr;
-	ip_context_t ip_contexts[ROHC_MAX_IP_HDRS];
+	/* Context Replication */
+	uint8_t cr_tcp_window_present:1;
+	uint8_t cr_tcp_urg_ptr_present:1;
+	uint8_t cr_tcp_ack_num_present:1;
+	uint8_t unused2:5;
+
+	uint8_t res_flags:4;
+	uint8_t ecn_used:1; /**< Explicit Congestion Notification used */
+	uint8_t urg_flag:1;
+	uint8_t ack_flag:1;
+	uint8_t unused3:1;
 };
 
 /* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
@@ -177,8 +179,16 @@ struct sc_tcp_context
       (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
 _Static_assert((offsetof(struct sc_tcp_context, seq_num_scaled) % 8) == 0,
                "seq_num_scaled in sc_tcp_context should be aligned on 8 bytes");
+_Static_assert((offsetof(struct sc_tcp_context, seq_num_factor) % 8) == 0,
+               "seq_num_factor in sc_tcp_context should be aligned on 8 bytes");
 _Static_assert((offsetof(struct sc_tcp_context, ack_deltas_width) % 8) == 0,
                "ack_deltas_width in sc_tcp_context should be aligned on 8 bytes");
+_Static_assert((offsetof(struct sc_tcp_context, ack_num_scaled) % 8) == 0,
+               "ack_num_scaled in sc_tcp_context should be aligned on 8 bytes");
+_Static_assert((offsetof(struct sc_tcp_context, ack_stride) % 8) == 0,
+               "ack_stride in sc_tcp_context should be aligned on 8 bytes");
+_Static_assert((offsetof(struct sc_tcp_context, innermost_ip_id_behavior_trans_nr) % 8) == 0,
+               "innermost_ip_id_behavior_trans_nr in sc_tcp_context should be aligned on 8 bytes");
 _Static_assert((offsetof(struct sc_tcp_context, msn_wlsb) % 8) == 0,
                "msn_wlsb in sc_tcp_context should be aligned on 8 bytes");
 _Static_assert((offsetof(struct sc_tcp_context, ttl_hopl_wlsb) % 8) == 0,
