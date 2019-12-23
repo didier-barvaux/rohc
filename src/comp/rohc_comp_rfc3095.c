@@ -5437,7 +5437,7 @@ static int rtp_header_flags_and_fields(const struct rohc_comp_ctxt *const contex
 		}
 		else
 		{
-			rohc_comp_debug(context, "TS_STRIDE transmitted only %zd times, so stay "
+			rohc_comp_debug(context, "TS_STRIDE transmitted only %u times, so stay "
 			                "in state INIT_STRIDE (at least %u times are required to "
 			                "change to state SEND_SCALED)",
 			                rtp_context->ts_sc.nr_init_stride_packets,

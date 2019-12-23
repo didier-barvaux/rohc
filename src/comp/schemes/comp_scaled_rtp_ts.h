@@ -85,15 +85,15 @@ struct ts_sc_comp
 	/// The previous sequence number
 	uint16_t old_sn;
 
-	/// Whether timestamp is deducible from SN or not
-	bool is_deducible;
-
-	/// The state of the scaled RTP Timestamp encoding object
-	ts_sc_state state;
-	/** Whether old SN/TS values are initialized or not */
-	bool are_old_val_init;
 	/// The number of packets sent in state INIT_STRIDE
-	size_t nr_init_stride_packets;
+	uint32_t nr_init_stride_packets:8;
+	/// Whether timestamp is deducible from SN or not
+	uint32_t is_deducible:1;
+	/// The state of the scaled RTP Timestamp encoding object
+	uint32_t state:2;
+	/** Whether old SN/TS values are initialized or not */
+	uint32_t are_old_val_init:1;
+	uint32_t unused:20;
 
 	/// The difference between old and current TS
 	uint32_t ts_delta;
@@ -103,6 +103,18 @@ struct ts_sc_comp
 	/** The private context of the callback function used to manage traces */
 	void *trace_callback_priv;
 };
+
+/* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
+#if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
+     (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
+      (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
+_Static_assert((offsetof(struct ts_sc_comp, ts_offset) % 8) == 0,
+               "ts_offset in ts_sc_comp should be aligned on 8 bytes");
+_Static_assert((offsetof(struct ts_sc_comp, old_ts) % 8) == 0,
+               "old_ts in ts_sc_comp should be aligned on 8 bytes");
+_Static_assert((sizeof(struct ts_sc_comp) % 8) == 0,
+               "struct ts_sc_comp length should be multiple of 8 bytes");
+#endif
 
 
 

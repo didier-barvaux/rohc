@@ -1063,7 +1063,7 @@ static size_t rtp_code_dynamic_rtp_part(const struct rohc_comp_ctxt *const conte
 			}
 			else
 			{
-				rohc_comp_debug(context, "TS_STRIDE transmitted only %zd times, "
+				rohc_comp_debug(context, "TS_STRIDE transmitted only %u times, "
 				                "so stay in state INIT_STRIDE (at least %u times "
 				                "are required to change to state SEND_SCALED)",
 				                rtp_context->ts_sc.nr_init_stride_packets,
