@@ -176,9 +176,6 @@ struct sc_tcp_context
 	uint8_t tcp_urg_ptr_trans_nr;
 	uint8_t ttl_hopl_change_count[ROHC_MAX_IP_HDRS];
 
-	ip_context_t ip_contexts[ROHC_MAX_IP_HDRS];
-	uint8_t ip_contexts_nr;
-
 	struct c_wlsb msn_wlsb;    /**< The W-LSB decoding context for MSN */
 	struct c_wlsb ttl_hopl_wlsb;
 	struct c_wlsb ip_id_wlsb;
@@ -190,6 +187,9 @@ struct sc_tcp_context
 
 	/** The compression context for TCP options */
 	struct c_tcp_opts_ctxt tcp_opts;
+
+	ip_context_t ip_contexts[ROHC_MAX_IP_HDRS];
+	uint8_t ip_contexts_nr;
 
 	uint16_t urg_ptr_nbo;
 	uint16_t window_nbo;

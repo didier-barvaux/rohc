@@ -180,6 +180,14 @@ struct rfc3095_ip_hdr_changes
 	struct rohc_list_changes exts;
 };
 
+/* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
+#if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
+     (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
+      (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
+_Static_assert((sizeof(struct rfc3095_ip_hdr_changes) % 8) == 0,
+               "rfc3095_ip_hdr_changes length should be multiple of 8 bytes");
+#endif
+
 
 /**
  * @brief The temporary variables for RFC3095-based profiles
@@ -272,8 +280,6 @@ struct rfc3095_tmp_state
 #if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
      (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
       (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
-_Static_assert((offsetof(struct rfc3095_tmp_state, ip_hdr_changes) % 8) == 0,
-               "ip_hdr_changes in rfc3095_tmp_state should be aligned on 8 bytes");
 _Static_assert((sizeof(struct rfc3095_tmp_state) % 8) == 0,
                "rfc3095_tmp_state length should be multiple of 8 bytes");
 #endif
