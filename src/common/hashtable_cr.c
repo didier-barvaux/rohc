@@ -52,6 +52,13 @@ bool hashtable_cr_new(struct hashtable *const hashtable,
 
 void hashtable_cr_free(struct hashtable *const hashtable)
 {
+	size_t i;
+
+	for(i = 0; i <= hashtable->mask; i++)
+	{
+		assert(hashtable->table[i] == NULL);
+	}
+
 	free(hashtable->table);
 }
 

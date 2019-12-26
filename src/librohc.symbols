@@ -31,6 +31,8 @@ rohc_comp_enable_profile
 rohc_comp_enable_profiles
 rohc_comp_disable_profile
 rohc_comp_disable_profiles
+rohc_comp_reserve_ctxt
+rohc_comp_unreserve_ctxt
 rohc_compress4
 rohc_comp_pad
 rohc_comp_deliver_feedback2

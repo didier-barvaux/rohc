@@ -376,6 +376,15 @@ bool ROHC_EXPORT rohc_comp_deliver_feedback2(struct rohc_comp *const comp,
                                              const struct rohc_buf feedback)
 	__attribute__((warn_unused_result));
 
+bool ROHC_EXPORT rohc_comp_reserve_ctxt(struct rohc_comp *const comp,
+                                        const rohc_cid_t cid,
+                                        const struct rohc_buf uncomp_pkt)
+	__attribute__((warn_unused_result));
+
+bool ROHC_EXPORT rohc_comp_unreserve_ctxt(struct rohc_comp *const comp,
+                                          const rohc_cid_t cid)
+	__attribute__((warn_unused_result));
+
 
 /*
  * Prototypes of public functions that configure robustness to packet

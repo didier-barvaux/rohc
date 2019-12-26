@@ -285,7 +285,7 @@ struct rohc_comp_ctxt
 	/** The fingerprint of the context */
 	struct rohc_fingerprint fingerprint;
 
-	/** Whether the context is in use or not */
+	/** Whether the context is in use and reserved (2), in use (1) or not (0) */
 	int used;
 	/** The time when the context was last used (in seconds) */
 	uint64_t latest_used;

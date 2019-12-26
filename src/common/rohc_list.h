@@ -60,13 +60,19 @@ struct rohc_list
 	uint8_t items_nr;
 	/** How many times the list was transmitted? */
 	uint8_t counter;
+#if defined(__x86_64__) || defined(__aarch64__)
 	uint8_t unused2[4];
+#endif
 };
 
 /* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
 #if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
      (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
       (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
+#if defined(__x86_64__) || defined(__aarch64__)
+	_Static_assert((offsetof(struct rohc_list, id) % 8) == 0,
+	               "id in rohc_list should be aligned on 8 bytes");
+#endif
 _Static_assert((sizeof(struct rohc_list) % 8) == 0,
                "struct rohc_list length should be multiple of 8 bytes");
 #endif
@@ -106,6 +112,8 @@ struct rohc_list_item
 #if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
      (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
       (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
+_Static_assert((offsetof(struct rohc_list_item, length) % 8) == 0,
+               "length in rohc_list_item should be aligned on 8 bytes");
 _Static_assert((sizeof(struct rohc_list_item) % 8) == 0,
                "struct rohc_list_item length should be multiple of 8 bytes");
 #endif

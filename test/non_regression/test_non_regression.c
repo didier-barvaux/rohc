@@ -145,6 +145,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
                                 const size_t padding_up_to,
                                 const bool no_comparison,
                                 const bool ignore_malformed,
+                                const bool reserve_max_cid,
                                 const char *const src_filenames[],
                                 const size_t src_filenames_nr,
                                 char *ofilename,
@@ -161,6 +162,7 @@ static int compress_decompress(struct rohc_comp *comp,
                                const size_t padding_up_to,
                                const bool no_comparison,
                                const bool ignore_malformed,
+                               const bool reserve_max_cid,
                                pcap_dumper_t *dumper,
                                unsigned char *cmp_packet,
                                int cmp_size,
@@ -293,6 +295,7 @@ int main(int argc, char *argv[])
 	bool ignore_malformed = false;
 	bool assert_on_error = false;
 	bool print_stats = false;
+	bool reserve_max_cid = false;
 	int status = 1;
 	rohc_cid_type_t cid_type;
 	int args_used;
@@ -468,6 +471,10 @@ int main(int argc, char *argv[])
 			initial_msn = atoi(argv[1]);
 			args_used++;
 		}
+		else if(!strcmp(*argv, "--reserve-max-cid"))
+		{
+			reserve_max_cid = true;
+		}
 		else if(cid_type_name == NULL)
 		{
 			/* get the type of CID to use within the ROHC library */
@@ -563,6 +570,7 @@ int main(int argc, char *argv[])
 	/* test ROHC compression/decompression with the packets from the file */
 	status = test_comp_and_decomp(cid_type, oa_repetitions, max_contexts, proto_version,
 	                              padding_up_to, no_comparison, ignore_malformed,
+	                              reserve_max_cid,
 	                              (const char *const *) src_filenames, src_filenames_nr,
 	                              ofilename, cmp_filename,
 	                              rohc_size_ofilename);
@@ -637,6 +645,7 @@ static void usage(void)
 	        "  --ignore-malformed         Ignore malformed packets for test\n"
 	        "  --assert-on-error          Stop the test after the very first encountered error\n"
 	        "  --initial-msn NUM          The initial Master Sequence Number (MSN) for debug\n"
+	        "  --reserve-max-cid          Reserve MAX_CID for first flow\n"
 	        "  --verbose                  Run the test in verbose mode\n"
 	        "  --quiet                    Run the test in silent mode\n");
 }
@@ -903,6 +912,7 @@ static void show_rohc_decomp_profile(const struct rohc_decomp *const decomp,
  * @param padding_up_to    The amount of padding to use
  * @param no_comparison    Whether to handle comparison as fatal for test or not
  * @param ignore_malformed Whether to handle malformed packets as fatal for test
+ * @param reserve_max_cid  Whether MAX_CID shall be reserved for first flow
  * @param dumper           The PCAP output dump file
  * @param cmp_packet       The ROHC packet for comparison purpose
  * @param cmp_size         The size of the ROHC packet used for comparison
@@ -928,6 +938,7 @@ static int compress_decompress(struct rohc_comp *comp,
                                const size_t padding_up_to,
                                const bool no_comparison,
                                const bool ignore_malformed,
+                               const bool reserve_max_cid,
                                pcap_dumper_t *dumper,
                                unsigned char *cmp_packet,
                                int cmp_size,
@@ -1082,6 +1093,29 @@ static int compress_decompress(struct rohc_comp *comp,
 	rohc_buf_append_buf(&rohc_packet, feedback_send_by_me);
 	rohc_buf_pull(&rohc_packet, feedback_send_by_me.len); /* skip feedback */
 	trace("=== ROHC piggybacked feedback: success\n");
+
+	/* if option --reserve-max-cid is specified, reserve context with MAX_CID
+	 * for the first network flow */
+	if(reserve_max_cid && num_packet == 1)
+	{
+		size_t max_cid;
+		if(!rohc_comp_get_max_cid(comp, &max_cid))
+		{
+			trace("failed to reserve CID 1 for first packet: failed to get MAX_CID\n");
+			status = -1;
+			goto exit;
+		}
+		if(max_cid > 0)
+		{
+			trace("reserve CID 1 for first packet\n");
+			if(!rohc_comp_reserve_ctxt(comp, max_cid, ip_packet))
+			{
+				trace("failed to reserve CID 1 for first packet\n");
+				status = -1;
+				goto exit;
+			}
+		}
+	}
 
 	/* compress the IP packet into a ROHC packet */
 	trace("=== ROHC compression: start\n");
@@ -1284,6 +1318,7 @@ exit:
  * @param padding_up_to        The amount of padding to use
  * @param no_comparison        Whether to handle comparison as fatal for test or not
  * @param ignore_malformed     Whether to handle malformed packets as fatal for test
+ * @param reserve_max_cid      Whether MAX_CID shall be reserved for first flow
  * @param src_filenames        The names of the PCAP files that contain the
  *                             IP packets
  * @param ofilename            The name of the PCAP file to output the ROHC
@@ -1303,6 +1338,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
                                 const size_t padding_up_to,
                                 const bool no_comparison,
                                 const bool ignore_malformed,
+                                const bool reserve_max_cid,
                                 const char *const src_filenames[],
                                 const size_t src_filenames_nr,
                                 char *ofilename,
@@ -1459,6 +1495,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 		ret = compress_decompress(comp1, decomp1, comp2, 1, counter,
 		                          header, packet, link_len_src,
 		                          padding_up_to, no_comparison, ignore_malformed,
+		                          reserve_max_cid,
 		                          dumper,
 		                          cmp_packet, cmp_header.caplen, link_len_cmp,
 		                          rohc_size_output_file,
@@ -1503,6 +1540,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 		ret = compress_decompress(comp2, decomp2, comp1, 2, counter,
 		                          header, packet, link_len_src,
 		                          padding_up_to, no_comparison, ignore_malformed,
+		                          reserve_max_cid,
 		                          dumper,
 		                          cmp_packet, cmp_header.caplen, link_len_cmp,
 		                          rohc_size_output_file,

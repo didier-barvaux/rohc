@@ -151,15 +151,15 @@ struct sc_tcp_context
 	uint8_t ack_deltas_next;
 
 	/** The number of TCP sequence number transmissions since last change */
-	uint8_t tcp_seq_num_trans_nr:4;
+	uint8_t tcp_seq_num_trans_nr;
 	/** The number of TCP ACK number transmissions since last change */
-	uint8_t tcp_ack_num_trans_nr:4;
-	uint8_t seq_num_scaling_nr:4;
-	uint8_t ack_num_scaling_nr:4;
+	uint8_t tcp_ack_num_trans_nr;
+	uint8_t seq_num_scaling_nr;
+	uint8_t ack_num_scaling_nr;
 	/** The number of times the window field was added to the compressed header */
-	uint8_t tcp_window_change_count:4;
+	uint8_t tcp_window_change_count;
 	/** The number of times the ECN fields were added to the compressed header */
-	uint8_t ecn_used_change_count:4;
+	uint8_t ecn_used_change_count;
 	/** The number of times the ECN fields were not needed */
 	uint8_t ecn_used_zero_count;
 	/** The number of outer IP-ID behaviors transmissions since last change */
@@ -176,15 +176,6 @@ struct sc_tcp_context
 	uint8_t tcp_urg_ptr_trans_nr;
 	uint8_t ttl_hopl_change_count[ROHC_MAX_IP_HDRS];
 
-	uint8_t ecn_used:1; /**< Explicit Congestion Notification used */
-	uint8_t res_flags:4;
-	uint8_t urg_flag:1;
-	uint8_t ack_flag:1;
-	uint8_t unused2:1;
-
-	uint8_t ip_contexts_nr;
-	ip_context_t ip_contexts[ROHC_MAX_IP_HDRS];
-
 	struct c_wlsb msn_wlsb;    /**< The W-LSB decoding context for MSN */
 	struct c_wlsb ttl_hopl_wlsb;
 	struct c_wlsb ip_id_wlsb;
@@ -197,8 +188,17 @@ struct sc_tcp_context
 	/** The compression context for TCP options */
 	struct c_tcp_opts_ctxt tcp_opts;
 
+	ip_context_t ip_contexts[ROHC_MAX_IP_HDRS];
+	uint8_t ip_contexts_nr;
+
 	uint16_t urg_ptr_nbo;
 	uint16_t window_nbo;
+
+	uint8_t ecn_used:1; /**< Explicit Congestion Notification used */
+	uint8_t res_flags:4;
+	uint8_t urg_flag:1;
+	uint8_t ack_flag:1;
+	uint8_t unused2:1;
 };
 
 /* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */

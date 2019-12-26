@@ -88,7 +88,18 @@ struct rohc_list_changes
 	struct rohc_list pkt_list;
 	/** Whether the temporary list of extension headers is a new list? */
 	bool is_new_list;
+	uint8_t unused[7];
 };
+
+/* compiler sanity check for C11-compliant compilers and GCC >= 4.6 */
+#if ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
+     (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
+      (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))))
+_Static_assert((offsetof(struct rohc_list_changes, is_new_list) % 8) == 0,
+               "is_new_list in rohc_list_changes should be aligned on 8 bytes");
+_Static_assert((sizeof(struct rohc_list_changes) % 8) == 0,
+               "rohc_list_changes length should be multiple of 8 bytes");
+#endif
 
 
 void detect_ipv6_ext_changes(const struct list_comp *const comp,
