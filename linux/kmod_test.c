@@ -29,6 +29,7 @@
 #include <linux/module.h>
 #include <linux/uaccess.h>
 #include <linux/proc_fs.h>
+#include <linux/version.h>
 
 #include "config.h"
 #include "rohc.h"
@@ -931,40 +932,69 @@ static int rohc_proc_close(struct inode *inode, struct file *file)
 
 
 /** File operations for /proc/rohc_comp%d_in */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+static const struct proc_ops rohc_proc_comp_in_fops = {
+	.proc_open    = rohc_proc_open,
+	.proc_write   = rohc_proc_comp_write,
+	.proc_release = rohc_proc_close,
+};
+#else
 static const struct file_operations rohc_proc_comp_in_fops = {
 	.owner   = THIS_MODULE,
 	.open    = rohc_proc_open,
 	.write   = rohc_proc_comp_write,
 	.release = rohc_proc_close,
 };
-
+#endif
 
 /** File operations for /proc/rohc_comp%d_out */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+static const struct proc_ops rohc_proc_comp_out_fops = {
+	.proc_open    = rohc_proc_open,
+	.proc_read   = rohc_proc_comp_read,
+	.proc_release = rohc_proc_close,
+};
+#else
 static const struct file_operations rohc_proc_comp_out_fops = {
 	.owner   = THIS_MODULE,
 	.open    = rohc_proc_open,
 	.read   = rohc_proc_comp_read,
 	.release = rohc_proc_close,
 };
-
+#endif
 
 /** File operations for /proc/rohc_decomp%d_in */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+static const struct proc_ops rohc_proc_decomp_in_fops = {
+	.proc_open    = rohc_proc_open,
+	.proc_write   = rohc_proc_decomp_write,
+	.proc_release = rohc_proc_close,
+};
+#else
 static const struct file_operations rohc_proc_decomp_in_fops = {
 	.owner   = THIS_MODULE,
 	.open    = rohc_proc_open,
 	.write   = rohc_proc_decomp_write,
 	.release = rohc_proc_close,
 };
+#endif
 
 
 /** File operations for /proc/rohc_decomp%d_out */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+static const struct proc_ops rohc_proc_decomp_out_fops = {
+	.proc_open    = rohc_proc_open,
+	.proc_read   = rohc_proc_decomp_read,
+	.proc_release = rohc_proc_close,
+};
+#else
 static const struct file_operations rohc_proc_decomp_out_fops = {
 	.owner   = THIS_MODULE,
 	.open    = rohc_proc_open,
 	.read   = rohc_proc_decomp_read,
 	.release = rohc_proc_close,
 };
-
+#endif
 
 /**
  * @brief Create /proc/rohc_(de)?comp[12]_(in|out) entries
