@@ -66,7 +66,11 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <limits.h>
-#include <linux/if.h>
+#if defined(__linux__)
+#  include <linux/if.h>
+#else
+#  include <net/if.h>
+#endif
 
 /* include for the PCAP library */
 #if HAVE_PCAP_PCAP_H == 1
@@ -340,7 +344,14 @@ int main(int argc, char *argv[])
 	{
 		const char dirname[] = "/var/tmp/rohc_sniffer/";
 
+#if defined(__APPLE__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#endif
 		ret = daemon(do_change_dir, do_close_fds);
+#if defined(__APPLE__)
+#pragma clang diagnostic pop
+#endif
 		if(ret != 0)
 		{
 			SNIFFER_LOG(LOG_WARNING, "failed to run in background: %s (%d)",
@@ -1791,9 +1802,15 @@ static size_t get_tcp_opt_padding(const struct rohc_buf packet)
 	if((rohc_buf_byte(packet) & 0xf0) == 0x40)
 	{
 		/* IPv4 */
+#if defined(__linux__)
 		struct iphdr *ip = (struct iphdr *) rohc_buf_data(packet);
 		ip_len = ip->ihl * 4;
 		if(packet.len <= ip_len || ip->protocol != 6)
+#else
+		struct ip *ip = (struct ip *) rohc_buf_data(packet);
+		ip_len = ip->ip_hl * 4;
+		if(packet.len <= ip_len || ip->ip_p != 6)
+#endif
 		{
 			goto not_tcp;
 		}
@@ -1821,7 +1838,11 @@ static size_t get_tcp_opt_padding(const struct rohc_buf packet)
 
 	/* enough room for TCP options? */
 	tcp = (struct tcphdr *) rohc_buf_data_at(packet, ip_len);
+#if defined(__linux__)
 	if(packet.len < (ip_len + tcp->doff * 4))
+#else
+	if(packet.len < (ip_len + tcp->th_off * 4))
+#endif
 	{
 		goto malformed;
 	}
@@ -1829,7 +1850,11 @@ static size_t get_tcp_opt_padding(const struct rohc_buf packet)
 	/* parse TCP options, count padding bytes */
 	nr_eol_found = 0;
 	for(i = ip_len + sizeof(struct tcphdr);
+#if defined(__linux__)
 	    i < (ip_len + tcp->doff * 4);
+#else
+	    i < (ip_len + tcp->th_off * 4);
+#endif
 	    i += opt_len)
 	{
 		switch(rohc_buf_byte_at(packet, i))

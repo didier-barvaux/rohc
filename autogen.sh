@@ -55,7 +55,7 @@ NEW_PWD="`dirname $0`"
 cd "${NEW_PWD}" >/dev/null
 
 run aclocal
-run libtoolize --force
+run glibtoolize --force
 run autoconf
 run autoheader
 run automake --add-missing --force-missing
